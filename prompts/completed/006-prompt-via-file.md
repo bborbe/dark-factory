@@ -1,6 +1,7 @@
 ---
-status: executing
+status: completed
 ---
+
 # Pass prompt content via file instead of env var
 
 ## Goal

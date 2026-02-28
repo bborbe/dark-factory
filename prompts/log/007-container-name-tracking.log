@@ -1,8 +1,7 @@
----
+Starting headless session...
+error: unknown option '---
 status: queued
 ---
-
-
 # Track Docker container name in prompt frontmatter
 
 ## Goal
@@ -61,4 +60,4 @@ After changing the Executor interface, run `make generate` to regenerate `mocks/
 ## Constraints
 
 - Container name must be valid for Docker (alphanumeric, hyphens, underscores)
-- Run `make precommit` before finishing
+- Run `make precommit` before finishing'

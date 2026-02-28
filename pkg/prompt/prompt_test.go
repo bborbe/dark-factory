@@ -247,10 +247,10 @@ This is the content.
 				path = createPromptFile(tempDir, "001-test.md", "queued")
 			})
 
-			It("returns full file content", func() {
+			It("returns content without frontmatter", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).To(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: queued"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 			})
 		})

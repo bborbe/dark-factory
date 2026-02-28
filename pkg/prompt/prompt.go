@@ -217,7 +217,7 @@ func Title(ctx context.Context, path string) (string, error) {
 	return strings.TrimSuffix(filename, ".md"), nil
 }
 
-// Content returns the full file content for passing to Docker.
+// Content returns the prompt content (without frontmatter) for passing to Docker.
 // Returns ErrEmptyPrompt if the file is empty or contains only whitespace.
 func Content(ctx context.Context, path string) (string, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
@@ -226,12 +226,21 @@ func Content(ctx context.Context, path string) (string, error) {
 		return "", errors.Wrap(ctx, err, "read file")
 	}
 
+	// Strip frontmatter — only pass the body to the executor
+	_, body, hasFM := splitFrontmatter(content)
+	var result string
+	if hasFM {
+		result = string(body)
+	} else {
+		result = string(content)
+	}
+
 	// Check if content is empty or only whitespace
-	if len(strings.TrimSpace(string(content))) == 0 {
+	if len(strings.TrimSpace(result)) == 0 {
 		return "", ErrEmptyPrompt
 	}
 
-	return string(content), nil
+	return result, nil
 }
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.10
+
+### Fixed
+- Strip frontmatter from prompt content before passing to executor (fixes `---` parsed as CLI option)
+- Reset prompt 007 to queued after failure
+
 ## v0.2.9
 
 ### Added

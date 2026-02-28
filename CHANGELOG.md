@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.9
+
+### Added
+- Pass prompt content via file instead of env var
+
 ## v0.2.8
 
 ### Fixed

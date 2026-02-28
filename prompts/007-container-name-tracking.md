@@ -1,5 +1,5 @@
 ---
-status: failed
+status: queued
 ---
 # Track Docker container name in prompt frontmatter
 

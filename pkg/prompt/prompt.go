@@ -77,6 +77,35 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 	return queued, nil
 }
 
+// ResetExecuting resets any prompts with status "executing" back to "queued".
+// This handles prompts that got stuck from a previous crash.
+func ResetExecuting(ctx context.Context, dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "read directory")
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
+		fm, err := readFrontmatter(ctx, path)
+		if err != nil {
+			continue
+		}
+
+		if fm.Status == "executing" {
+			if err := SetStatus(ctx, path, "queued"); err != nil {
+				return errors.Wrap(ctx, err, "reset executing prompt")
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetStatus updates the status field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the status field.
 func SetStatus(ctx context.Context, path string, status string) error {

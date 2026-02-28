@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.5
+
+### Added
+- Save container output to log file
+
 ## v0.2.4
 
 ### Added

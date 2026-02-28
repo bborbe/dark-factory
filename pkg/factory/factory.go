@@ -50,6 +50,11 @@ func (f *Factory) Run(ctx context.Context) error {
 
 	log.Printf("dark-factory: watching %s for queued prompts...", f.promptsDir)
 
+	// Reset any stuck "executing" prompts from previous crash
+	if err := prompt.ResetExecuting(ctx, f.promptsDir); err != nil {
+		return errors.Wrap(ctx, err, "reset executing prompts")
+	}
+
 	// Process any existing queued prompts first
 	if err := f.processExistingQueued(ctx); err != nil {
 		return errors.Wrap(ctx, err, "process existing queued prompts")

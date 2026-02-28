@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.7
+
+### Fixed
+- Pass prompt via mounted temp file instead of `-e` env var (fixes shell escaping with backticks, `---`, quotes)
+
 ## v0.2.6
 
 ### Fixed

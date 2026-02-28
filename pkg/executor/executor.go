@@ -59,13 +59,28 @@ func (e *DockerExecutor) Execute(ctx context.Context, promptContent string, logF
 	}
 	defer logFileHandle.Close()
 
+	// Write prompt to temp file (avoids shell/docker escaping issues with -e flag)
+	promptFile, err := os.CreateTemp("", "dark-factory-prompt-*.md")
+	if err != nil {
+		return errors.Wrap(ctx, err, "create prompt temp file")
+	}
+	defer func() { _ = os.Remove(promptFile.Name()) }()
+
+	if _, err := promptFile.WriteString(promptContent); err != nil {
+		promptFile.Close()
+		return errors.Wrap(ctx, err, "write prompt temp file")
+	}
+	promptFile.Close()
+
 	// Build docker run command
+	// Mount prompt as file to avoid shell escaping issues with -e flag
 	// #nosec G204 -- promptContent is user-provided by design
 	cmd := exec.CommandContext(
 		ctx,
 		"docker", "run", "--rm",
 		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
-		"-e", "YOLO_PROMPT="+promptContent,
+		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
+		"-v", promptFile.Name()+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
 		"-v", home+"/.claude-yolo:/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",

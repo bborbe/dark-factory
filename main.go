@@ -5,8 +5,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+
+	"github.com/bborbe/dark-factory/pkg/factory"
 )
 
 func main() {
@@ -17,6 +20,6 @@ func main() {
 }
 
 func run() error {
-	fmt.Println("dark-factory")
-	return nil
+	f := factory.New()
+	return f.Run(context.Background())
 }

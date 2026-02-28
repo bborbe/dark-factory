@@ -60,3 +60,6 @@ trivy:
 
 addlicense:
 	go run -mod=mod github.com/google/addlicense -c "Benjamin Borbe" -y $$(date +'%Y') -l bsd $$(find . -name "*.go" -not -path './vendor/*')
+
+run:
+	go run main.go

@@ -33,16 +33,13 @@ var _ = Describe("Prompt", func() {
 	})
 
 	Describe("ListQueued", func() {
-		Context("with queued prompts", func() {
+		Context("with explicit status: queued", func() {
 			BeforeEach(func() {
-				// Create test files
 				createPromptFile(tempDir, "001-first.md", "queued")
 				createPromptFile(tempDir, "002-second.md", "queued")
-				createPromptFile(tempDir, "003-third.md", "completed")
-				createPromptFile(tempDir, "004-fourth.md", "")
 			})
 
-			It("returns only queued prompts sorted alphabetically", func() {
+			It("returns prompts sorted alphabetically", func() {
 				prompts, err := prompt.ListQueued(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(2))
@@ -51,15 +48,72 @@ var _ = Describe("Prompt", func() {
 			})
 		})
 
-		Context("with no queued prompts", func() {
+		Context("with no frontmatter at all", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-first.md", "completed")
+				// Plain markdown file with no frontmatter
+				content := "# Test Prompt\n\nContent here.\n"
+				path := filepath.Join(tempDir, "001-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
 			})
 
-			It("returns empty list", func() {
+			It("picks up the file", func() {
+				prompts, err := prompt.ListQueued(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(prompts).To(HaveLen(1))
+				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-plain.md"))
+			})
+		})
+
+		Context("with frontmatter but no status field", func() {
+			BeforeEach(func() {
+				// Frontmatter with other fields but no status
+				content := "---\nauthor: alice\n---\n\n# Test Prompt\n\nContent here.\n"
+				path := filepath.Join(tempDir, "001-no-status.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("picks up the file", func() {
+				prompts, err := prompt.ListQueued(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(prompts).To(HaveLen(1))
+				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-no-status.md"))
+			})
+		})
+
+		Context("with skip statuses", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-executing.md", "executing")
+				createPromptFile(tempDir, "002-completed.md", "completed")
+				createPromptFile(tempDir, "003-failed.md", "failed")
+			})
+
+			It("does not return files with skip status", func() {
 				prompts, err := prompt.ListQueued(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(0))
+			})
+		})
+
+		Context("with mixed files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-completed.md", "completed")
+				// Plain file with no frontmatter
+				content := "# Plain Prompt\n\nContent here.\n"
+				path := filepath.Join(tempDir, "003-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+				createPromptFile(tempDir, "004-executing.md", "executing")
+			})
+
+			It("returns queued and plain files only", func() {
+				prompts, err := prompt.ListQueued(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(prompts).To(HaveLen(2))
+				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-queued.md"))
+				Expect(filepath.Base(prompts[1].Path)).To(Equal("003-plain.md"))
 			})
 		})
 
@@ -80,27 +134,54 @@ var _ = Describe("Prompt", func() {
 	})
 
 	Describe("SetStatus", func() {
-		var path string
+		Context("with existing frontmatter", func() {
+			var path string
 
-		BeforeEach(func() {
-			path = createPromptFile(tempDir, "001-test.md", "queued")
+			BeforeEach(func() {
+				path = createPromptFile(tempDir, "001-test.md", "queued")
+			})
+
+			It("updates status field", func() {
+				err := prompt.SetStatus(ctx, path, "executing")
+				Expect(err).To(BeNil())
+
+				content, err := os.ReadFile(path)
+				Expect(err).To(BeNil())
+				Expect(string(content)).To(ContainSubstring("status: executing"))
+			})
 		})
 
-		It("updates status field", func() {
-			err := prompt.SetStatus(ctx, path, "executing")
-			Expect(err).To(BeNil())
+		Context("without frontmatter", func() {
+			var path string
 
-			content, err := os.ReadFile(path)
-			Expect(err).To(BeNil())
-			Expect(string(content)).To(ContainSubstring("status: executing"))
+			BeforeEach(func() {
+				// Plain markdown file with no frontmatter
+				content := "# Test Prompt\n\nContent here.\n"
+				path = filepath.Join(tempDir, "001-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("adds frontmatter with status", func() {
+				err := prompt.SetStatus(ctx, path, "executing")
+				Expect(err).To(BeNil())
+
+				content, err := os.ReadFile(path)
+				Expect(err).To(BeNil())
+				contentStr := string(content)
+				Expect(contentStr).To(ContainSubstring("---\n"))
+				Expect(contentStr).To(ContainSubstring("status: executing"))
+				Expect(contentStr).To(ContainSubstring("# Test Prompt"))
+			})
 		})
 	})
 
 	Describe("Title", func() {
-		var path string
+		Context("with frontmatter", func() {
+			var path string
 
-		BeforeEach(func() {
-			content := `---
+			BeforeEach(func() {
+				content := `---
 status: queued
 ---
 
@@ -108,15 +189,36 @@ status: queued
 
 This is the content.
 `
-			path = filepath.Join(tempDir, "001-test.md")
-			err := os.WriteFile(path, []byte(content), 0600)
-			Expect(err).To(BeNil())
+				path = filepath.Join(tempDir, "001-test.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("extracts first heading", func() {
+				title, err := prompt.Title(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(title).To(Equal("Implement Feature X"))
+			})
 		})
 
-		It("extracts first heading", func() {
-			title, err := prompt.Title(ctx, path)
-			Expect(err).To(BeNil())
-			Expect(title).To(Equal("Implement Feature X"))
+		Context("without frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `# Implement Feature Y
+
+This is the content.
+`
+				path = filepath.Join(tempDir, "001-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("extracts first heading from start of file", func() {
+				title, err := prompt.Title(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(title).To(Equal("Implement Feature Y"))
+			})
 		})
 	})
 
@@ -154,6 +256,17 @@ This is the content.
 			completedPath := filepath.Join(tempDir, "completed", "001-test.md")
 			_, err = os.Stat(completedPath)
 			Expect(err).To(BeNil())
+		})
+
+		It("sets status to completed before moving", func() {
+			err := prompt.MoveToCompleted(ctx, path)
+			Expect(err).To(BeNil())
+
+			// Read completed file and verify status
+			completedPath := filepath.Join(tempDir, "completed", "001-test.md")
+			fm, err := prompt.ReadFrontmatter(ctx, completedPath)
+			Expect(err).To(BeNil())
+			Expect(fm.Status).To(Equal("completed"))
 		})
 	})
 })

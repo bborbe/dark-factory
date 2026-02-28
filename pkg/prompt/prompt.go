@@ -29,8 +29,9 @@ type Frontmatter struct {
 	Status string `yaml:"status"`
 }
 
-// ListQueued scans a directory for .md files with status: queued in frontmatter,
-// sorted alphabetically by filename.
+// ListQueued scans a directory for .md files that should be picked up.
+// Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
+// Sorted alphabetically by filename.
 func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -46,14 +47,20 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		path := filepath.Join(dir, entry.Name())
 		fm, err := readFrontmatter(ctx, path)
 		if err != nil {
-			// Skip files with invalid frontmatter
+			// Skip files with read errors
 			continue
 		}
 
-		if fm.Status == "queued" {
+		// Pick up files UNLESS they have an explicit skip status
+		if fm.Status != "executing" && fm.Status != "completed" && fm.Status != "failed" {
+			// Normalize status to "queued" for consistency
+			status := fm.Status
+			if status == "" {
+				status = "queued"
+			}
 			queued = append(queued, Prompt{
 				Path:   path,
-				Status: fm.Status,
+				Status: status,
 			})
 		}
 	}
@@ -67,6 +74,7 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 }
 
 // SetStatus updates the status field in a prompt file's frontmatter.
+// If the file has no frontmatter, adds frontmatter with the status field.
 func SetStatus(ctx context.Context, path string, status string) error {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
@@ -76,41 +84,74 @@ func SetStatus(ctx context.Context, path string, status string) error {
 
 	// Split frontmatter from content
 	parts := bytes.SplitN(content, []byte("---"), 3)
+
+	var updated []byte
 	if len(parts) < 3 {
-		return errors.Errorf(ctx, "invalid frontmatter format")
+		updated, err = addFrontmatterWithStatus(ctx, content, status)
+	} else {
+		updated, err = updateExistingFrontmatter(ctx, parts, status)
 	}
 
-	// Parse frontmatter
-	var fm Frontmatter
-	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
-		return errors.Wrap(ctx, err, "parse frontmatter")
-	}
-
-	// Update status
-	fm.Status = status
-
-	// Marshal back to YAML
-	updated, err := yaml.Marshal(&fm)
 	if err != nil {
-		return errors.Wrap(ctx, err, "marshal frontmatter")
+		return err
 	}
-
-	// Reconstruct file
-	var buf bytes.Buffer
-	buf.WriteString("---\n")
-	buf.Write(updated)
-	buf.WriteString("---")
-	buf.Write(parts[2])
 
 	// Write back
-	if err := os.WriteFile(path, buf.Bytes(), 0600); err != nil {
+	if err := os.WriteFile(path, updated, 0600); err != nil {
 		return errors.Wrap(ctx, err, "write file")
 	}
 
 	return nil
 }
 
-// Title extracts the first # heading from a prompt file (below frontmatter).
+// addFrontmatterWithStatus adds frontmatter with status to a file that has none.
+func addFrontmatterWithStatus(
+	ctx context.Context,
+	content []byte,
+	status string,
+) ([]byte, error) {
+	fm := Frontmatter{Status: status}
+	yamlData, err := yaml.Marshal(&fm)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "marshal frontmatter")
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("---\n")
+	buf.Write(yamlData)
+	buf.WriteString("---\n")
+	buf.Write(content)
+	return buf.Bytes(), nil
+}
+
+// updateExistingFrontmatter updates status in existing frontmatter.
+func updateExistingFrontmatter(
+	ctx context.Context,
+	parts [][]byte,
+	status string,
+) ([]byte, error) {
+	var fm Frontmatter
+	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
+		return nil, errors.Wrap(ctx, err, "parse frontmatter")
+	}
+
+	fm.Status = status
+
+	yamlData, err := yaml.Marshal(&fm)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "marshal frontmatter")
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("---\n")
+	buf.Write(yamlData)
+	buf.WriteString("---")
+	buf.Write(parts[2])
+	return buf.Bytes(), nil
+}
+
+// Title extracts the first # heading from a prompt file.
+// Handles files with or without frontmatter.
 func Title(ctx context.Context, path string) (string, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
@@ -118,14 +159,20 @@ func Title(ctx context.Context, path string) (string, error) {
 		return "", errors.Wrap(ctx, err, "read file")
 	}
 
-	// Skip frontmatter
+	var contentToScan []byte
+
+	// Skip frontmatter if present
 	parts := bytes.SplitN(content, []byte("---"), 3)
-	if len(parts) < 3 {
-		return "", errors.Errorf(ctx, "invalid frontmatter format")
+	if len(parts) >= 3 {
+		// Has frontmatter - scan content after frontmatter
+		contentToScan = parts[2]
+	} else {
+		// No frontmatter - scan from beginning
+		contentToScan = content
 	}
 
 	// Find first # heading
-	scanner := bufio.NewScanner(bytes.NewReader(parts[2]))
+	scanner := bufio.NewScanner(bytes.NewReader(contentToScan))
 	headingRe := regexp.MustCompile(`^#\s+(.+)$`)
 
 	for scanner.Scan() {
@@ -152,8 +199,14 @@ func Content(ctx context.Context, path string) (string, error) {
 	return string(content), nil
 }
 
-// MoveToCompleted moves a prompt file to the completed/ subdirectory.
+// MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
+// This ensures files in completed/ always have the correct status.
 func MoveToCompleted(ctx context.Context, path string) error {
+	// Set status to completed before moving
+	if err := SetStatus(ctx, path, "completed"); err != nil {
+		return errors.Wrap(ctx, err, "set completed status")
+	}
+
 	dir := filepath.Dir(path)
 	completedDir := filepath.Join(dir, "completed")
 
@@ -179,6 +232,7 @@ func ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 }
 
 // readFrontmatter is a helper to read frontmatter from a file.
+// Returns empty Frontmatter if file has no frontmatter delimiters.
 func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
@@ -188,7 +242,8 @@ func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 
 	parts := bytes.SplitN(content, []byte("---"), 3)
 	if len(parts) < 3 {
-		return nil, errors.Errorf(ctx, "invalid frontmatter format")
+		// No frontmatter delimiters - return empty Frontmatter
+		return &Frontmatter{}, nil
 	}
 
 	var fm Frontmatter

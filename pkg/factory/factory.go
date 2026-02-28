@@ -165,12 +165,7 @@ func (f *Factory) processExistingQueued(ctx context.Context) error {
 			return errors.Wrap(ctx, err, "process prompt")
 		}
 
-		// Mark as completed
-		if err := prompt.SetStatus(ctx, p.Path, "completed"); err != nil {
-			return errors.Wrap(ctx, err, "set completed status")
-		}
-
-		// Move to completed/
+		// Move to completed/ (this also sets status to "completed")
 		if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
 			return errors.Wrap(ctx, err, "move to completed")
 		}
@@ -182,24 +177,32 @@ func (f *Factory) processExistingQueued(ctx context.Context) error {
 	}
 }
 
-// handleFileEvent checks if a file has status: queued and processes it.
+// handleFileEvent checks if a file should be picked up and processes it.
+// Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 func (f *Factory) handleFileEvent(ctx context.Context, filePath string) {
 	// Read frontmatter to check status
 	fm, err := prompt.ReadFrontmatter(ctx, filePath)
 	if err != nil {
-		// Ignore files with invalid frontmatter
+		// Ignore files with read errors
 		return
 	}
 
-	if fm.Status != "queued" {
+	// Pick up files UNLESS they have an explicit skip status
+	if fm.Status == "executing" || fm.Status == "completed" || fm.Status == "failed" {
 		return
 	}
 
 	log.Printf("dark-factory: found queued prompt: %s", filepath.Base(filePath))
 
+	// Normalize status to "queued" for consistency
+	status := fm.Status
+	if status == "" {
+		status = "queued"
+	}
+
 	p := prompt.Prompt{
 		Path:   filePath,
-		Status: fm.Status,
+		Status: status,
 	}
 
 	// Process the prompt
@@ -213,13 +216,7 @@ func (f *Factory) handleFileEvent(ctx context.Context, filePath string) {
 		return
 	}
 
-	// Mark as completed
-	if err := prompt.SetStatus(ctx, p.Path, "completed"); err != nil {
-		log.Printf("dark-factory: failed to set completed status: %v", err)
-		return
-	}
-
-	// Move to completed/
+	// MoveToCompleted now sets status to "completed" internally before moving
 	if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
 		log.Printf("dark-factory: failed to move to completed: %v", err)
 		return

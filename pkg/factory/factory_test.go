@@ -244,11 +244,11 @@ This is a new prompt.
 		cancel()
 	})
 
-	It("should ignore non-queued prompts", func() {
+	It("should ignore prompts with skip status", func() {
 		// Create mock executor
 		mockExec := &MockExecutor{
 			ExecuteFunc: func(ctx context.Context, content string) error {
-				Fail("executor should not be called for non-queued prompts")
+				Fail("executor should not be called for prompts with skip status")
 				return nil
 			},
 		}
@@ -267,13 +267,13 @@ This is a new prompt.
 		// Wait a bit for watcher to start
 		time.Sleep(500 * time.Millisecond)
 
-		// Create a non-queued prompt
-		promptPath := filepath.Join(promptsDir, "003-not-queued.md")
+		// Create a prompt with skip status (completed)
+		promptPath := filepath.Join(promptsDir, "003-completed.md")
 		promptContent := `---
-status: draft
+status: completed
 ---
 
-# Draft prompt
+# Completed prompt
 
 This should not be processed.
 `

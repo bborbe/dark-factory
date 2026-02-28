@@ -1,5 +1,5 @@
 ---
-status: failed
+status: completed
 ---
 
 # Add fsnotify-based directory watching to main loop

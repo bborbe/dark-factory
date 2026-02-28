@@ -116,13 +116,13 @@ func SetStatus(ctx context.Context, path string, status string) error {
 	}
 
 	// Split frontmatter from content
-	parts := bytes.SplitN(content, []byte("---"), 3)
+	yamlBytes, body, hasFM := splitFrontmatter(content)
 
 	var updated []byte
-	if len(parts) < 3 {
+	if !hasFM {
 		updated, err = addFrontmatterWithStatus(ctx, content, status)
 	} else {
-		updated, err = updateExistingFrontmatter(ctx, parts, status)
+		updated, err = updateExistingFrontmatter(ctx, yamlBytes, body, status)
 	}
 
 	if err != nil {
@@ -160,11 +160,12 @@ func addFrontmatterWithStatus(
 // updateExistingFrontmatter updates status in existing frontmatter.
 func updateExistingFrontmatter(
 	ctx context.Context,
-	parts [][]byte,
+	yamlBytes []byte,
+	body []byte,
 	status string,
 ) ([]byte, error) {
 	var fm Frontmatter
-	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
+	if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
 		return nil, errors.Wrap(ctx, err, "parse frontmatter")
 	}
 
@@ -178,8 +179,8 @@ func updateExistingFrontmatter(
 	var buf bytes.Buffer
 	buf.WriteString("---\n")
 	buf.Write(yamlData)
-	buf.WriteString("---")
-	buf.Write(parts[2])
+	buf.WriteString("---\n")
+	buf.Write(body)
 	return buf.Bytes(), nil
 }
 
@@ -193,17 +194,8 @@ func Title(ctx context.Context, path string) (string, error) {
 		return "", errors.Wrap(ctx, err, "read file")
 	}
 
-	var contentToScan []byte
-
 	// Skip frontmatter if present
-	parts := bytes.SplitN(content, []byte("---"), 3)
-	if len(parts) >= 3 {
-		// Has frontmatter - scan content after frontmatter
-		contentToScan = parts[2]
-	} else {
-		// No frontmatter - scan from beginning
-		contentToScan = content
-	}
+	_, contentToScan, _ := splitFrontmatter(content)
 
 	// Find first # heading
 	scanner := bufio.NewScanner(bytes.NewReader(contentToScan))
@@ -274,6 +266,29 @@ func ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	return readFrontmatter(ctx, path)
 }
 
+// splitFrontmatter splits file content into frontmatter YAML and body.
+// Returns (yamlBytes, body, hasFrontmatter).
+// Frontmatter must start with "---\n" at the very beginning of the file
+// and end with "\n---\n" on its own line.
+func splitFrontmatter(content []byte) ([]byte, []byte, bool) {
+	if !bytes.HasPrefix(content, []byte("---\n")) {
+		return nil, content, false
+	}
+
+	rest := content[4:] // skip opening "---\n"
+	idx := bytes.Index(rest, []byte("\n---\n"))
+	if idx >= 0 {
+		return rest[:idx], rest[idx+4:], true
+	}
+
+	// Check for "---" at end of file (no trailing newline)
+	if bytes.HasSuffix(rest, []byte("\n---")) {
+		return rest[:len(rest)-4], nil, true
+	}
+
+	return nil, content, false
+}
+
 // readFrontmatter is a helper to read frontmatter from a file.
 // Returns empty Frontmatter if file has no frontmatter delimiters.
 func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
@@ -283,14 +298,13 @@ func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 		return nil, errors.Wrap(ctx, err, "read file")
 	}
 
-	parts := bytes.SplitN(content, []byte("---"), 3)
-	if len(parts) < 3 {
-		// No frontmatter delimiters - return empty Frontmatter
+	yamlBytes, _, hasFM := splitFrontmatter(content)
+	if !hasFM {
 		return &Frontmatter{}, nil
 	}
 
 	var fm Frontmatter
-	if err := yaml.Unmarshal(parts[1], &fm); err != nil {
+	if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
 		return nil, errors.Wrap(ctx, err, "parse frontmatter")
 	}
 

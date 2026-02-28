@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.8
+
+### Fixed
+- Frontmatter parser no longer matches inline `---` in content (only line-boundary delimiters)
+- Watcher now handles CHMOD events (macOS touch)
+
 ## v0.2.7
 
 ### Fixed

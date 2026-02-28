@@ -1,6 +1,3 @@
----
-status: failed
----
 # Pass prompt content via file instead of env var
 
 ## Goal
@@ -66,3 +63,6 @@ This avoids the shell parsing issue entirely since Go's `exec.Command` passes ar
 - Temp file must be readable by the Docker container (permissions)
 - Clean up temp file even on error (use defer)
 - Run `make precommit` before finishing
+
+
+

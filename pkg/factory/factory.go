@@ -122,7 +122,8 @@ func (f *Factory) handleWatchEvent(
 	if !strings.HasSuffix(event.Name, ".md") {
 		return
 	}
-	if event.Op&fsnotify.Write == 0 && event.Op&fsnotify.Create == 0 {
+	if event.Op&fsnotify.Write == 0 && event.Op&fsnotify.Create == 0 &&
+		event.Op&fsnotify.Chmod == 0 {
 		return
 	}
 

@@ -78,6 +78,11 @@ func gitAddAll(ctx context.Context) error {
 	return nil
 }
 
+// GetNextVersion determines the next version by bumping the patch version.
+func GetNextVersion(ctx context.Context) (string, error) {
+	return getNextVersion(ctx)
+}
+
 // getNextVersion determines the next version by bumping the patch version
 func getNextVersion(ctx context.Context) (string, error) {
 	// Get latest tag

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/factory"
 )
 
@@ -20,6 +21,7 @@ func main() {
 }
 
 func run() error {
-	f := factory.New()
+	exec := executor.NewDockerExecutor()
+	f := factory.New(exec)
 	return f.Run(context.Background())
 }

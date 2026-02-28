@@ -12,9 +12,22 @@ import (
 	"github.com/bborbe/errors"
 )
 
+// Executor executes a prompt.
+type Executor interface {
+	Execute(ctx context.Context, promptContent string) error
+}
+
+// DockerExecutor implements Executor using Docker.
+type DockerExecutor struct{}
+
+// NewDockerExecutor creates a new DockerExecutor.
+func NewDockerExecutor() *DockerExecutor {
+	return &DockerExecutor{}
+}
+
 // Execute runs the claude-yolo Docker container with the given prompt content.
 // It blocks until the container exits and returns an error if the exit code is non-zero.
-func Execute(ctx context.Context, promptContent string) error {
+func (e *DockerExecutor) Execute(ctx context.Context, promptContent string) error {
 	// Get project root (current working directory)
 	projectRoot, err := os.Getwd()
 	if err != nil {

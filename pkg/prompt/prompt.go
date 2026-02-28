@@ -173,6 +173,11 @@ func MoveToCompleted(ctx context.Context, path string) error {
 	return nil
 }
 
+// ReadFrontmatter reads frontmatter from a file.
+func ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
+	return readFrontmatter(ctx, path)
+}
+
 // readFrontmatter is a helper to read frontmatter from a file.
 func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory

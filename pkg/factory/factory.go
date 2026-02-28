@@ -6,6 +6,7 @@ package factory
 
 import (
 	"context"
+	stderrors "errors"
 	"log"
 	"os"
 	"os/signal"
@@ -228,6 +229,20 @@ func (f *Factory) handleFileEvent(ctx context.Context, filePath string) {
 
 // processPrompt executes a single prompt and commits the result.
 func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
+	// Get prompt content first to check if empty
+	content, err := prompt.Content(ctx, p.Path)
+	if err != nil {
+		// If prompt is empty, skip it without marking as failed
+		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
+			log.Printf(
+				"dark-factory: skipping empty prompt: %s (file may still be in progress)",
+				filepath.Base(p.Path),
+			)
+			return nil
+		}
+		return errors.Wrap(ctx, err, "get prompt content")
+	}
+
 	// Set status to executing
 	if err := prompt.SetStatus(ctx, p.Path, "executing"); err != nil {
 		return errors.Wrap(ctx, err, "set executing status")
@@ -240,12 +255,6 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	}
 
 	log.Printf("dark-factory: executing prompt: %s", title)
-
-	// Get prompt content
-	content, err := prompt.Content(ctx, p.Path)
-	if err != nil {
-		return errors.Wrap(ctx, err, "get prompt content")
-	}
 
 	// Execute via executor
 	if err := f.executor.Execute(ctx, content); err != nil {

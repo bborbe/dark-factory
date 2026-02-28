@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,6 +18,9 @@ import (
 	"github.com/bborbe/errors"
 	"gopkg.in/yaml.v3"
 )
+
+// ErrEmptyPrompt is returned when a prompt file is empty or contains only whitespace.
+var ErrEmptyPrompt = stderrors.New("prompt file is empty")
 
 // Prompt represents a prompt file with YAML frontmatter.
 type Prompt struct {
@@ -152,6 +156,7 @@ func updateExistingFrontmatter(
 
 // Title extracts the first # heading from a prompt file.
 // Handles files with or without frontmatter.
+// If no heading is found, returns the filename without extension.
 func Title(ctx context.Context, path string) (string, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
@@ -186,16 +191,25 @@ func Title(ctx context.Context, path string) (string, error) {
 		return "", errors.Wrap(ctx, err, "scan content")
 	}
 
-	return "", errors.Errorf(ctx, "no heading found")
+	// No heading found - use filename without extension
+	filename := filepath.Base(path)
+	return strings.TrimSuffix(filename, ".md"), nil
 }
 
 // Content returns the full file content for passing to Docker.
+// Returns ErrEmptyPrompt if the file is empty or contains only whitespace.
 func Content(ctx context.Context, path string) (string, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "read file")
 	}
+
+	// Check if content is empty or only whitespace
+	if len(strings.TrimSpace(string(content))) == 0 {
+		return "", ErrEmptyPrompt
+	}
+
 	return string(content), nil
 }
 

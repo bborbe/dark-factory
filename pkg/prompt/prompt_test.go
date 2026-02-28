@@ -220,20 +220,69 @@ This is the content.
 				Expect(title).To(Equal("Implement Feature Y"))
 			})
 		})
+
+		Context("without heading", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := "just some plain text without heading\n"
+				path = filepath.Join(tempDir, "004-test.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns filename without extension", func() {
+				title, err := prompt.Title(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(title).To(Equal("004-test"))
+			})
+		})
 	})
 
 	Describe("Content", func() {
-		var path string
+		Context("with content", func() {
+			var path string
 
-		BeforeEach(func() {
-			path = createPromptFile(tempDir, "001-test.md", "queued")
+			BeforeEach(func() {
+				path = createPromptFile(tempDir, "001-test.md", "queued")
+			})
+
+			It("returns full file content", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).To(ContainSubstring("status: queued"))
+				Expect(content).To(ContainSubstring("# Test Prompt"))
+			})
 		})
 
-		It("returns full file content", func() {
-			content, err := prompt.Content(ctx, path)
-			Expect(err).To(BeNil())
-			Expect(content).To(ContainSubstring("status: queued"))
-			Expect(content).To(ContainSubstring("# Test Prompt"))
+		Context("with empty file", func() {
+			var path string
+
+			BeforeEach(func() {
+				path = filepath.Join(tempDir, "empty.md")
+				err := os.WriteFile(path, []byte(""), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns ErrEmptyPrompt", func() {
+				_, err := prompt.Content(ctx, path)
+				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			})
+		})
+
+		Context("with whitespace-only file", func() {
+			var path string
+
+			BeforeEach(func() {
+				path = filepath.Join(tempDir, "whitespace.md")
+				err := os.WriteFile(path, []byte("   \n\t\n  \n"), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns ErrEmptyPrompt", func() {
+				_, err := prompt.Content(ctx, path)
+				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			})
 		})
 	})
 

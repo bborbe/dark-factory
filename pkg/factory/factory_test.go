@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/factory"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("Factory Integration", func() {
@@ -163,6 +164,16 @@ This is a test prompt.
 		_, err = os.Stat(promptPath)
 		Expect(os.IsNotExist(err)).To(BeTrue())
 
+		// Verify executor was called with correct container name
+		Expect(mockExec.ExecuteCallCount()).To(Equal(1))
+		_, _, _, containerName := mockExec.ExecuteArgsForCall(0)
+		Expect(containerName).To(Equal("dark-factory-001-test-prompt"))
+
+		// Verify container name is persisted in completed file frontmatter
+		fm, err := prompt.ReadFrontmatter(ctx, completedPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fm.Container).To(Equal("dark-factory-001-test-prompt"))
+
 		// Cancel context to stop factory
 		cancel()
 
@@ -227,7 +238,7 @@ This is a new prompt.
 	It("should ignore prompts with skip status", func() {
 		// Create mock executor that should never be called
 		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string) error {
+		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			Fail("executor should not be called for prompts with skip status")
 			return nil
 		}

@@ -18,7 +18,7 @@ import (
 //
 //counterfeiter:generate -o ../../mocks/executor.go --fake-name FakeExecutor . Executor
 type Executor interface {
-	Execute(ctx context.Context, promptContent string, logFile string) error
+	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
 }
 
 // DockerExecutor implements Executor using Docker.
@@ -32,7 +32,12 @@ func NewDockerExecutor() *DockerExecutor {
 // Execute runs the claude-yolo Docker container with the given prompt content.
 // It blocks until the container exits and returns an error if the exit code is non-zero.
 // Output is streamed to both terminal and the specified log file.
-func (e *DockerExecutor) Execute(ctx context.Context, promptContent string, logFile string) error {
+func (e *DockerExecutor) Execute(
+	ctx context.Context,
+	promptContent string,
+	logFile string,
+	containerName string,
+) error {
 	// Get project root (current working directory)
 	projectRoot, err := os.Getwd()
 	if err != nil {
@@ -78,6 +83,7 @@ func (e *DockerExecutor) Execute(ctx context.Context, promptContent string, logF
 	cmd := exec.CommandContext(
 		ctx,
 		"docker", "run", "--rm",
+		"--name", containerName,
 		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-v", promptFile.Name()+":/tmp/prompt.md:ro",

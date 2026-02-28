@@ -1,6 +1,7 @@
 ---
-status: queued
+status: executing
 ---
+
 
 
 # Track Docker container name in prompt frontmatter

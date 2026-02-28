@@ -1,63 +1,219 @@
 Starting headless session...
-error: unknown option '---
+I'll implement container name tracking in the prompt frontmatter. Let me start by examining the current code structure.
+[read] /workspace/pkg/executor/executor.go
+[read] /workspace/pkg/factory/factory.go
+[read] /workspace/pkg/prompt/prompt.go
+Now I'll implement container name tracking. Let me start with the prompt package to add the Container field and setter.
+[edit] /workspace/pkg/prompt/prompt.go
+[edit] /workspace/pkg/prompt/prompt.go
+[edit] /workspace/pkg/prompt/prompt.go
+[edit] /workspace/pkg/executor/executor.go
+[edit] /workspace/pkg/executor/executor.go
+[edit] /workspace/pkg/executor/executor.go
+[edit] /workspace/pkg/factory/factory.go
+$ make generate
+$ make test
+[read] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[edit] /workspace/pkg/executor/executor_test.go
+[read] /workspace/pkg/factory/factory_test.go
+[edit] /workspace/pkg/factory/factory_test.go
+$ make test
+[read] /workspace/pkg/prompt/prompt_test.go
+[edit] /workspace/pkg/prompt/prompt_test.go
+[edit] /workspace/pkg/factory/factory_test.go
+$ make test
+[edit] /workspace/pkg/factory/factory_test.go
+[edit] /workspace/pkg/factory/factory_test.go
+$ make test
+$ go test -cover -coverprofile=coverage.out ./pkg/prompt
+$ go tool cover -func=coverage.out | grep prompt.go
+$ make precommit
+Great! All tests and precommit checks pass. Let me verify the implementation is complete by checking what changes we made:
+$ git diff --stat
+$ ls -la prompts/completed/ | head -10
+Let me verify that the container name is correctly generated and stored by creating a simple test:
+$ cat > /tmp/test-container.go << 'EOF'
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
+
+func main() {
+	ctx := context.Background()
+	
+	// Create temp file
+	tmpDir, _ := os.MkdirTemp("", "container-test-*")
+	defer os.RemoveAll(tmpDir)
+	
+	testFile := filepath.Join(tmpDir, "005-log-output.md")
+	content := `---
 status: queued
 ---
-# Track Docker container name in prompt frontmatter
 
-## Goal
+# Test prompt
 
-Give each container a predictable name based on the prompt filename. Store the container name in the prompt's YAML frontmatter so we can identify which container ran which prompt.
+This is a test.
+`
+	os.WriteFile(testFile, []byte(content), 0600)
+	
+	// Derive container name like factory does
+	baseName := strings.TrimSuffix(filepath.Base(testFile), ".md")
+	containerName := "dark-factory-" + baseName
+	
+	fmt.Printf("Container name: %s\n", containerName)
+	
+	// Set container name
+	if err := prompt.SetContainer(ctx, testFile, containerName); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+	
+	// Read back frontmatter
+	fm, err := prompt.ReadFrontmatter(ctx, testFile)
+	if err != nil {
+		fmt.Printf("Error reading frontmatter: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Printf("Status: %s\n", fm.Status)
+	fmt.Printf("Container: %s\n", fm.Container)
+	
+	// Read file content
+	data, _ := os.ReadFile(testFile)
+	fmt.Printf("\nFile content:\n%s\n", string(data))
+}
+EOF
+go run /tmp/test-container.go
 
-## Current Behavior
+Perfect! The implementation is working correctly. Let me verify that the Docker command will be valid:
+[read] /workspace/pkg/executor/executor.go
+Excellent! The implementation is complete. Let me create a summary of what was implemented:
 
-- `docker run --rm` with no `--name` flag → random container name
-- No record of which container executed a prompt
+## Summary
 
-## Expected Behavior
+Successfully implemented container name tracking in prompt frontmatter. Here's what was done:
 
-```yaml
----
-status: executing
-container: dark-factory-005-log-output
----
-```
+### Changes Made
 
-- Container name derived from prompt basename: `dark-factory-{basename}` (without `.md`)
-- Container name written to frontmatter before `docker run` starts
-- Container name stays in frontmatter after completion (in `completed/` file)
+1. **pkg/prompt/prompt.go**:
+   - Added `Container` field to `Frontmatter` struct
+   - Created `SetContainer()` function to set container name in frontmatter
+   - Refactored `SetStatus()` to use a generic `setField()` helper
+   - Both functions now use the same underlying setter pattern
 
-## Implementation
+2. **pkg/executor/executor.go**:
+   - Updated `Executor` interface to accept `containerName` parameter
+   - Added `--name` flag to docker run command with the container name
+   - Container name is positioned correctly after `--rm`
 
-### pkg/executor/executor.go
+3. **pkg/factory/factory.go**:
+   - Derives container name from prompt filename: `dark-factory-{basename}` (without `.md`)
+   - Sets container name in frontmatter before execution via `prompt.SetContainer()`
+   - Passes container name to `executor.Execute()`
 
-1. Add `containerName string` parameter to `Execute` interface
-2. Add `--name`, containerName to the `docker run` args
-3. Keep `--rm` so container is cleaned up after exit
+4. **Tests**:
+   - Updated executor tests to pass container name parameter
+   - Updated factory tests to verify container name is passed correctly
+   - Added new tests for `SetContainer()` function:
+     - With existing frontmatter
+     - Without frontmatter
+     - Updating existing container field
+   - Added verification that container name persists in completed files
 
-### pkg/factory/factory.go
+5. **Mocks**:
+   - Regenerated counterfeiter mocks for updated `Executor` interface
 
-In `processPrompt()`:
+### Verification
 
-1. Derive container name: `dark-factory-` + `strings.TrimSuffix(filepath.Base(p.Path), ".md")`
-2. Write container name to frontmatter via `prompt.SetField()` before calling executor
-3. Pass container name to `executor.Execute()`
+- ✅ All tests pass
+- ✅ Test coverage improved (73.1% → 74.6% for prompt package)
+- ✅ `make precommit` succeeds (linters, security scans, formatters)
+- ✅ Container name format is valid for Docker
+- ✅ Container name persists in frontmatter after completion
 
-### pkg/prompt/prompt.go
+### Example
 
-1. Add `Container` field to `Frontmatter` struct: `Container string \`yaml:"container"\``
-2. Add `SetField(ctx, path, key, value)` function or extend `SetStatus` to handle arbitrary fields
-   - Alternative: just add `SetContainer(ctx, path, container)` if simpler
+For a prompt file `prompts/007-container-name-tracking.md`:
+- Container name: `dark-factory-007-container-name-tracking`
+- Frontmatter after processing:
+  ```yaml
+  ---
+  status: completed
+  container: dark-factory-007-container-name-tracking
+  ---
+  ```
 
-### Update counterfeiter mock
+The implementation is complete and ready for use. Type /exit to close the container.
 
-After changing the Executor interface, run `make generate` to regenerate `mocks/executor.go`.
+--- DONE ---
+Excellent! The implementation is complete. Let me create a summary of what was implemented:
 
-### Update tests
+## Summary
 
-- Update factory tests to verify container name is passed to executor
-- Use counterfeiter's `ExecuteArgsForCall(0)` to check the container name arg
+Successfully implemented container name tracking in prompt frontmatter. Here's what was done:
 
-## Constraints
+### Changes Made
 
-- Container name must be valid for Docker (alphanumeric, hyphens, underscores)
-- Run `make precommit` before finishing'
+1. **pkg/prompt/prompt.go**:
+   - Added `Container` field to `Frontmatter` struct
+   - Created `SetContainer()` function to set container name in frontmatter
+   - Refactored `SetStatus()` to use a generic `setField()` helper
+   - Both functions now use the same underlying setter pattern
+
+2. **pkg/executor/executor.go**:
+   - Updated `Executor` interface to accept `containerName` parameter
+   - Added `--name` flag to docker run command with the container name
+   - Container name is positioned correctly after `--rm`
+
+3. **pkg/factory/factory.go**:
+   - Derives container name from prompt filename: `dark-factory-{basename}` (without `.md`)
+   - Sets container name in frontmatter before execution via `prompt.SetContainer()`
+   - Passes container name to `executor.Execute()`
+
+4. **Tests**:
+   - Updated executor tests to pass container name parameter
+   - Updated factory tests to verify container name is passed correctly
+   - Added new tests for `SetContainer()` function:
+     - With existing frontmatter
+     - Without frontmatter
+     - Updating existing container field
+   - Added verification that container name persists in completed files
+
+5. **Mocks**:
+   - Regenerated counterfeiter mocks for updated `Executor` interface
+
+### Verification
+
+- ✅ All tests pass
+- ✅ Test coverage improved (73.1% → 74.6% for prompt package)
+- ✅ `make precommit` succeeds (linters, security scans, formatters)
+- ✅ Container name format is valid for Docker
+- ✅ Container name persists in frontmatter after completion
+
+### Example
+
+For a prompt file `prompts/007-container-name-tracking.md`:
+- Container name: `dark-factory-007-container-name-tracking`
+- Frontmatter after processing:
+  ```yaml
+  ---
+  status: completed
+  container: dark-factory-007-container-name-tracking
+  ---
+  ```
+
+The implementation is complete and ready for use. Type /exit to close the container.

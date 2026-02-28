@@ -30,7 +30,8 @@ type Prompt struct {
 
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
-	Status string `yaml:"status"`
+	Status    string `yaml:"status"`
+	Container string `yaml:"container,omitempty"`
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
@@ -109,6 +110,22 @@ func ResetExecuting(ctx context.Context, dir string) error {
 // SetStatus updates the status field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the status field.
 func SetStatus(ctx context.Context, path string, status string) error {
+	return setField(ctx, path, func(fm *Frontmatter) {
+		fm.Status = status
+	})
+}
+
+// SetContainer updates the container field in a prompt file's frontmatter.
+// If the file has no frontmatter, adds frontmatter with the container field.
+func SetContainer(ctx context.Context, path string, container string) error {
+	return setField(ctx, path, func(fm *Frontmatter) {
+		fm.Container = container
+	})
+}
+
+// setField updates a field in a prompt file's frontmatter using the provided setter function.
+// If the file has no frontmatter, adds frontmatter with the field.
+func setField(ctx context.Context, path string, setter func(*Frontmatter)) error {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -120,9 +137,9 @@ func SetStatus(ctx context.Context, path string, status string) error {
 
 	var updated []byte
 	if !hasFM {
-		updated, err = addFrontmatterWithStatus(ctx, content, status)
+		updated, err = addFrontmatterWithSetter(ctx, content, setter)
 	} else {
-		updated, err = updateExistingFrontmatter(ctx, yamlBytes, body, status)
+		updated, err = updateExistingFrontmatterWithSetter(ctx, yamlBytes, body, setter)
 	}
 
 	if err != nil {
@@ -137,13 +154,14 @@ func SetStatus(ctx context.Context, path string, status string) error {
 	return nil
 }
 
-// addFrontmatterWithStatus adds frontmatter with status to a file that has none.
-func addFrontmatterWithStatus(
+// addFrontmatterWithSetter adds frontmatter to a file that has none, using setter to populate fields.
+func addFrontmatterWithSetter(
 	ctx context.Context,
 	content []byte,
-	status string,
+	setter func(*Frontmatter),
 ) ([]byte, error) {
-	fm := Frontmatter{Status: status}
+	fm := Frontmatter{}
+	setter(&fm)
 	yamlData, err := yaml.Marshal(&fm)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "marshal frontmatter")
@@ -157,19 +175,19 @@ func addFrontmatterWithStatus(
 	return buf.Bytes(), nil
 }
 
-// updateExistingFrontmatter updates status in existing frontmatter.
-func updateExistingFrontmatter(
+// updateExistingFrontmatterWithSetter updates existing frontmatter using setter to modify fields.
+func updateExistingFrontmatterWithSetter(
 	ctx context.Context,
 	yamlBytes []byte,
 	body []byte,
-	status string,
+	setter func(*Frontmatter),
 ) ([]byte, error) {
 	var fm Frontmatter
 	if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
 		return nil, errors.Wrap(ctx, err, "parse frontmatter")
 	}
 
-	fm.Status = status
+	setter(&fm)
 
 	yamlData, err := yaml.Marshal(&fm)
 	if err != nil {

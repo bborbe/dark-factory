@@ -46,7 +46,7 @@ var _ = Describe("DockerExecutor", func() {
 				Skip("requires Docker and claude-yolo image")
 
 				promptContent := "# Simple test prompt\n\nThis is a test."
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify log file was created
@@ -60,7 +60,7 @@ var _ = Describe("DockerExecutor", func() {
 				Skip("requires Docker and claude-yolo image")
 
 				promptContent := "# Test with backticks\n\n```bash\necho `whoami`\n```"
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -68,7 +68,7 @@ var _ = Describe("DockerExecutor", func() {
 				Skip("requires Docker and claude-yolo image")
 
 				promptContent := `# Test with "quotes" and 'single quotes'`
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -82,7 +82,7 @@ priority: high
 # Test prompt
 
 This has YAML frontmatter.`
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -99,7 +99,7 @@ cmd := exec.CommandContext(ctx, "docker", "run", "--rm",
 ` + "```" + `
 
 This should work!`
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -112,7 +112,7 @@ Line 2
 Line 4 (with blank line)
 
 More lines...`
-				err := exec.Execute(ctx, promptContent, logFile)
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -120,7 +120,7 @@ More lines...`
 		Context("with invalid log file path", func() {
 			It("returns error when log directory cannot be created", func() {
 				invalidLogFile := "/invalid/path/that/does/not/exist/test.log"
-				err := exec.Execute(ctx, "test prompt", invalidLogFile)
+				err := exec.Execute(ctx, "test prompt", invalidLogFile, "test-container")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("create log directory"))
 			})
@@ -133,7 +133,7 @@ More lines...`
 				cancelCtx, cancel := context.WithCancel(ctx)
 				cancel() // Cancel immediately
 
-				err := exec.Execute(cancelCtx, "test prompt", logFile)
+				err := exec.Execute(cancelCtx, "test prompt", logFile, "test-container")
 				Expect(err).To(HaveOccurred())
 			})
 		})

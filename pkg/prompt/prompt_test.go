@@ -176,6 +176,76 @@ var _ = Describe("Prompt", func() {
 		})
 	})
 
+	Describe("SetContainer", func() {
+		Context("with existing frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				path = createPromptFile(tempDir, "001-test.md", "queued")
+			})
+
+			It("adds container field", func() {
+				err := prompt.SetContainer(ctx, path, "dark-factory-001-test")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Container).To(Equal("dark-factory-001-test"))
+				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+			})
+		})
+
+		Context("without frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				// Plain markdown file with no frontmatter
+				content := "# Test Prompt\n\nContent here.\n"
+				path = filepath.Join(tempDir, "001-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("adds frontmatter with container field", func() {
+				err := prompt.SetContainer(ctx, path, "dark-factory-001-plain")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Container).To(Equal("dark-factory-001-plain"))
+			})
+		})
+
+		Context("with existing container field", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+container: old-container
+---
+
+# Test Prompt
+
+Content here.
+`
+				path = filepath.Join(tempDir, "001-test.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("updates container field", func() {
+				err := prompt.SetContainer(ctx, path, "new-container")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Container).To(Equal("new-container"))
+				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+			})
+		})
+	})
+
 	Describe("Title", func() {
 		Context("with frontmatter", func() {
 			var path string

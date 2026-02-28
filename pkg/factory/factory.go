@@ -249,6 +249,15 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "get prompt content")
 	}
 
+	// Derive container name from prompt filename
+	baseName := strings.TrimSuffix(filepath.Base(p.Path), ".md")
+	containerName := "dark-factory-" + baseName
+
+	// Set container name in frontmatter
+	if err := prompt.SetContainer(ctx, p.Path, containerName); err != nil {
+		return errors.Wrap(ctx, err, "set container name")
+	}
+
 	// Set status to executing
 	if err := prompt.SetStatus(ctx, p.Path, "executing"); err != nil {
 		return errors.Wrap(ctx, err, "set executing status")
@@ -263,11 +272,10 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	log.Printf("dark-factory: executing prompt: %s", title)
 
 	// Derive log file path: prompts/log/{basename}.log
-	baseName := strings.TrimSuffix(filepath.Base(p.Path), ".md")
 	logFile := filepath.Join(filepath.Dir(p.Path), "log", baseName+".log")
 
 	// Execute via executor
-	if err := f.executor.Execute(ctx, content, logFile); err != nil {
+	if err := f.executor.Execute(ctx, content, logFile, containerName); err != nil {
 		log.Printf("dark-factory: docker container exited with error: %v", err)
 		return errors.Wrap(ctx, err, "execute prompt")
 	}

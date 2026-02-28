@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.11
+
+### Added
+- Track Docker container name in prompt frontmatter
+
 ## v0.2.10
 
 ### Fixed

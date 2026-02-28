@@ -14,20 +14,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/factory"
 )
-
-// MockExecutor is a fake executor for testing.
-type MockExecutor struct {
-	ExecuteFunc func(ctx context.Context, promptContent string) error
-}
-
-func (m *MockExecutor) Execute(ctx context.Context, promptContent string) error {
-	if m.ExecuteFunc != nil {
-		return m.ExecuteFunc(ctx, promptContent)
-	}
-	return nil
-}
 
 var _ = Describe("Factory Integration", func() {
 	var (
@@ -142,12 +131,7 @@ This is a test prompt.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &MockExecutor{
-			ExecuteFunc: func(ctx context.Context, content string) error {
-				Expect(content).To(ContainSubstring("Add test feature"))
-				return nil
-			},
-		}
+		mockExec := &mocks.FakeExecutor{}
 
 		// Create factory
 		f := factory.New(mockExec)
@@ -193,11 +177,7 @@ This is a test prompt.
 
 	It("should watch for new queued prompts", func() {
 		// Create mock executor
-		mockExec := &MockExecutor{
-			ExecuteFunc: func(ctx context.Context, content string) error {
-				return nil
-			},
-		}
+		mockExec := &mocks.FakeExecutor{}
 
 		// Create factory
 		f := factory.New(mockExec)
@@ -245,12 +225,11 @@ This is a new prompt.
 	})
 
 	It("should ignore prompts with skip status", func() {
-		// Create mock executor
-		mockExec := &MockExecutor{
-			ExecuteFunc: func(ctx context.Context, content string) error {
-				Fail("executor should not be called for prompts with skip status")
-				return nil
-			},
+		// Create mock executor that should never be called
+		mockExec := &mocks.FakeExecutor{}
+		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string) error {
+			Fail("executor should not be called for prompts with skip status")
+			return nil
 		}
 
 		// Create factory

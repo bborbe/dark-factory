@@ -6,15 +6,19 @@ package executor
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/bborbe/errors"
 )
 
 // Executor executes a prompt.
+//
+//counterfeiter:generate -o ../../mocks/executor.go --fake-name FakeExecutor . Executor
 type Executor interface {
-	Execute(ctx context.Context, promptContent string) error
+	Execute(ctx context.Context, promptContent string, logFile string) error
 }
 
 // DockerExecutor implements Executor using Docker.
@@ -27,7 +31,8 @@ func NewDockerExecutor() *DockerExecutor {
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
 // It blocks until the container exits and returns an error if the exit code is non-zero.
-func (e *DockerExecutor) Execute(ctx context.Context, promptContent string) error {
+// Output is streamed to both terminal and the specified log file.
+func (e *DockerExecutor) Execute(ctx context.Context, promptContent string, logFile string) error {
 	// Get project root (current working directory)
 	projectRoot, err := os.Getwd()
 	if err != nil {
@@ -39,6 +44,20 @@ func (e *DockerExecutor) Execute(ctx context.Context, promptContent string) erro
 	if err != nil {
 		return errors.Wrap(ctx, err, "get home directory")
 	}
+
+	// Create log file directory if it doesn't exist
+	logDir := filepath.Dir(logFile)
+	if err := os.MkdirAll(logDir, 0750); err != nil {
+		return errors.Wrap(ctx, err, "create log directory")
+	}
+
+	// Open log file for writing (create/truncate)
+	// #nosec G304 -- logFile is derived from prompt filename, not user input
+	logFileHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return errors.Wrap(ctx, err, "open log file")
+	}
+	defer logFileHandle.Close()
 
 	// Build docker run command
 	// #nosec G204 -- promptContent is user-provided by design
@@ -53,9 +72,9 @@ func (e *DockerExecutor) Execute(ctx context.Context, promptContent string) erro
 		"docker.io/bborbe/claude-yolo:latest",
 	)
 
-	// Pipe stdout/stderr directly
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Pipe stdout/stderr to both terminal and log file
+	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
+	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
 
 	// Run and wait for completion
 	if err := cmd.Run(); err != nil {

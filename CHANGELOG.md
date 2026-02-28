@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.4
+
+### Added
+- Save container output to `prompts/log/{name}.log` while streaming to terminal
+- Counterfeiter-generated mock for Executor interface
+- Executor and factory suite test files with `//go:generate` for counterfeiter
+
+### Removed
+- Hand-written MockExecutor in factory tests (replaced by counterfeiter)
+
 ## v0.2.3
 
 ### Added

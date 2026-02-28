@@ -256,8 +256,12 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 
 	log.Printf("dark-factory: executing prompt: %s", title)
 
+	// Derive log file path: prompts/log/{basename}.log
+	baseName := strings.TrimSuffix(filepath.Base(p.Path), ".md")
+	logFile := filepath.Join(filepath.Dir(p.Path), "log", baseName+".log")
+
 	// Execute via executor
-	if err := f.executor.Execute(ctx, content); err != nil {
+	if err := f.executor.Execute(ctx, content, logFile); err != nil {
 		log.Printf("dark-factory: docker container exited with error: %v", err)
 		return errors.Wrap(ctx, err, "execute prompt")
 	}

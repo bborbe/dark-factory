@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package prompt_test
+//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
+
+package executor_test
 
 import (
 	"testing"
@@ -13,10 +15,9 @@ import (
 	"github.com/onsi/gomega/format"
 )
 
-//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
-func TestSuite(t *testing.T) {
+func TestExecutor(t *testing.T) {
 	time.Local = time.UTC
 	format.TruncatedDiff = false
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Test Suite")
+	RunSpecs(t, "Executor Suite")
 }

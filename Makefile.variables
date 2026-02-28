@@ -1,4 +1,0 @@
-BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
-HOSTNAME ?= $(shell hostname -s)
-ROOTDIR ?= $(shell git rev-parse --show-toplevel)
-TEAMVAULT ?= ~/.teamvault.json

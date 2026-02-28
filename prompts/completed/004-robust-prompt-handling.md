@@ -1,5 +1,5 @@
 ---
-status: failed
+status: completed
 ---
 
 # Make prompt handling robust for minimal files

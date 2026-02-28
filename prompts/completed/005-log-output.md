@@ -1,5 +1,5 @@
 ---
-status: executing
+status: completed
 ---
 # Save container output to log file
 

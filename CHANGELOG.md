@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.2.6
+
+### Fixed
+- Reset stuck "executing" prompts to "queued" on startup
+- Fixed status in completed prompts 003 and 004
+
+### Added
+- Prompt 006 for container name tracking
+- YOLO docs for counterfeiter and suite file patterns
+
 ## v0.2.5
 
 ### Added

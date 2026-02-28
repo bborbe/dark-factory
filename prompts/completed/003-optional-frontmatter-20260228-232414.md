@@ -1,5 +1,5 @@
 ---
-status: queued
+status: completed
 ---
 
 # Make frontmatter optional for prompt pickup

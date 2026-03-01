@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.0
+
+### Added
+- Add REST API for real-time status and monitoring
+
 ## v0.6.1
 
 ### Added

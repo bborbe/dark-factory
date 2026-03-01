@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.7
+
+### Added
+- Strip duplicate/empty frontmatter from prompt content
+
 ## v0.10.6
 
 ### Added

@@ -1,3 +1,10 @@
+---
+status: completed
+container: dark-factory-013-switch-claude-yolo-version
+---
+
+
+
 
 # Pin claude-yolo image to a specific version tag
 

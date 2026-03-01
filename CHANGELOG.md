@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.0
+
+### Added
+- Add CLI and API endpoint to queue prompts
+
 ## v0.9.1
 
 ### Added

@@ -10,6 +10,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -109,6 +110,7 @@ type FileMover interface {
 //counterfeiter:generate -o ../../mocks/prompt-manager.go --fake-name Manager . Manager
 type Manager interface {
 	ResetExecuting(ctx context.Context) error
+	ResetFailed(ctx context.Context) error
 	HasExecuting(ctx context.Context) bool
 	ListQueued(ctx context.Context) ([]Prompt, error)
 	ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error)
@@ -141,6 +143,11 @@ func NewManager(queueDir string, completedDir string, mover FileMover) Manager {
 // ResetExecuting resets any prompts with status "executing" back to "queued".
 func (pm *manager) ResetExecuting(ctx context.Context) error {
 	return ResetExecuting(ctx, pm.queueDir)
+}
+
+// ResetFailed resets any prompts with status "failed" back to "queued".
+func (pm *manager) ResetFailed(ctx context.Context) error {
+	return ResetFailed(ctx, pm.queueDir)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
@@ -267,6 +274,36 @@ func ResetExecuting(ctx context.Context, dir string) error {
 			if err := SetStatus(ctx, path, string(StatusQueued)); err != nil {
 				return errors.Wrap(ctx, err, "reset executing prompt")
 			}
+		}
+	}
+
+	return nil
+}
+
+// ResetFailed resets any prompts with status "failed" back to "queued".
+// This allows the factory to retry failed prompts after a restart.
+func ResetFailed(ctx context.Context, dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "read directory")
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		path := filepath.Join(dir, entry.Name())
+		fm, err := readFrontmatter(ctx, path)
+		if err != nil {
+			continue
+		}
+
+		if fm.Status == string(StatusFailed) {
+			if err := SetStatus(ctx, path, string(StatusQueued)); err != nil {
+				return errors.Wrap(ctx, err, "reset failed prompt")
+			}
+			log.Printf("dark-factory: reset failed prompt %s to queued", entry.Name())
 		}
 	}
 

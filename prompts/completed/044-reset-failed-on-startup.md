@@ -1,6 +1,12 @@
 ---
-status: queued
+status: completed
+container: dark-factory-044-reset-failed-on-startup
+dark-factory-version: v0.10.2
 ---
+
+
+
+
 
 # Reset failed prompts to queued on startup
 

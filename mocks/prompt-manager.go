@@ -110,6 +110,17 @@ type Manager struct {
 	resetExecutingReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ResetFailedStub        func(context.Context) error
+	resetFailedMutex       sync.RWMutex
+	resetFailedArgsForCall []struct {
+		arg1 context.Context
+	}
+	resetFailedReturns struct {
+		result1 error
+	}
+	resetFailedReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SetContainerStub        func(context.Context, string, string) error
 	setContainerMutex       sync.RWMutex
 	setContainerArgsForCall []struct {
@@ -668,6 +679,67 @@ func (fake *Manager) ResetExecutingReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.resetExecutingReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) ResetFailed(arg1 context.Context) error {
+	fake.resetFailedMutex.Lock()
+	ret, specificReturn := fake.resetFailedReturnsOnCall[len(fake.resetFailedArgsForCall)]
+	fake.resetFailedArgsForCall = append(fake.resetFailedArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.ResetFailedStub
+	fakeReturns := fake.resetFailedReturns
+	fake.recordInvocation("ResetFailed", []interface{}{arg1})
+	fake.resetFailedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) ResetFailedCallCount() int {
+	fake.resetFailedMutex.RLock()
+	defer fake.resetFailedMutex.RUnlock()
+	return len(fake.resetFailedArgsForCall)
+}
+
+func (fake *Manager) ResetFailedCalls(stub func(context.Context) error) {
+	fake.resetFailedMutex.Lock()
+	defer fake.resetFailedMutex.Unlock()
+	fake.ResetFailedStub = stub
+}
+
+func (fake *Manager) ResetFailedArgsForCall(i int) context.Context {
+	fake.resetFailedMutex.RLock()
+	defer fake.resetFailedMutex.RUnlock()
+	argsForCall := fake.resetFailedArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Manager) ResetFailedReturns(result1 error) {
+	fake.resetFailedMutex.Lock()
+	defer fake.resetFailedMutex.Unlock()
+	fake.ResetFailedStub = nil
+	fake.resetFailedReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) ResetFailedReturnsOnCall(i int, result1 error) {
+	fake.resetFailedMutex.Lock()
+	defer fake.resetFailedMutex.Unlock()
+	fake.ResetFailedStub = nil
+	if fake.resetFailedReturnsOnCall == nil {
+		fake.resetFailedReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.resetFailedReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

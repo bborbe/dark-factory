@@ -925,6 +925,73 @@ This is the content.
 		})
 	})
 
+	Describe("ResetFailed", func() {
+		Context("with mixed statuses", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-executing.md", "executing")
+				createPromptFile(tempDir, "003-completed.md", "completed")
+				createPromptFile(tempDir, "004-failed.md", "failed")
+				createPromptFile(tempDir, "005-failed.md", "failed")
+			})
+
+			It("resets only failed prompts to queued", func() {
+				err := prompt.ResetFailed(ctx, tempDir)
+				Expect(err).To(BeNil())
+
+				// Check that failed prompts are now queued
+				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-failed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				// Check that other statuses are unchanged
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("executing"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("completed"))
+			})
+		})
+
+		Context("with no failed prompts", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-completed.md", "completed")
+			})
+
+			It("does nothing", func() {
+				err := prompt.ResetFailed(ctx, tempDir)
+				Expect(err).To(BeNil())
+
+				// Verify statuses are unchanged
+				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("completed"))
+			})
+		})
+
+		Context("with empty directory", func() {
+			It("does nothing", func() {
+				err := prompt.ResetFailed(ctx, tempDir)
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+
 	Describe("splitFrontmatter edge cases", func() {
 		Context("with inline --- in content", func() {
 			var path string

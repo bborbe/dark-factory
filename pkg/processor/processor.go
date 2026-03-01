@@ -78,6 +78,11 @@ func NewProcessor(
 func (p *processor) Process(ctx context.Context) error {
 	log.Printf("dark-factory: processor started")
 
+	// Reset failed prompts to queued on startup
+	if err := p.promptManager.ResetFailed(ctx); err != nil {
+		return errors.Wrap(ctx, err, "reset failed prompts")
+	}
+
 	// Process any existing queued prompts first
 	if err := p.processExistingQueued(ctx); err != nil {
 		return errors.Wrap(ctx, err, "process existing queued prompts")

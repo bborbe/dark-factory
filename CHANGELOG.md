@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.36
+
+### Added
+- Use git mv for prompt file renames and moves
+
 ## v0.2.35
 
 ### Added

@@ -1,6 +1,7 @@
 /.claude
 /.cursorignore
 /.dark-factory.lock
+/prompts/.dark-factory.lock
 /.gemini/
 /.idea
 /.mcp-*

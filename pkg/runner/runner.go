@@ -363,7 +363,7 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	}
 
 	// With CHANGELOG: update changelog, bump version, tag, push
-	bump := DetermineBump(title)
+	bump := determineBump(title)
 	nextVersion, err := r.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
@@ -398,9 +398,9 @@ func sanitizeContainerName(name string) string {
 	return re.ReplaceAllString(name, "-")
 }
 
-// DetermineBump determines the version bump type based on the title.
+// determineBump determines the version bump type based on the title.
 // Returns MinorBump for new features, PatchBump for everything else.
-func DetermineBump(title string) git.VersionBump {
+func determineBump(title string) git.VersionBump {
 	lower := strings.ToLower(title)
 	for _, kw := range []string{"add", "implement", "new", "support", "feature"} {
 		if strings.Contains(lower, kw) {

@@ -53,21 +53,21 @@ func (e *dockerExecutor) Execute(
 	}
 
 	// Prepare log file
-	logFileHandle, err := PrepareLogFile(ctx, logFile)
+	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
 		return err
 	}
 	defer logFileHandle.Close()
 
 	// Create temp file with prompt content
-	promptFilePath, cleanup, err := CreatePromptTempFile(ctx, promptContent)
+	promptFilePath, cleanup, err := createPromptTempFile(ctx, promptContent)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
 	// Build and run docker command
-	cmd := BuildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
+	cmd := buildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
 
 	// Pipe stdout/stderr to both terminal and log file
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
@@ -81,8 +81,8 @@ func (e *dockerExecutor) Execute(
 	return nil
 }
 
-// PrepareLogFile creates the log directory and opens the log file for writing.
-func PrepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
+// prepareLogFile creates the log directory and opens the log file for writing.
+func prepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
 	// Create log file directory if it doesn't exist
 	logDir := filepath.Dir(logFile)
 	if err := os.MkdirAll(logDir, 0750); err != nil {
@@ -99,8 +99,8 @@ func PrepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
 	return logFileHandle, nil
 }
 
-// CreatePromptTempFile creates a temp file with the prompt content and returns the path and cleanup function.
-func CreatePromptTempFile(ctx context.Context, promptContent string) (string, func(), error) {
+// createPromptTempFile creates a temp file with the prompt content and returns the path and cleanup function.
+func createPromptTempFile(ctx context.Context, promptContent string) (string, func(), error) {
 	// Write prompt to temp file (avoids shell/docker escaping issues with -e flag)
 	promptFile, err := os.CreateTemp("", "dark-factory-prompt-*.md")
 	if err != nil {
@@ -125,8 +125,8 @@ func CreatePromptTempFile(ctx context.Context, promptContent string) (string, fu
 	return promptFile.Name(), cleanup, nil
 }
 
-// BuildDockerCommand builds the docker run command with all necessary arguments.
-func BuildDockerCommand(
+// buildDockerCommand builds the docker run command with all necessary arguments.
+func buildDockerCommand(
 	ctx context.Context,
 	containerName string,
 	promptFilePath string,

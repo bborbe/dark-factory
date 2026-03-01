@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.9
+
+### Added
+- Codebase cleanup: fix all existing code quality issues
+
 ## v0.1.8
 
 ### Added

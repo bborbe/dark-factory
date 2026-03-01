@@ -540,6 +540,200 @@ Content here.
 			})
 		})
 	})
+
+	Describe("NormalizeFilenames", func() {
+		Context("with file missing numeric prefix", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-first.md", "queued")
+				createPromptFile(tempDir, "002-second.md", "queued")
+				createPromptFile(tempDir, "fix-something.md", "queued")
+			})
+
+			It("assigns next available number", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("fix-something.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("003-fix-something.md"))
+
+				// Verify file was actually renamed
+				_, err = os.Stat(filepath.Join(tempDir, "003-fix-something.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "fix-something.md"))
+				Expect(os.IsNotExist(err)).To(BeTrue())
+			})
+		})
+
+		Context("with duplicate number", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "009-foo.md", "queued")
+				createPromptFile(tempDir, "009-bar.md", "queued")
+			})
+
+			It("renames later file to next available number", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				// First file alphabetically (009-bar.md) is kept, second (009-foo.md) is renamed
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("009-foo.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("001-foo.md"))
+
+				// Verify files exist
+				_, err = os.Stat(filepath.Join(tempDir, "009-bar.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "001-foo.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "009-foo.md"))
+				Expect(os.IsNotExist(err)).To(BeTrue())
+			})
+		})
+
+		Context("with wrong format (single digit)", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "9-foo.md", "queued")
+			})
+
+			It("normalizes to zero-padded 3-digit format", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("9-foo.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("009-foo.md"))
+
+				// Verify file was renamed
+				_, err = os.Stat(filepath.Join(tempDir, "009-foo.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "9-foo.md"))
+				Expect(os.IsNotExist(err)).To(BeTrue())
+			})
+		})
+
+		Context("with wrong format (two digits)", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "42-answer.md", "queued")
+			})
+
+			It("normalizes to zero-padded 3-digit format", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("42-answer.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("042-answer.md"))
+			})
+		})
+
+		Context("with already-valid files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-first.md", "queued")
+				createPromptFile(tempDir, "002-second.md", "queued")
+				createPromptFile(tempDir, "003-third.md", "queued")
+			})
+
+			It("does not rename any files", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(0))
+
+				// Verify files still exist with same names
+				_, err = os.Stat(filepath.Join(tempDir, "001-first.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "002-second.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "003-third.md"))
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with mixed valid and invalid files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-valid.md", "queued")
+				createPromptFile(tempDir, "9-wrong-format.md", "queued")
+				createPromptFile(tempDir, "no-number.md", "queued")
+			})
+
+			It("renames only invalid files", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(2))
+
+				// Verify valid file is unchanged
+				_, err = os.Stat(filepath.Join(tempDir, "001-valid.md"))
+				Expect(err).To(BeNil())
+
+				// Verify invalid files were renamed
+				_, err = os.Stat(filepath.Join(tempDir, "009-wrong-format.md"))
+				Expect(err).To(BeNil())
+				_, err = os.Stat(filepath.Join(tempDir, "002-no-number.md"))
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with completed subdirectory", func() {
+			BeforeEach(func() {
+				// Create completed subdirectory
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				// Add files to both root and completed
+				createPromptFile(tempDir, "001-valid.md", "queued")
+				createPromptFile(completedDir, "wrong-name.md", "completed")
+			})
+
+			It("does not rename files in subdirectories", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(0))
+
+				// Verify completed file is unchanged
+				_, err = os.Stat(filepath.Join(tempDir, "completed", "wrong-name.md"))
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with non-markdown files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-valid.md", "queued")
+				// Create non-markdown file without number
+				err := os.WriteFile(filepath.Join(tempDir, "readme.txt"), []byte("test"), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("ignores non-markdown files", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(0))
+
+				// Verify non-markdown file is unchanged
+				_, err = os.Stat(filepath.Join(tempDir, "readme.txt"))
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with empty directory", func() {
+			It("returns no renames", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(0))
+			})
+		})
+
+		Context("with gaps in numbering", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-first.md", "queued")
+				createPromptFile(tempDir, "005-fifth.md", "queued")
+				createPromptFile(tempDir, "010-tenth.md", "queued")
+				createPromptFile(tempDir, "new-file.md", "queued")
+			})
+
+			It("assigns smallest available number", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))
+			})
+		})
+	})
 })
 
 // Helper function to create a prompt file with given status

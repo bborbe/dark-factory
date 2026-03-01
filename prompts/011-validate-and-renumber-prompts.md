@@ -1,6 +1,7 @@
 ---
-status: queued
+status: executing
 ---
+
 # Add prompt filename validation and auto-renumbering
 
 ## Goal

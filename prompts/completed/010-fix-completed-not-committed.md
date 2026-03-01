@@ -1,6 +1,7 @@
 ---
-status: executing
+status: completed
 ---
+
 
 # Fix: completed/ files not staged before git commit
 

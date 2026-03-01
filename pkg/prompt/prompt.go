@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	stderrors "errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +22,12 @@ import (
 
 // ErrEmptyPrompt is returned when a prompt file is empty or contains only whitespace.
 var ErrEmptyPrompt = stderrors.New("prompt file is empty")
+
+// Rename represents a file rename operation.
+type Rename struct {
+	OldPath string
+	NewPath string
+}
 
 // Prompt represents a prompt file with YAML frontmatter.
 type Prompt struct {
@@ -314,6 +321,161 @@ func splitFrontmatter(content []byte) ([]byte, []byte, bool) {
 	}
 
 	return nil, content, false
+}
+
+// fileInfo represents information about a prompt file.
+type fileInfo struct {
+	name   string
+	number int
+	slug   string
+}
+
+// NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
+// Files are renamed if they:
+// - Have no numeric prefix (gets next available number)
+// - Have a duplicate number (later file gets next available number)
+// - Have wrong format (e.g., 9-foo.md instead of 009-foo.md)
+// Returns list of renames performed.
+func NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "read directory")
+	}
+
+	files, usedNumbers := scanPromptFiles(entries)
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].name < files[j].name
+	})
+
+	return renameInvalidFiles(ctx, dir, files, usedNumbers)
+}
+
+// scanPromptFiles scans directory entries and extracts file information.
+func scanPromptFiles(entries []os.DirEntry) ([]fileInfo, map[int]bool) {
+	validPattern := regexp.MustCompile(`^(\d{3})-(.+)\.md$`)
+	numericPattern := regexp.MustCompile(`^(\d+)-(.+)\.md$`)
+
+	files := make([]fileInfo, 0, len(entries))
+	usedNumbers := make(map[int]bool)
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		info := parseFilename(entry.Name(), validPattern, numericPattern)
+		files = append(files, info)
+
+		if info.number != -1 {
+			usedNumbers[info.number] = true
+		}
+	}
+
+	return files, usedNumbers
+}
+
+// parseFilename extracts number and slug from a filename.
+func parseFilename(
+	name string,
+	validPattern *regexp.Regexp,
+	numericPattern *regexp.Regexp,
+) fileInfo {
+	// Check if file matches valid pattern (3-digit)
+	if matches := validPattern.FindStringSubmatch(name); matches != nil {
+		num := 0
+		_, _ = fmt.Sscanf(matches[1], "%d", &num)
+		return fileInfo{name: name, number: num, slug: matches[2]}
+	}
+
+	// Check if file has any numeric prefix (wrong format or needs normalization)
+	if matches := numericPattern.FindStringSubmatch(name); matches != nil {
+		num := 0
+		_, _ = fmt.Sscanf(matches[1], "%d", &num)
+		return fileInfo{name: name, number: num, slug: matches[2]}
+	}
+
+	// No numeric prefix - assign -1 as placeholder
+	slug := strings.TrimSuffix(name, ".md")
+	return fileInfo{name: name, number: -1, slug: slug}
+}
+
+// renameInvalidFiles processes files and renames those that don't meet the naming convention.
+func renameInvalidFiles(
+	ctx context.Context,
+	dir string,
+	files []fileInfo,
+	usedNumbers map[int]bool,
+) ([]Rename, error) {
+	var renames []Rename
+	seenNumbers := make(map[int]string)
+
+	for _, f := range files {
+		newNumber, needsRename := determineRename(f, seenNumbers, usedNumbers)
+
+		if needsRename {
+			rename, err := performRename(ctx, dir, f, newNumber)
+			if err != nil {
+				return nil, err
+			}
+			renames = append(renames, rename)
+			seenNumbers[newNumber] = rename.NewPath
+		} else {
+			seenNumbers[f.number] = f.name
+		}
+	}
+
+	return renames, nil
+}
+
+// determineRename checks if a file needs to be renamed and returns the new number.
+func determineRename(
+	f fileInfo,
+	seenNumbers map[int]string,
+	usedNumbers map[int]bool,
+) (int, bool) {
+	// Case 1: No numeric prefix
+	if f.number == -1 {
+		newNum := findNextAvailableNumber(usedNumbers)
+		usedNumbers[newNum] = true
+		return newNum, true
+	}
+
+	// Case 2: Duplicate number
+	if _, exists := seenNumbers[f.number]; exists {
+		newNum := findNextAvailableNumber(usedNumbers)
+		usedNumbers[newNum] = true
+		return newNum, true
+	}
+
+	// Case 3: Wrong format
+	expectedName := fmt.Sprintf("%03d-%s.md", f.number, f.slug)
+	if f.name != expectedName {
+		return f.number, true
+	}
+
+	return f.number, false
+}
+
+// findNextAvailableNumber finds the next unused number.
+func findNextAvailableNumber(usedNumbers map[int]bool) int {
+	for i := 1; ; i++ {
+		if !usedNumbers[i] {
+			return i
+		}
+	}
+}
+
+// performRename renames a file to match the naming convention.
+func performRename(ctx context.Context, dir string, f fileInfo, newNumber int) (Rename, error) {
+	oldPath := filepath.Join(dir, f.name)
+	newName := fmt.Sprintf("%03d-%s.md", newNumber, f.slug)
+	newPath := filepath.Join(dir, newName)
+
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return Rename{}, errors.Wrap(ctx, err, "rename file")
+	}
+
+	return Rename{OldPath: oldPath, NewPath: newPath}, nil
 }
 
 // readFrontmatter is a helper to read frontmatter from a file.

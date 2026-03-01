@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.15
+
+### Added
+- Add prompt filename validation and auto-renumbering
+
 ## v0.2.14
 
 ### Added

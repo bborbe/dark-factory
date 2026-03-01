@@ -63,6 +63,16 @@ func (f *factory) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "reset executing prompts")
 	}
 
+	// Normalize filenames before processing
+	renames, err := prompt.NormalizeFilenames(ctx, f.promptsDir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "normalize filenames")
+	}
+	for _, r := range renames {
+		log.Printf("dark-factory: renamed %s -> %s",
+			filepath.Base(r.OldPath), filepath.Base(r.NewPath))
+	}
+
 	// Process any existing queued prompts first
 	if err := f.processExistingQueued(ctx); err != nil {
 		return errors.Wrap(ctx, err, "process existing queued prompts")
@@ -194,8 +204,25 @@ func (f *factory) processExistingQueued(ctx context.Context) error {
 // handleFileEvent checks if a file should be picked up and processes it.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
+	// Normalize filenames first (handles invalid naming)
+	renames, err := prompt.NormalizeFilenames(ctx, f.promptsDir)
+	if err != nil {
+		log.Printf("dark-factory: failed to normalize filenames: %v", err)
+		return
+	}
+
+	// Check if our file was renamed
+	actualPath := filePath
+	for _, r := range renames {
+		log.Printf("dark-factory: renamed %s -> %s",
+			filepath.Base(r.OldPath), filepath.Base(r.NewPath))
+		if r.OldPath == filePath {
+			actualPath = r.NewPath
+		}
+	}
+
 	// Read frontmatter to check status
-	fm, err := prompt.ReadFrontmatter(ctx, filePath)
+	fm, err := prompt.ReadFrontmatter(ctx, actualPath)
 	if err != nil {
 		// Ignore files with read errors
 		return
@@ -206,7 +233,7 @@ func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 		return
 	}
 
-	log.Printf("dark-factory: found queued prompt: %s", filepath.Base(filePath))
+	log.Printf("dark-factory: found queued prompt: %s", filepath.Base(actualPath))
 
 	// Normalize status to "queued" for consistency
 	status := fm.Status
@@ -215,7 +242,7 @@ func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 	}
 
 	p := prompt.Prompt{
-		Path:   filePath,
+		Path:   actualPath,
 		Status: status,
 	}
 

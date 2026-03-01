@@ -833,7 +833,9 @@ Test file permission changes.
 	It("should handle executor errors during processExistingQueued", func() {
 		// Create multiple queued prompts, first one will fail
 		for i := 1; i <= 2; i++ {
-			promptPath := filepath.Join(promptsDir, fmt.Sprintf("013-%d.md", i))
+			// Use unique numbers to avoid normalization renaming
+			promptNum := 12 + i
+			promptPath := filepath.Join(promptsDir, fmt.Sprintf("%03d-%d.md", promptNum, i))
 			promptContent := fmt.Sprintf(`---
 status: queued
 ---

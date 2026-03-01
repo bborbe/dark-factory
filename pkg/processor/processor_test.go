@@ -1,0 +1,489 @@
+// Copyright (c) 2026 Benjamin Borbe All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package processor_test
+
+import (
+	"context"
+	stderrors "errors"
+	"os"
+	"path/filepath"
+	"time"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
+	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
+
+var _ = Describe("Processor", func() {
+	var (
+		tempDir      string
+		promptsDir   string
+		ready        chan struct{}
+		ctx          context.Context
+		cancel       context.CancelFunc
+		mockExecutor *mocks.Executor
+		mockManager  *mocks.Manager
+		mockReleaser *mocks.Releaser
+	)
+
+	BeforeEach(func() {
+		var err error
+		tempDir, err = os.MkdirTemp("", "processor-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		promptsDir = filepath.Join(tempDir, "prompts")
+		err = os.MkdirAll(promptsDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+
+		ready = make(chan struct{}, 10)
+		ctx, cancel = context.WithCancel(context.Background())
+
+		mockExecutor = &mocks.Executor{}
+		mockManager = &mocks.Manager{}
+		mockReleaser = &mocks.Releaser{}
+	})
+
+	AfterEach(func() {
+		cancel()
+		if tempDir != "" {
+			_ = os.RemoveAll(tempDir)
+		}
+	})
+
+	It("should start and stop cleanly", func() {
+		mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- p.Process(ctx)
+		}()
+
+		// Let it run briefly
+		time.Sleep(200 * time.Millisecond)
+
+		// Cancel and verify clean shutdown
+		cancel()
+
+		select {
+		case err := <-errCh:
+			Expect(err).To(BeNil())
+		case <-time.After(2 * time.Second):
+			Fail("processor did not stop within timeout")
+		}
+	})
+
+	It("should process existing queued prompt on startup", func() {
+		promptPath := filepath.Join(promptsDir, "001-test.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		// First call returns prompt, second call returns empty (processed)
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Test prompt", nil)
+		mockManager.TitleReturns("Test prompt", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify executor was called with correct container name
+		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
+		Expect(containerName).To(Equal("dark-factory-001-test"))
+
+		// Verify status was set to executing
+		Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 1))
+
+		// Verify moved to completed
+		Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+
+		cancel()
+	})
+
+	It("should process prompts when ready signal received", func() {
+		promptPath := filepath.Join(promptsDir, "002-signal.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		// Initially no prompts
+		mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Signal test", nil)
+		mockManager.TitleReturns("Signal test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for initial scan
+		time.Sleep(200 * time.Millisecond)
+
+		// Now return a prompt and send ready signal
+		mockManager.ListQueuedReturnsOnCall(1, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
+		ready <- struct{}{}
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		cancel()
+	})
+
+	It("should skip empty prompts", func() {
+		promptPath := filepath.Join(promptsDir, "003-empty.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
+		mockManager.MoveToCompletedReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockManager.MoveToCompletedCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify executor was NOT called
+		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+
+		cancel()
+	})
+
+	It("should handle executor errors and mark prompt as failed", func() {
+		promptPath := filepath.Join(promptsDir, "004-fail.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturns(queued, nil)
+		mockManager.ContentReturns("# Fail test", nil)
+		mockManager.TitleReturns("Fail test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- p.Process(ctx)
+		}()
+
+		// Wait for error
+		select {
+		case err := <-errCh:
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("execution failed"))
+		case <-time.After(2 * time.Second):
+			Fail("processor did not return error within timeout")
+		}
+
+		// Verify status was set to failed
+		Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
+		// Last call should be setting to "failed"
+		lastCall := mockManager.SetStatusCallCount() - 1
+		_, _, status := mockManager.SetStatusArgsForCall(lastCall)
+		Expect(status).To(Equal("failed"))
+
+		cancel()
+	})
+
+	It("should call CommitOnly when no changelog", func() {
+		promptPath := filepath.Join(promptsDir, "005-no-changelog.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# No changelog test", nil)
+		mockManager.TitleReturns("No changelog test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockReleaser.CommitOnlyCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify CommitAndRelease was NOT called
+		Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+
+		cancel()
+	})
+
+	It("should call CommitAndRelease with PatchBump when changelog exists", func() {
+		promptPath := filepath.Join(promptsDir, "006-with-changelog.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Fix bug", nil)
+		mockManager.TitleReturns("Fix bug", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(true)
+		mockReleaser.GetNextVersionReturns("v0.1.1", nil)
+		mockReleaser.CommitAndReleaseReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockReleaser.CommitAndReleaseCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify PatchBump was used
+		_, _, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		Expect(bump).To(Equal(git.PatchBump))
+
+		// Verify CommitOnly was NOT called
+		Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+
+		cancel()
+	})
+
+	It("should call CommitAndRelease with MinorBump for feature title", func() {
+		promptPath := filepath.Join(promptsDir, "007-feature.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Add new feature", nil)
+		mockManager.TitleReturns("Add new feature", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(true)
+		mockReleaser.GetNextVersionReturns("v0.2.0", nil)
+		mockReleaser.CommitAndReleaseReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockReleaser.CommitAndReleaseCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify MinorBump was used
+		_, _, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		Expect(bump).To(Equal(git.MinorBump))
+
+		cancel()
+	})
+
+	It("should process multiple queued prompts sequentially", func() {
+		promptPath1 := filepath.Join(promptsDir, "001-first.md")
+		promptPath2 := filepath.Join(promptsDir, "002-second.md")
+
+		// Return both prompts first, then just second, then none
+		mockManager.ListQueuedReturnsOnCall(0, []prompt.Prompt{
+			{Path: promptPath1, Status: "queued"},
+			{Path: promptPath2, Status: "queued"},
+		}, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{
+			{Path: promptPath2, Status: "queued"},
+		}, nil)
+		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
+
+		mockManager.ContentReturns("# Test", nil)
+		mockManager.TitleReturns("Test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for both to be processed
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 3*time.Second, 50*time.Millisecond).Should(Equal(2))
+
+		cancel()
+	})
+
+	It("should sanitize container name", func() {
+		promptPath := filepath.Join(promptsDir, "008-test@file#name.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: "queued"},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Test", nil)
+		mockManager.TitleReturns("Test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify container name was sanitized
+		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
+		Expect(containerName).To(Equal("dark-factory-008-test-file-name"))
+
+		cancel()
+	})
+})

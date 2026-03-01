@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package runner
+package processor
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -65,5 +65,27 @@ var _ = Describe("determineBump", func() {
 	It("returns MinorBump when keyword is part of larger word", func() {
 		bump := determineBump("Address authentication issues")
 		Expect(bump).To(Equal(git.MinorBump))
+	})
+})
+
+var _ = Describe("sanitizeContainerName", func() {
+	It("keeps valid characters", func() {
+		name := sanitizeContainerName("abc-123_XYZ")
+		Expect(name).To(Equal("abc-123_XYZ"))
+	})
+
+	It("replaces special characters with hyphens", func() {
+		name := sanitizeContainerName("test@file#name")
+		Expect(name).To(Equal("test-file-name"))
+	})
+
+	It("handles spaces", func() {
+		name := sanitizeContainerName("hello world")
+		Expect(name).To(Equal("hello-world"))
+	})
+
+	It("handles multiple consecutive special characters", func() {
+		name := sanitizeContainerName("test@@##name")
+		Expect(name).To(Equal("test----name"))
 	})
 })

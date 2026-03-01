@@ -15,6 +15,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -37,6 +38,9 @@ type processor struct {
 	releaser      git.Releaser
 	versionGetter version.Getter
 	ready         <-chan struct{}
+	workflow      config.Workflow
+	brancher      git.Brancher
+	prCreator     git.PRCreator
 }
 
 // NewProcessor creates a new Processor.
@@ -48,6 +52,9 @@ func NewProcessor(
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	ready <-chan struct{},
+	workflow config.Workflow,
+	brancher git.Brancher,
+	prCreator git.PRCreator,
 ) Processor {
 	return &processor{
 		queueDir:      queueDir,
@@ -57,6 +64,9 @@ func NewProcessor(
 		releaser:      releaser,
 		versionGetter: versionGetter,
 		ready:         ready,
+		workflow:      workflow,
+		brancher:      brancher,
+		prCreator:     prCreator,
 	}
 }
 
@@ -184,6 +194,21 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	log.Printf("dark-factory: executing prompt: %s", title)
 
+	// PR mode: create feature branch before execution
+	originalBranch := ""
+	branchName := ""
+	if p.workflow == config.WorkflowPR {
+		var err error
+		originalBranch, err = p.brancher.CurrentBranch(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, "get current branch")
+		}
+		branchName = "dark-factory/" + baseName
+		if err := p.brancher.CreateAndSwitch(ctx, branchName); err != nil {
+			return errors.Wrap(ctx, err, "create feature branch")
+		}
+	}
+
 	// Derive log file path: {queueDir}/log/{basename}.log
 	logFile := filepath.Join(p.queueDir, "log", baseName+".log")
 
@@ -211,6 +236,52 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
+	if p.workflow == config.WorkflowPR {
+		return p.handlePRWorkflow(gitCtx, ctx, title, branchName, originalBranch)
+	}
+
+	return p.handleDirectWorkflow(gitCtx, ctx, title)
+}
+
+// handlePRWorkflow handles the PR-based workflow: commit, push, create PR, switch back.
+func (p *processor) handlePRWorkflow(
+	gitCtx context.Context,
+	ctx context.Context,
+	title string,
+	branchName string,
+	originalBranch string,
+) error {
+	// Commit changes
+	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
+		return errors.Wrap(ctx, err, "commit changes")
+	}
+
+	// Push branch
+	if err := p.brancher.Push(gitCtx, branchName); err != nil {
+		return errors.Wrap(ctx, err, "push branch")
+	}
+
+	// Create PR
+	prURL, err := p.prCreator.Create(gitCtx, title, "Automated by dark-factory")
+	if err != nil {
+		return errors.Wrap(ctx, err, "create pull request")
+	}
+	log.Printf("dark-factory: created PR: %s", prURL)
+
+	// Switch back to original branch for next prompt
+	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
+		return errors.Wrap(ctx, err, "switch back to "+originalBranch)
+	}
+
+	return nil
+}
+
+// handleDirectWorkflow handles the direct commit workflow: commit, tag, push.
+func (p *processor) handleDirectWorkflow(
+	gitCtx context.Context,
+	ctx context.Context,
+	title string,
+) error {
 	// Without CHANGELOG: simple commit only (no tag, no push)
 	if !p.releaser.HasChangelog(gitCtx) {
 		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {

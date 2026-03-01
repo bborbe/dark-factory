@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -31,6 +32,8 @@ var _ = Describe("Processor", func() {
 		mockManager    *mocks.Manager
 		mockReleaser   *mocks.Releaser
 		mockVersionGet *mocks.VersionGetter
+		mockBrancher   *mocks.Brancher
+		mockPRCreator  *mocks.PRCreator
 	)
 
 	BeforeEach(func() {
@@ -49,6 +52,8 @@ var _ = Describe("Processor", func() {
 		mockManager = &mocks.Manager{}
 		mockReleaser = &mocks.Releaser{}
 		mockVersionGet = &mocks.VersionGetter{}
+		mockBrancher = &mocks.Brancher{}
+		mockPRCreator = &mocks.PRCreator{}
 		mockVersionGet.GetReturns("v0.0.1-test")
 	})
 
@@ -70,6 +75,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -121,6 +129,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -175,6 +186,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -218,6 +232,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -259,6 +276,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -314,6 +334,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -361,6 +384,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -412,6 +438,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -465,6 +494,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -508,6 +540,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -545,6 +580,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -579,6 +617,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -623,6 +664,9 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
 		)
 
 		// Run processor in goroutine
@@ -641,5 +685,200 @@ var _ = Describe("Processor", func() {
 		Expect(version).To(Equal("v0.0.1-test"))
 
 		cancel()
+	})
+
+	Describe("PR Workflow", func() {
+		It("should create branch, commit, push, create PR, and switch back", func() {
+			promptPath := filepath.Join(promptsDir, "001-pr-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.ContentReturns("# PR test", nil)
+			mockManager.TitleReturns("Add new feature", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify brancher calls
+			Expect(mockBrancher.CurrentBranchCallCount()).To(Equal(1))
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
+			_, branchName := mockBrancher.CreateAndSwitchArgsForCall(0)
+			Expect(branchName).To(Equal("dark-factory/001-pr-test"))
+
+			Expect(mockBrancher.PushCallCount()).To(Equal(1))
+			_, pushedBranch := mockBrancher.PushArgsForCall(0)
+			Expect(pushedBranch).To(Equal("dark-factory/001-pr-test"))
+
+			Expect(mockBrancher.SwitchCallCount()).To(Equal(1))
+			_, switchedBranch := mockBrancher.SwitchArgsForCall(0)
+			Expect(switchedBranch).To(Equal("master"))
+
+			// Verify PR was created
+			_, title, body := mockPRCreator.CreateArgsForCall(0)
+			Expect(title).To(Equal("Add new feature"))
+			Expect(body).To(Equal("Automated by dark-factory"))
+
+			// Verify CommitOnly was called, not CommitAndRelease
+			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+			Expect(mockReleaser.HasChangelogCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("should handle branch creation error", func() {
+			promptPath := filepath.Join(promptsDir, "001-branch-error.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturns(queued, nil)
+			mockManager.ContentReturns("# Branch error test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.CreateAndSwitchReturns(stderrors.New("branch already exists"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Wait for error
+			select {
+			case err := <-errCh:
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("branch already exists"))
+			case <-time.After(2 * time.Second):
+				Fail("processor did not return error within timeout")
+			}
+
+			// Verify status was set to failed
+			Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
+			lastCall := mockManager.SetStatusCallCount() - 1
+			_, _, status := mockManager.SetStatusArgsForCall(lastCall)
+			Expect(status).To(Equal("failed"))
+
+			// Verify executor was NOT called
+			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("should handle PR creation error after successful push", func() {
+			promptPath := filepath.Join(promptsDir, "001-pr-error.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturns(queued, nil)
+			mockManager.ContentReturns("# PR error test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("", stderrors.New("gh pr create failed"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Wait for error
+			select {
+			case err := <-errCh:
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("gh pr create failed"))
+			case <-time.After(2 * time.Second):
+				Fail("processor did not return error within timeout")
+			}
+
+			// Verify branch operations succeeded
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
+			Expect(mockBrancher.PushCallCount()).To(Equal(1))
+
+			// Verify status was set to failed
+			Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
+			lastCall := mockManager.SetStatusCallCount() - 1
+			_, _, status := mockManager.SetStatusArgsForCall(lastCall)
+			Expect(status).To(Equal("failed"))
+
+			cancel()
+		})
 	})
 })

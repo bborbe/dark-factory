@@ -54,6 +54,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			versionGetter,
 			ready,
 			cfg.ContainerImage,
+			cfg.Workflow,
 		),
 		CreateServer(
 			cfg.ServerPort,
@@ -83,6 +84,7 @@ func CreateProcessor(
 	versionGetter version.Getter,
 	ready <-chan struct{},
 	containerImage string,
+	workflow config.Workflow,
 ) processor.Processor {
 	return processor.NewProcessor(
 		queueDir,
@@ -92,6 +94,9 @@ func CreateProcessor(
 		releaser,
 		versionGetter,
 		ready,
+		workflow,
+		git.NewBrancher(),
+		git.NewPRCreator(),
 	)
 }
 

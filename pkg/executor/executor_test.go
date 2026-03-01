@@ -288,7 +288,7 @@ More lines...`
 			Expect(cmd.Args).To(ContainElement("-v"))
 			Expect(cmd.Args).To(ContainElement(promptFilePath + ":/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement(projectRoot + ":/workspace"))
-			Expect(cmd.Args).To(ContainElement(home + "/.claude-yolo:/home/node/.claude:ro"))
+			Expect(cmd.Args).To(ContainElement(home + "/.claude-yolo:/home/node/.claude"))
 			Expect(cmd.Args).To(ContainElement("docker.io/bborbe/claude-yolo:latest"))
 		})
 

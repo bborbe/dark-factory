@@ -142,7 +142,7 @@ func BuildDockerCommand(
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
-		"-v", home+"/.claude-yolo:/home/node/.claude:ro",
+		"-v", home+"/.claude-yolo:/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		"docker.io/bborbe/claude-yolo:latest",
 	)

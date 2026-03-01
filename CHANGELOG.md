@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.2.21
+
+### Fixed
+- Mount .claude-yolo as read-write so Claude Code can write session data
+- Revert unimplemented prompts 012/013 back to ideas
+
 ## v0.2.20
 
 ### Added

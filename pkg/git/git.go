@@ -7,12 +7,12 @@ package git
 import (
 	"context"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -417,34 +417,26 @@ func gitTag(ctx context.Context, tag string) error {
 	return nil
 }
 
-// gitPush pushes commits to remote
+// gitPush pushes commits to remote using subprocess
 func gitPush(ctx context.Context) error {
-	repo, err := gogit.PlainOpen(".")
-	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
-	}
-
-	err = repo.Push(&gogit.PushOptions{})
-	if err != nil && err != gogit.NoErrAlreadyUpToDate {
+	cmd := exec.CommandContext(ctx, "git", "push")
+	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "push to remote")
 	}
 
 	return nil
 }
 
-// gitPushTag pushes a tag to remote
+// gitPushTag pushes a tag to remote using subprocess
 func gitPushTag(ctx context.Context, tag string) error {
-	repo, err := gogit.PlainOpen(".")
-	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
+	// Validate tag format to prevent command injection
+	if _, err := ParseSemanticVersionNumber(ctx, tag); err != nil {
+		return errors.Wrap(ctx, err, "invalid tag format")
 	}
 
-	// Push the specific tag
-	refSpec := config.RefSpec("refs/tags/" + tag + ":refs/tags/" + tag)
-	err = repo.Push(&gogit.PushOptions{
-		RefSpecs: []config.RefSpec{refSpec},
-	})
-	if err != nil && err != gogit.NoErrAlreadyUpToDate {
+	// #nosec G204 -- tag is validated as semantic version above
+	cmd := exec.CommandContext(ctx, "git", "push", "origin", tag)
+	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "push tag to remote")
 	}
 

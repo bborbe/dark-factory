@@ -17,6 +17,165 @@ import (
 )
 
 var _ = Describe("Git", func() {
+	Describe("Releaser interface", func() {
+		var (
+			ctx         context.Context
+			tempDir     string
+			originalDir string
+			r           git.Releaser
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			var err error
+			originalDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "git-interface-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initialize git repo
+			cmd := exec.Command("git", "init")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Configure git
+			cmd = exec.Command("git", "config", "user.email", "test@example.com")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "config", "user.name", "Test User")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to temp directory
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			r = git.NewReleaser()
+		})
+
+		AfterEach(func() {
+			if originalDir != "" {
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		It("GetNextVersion returns v0.1.0 with no tags", func() {
+			// Create initial commit
+			err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd := exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			version, err := r.GetNextVersion(ctx, git.PatchBump)
+			Expect(err).To(BeNil())
+			Expect(version).To(Equal("v0.1.0"))
+		})
+
+		It("CommitCompletedFile commits a new file", func() {
+			// Create initial commit
+			err := os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd := exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create completed file
+			completedPath := filepath.Join(tempDir, "completed.md")
+			err = os.WriteFile(completedPath, []byte("completed"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = r.CommitCompletedFile(ctx, completedPath)
+			Expect(err).To(BeNil())
+
+			// Verify commit was created
+			cmd = exec.Command("git", "log", "--oneline", "-n", "1")
+			cmd.Dir = tempDir
+			output, err := cmd.Output()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(output)).To(ContainSubstring("move prompt to completed"))
+		})
+
+		It("CommitAndRelease performs full workflow", func() {
+			// Create CHANGELOG.md
+			err := os.WriteFile(
+				filepath.Join(tempDir, "CHANGELOG.md"),
+				[]byte("# Changelog\n\n## Unreleased\n\n### Added\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create initial commit
+			cmd := exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create bare repo as remote
+			bareDir := filepath.Join(filepath.Dir(tempDir), "bare-interface-test")
+			cmd = exec.Command("git", "init", "--bare", bareDir)
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() {
+				_ = os.RemoveAll(bareDir)
+			}()
+
+			cmd = exec.Command("git", "remote", "add", "origin", bareDir)
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "push", "-u", "origin", "master")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a file to commit
+			err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = r.CommitAndRelease(ctx, "Add test feature", git.PatchBump)
+			Expect(err).To(BeNil())
+
+			// Verify tag was created
+			cmd = exec.Command("git", "tag", "-l")
+			cmd.Dir = tempDir
+			output, err := cmd.Output()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(output)).To(ContainSubstring("v0.1.0"))
+		})
+	})
+
 	Describe("GetNextVersion", func() {
 		var (
 			ctx         context.Context

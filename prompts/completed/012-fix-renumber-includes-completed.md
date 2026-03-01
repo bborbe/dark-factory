@@ -4,7 +4,6 @@ container: dark-factory-012-fix-renumber-includes-completed
 ---
 
 
-
 # Fix: NormalizeFilenames must include completed/ numbers when assigning new numbers
 
 ## Bug

@@ -16,4 +16,5 @@
 /data
 /gha-creds-*.json
 /prompts/log/
+/prompts/queue/log/
 /vendor

@@ -1,0 +1,26 @@
+# dark-factory configuration
+#
+# All fields are optional. Missing fields use defaults shown below.
+
+# Git workflow after prompt execution
+# "direct" = commit + tag + push to current branch (default)
+# "pr" = create feature branch + PR (not yet implemented)
+workflow: direct
+
+# Passive drop zone for new prompts (no automation)
+inboxDir: prompts
+
+# Watcher monitors this directory, processor executes from here
+queueDir: prompts/queue
+
+# Completed prompts are archived here
+completedDir: prompts/completed
+
+# Docker image for YOLO execution
+containerImage: docker.io/bborbe/claude-yolo:v0.0.7
+
+# Watcher debounce in milliseconds
+debounceMs: 500
+
+# REST API server port
+serverPort: 8080

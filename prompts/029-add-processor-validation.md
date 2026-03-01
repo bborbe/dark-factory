@@ -1,3 +1,8 @@
+---
+status: executing
+container: dark-factory-029-add-processor-validation
+---
+
 # Add Validate() to Prompt and use in processor
 
 ## Goal

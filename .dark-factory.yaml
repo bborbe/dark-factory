@@ -1,0 +1,3 @@
+inboxDir: prompts
+queueDir: prompts/queue
+completedDir: prompts/completed

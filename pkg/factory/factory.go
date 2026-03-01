@@ -5,6 +5,7 @@
 package factory
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -14,6 +15,8 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
+	"github.com/bborbe/dark-factory/pkg/server"
+	"github.com/bborbe/dark-factory/pkg/status"
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
@@ -51,6 +54,12 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			versionGetter,
 			ready,
 			cfg.ContainerImage,
+		),
+		CreateServer(
+			cfg.ServerPort,
+			queueDir,
+			completedDir,
+			promptManager,
 		),
 	)
 }
@@ -90,4 +99,17 @@ func CreateProcessor(
 // CreateLocker creates a Locker for the specified directory.
 func CreateLocker(dir string) lock.Locker {
 	return lock.NewLocker(dir)
+}
+
+// CreateServer creates a Server that provides HTTP endpoints for monitoring.
+func CreateServer(
+	port int,
+	queueDir string,
+	completedDir string,
+	promptManager prompt.Manager,
+) server.Server {
+	addr := fmt.Sprintf(":%d", port)
+	ideasDir := "prompts/ideas"
+	statusChecker := status.NewChecker(queueDir, completedDir, ideasDir, promptManager)
+	return server.NewServer(addr, statusChecker)
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
@@ -35,6 +36,7 @@ type runner struct {
 	locker        lock.Locker
 	watcher       watcher.Watcher
 	processor     processor.Processor
+	server        server.Server
 }
 
 // NewRunner creates a new Runner.
@@ -46,6 +48,7 @@ func NewRunner(
 	locker lock.Locker,
 	watcher watcher.Watcher,
 	processor processor.Processor,
+	server server.Server,
 ) Runner {
 	return &runner{
 		inboxDir:      inboxDir,
@@ -55,6 +58,7 @@ func NewRunner(
 		locker:        locker,
 		watcher:       watcher,
 		processor:     processor,
+		server:        server,
 	}
 }
 
@@ -97,11 +101,12 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
 
-	// Run watcher and processor in parallel
-	// If either fails, context cancels the other automatically
+	// Run watcher, processor, and server in parallel
+	// If any fails, context cancels the others automatically
 	return run.CancelOnFirstError(ctx,
 		r.watcher.Watch,
 		r.processor.Process,
+		r.server.ListenAndServe,
 	)
 }
 

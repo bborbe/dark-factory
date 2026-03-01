@@ -19,6 +19,7 @@ type Config struct {
 	CompletedDir   string   `yaml:"completedDir"`
 	ContainerImage string   `yaml:"containerImage"`
 	DebounceMs     int      `yaml:"debounceMs"`
+	ServerPort     int      `yaml:"serverPort"`
 }
 
 // Defaults returns a Config with all default values.
@@ -30,6 +31,7 @@ func Defaults() Config {
 		CompletedDir:   "prompts/completed",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 		DebounceMs:     500,
+		ServerPort:     8080,
 	}
 }
 
@@ -44,6 +46,16 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.DebounceMs <= 0 {
 				return errors.Errorf(ctx, "debounceMs must be positive, got %d", c.DebounceMs)
+			}
+			return nil
+		})),
+		validation.Name("serverPort", validation.HasValidationFunc(func(ctx context.Context) error {
+			if c.ServerPort <= 0 || c.ServerPort > 65535 {
+				return errors.Errorf(
+					ctx,
+					"serverPort must be between 1-65535, got %d",
+					c.ServerPort,
+				)
 			}
 			return nil
 		})),

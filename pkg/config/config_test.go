@@ -31,6 +31,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.7"))
 			Expect(cfg.DebounceMs).To(Equal(500))
+			Expect(cfg.ServerPort).To(Equal(8080))
 		})
 	})
 
@@ -43,6 +44,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -56,6 +58,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -69,6 +72,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -83,6 +87,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -97,6 +102,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -111,6 +117,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -125,6 +132,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/queue",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -139,6 +147,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -153,6 +162,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "",
 				DebounceMs:     500,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -167,6 +177,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     -1,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
@@ -181,6 +192,7 @@ var _ = Describe("Config", func() {
 				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     0,
+				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())

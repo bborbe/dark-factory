@@ -25,6 +25,7 @@ var _ = Describe("Runner", func() {
 		mockLocker    *mocks.Locker
 		mockWatcher   *mocks.Watcher
 		mockProcessor *mocks.Processor
+		mockServer    *mocks.Server
 		ctx           context.Context
 		cancel        context.CancelFunc
 	)
@@ -42,6 +43,7 @@ var _ = Describe("Runner", func() {
 		mockLocker = &mocks.Locker{}
 		mockWatcher = &mocks.Watcher{}
 		mockProcessor = &mocks.Processor{}
+		mockServer = &mocks.Server{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})
@@ -59,12 +61,16 @@ var _ = Describe("Runner", func() {
 		mockManager.ResetExecutingReturns(nil)
 		mockManager.NormalizeFilenamesReturns(nil, nil)
 
-		// Make watcher and processor return immediately
+		// Make watcher, processor, and server return immediately
 		mockWatcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
 		mockProcessor.ProcessStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -77,6 +83,7 @@ var _ = Describe("Runner", func() {
 			mockLocker,
 			mockWatcher,
 			mockProcessor,
+			mockServer,
 		)
 
 		// Run with timeout
@@ -105,6 +112,10 @@ var _ = Describe("Runner", func() {
 			<-ctx.Done()
 			return nil
 		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
 
 		r := runner.NewRunner(
 			promptsDir,
@@ -114,6 +125,7 @@ var _ = Describe("Runner", func() {
 			mockLocker,
 			mockWatcher,
 			mockProcessor,
+			mockServer,
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -140,6 +152,10 @@ var _ = Describe("Runner", func() {
 			<-ctx.Done()
 			return nil
 		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
 
 		r := runner.NewRunner(
 			promptsDir,
@@ -149,6 +165,7 @@ var _ = Describe("Runner", func() {
 			mockLocker,
 			mockWatcher,
 			mockProcessor,
+			mockServer,
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -180,6 +197,10 @@ var _ = Describe("Runner", func() {
 			<-ctx.Done()
 			return nil
 		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
 
 		r := runner.NewRunner(
 			promptsDir,
@@ -189,6 +210,7 @@ var _ = Describe("Runner", func() {
 			mockLocker,
 			mockWatcher,
 			mockProcessor,
+			mockServer,
 		)
 
 		go func() {
@@ -216,6 +238,10 @@ var _ = Describe("Runner", func() {
 			<-ctx.Done()
 			return nil
 		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
 
 		r := runner.NewRunner(
 			promptsDir,
@@ -225,6 +251,7 @@ var _ = Describe("Runner", func() {
 			mockLocker,
 			mockWatcher,
 			mockProcessor,
+			mockServer,
 		)
 
 		runCtx, runCancel := context.WithCancel(ctx)

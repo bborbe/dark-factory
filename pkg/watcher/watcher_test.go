@@ -51,7 +51,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -82,7 +82,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -114,7 +114,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -145,7 +145,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -172,7 +172,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns(nil, os.ErrPermission)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -219,7 +219,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -241,6 +241,120 @@ var _ = Describe("Watcher", func() {
 
 		// Consume signal
 		<-ready
+
+		cancel()
+	})
+
+	It("should work with absolute paths", func() {
+		// Create a queue directory with absolute path
+		queueDir := filepath.Join(tempDir, "queue")
+		err := os.MkdirAll(queueDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+
+		promptManager := &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+
+		// Use the absolute path directly (tempDir is already absolute)
+		w := watcher.NewWatcher(queueDir, promptManager, ready, 500*time.Millisecond)
+
+		// Run watcher in goroutine
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(200 * time.Millisecond)
+
+		// Create a file
+		testFile := filepath.Join(queueDir, "test.md")
+		err = os.WriteFile(testFile, []byte("# Test"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for normalization to be called
+		Eventually(func() int {
+			return promptManager.NormalizeFilenamesCallCount()
+		}, 2*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		// Verify that the absolute path was used
+		_, passedDir := promptManager.NormalizeFilenamesArgsForCall(0)
+		Expect(passedDir).To(Equal(queueDir))
+
+		cancel()
+	})
+
+	It("should handle chmod events on markdown files", func() {
+		promptManager := &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+
+		// Run watcher in goroutine
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(200 * time.Millisecond)
+
+		// Create a file
+		testFile := filepath.Join(promptsDir, "chmod-test.md")
+		err := os.WriteFile(testFile, []byte("# Test"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Change permissions to trigger chmod event
+		time.Sleep(600 * time.Millisecond)
+		err = os.Chmod(testFile, 0640)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for normalization to be called (should be called at least twice: create + chmod)
+		Eventually(func() int {
+			return promptManager.NormalizeFilenamesCallCount()
+		}, 2*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		cancel()
+	})
+
+	It("should handle relative paths", func() {
+		// Save current directory
+		origDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			_ = os.Chdir(origDir)
+		}()
+
+		// Change to temp directory
+		err = os.Chdir(tempDir)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Create relative prompts directory
+		relPromptDir := "prompts-rel"
+		err = os.MkdirAll(relPromptDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+
+		promptManager := &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+
+		// Use relative path
+		w := watcher.NewWatcher(relPromptDir, promptManager, ready, 500*time.Millisecond)
+
+		// Run watcher in goroutine
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(200 * time.Millisecond)
+
+		// Create a file using absolute path
+		absPromptDir := filepath.Join(tempDir, relPromptDir)
+		testFile := filepath.Join(absPromptDir, "test.md")
+		err = os.WriteFile(testFile, []byte("# Test"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for normalization to be called
+		Eventually(func() int {
+			return promptManager.NormalizeFilenamesCallCount()
+		}, 2*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
 	})

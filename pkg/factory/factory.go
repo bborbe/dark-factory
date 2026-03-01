@@ -41,7 +41,6 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		promptManager,
 		CreateLocker("."),
 		CreateWatcher(
-			inboxDir,
 			queueDir,
 			promptManager,
 			ready,
@@ -67,13 +66,12 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 
 // CreateWatcher creates a Watcher that normalizes filenames on file events.
 func CreateWatcher(
-	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 ) watcher.Watcher {
-	return watcher.NewWatcher(inboxDir, queueDir, promptManager, ready, debounce)
+	return watcher.NewWatcher(queueDir, promptManager, ready, debounce)
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.

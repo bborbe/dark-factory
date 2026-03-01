@@ -9,6 +9,18 @@ import (
 )
 
 type Manager struct {
+	AllPreviousCompletedStub        func(context.Context, int) bool
+	allPreviousCompletedMutex       sync.RWMutex
+	allPreviousCompletedArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+	}
+	allPreviousCompletedReturns struct {
+		result1 bool
+	}
+	allPreviousCompletedReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	ContentStub        func(context.Context, string) (string, error)
 	contentMutex       sync.RWMutex
 	contentArgsForCall []struct {
@@ -139,6 +151,68 @@ type Manager struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Manager) AllPreviousCompleted(arg1 context.Context, arg2 int) bool {
+	fake.allPreviousCompletedMutex.Lock()
+	ret, specificReturn := fake.allPreviousCompletedReturnsOnCall[len(fake.allPreviousCompletedArgsForCall)]
+	fake.allPreviousCompletedArgsForCall = append(fake.allPreviousCompletedArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+	}{arg1, arg2})
+	stub := fake.AllPreviousCompletedStub
+	fakeReturns := fake.allPreviousCompletedReturns
+	fake.recordInvocation("AllPreviousCompleted", []interface{}{arg1, arg2})
+	fake.allPreviousCompletedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) AllPreviousCompletedCallCount() int {
+	fake.allPreviousCompletedMutex.RLock()
+	defer fake.allPreviousCompletedMutex.RUnlock()
+	return len(fake.allPreviousCompletedArgsForCall)
+}
+
+func (fake *Manager) AllPreviousCompletedCalls(stub func(context.Context, int) bool) {
+	fake.allPreviousCompletedMutex.Lock()
+	defer fake.allPreviousCompletedMutex.Unlock()
+	fake.AllPreviousCompletedStub = stub
+}
+
+func (fake *Manager) AllPreviousCompletedArgsForCall(i int) (context.Context, int) {
+	fake.allPreviousCompletedMutex.RLock()
+	defer fake.allPreviousCompletedMutex.RUnlock()
+	argsForCall := fake.allPreviousCompletedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Manager) AllPreviousCompletedReturns(result1 bool) {
+	fake.allPreviousCompletedMutex.Lock()
+	defer fake.allPreviousCompletedMutex.Unlock()
+	fake.AllPreviousCompletedStub = nil
+	fake.allPreviousCompletedReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Manager) AllPreviousCompletedReturnsOnCall(i int, result1 bool) {
+	fake.allPreviousCompletedMutex.Lock()
+	defer fake.allPreviousCompletedMutex.Unlock()
+	fake.AllPreviousCompletedStub = nil
+	if fake.allPreviousCompletedReturnsOnCall == nil {
+		fake.allPreviousCompletedReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.allPreviousCompletedReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *Manager) Content(arg1 context.Context, arg2 string) (string, error) {

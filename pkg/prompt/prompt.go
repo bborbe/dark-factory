@@ -14,14 +14,36 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bborbe/errors"
+	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
 )
 
 // ErrEmptyPrompt is returned when a prompt file is empty or contains only whitespace.
 var ErrEmptyPrompt = stderrors.New("prompt file is empty")
+
+// Status represents the current state of a prompt.
+type Status string
+
+const (
+	StatusQueued    Status = "queued"
+	StatusExecuting Status = "executing"
+	StatusCompleted Status = "completed"
+	StatusFailed    Status = "failed"
+)
+
+// Validate validates the Status value.
+func (s Status) Validate(ctx context.Context) error {
+	for _, valid := range []Status{StatusQueued, StatusExecuting, StatusCompleted, StatusFailed} {
+		if s == valid {
+			return nil
+		}
+	}
+	return errors.Wrapf(ctx, validation.Error, "status(%s) is invalid", s)
+}
 
 // Rename represents a file rename operation.
 type Rename struct {
@@ -32,7 +54,40 @@ type Rename struct {
 // Prompt represents a prompt file with YAML frontmatter.
 type Prompt struct {
 	Path   string
-	Status string
+	Status Status
+}
+
+// Validate validates the Prompt struct.
+func (p Prompt) Validate(ctx context.Context) error {
+	return validation.All{
+		validation.Name("path", validation.NotEmptyString(p.Path)),
+		validation.Name("status", p.Status),
+		validation.Name("filename", validation.HasValidationFunc(func(ctx context.Context) error {
+			if !hasNumberPrefix(filepath.Base(p.Path)) {
+				return errors.Errorf(ctx, "missing NNN- prefix: %s", filepath.Base(p.Path))
+			}
+			return nil
+		})),
+	}.Validate(ctx)
+}
+
+// ValidateForExecution validates that a prompt is ready to execute.
+func (p Prompt) ValidateForExecution(ctx context.Context) error {
+	return validation.All{
+		validation.Name("prompt", p),
+		validation.Name("status", validation.HasValidationFunc(func(ctx context.Context) error {
+			if p.Status != StatusQueued {
+				return errors.Errorf(ctx, "expected status queued, got %s", p.Status)
+			}
+			return nil
+		})),
+	}.Validate(ctx)
+}
+
+// Number extracts the numeric prefix from the prompt filename.
+// Returns -1 if the filename has no numeric prefix.
+func (p Prompt) Number() int {
+	return extractNumberFromFilename(filepath.Base(p.Path))
 }
 
 // Frontmatter represents the YAML frontmatter in a prompt file.
@@ -62,6 +117,7 @@ type Manager interface {
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
 	NormalizeFilenames(ctx context.Context) ([]Rename, error)
+	AllPreviousCompleted(ctx context.Context, n int) bool
 }
 
 // manager implements Manager.
@@ -128,6 +184,11 @@ func (pm *manager) NormalizeFilenames(ctx context.Context) ([]Rename, error) {
 	return NormalizeFilenames(ctx, pm.dir, pm.mover)
 }
 
+// AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
+func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
+	return AllPreviousCompleted(ctx, pm.dir, n)
+}
+
 // ListQueued scans a directory for .md files that should be picked up.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 // Sorted alphabetically by filename.
@@ -151,11 +212,12 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		}
 
 		// Pick up files UNLESS they have an explicit skip status
-		if fm.Status != "executing" && fm.Status != "completed" && fm.Status != "failed" {
+		if fm.Status != string(StatusExecuting) && fm.Status != string(StatusCompleted) &&
+			fm.Status != string(StatusFailed) {
 			// Normalize status to "queued" for consistency
-			status := fm.Status
-			if status == "" {
-				status = "queued"
+			status := Status(fm.Status)
+			if fm.Status == "" {
+				status = StatusQueued
 			}
 			queued = append(queued, Prompt{
 				Path:   path,
@@ -191,8 +253,8 @@ func ResetExecuting(ctx context.Context, dir string) error {
 			continue
 		}
 
-		if fm.Status == "executing" {
-			if err := SetStatus(ctx, path, "queued"); err != nil {
+		if fm.Status == string(StatusExecuting) {
+			if err := SetStatus(ctx, path, string(StatusQueued)); err != nil {
 				return errors.Wrap(ctx, err, "reset executing prompt")
 			}
 		}
@@ -359,7 +421,7 @@ func Content(ctx context.Context, path string) (string, error) {
 // This ensures files in completed/ always have the correct status.
 func MoveToCompleted(ctx context.Context, path string, mover FileMover) error {
 	// Set status to completed before moving
-	if err := SetStatus(ctx, path, "completed"); err != nil {
+	if err := SetStatus(ctx, path, string(StatusCompleted)); err != nil {
 		return errors.Wrap(ctx, err, "set completed status")
 	}
 
@@ -401,7 +463,7 @@ func HasExecuting(ctx context.Context, dir string) bool {
 		if err != nil {
 			continue
 		}
-		if fm.Status == "executing" {
+		if fm.Status == string(StatusExecuting) {
 			return true
 		}
 	}
@@ -624,4 +686,59 @@ func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	}
 
 	return &fm, nil
+}
+
+// hasNumberPrefix checks if a filename has a numeric prefix (NNN-).
+func hasNumberPrefix(filename string) bool {
+	pattern := regexp.MustCompile(`^\d{3}-`)
+	return pattern.MatchString(filename)
+}
+
+// extractNumberFromFilename extracts the numeric prefix from a filename.
+// Returns -1 if the filename has no numeric prefix.
+func extractNumberFromFilename(filename string) int {
+	pattern := regexp.MustCompile(`^(\d{3})-`)
+	matches := pattern.FindStringSubmatch(filename)
+	if matches == nil {
+		return -1
+	}
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return -1
+	}
+	return num
+}
+
+// AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
+func AllPreviousCompleted(ctx context.Context, dir string, n int) bool {
+	if n <= 1 {
+		return true // No previous prompts to check
+	}
+
+	completedDir := filepath.Join(dir, "completed")
+	completedEntries, err := os.ReadDir(completedDir)
+	if err != nil {
+		return false // completed/ doesn't exist or can't be read
+	}
+
+	// Collect all completed numbers
+	completedNumbers := make(map[int]bool)
+	for _, entry := range completedEntries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		num := extractNumberFromFilename(entry.Name())
+		if num != -1 {
+			completedNumbers[num] = true
+		}
+	}
+
+	// Check that all numbers 1 through n-1 are completed
+	for i := 1; i < n; i++ {
+		if !completedNumbers[i] {
+			return false
+		}
+	}
+
+	return true
 }

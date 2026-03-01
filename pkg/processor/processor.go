@@ -111,12 +111,27 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		// Pick first prompt (already sorted alphabetically)
 		pr := queued[0]
 
+		// Validate prompt before execution
+		if err := pr.ValidateForExecution(ctx); err != nil {
+			log.Printf("dark-factory: skipping %s: %v", filepath.Base(pr.Path), err)
+			continue
+		}
+
+		// Check ordering - all previous prompts must be completed
+		if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
+			log.Printf(
+				"dark-factory: skipping %s: previous prompt not completed",
+				filepath.Base(pr.Path),
+			)
+			continue
+		}
+
 		log.Printf("dark-factory: found queued prompt: %s", filepath.Base(pr.Path))
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
 			// Mark as failed — file may have been moved to completed/ before the error.
-			if setErr := p.promptManager.SetStatus(ctx, pr.Path, "failed"); setErr != nil {
+			if setErr := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusFailed)); setErr != nil {
 				log.Printf("dark-factory: failed to set failed status: %v", setErr)
 			}
 			return errors.Wrap(ctx, err, "process prompt")
@@ -160,7 +175,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Set status to executing
-	if err := p.promptManager.SetStatus(ctx, pr.Path, "executing"); err != nil {
+	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusExecuting)); err != nil {
 		return errors.Wrap(ctx, err, "set executing status")
 	}
 

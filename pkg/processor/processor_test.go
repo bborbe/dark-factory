@@ -90,7 +90,7 @@ var _ = Describe("Processor", func() {
 	It("should process existing queued prompt on startup", func() {
 		promptPath := filepath.Join(promptsDir, "001-test.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		// First call returns prompt, second call returns empty (processed)
@@ -101,6 +101,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(false)
@@ -139,9 +140,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should process prompts when ready signal received", func() {
-		promptPath := filepath.Join(promptsDir, "002-signal.md")
+		promptPath := filepath.Join(promptsDir, "001-signal.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		// Initially no prompts
@@ -151,6 +152,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(false)
@@ -186,15 +188,16 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should skip empty prompts", func() {
-		promptPath := filepath.Join(promptsDir, "003-empty.md")
+		promptPath := filepath.Join(promptsDir, "001-empty.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 
 		p := processor.NewProcessor(
 			promptsDir,
@@ -221,9 +224,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should handle executor errors and mark prompt as failed", func() {
-		promptPath := filepath.Join(promptsDir, "004-fail.md")
+		promptPath := filepath.Join(promptsDir, "001-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturns(queued, nil)
@@ -231,6 +234,7 @@ var _ = Describe("Processor", func() {
 		mockManager.TitleReturns("Fail test", nil)
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
 
 		p := processor.NewProcessor(
@@ -267,9 +271,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should call CommitOnly when no changelog", func() {
-		promptPath := filepath.Join(promptsDir, "005-no-changelog.md")
+		promptPath := filepath.Join(promptsDir, "001-no-changelog.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -279,6 +283,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(false)
@@ -309,9 +314,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should call CommitAndRelease with PatchBump when changelog exists", func() {
-		promptPath := filepath.Join(promptsDir, "006-with-changelog.md")
+		promptPath := filepath.Join(promptsDir, "001-with-changelog.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -321,6 +326,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(true)
@@ -356,9 +362,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should call CommitAndRelease with MinorBump for feature title", func() {
-		promptPath := filepath.Join(promptsDir, "007-feature.md")
+		promptPath := filepath.Join(promptsDir, "001-feature.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -368,6 +374,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(true)
@@ -405,11 +412,11 @@ var _ = Describe("Processor", func() {
 
 		// Return both prompts first, then just second, then none
 		mockManager.ListQueuedReturnsOnCall(0, []prompt.Prompt{
-			{Path: promptPath1, Status: "queued"},
-			{Path: promptPath2, Status: "queued"},
+			{Path: promptPath1, Status: prompt.StatusQueued},
+			{Path: promptPath2, Status: prompt.StatusQueued},
 		}, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{
-			{Path: promptPath2, Status: "queued"},
+			{Path: promptPath2, Status: prompt.StatusQueued},
 		}, nil)
 		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 
@@ -418,6 +425,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(false)
@@ -445,9 +453,9 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should sanitize container name", func() {
-		promptPath := filepath.Join(promptsDir, "008-test@file#name.md")
+		promptPath := filepath.Join(promptsDir, "001-test@file#name.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: "queued"},
+			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -457,6 +465,7 @@ var _ = Describe("Processor", func() {
 		mockManager.SetContainerReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.HasChangelogReturns(false)
@@ -482,7 +491,71 @@ var _ = Describe("Processor", func() {
 
 		// Verify container name was sanitized
 		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
-		Expect(containerName).To(Equal("dark-factory-008-test-file-name"))
+		Expect(containerName).To(Equal("dark-factory-001-test-file-name"))
+
+		cancel()
+	})
+
+	It("should skip prompt with invalid status", func() {
+		promptPath := filepath.Join(promptsDir, "001-invalid-status.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.StatusExecuting}, // Wrong status for execution
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.AllPreviousCompletedReturns(true)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait briefly to ensure processing completes
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify executor was NOT called
+		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+
+		cancel()
+	})
+
+	It("should skip prompt when previous not completed", func() {
+		promptPath := filepath.Join(promptsDir, "003-third.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.StatusQueued},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.AllPreviousCompletedReturns(false) // Previous prompts not completed
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait briefly to ensure processing completes
+		time.Sleep(300 * time.Millisecond)
+
+		// Verify executor was NOT called
+		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
 
 		cancel()
 	})

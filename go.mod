@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/bborbe/errors v1.5.3
 	github.com/bborbe/run v1.9.3
+	github.com/bborbe/validation v1.4.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-git/go-git/v5 v5.16.5
 	github.com/golangci/golangci-lint v1.64.8

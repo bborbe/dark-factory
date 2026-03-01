@@ -41,6 +41,277 @@ var _ = Describe("Prompt", func() {
 		_ = os.RemoveAll(tempDir)
 	})
 
+	Describe("Status.Validate", func() {
+		Context("with valid statuses", func() {
+			It("accepts queued", func() {
+				err := prompt.StatusQueued.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+
+			It("accepts executing", func() {
+				err := prompt.StatusExecuting.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+
+			It("accepts completed", func() {
+				err := prompt.StatusCompleted.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+
+			It("accepts failed", func() {
+				err := prompt.StatusFailed.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with invalid status", func() {
+			It("rejects unknown status", func() {
+				err := prompt.Status("invalid").Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("status(invalid) is invalid"))
+			})
+
+			It("rejects empty status", func() {
+				err := prompt.Status("").Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("status() is invalid"))
+			})
+		})
+	})
+
+	Describe("Prompt.Validate", func() {
+		Context("with valid prompt", func() {
+			It("accepts valid prompt with numbered filename", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with invalid prompts", func() {
+			It("rejects empty path", func() {
+				p := prompt.Prompt{
+					Path:   "",
+					Status: prompt.StatusQueued,
+				}
+				err := p.Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("path"))
+			})
+
+			It("rejects invalid status", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.Status("invalid"),
+				}
+				err := p.Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("status"))
+			})
+
+			It("rejects filename without number prefix", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing NNN- prefix"))
+			})
+
+			It("rejects filename with wrong format (single digit)", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "1-test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing NNN- prefix"))
+			})
+
+			It("rejects filename with wrong format (two digits)", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "42-test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.Validate(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing NNN- prefix"))
+			})
+		})
+	})
+
+	Describe("Prompt.ValidateForExecution", func() {
+		Context("with queued status", func() {
+			It("accepts prompt ready for execution", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.ValidateForExecution(ctx)
+				Expect(err).To(BeNil())
+			})
+		})
+
+		Context("with non-queued status", func() {
+			It("rejects executing prompt", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.StatusExecuting,
+				}
+				err := p.ValidateForExecution(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+			})
+
+			It("rejects completed prompt", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.StatusCompleted,
+				}
+				err := p.ValidateForExecution(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+			})
+
+			It("rejects failed prompt", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "001-test.md"),
+					Status: prompt.StatusFailed,
+				}
+				err := p.ValidateForExecution(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+			})
+		})
+
+		Context("with invalid prompt", func() {
+			It("rejects prompt without number prefix", func() {
+				p := prompt.Prompt{
+					Path:   filepath.Join(tempDir, "test.md"),
+					Status: prompt.StatusQueued,
+				}
+				err := p.ValidateForExecution(ctx)
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("missing NNN- prefix"))
+			})
+		})
+	})
+
+	Describe("Prompt.Number", func() {
+		It("extracts number from valid filename", func() {
+			p := prompt.Prompt{
+				Path: filepath.Join(tempDir, "001-test.md"),
+			}
+			Expect(p.Number()).To(Equal(1))
+		})
+
+		It("extracts larger number", func() {
+			p := prompt.Prompt{
+				Path: filepath.Join(tempDir, "042-test.md"),
+			}
+			Expect(p.Number()).To(Equal(42))
+		})
+
+		It("returns -1 for filename without number", func() {
+			p := prompt.Prompt{
+				Path: filepath.Join(tempDir, "test.md"),
+			}
+			Expect(p.Number()).To(Equal(-1))
+		})
+
+		It("returns -1 for invalid number format", func() {
+			p := prompt.Prompt{
+				Path: filepath.Join(tempDir, "1-test.md"),
+			}
+			Expect(p.Number()).To(Equal(-1))
+		})
+	})
+
+	Describe("AllPreviousCompleted", func() {
+		Context("with no previous prompts", func() {
+			It("returns true for n=1", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 1)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with all previous prompts completed", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "001-first.md", "completed")
+				createPromptFile(completedDir, "002-second.md", "completed")
+				createPromptFile(completedDir, "003-third.md", "completed")
+			})
+
+			It("returns true for n=4", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 4)
+				Expect(result).To(BeTrue())
+			})
+
+			It("returns true for n=2", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with gap in completed prompts", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "001-first.md", "completed")
+				createPromptFile(completedDir, "003-third.md", "completed")
+				// Missing 002
+			})
+
+			It("returns false for n=3", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 3)
+				Expect(result).To(BeFalse())
+			})
+
+			It("returns false for n=4", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 4)
+				Expect(result).To(BeFalse())
+			})
+
+			It("returns true for n=2", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with no completed directory", func() {
+			It("returns false for n=2", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				Expect(result).To(BeFalse())
+			})
+
+			It("returns true for n=1", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 1)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with empty completed directory", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns false for n=2", func() {
+				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("ListQueued", func() {
 		Context("with explicit status: queued", func() {
 			BeforeEach(func() {

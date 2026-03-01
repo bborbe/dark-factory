@@ -176,7 +176,7 @@ func (f *factory) processExistingQueued(ctx context.Context) error {
 
 		log.Printf("dark-factory: found queued prompt: %s", filepath.Base(p.Path))
 
-		// Process the prompt
+		// Process the prompt (includes moving to completed/ and committing)
 		if err := f.processPrompt(ctx, p); err != nil {
 			// Mark as failed
 			if setErr := prompt.SetStatus(ctx, p.Path, "failed"); setErr != nil {
@@ -185,12 +185,6 @@ func (f *factory) processExistingQueued(ctx context.Context) error {
 			return errors.Wrap(ctx, err, "process prompt")
 		}
 
-		// Move to completed/ (this also sets status to "completed")
-		if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
-			return errors.Wrap(ctx, err, "move to completed")
-		}
-
-		log.Printf("dark-factory: moved %s to completed/", filepath.Base(p.Path))
 		log.Printf("dark-factory: watching %s for queued prompts...", f.promptsDir)
 
 		// Loop again to process next prompt
@@ -225,7 +219,7 @@ func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 		Status: status,
 	}
 
-	// Process the prompt
+	// Process the prompt (includes moving to completed/ and committing)
 	if err := f.processPrompt(ctx, p); err != nil {
 		// Mark as failed
 		if setErr := prompt.SetStatus(ctx, p.Path, "failed"); setErr != nil {
@@ -236,13 +230,6 @@ func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 		return
 	}
 
-	// MoveToCompleted now sets status to "completed" internally before moving
-	if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
-		log.Printf("dark-factory: failed to move to completed: %v", err)
-		return
-	}
-
-	log.Printf("dark-factory: moved %s to completed/", filepath.Base(p.Path))
 	log.Printf("dark-factory: watching %s for queued prompts...", f.promptsDir)
 }
 
@@ -251,12 +238,16 @@ func (f *factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	// Get prompt content first to check if empty
 	content, err := prompt.Content(ctx, p.Path)
 	if err != nil {
-		// If prompt is empty, skip it without marking as failed
+		// If prompt is empty, move to completed and skip execution
 		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
 			log.Printf(
 				"dark-factory: skipping empty prompt: %s (file may still be in progress)",
 				filepath.Base(p.Path),
 			)
+			// Move empty prompts to completed/ (but don't commit)
+			if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
+				return errors.Wrap(ctx, err, "move empty prompt to completed")
+			}
 			return nil
 		}
 		return errors.Wrap(ctx, err, "get prompt content")
@@ -296,6 +287,13 @@ func (f *factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	}
 
 	log.Printf("dark-factory: docker container exited with code 0")
+
+	// Move to completed/ before commit so it's included in the release
+	if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
+		return errors.Wrap(ctx, err, "move to completed")
+	}
+
+	log.Printf("dark-factory: moved %s to completed/", filepath.Base(p.Path))
 
 	// Commit and release
 	nextVersion, err := git.GetNextVersion(ctx)

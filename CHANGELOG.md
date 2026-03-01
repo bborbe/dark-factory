@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.14
+
+### Added
+- Fix: completed/ files not staged before git commit
+
 ## v0.2.13
 
 ### Added

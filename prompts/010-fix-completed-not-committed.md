@@ -1,6 +1,7 @@
 ---
-status: queued
+status: executing
 ---
+
 # Fix: completed/ files not staged before git commit
 
 ## Bug

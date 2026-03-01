@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.0
+
+### Added
+- Add dark-factory version to prompt frontmatter
+
 ## v0.5.0
 
 ### Added

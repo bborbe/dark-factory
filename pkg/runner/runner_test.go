@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
 
@@ -138,7 +139,10 @@ var _ = Describe("Runner", func() {
 		Expect(mockManager.ResetExecutingCallCount()).To(Equal(1))
 	})
 
-	It("should normalize filenames on startup", func() {
+	It("should normalize filenames only in queue directory, not inbox", func() {
+		inboxDir := filepath.Join(promptsDir, "inbox")
+		queueDir := filepath.Join(promptsDir, "queue")
+
 		mockLocker.AcquireReturns(nil)
 		mockLocker.ReleaseReturns(nil)
 		mockManager.ResetExecutingReturns(nil)
@@ -158,8 +162,8 @@ var _ = Describe("Runner", func() {
 		}
 
 		r := runner.NewRunner(
-			promptsDir,
-			promptsDir,
+			inboxDir,
+			queueDir,
 			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
@@ -174,8 +178,12 @@ var _ = Describe("Runner", func() {
 		err := r.Run(runCtx)
 		Expect(err).To(BeNil())
 
-		// Verify NormalizeFilenames was called
+		// Verify NormalizeFilenames was called only once (for queue, not inbox)
 		Expect(mockManager.NormalizeFilenamesCallCount()).To(Equal(1))
+
+		// Verify it was called with the queue directory
+		_, dir := mockManager.NormalizeFilenamesArgsForCall(0)
+		Expect(dir).To(Equal(queueDir))
 	})
 
 	It("should run watcher and processor in parallel", func() {
@@ -273,6 +281,92 @@ var _ = Describe("Runner", func() {
 		case <-time.After(2 * time.Second):
 			Fail("runner did not exit after context cancel")
 		}
+	})
+
+	It("should return error when normalization fails", func() {
+		inboxDir := filepath.Join(promptsDir, "inbox")
+		queueDir := filepath.Join(promptsDir, "queue")
+
+		mockLocker.AcquireReturns(nil)
+		mockLocker.ReleaseReturns(nil)
+		mockManager.ResetExecutingReturns(nil)
+		mockManager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
+
+		r := runner.NewRunner(
+			inboxDir,
+			queueDir,
+			filepath.Join(promptsDir, "completed"),
+			mockManager,
+			mockLocker,
+			mockWatcher,
+			mockProcessor,
+			mockServer,
+		)
+
+		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer runCancel()
+
+		err := r.Run(runCtx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("normalize queue filenames"))
+
+		// Verify lock was still released
+		Expect(mockLocker.ReleaseCallCount()).To(Equal(1))
+	})
+
+	It("should log renamed files during normalization", func() {
+		inboxDir := filepath.Join(promptsDir, "inbox")
+		queueDir := filepath.Join(promptsDir, "queue")
+
+		mockLocker.AcquireReturns(nil)
+		mockLocker.ReleaseReturns(nil)
+		mockManager.ResetExecutingReturns(nil)
+
+		// Simulate a rename during normalization
+		mockManager.NormalizeFilenamesStub = func(ctx context.Context, dir string) ([]prompt.Rename, error) {
+			if dir == queueDir {
+				return []prompt.Rename{
+					{
+						OldPath: filepath.Join(queueDir, "old-name.md"),
+						NewPath: filepath.Join(queueDir, "001-new-name.md"),
+					},
+				}, nil
+			}
+			return nil, nil
+		}
+
+		mockWatcher.WatchStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockProcessor.ProcessStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+
+		r := runner.NewRunner(
+			inboxDir,
+			queueDir,
+			filepath.Join(promptsDir, "completed"),
+			mockManager,
+			mockLocker,
+			mockWatcher,
+			mockProcessor,
+			mockServer,
+		)
+
+		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer runCancel()
+
+		err := r.Run(runCtx)
+		Expect(err).To(BeNil())
+
+		// Verify normalization was called
+		Expect(mockManager.NormalizeFilenamesCallCount()).To(Equal(1))
 	})
 
 	It("should not start server when server is nil", func() {

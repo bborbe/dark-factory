@@ -113,30 +113,17 @@ func (r *runner) Run(ctx context.Context) error {
 	return run.CancelOnFirstError(ctx, runners...)
 }
 
-// normalizeFilenames normalizes filenames in the inbox and queue directories.
+// normalizeFilenames normalizes filenames in the queue directory only.
+// The inbox directory is not normalized as it contains draft files.
 func (r *runner) normalizeFilenames(ctx context.Context) error {
-	// Normalize inbox first
-	renames, err := r.promptManager.NormalizeFilenames(ctx, r.inboxDir)
+	renames, err := r.promptManager.NormalizeFilenames(ctx, r.queueDir)
 	if err != nil {
-		return errors.Wrap(ctx, err, "normalize inbox filenames")
+		return errors.Wrap(ctx, err, "normalize queue filenames")
 	}
 	for _, rename := range renames {
 		log.Printf("dark-factory: renamed %s -> %s",
 			filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
 	}
-
-	// If inbox != queue, also normalize queue
-	if r.inboxDir != r.queueDir {
-		renames, err := r.promptManager.NormalizeFilenames(ctx, r.queueDir)
-		if err != nil {
-			return errors.Wrap(ctx, err, "normalize queue filenames")
-		}
-		for _, rename := range renames {
-			log.Printf("dark-factory: renamed %s -> %s",
-				filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
-		}
-	}
-
 	return nil
 }
 

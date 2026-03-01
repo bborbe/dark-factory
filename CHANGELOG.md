@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.0
+
+### Added
+- Add instance lock to prevent concurrent dark-factory runs
+
 ## v0.2.36
 
 ### Added

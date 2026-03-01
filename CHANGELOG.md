@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.0
+
+### Added
+- Add Validate() to Prompt and use in processor
+
 ## v0.3.1
 
 ### Added

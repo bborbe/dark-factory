@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -112,4 +113,24 @@ func CreateServer(
 	ideasDir := "prompts/ideas"
 	statusChecker := status.NewChecker(queueDir, completedDir, ideasDir, promptManager)
 	return server.NewServer(addr, statusChecker)
+}
+
+// CreateStatusCommand creates a StatusCommand.
+func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
+	ideasDir := "prompts/ideas"
+	logDir := "prompts/log"
+	releaser := git.NewReleaser()
+	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
+
+	statusChecker := status.NewCheckerWithOptions(
+		cfg.QueueDir,
+		cfg.CompletedDir,
+		ideasDir,
+		logDir,
+		cfg.ServerPort,
+		promptManager,
+	)
+	formatter := status.NewFormatter()
+
+	return cmd.NewStatusCommand(statusChecker, formatter)
 }

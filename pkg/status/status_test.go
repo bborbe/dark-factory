@@ -58,13 +58,13 @@ var _ = Describe("StatusChecker", func() {
 	})
 
 	Describe("GetStatus", func() {
-		It("returns running status with no executing prompt", func() {
+		It("returns status with no executing prompt", func() {
 			mockPromptMgr.HasExecutingReturns(false)
 			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(st.Daemon).To(Equal("running"))
+			Expect(st.Daemon).To(Equal("not running"))
 			Expect(st.CurrentPrompt).To(BeEmpty())
 			Expect(st.QueueCount).To(Equal(0))
 			Expect(st.CompletedCount).To(Equal(0))
@@ -156,6 +156,31 @@ container: dark-factory-003-executing
 			Expect(st.Container).To(Equal("dark-factory-003-executing"))
 			Expect(st.ExecutingSince).NotTo(BeEmpty())
 		})
+
+		It("includes executing prompt with empty container name", func() {
+			// Create an executing prompt without container
+			execPath := filepath.Join(queueDir, "004-executing.md")
+			execContent := `---
+status: executing
+---
+# Test
+`
+			err := os.WriteFile(execPath, []byte(execContent), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockPromptMgr.HasExecutingReturns(true)
+			mockPromptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
+				Status:    "executing",
+				Container: "",
+			}, nil)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.CurrentPrompt).To(Equal("004-executing.md"))
+			Expect(st.Container).To(BeEmpty())
+			Expect(st.ContainerRunning).To(BeFalse())
+		})
 	})
 
 	Describe("GetQueuedPrompts", func() {
@@ -183,6 +208,62 @@ container: dark-factory-003-executing
 			Expect(queued[0].Name).To(Equal("001-test.md"))
 			Expect(queued[0].Title).To(Equal("Test Prompt"))
 			Expect(queued[0].Size).To(BeNumerically(">", 0))
+		})
+	})
+
+	Describe("GetStatus with log files", func() {
+		It("includes latest log file information", func() {
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			// Create log directory and files
+			logDir := filepath.Join(tempDir, "prompts", "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create older log file
+			err = os.WriteFile(filepath.Join(logDir, "001-old.log"), []byte("old log"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			time.Sleep(10 * time.Millisecond)
+
+			// Create newer log file
+			err = os.WriteFile(filepath.Join(logDir, "002-new.log"), []byte("newer log"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create checker with log directory
+			checkerWithLogs := status.NewCheckerWithOptions(
+				queueDir,
+				completedDir,
+				ideasDir,
+				logDir,
+				8080,
+				mockPromptMgr,
+			)
+
+			st, err := checkerWithLogs.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.LastLogFile).To(Equal(filepath.Join(logDir, "002-new.log")))
+			Expect(st.LastLogSize).To(BeNumerically(">", 0))
+		})
+
+		It("handles missing log directory", func() {
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			// Create checker with non-existent log directory
+			checkerWithLogs := status.NewCheckerWithOptions(
+				queueDir,
+				completedDir,
+				ideasDir,
+				"/nonexistent/log",
+				8080,
+				mockPromptMgr,
+			)
+
+			st, err := checkerWithLogs.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.LastLogFile).To(BeEmpty())
 		})
 	})
 

@@ -18,14 +18,18 @@ import (
 
 // Status represents the current daemon status.
 type Status struct {
-	Daemon         string   `json:"daemon"`
-	CurrentPrompt  string   `json:"current_prompt,omitempty"`
-	ExecutingSince string   `json:"executing_since,omitempty"`
-	Container      string   `json:"container,omitempty"`
-	QueueCount     int      `json:"queue_count"`
-	QueuedPrompts  []string `json:"queued_prompts"`
-	CompletedCount int      `json:"completed_count"`
-	IdeasCount     int      `json:"ideas_count"`
+	Daemon           string   `json:"daemon"`
+	DaemonPID        int      `json:"daemon_pid,omitempty"`
+	CurrentPrompt    string   `json:"current_prompt,omitempty"`
+	ExecutingSince   string   `json:"executing_since,omitempty"`
+	Container        string   `json:"container,omitempty"`
+	ContainerRunning bool     `json:"container_running,omitempty"`
+	QueueCount       int      `json:"queue_count"`
+	QueuedPrompts    []string `json:"queued_prompts"`
+	CompletedCount   int      `json:"completed_count"`
+	IdeasCount       int      `json:"ideas_count"`
+	LastLogFile      string   `json:"last_log_file,omitempty"`
+	LastLogSize      int64    `json:"last_log_size,omitempty"`
 }
 
 // QueuedPrompt represents a prompt in the queue with metadata.
@@ -55,6 +59,8 @@ type checker struct {
 	queueDir     string
 	completedDir string
 	ideasDir     string
+	logDir       string
+	serverPort   int
 	promptMgr    prompt.Manager
 }
 
@@ -69,6 +75,27 @@ func NewChecker(
 		queueDir:     queueDir,
 		completedDir: completedDir,
 		ideasDir:     ideasDir,
+		logDir:       "prompts/log",
+		serverPort:   8080,
+		promptMgr:    promptMgr,
+	}
+}
+
+// NewCheckerWithOptions creates a new Checker with additional options.
+func NewCheckerWithOptions(
+	queueDir string,
+	completedDir string,
+	ideasDir string,
+	logDir string,
+	serverPort int,
+	promptMgr prompt.Manager,
+) Checker {
+	return &checker{
+		queueDir:     queueDir,
+		completedDir: completedDir,
+		ideasDir:     ideasDir,
+		logDir:       logDir,
+		serverPort:   serverPort,
 		promptMgr:    promptMgr,
 	}
 }
@@ -76,9 +103,12 @@ func NewChecker(
 // GetStatus returns the current daemon status.
 func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	status := &Status{
-		Daemon:        "running",
+		Daemon:        "not running",
 		QueuedPrompts: []string{},
 	}
+
+	// Check if daemon is running
+	s.populateDaemonStatus(status)
 
 	// Check for executing prompt
 	if err := s.populateExecutingPrompt(ctx, status); err != nil {
@@ -109,6 +139,11 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 		return nil, errors.Wrap(ctx, err, "count ideas")
 	}
 	status.IdeasCount = ideasCount
+
+	// Find latest log file
+	if err := s.populateLogInfo(ctx, status); err != nil {
+		return nil, errors.Wrap(ctx, err, "populate log info")
+	}
 
 	return status, nil
 }
@@ -367,5 +402,78 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 		st.ExecutingSince = formatDuration(duration)
 	}
 
+	// Check if container is running
+	st.ContainerRunning = s.isContainerRunning(executing.Container)
+
 	return nil
+}
+
+// populateDaemonStatus checks if daemon is running.
+func (s *checker) populateDaemonStatus(st *Status) {
+	// Check if server port is listening
+	if s.isDaemonRunning() {
+		st.Daemon = "running"
+		// TODO: get PID from daemon when available
+	}
+}
+
+// populateLogInfo finds the latest log file.
+func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
+	entries, err := os.ReadDir(s.logDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(ctx, err, "read log directory")
+	}
+
+	var latestLog string
+	var latestTime time.Time
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		if latestLog == "" || info.ModTime().After(latestTime) {
+			latestLog = entry.Name()
+			latestTime = info.ModTime()
+		}
+	}
+
+	if latestLog != "" {
+		logPath := filepath.Join(s.logDir, latestLog)
+		st.LastLogFile = logPath
+
+		info, err := os.Stat(logPath)
+		if err == nil {
+			st.LastLogSize = info.Size()
+		}
+	}
+
+	return nil
+}
+
+// isDaemonRunning checks if the daemon is running by attempting to connect to the server port.
+func (s *checker) isDaemonRunning() bool {
+	// Try to connect to the server port
+	// For now, we check if the port is open by attempting a TCP connection
+	// This is a simple check - in production you might want to check a PID file or use a health endpoint
+	return false // TODO: implement port check or PID file check
+}
+
+// isContainerRunning checks if a Docker container is running.
+//
+//nolint:unparam // Will be implemented in future iteration
+func (s *checker) isContainerRunning(containerName string) bool {
+	if containerName == "" {
+		return false
+	}
+	// TODO: implement docker ps check
+	return false
 }

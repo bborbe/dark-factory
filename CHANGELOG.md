@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.0
+
+### Added
+- Add project configuration file support
+
 ## v0.4.0
 
 ### Added

@@ -1,6 +1,10 @@
 ---
-status: queued
+status: completed
+container: dark-factory-021-use-git-lib-instead-git-cmd
 ---
+
+
+
 # Replace git subprocess calls with go-git library
 
 ## Goal

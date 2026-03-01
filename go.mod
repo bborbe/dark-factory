@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/bborbe/errors v1.5.3
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/go-git/go-git/v5 v5.16.5
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/google/addlicense v1.2.0
 	github.com/google/osv-scanner/v2 v2.3.3
@@ -145,7 +146,6 @@ require (
 	github.com/go-errors/errors v1.0.2 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/go-git/go-git/v5 v5.16.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect

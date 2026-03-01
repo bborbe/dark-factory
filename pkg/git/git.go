@@ -5,15 +5,19 @@
 package git
 
 import (
-	"bytes"
 	"context"
 	"os"
-	"os/exec"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // VersionBump specifies the type of version bump to perform.
@@ -139,22 +143,40 @@ func CommitAndRelease(ctx context.Context, changelogEntry string, bump VersionBu
 // This is called after MoveToCompleted() to ensure the moved file is committed.
 // Does nothing if the file is already staged or committed.
 func CommitCompletedFile(ctx context.Context, path string) error {
-	// Stage the completed file
-	// #nosec G204 -- path is from MoveToCompleted which validates the path
-	cmd := exec.CommandContext(ctx, "git", "add", path)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "git add completed file")
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
 
-	// Check if there's anything to commit
-	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	out, err := statusCmd.Output()
+	wt, err := repo.Worktree()
 	if err != nil {
-		return errors.Wrap(ctx, err, "git status")
+		return errors.Wrap(ctx, err, "get worktree")
+	}
+
+	// Convert absolute path to relative path from worktree root
+	wtRoot := wt.Filesystem.Root()
+	relPath := strings.TrimPrefix(path, wtRoot+string(os.PathSeparator))
+
+	// Check if there's anything to commit before staging
+	statusBefore, err := wt.Status()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get status before add")
+	}
+
+	// Stage the completed file
+	_, err = wt.Add(relPath)
+	if err != nil {
+		return errors.Wrap(ctx, err, "add completed file")
+	}
+
+	// Check if there's anything to commit after staging
+	statusAfter, err := wt.Status()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get status after add")
 	}
 
 	// Nothing to commit - file already staged or committed
-	if len(strings.TrimSpace(string(out))) == 0 {
+	if statusBefore.IsClean() && statusAfter.IsClean() {
 		return nil
 	}
 
@@ -164,10 +186,21 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 
 // gitAddAll stages all changes
 func gitAddAll(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "git", "add", "-A")
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "run git add")
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get worktree")
+	}
+
+	// Add all files (equivalent to git add -A)
+	if err := wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
+		return errors.Wrap(ctx, err, "add all files")
+	}
+
 	return nil
 }
 
@@ -178,15 +211,35 @@ func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 
 // getNextVersion determines the next version based on the bump type
 func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
-	// Get latest tag
-	cmd := exec.CommandContext(ctx, "git", "describe", "--tags", "--abbrev=0")
-	output, err := cmd.Output()
+	repo, err := gogit.PlainOpen(".")
 	if err != nil {
-		// No tags exist yet, start with v0.1.0
+		return "", errors.Wrap(ctx, err, "open git repository")
+	}
+
+	// Get all tags
+	tags, err := repo.Tags()
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "get tags")
+	}
+
+	// Collect all tag names
+	var tagNames []string
+	err = tags.ForEach(func(ref *plumbing.Reference) error {
+		tagNames = append(tagNames, ref.Name().Short())
+		return nil
+	})
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "iterate tags")
+	}
+
+	// If no tags exist, start with v0.1.0
+	if len(tagNames) == 0 {
 		return "v0.1.0", nil
 	}
 
-	latestTag := strings.TrimSpace(string(output))
+	// Sort tags to get the latest (lexicographically)
+	sort.Strings(tagNames)
+	latestTag := tagNames[len(tagNames)-1]
 
 	// Apply the appropriate bump
 	switch bump {
@@ -340,42 +393,90 @@ func findInsertIndex(lines []string) int {
 
 // gitCommit creates a commit with the given message
 func gitCommit(ctx context.Context, message string) error {
-	// #nosec G204 -- git commit message is controlled by the application
-	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "run git commit: %s", stderr.String())
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get worktree")
+	}
+
+	// Get git config for author information
+	cfg, err := repo.Config()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get git config")
+	}
+
+	author := &object.Signature{
+		Name:  cfg.User.Name,
+		Email: cfg.User.Email,
+		When:  time.Now(),
+	}
+
+	commitOpts := &gogit.CommitOptions{
+		Author: author,
+	}
+
+	_, err = wt.Commit(message, commitOpts)
+	if err != nil {
+		return errors.Wrap(ctx, err, "create commit")
+	}
+
 	return nil
 }
 
 // gitTag creates a tag
 func gitTag(ctx context.Context, tag string) error {
-	// #nosec G204 -- git tag is generated by version bumping
-	cmd := exec.CommandContext(ctx, "git", "tag", tag)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "run git tag")
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return errors.Wrap(ctx, err, "get HEAD")
+	}
+
+	_, err = repo.CreateTag(tag, head.Hash(), nil)
+	if err != nil {
+		return errors.Wrap(ctx, err, "create tag")
+	}
+
 	return nil
 }
 
 // gitPush pushes commits to remote
 func gitPush(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "git", "push")
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "run git push")
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
+
+	err = repo.Push(&gogit.PushOptions{})
+	if err != nil && err != gogit.NoErrAlreadyUpToDate {
+		return errors.Wrap(ctx, err, "push to remote")
+	}
+
 	return nil
 }
 
 // gitPushTag pushes a tag to remote
 func gitPushTag(ctx context.Context, tag string) error {
-	// #nosec G204 -- git tag is generated by version bumping
-	cmd := exec.CommandContext(ctx, "git", "push", "origin", tag)
-	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "run git push tag")
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		return errors.Wrap(ctx, err, "open git repository")
 	}
+
+	// Push the specific tag
+	refSpec := config.RefSpec("refs/tags/" + tag + ":refs/tags/" + tag)
+	err = repo.Push(&gogit.PushOptions{
+		RefSpecs: []config.RefSpec{refSpec},
+	})
+	if err != nil && err != gogit.NoErrAlreadyUpToDate {
+		return errors.Wrap(ctx, err, "push tag to remote")
+	}
+
 	return nil
 }

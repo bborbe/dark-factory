@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.8
+
+### Added
+- Replace git subprocess calls with go-git library
+
 ## v0.1.7
 
 ### Added

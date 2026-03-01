@@ -11,57 +11,63 @@ operations.
 
 1. User drops `foo.md` and `bar.md` into `prompts/`
 2. fsnotify fires two events
-3. `handleFileEvent` runs twice concurrently
+3. `handleFileEvent` runs twice concurrently (via debounce timers)
 4. Two Docker containers start simultaneously
 5. Both try to `git add / commit / tag / push` — race condition
 
+Note: `processExistingQueued` already processes sequentially in a loop. The
+problem is only in the watcher path (`handleFileEvent`).
+
 ## Expected Behavior
 
-Only one prompt executes at a time. Additional prompts wait in a queue and are
-processed after the current one finishes.
+Only one prompt executes at a time. If a prompt has `status: executing`, no new
+prompt should start. The watcher event should be skipped — the prompt will be
+picked up after the current one finishes (because `processExistingQueued` loops
+back to check for more queued prompts after each completion).
 
 ## Implementation
 
-### Option A: Processing mutex (simplest)
-
-Add a `sync.Mutex` to `factory` and lock it in `handleFileEvent` before calling
-`processPrompt`:
+In `handleFileEvent`, before calling `processPrompt`, check if any prompt in the
+directory already has `status: executing`:
 
 ```go
-type factory struct {
-    promptsDir string
-    executor   executor.Executor
-    processMu  sync.Mutex // serialize prompt execution
-}
-
 func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
-    f.processMu.Lock()
-    defer f.processMu.Unlock()
+    // Skip if another prompt is currently executing
+    if prompt.HasExecuting(ctx, f.promptsDir) {
+        return
+    }
     // ... existing logic ...
 }
 ```
 
-`processExistingQueued` already runs sequentially in a loop, so it only needs the
-mutex if it could overlap with watcher events. Since `processExistingQueued` runs
-before the watcher starts, this is safe. But for extra safety, lock there too.
-
-### Option B: Channel-based queue
-
-Send file paths to a buffered channel, drain with a single goroutine:
+Add `HasExecuting` to `pkg/prompt/`:
 
 ```go
-type factory struct {
-    promptsDir string
-    executor   executor.Executor
-    queue      chan string
+// HasExecuting returns true if any prompt in dir has status "executing".
+func HasExecuting(ctx context.Context, dir string) bool {
+    entries, err := os.ReadDir(dir)
+    if err != nil {
+        return false
+    }
+    for _, entry := range entries {
+        if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+            continue
+        }
+        fm, err := ReadFrontmatter(ctx, filepath.Join(dir, entry.Name()))
+        if err != nil {
+            continue
+        }
+        if fm.Status == "executing" {
+            return true
+        }
+    }
+    return false
 }
 ```
 
-More complex but allows ordered processing.
-
-## Recommended: Option A
-
-Mutex is simplest, no ordering guarantees needed, and prevents the race.
+After `processPrompt` completes (success or failure), call `processExistingQueued`
+to drain any remaining queued prompts that arrived during execution. This is
+already the behavior on startup — just reuse it after watcher events too.
 
 ## Constraints
 

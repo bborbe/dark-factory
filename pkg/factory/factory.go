@@ -188,9 +188,9 @@ func (f *factory) processExistingQueued(ctx context.Context) error {
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := f.processPrompt(ctx, p); err != nil {
-			// Mark as failed
+			// Mark as failed — file may have been moved to completed/ before the error.
 			if setErr := prompt.SetStatus(ctx, p.Path, "failed"); setErr != nil {
-				return errors.Wrap(ctx, setErr, "set failed status")
+				log.Printf("dark-factory: failed to set failed status: %v", setErr)
 			}
 			return errors.Wrap(ctx, err, "process prompt")
 		}
@@ -322,13 +322,16 @@ func (f *factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 
 	log.Printf("dark-factory: moved %s to completed/", filepath.Base(p.Path))
 
+	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
+	gitCtx := context.WithoutCancel(ctx)
+
 	// Commit and release
-	nextVersion, err := git.GetNextVersion(ctx)
+	nextVersion, err := git.GetNextVersion(gitCtx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := git.CommitAndRelease(ctx, title); err != nil {
+	if err := git.CommitAndRelease(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 

@@ -343,6 +343,17 @@ func NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
 	}
 
 	files, usedNumbers := scanPromptFiles(entries)
+
+	// Also collect numbers used in completed/ so we don't assign duplicates.
+	completedEntries, err := os.ReadDir(filepath.Join(dir, "completed"))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(ctx, err, "read completed directory")
+	}
+	_, completedNumbers := scanPromptFiles(completedEntries)
+	for n := range completedNumbers {
+		usedNumbers[n] = true
+	}
+
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].name < files[j].name
 	})

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.2.19
+
+### Fixed
+- NormalizeFilenames now scans completed/ to avoid duplicate number assignment
+- processPrompt uses context.WithoutCancel for git ops to prevent shutdown interruption
+- processExistingQueued logs SetStatus failure gracefully when file already moved
+
 ## v0.2.18
 
 ### Added

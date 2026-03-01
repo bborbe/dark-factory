@@ -691,6 +691,30 @@ Content here.
 			})
 		})
 
+		Context("with numbers used in completed/ subdirectory", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				// completed/ has 001-003
+				createPromptFile(completedDir, "001-done.md", "completed")
+				createPromptFile(completedDir, "002-done.md", "completed")
+				createPromptFile(completedDir, "003-done.md", "completed")
+
+				// root has no numbered files, only an unnumbered one
+				createPromptFile(tempDir, "new-feature.md", "queued")
+			})
+
+			It("assigns next number above completed/ maximum", func() {
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("004-new-feature.md"))
+			})
+		})
+
 		Context("with non-markdown files", func() {
 			BeforeEach(func() {
 				createPromptFile(tempDir, "001-valid.md", "queued")

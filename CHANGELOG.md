@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.1
+
+### Added
+- Disable HTTP server when serverPort is 0 or missing
+
 ## v0.10.0
 
 ### Added

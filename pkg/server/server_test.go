@@ -21,6 +21,7 @@ import (
 var _ = Describe("Server", func() {
 	var (
 		mockStatusChecker *mocks.Checker
+		mockPromptManager *mocks.Manager
 		srv               server.Server
 		ctx               context.Context
 		cancel            context.CancelFunc
@@ -28,7 +29,8 @@ var _ = Describe("Server", func() {
 
 	BeforeEach(func() {
 		mockStatusChecker = &mocks.Checker{}
-		srv = server.NewServer(":18080", mockStatusChecker)
+		mockPromptManager = &mocks.Manager{}
+		srv = server.NewServer(":18080", mockStatusChecker, "inbox", "queue", mockPromptManager)
 		ctx, cancel = context.WithCancel(context.Background())
 	})
 

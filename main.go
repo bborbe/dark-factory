@@ -39,6 +39,9 @@ func run() error {
 	case "status":
 		statusCmd := factory.CreateStatusCommand(cfg)
 		return statusCmd.Run(ctx, args)
+	case "queue":
+		queueCmd := factory.CreateQueueCommand(cfg)
+		return queueCmd.Run(ctx, args)
 	case "run":
 		r := factory.CreateRunner(cfg, version.Version)
 		return r.Run(ctx)
@@ -50,6 +53,7 @@ func run() error {
 // parseArgs parses command line arguments and returns (command, args).
 // No args or "run" → run command
 // "status" → status command
+// "queue" → queue command
 func parseArgs() (string, []string) {
 	if len(os.Args) <= 1 {
 		return "run", []string{}
@@ -61,7 +65,7 @@ func parseArgs() (string, []string) {
 		args = os.Args[2:]
 	}
 
-	if command == "run" || command == "status" {
+	if command == "run" || command == "status" || command == "queue" {
 		return command, args
 	}
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/status"
 )
 
@@ -27,16 +28,25 @@ type Server interface {
 type server struct {
 	addr          string
 	statusChecker status.Checker
+	inboxDir      string
+	queueDir      string
+	promptManager prompt.Manager
 }
 
 // NewServer creates a new Server.
 func NewServer(
 	addr string,
 	statusChecker status.Checker,
+	inboxDir string,
+	queueDir string,
+	promptManager prompt.Manager,
 ) Server {
 	return &server{
 		addr:          addr,
 		statusChecker: statusChecker,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
+		promptManager: promptManager,
 	}
 }
 
@@ -48,6 +58,15 @@ func (s *server) ListenAndServe(ctx context.Context) error {
 	mux.HandleFunc("/health", NewHealthHandler())
 	mux.HandleFunc("/api/v1/status", NewStatusHandler(s.statusChecker))
 	mux.HandleFunc("/api/v1/queue", NewQueueHandler(s.statusChecker))
+	mux.HandleFunc(
+		"/api/v1/queue/action",
+		NewQueueActionHandler(s.inboxDir, s.queueDir, s.promptManager),
+	)
+	mux.HandleFunc(
+		"/api/v1/queue/action/all",
+		NewQueueActionHandler(s.inboxDir, s.queueDir, s.promptManager),
+	)
+	mux.HandleFunc("/api/v1/inbox", NewInboxHandler(s.inboxDir))
 	mux.HandleFunc("/api/v1/completed", NewCompletedHandler(s.statusChecker))
 
 	httpServer := &http.Server{

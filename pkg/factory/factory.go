@@ -59,6 +59,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		),
 		CreateServer(
 			cfg.ServerPort,
+			inboxDir,
 			queueDir,
 			completedDir,
 			promptManager,
@@ -111,6 +112,7 @@ func CreateLocker(dir string) lock.Locker {
 // CreateServer creates a Server that provides HTTP endpoints for monitoring.
 func CreateServer(
 	port int,
+	inboxDir string,
 	queueDir string,
 	completedDir string,
 	promptManager prompt.Manager,
@@ -118,7 +120,7 @@ func CreateServer(
 	addr := fmt.Sprintf(":%d", port)
 	ideasDir := "prompts/ideas"
 	statusChecker := status.NewChecker(queueDir, completedDir, ideasDir, promptManager)
-	return server.NewServer(addr, statusChecker)
+	return server.NewServer(addr, statusChecker, inboxDir, queueDir, promptManager)
 }
 
 // CreateStatusCommand creates a StatusCommand.
@@ -138,4 +140,12 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	formatter := status.NewFormatter()
 
 	return cmd.NewStatusCommand(statusChecker, formatter)
+}
+
+// CreateQueueCommand creates a QueueCommand.
+func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
+	releaser := git.NewReleaser()
+	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
+
+	return cmd.NewQueueCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
 }

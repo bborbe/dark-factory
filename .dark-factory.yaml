@@ -1,3 +1,8 @@
+workflow: direct
 inboxDir: prompts
 queueDir: prompts/queue
 completedDir: prompts/completed
+logDir: prompts/log
+containerImage: docker.io/bborbe/claude-yolo:v0.0.7
+debounceMs: 500
+serverPort: -1

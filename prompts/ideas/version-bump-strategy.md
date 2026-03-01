@@ -81,4 +81,4 @@ if err := git.CommitAndRelease(ctx, title, bump); err != nil { ... }
 
 - **Never** add `BumpMajorVersion` — major bumps require Go module path changes
 - Update counterfeiter mocks after interface changes (`make generate`)
-- Run `make precommit` before finishing
+- Run `make precommit` for validation only — do NOT commit, tag, or push (dark-factory handles all git operations)

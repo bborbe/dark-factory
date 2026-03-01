@@ -79,4 +79,4 @@ Remove the `git.GetNextVersion()` call from `processPrompt()` — it is redundan
 ## Constraints
 
 - `HasChangelog` check is per-run (on startup or per prompt) — not cached
-- Run `make precommit` before finishing
+- Run `make precommit` for validation only — do NOT commit, tag, or push (dark-factory handles all git operations)

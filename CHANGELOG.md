@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.16
+
+### Added
+- Fix: completed/ prompt file missing from release commit
+
 ## v0.2.15
 
 ### Added

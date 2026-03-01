@@ -64,5 +64,5 @@ repo.CreateTag("v0.1.0", ...)
 ## Constraints
 
 - Keep public API unchanged
-- Run `make precommit` before finishing
+- Run `make precommit` for validation only — do NOT commit, tag, or push (dark-factory handles all git operations)
 - Verify tests pass with `make test`

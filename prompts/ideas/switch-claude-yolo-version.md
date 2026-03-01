@@ -42,4 +42,4 @@ const claudeYoloImage = "docker.io/bborbe/claude-yolo:v0.0.7"
 ## Constraints
 
 - Latest available tag as of now: `v0.0.7`
-- Run `make precommit` before finishing
+- Run `make precommit` for validation only — do NOT commit, tag, or push (dark-factory handles all git operations)

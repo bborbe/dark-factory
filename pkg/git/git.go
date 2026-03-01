@@ -150,20 +150,17 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 		return errors.Wrap(ctx, err, "get worktree")
 	}
 
-	// Convert absolute path to relative path from worktree root
-	wtRoot := wt.Filesystem.Root()
-	relPath := strings.TrimPrefix(path, wtRoot+string(os.PathSeparator))
-
 	// Check if there's anything to commit before staging
 	statusBefore, err := wt.Status()
 	if err != nil {
 		return errors.Wrap(ctx, err, "get status before add")
 	}
 
-	// Stage the completed file
-	_, err = wt.Add(relPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, "add completed file")
+	// Stage all changes (equivalent to git add -A)
+	// This handles file moves properly by staging both the deletion
+	// of the old path and the addition of the new path
+	if err := wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
+		return errors.Wrap(ctx, err, "add all changes")
 	}
 
 	// Check if there's anything to commit after staging

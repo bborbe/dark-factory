@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.34
+
+### Added
+- Fix CommitCompletedFile "entry not found" error
+
 ## v0.2.33
 
 ### Added

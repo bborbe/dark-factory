@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ type Releaser interface {
 	CommitCompletedFile(ctx context.Context, path string) error
 	CommitOnly(ctx context.Context, message string) error
 	HasChangelog(ctx context.Context) bool
+	MoveFile(ctx context.Context, oldPath string, newPath string) error
 }
 
 // releaser implements Releaser.
@@ -81,6 +83,12 @@ func (r *releaser) CommitOnly(ctx context.Context, message string) error {
 	}
 
 	return nil
+}
+
+// MoveFile moves a file using git mv to preserve history.
+// Falls back to os.Rename if git operations fail or not in a git repo.
+func (r *releaser) MoveFile(ctx context.Context, oldPath string, newPath string) error {
+	return MoveFile(ctx, oldPath, newPath)
 }
 
 // CommitAndRelease performs the full git workflow:
@@ -176,6 +184,66 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 
 	// Commit the completed file
 	return gitCommit(ctx, "move prompt to completed")
+}
+
+// MoveFile moves a file using git-aware operations to preserve history.
+// Falls back to os.Rename if git operations fail or not in a git repo.
+func MoveFile(ctx context.Context, oldPath string, newPath string) error {
+	// Try git operations first
+	repo, err := gogit.PlainOpen(".")
+	if err != nil {
+		// Not in a git repo - fallback to os.Rename
+		return fallbackRename(ctx, oldPath, newPath)
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return fallbackRename(ctx, oldPath, newPath)
+	}
+
+	// Get repository root for relative path calculation
+	repoRoot := wt.Filesystem.Root()
+
+	// Convert to relative paths from repo root if they're absolute
+	oldRelPath, err := filepath.Rel(repoRoot, oldPath)
+	if err != nil {
+		oldRelPath = oldPath
+	}
+
+	newRelPath, err := filepath.Rel(repoRoot, newPath)
+	if err != nil {
+		newRelPath = newPath
+	}
+
+	// Perform the rename using os.Rename
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return errors.Wrap(ctx, err, "rename file")
+	}
+
+	// Stage the deletion of the old path
+	_, err = wt.Remove(oldRelPath)
+	if err != nil {
+		// If staging fails, the file is still moved, just not staged
+		// This is acceptable as a fallback
+		return nil
+	}
+
+	// Stage the addition of the new path
+	_, err = wt.Add(newRelPath)
+	if err != nil {
+		// If staging fails, the file is still moved, just not staged
+		return nil
+	}
+
+	return nil
+}
+
+// fallbackRename performs os.Rename when git operations are not available.
+func fallbackRename(ctx context.Context, oldPath string, newPath string) error {
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return errors.Wrap(ctx, err, "rename file")
+	}
+	return nil
 }
 
 // gitAddAll stages all changes

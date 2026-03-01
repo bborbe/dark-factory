@@ -15,10 +15,18 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
+// simpleMover is a test implementation that uses os.Rename
+type simpleMover struct{}
+
+func (s *simpleMover) MoveFile(ctx context.Context, oldPath string, newPath string) error {
+	return os.Rename(oldPath, newPath)
+}
+
 var _ = Describe("Prompt", func() {
 	var (
 		ctx     context.Context
 		tempDir string
+		mover   prompt.FileMover
 	)
 
 	BeforeEach(func() {
@@ -26,6 +34,7 @@ var _ = Describe("Prompt", func() {
 		var err error
 		tempDir, err = os.MkdirTemp("", "prompt-test-*")
 		Expect(err).To(BeNil())
+		mover = &simpleMover{}
 	})
 
 	AfterEach(func() {
@@ -364,7 +373,7 @@ This is the content.
 		})
 
 		It("moves file to completed subdirectory", func() {
-			err := prompt.MoveToCompleted(ctx, path)
+			err := prompt.MoveToCompleted(ctx, path, mover)
 			Expect(err).To(BeNil())
 
 			// Original file should not exist
@@ -378,7 +387,7 @@ This is the content.
 		})
 
 		It("sets status to completed before moving", func() {
-			err := prompt.MoveToCompleted(ctx, path)
+			err := prompt.MoveToCompleted(ctx, path, mover)
 			Expect(err).To(BeNil())
 
 			// Read completed file and verify status
@@ -637,7 +646,7 @@ Content here.
 			})
 
 			It("assigns next available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("fix-something.md"))
@@ -658,7 +667,7 @@ Content here.
 			})
 
 			It("renames later file to next available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// First file alphabetically (009-bar.md) is kept, second (009-foo.md) is renamed
@@ -681,7 +690,7 @@ Content here.
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("9-foo.md"))
@@ -701,7 +710,7 @@ Content here.
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("42-answer.md"))
@@ -717,7 +726,7 @@ Content here.
 			})
 
 			It("does not rename any files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -739,7 +748,7 @@ Content here.
 			})
 
 			It("renames only invalid files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(2))
 
@@ -768,7 +777,7 @@ Content here.
 			})
 
 			It("does not rename files in subdirectories", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -794,7 +803,7 @@ Content here.
 			})
 
 			It("assigns next number above completed/ maximum", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
@@ -811,7 +820,7 @@ Content here.
 			})
 
 			It("ignores non-markdown files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -823,7 +832,7 @@ Content here.
 
 		Context("with empty directory", func() {
 			It("returns no renames", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 			})
@@ -838,7 +847,7 @@ Content here.
 			})
 
 			It("assigns smallest available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir)
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))

@@ -71,6 +71,19 @@ type Releaser struct {
 	hasChangelogReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	MoveFileStub        func(context.Context, string, string) error
+	moveFileMutex       sync.RWMutex
+	moveFileArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	moveFileReturns struct {
+		result1 error
+	}
+	moveFileReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -385,6 +398,69 @@ func (fake *Releaser) HasChangelogReturnsOnCall(i int, result1 bool) {
 	}
 	fake.hasChangelogReturnsOnCall[i] = struct {
 		result1 bool
+	}{result1}
+}
+
+func (fake *Releaser) MoveFile(arg1 context.Context, arg2 string, arg3 string) error {
+	fake.moveFileMutex.Lock()
+	ret, specificReturn := fake.moveFileReturnsOnCall[len(fake.moveFileArgsForCall)]
+	fake.moveFileArgsForCall = append(fake.moveFileArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.MoveFileStub
+	fakeReturns := fake.moveFileReturns
+	fake.recordInvocation("MoveFile", []interface{}{arg1, arg2, arg3})
+	fake.moveFileMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) MoveFileCallCount() int {
+	fake.moveFileMutex.RLock()
+	defer fake.moveFileMutex.RUnlock()
+	return len(fake.moveFileArgsForCall)
+}
+
+func (fake *Releaser) MoveFileCalls(stub func(context.Context, string, string) error) {
+	fake.moveFileMutex.Lock()
+	defer fake.moveFileMutex.Unlock()
+	fake.MoveFileStub = stub
+}
+
+func (fake *Releaser) MoveFileArgsForCall(i int) (context.Context, string, string) {
+	fake.moveFileMutex.RLock()
+	defer fake.moveFileMutex.RUnlock()
+	argsForCall := fake.moveFileArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Releaser) MoveFileReturns(result1 error) {
+	fake.moveFileMutex.Lock()
+	defer fake.moveFileMutex.Unlock()
+	fake.MoveFileStub = nil
+	fake.moveFileReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) MoveFileReturnsOnCall(i int, result1 error) {
+	fake.moveFileMutex.Lock()
+	defer fake.moveFileMutex.Unlock()
+	fake.MoveFileStub = nil
+	if fake.moveFileReturnsOnCall == nil {
+		fake.moveFileReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.moveFileReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 

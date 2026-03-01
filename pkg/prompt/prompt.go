@@ -41,6 +41,13 @@ type Frontmatter struct {
 	Container string `yaml:"container,omitempty"`
 }
 
+// FileMover handles file move operations with git awareness.
+//
+//counterfeiter:generate -o ../../mocks/file-mover.go --fake-name FileMover . FileMover
+type FileMover interface {
+	MoveFile(ctx context.Context, oldPath string, newPath string) error
+}
+
 // Manager manages prompt file operations.
 //
 //counterfeiter:generate -o ../../mocks/prompt-manager.go --fake-name Manager . Manager
@@ -59,12 +66,16 @@ type Manager interface {
 
 // manager implements Manager.
 type manager struct {
-	dir string
+	dir   string
+	mover FileMover
 }
 
 // NewManager creates a new Manager.
-func NewManager(dir string) Manager {
-	return &manager{dir: dir}
+func NewManager(dir string, mover FileMover) Manager {
+	return &manager{
+		dir:   dir,
+		mover: mover,
+	}
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "queued".
@@ -109,12 +120,12 @@ func (pm *manager) Title(ctx context.Context, path string) (string, error) {
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
 func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
-	return MoveToCompleted(ctx, path)
+	return MoveToCompleted(ctx, path, pm.mover)
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
 func (pm *manager) NormalizeFilenames(ctx context.Context) ([]Rename, error) {
-	return NormalizeFilenames(ctx, pm.dir)
+	return NormalizeFilenames(ctx, pm.dir, pm.mover)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
@@ -346,7 +357,7 @@ func Content(ctx context.Context, path string) (string, error) {
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
 // This ensures files in completed/ always have the correct status.
-func MoveToCompleted(ctx context.Context, path string) error {
+func MoveToCompleted(ctx context.Context, path string, mover FileMover) error {
 	// Set status to completed before moving
 	if err := SetStatus(ctx, path, "completed"); err != nil {
 		return errors.Wrap(ctx, err, "set completed status")
@@ -364,7 +375,7 @@ func MoveToCompleted(ctx context.Context, path string) error {
 	filename := filepath.Base(path)
 	dest := filepath.Join(completedDir, filename)
 
-	if err := os.Rename(path, dest); err != nil {
+	if err := mover.MoveFile(ctx, path, dest); err != nil {
 		return errors.Wrap(ctx, err, "move file")
 	}
 
@@ -433,7 +444,7 @@ type fileInfo struct {
 // - Have a duplicate number (later file gets next available number)
 // - Have wrong format (e.g., 9-foo.md instead of 009-foo.md)
 // Returns list of renames performed.
-func NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
+func NormalizeFilenames(ctx context.Context, dir string, mover FileMover) ([]Rename, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
@@ -455,7 +466,7 @@ func NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
 		return files[i].name < files[j].name
 	})
 
-	return renameInvalidFiles(ctx, dir, files, usedNumbers)
+	return renameInvalidFiles(ctx, dir, files, usedNumbers, mover)
 }
 
 // scanPromptFiles scans directory entries and extracts file information.
@@ -513,6 +524,7 @@ func renameInvalidFiles(
 	dir string,
 	files []fileInfo,
 	usedNumbers map[int]bool,
+	mover FileMover,
 ) ([]Rename, error) {
 	var renames []Rename
 	seenNumbers := make(map[int]string)
@@ -521,7 +533,7 @@ func renameInvalidFiles(
 		newNumber, needsRename := determineRename(f, seenNumbers, usedNumbers)
 
 		if needsRename {
-			rename, err := performRename(ctx, dir, f, newNumber)
+			rename, err := performRename(ctx, dir, f, newNumber, mover)
 			if err != nil {
 				return nil, err
 			}
@@ -574,12 +586,18 @@ func findNextAvailableNumber(usedNumbers map[int]bool) int {
 }
 
 // performRename renames a file to match the naming convention.
-func performRename(ctx context.Context, dir string, f fileInfo, newNumber int) (Rename, error) {
+func performRename(
+	ctx context.Context,
+	dir string,
+	f fileInfo,
+	newNumber int,
+	mover FileMover,
+) (Rename, error) {
 	oldPath := filepath.Join(dir, f.name)
 	newName := fmt.Sprintf("%03d-%s.md", newNumber, f.slug)
 	newPath := filepath.Join(dir, newName)
 
-	if err := os.Rename(oldPath, newPath); err != nil {
+	if err := mover.MoveFile(ctx, oldPath, newPath); err != nil {
 		return Rename{}, errors.Wrap(ctx, err, "rename file")
 	}
 

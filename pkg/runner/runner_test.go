@@ -142,7 +142,7 @@ This is a test prompt.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -203,7 +203,7 @@ This is a test prompt.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -261,7 +261,7 @@ This is a new prompt.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -324,7 +324,7 @@ This prompt will fail during execution.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -377,7 +377,7 @@ Content here.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -431,7 +431,7 @@ This has no YAML frontmatter.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -481,7 +481,7 @@ This has no YAML frontmatter.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -542,7 +542,7 @@ Testing status updates.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -581,7 +581,7 @@ Testing status updates.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -645,7 +645,7 @@ This should not be processed.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -694,7 +694,7 @@ Testing container name setting.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -744,7 +744,7 @@ This was stuck from a previous crash.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -778,7 +778,7 @@ This was stuck from a previous crash.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -833,7 +833,7 @@ Test file permission changes.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -902,7 +902,7 @@ Content here.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -954,7 +954,7 @@ This tests the git workflow.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -993,7 +993,7 @@ This tests the git workflow.
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -1062,7 +1062,7 @@ Content iteration %d
 		r := runner.NewRunner(
 			promptsDir,
 			executor,
-			prompt.NewManager(promptsDir),
+			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
 		)
 
@@ -1211,7 +1211,7 @@ var _ = Describe("processPrompt with changelog", func() {
 		// Create mocks
 		mockExecutor = &mocks.Executor{}
 		mockReleaser = &mocks.Releaser{}
-		promptManager = prompt.NewManager(promptsDir)
+		promptManager = prompt.NewManager(promptsDir, git.NewReleaser())
 
 		// Create test prompt
 		promptPath = filepath.Join(promptsDir, "001-test.md")

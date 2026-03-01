@@ -13,10 +13,11 @@ import (
 
 // CreateRunner creates a Runner that watches prompts/ and executes via Docker.
 func CreateRunner(promptsDir string) runner.Runner {
+	releaser := git.NewReleaser()
 	return runner.NewRunner(
 		promptsDir,
 		executor.NewDockerExecutor(),
-		prompt.NewManager(promptsDir),
-		git.NewReleaser(),
+		prompt.NewManager(promptsDir, releaser),
+		releaser,
 	)
 }

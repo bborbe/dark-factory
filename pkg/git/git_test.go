@@ -1023,6 +1023,191 @@ var _ = Describe("Git", func() {
 		})
 	})
 
+	Describe("MoveFile", func() {
+		var (
+			ctx         context.Context
+			tempDir     string
+			originalDir string
+			r           git.Releaser
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			var err error
+			originalDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "git-movefile-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initialize git repo
+			cmd := exec.Command("git", "init")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Configure git
+			cmd = exec.Command("git", "config", "user.email", "test@example.com")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "config", "user.name", "Test User")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initial commit
+			err = os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial commit")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to temp directory
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			r = git.NewReleaser()
+		})
+
+		AfterEach(func() {
+			if originalDir != "" {
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		Context("in a git repository", func() {
+			It("moves file using git mv", func() {
+				// Create and commit a file
+				oldPath := filepath.Join(tempDir, "old-name.md")
+				err := os.WriteFile(oldPath, []byte("test content"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "add file")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Move file
+				newPath := filepath.Join(tempDir, "new-name.md")
+				err = r.MoveFile(ctx, oldPath, newPath)
+				Expect(err).To(BeNil())
+
+				// Verify old file doesn't exist
+				_, err = os.Stat(oldPath)
+				Expect(os.IsNotExist(err)).To(BeTrue())
+
+				// Verify new file exists
+				_, err = os.Stat(newPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify content is preserved
+				content, err := os.ReadFile(newPath)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(content)).To(Equal("test content"))
+
+				// Verify git status shows the file as renamed (staged)
+				cmd = exec.Command("git", "status", "--short")
+				cmd.Dir = tempDir
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("R"))
+				Expect(string(output)).To(ContainSubstring("old-name.md"))
+				Expect(string(output)).To(ContainSubstring("new-name.md"))
+			})
+
+			It("moves file to subdirectory", func() {
+				// Create and commit a file
+				oldPath := filepath.Join(tempDir, "file.md")
+				err := os.WriteFile(oldPath, []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "add file")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create subdirectory
+				subDir := filepath.Join(tempDir, "completed")
+				err = os.MkdirAll(subDir, 0750)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Move file
+				newPath := filepath.Join(subDir, "file.md")
+				err = r.MoveFile(ctx, oldPath, newPath)
+				Expect(err).To(BeNil())
+
+				// Verify file was moved
+				_, err = os.Stat(newPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = os.Stat(oldPath)
+				Expect(os.IsNotExist(err)).To(BeTrue())
+			})
+		})
+
+		Context("outside a git repository", func() {
+			BeforeEach(func() {
+				// Create a new temp dir without git
+				nonGitDir, err := os.MkdirTemp("", "non-git-test-*")
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.Chdir(nonGitDir)
+				Expect(err).NotTo(HaveOccurred())
+
+				tempDir = nonGitDir
+			})
+
+			It("falls back to os.Rename", func() {
+				// Create a file
+				oldPath := filepath.Join(tempDir, "old.md")
+				err := os.WriteFile(oldPath, []byte("content"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Move file
+				newPath := filepath.Join(tempDir, "new.md")
+				err = r.MoveFile(ctx, oldPath, newPath)
+				Expect(err).To(BeNil())
+
+				// Verify file was moved
+				_, err = os.Stat(newPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = os.Stat(oldPath)
+				Expect(os.IsNotExist(err)).To(BeTrue())
+
+				// Verify content
+				content, err := os.ReadFile(newPath)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(content)).To(Equal("content"))
+			})
+		})
+	})
+
 	Describe("CommitOnly", func() {
 		var (
 			ctx         context.Context

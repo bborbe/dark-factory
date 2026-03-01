@@ -17,6 +17,7 @@ type Config struct {
 	InboxDir       string   `yaml:"inboxDir"`
 	QueueDir       string   `yaml:"queueDir"`
 	CompletedDir   string   `yaml:"completedDir"`
+	LogDir         string   `yaml:"logDir"`
 	ContainerImage string   `yaml:"containerImage"`
 	DebounceMs     int      `yaml:"debounceMs"`
 	ServerPort     int      `yaml:"serverPort"`
@@ -29,6 +30,7 @@ func Defaults() Config {
 		InboxDir:       "prompts",
 		QueueDir:       "prompts",
 		CompletedDir:   "prompts/completed",
+		LogDir:         "prompts/log",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 		DebounceMs:     500,
 		ServerPort:     8080,
@@ -42,6 +44,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("inboxDir", validation.NotEmptyString(c.InboxDir)),
 		validation.Name("queueDir", validation.NotEmptyString(c.QueueDir)),
 		validation.Name("completedDir", validation.NotEmptyString(c.CompletedDir)),
+		validation.Name("logDir", validation.NotEmptyString(c.LogDir)),
 		validation.Name("containerImage", validation.NotEmptyString(c.ContainerImage)),
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.DebounceMs <= 0 {

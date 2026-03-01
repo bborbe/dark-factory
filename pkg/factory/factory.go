@@ -49,6 +49,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		CreateProcessor(
 			queueDir,
 			completedDir,
+			cfg.LogDir,
 			promptManager,
 			releaser,
 			versionGetter,
@@ -79,6 +80,7 @@ func CreateWatcher(
 func CreateProcessor(
 	queueDir string,
 	completedDir string,
+	logDir string,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
@@ -89,6 +91,7 @@ func CreateProcessor(
 	return processor.NewProcessor(
 		queueDir,
 		completedDir,
+		logDir,
 		executor.NewDockerExecutor(containerImage),
 		promptManager,
 		releaser,
@@ -121,7 +124,6 @@ func CreateServer(
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	ideasDir := "prompts/ideas"
-	logDir := "prompts/log"
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
 
@@ -129,7 +131,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		cfg.QueueDir,
 		cfg.CompletedDir,
 		ideasDir,
-		logDir,
+		cfg.LogDir,
 		cfg.ServerPort,
 		promptManager,
 	)

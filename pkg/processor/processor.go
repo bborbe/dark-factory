@@ -33,6 +33,7 @@ type Processor interface {
 type processor struct {
 	queueDir      string
 	completedDir  string
+	logDir        string
 	executor      executor.Executor
 	promptManager prompt.Manager
 	releaser      git.Releaser
@@ -47,6 +48,7 @@ type processor struct {
 func NewProcessor(
 	queueDir string,
 	completedDir string,
+	logDir string,
 	exec executor.Executor,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
@@ -59,6 +61,7 @@ func NewProcessor(
 	return &processor{
 		queueDir:      queueDir,
 		completedDir:  completedDir,
+		logDir:        logDir,
 		executor:      exec,
 		promptManager: promptManager,
 		releaser:      releaser,
@@ -209,8 +212,8 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		}
 	}
 
-	// Derive log file path: {queueDir}/log/{basename}.log
-	logFile := filepath.Join(p.queueDir, "log", baseName+".log")
+	// Derive log file path: {logDir}/{basename}.log
+	logFile := filepath.Join(p.logDir, baseName+".log")
 
 	// Execute via executor
 	if err := p.executor.Execute(ctx, content, logFile, containerName); err != nil {

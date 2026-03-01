@@ -70,6 +70,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -124,6 +125,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -145,8 +147,9 @@ var _ = Describe("Processor", func() {
 			return mockExecutor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-		// Verify executor was called with correct container name
-		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
+		// Verify executor was called with correct log path
+		_, _, logFile, containerName := mockExecutor.ExecuteArgsForCall(0)
+		Expect(logFile).To(Equal(filepath.Join(promptsDir, "log", "001-test.log")))
 		Expect(containerName).To(Equal("dark-factory-001-test"))
 
 		// Verify status was set to executing
@@ -181,6 +184,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -227,6 +231,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -271,6 +276,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -329,6 +335,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -379,6 +386,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -433,6 +441,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -489,6 +498,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -535,6 +545,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -575,6 +586,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -612,6 +624,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -659,6 +672,7 @@ var _ = Describe("Processor", func() {
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -715,6 +729,7 @@ var _ = Describe("Processor", func() {
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -781,6 +796,7 @@ var _ = Describe("Processor", func() {
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -843,6 +859,7 @@ var _ = Describe("Processor", func() {
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
 				mockExecutor,
 				mockManager,
 				mockReleaser,

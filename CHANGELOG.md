@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.4
+
+### Added
+- Fix code quality issues from code review
+
 ## v0.10.3
 
 ### Added

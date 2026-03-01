@@ -22,6 +22,7 @@ import (
 type Releaser interface {
 	GetNextVersion(ctx context.Context) (string, error)
 	CommitAndRelease(ctx context.Context, title string) error
+	CommitCompletedFile(ctx context.Context, path string) error
 }
 
 // releaser implements Releaser.
@@ -40,6 +41,11 @@ func (r *releaser) GetNextVersion(ctx context.Context) (string, error) {
 // CommitAndRelease performs the full git workflow.
 func (r *releaser) CommitAndRelease(ctx context.Context, title string) error {
 	return CommitAndRelease(ctx, title)
+}
+
+// CommitCompletedFile commits a completed prompt file to git.
+func (r *releaser) CommitCompletedFile(ctx context.Context, path string) error {
+	return CommitCompletedFile(ctx, path)
 }
 
 // CommitAndRelease performs the full git workflow:
@@ -93,6 +99,33 @@ func CommitAndRelease(ctx context.Context, changelogEntry string) error {
 	}
 
 	return nil
+}
+
+// CommitCompletedFile stages and commits a completed prompt file.
+// This is called after MoveToCompleted() to ensure the moved file is committed.
+// Does nothing if the file is already staged or committed.
+func CommitCompletedFile(ctx context.Context, path string) error {
+	// Stage the completed file
+	// #nosec G204 -- path is from MoveToCompleted which validates the path
+	cmd := exec.CommandContext(ctx, "git", "add", path)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "git add completed file")
+	}
+
+	// Check if there's anything to commit
+	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	out, err := statusCmd.Output()
+	if err != nil {
+		return errors.Wrap(ctx, err, "git status")
+	}
+
+	// Nothing to commit - file already staged or committed
+	if len(strings.TrimSpace(string(out))) == 0 {
+		return nil
+	}
+
+	// Commit the completed file
+	return gitCommit(ctx, "move prompt to completed")
 }
 
 // gitAddAll stages all changes

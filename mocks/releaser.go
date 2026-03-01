@@ -21,6 +21,18 @@ type Releaser struct {
 	commitAndReleaseReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CommitCompletedFileStub        func(context.Context, string) error
+	commitCompletedFileMutex       sync.RWMutex
+	commitCompletedFileArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	commitCompletedFileReturns struct {
+		result1 error
+	}
+	commitCompletedFileReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetNextVersionStub        func(context.Context) (string, error)
 	getNextVersionMutex       sync.RWMutex
 	getNextVersionArgsForCall []struct {
@@ -96,6 +108,68 @@ func (fake *Releaser) CommitAndReleaseReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.commitAndReleaseReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) CommitCompletedFile(arg1 context.Context, arg2 string) error {
+	fake.commitCompletedFileMutex.Lock()
+	ret, specificReturn := fake.commitCompletedFileReturnsOnCall[len(fake.commitCompletedFileArgsForCall)]
+	fake.commitCompletedFileArgsForCall = append(fake.commitCompletedFileArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.CommitCompletedFileStub
+	fakeReturns := fake.commitCompletedFileReturns
+	fake.recordInvocation("CommitCompletedFile", []interface{}{arg1, arg2})
+	fake.commitCompletedFileMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) CommitCompletedFileCallCount() int {
+	fake.commitCompletedFileMutex.RLock()
+	defer fake.commitCompletedFileMutex.RUnlock()
+	return len(fake.commitCompletedFileArgsForCall)
+}
+
+func (fake *Releaser) CommitCompletedFileCalls(stub func(context.Context, string) error) {
+	fake.commitCompletedFileMutex.Lock()
+	defer fake.commitCompletedFileMutex.Unlock()
+	fake.CommitCompletedFileStub = stub
+}
+
+func (fake *Releaser) CommitCompletedFileArgsForCall(i int) (context.Context, string) {
+	fake.commitCompletedFileMutex.RLock()
+	defer fake.commitCompletedFileMutex.RUnlock()
+	argsForCall := fake.commitCompletedFileArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Releaser) CommitCompletedFileReturns(result1 error) {
+	fake.commitCompletedFileMutex.Lock()
+	defer fake.commitCompletedFileMutex.Unlock()
+	fake.CommitCompletedFileStub = nil
+	fake.commitCompletedFileReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) CommitCompletedFileReturnsOnCall(i int, result1 error) {
+	fake.commitCompletedFileMutex.Lock()
+	defer fake.commitCompletedFileMutex.Unlock()
+	fake.CommitCompletedFileStub = nil
+	if fake.commitCompletedFileReturnsOnCall == nil {
+		fake.commitCompletedFileReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.commitCompletedFileReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

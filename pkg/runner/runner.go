@@ -347,6 +347,12 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
 	gitCtx := context.WithoutCancel(ctx)
 
+	// Commit the completed file separately (YOLO may have already committed code changes)
+	completedPath := filepath.Join(filepath.Dir(p.Path), "completed", filepath.Base(p.Path))
+	if err := r.releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
+		return errors.Wrap(ctx, err, "commit completed file")
+	}
+
 	// Commit and release
 	nextVersion, err := r.releaser.GetNextVersion(gitCtx)
 	if err != nil {

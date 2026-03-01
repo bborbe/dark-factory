@@ -490,4 +490,210 @@ var _ = Describe("Git", func() {
 			})
 		})
 	})
+
+	Describe("CommitCompletedFile", func() {
+		var (
+			ctx         context.Context
+			tempDir     string
+			originalDir string
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			var err error
+			originalDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "git-completed-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initialize git repo
+			cmd := exec.Command("git", "init")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Configure git
+			cmd = exec.Command("git", "config", "user.email", "test@example.com")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "config", "user.name", "Test User")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initial commit
+			err = os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial commit")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to temp directory
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			if originalDir != "" {
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		Context("with a new completed file", func() {
+			var completedFilePath string
+
+			BeforeEach(func() {
+				// Create completed directory
+				err := os.MkdirAll(filepath.Join(tempDir, "prompts", "completed"), 0750)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create a completed file
+				completedFilePath = filepath.Join(tempDir, "prompts", "completed", "001-test.md")
+				err = os.WriteFile(
+					completedFilePath,
+					[]byte("# Test prompt\nstatus: completed"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("stages and commits the file", func() {
+				err := git.CommitCompletedFile(ctx, completedFilePath)
+				Expect(err).To(BeNil())
+
+				// Verify commit was created
+				cmd := exec.Command("git", "log", "--oneline", "-n", "1")
+				cmd.Dir = tempDir
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("move prompt to completed"))
+
+				// Verify file is in git
+				cmd = exec.Command("git", "ls-files")
+				cmd.Dir = tempDir
+				output, err = cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("prompts/completed/001-test.md"))
+			})
+		})
+
+		Context("with file already committed", func() {
+			var completedFilePath string
+
+			BeforeEach(func() {
+				// Create and commit a completed file
+				err := os.MkdirAll(filepath.Join(tempDir, "prompts", "completed"), 0750)
+				Expect(err).NotTo(HaveOccurred())
+
+				completedFilePath = filepath.Join(tempDir, "prompts", "completed", "001-test.md")
+				err = os.WriteFile(
+					completedFilePath,
+					[]byte("# Test prompt\nstatus: completed"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "add completed file")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("does nothing when file is already committed", func() {
+				// Get commit count before
+				cmd := exec.Command("git", "rev-list", "--count", "HEAD")
+				cmd.Dir = tempDir
+				beforeOutput, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = git.CommitCompletedFile(ctx, completedFilePath)
+				Expect(err).To(BeNil())
+
+				// Get commit count after
+				cmd = exec.Command("git", "rev-list", "--count", "HEAD")
+				cmd.Dir = tempDir
+				afterOutput, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify no new commit was created
+				Expect(string(beforeOutput)).To(Equal(string(afterOutput)))
+			})
+		})
+
+		Context("with modified but unstaged file", func() {
+			var completedFilePath string
+
+			BeforeEach(func() {
+				// Create and commit a completed file first
+				err := os.MkdirAll(filepath.Join(tempDir, "prompts", "completed"), 0750)
+				Expect(err).NotTo(HaveOccurred())
+
+				completedFilePath = filepath.Join(tempDir, "prompts", "completed", "001-test.md")
+				err = os.WriteFile(
+					completedFilePath,
+					[]byte("# Test prompt\nstatus: completed"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "add completed file")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Modify the file but don't stage it
+				err = os.WriteFile(
+					completedFilePath,
+					[]byte("# Test prompt\nstatus: completed\n\nModified content"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("stages and commits the modification", func() {
+				err := git.CommitCompletedFile(ctx, completedFilePath)
+				Expect(err).To(BeNil())
+
+				// Verify commit was created
+				cmd := exec.Command("git", "log", "--oneline", "-n", "1")
+				cmd.Dir = tempDir
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("move prompt to completed"))
+
+				// Verify modification is committed
+				cmd = exec.Command("git", "diff", "HEAD")
+				cmd.Dir = tempDir
+				output, err = cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(BeEmpty()) // No uncommitted changes
+			})
+		})
+	})
 })

@@ -94,16 +94,16 @@ func getNextVersion(ctx context.Context) (string, error) {
 	}
 
 	latestTag := strings.TrimSpace(string(output))
-	return BumpPatchVersion(latestTag)
+	return BumpPatchVersion(ctx, latestTag)
 }
 
 // BumpPatchVersion increments the patch version of a semver tag
-func BumpPatchVersion(tag string) (string, error) {
+func BumpPatchVersion(ctx context.Context, tag string) (string, error) {
 	// Match vX.Y.Z
 	re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
 	matches := re.FindStringSubmatch(tag)
 	if matches == nil {
-		return "", errors.Errorf(context.Background(), "invalid version tag: %s", tag)
+		return "", errors.Errorf(ctx, "invalid version tag: %s", tag)
 	}
 
 	major, _ := strconv.Atoi(matches[1])

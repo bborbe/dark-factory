@@ -8,7 +8,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
 
-type FakeExecutor struct {
+type Executor struct {
 	ExecuteStub        func(context.Context, string, string, string) error
 	executeMutex       sync.RWMutex
 	executeArgsForCall []struct {
@@ -27,7 +27,7 @@ type FakeExecutor struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeExecutor) Execute(arg1 context.Context, arg2 string, arg3 string, arg4 string) error {
+func (fake *Executor) Execute(arg1 context.Context, arg2 string, arg3 string, arg4 string) error {
 	fake.executeMutex.Lock()
 	ret, specificReturn := fake.executeReturnsOnCall[len(fake.executeArgsForCall)]
 	fake.executeArgsForCall = append(fake.executeArgsForCall, struct {
@@ -49,26 +49,26 @@ func (fake *FakeExecutor) Execute(arg1 context.Context, arg2 string, arg3 string
 	return fakeReturns.result1
 }
 
-func (fake *FakeExecutor) ExecuteCallCount() int {
+func (fake *Executor) ExecuteCallCount() int {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	return len(fake.executeArgsForCall)
 }
 
-func (fake *FakeExecutor) ExecuteCalls(stub func(context.Context, string, string, string) error) {
+func (fake *Executor) ExecuteCalls(stub func(context.Context, string, string, string) error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = stub
 }
 
-func (fake *FakeExecutor) ExecuteArgsForCall(i int) (context.Context, string, string, string) {
+func (fake *Executor) ExecuteArgsForCall(i int) (context.Context, string, string, string) {
 	fake.executeMutex.RLock()
 	defer fake.executeMutex.RUnlock()
 	argsForCall := fake.executeArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *FakeExecutor) ExecuteReturns(result1 error) {
+func (fake *Executor) ExecuteReturns(result1 error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = nil
@@ -77,7 +77,7 @@ func (fake *FakeExecutor) ExecuteReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *FakeExecutor) ExecuteReturnsOnCall(i int, result1 error) {
+func (fake *Executor) ExecuteReturnsOnCall(i int, result1 error) {
 	fake.executeMutex.Lock()
 	defer fake.executeMutex.Unlock()
 	fake.ExecuteStub = nil
@@ -91,7 +91,7 @@ func (fake *FakeExecutor) ExecuteReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeExecutor) Invocations() map[string][][]interface{} {
+func (fake *Executor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -101,7 +101,7 @@ func (fake *FakeExecutor) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *FakeExecutor) recordInvocation(key string, args []interface{}) {
+func (fake *Executor) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -113,4 +113,4 @@ func (fake *FakeExecutor) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ executor.Executor = new(FakeExecutor)
+var _ executor.Executor = new(Executor)

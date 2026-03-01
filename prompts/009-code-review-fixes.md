@@ -1,6 +1,7 @@
 ---
-status: queued
+status: executing
 ---
+
 # Fix code review findings
 
 ## Critical

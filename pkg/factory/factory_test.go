@@ -134,10 +134,10 @@ This is a test prompt.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -167,8 +167,8 @@ This is a test prompt.
 		Expect(os.IsNotExist(err)).To(BeTrue())
 
 		// Verify executor was called with correct container name
-		Expect(mockExec.ExecuteCallCount()).To(Equal(1))
-		_, _, _, containerName := mockExec.ExecuteArgsForCall(0)
+		Expect(executor.ExecuteCallCount()).To(Equal(1))
+		_, _, _, containerName := executor.ExecuteArgsForCall(0)
 		Expect(containerName).To(Equal("dark-factory-001-test-prompt"))
 
 		// Verify container name is persisted in completed file frontmatter
@@ -190,10 +190,10 @@ This is a test prompt.
 
 	It("should watch for new queued prompts", func() {
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -239,14 +239,14 @@ This is a new prompt.
 
 	It("should ignore prompts with skip status", func() {
 		// Create mock executor that should never be called
-		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor := &mocks.Executor{}
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			Fail("executor should not be called for prompts with skip status")
 			return nil
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -300,11 +300,11 @@ This prompt will fail during execution.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor that returns error
-		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteReturns(ErrTest)
+		executor := &mocks.Executor{}
+		executor.ExecuteReturns(ErrTest)
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -349,10 +349,10 @@ Content here.
 		}
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -372,12 +372,12 @@ Content here.
 		}, 5*time.Second, 100*time.Millisecond).Should(Equal(3))
 
 		// Verify executor was called 3 times
-		Expect(mockExec.ExecuteCallCount()).To(Equal(3))
+		Expect(executor.ExecuteCallCount()).To(Equal(3))
 
 		// Verify prompts were processed in alphabetical order
-		_, _, _, containerName1 := mockExec.ExecuteArgsForCall(0)
-		_, _, _, containerName2 := mockExec.ExecuteArgsForCall(1)
-		_, _, _, containerName3 := mockExec.ExecuteArgsForCall(2)
+		_, _, _, containerName1 := executor.ExecuteArgsForCall(0)
+		_, _, _, containerName2 := executor.ExecuteArgsForCall(1)
+		_, _, _, containerName3 := executor.ExecuteArgsForCall(2)
 
 		Expect(containerName1).To(Equal("dark-factory-001-test"))
 		Expect(containerName2).To(Equal("dark-factory-002-test"))
@@ -398,10 +398,10 @@ This has no YAML frontmatter.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -426,7 +426,7 @@ This has no YAML frontmatter.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Verify executor was called
-		Expect(mockExec.ExecuteCallCount()).To(BeNumerically(">", 0))
+		Expect(executor.ExecuteCallCount()).To(BeNumerically(">", 0))
 
 		// Cancel context
 		cancel()
@@ -439,14 +439,14 @@ This has no YAML frontmatter.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor that should never be called
-		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor := &mocks.Executor{}
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			Fail("executor should not be called for empty prompt")
 			return nil
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -464,7 +464,7 @@ This has no YAML frontmatter.
 		}, 3*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 		// Verify executor was never called
-		Expect(mockExec.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		// Verify prompt was moved to completed with completed status
 		completedPath := filepath.Join(completedDir, "006-empty.md")
@@ -491,9 +491,9 @@ Testing status updates.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor with delay
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 		executeCalled := make(chan struct{})
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			// Signal that execute was called
 			close(executeCalled)
 			// Wait a bit to allow checking the status
@@ -502,7 +502,7 @@ Testing status updates.
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -533,10 +533,10 @@ Testing status updates.
 
 	It("should handle watcher file write events", func() {
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -588,14 +588,14 @@ This should not be processed.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor that should never be called
-		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor := &mocks.Executor{}
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			Fail("executor should not be called for failed prompt")
 			return nil
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -615,7 +615,7 @@ This should not be processed.
 		}, 1*time.Second, 100*time.Millisecond).Should(Equal(0))
 
 		// Verify executor was never called
-		Expect(mockExec.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		// Cancel context
 		cancel()
@@ -636,10 +636,10 @@ Testing container name setting.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -668,8 +668,8 @@ Testing container name setting.
 
 	Describe("GetPromptsDir", func() {
 		It("returns absolute path when promptsDir is absolute", func() {
-			mockExec := &mocks.FakeExecutor{}
-			f := factory.New(mockExec)
+			executor := &mocks.Executor{}
+			f := factory.New(executor)
 			f.SetPromptsDir("/absolute/path/to/prompts")
 
 			result := f.GetPromptsDir()
@@ -677,8 +677,8 @@ Testing container name setting.
 		})
 
 		It("returns absolute path when promptsDir is relative", func() {
-			mockExec := &mocks.FakeExecutor{}
-			f := factory.New(mockExec)
+			executor := &mocks.Executor{}
+			f := factory.New(executor)
 			f.SetPromptsDir("prompts")
 
 			result := f.GetPromptsDir()
@@ -690,8 +690,8 @@ Testing container name setting.
 
 	Describe("SetPromptsDir", func() {
 		It("sets the prompts directory", func() {
-			mockExec := &mocks.FakeExecutor{}
-			f := factory.New(mockExec)
+			executor := &mocks.Executor{}
+			f := factory.New(executor)
 
 			f.SetPromptsDir("/custom/prompts")
 			result := f.GetPromptsDir()
@@ -714,10 +714,10 @@ This was stuck from a previous crash.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -735,7 +735,7 @@ This was stuck from a previous crash.
 		}, 3*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 		// Verify executor was called (prompt was processed)
-		Expect(mockExec.ExecuteCallCount()).To(Equal(1))
+		Expect(executor.ExecuteCallCount()).To(Equal(1))
 
 		// Cancel context
 		cancel()
@@ -743,10 +743,10 @@ This was stuck from a previous crash.
 
 	It("should handle file modifications that trigger chmod events", func() {
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -789,14 +789,14 @@ Test file permission changes.
 
 	It("should ignore non-markdown files", func() {
 		// Create mock executor that should never be called
-		mockExec := &mocks.FakeExecutor{}
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor := &mocks.Executor{}
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			Fail("executor should not be called for non-.md file")
 			return nil
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -824,7 +824,7 @@ Test file permission changes.
 		}, 1*time.Second, 100*time.Millisecond).Should(Equal(0))
 
 		// Verify executor was never called
-		Expect(mockExec.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		// Cancel context
 		cancel()
@@ -847,9 +847,9 @@ Content here.
 		}
 
 		// Create mock executor that fails on first call
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 		callCount := 0
-		mockExec.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
+		executor.ExecuteStub = func(_ context.Context, _ string, _ string, _ string) error {
 			callCount++
 			if callCount == 1 {
 				return ErrTest // First prompt fails
@@ -858,7 +858,7 @@ Content here.
 		}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -902,10 +902,10 @@ This tests the git workflow.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -936,10 +936,10 @@ This tests the git workflow.
 
 	It("should debounce rapid file writes", func() {
 		// Create mock executor
-		mockExec := &mocks.FakeExecutor{}
+		executor := &mocks.Executor{}
 
 		// Create factory
-		f := factory.New(mockExec)
+		f := factory.New(executor)
 
 		// Run factory in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -977,7 +977,7 @@ Content iteration %d
 		}, 3*time.Second, 100*time.Millisecond).Should(BeTrue())
 
 		// Executor should be called exactly once (debounced)
-		Expect(mockExec.ExecuteCallCount()).To(Equal(1))
+		Expect(executor.ExecuteCallCount()).To(Equal(1))
 
 		// Cancel context
 		cancel()

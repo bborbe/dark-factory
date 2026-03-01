@@ -16,23 +16,23 @@ import (
 
 // Executor executes a prompt.
 //
-//counterfeiter:generate -o ../../mocks/executor.go --fake-name FakeExecutor . Executor
+//counterfeiter:generate -o ../../mocks/executor.go --fake-name Executor . Executor
 type Executor interface {
 	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
 }
 
-// DockerExecutor implements Executor using Docker.
-type DockerExecutor struct{}
+// dockerExecutor implements Executor using Docker.
+type dockerExecutor struct{}
 
-// NewDockerExecutor creates a new DockerExecutor.
-func NewDockerExecutor() *DockerExecutor {
-	return &DockerExecutor{}
+// NewDockerExecutor creates a new Executor using Docker.
+func NewDockerExecutor() Executor {
+	return &dockerExecutor{}
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
 // It blocks until the container exits and returns an error if the exit code is non-zero.
 // Output is streamed to both terminal and the specified log file.
-func (e *DockerExecutor) Execute(
+func (e *dockerExecutor) Execute(
 	ctx context.Context,
 	promptContent string,
 	logFile string,
@@ -142,7 +142,7 @@ func BuildDockerCommand(
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
-		"-v", home+"/.claude-yolo:/home/node/.claude",
+		"-v", home+"/.claude-yolo:/home/node/.claude:ro",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		"docker.io/bborbe/claude-yolo:latest",
 	)

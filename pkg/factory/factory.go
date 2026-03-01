@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -25,14 +26,21 @@ import (
 )
 
 // Factory orchestrates the main processing loop.
-type Factory struct {
+type Factory interface {
+	Run(ctx context.Context) error
+	SetPromptsDir(dir string)
+	GetPromptsDir() string
+}
+
+// factory orchestrates the main processing loop.
+type factory struct {
 	promptsDir string
 	executor   executor.Executor
 }
 
 // New creates a new Factory.
-func New(exec executor.Executor) *Factory {
-	return &Factory{
+func New(exec executor.Executor) Factory {
+	return &factory{
 		promptsDir: "prompts",
 		executor:   exec,
 	}
@@ -43,7 +51,7 @@ func New(exec executor.Executor) *Factory {
 // 2. Start watching prompts/ directory for changes
 // 3. On file create/write events, check if status: queued and process
 // 4. Run until context is cancelled or fatal error
-func (f *Factory) Run(ctx context.Context) error {
+func (f *factory) Run(ctx context.Context) error {
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -80,7 +88,7 @@ func (f *Factory) Run(ctx context.Context) error {
 }
 
 // watchLoop handles the main event loop for file watching.
-func (f *Factory) watchLoop(
+func (f *factory) watchLoop(
 	ctx context.Context,
 	watcher *fsnotify.Watcher,
 ) error {
@@ -112,7 +120,7 @@ func (f *Factory) watchLoop(
 }
 
 // handleWatchEvent processes a file system event with debouncing.
-func (f *Factory) handleWatchEvent(
+func (f *factory) handleWatchEvent(
 	ctx context.Context,
 	event fsnotify.Event,
 	debounceMu *sync.Mutex,
@@ -145,8 +153,13 @@ func (f *Factory) handleWatchEvent(
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.
-func (f *Factory) processExistingQueued(ctx context.Context) error {
+func (f *factory) processExistingQueued(ctx context.Context) error {
 	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
 		// Scan for queued prompts
 		queued, err := prompt.ListQueued(ctx, f.promptsDir)
 		if err != nil {
@@ -186,7 +199,7 @@ func (f *Factory) processExistingQueued(ctx context.Context) error {
 
 // handleFileEvent checks if a file should be picked up and processes it.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
-func (f *Factory) handleFileEvent(ctx context.Context, filePath string) {
+func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 	// Read frontmatter to check status
 	fm, err := prompt.ReadFrontmatter(ctx, filePath)
 	if err != nil {
@@ -234,7 +247,7 @@ func (f *Factory) handleFileEvent(ctx context.Context, filePath string) {
 }
 
 // processPrompt executes a single prompt and commits the result.
-func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
+func (f *factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	// Get prompt content first to check if empty
 	content, err := prompt.Content(ctx, p.Path)
 	if err != nil {
@@ -251,6 +264,8 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 
 	// Derive container name from prompt filename
 	baseName := strings.TrimSuffix(filepath.Base(p.Path), ".md")
+	// Sanitize baseName to Docker-safe charset [a-zA-Z0-9_-]
+	baseName = sanitizeContainerName(baseName)
 	containerName := "dark-factory-" + baseName
 
 	// Set container name in frontmatter
@@ -298,12 +313,12 @@ func (f *Factory) processPrompt(ctx context.Context, p prompt.Prompt) error {
 }
 
 // SetPromptsDir sets the prompts directory (useful for testing).
-func (f *Factory) SetPromptsDir(dir string) {
+func (f *factory) SetPromptsDir(dir string) {
 	f.promptsDir = dir
 }
 
 // GetPromptsDir returns the prompts directory.
-func (f *Factory) GetPromptsDir() string {
+func (f *factory) GetPromptsDir() string {
 	// If relative path, make it absolute
 	if !filepath.IsAbs(f.promptsDir) {
 		cwd, err := os.Getwd()
@@ -313,4 +328,11 @@ func (f *Factory) GetPromptsDir() string {
 		return filepath.Join(cwd, f.promptsDir)
 	}
 	return f.promptsDir
+}
+
+// sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]
+func sanitizeContainerName(name string) string {
+	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
+	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+	return re.ReplaceAllString(name, "-")
 }

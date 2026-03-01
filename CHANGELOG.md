@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.13
+
+### Added
+- Fix code review findings
+
 ## v0.2.12
 
 ### Added

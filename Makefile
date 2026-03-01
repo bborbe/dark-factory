@@ -3,6 +3,8 @@ HOSTNAME ?= $(shell hostname -s)
 ROOTDIR ?= $(shell git rev-parse --show-toplevel)
 TEAMVAULT ?= ~/.teamvault.json
 
+.PHONY: default precommit ensure format generate test check lint vet errcheck vulncheck osv-scanner gosec trivy addlicense run
+
 default: precommit
 
 precommit: ensure format generate test check addlicense

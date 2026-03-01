@@ -4,6 +4,8 @@
 
 package git_test
 
+//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
+
 import (
 	"testing"
 	"time"

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.3.1
+
+### Added
+- Split watcher and processor into independent goroutines
+
 ## v0.3.0
 
 ### Added

@@ -34,6 +34,17 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	// Communication channel between watcher and processor
 	ready := make(chan struct{}, 10)
 
+	var srv server.Server
+	if cfg.ServerPort > 0 {
+		srv = CreateServer(
+			cfg.ServerPort,
+			inboxDir,
+			queueDir,
+			completedDir,
+			promptManager,
+		)
+	}
+
 	return runner.NewRunner(
 		inboxDir,
 		queueDir,
@@ -57,13 +68,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.ContainerImage,
 			cfg.Workflow,
 		),
-		CreateServer(
-			cfg.ServerPort,
-			inboxDir,
-			queueDir,
-			completedDir,
-			promptManager,
-		),
+		srv,
 	)
 }
 

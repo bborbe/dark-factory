@@ -103,11 +103,14 @@ func (r *runner) Run(ctx context.Context) error {
 
 	// Run watcher, processor, and server in parallel
 	// If any fails, context cancels the others automatically
-	return run.CancelOnFirstError(ctx,
+	runners := []run.Func{
 		r.watcher.Watch,
 		r.processor.Process,
-		r.server.ListenAndServe,
-	)
+	}
+	if r.server != nil {
+		runners = append(runners, r.server.ListenAndServe)
+	}
+	return run.CancelOnFirstError(ctx, runners...)
 }
 
 // normalizeFilenames normalizes filenames in the inbox and queue directories.

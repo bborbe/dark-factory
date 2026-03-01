@@ -33,7 +33,7 @@ func Defaults() Config {
 		LogDir:         "prompts/log",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 		DebounceMs:     500,
-		ServerPort:     8080,
+		ServerPort:     0,
 	}
 }
 
@@ -53,10 +53,10 @@ func (c Config) Validate(ctx context.Context) error {
 			return nil
 		})),
 		validation.Name("serverPort", validation.HasValidationFunc(func(ctx context.Context) error {
-			if c.ServerPort <= 0 || c.ServerPort > 65535 {
+			if c.ServerPort < 0 || c.ServerPort > 65535 {
 				return errors.Errorf(
 					ctx,
-					"serverPort must be between 1-65535, got %d",
+					"serverPort must be 0 (disabled) or 1-65535, got %d",
 					c.ServerPort,
 				)
 			}

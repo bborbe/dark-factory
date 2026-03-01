@@ -274,4 +274,41 @@ var _ = Describe("Runner", func() {
 			Fail("runner did not exit after context cancel")
 		}
 	})
+
+	It("should not start server when server is nil", func() {
+		mockLocker.AcquireReturns(nil)
+		mockLocker.ReleaseReturns(nil)
+		mockManager.ResetExecutingReturns(nil)
+		mockManager.NormalizeFilenamesReturns(nil, nil)
+
+		mockWatcher.WatchStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockProcessor.ProcessStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+
+		r := runner.NewRunner(
+			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			mockManager,
+			mockLocker,
+			mockWatcher,
+			mockProcessor,
+			nil, // No server
+		)
+
+		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer runCancel()
+
+		err := r.Run(runCtx)
+		Expect(err).To(BeNil())
+
+		// Verify watcher and processor were called
+		Expect(mockWatcher.WatchCallCount()).To(Equal(1))
+		Expect(mockProcessor.ProcessCallCount()).To(Equal(1))
+	})
 })

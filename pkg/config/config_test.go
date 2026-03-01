@@ -32,7 +32,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.LogDir).To(Equal("prompts/log"))
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.7"))
 			Expect(cfg.DebounceMs).To(Equal(500))
-			Expect(cfg.ServerPort).To(Equal(8080))
+			Expect(cfg.ServerPort).To(Equal(0))
 		})
 	})
 
@@ -225,6 +225,68 @@ var _ = Describe("Config", func() {
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("debounceMs"))
+		})
+
+		It("succeeds for serverPort 0 (disabled)", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+				ServerPort:     0,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds for valid serverPort", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("fails for negative serverPort", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+				ServerPort:     -1,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("serverPort"))
+		})
+
+		It("fails for serverPort greater than 65535", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+				ServerPort:     65536,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("serverPort"))
 		})
 	})
 

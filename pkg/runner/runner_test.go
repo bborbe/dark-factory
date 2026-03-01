@@ -71,6 +71,8 @@ var _ = Describe("Runner", func() {
 
 		r := runner.NewRunner(
 			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
 			mockWatcher,
@@ -106,6 +108,8 @@ var _ = Describe("Runner", func() {
 
 		r := runner.NewRunner(
 			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
 			mockWatcher,
@@ -139,6 +143,8 @@ var _ = Describe("Runner", func() {
 
 		r := runner.NewRunner(
 			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
 			mockWatcher,
@@ -177,6 +183,8 @@ var _ = Describe("Runner", func() {
 
 		r := runner.NewRunner(
 			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
 			mockWatcher,
@@ -211,6 +219,8 @@ var _ = Describe("Runner", func() {
 
 		r := runner.NewRunner(
 			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockManager,
 			mockLocker,
 			mockWatcher,

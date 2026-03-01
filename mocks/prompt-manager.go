@@ -71,10 +71,11 @@ type Manager struct {
 	moveToCompletedReturnsOnCall map[int]struct {
 		result1 error
 	}
-	NormalizeFilenamesStub        func(context.Context) ([]prompt.Rename, error)
+	NormalizeFilenamesStub        func(context.Context, string) ([]prompt.Rename, error)
 	normalizeFilenamesMutex       sync.RWMutex
 	normalizeFilenamesArgsForCall []struct {
 		arg1 context.Context
+		arg2 string
 	}
 	normalizeFilenamesReturns struct {
 		result1 []prompt.Rename
@@ -480,18 +481,19 @@ func (fake *Manager) MoveToCompletedReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Manager) NormalizeFilenames(arg1 context.Context) ([]prompt.Rename, error) {
+func (fake *Manager) NormalizeFilenames(arg1 context.Context, arg2 string) ([]prompt.Rename, error) {
 	fake.normalizeFilenamesMutex.Lock()
 	ret, specificReturn := fake.normalizeFilenamesReturnsOnCall[len(fake.normalizeFilenamesArgsForCall)]
 	fake.normalizeFilenamesArgsForCall = append(fake.normalizeFilenamesArgsForCall, struct {
 		arg1 context.Context
-	}{arg1})
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.NormalizeFilenamesStub
 	fakeReturns := fake.normalizeFilenamesReturns
-	fake.recordInvocation("NormalizeFilenames", []interface{}{arg1})
+	fake.recordInvocation("NormalizeFilenames", []interface{}{arg1, arg2})
 	fake.normalizeFilenamesMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -505,17 +507,17 @@ func (fake *Manager) NormalizeFilenamesCallCount() int {
 	return len(fake.normalizeFilenamesArgsForCall)
 }
 
-func (fake *Manager) NormalizeFilenamesCalls(stub func(context.Context) ([]prompt.Rename, error)) {
+func (fake *Manager) NormalizeFilenamesCalls(stub func(context.Context, string) ([]prompt.Rename, error)) {
 	fake.normalizeFilenamesMutex.Lock()
 	defer fake.normalizeFilenamesMutex.Unlock()
 	fake.NormalizeFilenamesStub = stub
 }
 
-func (fake *Manager) NormalizeFilenamesArgsForCall(i int) context.Context {
+func (fake *Manager) NormalizeFilenamesArgsForCall(i int) (context.Context, string) {
 	fake.normalizeFilenamesMutex.RLock()
 	defer fake.normalizeFilenamesMutex.RUnlock()
 	argsForCall := fake.normalizeFilenamesArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Manager) NormalizeFilenamesReturns(result1 []prompt.Rename, result2 error) {

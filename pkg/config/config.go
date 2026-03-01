@@ -14,7 +14,9 @@ import (
 // Config holds the dark-factory configuration.
 type Config struct {
 	Workflow       Workflow `yaml:"workflow"`
-	PromptsDir     string   `yaml:"promptsDir"`
+	InboxDir       string   `yaml:"inboxDir"`
+	QueueDir       string   `yaml:"queueDir"`
+	CompletedDir   string   `yaml:"completedDir"`
 	ContainerImage string   `yaml:"containerImage"`
 	DebounceMs     int      `yaml:"debounceMs"`
 }
@@ -23,7 +25,9 @@ type Config struct {
 func Defaults() Config {
 	return Config{
 		Workflow:       WorkflowDirect,
-		PromptsDir:     "prompts",
+		InboxDir:       "prompts",
+		QueueDir:       "prompts",
+		CompletedDir:   "prompts/completed",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 		DebounceMs:     500,
 	}
@@ -33,7 +37,9 @@ func Defaults() Config {
 func (c Config) Validate(ctx context.Context) error {
 	return validation.All{
 		validation.Name("workflow", c.Workflow),
-		validation.Name("promptsDir", validation.NotEmptyString(c.PromptsDir)),
+		validation.Name("inboxDir", validation.NotEmptyString(c.InboxDir)),
+		validation.Name("queueDir", validation.NotEmptyString(c.QueueDir)),
+		validation.Name("completedDir", validation.NotEmptyString(c.CompletedDir)),
 		validation.Name("containerImage", validation.NotEmptyString(c.ContainerImage)),
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.DebounceMs <= 0 {
@@ -41,5 +47,17 @@ func (c Config) Validate(ctx context.Context) error {
 			}
 			return nil
 		})),
+		validation.Name(
+			"completedDir",
+			validation.HasValidationFunc(func(ctx context.Context) error {
+				if c.CompletedDir == c.QueueDir {
+					return errors.Errorf(ctx, "completedDir cannot equal queueDir")
+				}
+				if c.CompletedDir == c.InboxDir {
+					return errors.Errorf(ctx, "completedDir cannot equal inboxDir")
+				}
+				return nil
+			}),
+		),
 	}.Validate(ctx)
 }

@@ -7,6 +7,7 @@ package runner
 import (
 	"context"
 	"log"
+	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -27,7 +28,9 @@ type Runner interface {
 
 // runner orchestrates the main processing loop.
 type runner struct {
-	promptsDir    string
+	inboxDir      string
+	queueDir      string
+	completedDir  string
 	promptManager prompt.Manager
 	locker        lock.Locker
 	watcher       watcher.Watcher
@@ -36,14 +39,18 @@ type runner struct {
 
 // NewRunner creates a new Runner.
 func NewRunner(
-	promptsDir string,
+	inboxDir string,
+	queueDir string,
+	completedDir string,
 	promptManager prompt.Manager,
 	locker lock.Locker,
 	watcher watcher.Watcher,
 	processor processor.Processor,
 ) Runner {
 	return &runner{
-		promptsDir:    promptsDir,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
+		completedDir:  completedDir,
 		promptManager: promptManager,
 		locker:        locker,
 		watcher:       watcher,
@@ -67,13 +74,18 @@ func (r *runner) Run(ctx context.Context) error {
 		}
 	}()
 
-	log.Printf("dark-factory: acquired lock %s/.dark-factory.lock", r.promptsDir)
+	log.Printf("dark-factory: acquired lock .dark-factory.lock")
 
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	log.Printf("dark-factory: watching %s for queued prompts...", r.promptsDir)
+	// Create directories if they don't exist
+	if err := r.createDirectories(ctx); err != nil {
+		return errors.Wrap(ctx, err, "create directories")
+	}
+
+	log.Printf("dark-factory: watching %s for queued prompts...", r.queueDir)
 
 	// Reset any stuck "executing" prompts from previous crash
 	if err := r.promptManager.ResetExecuting(ctx); err != nil {
@@ -93,15 +105,40 @@ func (r *runner) Run(ctx context.Context) error {
 	)
 }
 
-// normalizeFilenames normalizes filenames in the prompts directory.
+// normalizeFilenames normalizes filenames in the inbox and queue directories.
 func (r *runner) normalizeFilenames(ctx context.Context) error {
-	renames, err := r.promptManager.NormalizeFilenames(ctx)
+	// Normalize inbox first
+	renames, err := r.promptManager.NormalizeFilenames(ctx, r.inboxDir)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "normalize inbox filenames")
 	}
 	for _, rename := range renames {
 		log.Printf("dark-factory: renamed %s -> %s",
 			filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
+	}
+
+	// If inbox != queue, also normalize queue
+	if r.inboxDir != r.queueDir {
+		renames, err := r.promptManager.NormalizeFilenames(ctx, r.queueDir)
+		if err != nil {
+			return errors.Wrap(ctx, err, "normalize queue filenames")
+		}
+		for _, rename := range renames {
+			log.Printf("dark-factory: renamed %s -> %s",
+				filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
+		}
+	}
+
+	return nil
+}
+
+// createDirectories creates the inbox, queue, and completed directories if they don't exist.
+func (r *runner) createDirectories(ctx context.Context) error {
+	dirs := []string{r.inboxDir, r.queueDir, r.completedDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			return errors.Wrapf(ctx, err, "create directory %s", dir)
+		}
 	}
 	return nil
 }

@@ -26,7 +26,9 @@ var _ = Describe("Config", func() {
 		It("returns config with default values", func() {
 			cfg := config.Defaults()
 			Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
-			Expect(cfg.PromptsDir).To(Equal("prompts"))
+			Expect(cfg.InboxDir).To(Equal("prompts"))
+			Expect(cfg.QueueDir).To(Equal("prompts"))
+			Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.7"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 		})
@@ -36,7 +38,22 @@ var _ = Describe("Config", func() {
 		It("succeeds for valid config", func() {
 			cfg := config.Config{
 				Workflow:       config.WorkflowDirect,
-				PromptsDir:     "prompts",
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds for separate inbox and queue dirs", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
 			}
@@ -47,7 +64,9 @@ var _ = Describe("Config", func() {
 		It("fails for invalid workflow", func() {
 			cfg := config.Config{
 				Workflow:       "invalid",
-				PromptsDir:     "prompts",
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
 			}
@@ -56,22 +75,82 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("workflow"))
 		})
 
-		It("fails for empty promptsDir", func() {
+		It("fails for empty inboxDir", func() {
 			cfg := config.Config{
 				Workflow:       config.WorkflowDirect,
-				PromptsDir:     "",
+				InboxDir:       "",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     500,
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("promptsDir"))
+			Expect(err.Error()).To(ContainSubstring("inboxDir"))
+		})
+
+		It("fails for empty queueDir", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "",
+				CompletedDir:   "prompts/completed",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("queueDir"))
+		})
+
+		It("fails for empty completedDir", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("completedDir"))
+		})
+
+		It("fails when completedDir equals queueDir", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/queue",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("completedDir cannot equal queueDir"))
+		})
+
+		It("fails when completedDir equals inboxDir", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("completedDir cannot equal inboxDir"))
 		})
 
 		It("fails for empty containerImage", func() {
 			cfg := config.Config{
 				Workflow:       config.WorkflowDirect,
-				PromptsDir:     "prompts",
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "",
 				DebounceMs:     500,
 			}
@@ -83,7 +162,9 @@ var _ = Describe("Config", func() {
 		It("fails for negative debounceMs", func() {
 			cfg := config.Config{
 				Workflow:       config.WorkflowDirect,
-				PromptsDir:     "prompts",
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     -1,
 			}
@@ -95,7 +176,9 @@ var _ = Describe("Config", func() {
 		It("fails for zero debounceMs", func() {
 			cfg := config.Config{
 				Workflow:       config.WorkflowDirect,
-				PromptsDir:     "prompts",
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
 				DebounceMs:     0,
 			}
@@ -188,7 +271,9 @@ var _ = Describe("Config", func() {
 
 			It("loads full config from file", func() {
 				configContent := `workflow: pr
-promptsDir: custom-prompts
+inboxDir: custom-prompts
+queueDir: custom-prompts/queue
+completedDir: custom-prompts/done
 containerImage: custom-image:latest
 debounceMs: 1000
 `
@@ -202,7 +287,9 @@ debounceMs: 1000
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
-				Expect(cfg.PromptsDir).To(Equal("custom-prompts"))
+				Expect(cfg.InboxDir).To(Equal("custom-prompts"))
+				Expect(cfg.QueueDir).To(Equal("custom-prompts/queue"))
+				Expect(cfg.CompletedDir).To(Equal("custom-prompts/done"))
 				Expect(cfg.ContainerImage).To(Equal("custom-image:latest"))
 				Expect(cfg.DebounceMs).To(Equal(1000))
 			})
@@ -220,7 +307,9 @@ debounceMs: 1000
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
-				Expect(cfg.PromptsDir).To(Equal("prompts"))
+				Expect(cfg.InboxDir).To(Equal("prompts"))
+				Expect(cfg.QueueDir).To(Equal("prompts"))
+				Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
 				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.7"))
 				Expect(cfg.DebounceMs).To(Equal(500))
 			})
@@ -243,7 +332,9 @@ invalid yaml: [unclosed
 
 			It("returns error for invalid workflow value", func() {
 				configContent := `workflow: invalid
-promptsDir: prompts
+inboxDir: prompts
+queueDir: prompts
+completedDir: prompts/completed
 containerImage: docker.io/bborbe/claude-yolo:v0.0.7
 debounceMs: 500
 `
@@ -261,7 +352,9 @@ debounceMs: 500
 
 			It("returns error for negative debounceMs", func() {
 				configContent := `workflow: direct
-promptsDir: prompts
+inboxDir: prompts
+queueDir: prompts
+completedDir: prompts/completed
 containerImage: docker.io/bborbe/claude-yolo:v0.0.7
 debounceMs: -100
 `

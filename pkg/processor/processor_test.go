@@ -64,6 +64,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -114,6 +115,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -167,6 +169,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -209,6 +212,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -249,6 +253,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -303,6 +308,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -349,6 +355,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -399,6 +406,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -451,6 +459,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -493,6 +502,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -529,6 +539,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -562,6 +573,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -605,6 +617,7 @@ var _ = Describe("Processor", func() {
 
 		p := processor.NewProcessor(
 			promptsDir,
+			filepath.Join(promptsDir, "completed"),
 			mockExecutor,
 			mockManager,
 			mockReleaser,

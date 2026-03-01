@@ -118,37 +118,39 @@ type Manager interface {
 	Content(ctx context.Context, path string) (string, error)
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
-	NormalizeFilenames(ctx context.Context) ([]Rename, error)
+	NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error)
 	AllPreviousCompleted(ctx context.Context, n int) bool
 }
 
 // manager implements Manager.
 type manager struct {
-	dir   string
-	mover FileMover
+	queueDir     string
+	completedDir string
+	mover        FileMover
 }
 
 // NewManager creates a new Manager.
-func NewManager(dir string, mover FileMover) Manager {
+func NewManager(queueDir string, completedDir string, mover FileMover) Manager {
 	return &manager{
-		dir:   dir,
-		mover: mover,
+		queueDir:     queueDir,
+		completedDir: completedDir,
+		mover:        mover,
 	}
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "queued".
 func (pm *manager) ResetExecuting(ctx context.Context) error {
-	return ResetExecuting(ctx, pm.dir)
+	return ResetExecuting(ctx, pm.queueDir)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
 func (pm *manager) HasExecuting(ctx context.Context) bool {
-	return HasExecuting(ctx, pm.dir)
+	return HasExecuting(ctx, pm.queueDir)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
 func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
-	return ListQueued(ctx, pm.dir)
+	return ListQueued(ctx, pm.queueDir)
 }
 
 // ReadFrontmatter reads frontmatter from a file.
@@ -183,17 +185,18 @@ func (pm *manager) Title(ctx context.Context, path string) (string, error) {
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
 func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
-	return MoveToCompleted(ctx, path, pm.mover)
+	return MoveToCompleted(ctx, path, pm.completedDir, pm.mover)
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
-func (pm *manager) NormalizeFilenames(ctx context.Context) ([]Rename, error) {
-	return NormalizeFilenames(ctx, pm.dir, pm.mover)
+// It also checks the completed directory for used numbers.
+func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
+	return NormalizeFilenames(ctx, dir, pm.completedDir, pm.mover)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
 func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
-	return AllPreviousCompleted(ctx, pm.dir, n)
+	return AllPreviousCompleted(ctx, pm.completedDir, n)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
@@ -432,18 +435,15 @@ func Content(ctx context.Context, path string) (string, error) {
 	return result, nil
 }
 
-// MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
+// MoveToCompleted sets status to "completed" and moves a prompt file to the completed directory.
 // This ensures files in completed/ always have the correct status.
-func MoveToCompleted(ctx context.Context, path string, mover FileMover) error {
+func MoveToCompleted(ctx context.Context, path string, completedDir string, mover FileMover) error {
 	// Set status to completed before moving
 	if err := SetStatus(ctx, path, string(StatusCompleted)); err != nil {
 		return errors.Wrap(ctx, err, "set completed status")
 	}
 
-	dir := filepath.Dir(path)
-	completedDir := filepath.Join(dir, "completed")
-
-	// Ensure completed/ directory exists
+	// Ensure completed directory exists
 	if err := os.MkdirAll(completedDir, 0750); err != nil {
 		return errors.Wrap(ctx, err, "create completed directory")
 	}
@@ -521,7 +521,12 @@ type fileInfo struct {
 // - Have a duplicate number (later file gets next available number)
 // - Have wrong format (e.g., 9-foo.md instead of 009-foo.md)
 // Returns list of renames performed.
-func NormalizeFilenames(ctx context.Context, dir string, mover FileMover) ([]Rename, error) {
+func NormalizeFilenames(
+	ctx context.Context,
+	dir string,
+	completedDir string,
+	mover FileMover,
+) ([]Rename, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
@@ -530,7 +535,7 @@ func NormalizeFilenames(ctx context.Context, dir string, mover FileMover) ([]Ren
 	files, usedNumbers := scanPromptFiles(entries)
 
 	// Also collect numbers used in completed/ so we don't assign duplicates.
-	completedEntries, err := os.ReadDir(filepath.Join(dir, "completed"))
+	completedEntries, err := os.ReadDir(completedDir)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, errors.Wrap(ctx, err, "read completed directory")
 	}
@@ -724,16 +729,15 @@ func extractNumberFromFilename(filename string) int {
 	return num
 }
 
-// AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
-func AllPreviousCompleted(ctx context.Context, dir string, n int) bool {
+// AllPreviousCompleted checks if all prompts with numbers less than n are in completed directory.
+func AllPreviousCompleted(ctx context.Context, completedDir string, n int) bool {
 	if n <= 1 {
 		return true // No previous prompts to check
 	}
 
-	completedDir := filepath.Join(dir, "completed")
 	completedEntries, err := os.ReadDir(completedDir)
 	if err != nil {
-		return false // completed/ doesn't exist or can't be read
+		return false // completed directory doesn't exist or can't be read
 	}
 
 	// Collect all completed numbers

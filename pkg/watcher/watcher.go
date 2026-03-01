@@ -28,7 +28,8 @@ type Watcher interface {
 
 // watcher implements Watcher.
 type watcher struct {
-	promptsDir    string
+	inboxDir      string
+	queueDir      string
 	promptManager prompt.Manager
 	ready         chan<- struct{}
 	debounce      time.Duration
@@ -36,13 +37,15 @@ type watcher struct {
 
 // NewWatcher creates a new Watcher with the specified debounce duration.
 func NewWatcher(
-	promptsDir string,
+	inboxDir string,
+	queueDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 ) Watcher {
 	return &watcher{
-		promptsDir:    promptsDir,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
 		promptManager: promptManager,
 		ready:         ready,
 		debounce:      debounce,
@@ -59,15 +62,15 @@ func (w *watcher) Watch(ctx context.Context) error {
 	}
 	defer fsWatcher.Close()
 
-	// Get absolute path for prompts directory
-	absPromptsDir := w.getPromptsDir()
+	// Get absolute path for inbox directory
+	absInboxDir := w.getInboxDir()
 
-	// Watch the prompts directory
-	if err := fsWatcher.Add(absPromptsDir); err != nil {
+	// Watch the inbox directory
+	if err := fsWatcher.Add(absInboxDir); err != nil {
 		return errors.Wrap(ctx, err, "add watch path")
 	}
 
-	log.Printf("dark-factory: watcher started on %s", absPromptsDir)
+	log.Printf("dark-factory: watcher started on %s", absInboxDir)
 
 	// Debounce map: file path -> timer (protected by mutex)
 	var debounceMu sync.Mutex
@@ -129,10 +132,10 @@ func (w *watcher) handleWatchEvent(
 	debounceMu.Unlock()
 }
 
-// handleFileEvent normalizes filenames when a file is created or modified.
+// handleFileEvent normalizes filenames and moves files from inbox to queue when dirs differ.
 func (w *watcher) handleFileEvent(ctx context.Context) {
-	// Normalize filenames
-	renames, err := w.promptManager.NormalizeFilenames(ctx)
+	// Normalize filenames in inbox directory
+	renames, err := w.promptManager.NormalizeFilenames(ctx, w.inboxDir)
 	if err != nil {
 		log.Printf("dark-factory: failed to normalize filenames: %v", err)
 		return
@@ -144,6 +147,14 @@ func (w *watcher) handleFileEvent(ctx context.Context) {
 			filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
 	}
 
+	// If inbox != queue, move files from inbox to queue
+	if w.inboxDir != w.queueDir {
+		if err := w.moveInboxToQueue(ctx); err != nil {
+			log.Printf("dark-factory: failed to move files from inbox to queue: %v", err)
+			return
+		}
+	}
+
 	// Signal processor that files are ready
 	select {
 	case w.ready <- struct{}{}:
@@ -152,15 +163,45 @@ func (w *watcher) handleFileEvent(ctx context.Context) {
 	}
 }
 
-// getPromptsDir returns the prompts directory.
-func (w *watcher) getPromptsDir() string {
+// getInboxDir returns the inbox directory.
+func (w *watcher) getInboxDir() string {
 	// If relative path, make it absolute
-	if !filepath.IsAbs(w.promptsDir) {
+	if !filepath.IsAbs(w.inboxDir) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return w.promptsDir
+			return w.inboxDir
 		}
-		return filepath.Join(cwd, w.promptsDir)
+		return filepath.Join(cwd, w.inboxDir)
 	}
-	return w.promptsDir
+	return w.inboxDir
+}
+
+// moveInboxToQueue moves all .md files from inbox to queue directory.
+func (w *watcher) moveInboxToQueue(ctx context.Context) error {
+	entries, err := os.ReadDir(w.inboxDir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "read inbox directory")
+	}
+
+	// Ensure queue directory exists
+	if err := os.MkdirAll(w.queueDir, 0750); err != nil {
+		return errors.Wrap(ctx, err, "create queue directory")
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+
+		oldPath := filepath.Join(w.inboxDir, entry.Name())
+		newPath := filepath.Join(w.queueDir, entry.Name())
+
+		if err := os.Rename(oldPath, newPath); err != nil {
+			return errors.Wrapf(ctx, err, "move %s to queue", entry.Name())
+		}
+
+		log.Printf("dark-factory: moved %s from inbox to queue", entry.Name())
+	}
+
+	return nil
 }

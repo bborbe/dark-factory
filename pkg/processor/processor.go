@@ -30,7 +30,8 @@ type Processor interface {
 
 // processor implements Processor.
 type processor struct {
-	promptsDir    string
+	queueDir      string
+	completedDir  string
 	executor      executor.Executor
 	promptManager prompt.Manager
 	releaser      git.Releaser
@@ -40,7 +41,8 @@ type processor struct {
 
 // NewProcessor creates a new Processor.
 func NewProcessor(
-	promptsDir string,
+	queueDir string,
+	completedDir string,
 	exec executor.Executor,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
@@ -48,7 +50,8 @@ func NewProcessor(
 	ready <-chan struct{},
 ) Processor {
 	return &processor{
-		promptsDir:    promptsDir,
+		queueDir:      queueDir,
+		completedDir:  completedDir,
 		executor:      exec,
 		promptManager: promptManager,
 		releaser:      releaser,
@@ -141,7 +144,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 			return errors.Wrap(ctx, err, "process prompt")
 		}
 
-		log.Printf("dark-factory: watching %s for queued prompts...", p.promptsDir)
+		log.Printf("dark-factory: watching %s for queued prompts...", p.queueDir)
 
 		// Loop again to process next prompt
 	}
@@ -181,8 +184,8 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	log.Printf("dark-factory: executing prompt: %s", title)
 
-	// Derive log file path: prompts/log/{basename}.log
-	logFile := filepath.Join(filepath.Dir(pr.Path), "log", baseName+".log")
+	// Derive log file path: {queueDir}/log/{basename}.log
+	logFile := filepath.Join(p.queueDir, "log", baseName+".log")
 
 	// Execute via executor
 	if err := p.executor.Execute(ctx, content, logFile, containerName); err != nil {
@@ -203,7 +206,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	gitCtx := context.WithoutCancel(ctx)
 
 	// Commit the completed file separately (YOLO may have already committed code changes)
-	completedPath := filepath.Join(filepath.Dir(pr.Path), "completed", filepath.Base(pr.Path))
+	completedPath := filepath.Join(p.completedDir, filepath.Base(pr.Path))
 	if err := p.releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}

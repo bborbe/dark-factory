@@ -234,7 +234,7 @@ var _ = Describe("Prompt", func() {
 	Describe("AllPreviousCompleted", func() {
 		Context("with no previous prompts", func() {
 			It("returns true for n=1", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 1)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -250,12 +250,12 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns true for n=4", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 4)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
 				Expect(result).To(BeTrue())
 			})
 
 			It("returns true for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -271,29 +271,29 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns false for n=3", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 3)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns false for n=4", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 4)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns true for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
 				Expect(result).To(BeTrue())
 			})
 		})
 
 		Context("with no completed directory", func() {
 			It("returns false for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns true for n=1", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 1)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -306,7 +306,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns false for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, tempDir, 2)
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -611,7 +611,8 @@ Content here.
 				Expect(err).To(BeNil())
 
 				// Move to completed
-				err = prompt.MoveToCompleted(ctx, path, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				err = prompt.MoveToCompleted(ctx, path, completedDir, mover)
 				Expect(err).To(BeNil())
 
 				// Verify version is preserved in completed file
@@ -743,7 +744,8 @@ This is the content.
 		})
 
 		It("moves file to completed subdirectory", func() {
-			err := prompt.MoveToCompleted(ctx, path, mover)
+			completedDir := filepath.Join(tempDir, "completed")
+			err := prompt.MoveToCompleted(ctx, path, completedDir, mover)
 			Expect(err).To(BeNil())
 
 			// Original file should not exist
@@ -757,7 +759,8 @@ This is the content.
 		})
 
 		It("sets status to completed before moving", func() {
-			err := prompt.MoveToCompleted(ctx, path, mover)
+			completedDir := filepath.Join(tempDir, "completed")
+			err := prompt.MoveToCompleted(ctx, path, completedDir, mover)
 			Expect(err).To(BeNil())
 
 			// Read completed file and verify status
@@ -1016,7 +1019,8 @@ Content here.
 			})
 
 			It("assigns next available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("fix-something.md"))
@@ -1037,7 +1041,8 @@ Content here.
 			})
 
 			It("renames later file to next available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// First file alphabetically (009-bar.md) is kept, second (009-foo.md) is renamed
@@ -1060,7 +1065,8 @@ Content here.
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("9-foo.md"))
@@ -1080,7 +1086,8 @@ Content here.
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("42-answer.md"))
@@ -1096,7 +1103,8 @@ Content here.
 			})
 
 			It("does not rename any files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1118,7 +1126,8 @@ Content here.
 			})
 
 			It("renames only invalid files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(2))
 
@@ -1147,7 +1156,8 @@ Content here.
 			})
 
 			It("does not rename files in subdirectories", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1173,7 +1183,8 @@ Content here.
 			})
 
 			It("assigns next number above completed/ maximum", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
@@ -1190,7 +1201,8 @@ Content here.
 			})
 
 			It("ignores non-markdown files", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1202,7 +1214,8 @@ Content here.
 
 		Context("with empty directory", func() {
 			It("returns no renames", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 			})
@@ -1217,7 +1230,8 @@ Content here.
 			})
 
 			It("assigns smallest available number", func() {
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, mover)
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))

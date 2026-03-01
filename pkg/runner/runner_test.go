@@ -19,6 +19,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
@@ -144,6 +145,7 @@ This is a test prompt.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -205,6 +207,7 @@ This is a test prompt.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -263,6 +266,7 @@ This is a new prompt.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -326,6 +330,7 @@ This prompt will fail during execution.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -379,6 +384,7 @@ Content here.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -433,6 +439,7 @@ This has no YAML frontmatter.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -483,6 +490,7 @@ This has no YAML frontmatter.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine with timeout context
@@ -544,6 +552,7 @@ Testing status updates.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -583,6 +592,7 @@ Testing status updates.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -647,6 +657,7 @@ This should not be processed.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -696,6 +707,7 @@ Testing container name setting.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -746,6 +758,7 @@ This was stuck from a previous crash.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -780,6 +793,7 @@ This was stuck from a previous crash.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -835,6 +849,7 @@ Test file permission changes.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -904,6 +919,7 @@ Content here.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -956,6 +972,7 @@ This tests the git workflow.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -995,6 +1012,7 @@ This tests the git workflow.
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -1064,6 +1082,7 @@ Content iteration %d
 			executor,
 			prompt.NewManager(promptsDir, git.NewReleaser()),
 			git.NewReleaser(),
+			lock.NewLocker(promptsDir),
 		)
 
 		// Run runner in goroutine
@@ -1227,7 +1246,13 @@ This is a test.
 		Expect(err).NotTo(HaveOccurred())
 
 		// Create runner
-		testRunner = runner.NewRunner(promptsDir, mockExecutor, promptManager, mockReleaser)
+		testRunner = runner.NewRunner(
+			promptsDir,
+			mockExecutor,
+			promptManager,
+			mockReleaser,
+			lock.NewLocker(promptsDir),
+		)
 	})
 
 	AfterEach(func() {
@@ -1305,7 +1330,13 @@ This adds OAuth support.
 			mockReleaser.CommitCompletedFileReturns(nil)
 
 			// Create new runner for this test
-			runner2 := runner.NewRunner(promptsDir, mockExecutor, promptManager, mockReleaser)
+			runner2 := runner.NewRunner(
+				promptsDir,
+				mockExecutor,
+				promptManager,
+				mockReleaser,
+				lock.NewLocker(promptsDir),
+			)
 
 			// Run in goroutine with timeout
 			ctx2, cancel2 := context.WithTimeout(ctx, 3*time.Second)

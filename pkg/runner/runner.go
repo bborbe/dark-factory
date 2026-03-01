@@ -22,6 +22,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -36,6 +37,7 @@ type runner struct {
 	executor      executor.Executor
 	promptManager prompt.Manager
 	releaser      git.Releaser
+	locker        lock.Locker
 	processMu     sync.Mutex // Serializes prompt processing from file events
 }
 
@@ -45,21 +47,36 @@ func NewRunner(
 	exec executor.Executor,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
+	locker lock.Locker,
 ) Runner {
 	return &runner{
 		promptsDir:    promptsDir,
 		executor:      exec,
 		promptManager: promptManager,
 		releaser:      releaser,
+		locker:        locker,
 	}
 }
 
 // Run executes the main processing loop:
-// 1. Scan for existing queued prompts and process them
-// 2. Start watching prompts/ directory for changes
-// 3. On file create/write events, check if status: queued and process
-// 4. Run until context is cancelled or fatal error
+// 1. Acquire instance lock to prevent concurrent runs
+// 2. Scan for existing queued prompts and process them
+// 3. Start watching prompts/ directory for changes
+// 4. On file create/write events, check if status: queued and process
+// 5. Run until context is cancelled or fatal error
 func (r *runner) Run(ctx context.Context) error {
+	// Acquire instance lock
+	if err := r.locker.Acquire(ctx); err != nil {
+		return errors.Wrap(ctx, err, "acquire lock")
+	}
+	defer func() {
+		if err := r.locker.Release(context.Background()); err != nil {
+			log.Printf("dark-factory: failed to release lock: %v", err)
+		}
+	}()
+
+	log.Printf("dark-factory: acquired lock %s/.dark-factory.lock", r.promptsDir)
+
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

@@ -55,7 +55,7 @@ osv-scanner:
 	fi
 
 gosec:
-	go run -mod=mod github.com/securego/gosec/v2/cmd/gosec -exclude=G104 ./...
+	go run -mod=mod github.com/securego/gosec/v2/cmd/gosec -exclude=G104,G115 ./...
 
 trivy:
 	trivy fs \

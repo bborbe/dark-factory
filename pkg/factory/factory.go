@@ -7,6 +7,7 @@ package factory
 import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
@@ -19,5 +20,11 @@ func CreateRunner(promptsDir string) runner.Runner {
 		executor.NewDockerExecutor(),
 		prompt.NewManager(promptsDir, releaser),
 		releaser,
+		CreateLocker(promptsDir),
 	)
+}
+
+// CreateLocker creates a Locker for the specified directory.
+func CreateLocker(dir string) lock.Locker {
+	return lock.NewLocker(dir)
 }

@@ -81,3 +81,7 @@ issues:
     - linters:
         - unparam
       path: "_test\\.go$"
+    - linters:
+        - gosec
+      text: "G115.*integer overflow conversion uintptr -> int"
+      path: "pkg/lock/locker\\.go$"

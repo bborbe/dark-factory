@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.25
+
+### Added
+- Refactor factory to follow Go factory pattern
+
 ## v0.2.24
 
 ### Added

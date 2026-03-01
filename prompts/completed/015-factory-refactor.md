@@ -1,3 +1,9 @@
+---
+status: completed
+container: dark-factory-015-factory-refactor
+---
+
+
 # Refactor factory to follow Go factory pattern
 
 ## Goal
@@ -6,26 +12,33 @@ Refactor `pkg/factory/factory.go` to follow the Go factory pattern from `~/.clau
 
 ## Current Violations
 
+### Factory violations
 1. **Named `New` instead of `Create*`** — `func New(exec executor.Executor) Factory`
 2. **Massive business logic in factory** — `Run()`, `watchLoop()`, `handleWatchEvent()`, `handleFileEvent()`, `processExistingQueued()`, `processPrompt()`, `sanitizeContainerName()`
 3. **Factory IS a runner** — `Factory` interface has `Run(ctx context.Context) error`
-4. **Mutable state** — `SetPromptsDir()`, `GetPromptsDir()` setters/getters
-5. **Not in factory file** — all code is in one file mixing factory + implementation
+4. **Not in factory file** — all code is in one file mixing factory + implementation
+
+### Constructor pattern violations
+5. **Multi-method interface** — `Factory` has 3 methods (`Run`, `SetPromptsDir`, `GetPromptsDir`) instead of single-method SRP
+6. **Setters/getters instead of DI** — `SetPromptsDir()`, `GetPromptsDir()` instead of constructor parameter
+7. **Interface exposes state** — getters/setters expose internal state, interface methods should do real work
 
 ## Target Architecture
 
-### 1. `pkg/runner/runner.go` — Runner interface and implementation
+### 1. `pkg/runner/runner.go` — Constructor pattern: public interface + private struct + `New*`
 
-Move ALL business logic here:
+Follow `~/.claude-yolo/docs/go-factory-pattern.md` "Constructor Pattern" section:
 
 ```go
 package runner
 
 // Runner orchestrates the main processing loop.
+// Single-method interface (SRP).
 type Runner interface {
     Run(ctx context.Context) error
 }
 
+// Private struct — lowercase, unexported.
 type runner struct {
     promptsDir string
     executor   executor.Executor
@@ -33,6 +46,7 @@ type runner struct {
 }
 
 // NewRunner creates a new Runner.
+// All dependencies via constructor params — no setters.
 func NewRunner(promptsDir string, exec executor.Executor) Runner {
     return &runner{
         promptsDir: promptsDir,
@@ -50,7 +64,7 @@ Move these methods to the runner struct:
 - `processPrompt()`
 - `sanitizeContainerName()`
 
-Remove `SetPromptsDir` / `GetPromptsDir` — pass `promptsDir` as constructor parameter instead.
+No `SetPromptsDir` / `GetPromptsDir` — `promptsDir` is a constructor parameter, not mutable state.
 
 ### 2. `pkg/factory/factory.go` — Pure factory (zero logic)
 

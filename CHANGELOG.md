@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.33
+
+### Added
+- Fix semver sorting with SemanticVersionNumber type
+
 ## v0.2.32
 
 ### Added

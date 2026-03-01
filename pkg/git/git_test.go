@@ -17,90 +17,6 @@ import (
 )
 
 var _ = Describe("Git", func() {
-	Describe("BumpPatchVersion", func() {
-		Context("with valid semver tags", func() {
-			It("bumps patch version from v0.1.0", func() {
-				result, err := git.BumpPatchVersion(context.Background(), "v0.1.0")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v0.1.1"))
-			})
-
-			It("bumps patch version from v1.2.3", func() {
-				result, err := git.BumpPatchVersion(context.Background(), "v1.2.3")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v1.2.4"))
-			})
-
-			It("bumps patch version from v10.20.99", func() {
-				result, err := git.BumpPatchVersion(context.Background(), "v10.20.99")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v10.20.100"))
-			})
-		})
-
-		Context("with invalid tags", func() {
-			It("returns error for non-semver tag", func() {
-				_, err := git.BumpPatchVersion(context.Background(), "invalid")
-				Expect(err).NotTo(BeNil())
-			})
-
-			It("returns error for tag without v prefix", func() {
-				_, err := git.BumpPatchVersion(context.Background(), "1.2.3")
-				Expect(err).NotTo(BeNil())
-			})
-
-			It("returns error for incomplete version", func() {
-				_, err := git.BumpPatchVersion(context.Background(), "v1.2")
-				Expect(err).NotTo(BeNil())
-			})
-		})
-	})
-
-	Describe("BumpMinorVersion", func() {
-		Context("with valid semver tags", func() {
-			It("bumps minor version from v0.1.0", func() {
-				result, err := git.BumpMinorVersion(context.Background(), "v0.1.0")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v0.2.0"))
-			})
-
-			It("bumps minor version from v0.2.11", func() {
-				result, err := git.BumpMinorVersion(context.Background(), "v0.2.11")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v0.3.0"))
-			})
-
-			It("bumps minor version from v1.0.0", func() {
-				result, err := git.BumpMinorVersion(context.Background(), "v1.0.0")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v1.1.0"))
-			})
-
-			It("resets patch to 0 when bumping minor", func() {
-				result, err := git.BumpMinorVersion(context.Background(), "v1.5.99")
-				Expect(err).To(BeNil())
-				Expect(result).To(Equal("v1.6.0"))
-			})
-		})
-
-		Context("with invalid tags", func() {
-			It("returns error for non-semver tag", func() {
-				_, err := git.BumpMinorVersion(context.Background(), "invalid")
-				Expect(err).NotTo(BeNil())
-			})
-
-			It("returns error for tag without v prefix", func() {
-				_, err := git.BumpMinorVersion(context.Background(), "1.2.3")
-				Expect(err).NotTo(BeNil())
-			})
-
-			It("returns error for incomplete version", func() {
-				_, err := git.BumpMinorVersion(context.Background(), "v1.2")
-				Expect(err).NotTo(BeNil())
-			})
-		})
-	})
-
 	Describe("GetNextVersion", func() {
 		var (
 			ctx         context.Context
@@ -295,6 +211,134 @@ var _ = Describe("Git", func() {
 				version, err := git.GetNextVersion(ctx, git.MinorBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v0.3.0"))
+			})
+		})
+
+		Context("regression: semver vs lexicographic sorting", func() {
+			BeforeEach(func() {
+				// Create initial commit
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create tags in an order that would be wrong with lexicographic sort
+				// Lexicographically: "v0.10.0" < "v0.9.0" (wrong!)
+				// Semver: v0.9.0 < v0.10.0 (correct!)
+				tags := []string{"v0.1.9", "v0.2.25", "v0.10.0", "v0.9.0"}
+				for _, tag := range tags {
+					cmd = exec.Command("git", "tag", tag)
+					cmd.Dir = tempDir
+					err = cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+				}
+			})
+
+			It("correctly identifies v0.10.0 as the latest version", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.10.1")) // Should bump from v0.10.0, not v0.9.0
+			})
+
+			It("v0.2.25 is greater than v0.1.9 (regression test)", func() {
+				// This was the original bug: lexicographic sort would have picked v0.1.9 over v0.2.25
+				// Create repo with only these two tags
+				tempDir2, err := os.MkdirTemp("", "git-regression-test-*")
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					_ = os.RemoveAll(tempDir2)
+				}()
+
+				cmd := exec.Command("git", "init")
+				cmd.Dir = tempDir2
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "config", "user.email", "test@example.com")
+				cmd.Dir = tempDir2
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "config", "user.name", "Test User")
+				cmd.Dir = tempDir2
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(filepath.Join(tempDir2, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "add", ".")
+				cmd.Dir = tempDir2
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir2
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create tags
+				for _, tag := range []string{"v0.1.9", "v0.2.25"} {
+					cmd = exec.Command("git", "tag", tag)
+					cmd.Dir = tempDir2
+					err = cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+				}
+
+				// Change to temp dir to test
+				originalDir2, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.Chdir(tempDir2)
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					_ = os.Chdir(originalDir2)
+				}()
+
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.2.26")) // Should bump from v0.2.25, not v0.1.9
+			})
+		})
+
+		Context("with non-semver tags mixed in", func() {
+			BeforeEach(func() {
+				// Create initial commit
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create mix of valid and invalid tags
+				tags := []string{"v0.1.0", "invalid-tag", "v0.2.0", "another-bad-tag", "v1"}
+				for _, tag := range tags {
+					cmd = exec.Command("git", "tag", tag)
+					cmd.Dir = tempDir
+					err = cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+				}
+			})
+
+			It("filters out non-semver tags and finds correct max", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.2.1")) // Should use v0.2.0, ignoring invalid tags
 			})
 		})
 	})

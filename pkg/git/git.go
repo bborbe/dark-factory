@@ -7,9 +7,6 @@ package git
 import (
 	"context"
 	"os"
-	"regexp"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -222,71 +219,47 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 		return "", errors.Wrap(ctx, err, "get tags")
 	}
 
-	// Collect all tag names
-	var tagNames []string
+	// Collect and parse all valid semver tags
+	var versions []SemanticVersionNumber
 	err = tags.ForEach(func(ref *plumbing.Reference) error {
-		tagNames = append(tagNames, ref.Name().Short())
+		tagName := ref.Name().Short()
+		version, parseErr := ParseSemanticVersionNumber(ctx, tagName)
+		if parseErr != nil {
+			// Skip invalid semver tags
+			return nil
+		}
+		versions = append(versions, version)
 		return nil
 	})
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "iterate tags")
 	}
 
-	// If no tags exist, start with v0.1.0
-	if len(tagNames) == 0 {
+	// If no valid semver tags exist, start with v0.1.0
+	if len(versions) == 0 {
 		return "v0.1.0", nil
 	}
 
-	// Sort tags to get the latest (lexicographically)
-	sort.Strings(tagNames)
-	latestTag := tagNames[len(tagNames)-1]
+	// Find the maximum version using proper semver comparison
+	maxVersion := versions[0]
+	for _, v := range versions[1:] {
+		if maxVersion.Less(v) {
+			maxVersion = v
+		}
+	}
 
 	// Apply the appropriate bump
+	var nextVersion SemanticVersionNumber
 	switch bump {
 	case MinorBump:
-		return BumpMinorVersion(ctx, latestTag)
+		nextVersion = maxVersion.BumpMinor()
 	case PatchBump:
-		return BumpPatchVersion(ctx, latestTag)
+		nextVersion = maxVersion.BumpPatch()
 	default:
-		return BumpPatchVersion(ctx, latestTag)
-	}
-}
-
-// BumpPatchVersion increments the patch version of a semver tag
-func BumpPatchVersion(ctx context.Context, tag string) (string, error) {
-	// Match vX.Y.Z
-	re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
-	matches := re.FindStringSubmatch(tag)
-	if matches == nil {
-		return "", errors.Errorf(ctx, "invalid version tag: %s", tag)
+		nextVersion = maxVersion.BumpPatch()
 	}
 
-	major, _ := strconv.Atoi(matches[1])
-	minor, _ := strconv.Atoi(matches[2])
-	patch, _ := strconv.Atoi(matches[3])
-
-	// Bump patch
-	patch++
-
-	return "v" + strconv.Itoa(major) + "." + strconv.Itoa(minor) + "." + strconv.Itoa(patch), nil
-}
-
-// BumpMinorVersion increments the minor version of a semver tag (resets patch to 0)
-func BumpMinorVersion(ctx context.Context, tag string) (string, error) {
-	// Match vX.Y.Z
-	re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
-	matches := re.FindStringSubmatch(tag)
-	if matches == nil {
-		return "", errors.Errorf(ctx, "invalid version tag: %s", tag)
-	}
-
-	major, _ := strconv.Atoi(matches[1])
-	minor, _ := strconv.Atoi(matches[2])
-
-	// Bump minor, reset patch to 0
-	minor++
-
-	return "v" + strconv.Itoa(major) + "." + strconv.Itoa(minor) + ".0", nil
+	return nextVersion.String(), nil
 }
 
 // updateChangelog adds an entry to CHANGELOG.md and renames ## Unreleased to version

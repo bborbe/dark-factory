@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.6
+
+### Added
+- Reset failed prompts to queued on startup
+
 ## v0.10.5
 
 ### Added

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.7
+
+### Added
+- Add minor version bump support (never major)
+
 ## v0.1.6
 
 ### Added

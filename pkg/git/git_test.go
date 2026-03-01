@@ -56,6 +56,51 @@ var _ = Describe("Git", func() {
 		})
 	})
 
+	Describe("BumpMinorVersion", func() {
+		Context("with valid semver tags", func() {
+			It("bumps minor version from v0.1.0", func() {
+				result, err := git.BumpMinorVersion(context.Background(), "v0.1.0")
+				Expect(err).To(BeNil())
+				Expect(result).To(Equal("v0.2.0"))
+			})
+
+			It("bumps minor version from v0.2.11", func() {
+				result, err := git.BumpMinorVersion(context.Background(), "v0.2.11")
+				Expect(err).To(BeNil())
+				Expect(result).To(Equal("v0.3.0"))
+			})
+
+			It("bumps minor version from v1.0.0", func() {
+				result, err := git.BumpMinorVersion(context.Background(), "v1.0.0")
+				Expect(err).To(BeNil())
+				Expect(result).To(Equal("v1.1.0"))
+			})
+
+			It("resets patch to 0 when bumping minor", func() {
+				result, err := git.BumpMinorVersion(context.Background(), "v1.5.99")
+				Expect(err).To(BeNil())
+				Expect(result).To(Equal("v1.6.0"))
+			})
+		})
+
+		Context("with invalid tags", func() {
+			It("returns error for non-semver tag", func() {
+				_, err := git.BumpMinorVersion(context.Background(), "invalid")
+				Expect(err).NotTo(BeNil())
+			})
+
+			It("returns error for tag without v prefix", func() {
+				_, err := git.BumpMinorVersion(context.Background(), "1.2.3")
+				Expect(err).NotTo(BeNil())
+			})
+
+			It("returns error for incomplete version", func() {
+				_, err := git.BumpMinorVersion(context.Background(), "v1.2")
+				Expect(err).NotTo(BeNil())
+			})
+		})
+	})
+
 	Describe("GetNextVersion", func() {
 		var (
 			ctx         context.Context
@@ -122,7 +167,7 @@ var _ = Describe("Git", func() {
 				err = cmd.Run()
 				Expect(err).NotTo(HaveOccurred())
 
-				version, err := git.GetNextVersion(ctx)
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v0.1.0"))
 			})
@@ -150,10 +195,16 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns v0.1.1", func() {
-				version, err := git.GetNextVersion(ctx)
+			It("returns v0.1.1 with PatchBump", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v0.1.1"))
+			})
+
+			It("returns v0.2.0 with MinorBump", func() {
+				version, err := git.GetNextVersion(ctx, git.MinorBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.2.0"))
 			})
 		})
 
@@ -179,10 +230,16 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns v1.2.4", func() {
-				version, err := git.GetNextVersion(ctx)
+			It("returns v1.2.4 with PatchBump", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v1.2.4"))
+			})
+
+			It("returns v1.3.0 with MinorBump", func() {
+				version, err := git.GetNextVersion(ctx, git.MinorBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v1.3.0"))
 			})
 		})
 
@@ -228,10 +285,16 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns bumped version of latest tag", func() {
-				version, err := git.GetNextVersion(ctx)
+			It("returns bumped version of latest tag with PatchBump", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v0.2.1"))
+			})
+
+			It("returns bumped version of latest tag with MinorBump", func() {
+				version, err := git.GetNextVersion(ctx, git.MinorBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.3.0"))
 			})
 		})
 	})
@@ -338,8 +401,8 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("creates commit, tag, and updates CHANGELOG", func() {
-				err := git.CommitAndRelease(ctx, "Add test feature")
+			It("creates commit, tag, and updates CHANGELOG with PatchBump", func() {
+				err := git.CommitAndRelease(ctx, "Add test feature", git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify commit was created
@@ -390,8 +453,8 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("bumps to next version", func() {
-				err := git.CommitAndRelease(ctx, "Add second feature")
+			It("bumps to next version with PatchBump", func() {
+				err := git.CommitAndRelease(ctx, "Add second feature", git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify new tag was created
@@ -438,7 +501,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("inserts new version section", func() {
-				err := git.CommitAndRelease(ctx, "Add feature without unreleased")
+				err := git.CommitAndRelease(ctx, "Add feature without unreleased", git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify CHANGELOG has new version
@@ -478,7 +541,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("adds entry under existing subsection", func() {
-				err := git.CommitAndRelease(ctx, "Add new feature")
+				err := git.CommitAndRelease(ctx, "Add new feature", git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify CHANGELOG has version with subsection preserved

@@ -9,11 +9,12 @@ import (
 )
 
 type Releaser struct {
-	CommitAndReleaseStub        func(context.Context, string) error
+	CommitAndReleaseStub        func(context.Context, string, git.VersionBump) error
 	commitAndReleaseMutex       sync.RWMutex
 	commitAndReleaseArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
+		arg3 git.VersionBump
 	}
 	commitAndReleaseReturns struct {
 		result1 error
@@ -45,10 +46,11 @@ type Releaser struct {
 	commitOnlyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetNextVersionStub        func(context.Context) (string, error)
+	GetNextVersionStub        func(context.Context, git.VersionBump) (string, error)
 	getNextVersionMutex       sync.RWMutex
 	getNextVersionArgsForCall []struct {
 		arg1 context.Context
+		arg2 git.VersionBump
 	}
 	getNextVersionReturns struct {
 		result1 string
@@ -73,19 +75,20 @@ type Releaser struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Releaser) CommitAndRelease(arg1 context.Context, arg2 string) error {
+func (fake *Releaser) CommitAndRelease(arg1 context.Context, arg2 string, arg3 git.VersionBump) error {
 	fake.commitAndReleaseMutex.Lock()
 	ret, specificReturn := fake.commitAndReleaseReturnsOnCall[len(fake.commitAndReleaseArgsForCall)]
 	fake.commitAndReleaseArgsForCall = append(fake.commitAndReleaseArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
-	}{arg1, arg2})
+		arg3 git.VersionBump
+	}{arg1, arg2, arg3})
 	stub := fake.CommitAndReleaseStub
 	fakeReturns := fake.commitAndReleaseReturns
-	fake.recordInvocation("CommitAndRelease", []interface{}{arg1, arg2})
+	fake.recordInvocation("CommitAndRelease", []interface{}{arg1, arg2, arg3})
 	fake.commitAndReleaseMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -99,17 +102,17 @@ func (fake *Releaser) CommitAndReleaseCallCount() int {
 	return len(fake.commitAndReleaseArgsForCall)
 }
 
-func (fake *Releaser) CommitAndReleaseCalls(stub func(context.Context, string) error) {
+func (fake *Releaser) CommitAndReleaseCalls(stub func(context.Context, string, git.VersionBump) error) {
 	fake.commitAndReleaseMutex.Lock()
 	defer fake.commitAndReleaseMutex.Unlock()
 	fake.CommitAndReleaseStub = stub
 }
 
-func (fake *Releaser) CommitAndReleaseArgsForCall(i int) (context.Context, string) {
+func (fake *Releaser) CommitAndReleaseArgsForCall(i int) (context.Context, string, git.VersionBump) {
 	fake.commitAndReleaseMutex.RLock()
 	defer fake.commitAndReleaseMutex.RUnlock()
 	argsForCall := fake.commitAndReleaseArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Releaser) CommitAndReleaseReturns(result1 error) {
@@ -259,18 +262,19 @@ func (fake *Releaser) CommitOnlyReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Releaser) GetNextVersion(arg1 context.Context) (string, error) {
+func (fake *Releaser) GetNextVersion(arg1 context.Context, arg2 git.VersionBump) (string, error) {
 	fake.getNextVersionMutex.Lock()
 	ret, specificReturn := fake.getNextVersionReturnsOnCall[len(fake.getNextVersionArgsForCall)]
 	fake.getNextVersionArgsForCall = append(fake.getNextVersionArgsForCall, struct {
 		arg1 context.Context
-	}{arg1})
+		arg2 git.VersionBump
+	}{arg1, arg2})
 	stub := fake.GetNextVersionStub
 	fakeReturns := fake.getNextVersionReturns
-	fake.recordInvocation("GetNextVersion", []interface{}{arg1})
+	fake.recordInvocation("GetNextVersion", []interface{}{arg1, arg2})
 	fake.getNextVersionMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -284,17 +288,17 @@ func (fake *Releaser) GetNextVersionCallCount() int {
 	return len(fake.getNextVersionArgsForCall)
 }
 
-func (fake *Releaser) GetNextVersionCalls(stub func(context.Context) (string, error)) {
+func (fake *Releaser) GetNextVersionCalls(stub func(context.Context, git.VersionBump) (string, error)) {
 	fake.getNextVersionMutex.Lock()
 	defer fake.getNextVersionMutex.Unlock()
 	fake.GetNextVersionStub = stub
 }
 
-func (fake *Releaser) GetNextVersionArgsForCall(i int) context.Context {
+func (fake *Releaser) GetNextVersionArgsForCall(i int) (context.Context, git.VersionBump) {
 	fake.getNextVersionMutex.RLock()
 	defer fake.getNextVersionMutex.RUnlock()
 	argsForCall := fake.getNextVersionArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Releaser) GetNextVersionReturns(result1 string, result2 error) {

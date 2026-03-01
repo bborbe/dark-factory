@@ -1,6 +1,10 @@
 ---
-status: queued
+status: completed
+container: dark-factory-020-version-bump-strategy
 ---
+
+
+
 # Add minor version bump support (never major)
 
 ## Goal

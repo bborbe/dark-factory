@@ -16,12 +16,22 @@ import (
 	"github.com/bborbe/errors"
 )
 
+// VersionBump specifies the type of version bump to perform.
+type VersionBump int
+
+const (
+	// PatchBump increments the patch version (vX.Y.Z -> vX.Y.Z+1)
+	PatchBump VersionBump = iota
+	// MinorBump increments the minor version (vX.Y.Z -> vX.Y+1.0)
+	MinorBump
+)
+
 // Releaser handles git commit, tag, and push operations.
 //
 //counterfeiter:generate -o ../../mocks/releaser.go --fake-name Releaser . Releaser
 type Releaser interface {
-	GetNextVersion(ctx context.Context) (string, error)
-	CommitAndRelease(ctx context.Context, title string) error
+	GetNextVersion(ctx context.Context, bump VersionBump) (string, error)
+	CommitAndRelease(ctx context.Context, title string, bump VersionBump) error
 	CommitCompletedFile(ctx context.Context, path string) error
 	CommitOnly(ctx context.Context, message string) error
 	HasChangelog(ctx context.Context) bool
@@ -35,14 +45,14 @@ func NewReleaser() Releaser {
 	return &releaser{}
 }
 
-// GetNextVersion determines the next version by bumping the patch version.
-func (r *releaser) GetNextVersion(ctx context.Context) (string, error) {
-	return getNextVersion(ctx)
+// GetNextVersion determines the next version based on the bump type.
+func (r *releaser) GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
+	return getNextVersion(ctx, bump)
 }
 
 // CommitAndRelease performs the full git workflow.
-func (r *releaser) CommitAndRelease(ctx context.Context, title string) error {
-	return CommitAndRelease(ctx, title)
+func (r *releaser) CommitAndRelease(ctx context.Context, title string, bump VersionBump) error {
+	return CommitAndRelease(ctx, title, bump)
 }
 
 // CommitCompletedFile commits a completed prompt file to git.
@@ -75,18 +85,18 @@ func (r *releaser) CommitOnly(ctx context.Context, message string) error {
 // CommitAndRelease performs the full git workflow:
 // 1. git add -A
 // 2. Read CHANGELOG.md and add entry
-// 3. Bump version (patch)
+// 3. Bump version (patch or minor)
 // 4. git commit
 // 5. git tag
 // 6. git push + push tag
-func CommitAndRelease(ctx context.Context, changelogEntry string) error {
+func CommitAndRelease(ctx context.Context, changelogEntry string, bump VersionBump) error {
 	// Stage all changes
 	if err := gitAddAll(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git add")
 	}
 
 	// Get next version
-	nextVersion, err := getNextVersion(ctx)
+	nextVersion, err := getNextVersion(ctx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
@@ -161,13 +171,13 @@ func gitAddAll(ctx context.Context) error {
 	return nil
 }
 
-// GetNextVersion determines the next version by bumping the patch version.
-func GetNextVersion(ctx context.Context) (string, error) {
-	return getNextVersion(ctx)
+// GetNextVersion determines the next version based on the bump type.
+func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
+	return getNextVersion(ctx, bump)
 }
 
-// getNextVersion determines the next version by bumping the patch version
-func getNextVersion(ctx context.Context) (string, error) {
+// getNextVersion determines the next version based on the bump type
+func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 	// Get latest tag
 	cmd := exec.CommandContext(ctx, "git", "describe", "--tags", "--abbrev=0")
 	output, err := cmd.Output()
@@ -177,7 +187,16 @@ func getNextVersion(ctx context.Context) (string, error) {
 	}
 
 	latestTag := strings.TrimSpace(string(output))
-	return BumpPatchVersion(ctx, latestTag)
+
+	// Apply the appropriate bump
+	switch bump {
+	case MinorBump:
+		return BumpMinorVersion(ctx, latestTag)
+	case PatchBump:
+		return BumpPatchVersion(ctx, latestTag)
+	default:
+		return BumpPatchVersion(ctx, latestTag)
+	}
 }
 
 // BumpPatchVersion increments the patch version of a semver tag
@@ -197,6 +216,24 @@ func BumpPatchVersion(ctx context.Context, tag string) (string, error) {
 	patch++
 
 	return "v" + strconv.Itoa(major) + "." + strconv.Itoa(minor) + "." + strconv.Itoa(patch), nil
+}
+
+// BumpMinorVersion increments the minor version of a semver tag (resets patch to 0)
+func BumpMinorVersion(ctx context.Context, tag string) (string, error) {
+	// Match vX.Y.Z
+	re := regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)$`)
+	matches := re.FindStringSubmatch(tag)
+	if matches == nil {
+		return "", errors.Errorf(ctx, "invalid version tag: %s", tag)
+	}
+
+	major, _ := strconv.Atoi(matches[1])
+	minor, _ := strconv.Atoi(matches[2])
+
+	// Bump minor, reset patch to 0
+	minor++
+
+	return "v" + strconv.Itoa(major) + "." + strconv.Itoa(minor) + ".0", nil
 }
 
 // updateChangelog adds an entry to CHANGELOG.md and renames ## Unreleased to version

@@ -363,12 +363,13 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	}
 
 	// With CHANGELOG: update changelog, bump version, tag, push
-	nextVersion, err := r.releaser.GetNextVersion(gitCtx)
+	bump := DetermineBump(title)
+	nextVersion, err := r.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := r.releaser.CommitAndRelease(gitCtx, title); err != nil {
+	if err := r.releaser.CommitAndRelease(gitCtx, title, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 
@@ -395,4 +396,16 @@ func sanitizeContainerName(name string) string {
 	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
 	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 	return re.ReplaceAllString(name, "-")
+}
+
+// DetermineBump determines the version bump type based on the title.
+// Returns MinorBump for new features, PatchBump for everything else.
+func DetermineBump(title string) git.VersionBump {
+	lower := strings.ToLower(title)
+	for _, kw := range []string{"add", "implement", "new", "support", "feature"} {
+		if strings.Contains(lower, kw) {
+			return git.MinorBump
+		}
+	}
+	return git.PatchBump
 }

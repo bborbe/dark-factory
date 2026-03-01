@@ -1242,7 +1242,7 @@ This is a test.
 	})
 
 	Context("with CHANGELOG.md present", func() {
-		It("calls CommitAndRelease", func() {
+		It("calls CommitAndRelease with PatchBump for non-feature title", func() {
 			// Mock HasChangelog to return true
 			mockReleaser.HasChangelogReturns(true)
 			mockReleaser.GetNextVersionReturns("v0.1.0", nil)
@@ -1267,16 +1267,70 @@ This is a test.
 			// Verify HasChangelog was called
 			Expect(mockReleaser.HasChangelogCallCount()).To(BeNumerically(">=", 1))
 
-			// Verify CommitAndRelease was called
+			// Verify CommitAndRelease was called with PatchBump
 			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(1))
+			_, title, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+			Expect(title).To(Equal("Test prompt"))
+			Expect(bump).To(Equal(git.PatchBump))
 
 			// Verify CommitOnly was NOT called
 			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
 
-			// Verify GetNextVersion was called
+			// Verify GetNextVersion was called with PatchBump
 			Expect(mockReleaser.GetNextVersionCallCount()).To(Equal(1))
+			_, bumpArg := mockReleaser.GetNextVersionArgsForCall(0)
+			Expect(bumpArg).To(Equal(git.PatchBump))
 
 			cancel()
+		})
+
+		It("calls CommitAndRelease with MinorBump for feature title", func() {
+			// Create a prompt with a feature title
+			promptPath := filepath.Join(promptsDir, "002-feature.md")
+			promptContent := `---
+status: queued
+---
+
+# Add new authentication system
+
+This adds OAuth support.
+`
+			err := os.WriteFile(promptPath, []byte(promptContent), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Mock HasChangelog to return true
+			mockReleaser.HasChangelogReturns(true)
+			mockReleaser.GetNextVersionReturns("v0.2.0", nil)
+			mockReleaser.CommitAndReleaseReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+
+			// Create new runner for this test
+			runner2 := runner.NewRunner(promptsDir, mockExecutor, promptManager, mockReleaser)
+
+			// Run in goroutine with timeout
+			ctx2, cancel2 := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel2()
+
+			go func() {
+				_ = runner2.Run(ctx2)
+			}()
+
+			// Wait for processing
+			Eventually(func() bool {
+				completedPath := filepath.Join(completedDir, "002-feature.md")
+				_, err := os.Stat(completedPath)
+				return !os.IsNotExist(err)
+			}, 2*time.Second, 100*time.Millisecond).Should(BeTrue())
+
+			// Verify CommitAndRelease was called with MinorBump
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(BeNumerically(">=", 1))
+			// Get the last call (should be for our feature prompt)
+			lastCallIndex := mockReleaser.CommitAndReleaseCallCount() - 1
+			_, title, bump := mockReleaser.CommitAndReleaseArgsForCall(lastCallIndex)
+			Expect(title).To(Equal("Add new authentication system"))
+			Expect(bump).To(Equal(git.MinorBump))
+
+			cancel2()
 		})
 	})
 
@@ -1325,3 +1379,60 @@ This is a test.
 
 // ErrTest is a test error used in runner tests.
 var ErrTest = stderrors.New("test error")
+
+var _ = Describe("determineBump", func() {
+	It("returns MinorBump for title with 'add'", func() {
+		bump := runner.DetermineBump("Add container name tracking")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for title with 'Add' (capitalized)", func() {
+		bump := runner.DetermineBump("Add new feature")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for title with 'implement'", func() {
+		bump := runner.DetermineBump("Implement authentication")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for title with 'new'", func() {
+		bump := runner.DetermineBump("New logging system")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for title with 'support'", func() {
+		bump := runner.DetermineBump("Support multiple databases")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for title with 'feature'", func() {
+		bump := runner.DetermineBump("Feature flag system")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns PatchBump for title with 'fix'", func() {
+		bump := runner.DetermineBump("Fix frontmatter parser")
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for title with 'refactor'", func() {
+		bump := runner.DetermineBump("Refactor executor logic")
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for title with 'update'", func() {
+		bump := runner.DetermineBump("Update dependencies")
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for generic title", func() {
+		bump := runner.DetermineBump("Improve performance")
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns MinorBump when keyword is part of larger word", func() {
+		bump := runner.DetermineBump("Address authentication issues")
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+})

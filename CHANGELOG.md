@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.17
+
+### Added
+- Fix: NormalizeFilenames must include completed/ numbers when assigning new numbers
+
 ## v0.2.16
 
 ### Added

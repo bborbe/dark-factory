@@ -41,6 +41,82 @@ type Frontmatter struct {
 	Container string `yaml:"container,omitempty"`
 }
 
+// Manager manages prompt file operations.
+//
+//counterfeiter:generate -o ../../mocks/prompt-manager.go --fake-name Manager . Manager
+type Manager interface {
+	ResetExecuting(ctx context.Context) error
+	HasExecuting(ctx context.Context) bool
+	ListQueued(ctx context.Context) ([]Prompt, error)
+	ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error)
+	SetStatus(ctx context.Context, path string, status string) error
+	SetContainer(ctx context.Context, path string, name string) error
+	Content(ctx context.Context, path string) (string, error)
+	Title(ctx context.Context, path string) (string, error)
+	MoveToCompleted(ctx context.Context, path string) error
+	NormalizeFilenames(ctx context.Context) ([]Rename, error)
+}
+
+// manager implements Manager.
+type manager struct {
+	dir string
+}
+
+// NewManager creates a new Manager.
+func NewManager(dir string) Manager {
+	return &manager{dir: dir}
+}
+
+// ResetExecuting resets any prompts with status "executing" back to "queued".
+func (pm *manager) ResetExecuting(ctx context.Context) error {
+	return ResetExecuting(ctx, pm.dir)
+}
+
+// HasExecuting returns true if any prompt in dir has status "executing".
+func (pm *manager) HasExecuting(ctx context.Context) bool {
+	return HasExecuting(ctx, pm.dir)
+}
+
+// ListQueued scans a directory for .md files that should be picked up.
+func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
+	return ListQueued(ctx, pm.dir)
+}
+
+// ReadFrontmatter reads frontmatter from a file.
+func (pm *manager) ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
+	return ReadFrontmatter(ctx, path)
+}
+
+// SetStatus updates the status field in a prompt file's frontmatter.
+func (pm *manager) SetStatus(ctx context.Context, path string, status string) error {
+	return SetStatus(ctx, path, status)
+}
+
+// SetContainer updates the container field in a prompt file's frontmatter.
+func (pm *manager) SetContainer(ctx context.Context, path string, name string) error {
+	return SetContainer(ctx, path, name)
+}
+
+// Content returns the prompt content (without frontmatter) for passing to Docker.
+func (pm *manager) Content(ctx context.Context, path string) (string, error) {
+	return Content(ctx, path)
+}
+
+// Title extracts the first # heading from a prompt file.
+func (pm *manager) Title(ctx context.Context, path string) (string, error) {
+	return Title(ctx, path)
+}
+
+// MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
+func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
+	return MoveToCompleted(ctx, path)
+}
+
+// NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
+func (pm *manager) NormalizeFilenames(ctx context.Context) ([]Rename, error) {
+	return NormalizeFilenames(ctx, pm.dir)
+}
+
 // ListQueued scans a directory for .md files that should be picked up.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 // Sorted alphabetically by filename.

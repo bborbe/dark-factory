@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3
+
+### Added
+- Extract service interfaces from runner god object
+
 ## v0.2.25
 
 ### Added

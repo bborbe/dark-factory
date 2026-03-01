@@ -18,6 +18,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
@@ -138,7 +139,12 @@ This is a test prompt.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -194,7 +200,12 @@ This is a test prompt.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -247,7 +258,12 @@ This is a new prompt.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -305,7 +321,12 @@ This prompt will fail during execution.
 		executor.ExecuteReturns(ErrTest)
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -353,7 +374,12 @@ Content here.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -402,7 +428,12 @@ This has no YAML frontmatter.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -447,7 +478,12 @@ This has no YAML frontmatter.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine with timeout context
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -503,7 +539,12 @@ Testing status updates.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -537,7 +578,12 @@ Testing status updates.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -596,7 +642,12 @@ This should not be processed.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -640,7 +691,12 @@ Testing container name setting.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -685,7 +741,12 @@ This was stuck from a previous crash.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -714,7 +775,12 @@ This was stuck from a previous crash.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -764,7 +830,12 @@ Test file permission changes.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -828,7 +899,12 @@ Content here.
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -875,7 +951,12 @@ This tests the git workflow.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -909,7 +990,12 @@ This tests the git workflow.
 		executor := &mocks.Executor{}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -973,7 +1059,12 @@ Content iteration %d
 		}
 
 		// Create runner
-		r := runner.NewRunner(promptsDir, executor)
+		r := runner.NewRunner(
+			promptsDir,
+			executor,
+			prompt.NewManager(promptsDir),
+			git.NewReleaser(),
+		)
 
 		// Run runner in goroutine
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

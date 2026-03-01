@@ -6,6 +6,8 @@ package factory
 
 import (
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
 
@@ -14,5 +16,7 @@ func CreateRunner(promptsDir string) runner.Runner {
 	return runner.NewRunner(
 		promptsDir,
 		executor.NewDockerExecutor(),
+		prompt.NewManager(promptsDir),
+		git.NewReleaser(),
 	)
 }

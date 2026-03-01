@@ -32,16 +32,25 @@ type Runner interface {
 
 // runner orchestrates the main processing loop.
 type runner struct {
-	promptsDir string
-	executor   executor.Executor
-	processMu  sync.Mutex // Serializes prompt processing from file events
+	promptsDir    string
+	executor      executor.Executor
+	promptManager prompt.Manager
+	releaser      git.Releaser
+	processMu     sync.Mutex // Serializes prompt processing from file events
 }
 
 // NewRunner creates a new Runner.
-func NewRunner(promptsDir string, exec executor.Executor) Runner {
+func NewRunner(
+	promptsDir string,
+	exec executor.Executor,
+	promptManager prompt.Manager,
+	releaser git.Releaser,
+) Runner {
 	return &runner{
-		promptsDir: promptsDir,
-		executor:   exec,
+		promptsDir:    promptsDir,
+		executor:      exec,
+		promptManager: promptManager,
+		releaser:      releaser,
 	}
 }
 
@@ -58,12 +67,12 @@ func (r *runner) Run(ctx context.Context) error {
 	log.Printf("dark-factory: watching %s for queued prompts...", r.promptsDir)
 
 	// Reset any stuck "executing" prompts from previous crash
-	if err := prompt.ResetExecuting(ctx, r.promptsDir); err != nil {
+	if err := r.promptManager.ResetExecuting(ctx); err != nil {
 		return errors.Wrap(ctx, err, "reset executing prompts")
 	}
 
 	// Normalize filenames before processing
-	renames, err := prompt.NormalizeFilenames(ctx, r.promptsDir)
+	renames, err := r.promptManager.NormalizeFilenames(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
@@ -170,7 +179,7 @@ func (r *runner) processExistingQueued(ctx context.Context) error {
 		default:
 		}
 		// Scan for queued prompts
-		queued, err := prompt.ListQueued(ctx, r.promptsDir)
+		queued, err := r.promptManager.ListQueued(ctx)
 		if err != nil {
 			return errors.Wrap(ctx, err, "list queued prompts")
 		}
@@ -188,7 +197,7 @@ func (r *runner) processExistingQueued(ctx context.Context) error {
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := r.processPrompt(ctx, p); err != nil {
 			// Mark as failed — file may have been moved to completed/ before the error.
-			if setErr := prompt.SetStatus(ctx, p.Path, "failed"); setErr != nil {
+			if setErr := r.promptManager.SetStatus(ctx, p.Path, "failed"); setErr != nil {
 				log.Printf("dark-factory: failed to set failed status: %v", setErr)
 			}
 			return errors.Wrap(ctx, err, "process prompt")
@@ -208,12 +217,12 @@ func (r *runner) handleFileEvent(ctx context.Context, filePath string) {
 	defer r.processMu.Unlock()
 
 	// Skip if another prompt is currently executing
-	if prompt.HasExecuting(ctx, r.promptsDir) {
+	if r.promptManager.HasExecuting(ctx) {
 		return
 	}
 
 	// Normalize filenames first (handles invalid naming)
-	renames, err := prompt.NormalizeFilenames(ctx, r.promptsDir)
+	renames, err := r.promptManager.NormalizeFilenames(ctx)
 	if err != nil {
 		log.Printf("dark-factory: failed to normalize filenames: %v", err)
 		return
@@ -230,7 +239,7 @@ func (r *runner) handleFileEvent(ctx context.Context, filePath string) {
 	}
 
 	// Read frontmatter to check status
-	fm, err := prompt.ReadFrontmatter(ctx, actualPath)
+	fm, err := r.promptManager.ReadFrontmatter(ctx, actualPath)
 	if err != nil {
 		// Ignore files with read errors
 		return
@@ -257,7 +266,7 @@ func (r *runner) handleFileEvent(ctx context.Context, filePath string) {
 	// Process the prompt (includes moving to completed/ and committing)
 	if err := r.processPrompt(ctx, p); err != nil {
 		// Mark as failed
-		if setErr := prompt.SetStatus(ctx, p.Path, "failed"); setErr != nil {
+		if setErr := r.promptManager.SetStatus(ctx, p.Path, "failed"); setErr != nil {
 			log.Printf("dark-factory: failed to set failed status: %v", setErr)
 			return
 		}
@@ -276,7 +285,7 @@ func (r *runner) handleFileEvent(ctx context.Context, filePath string) {
 // processPrompt executes a single prompt and commits the result.
 func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	// Get prompt content first to check if empty
-	content, err := prompt.Content(ctx, p.Path)
+	content, err := r.promptManager.Content(ctx, p.Path)
 	if err != nil {
 		// If prompt is empty, move to completed and skip execution
 		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
@@ -285,7 +294,7 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 				filepath.Base(p.Path),
 			)
 			// Move empty prompts to completed/ (but don't commit)
-			if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
+			if err := r.promptManager.MoveToCompleted(ctx, p.Path); err != nil {
 				return errors.Wrap(ctx, err, "move empty prompt to completed")
 			}
 			return nil
@@ -300,17 +309,17 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	containerName := "dark-factory-" + baseName
 
 	// Set container name in frontmatter
-	if err := prompt.SetContainer(ctx, p.Path, containerName); err != nil {
+	if err := r.promptManager.SetContainer(ctx, p.Path, containerName); err != nil {
 		return errors.Wrap(ctx, err, "set container name")
 	}
 
 	// Set status to executing
-	if err := prompt.SetStatus(ctx, p.Path, "executing"); err != nil {
+	if err := r.promptManager.SetStatus(ctx, p.Path, "executing"); err != nil {
 		return errors.Wrap(ctx, err, "set executing status")
 	}
 
 	// Get prompt title for logging
-	title, err := prompt.Title(ctx, p.Path)
+	title, err := r.promptManager.Title(ctx, p.Path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get prompt title")
 	}
@@ -329,7 +338,7 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	log.Printf("dark-factory: docker container exited with code 0")
 
 	// Move to completed/ before commit so it's included in the release
-	if err := prompt.MoveToCompleted(ctx, p.Path); err != nil {
+	if err := r.promptManager.MoveToCompleted(ctx, p.Path); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
 
@@ -339,12 +348,12 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 	gitCtx := context.WithoutCancel(ctx)
 
 	// Commit and release
-	nextVersion, err := git.GetNextVersion(gitCtx)
+	nextVersion, err := r.releaser.GetNextVersion(gitCtx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := git.CommitAndRelease(gitCtx, title); err != nil {
+	if err := r.releaser.CommitAndRelease(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 

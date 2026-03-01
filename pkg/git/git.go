@@ -16,6 +16,32 @@ import (
 	"github.com/bborbe/errors"
 )
 
+// Releaser handles git commit, tag, and push operations.
+//
+//counterfeiter:generate -o ../../mocks/releaser.go --fake-name Releaser . Releaser
+type Releaser interface {
+	GetNextVersion(ctx context.Context) (string, error)
+	CommitAndRelease(ctx context.Context, title string) error
+}
+
+// releaser implements Releaser.
+type releaser struct{}
+
+// NewReleaser creates a new Releaser.
+func NewReleaser() Releaser {
+	return &releaser{}
+}
+
+// GetNextVersion determines the next version by bumping the patch version.
+func (r *releaser) GetNextVersion(ctx context.Context) (string, error) {
+	return getNextVersion(ctx)
+}
+
+// CommitAndRelease performs the full git workflow.
+func (r *releaser) CommitAndRelease(ctx context.Context, title string) error {
+	return CommitAndRelease(ctx, title)
+}
+
 // CommitAndRelease performs the full git workflow:
 // 1. git add -A
 // 2. Read CHANGELOG.md and add entry

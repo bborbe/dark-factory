@@ -1,10 +1,3 @@
----
-status: completed
-container: dark-factory-001-fix-double-commit
----
-
-
-
 # Fix: completed/ prompt file missing from release commit
 
 ## Root Cause

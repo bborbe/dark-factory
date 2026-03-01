@@ -1,4 +1,3 @@
-
 # Pin claude-yolo image to a specific version tag
 
 ## Goal

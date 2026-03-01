@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.24
+
+### Added
+- Serialize prompt execution to prevent concurrent git conflicts
+
 ## v0.2.23
 
 ### Added

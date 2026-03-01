@@ -36,6 +36,7 @@ type Factory interface {
 type factory struct {
 	promptsDir string
 	executor   executor.Executor
+	processMu  sync.Mutex // Serializes prompt processing from file events
 }
 
 // New creates a new Factory.
@@ -204,6 +205,15 @@ func (f *factory) processExistingQueued(ctx context.Context) error {
 // handleFileEvent checks if a file should be picked up and processes it.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
+	// Serialize processing to prevent concurrent execution
+	f.processMu.Lock()
+	defer f.processMu.Unlock()
+
+	// Skip if another prompt is currently executing
+	if prompt.HasExecuting(ctx, f.promptsDir) {
+		return
+	}
+
 	// Normalize filenames first (handles invalid naming)
 	renames, err := prompt.NormalizeFilenames(ctx, f.promptsDir)
 	if err != nil {
@@ -258,6 +268,11 @@ func (f *factory) handleFileEvent(ctx context.Context, filePath string) {
 	}
 
 	log.Printf("dark-factory: watching %s for queued prompts...", f.promptsDir)
+
+	// Process any other queued prompts that arrived during execution
+	if err := f.processExistingQueued(ctx); err != nil {
+		log.Printf("dark-factory: failed to process queued prompts: %v", err)
+	}
 }
 
 // processPrompt executes a single prompt and commits the result.

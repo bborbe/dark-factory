@@ -300,6 +300,27 @@ func ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	return readFrontmatter(ctx, path)
 }
 
+// HasExecuting returns true if any prompt in dir has status "executing".
+func HasExecuting(ctx context.Context, dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		fm, err := readFrontmatter(ctx, filepath.Join(dir, entry.Name()))
+		if err != nil {
+			continue
+		}
+		if fm.Status == "executing" {
+			return true
+		}
+	}
+	return false
+}
+
 // splitFrontmatter splits file content into frontmatter YAML and body.
 // Returns (yamlBytes, body, hasFrontmatter).
 // Frontmatter must start with "---\n" at the very beginning of the file

@@ -389,6 +389,93 @@ This is the content.
 		})
 	})
 
+	Describe("HasExecuting", func() {
+		Context("with executing prompt", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-executing.md", "executing")
+				createPromptFile(tempDir, "003-completed.md", "completed")
+			})
+
+			It("returns true", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with multiple executing prompts", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-executing.md", "executing")
+				createPromptFile(tempDir, "002-executing.md", "executing")
+			})
+
+			It("returns true", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("without executing prompt", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-completed.md", "completed")
+				createPromptFile(tempDir, "003-failed.md", "failed")
+			})
+
+			It("returns false", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("with empty directory", func() {
+			It("returns false", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("with non-markdown files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				// Create a non-markdown file
+				err := os.WriteFile(filepath.Join(tempDir, "readme.txt"), []byte("test"), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("ignores non-markdown files and returns false", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("with invalid frontmatter", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				// Create file with invalid frontmatter
+				invalidContent := "---\ninvalid yaml content ][[\n---\n# Test\n"
+				err := os.WriteFile(
+					filepath.Join(tempDir, "002-invalid.md"),
+					[]byte(invalidContent),
+					0600,
+				)
+				Expect(err).To(BeNil())
+			})
+
+			It("skips files with errors and returns false", func() {
+				result := prompt.HasExecuting(ctx, tempDir)
+				Expect(result).To(BeFalse())
+			})
+		})
+
+		Context("with nonexistent directory", func() {
+			It("returns false", func() {
+				result := prompt.HasExecuting(ctx, "/nonexistent/path")
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("ResetExecuting", func() {
 		Context("with mixed statuses", func() {
 			BeforeEach(func() {

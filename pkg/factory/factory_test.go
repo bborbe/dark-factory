@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -980,6 +981,103 @@ Content iteration %d
 
 		// Executor should be called exactly once (debounced)
 		Expect(executor.ExecuteCallCount()).To(Equal(1))
+
+		// Cancel context
+		cancel()
+	})
+
+	It("should serialize concurrent prompt execution", func() {
+		// Create mock executor with delay to simulate long execution
+		executor := &mocks.Executor{}
+		var executionOrder []string
+		var executionMu sync.Mutex
+		executionStarted := make(chan string, 2)
+
+		executor.ExecuteStub = func(_ context.Context, content string, _ string, containerName string) error {
+			// Record execution start
+			executionStarted <- containerName
+			executionMu.Lock()
+			executionOrder = append(executionOrder, containerName)
+			executionMu.Unlock()
+
+			// Simulate long execution
+			time.Sleep(300 * time.Millisecond)
+			return nil
+		}
+
+		// Create factory
+		f := factory.New(executor)
+
+		// Run factory in goroutine
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		go func() {
+			_ = f.Run(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(500 * time.Millisecond)
+
+		// Create two prompts simultaneously
+		promptPath1 := filepath.Join(promptsDir, "016-concurrent-1.md")
+		promptPath2 := filepath.Join(promptsDir, "017-concurrent-2.md")
+
+		promptContent1 := `---
+status: queued
+---
+
+# Concurrent test 1
+
+First concurrent prompt.
+`
+		promptContent2 := `---
+status: queued
+---
+
+# Concurrent test 2
+
+Second concurrent prompt.
+`
+		// Write both files at the same time
+		err := os.WriteFile(promptPath1, []byte(promptContent1), 0600)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.WriteFile(promptPath2, []byte(promptContent2), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for first prompt to start executing
+		select {
+		case <-executionStarted:
+			// Good, first execution started
+		case <-time.After(3 * time.Second):
+			Fail("first prompt did not start within timeout")
+		}
+
+		// Verify second prompt doesn't start while first is executing
+		// Give it a bit of time to potentially start (it shouldn't)
+		select {
+		case <-executionStarted:
+			Fail("second prompt should not start while first is executing")
+		case <-time.After(200 * time.Millisecond):
+			// Good, second prompt did not start
+		}
+
+		// Wait for both prompts to complete
+		Eventually(func() int {
+			entries, err := os.ReadDir(completedDir)
+			if err != nil {
+				return 0
+			}
+			return len(entries)
+		}, 10*time.Second, 100*time.Millisecond).Should(Equal(2))
+
+		// Verify both were executed but serially (not concurrently)
+		Expect(executor.ExecuteCallCount()).To(Equal(2))
+
+		// Verify execution was serialized (both in execution order)
+		executionMu.Lock()
+		defer executionMu.Unlock()
+		Expect(executionOrder).To(HaveLen(2))
 
 		// Cancel context
 		cancel()

@@ -1,3 +1,9 @@
+---
+status: completed
+container: dark-factory-014-serialize-prompt-execution
+---
+
+
 # Serialize prompt execution to prevent concurrent git conflicts
 
 ## Goal

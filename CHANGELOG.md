@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.35
+
+### Added
+- Fix go-git push authentication
+
 ## v0.2.34
 
 ### Added

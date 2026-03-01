@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.0
+
+### Added
+- Add timestamp fields to prompt frontmatter
+
 ## v0.10.7
 
 ### Added

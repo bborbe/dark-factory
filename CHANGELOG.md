@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.1
+
+### Added
+- Fix watcher to watch queueDir instead of inboxDir
+
 ## v0.8.0
 
 ### Added

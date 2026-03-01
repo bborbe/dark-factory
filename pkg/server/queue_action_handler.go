@@ -7,10 +7,13 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/bborbe/errors"
+	libhttp "github.com/bborbe/http"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -36,87 +39,97 @@ func NewQueueActionHandler(
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+) libhttp.WithError {
+	return libhttp.WithErrorFunc(
+		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+			if req.Method != http.MethodPost {
+				return libhttp.WrapWithStatusCode(
+					errors.New(ctx, "method not allowed"),
+					http.StatusMethodNotAllowed,
+				)
+			}
 
-		ctx := r.Context()
+			// Check if this is /api/v1/queue/all
+			if strings.HasSuffix(req.URL.Path, "/all") {
+				return handleQueueAll(ctx, resp, inboxDir, queueDir, promptManager)
+			}
 
-		// Check if this is /api/v1/queue/all
-		if strings.HasSuffix(r.URL.Path, "/all") {
-			handleQueueAll(ctx, w, inboxDir, queueDir, promptManager)
-			return
-		}
-
-		handleQueueSingle(ctx, w, r, inboxDir, queueDir, promptManager)
-	}
+			return handleQueueSingle(ctx, resp, req, inboxDir, queueDir, promptManager)
+		},
+	)
 }
 
 // handleQueueAll handles the POST /api/v1/queue/action/all endpoint.
 func handleQueueAll(
 	ctx context.Context,
-	w http.ResponseWriter,
+	resp http.ResponseWriter,
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
-) {
+) error {
 	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager)
 	if err != nil {
-		log.Printf("dark-factory: failed to queue all files: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	writeQueueResponse(w, queuedFiles)
+	return writeQueueResponse(resp, queuedFiles)
 }
 
 // handleQueueSingle handles the POST /api/v1/queue/action endpoint.
 func handleQueueSingle(
 	ctx context.Context,
-	w http.ResponseWriter,
-	r *http.Request,
+	resp http.ResponseWriter,
+	req *http.Request,
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
-) {
-	var req QueueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
+) error {
+	// Limit request body size to 1MB
+	req.Body = http.MaxBytesReader(resp, req.Body, 1024*1024)
+
+	var queueReq QueueRequest
+	if err := json.NewDecoder(req.Body).Decode(&queueReq); err != nil {
+		return libhttp.WrapWithStatusCode(
+			errors.Wrap(ctx, err, "invalid request body"),
+			http.StatusBadRequest,
+		)
 	}
 
-	if req.File == "" {
-		http.Error(w, "Missing file parameter", http.StatusBadRequest)
-		return
+	if queueReq.File == "" {
+		return libhttp.WrapWithStatusCode(
+			errors.New(ctx, "missing file parameter"),
+			http.StatusBadRequest,
+		)
 	}
 
-	queuedFile, err := queueSingleFile(ctx, inboxDir, queueDir, promptManager, req.File)
+	// Fix path traversal: sanitize filename to prevent directory traversal
+	filename := filepath.Base(queueReq.File)
+	if filename == "." || filename == ".." {
+		return libhttp.WrapWithStatusCode(
+			errors.New(ctx, "invalid filename"),
+			http.StatusBadRequest,
+		)
+	}
+
+	queuedFile, err := queueSingleFile(ctx, inboxDir, queueDir, promptManager, filename)
 	if err != nil {
-		handleQueueError(w, err)
-		return
+		return handleQueueError(err)
 	}
 
-	writeQueueResponse(w, []QueuedFile{queuedFile})
+	return writeQueueResponse(resp, []QueuedFile{queuedFile})
 }
 
 // handleQueueError handles errors from queueing operations.
-func handleQueueError(w http.ResponseWriter, err error) {
+func handleQueueError(err error) error {
 	if os.IsNotExist(err) {
-		http.Error(w, "File not found", http.StatusNotFound)
-		return
+		return libhttp.WrapWithStatusCode(err, http.StatusNotFound)
 	}
-	log.Printf("dark-factory: failed to queue file: %v", err)
-	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	return err
 }
 
 // writeQueueResponse writes a QueueResponse to the response writer.
-func writeQueueResponse(w http.ResponseWriter, queuedFiles []QueuedFile) {
+func writeQueueResponse(resp http.ResponseWriter, queuedFiles []QueuedFile) error {
 	response := QueueResponse{Queued: queuedFiles}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("dark-factory: failed to encode queue response: %v", err)
-	}
+	resp.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(resp).Encode(response)
 }

@@ -6,7 +6,10 @@ package factory
 
 import (
 	"fmt"
+	"net/http"
 	"time"
+
+	libhttp "github.com/bborbe/http"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -122,10 +125,32 @@ func CreateServer(
 	completedDir string,
 	promptManager prompt.Manager,
 ) server.Server {
-	addr := fmt.Sprintf(":%d", port)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	ideasDir := "prompts/ideas"
 	statusChecker := status.NewChecker(queueDir, completedDir, ideasDir, promptManager)
-	return server.NewServer(addr, statusChecker, inboxDir, queueDir, promptManager)
+
+	// Build the mux with all routes
+	mux := http.NewServeMux()
+	mux.Handle("/health", libhttp.NewErrorHandler(server.NewHealthHandler()))
+	mux.Handle("/api/v1/status", libhttp.NewErrorHandler(server.NewStatusHandler(statusChecker)))
+	mux.Handle("/api/v1/queue", libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker)))
+	mux.Handle(
+		"/api/v1/queue/action",
+		libhttp.NewErrorHandler(server.NewQueueActionHandler(inboxDir, queueDir, promptManager)),
+	)
+	mux.Handle(
+		"/api/v1/queue/action/all",
+		libhttp.NewErrorHandler(server.NewQueueActionHandler(inboxDir, queueDir, promptManager)),
+	)
+	mux.Handle("/api/v1/inbox", libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir)))
+	mux.Handle(
+		"/api/v1/completed",
+		libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker)),
+	)
+
+	// Create server with libhttp (includes sane defaults for timeouts)
+	runFunc := libhttp.NewServer(addr, mux)
+	return server.NewServer(runFunc)
 }
 
 // CreateStatusCommand creates a StatusCommand.

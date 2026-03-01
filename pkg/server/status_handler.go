@@ -5,32 +5,34 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
+
+	"github.com/bborbe/errors"
+	libhttp "github.com/bborbe/http"
 
 	"github.com/bborbe/dark-factory/pkg/status"
 )
 
 // NewStatusHandler creates a handler for the /api/v1/status endpoint.
-func NewStatusHandler(checker status.Checker) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+func NewStatusHandler(checker status.Checker) libhttp.WithError {
+	return libhttp.WithErrorFunc(
+		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+			if req.Method != http.MethodGet {
+				return libhttp.WrapWithStatusCode(
+					errors.New(ctx, "method not allowed"),
+					http.StatusMethodNotAllowed,
+				)
+			}
 
-		ctx := r.Context()
-		st, err := checker.GetStatus(ctx)
-		if err != nil {
-			log.Printf("dark-factory: failed to get status: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+			st, err := checker.GetStatus(ctx)
+			if err != nil {
+				return err
+			}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(st); err != nil {
-			log.Printf("dark-factory: failed to encode status: %v", err)
-		}
-	}
+			resp.Header().Set("Content-Type", "application/json")
+			return json.NewEncoder(resp).Encode(st)
+		},
+	)
 }

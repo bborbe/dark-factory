@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libhttp "github.com/bborbe/http"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -61,7 +62,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action", bytes.NewReader(body))
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -91,7 +94,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action", bytes.NewReader(body))
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(404))
@@ -105,7 +110,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action", bytes.NewReader(body))
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(400))
@@ -119,7 +126,9 @@ var _ = Describe("QueueActionHandler", func() {
 			)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(400))
@@ -129,7 +138,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/queue/action", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -156,7 +167,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action", bytes.NewReader(body))
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -183,7 +196,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action/all", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -213,7 +228,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action/all", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -233,7 +250,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue/action/all", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -248,7 +267,9 @@ var _ = Describe("QueueActionHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/queue/action/all", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager)
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))

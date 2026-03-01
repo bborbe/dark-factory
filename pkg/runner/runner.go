@@ -73,7 +73,7 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "acquire lock")
 	}
 	defer func() {
-		if err := r.locker.Release(context.Background()); err != nil {
+		if err := r.locker.Release(context.WithoutCancel(ctx)); err != nil {
 			log.Printf("dark-factory: failed to release lock: %v", err)
 		}
 	}()

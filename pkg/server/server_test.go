@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"time"
 
+	libhttp "github.com/bborbe/http"
+	"github.com/bborbe/run"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -21,39 +23,25 @@ import (
 var _ = Describe("Server", func() {
 	var (
 		mockStatusChecker *mocks.Checker
-		mockPromptManager *mocks.Manager
-		srv               server.Server
-		ctx               context.Context
-		cancel            context.CancelFunc
 	)
 
 	BeforeEach(func() {
 		mockStatusChecker = &mocks.Checker{}
-		mockPromptManager = &mocks.Manager{}
-		srv = server.NewServer(":18080", mockStatusChecker, "inbox", "queue", mockPromptManager)
-		ctx, cancel = context.WithCancel(context.Background())
-	})
-
-	AfterEach(func() {
-		cancel()
 	})
 
 	Describe("Server lifecycle", func() {
-		It("starts and stops gracefully", func() {
-			done := make(chan error)
-			go func() {
-				done <- srv.ListenAndServe(ctx)
-			}()
+		It("wraps a run.Func and executes it", func() {
+			executed := false
+			mockRunFunc := run.Func(func(ctx context.Context) error {
+				executed = true
+				return nil
+			})
 
-			// Give server time to start
-			time.Sleep(100 * time.Millisecond)
+			srv := server.NewServer(mockRunFunc)
+			err := srv.ListenAndServe(context.Background())
 
-			// Cancel context
-			cancel()
-
-			// Wait for server to stop
-			err := <-done
 			Expect(err).NotTo(HaveOccurred())
+			Expect(executed).To(BeTrue())
 		})
 	})
 
@@ -62,7 +50,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/health", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewHealthHandler()
+			handler := libhttp.NewErrorHandler(server.NewHealthHandler())
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -74,7 +62,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/health", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewHealthHandler()
+			handler := libhttp.NewErrorHandler(server.NewHealthHandler())
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -98,7 +86,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewStatusHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -114,7 +102,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewStatusHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -128,7 +116,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewStatusHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -146,7 +134,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -166,7 +154,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -176,7 +164,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewQueueHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -194,7 +182,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewCompletedHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -216,7 +204,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/completed?limit=5", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewCompletedHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -233,7 +221,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/completed?limit=invalid", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewCompletedHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -250,7 +238,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("GET", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewCompletedHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -260,7 +248,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewCompletedHandler(mockStatusChecker)
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))

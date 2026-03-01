@@ -5,19 +5,28 @@
 package server
 
 import (
+	"context"
 	"net/http"
+
+	"github.com/bborbe/errors"
+	libhttp "github.com/bborbe/http"
 )
 
 // NewHealthHandler creates a handler for the /health endpoint.
-func NewHealthHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+func NewHealthHandler() libhttp.WithError {
+	return libhttp.WithErrorFunc(
+		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+			if req.Method != http.MethodGet {
+				return libhttp.WrapWithStatusCode(
+					errors.New(ctx, "method not allowed"),
+					http.StatusMethodNotAllowed,
+				)
+			}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	}
+			resp.Header().Set("Content-Type", "application/json")
+			resp.WriteHeader(http.StatusOK)
+			_, _ = resp.Write([]byte(`{"status":"ok"}`))
+			return nil
+		},
+	)
 }

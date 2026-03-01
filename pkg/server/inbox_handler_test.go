@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libhttp "github.com/bborbe/http"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -49,7 +50,7 @@ var _ = Describe("InboxHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/inbox", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewInboxHandler(inboxDir)
+			handler := libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -75,7 +76,7 @@ var _ = Describe("InboxHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/inbox", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewInboxHandler(inboxDir)
+			handler := libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -96,7 +97,7 @@ var _ = Describe("InboxHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/inbox", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewInboxHandler(inboxDir)
+			handler := libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -111,7 +112,7 @@ var _ = Describe("InboxHandler", func() {
 			req := httptest.NewRequest("GET", "/api/v1/inbox", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewInboxHandler(inboxDir)
+			handler := libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -126,7 +127,7 @@ var _ = Describe("InboxHandler", func() {
 			req := httptest.NewRequest("POST", "/api/v1/inbox", nil)
 			w := httptest.NewRecorder()
 
-			handler := server.NewInboxHandler(inboxDir)
+			handler := libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))

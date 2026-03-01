@@ -5,11 +5,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/bborbe/errors"
+	libhttp "github.com/bborbe/http"
 )
 
 // InboxFile represents a file in the inbox directory.
@@ -23,34 +26,34 @@ type InboxListResponse struct {
 }
 
 // NewInboxHandler creates a handler for the /api/v1/inbox endpoint.
-func NewInboxHandler(inboxDir string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Read inbox directory
-		entries, err := os.ReadDir(inboxDir)
-		if err != nil {
-			log.Printf("dark-factory: failed to read inbox directory: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// Collect .md files
-		var files []InboxFile
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
+func NewInboxHandler(inboxDir string) libhttp.WithError {
+	return libhttp.WithErrorFunc(
+		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+			if req.Method != http.MethodGet {
+				return libhttp.WrapWithStatusCode(
+					errors.New(ctx, "method not allowed"),
+					http.StatusMethodNotAllowed,
+				)
 			}
-			files = append(files, InboxFile{Name: entry.Name()})
-		}
 
-		response := InboxListResponse{Files: files}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Printf("dark-factory: failed to encode inbox response: %v", err)
-		}
-	}
+			// Read inbox directory
+			entries, err := os.ReadDir(inboxDir)
+			if err != nil {
+				return err
+			}
+
+			// Collect .md files
+			var files []InboxFile
+			for _, entry := range entries {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+					continue
+				}
+				files = append(files, InboxFile{Name: entry.Name()})
+			}
+
+			response := InboxListResponse{Files: files}
+			resp.Header().Set("Content-Type", "application/json")
+			return json.NewEncoder(resp).Encode(response)
+		},
+	)
 }

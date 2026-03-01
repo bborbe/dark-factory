@@ -5,32 +5,34 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"net/http"
+
+	"github.com/bborbe/errors"
+	libhttp "github.com/bborbe/http"
 
 	"github.com/bborbe/dark-factory/pkg/status"
 )
 
 // NewQueueHandler creates a handler for the /api/v1/queue endpoint.
-func NewQueueHandler(checker status.Checker) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+func NewQueueHandler(checker status.Checker) libhttp.WithError {
+	return libhttp.WithErrorFunc(
+		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+			if req.Method != http.MethodGet {
+				return libhttp.WrapWithStatusCode(
+					errors.New(ctx, "method not allowed"),
+					http.StatusMethodNotAllowed,
+				)
+			}
 
-		ctx := r.Context()
-		queued, err := checker.GetQueuedPrompts(ctx)
-		if err != nil {
-			log.Printf("dark-factory: failed to get queued prompts: %v", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+			queued, err := checker.GetQueuedPrompts(ctx)
+			if err != nil {
+				return err
+			}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(queued); err != nil {
-			log.Printf("dark-factory: failed to encode queued prompts: %v", err)
-		}
-	}
+			resp.Header().Set("Content-Type", "application/json")
+			return json.NewEncoder(resp).Encode(queued)
+		},
+	)
 }

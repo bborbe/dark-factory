@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
@@ -96,6 +97,10 @@ type Frontmatter struct {
 	Status             string `yaml:"status"`
 	Container          string `yaml:"container,omitempty"`
 	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`
+	Created            string `yaml:"created,omitempty"`
+	Queued             string `yaml:"queued,omitempty"`
+	Started            string `yaml:"started,omitempty"`
+	Completed          string `yaml:"completed,omitempty"`
 }
 
 // FileMover handles file move operations with git awareness.
@@ -312,9 +317,26 @@ func ResetFailed(ctx context.Context, dir string) error {
 
 // SetStatus updates the status field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the status field.
+// Also sets appropriate timestamp fields based on status.
 func SetStatus(ctx context.Context, path string, status string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
 	return setField(ctx, path, func(fm *Frontmatter) {
 		fm.Status = status
+
+		// Set timestamps based on status
+		switch Status(status) {
+		case StatusQueued:
+			// Set queued timestamp only if empty (preserve original on retry)
+			if fm.Queued == "" {
+				fm.Queued = now
+			}
+		case StatusExecuting:
+			// Always overwrite started time (retries get fresh start)
+			fm.Started = now
+		case StatusCompleted, StatusFailed:
+			// Always overwrite completed time
+			fm.Completed = now
+		}
 	})
 }
 
@@ -331,6 +353,16 @@ func SetContainer(ctx context.Context, path string, container string) error {
 func SetVersion(ctx context.Context, path string, version string) error {
 	return setField(ctx, path, func(fm *Frontmatter) {
 		fm.DarkFactoryVersion = version
+	})
+}
+
+// ensureCreatedTimestamp ensures the created timestamp is set.
+// Only sets if the field is empty (never overwrites).
+func ensureCreatedTimestamp(ctx context.Context, path string) error {
+	return setField(ctx, path, func(fm *Frontmatter) {
+		if fm.Created == "" {
+			fm.Created = time.Now().UTC().Format(time.RFC3339)
+		}
 	})
 }
 
@@ -570,6 +602,22 @@ func NormalizeFilenames(
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
+	}
+
+	// Ensure all .md files have created timestamp
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		if err := ensureCreatedTimestamp(ctx, path); err != nil {
+			// Log error but continue processing other files
+			log.Printf(
+				"dark-factory: failed to set created timestamp for %s: %v",
+				entry.Name(),
+				err,
+			)
+		}
 	}
 
 	files, usedNumbers := scanPromptFiles(entries)

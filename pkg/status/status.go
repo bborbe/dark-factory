@@ -191,60 +191,99 @@ func (s *checker) GetCompletedPrompts(
 		return nil, errors.Wrap(ctx, err, "read completed directory")
 	}
 
-	// Collect all completed prompts with their mod times
-	type promptWithTime struct {
-		name    string
-		modTime time.Time
-	}
+	prompts := s.collectCompletedPrompts(ctx, entries)
+	sortPromptsByTimeDescending(prompts)
+	prompts = applyLimit(prompts, limit)
 
+	return convertToCompletedPrompts(prompts), nil
+}
+
+// promptWithTime holds prompt name and completion time.
+type promptWithTime struct {
+	name          string
+	completedTime time.Time
+}
+
+// collectCompletedPrompts collects completed prompts with their completion times.
+func (s *checker) collectCompletedPrompts(
+	ctx context.Context,
+	entries []os.DirEntry,
+) []promptWithTime {
 	prompts := make([]promptWithTime, 0)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
 
-		info, err := entry.Info()
-		if err != nil {
+		completedTime := s.getCompletionTime(ctx, entry)
+		if completedTime.IsZero() {
 			continue
 		}
 
 		prompts = append(prompts, promptWithTime{
-			name:    entry.Name(),
-			modTime: info.ModTime(),
+			name:          entry.Name(),
+			completedTime: completedTime,
 		})
 	}
+	return prompts
+}
 
-	// Sort by mod time descending (most recent first)
+// getCompletionTime extracts completion time from frontmatter or file mod time.
+func (s *checker) getCompletionTime(ctx context.Context, entry os.DirEntry) time.Time {
+	path := filepath.Join(s.completedDir, entry.Name())
+	fm, err := s.promptMgr.ReadFrontmatter(ctx, path)
+
+	// Try frontmatter timestamp first
+	if err == nil && fm != nil && fm.Completed != "" {
+		if t, err := time.Parse(time.RFC3339, fm.Completed); err == nil {
+			return t
+		}
+	}
+
+	// Fall back to file mod time
+	info, err := entry.Info()
+	if err != nil {
+		return time.Time{}
+	}
+	return info.ModTime()
+}
+
+// sortPromptsByTimeDescending sorts prompts by completion time (most recent first).
+func sortPromptsByTimeDescending(prompts []promptWithTime) {
 	for i := 0; i < len(prompts)-1; i++ {
 		for j := i + 1; j < len(prompts); j++ {
-			if prompts[j].modTime.After(prompts[i].modTime) {
+			if prompts[j].completedTime.After(prompts[i].completedTime) {
 				prompts[i], prompts[j] = prompts[j], prompts[i]
 			}
 		}
 	}
+}
 
-	// Apply limit
+// applyLimit limits the number of prompts.
+func applyLimit(prompts []promptWithTime, limit int) []promptWithTime {
 	if limit > 0 && len(prompts) > limit {
-		prompts = prompts[:limit]
+		return prompts[:limit]
 	}
+	return prompts
+}
 
-	// Convert to result format
+// convertToCompletedPrompts converts promptWithTime to CompletedPrompt.
+func convertToCompletedPrompts(prompts []promptWithTime) []CompletedPrompt {
 	result := make([]CompletedPrompt, len(prompts))
 	for i, p := range prompts {
 		result[i] = CompletedPrompt{
 			Name:        p.name,
-			CompletedAt: p.modTime,
+			CompletedAt: p.completedTime,
 		}
 	}
-
-	return result, nil
+	return result
 }
 
 // executingPrompt contains info about the executing prompt.
 type executingPrompt struct {
-	Path      string
-	Container string
-	ModTime   time.Time
+	Path        string
+	Container   string
+	StartedTime time.Time
 }
 
 // findExecutingPrompt finds the currently executing prompt.
@@ -266,16 +305,18 @@ func (s *checker) findExecutingPrompt(ctx context.Context) (*executingPrompt, er
 		}
 
 		if fm.Status == string(prompt.StatusExecuting) {
-			info, err := entry.Info()
-			modTime := time.Time{}
-			if err == nil {
-				modTime = info.ModTime()
+			startedTime := time.Time{}
+			if fm.Started != "" {
+				// Parse the started timestamp from frontmatter
+				if t, err := time.Parse(time.RFC3339, fm.Started); err == nil {
+					startedTime = t
+				}
 			}
 
 			return &executingPrompt{
-				Path:      path,
-				Container: fm.Container,
-				ModTime:   modTime,
+				Path:        path,
+				Container:   fm.Container,
+				StartedTime: startedTime,
 			}, nil
 		}
 	}
@@ -397,8 +438,8 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	st.CurrentPrompt = filepath.Base(executing.Path)
 	st.Container = executing.Container
 
-	if !executing.ModTime.IsZero() {
-		duration := time.Since(executing.ModTime)
+	if !executing.StartedTime.IsZero() {
+		duration := time.Since(executing.StartedTime)
 		st.ExecutingSince = formatDuration(duration)
 	}
 

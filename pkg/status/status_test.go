@@ -147,6 +147,7 @@ container: dark-factory-003-executing
 			mockPromptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
 				Status:    "executing",
 				Container: "dark-factory-003-executing",
+				Started:   time.Now().Add(-5 * time.Minute).UTC().Format(time.RFC3339),
 			}, nil)
 			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 

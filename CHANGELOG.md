@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.1
+
+### Added
+- Restructure prompt directories with configurable paths
+
 ## v0.6.0
 
 ### Added

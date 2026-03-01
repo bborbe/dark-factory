@@ -1,89 +1,121 @@
-# Add pre-execution validation in processor
+# Add Validate() to Prompt and use in processor
 
 ## Goal
 
-The processor should validate a prompt before executing it. Currently it picks up any file with `status: queued` — even if the filename has no number prefix, or the previous prompt hasn't completed yet. This caused `split-watcher-processor.md` to be processed without a sequence number.
+The Prompt struct should have a `Validate(ctx) error` method using `github.com/bborbe/validation`. The processor calls `Validate()` before executing, rejecting prompts that aren't ready.
 
-## Validation Rules
-
-Before executing a prompt, the processor must verify ALL of:
-
-1. **Correct filename format**: matches `NNN-name.md` pattern (3+ digit prefix)
-   - Skip files without number prefix (watcher hasn't renamed yet)
-2. **Correct status**: frontmatter has `status: queued`
-3. **No other prompt executing**: no file with `status: executing` exists
-4. **Previous prompt completed**: all prompts with lower numbers are in `completed/` or `status: completed`
-5. **Frontmatter present**: file has valid YAML frontmatter
-
-If any check fails, the processor should skip the file and log why:
-```
-dark-factory: skipping foo.md: missing number prefix (waiting for watcher)
-dark-factory: skipping 030-bar.md: prompt 029 not yet completed
-dark-factory: skipping 031-baz.md: another prompt is executing
-```
+This prevents the bug where `split-watcher-processor.md` was processed without a sequence number.
 
 ## Implementation
 
-### 1. Add validation to processor
+### 1. Add `Validate()` to Prompt struct
 
-Create a `validate(ctx, prompt) error` method on the processor that checks all rules before execution.
-
-### 2. Validation checks
+Follow `~/.claude-yolo/docs/go-validation.md` pattern:
 
 ```go
-// ValidateForExecution checks if a prompt is ready to execute.
-func (p *processor) validateForExecution(ctx context.Context, prompt Prompt) error {
-    // 1. Check filename format
-    if !hasNumberPrefix(prompt.Filename()) {
-        return errors.Errorf(ctx, "missing number prefix")
-    }
+import "github.com/bborbe/validation"
 
-    // 2. Check no other prompt executing
-    if p.promptManager.HasExecuting(ctx) {
-        return errors.Errorf(ctx, "another prompt is executing")
-    }
-
-    // 3. Check all lower-numbered prompts completed
-    if !p.promptManager.AllPreviousCompleted(ctx, prompt.Number()) {
-        return errors.Errorf(ctx, "previous prompt not completed")
-    }
-
-    return nil
+func (p Prompt) Validate(ctx context.Context) error {
+    return validation.All{
+        validation.Name("path", validation.NotEmptyString(p.Path)),
+        validation.Name("status", p.Status),  // Status.Validate() — see step 2
+        validation.Name("filename", validation.HasValidationFunc(func(ctx context.Context) error {
+            if !hasNumberPrefix(filepath.Base(p.Path)) {
+                return errors.Errorf(ctx, "missing NNN- prefix: %s", filepath.Base(p.Path))
+            }
+            return nil
+        })),
+    }.Validate(ctx)
 }
 ```
 
-### 3. Add `AllPreviousCompleted` to prompt Manager interface
+### 2. Make Status a domain type with Validate()
 
 ```go
-// AllPreviousCompleted returns true if all prompts with numbers < n are in completed/.
-AllPreviousCompleted(ctx context.Context, n int) bool
+type Status string
+
+const (
+    StatusQueued    Status = "queued"
+    StatusExecuting Status = "executing"
+    StatusCompleted Status = "completed"
+    StatusFailed    Status = "failed"
+)
+
+func (s Status) Validate(ctx context.Context) error {
+    for _, valid := range []Status{StatusQueued, StatusExecuting, StatusCompleted, StatusFailed} {
+        if s == valid {
+            return nil
+        }
+    }
+    return errors.Wrapf(ctx, validation.Error, "status(%s) is invalid", s)
+}
 ```
 
-### 4. Processor loop handles validation
+### 3. Add `ValidateForExecution()` to Prompt
+
+Additional checks beyond basic validity — is this prompt ready to execute?
+
+```go
+func (p Prompt) ValidateForExecution(ctx context.Context) error {
+    return validation.All{
+        validation.Name("prompt", p),  // basic Validate()
+        validation.Name("status", validation.HasValidationFunc(func(ctx context.Context) error {
+            if p.Status != StatusQueued {
+                return errors.Errorf(ctx, "expected status queued, got %s", p.Status)
+            }
+            return nil
+        })),
+    }.Validate(ctx)
+}
+```
+
+### 4. Use in processor
 
 ```go
 for _, prompt := range queued {
-    if err := p.validateForExecution(ctx, prompt); err != nil {
-        log.Printf("dark-factory: skipping %s: %v", prompt.Filename(), err)
+    if err := prompt.ValidateForExecution(ctx); err != nil {
+        log.Printf("dark-factory: skipping %s: %v", filepath.Base(prompt.Path), err)
         continue
     }
     // execute prompt
 }
 ```
 
-### 5. Tests
+### 5. Add `AllPreviousCompleted()` check to processor
 
-- Prompt without number prefix is skipped
-- Prompt with executing sibling is skipped
-- Prompt with incomplete predecessor is skipped
-- Valid prompt passes all checks
-- All previous completed → returns true
-- Gap in numbering (e.g., 028, 030 but no 029) → blocks 030
+The processor (not the prompt) checks ordering:
+```go
+if !p.promptManager.AllPreviousCompleted(ctx, prompt.Number()) {
+    log.Printf("dark-factory: skipping %s: previous prompt not completed", ...)
+    continue
+}
+```
+
+Add to Manager interface:
+```go
+AllPreviousCompleted(ctx context.Context, n int) bool
+```
+
+### 6. Add dependency
+
+```bash
+go get github.com/bborbe/validation
+```
+
+### 7. Tests
+
+- `Prompt.Validate()`: valid prompt passes, missing path fails, bad status fails, no number prefix fails
+- `Status.Validate()`: all valid statuses pass, unknown status fails
+- `Prompt.ValidateForExecution()`: queued passes, executing/completed/failed rejected
+- Processor skips invalid prompts with log message
+- Processor skips prompts with incomplete predecessors
+- `AllPreviousCompleted()`: true when all lower numbers in completed/, false when gap exists
 
 ## Constraints
 
 - Run `make precommit` for validation only
 - Do NOT commit, tag, or push (dark-factory handles git)
-- Follow `~/.claude-yolo/docs/go-patterns.md`
+- Follow `~/.claude-yolo/docs/go-validation.md` for validation patterns
+- Follow `~/.claude-yolo/docs/go-patterns.md` for interface/struct patterns
 - Follow `~/.claude-yolo/docs/go-precommit.md` (linter limits, fix targeted)
 - Coverage ≥80% for changed packages

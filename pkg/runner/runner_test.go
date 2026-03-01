@@ -1142,5 +1142,186 @@ Second concurrent prompt.
 	})
 })
 
+var _ = Describe("processPrompt with changelog", func() {
+	var (
+		ctx           context.Context
+		tempDir       string
+		promptsDir    string
+		completedDir  string
+		originalDir   string
+		mockExecutor  *mocks.Executor
+		mockReleaser  *mocks.Releaser
+		promptManager prompt.Manager
+		testRunner    runner.Runner
+		promptPath    string
+		promptContent string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+
+		var err error
+		originalDir, err = os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+
+		tempDir, err = os.MkdirTemp("", "runner-changelog-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		// Create prompts and completed directories
+		promptsDir = filepath.Join(tempDir, "prompts")
+		completedDir = filepath.Join(promptsDir, "completed")
+		err = os.MkdirAll(completedDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Initialize git repo
+		cmd := exec.Command("git", "init")
+		cmd.Dir = tempDir
+		err = cmd.Run()
+		Expect(err).NotTo(HaveOccurred())
+
+		// Configure git
+		cmd = exec.Command("git", "config", "user.email", "test@example.com")
+		cmd.Dir = tempDir
+		err = cmd.Run()
+		Expect(err).NotTo(HaveOccurred())
+
+		cmd = exec.Command("git", "config", "user.name", "Test User")
+		cmd.Dir = tempDir
+		err = cmd.Run()
+		Expect(err).NotTo(HaveOccurred())
+
+		// Initial commit
+		err = os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		cmd = exec.Command("git", "add", ".")
+		cmd.Dir = tempDir
+		err = cmd.Run()
+		Expect(err).NotTo(HaveOccurred())
+
+		cmd = exec.Command("git", "commit", "-m", "initial")
+		cmd.Dir = tempDir
+		err = cmd.Run()
+		Expect(err).NotTo(HaveOccurred())
+
+		// Change to temp directory
+		err = os.Chdir(tempDir)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Create mocks
+		mockExecutor = &mocks.Executor{}
+		mockReleaser = &mocks.Releaser{}
+		promptManager = prompt.NewManager(promptsDir)
+
+		// Create test prompt
+		promptPath = filepath.Join(promptsDir, "001-test.md")
+		promptContent = `---
+status: queued
+---
+
+# Test prompt
+
+This is a test.
+`
+		err = os.WriteFile(promptPath, []byte(promptContent), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Create runner
+		testRunner = runner.NewRunner(promptsDir, mockExecutor, promptManager, mockReleaser)
+	})
+
+	AfterEach(func() {
+		if originalDir != "" {
+			err := os.Chdir(originalDir)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		if tempDir != "" {
+			_ = os.RemoveAll(tempDir)
+		}
+	})
+
+	Context("with CHANGELOG.md present", func() {
+		It("calls CommitAndRelease", func() {
+			// Mock HasChangelog to return true
+			mockReleaser.HasChangelogReturns(true)
+			mockReleaser.GetNextVersionReturns("v0.1.0", nil)
+			mockReleaser.CommitAndReleaseReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+
+			// Run in goroutine with timeout
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			go func() {
+				_ = testRunner.Run(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() bool {
+				completedPath := filepath.Join(completedDir, "001-test.md")
+				_, err := os.Stat(completedPath)
+				return !os.IsNotExist(err)
+			}, 2*time.Second, 100*time.Millisecond).Should(BeTrue())
+
+			// Verify HasChangelog was called
+			Expect(mockReleaser.HasChangelogCallCount()).To(BeNumerically(">=", 1))
+
+			// Verify CommitAndRelease was called
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(1))
+
+			// Verify CommitOnly was NOT called
+			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+
+			// Verify GetNextVersion was called
+			Expect(mockReleaser.GetNextVersionCallCount()).To(Equal(1))
+
+			cancel()
+		})
+	})
+
+	Context("without CHANGELOG.md", func() {
+		It("calls CommitOnly instead of CommitAndRelease", func() {
+			// Mock HasChangelog to return false
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+
+			// Run in goroutine with timeout
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			go func() {
+				_ = testRunner.Run(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() bool {
+				completedPath := filepath.Join(completedDir, "001-test.md")
+				_, err := os.Stat(completedPath)
+				return !os.IsNotExist(err)
+			}, 2*time.Second, 100*time.Millisecond).Should(BeTrue())
+
+			// Verify HasChangelog was called
+			Expect(mockReleaser.HasChangelogCallCount()).To(BeNumerically(">=", 1))
+
+			// Verify CommitOnly was called
+			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
+
+			// Verify CommitAndRelease was NOT called
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+
+			// Verify GetNextVersion was NOT called
+			Expect(mockReleaser.GetNextVersionCallCount()).To(Equal(0))
+
+			// Verify CommitOnly was called with correct message
+			_, message := mockReleaser.CommitOnlyArgsForCall(0)
+			Expect(message).To(Equal("Test prompt"))
+
+			cancel()
+		})
+	})
+})
+
 // ErrTest is a test error used in runner tests.
 var ErrTest = stderrors.New("test error")

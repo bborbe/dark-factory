@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.6
+
+### Added
+- Make CHANGELOG.md and git release optional
+
 ## v0.1.5
 
 ### Added

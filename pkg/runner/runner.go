@@ -353,7 +353,16 @@ func (r *runner) processPrompt(ctx context.Context, p prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
-	// Commit and release
+	// Without CHANGELOG: simple commit only (no tag, no push)
+	if !r.releaser.HasChangelog(gitCtx) {
+		if err := r.releaser.CommitOnly(gitCtx, title); err != nil {
+			return errors.Wrap(ctx, err, "commit")
+		}
+		log.Printf("dark-factory: committed changes")
+		return nil
+	}
+
+	// With CHANGELOG: update changelog, bump version, tag, push
 	nextVersion, err := r.releaser.GetNextVersion(gitCtx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")

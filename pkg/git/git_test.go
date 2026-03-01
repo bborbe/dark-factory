@@ -696,4 +696,191 @@ var _ = Describe("Git", func() {
 			})
 		})
 	})
+
+	Describe("HasChangelog", func() {
+		var (
+			ctx         context.Context
+			tempDir     string
+			originalDir string
+			r           git.Releaser
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			var err error
+			originalDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "git-changelog-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to temp directory
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			r = git.NewReleaser()
+		})
+
+		AfterEach(func() {
+			if originalDir != "" {
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		Context("with CHANGELOG.md present", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("# Changelog\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("returns true", func() {
+				result := r.HasChangelog(ctx)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("without CHANGELOG.md", func() {
+			It("returns false", func() {
+				result := r.HasChangelog(ctx)
+				Expect(result).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("CommitOnly", func() {
+		var (
+			ctx         context.Context
+			tempDir     string
+			originalDir string
+			r           git.Releaser
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+
+			var err error
+			originalDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "git-commit-only-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initialize git repo
+			cmd := exec.Command("git", "init")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Configure git
+			cmd = exec.Command("git", "config", "user.email", "test@example.com")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "config", "user.name", "Test User")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Initial commit
+			err = os.WriteFile(filepath.Join(tempDir, "README.md"), []byte("# Test"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "add", ".")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-m", "initial commit")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to temp directory
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			r = git.NewReleaser()
+		})
+
+		AfterEach(func() {
+			if originalDir != "" {
+				err := os.Chdir(originalDir)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		Context("with changes to commit", func() {
+			BeforeEach(func() {
+				// Create a new file
+				err := os.WriteFile(
+					filepath.Join(tempDir, "test.txt"),
+					[]byte("test content"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("commits without creating tag", func() {
+				err := r.CommitOnly(ctx, "Add test feature")
+				Expect(err).To(BeNil())
+
+				// Verify commit was created
+				cmd := exec.Command("git", "log", "--oneline", "-n", "1")
+				cmd.Dir = tempDir
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("Add test feature"))
+
+				// Verify NO tag was created
+				cmd = exec.Command("git", "tag", "-l")
+				cmd.Dir = tempDir
+				output, err = cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(BeEmpty())
+			})
+		})
+
+		Context("with special characters in message", func() {
+			BeforeEach(func() {
+				// Create a new file
+				err := os.WriteFile(filepath.Join(tempDir, "special.txt"), []byte("content"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("handles special characters in commit message", func() {
+				err := r.CommitOnly(ctx, "Fix: handle \"quotes\" and 'apostrophes'")
+				Expect(err).To(BeNil())
+
+				// Verify commit was created with correct message
+				cmd := exec.Command("git", "log", "--oneline", "-n", "1")
+				cmd.Dir = tempDir
+				output, err := cmd.Output()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(output)).To(ContainSubstring("Fix:"))
+			})
+		})
+
+		Context("with no changes to commit", func() {
+			It("returns error when nothing to commit", func() {
+				err := r.CommitOnly(ctx, "Empty commit")
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("git commit"))
+			})
+		})
+	})
 })

@@ -23,6 +23,8 @@ type Releaser interface {
 	GetNextVersion(ctx context.Context) (string, error)
 	CommitAndRelease(ctx context.Context, title string) error
 	CommitCompletedFile(ctx context.Context, path string) error
+	CommitOnly(ctx context.Context, message string) error
+	HasChangelog(ctx context.Context) bool
 }
 
 // releaser implements Releaser.
@@ -46,6 +48,28 @@ func (r *releaser) CommitAndRelease(ctx context.Context, title string) error {
 // CommitCompletedFile commits a completed prompt file to git.
 func (r *releaser) CommitCompletedFile(ctx context.Context, path string) error {
 	return CommitCompletedFile(ctx, path)
+}
+
+// HasChangelog checks if CHANGELOG.md exists in the current directory.
+func (r *releaser) HasChangelog(ctx context.Context) bool {
+	_, err := os.Stat("CHANGELOG.md")
+	return err == nil
+}
+
+// CommitOnly performs a simple commit without versioning, tagging, or pushing.
+// This is used for projects without a CHANGELOG.md.
+func (r *releaser) CommitOnly(ctx context.Context, message string) error {
+	// Stage all changes
+	if err := gitAddAll(ctx); err != nil {
+		return errors.Wrap(ctx, err, "git add")
+	}
+
+	// Commit
+	if err := gitCommit(ctx, message); err != nil {
+		return errors.Wrap(ctx, err, "git commit")
+	}
+
+	return nil
 }
 
 // CommitAndRelease performs the full git workflow:

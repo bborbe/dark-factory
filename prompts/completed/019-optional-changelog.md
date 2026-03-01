@@ -1,6 +1,10 @@
 ---
-status: queued
+status: completed
+container: dark-factory-019-optional-changelog
 ---
+
+
+
 # Make CHANGELOG.md and git release optional
 
 ## Goal

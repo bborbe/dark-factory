@@ -33,6 +33,18 @@ type Releaser struct {
 	commitCompletedFileReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CommitOnlyStub        func(context.Context, string) error
+	commitOnlyMutex       sync.RWMutex
+	commitOnlyArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	commitOnlyReturns struct {
+		result1 error
+	}
+	commitOnlyReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetNextVersionStub        func(context.Context) (string, error)
 	getNextVersionMutex       sync.RWMutex
 	getNextVersionArgsForCall []struct {
@@ -45,6 +57,17 @@ type Releaser struct {
 	getNextVersionReturnsOnCall map[int]struct {
 		result1 string
 		result2 error
+	}
+	HasChangelogStub        func(context.Context) bool
+	hasChangelogMutex       sync.RWMutex
+	hasChangelogArgsForCall []struct {
+		arg1 context.Context
+	}
+	hasChangelogReturns struct {
+		result1 bool
+	}
+	hasChangelogReturnsOnCall map[int]struct {
+		result1 bool
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -174,6 +197,68 @@ func (fake *Releaser) CommitCompletedFileReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *Releaser) CommitOnly(arg1 context.Context, arg2 string) error {
+	fake.commitOnlyMutex.Lock()
+	ret, specificReturn := fake.commitOnlyReturnsOnCall[len(fake.commitOnlyArgsForCall)]
+	fake.commitOnlyArgsForCall = append(fake.commitOnlyArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.CommitOnlyStub
+	fakeReturns := fake.commitOnlyReturns
+	fake.recordInvocation("CommitOnly", []interface{}{arg1, arg2})
+	fake.commitOnlyMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) CommitOnlyCallCount() int {
+	fake.commitOnlyMutex.RLock()
+	defer fake.commitOnlyMutex.RUnlock()
+	return len(fake.commitOnlyArgsForCall)
+}
+
+func (fake *Releaser) CommitOnlyCalls(stub func(context.Context, string) error) {
+	fake.commitOnlyMutex.Lock()
+	defer fake.commitOnlyMutex.Unlock()
+	fake.CommitOnlyStub = stub
+}
+
+func (fake *Releaser) CommitOnlyArgsForCall(i int) (context.Context, string) {
+	fake.commitOnlyMutex.RLock()
+	defer fake.commitOnlyMutex.RUnlock()
+	argsForCall := fake.commitOnlyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Releaser) CommitOnlyReturns(result1 error) {
+	fake.commitOnlyMutex.Lock()
+	defer fake.commitOnlyMutex.Unlock()
+	fake.CommitOnlyStub = nil
+	fake.commitOnlyReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) CommitOnlyReturnsOnCall(i int, result1 error) {
+	fake.commitOnlyMutex.Lock()
+	defer fake.commitOnlyMutex.Unlock()
+	fake.CommitOnlyStub = nil
+	if fake.commitOnlyReturnsOnCall == nil {
+		fake.commitOnlyReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.commitOnlyReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *Releaser) GetNextVersion(arg1 context.Context) (string, error) {
 	fake.getNextVersionMutex.Lock()
 	ret, specificReturn := fake.getNextVersionReturnsOnCall[len(fake.getNextVersionArgsForCall)]
@@ -236,6 +321,67 @@ func (fake *Releaser) GetNextVersionReturnsOnCall(i int, result1 string, result2
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Releaser) HasChangelog(arg1 context.Context) bool {
+	fake.hasChangelogMutex.Lock()
+	ret, specificReturn := fake.hasChangelogReturnsOnCall[len(fake.hasChangelogArgsForCall)]
+	fake.hasChangelogArgsForCall = append(fake.hasChangelogArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.HasChangelogStub
+	fakeReturns := fake.hasChangelogReturns
+	fake.recordInvocation("HasChangelog", []interface{}{arg1})
+	fake.hasChangelogMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) HasChangelogCallCount() int {
+	fake.hasChangelogMutex.RLock()
+	defer fake.hasChangelogMutex.RUnlock()
+	return len(fake.hasChangelogArgsForCall)
+}
+
+func (fake *Releaser) HasChangelogCalls(stub func(context.Context) bool) {
+	fake.hasChangelogMutex.Lock()
+	defer fake.hasChangelogMutex.Unlock()
+	fake.HasChangelogStub = stub
+}
+
+func (fake *Releaser) HasChangelogArgsForCall(i int) context.Context {
+	fake.hasChangelogMutex.RLock()
+	defer fake.hasChangelogMutex.RUnlock()
+	argsForCall := fake.hasChangelogArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Releaser) HasChangelogReturns(result1 bool) {
+	fake.hasChangelogMutex.Lock()
+	defer fake.hasChangelogMutex.Unlock()
+	fake.HasChangelogStub = nil
+	fake.hasChangelogReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *Releaser) HasChangelogReturnsOnCall(i int, result1 bool) {
+	fake.hasChangelogMutex.Lock()
+	defer fake.hasChangelogMutex.Unlock()
+	fake.HasChangelogStub = nil
+	if fake.hasChangelogReturnsOnCall == nil {
+		fake.hasChangelogReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.hasChangelogReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *Releaser) Invocations() map[string][][]interface{} {

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.1
+
+### Added
+- Add retroactive specs for all existing features (12 spec files)
+
 ## v0.11.0
 
 ### Added

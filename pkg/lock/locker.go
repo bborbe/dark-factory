@@ -19,6 +19,8 @@ import (
 const lockFileName = ".dark-factory.lock"
 
 //counterfeiter:generate -o ../../mocks/locker.go --fake-name Locker . Locker
+
+// Locker provides exclusive access control to prevent concurrent dark-factory instances.
 type Locker interface {
 	Acquire(ctx context.Context) error
 	Release(ctx context.Context) error
@@ -63,7 +65,7 @@ func (l *locker) Acquire(ctx context.Context) error {
 	}
 
 	// Write our PID to the lock file
-	if err := l.writePID(fd); err != nil {
+	if err := l.writePID(ctx, fd); err != nil {
 		_ = fd.Close()
 		return errors.Wrap(ctx, err, "write pid to lock file")
 	}
@@ -118,14 +120,14 @@ func (l *locker) readPID() (int, error) {
 }
 
 // writePID writes the current process PID to the file.
-func (l *locker) writePID(fd *os.File) error {
+func (l *locker) writePID(ctx context.Context, fd *os.File) error {
 	pid := os.Getpid()
 	// Truncate and seek to start (errors ignored as they should not fail on regular files)
 	_ = fd.Truncate(0)
 	_, _ = fd.Seek(0, 0)
 	_, err := fmt.Fprintf(fd, "%d\n", pid)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "write pid")
 	}
 	return fd.Sync()
 }

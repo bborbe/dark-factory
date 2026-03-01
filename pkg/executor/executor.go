@@ -57,14 +57,14 @@ func (e *dockerExecutor) Execute(
 	// Prepare log file
 	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "prepare log file")
 	}
 	defer logFileHandle.Close()
 
 	// Create temp file with prompt content
 	promptFilePath, cleanup, err := createPromptTempFile(ctx, promptContent)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "create prompt temp file")
 	}
 	defer cleanup()
 

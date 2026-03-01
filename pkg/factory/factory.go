@@ -25,6 +25,8 @@ import (
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
+const defaultIdeasDir = "prompts/ideas"
+
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	inboxDir := cfg.InboxDir
@@ -126,8 +128,7 @@ func CreateServer(
 	promptManager prompt.Manager,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	ideasDir := "prompts/ideas"
-	statusChecker := status.NewChecker(queueDir, completedDir, ideasDir, promptManager)
+	statusChecker := status.NewChecker(queueDir, completedDir, defaultIdeasDir, promptManager)
 
 	// Build the mux with all routes
 	mux := http.NewServeMux()
@@ -155,14 +156,13 @@ func CreateServer(
 
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
-	ideasDir := "prompts/ideas"
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
 
 	statusChecker := status.NewCheckerWithOptions(
 		cfg.QueueDir,
 		cfg.CompletedDir,
-		ideasDir,
+		defaultIdeasDir,
 		cfg.LogDir,
 		cfg.ServerPort,
 		promptManager,

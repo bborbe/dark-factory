@@ -16,9 +16,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
-// QueueCommand executes the queue subcommand.
-//
 //counterfeiter:generate -o ../../mocks/queue-command.go --fake-name QueueCommand . QueueCommand
+
+// QueueCommand executes the queue subcommand.
 type QueueCommand interface {
 	Run(ctx context.Context, args []string) error
 }
@@ -66,7 +66,7 @@ func (q *queueCommand) queueFile(ctx context.Context, filename string) error {
 	// Move to queue directory
 	newFilename, err := q.moveToQueue(ctx, filename)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "move to queue")
 	}
 
 	fmt.Printf("queued: %s -> %s\n", filename, newFilename)
@@ -89,7 +89,7 @@ func (q *queueCommand) queueAll(ctx context.Context) error {
 
 		newFilename, err := q.moveToQueue(ctx, entry.Name())
 		if err != nil {
-			return err
+			return errors.Wrap(ctx, err, "move to queue")
 		}
 
 		fmt.Printf("queued: %s -> %s\n", entry.Name(), newFilename)

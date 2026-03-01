@@ -10,9 +10,9 @@ import (
 	"github.com/bborbe/run"
 )
 
-// Server provides HTTP endpoints for status and monitoring.
-//
 //counterfeiter:generate -o ../../mocks/server.go --fake-name Server . Server
+
+// Server provides HTTP endpoints for status and monitoring.
 type Server interface {
 	ListenAndServe(ctx context.Context) error
 }

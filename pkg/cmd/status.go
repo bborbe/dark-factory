@@ -15,9 +15,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/status"
 )
 
-// StatusCommand executes the status subcommand.
-//
 //counterfeiter:generate -o ../../mocks/status-command.go --fake-name StatusCommand . StatusCommand
+
+// StatusCommand executes the status subcommand.
 type StatusCommand interface {
 	Run(ctx context.Context, args []string) error
 }

@@ -27,12 +27,13 @@ func queueSingleFile(
 
 	// Check if file exists
 	if _, err := os.Stat(oldPath); err != nil {
+		// Don't wrap os.Stat errors - caller checks for os.IsNotExist
 		return QueuedFile{}, err
 	}
 
 	newFilename, err := moveToQueue(ctx, inboxDir, queueDir, promptManager, filename)
 	if err != nil {
-		return QueuedFile{}, err
+		return QueuedFile{}, errors.Wrap(ctx, err, "move to queue")
 	}
 
 	return QueuedFile{Old: filename, New: newFilename}, nil
@@ -59,7 +60,7 @@ func queueAllFiles(
 
 		newFilename, err := moveToQueue(ctx, inboxDir, queueDir, promptManager, entry.Name())
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, "move to queue")
 		}
 
 		queued = append(queued, QueuedFile{Old: entry.Name(), New: newFilename})

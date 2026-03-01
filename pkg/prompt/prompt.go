@@ -317,7 +317,7 @@ func setField(ctx context.Context, path string, setter func(*Frontmatter)) error
 	}
 
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "set field")
 	}
 
 	// Write back

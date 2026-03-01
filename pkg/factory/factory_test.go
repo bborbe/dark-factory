@@ -16,7 +16,7 @@ var _ = Describe("Factory", func() {
 	Describe("CreateRunner", func() {
 		It("should return a non-nil runner", func() {
 			cfg := config.Defaults()
-			runner := factory.CreateRunner(cfg)
+			runner := factory.CreateRunner(cfg, "v0.0.1")
 			Expect(runner).NotTo(BeNil())
 		})
 	})

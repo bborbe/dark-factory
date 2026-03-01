@@ -1,3 +1,9 @@
+---
+status: completed
+container: dark-factory-031-add-version-to-frontmatter
+---
+
+
 # Add dark-factory version to prompt frontmatter
 
 ## Goal

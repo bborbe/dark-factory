@@ -22,14 +22,15 @@ import (
 
 var _ = Describe("Processor", func() {
 	var (
-		tempDir      string
-		promptsDir   string
-		ready        chan struct{}
-		ctx          context.Context
-		cancel       context.CancelFunc
-		mockExecutor *mocks.Executor
-		mockManager  *mocks.Manager
-		mockReleaser *mocks.Releaser
+		tempDir        string
+		promptsDir     string
+		ready          chan struct{}
+		ctx            context.Context
+		cancel         context.CancelFunc
+		mockExecutor   *mocks.Executor
+		mockManager    *mocks.Manager
+		mockReleaser   *mocks.Releaser
+		mockVersionGet *mocks.VersionGetter
 	)
 
 	BeforeEach(func() {
@@ -47,6 +48,8 @@ var _ = Describe("Processor", func() {
 		mockExecutor = &mocks.Executor{}
 		mockManager = &mocks.Manager{}
 		mockReleaser = &mocks.Releaser{}
+		mockVersionGet = &mocks.VersionGetter{}
+		mockVersionGet.GetReturns("v0.0.1-test")
 	})
 
 	AfterEach(func() {
@@ -64,6 +67,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -99,6 +103,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Test prompt", nil)
 		mockManager.TitleReturns("Test prompt", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -112,6 +117,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -150,6 +156,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Signal test", nil)
 		mockManager.TitleReturns("Signal test", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -163,6 +170,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -204,6 +212,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -233,6 +242,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Fail test", nil)
 		mockManager.TitleReturns("Fail test", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
@@ -242,6 +252,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -281,6 +292,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# No changelog test", nil)
 		mockManager.TitleReturns("No changelog test", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -294,6 +306,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -324,6 +337,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Fix bug", nil)
 		mockManager.TitleReturns("Fix bug", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -338,6 +352,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -372,6 +387,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Add new feature", nil)
 		mockManager.TitleReturns("Add new feature", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -386,6 +402,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -423,6 +440,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Test", nil)
 		mockManager.TitleReturns("Test", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -436,6 +454,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -463,6 +482,7 @@ var _ = Describe("Processor", func() {
 		mockManager.ContentReturns("# Test", nil)
 		mockManager.TitleReturns("Test", nil)
 		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
 		mockManager.SetStatusReturns(nil)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -476,6 +496,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -511,6 +532,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -543,6 +565,7 @@ var _ = Describe("Processor", func() {
 			mockExecutor,
 			mockManager,
 			mockReleaser,
+			mockVersionGet,
 			ready,
 		)
 
@@ -556,6 +579,53 @@ var _ = Describe("Processor", func() {
 
 		// Verify executor was NOT called
 		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+
+		cancel()
+	})
+
+	It("should set version in frontmatter from version getter", func() {
+		promptPath := filepath.Join(promptsDir, "001-version-test.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.StatusQueued},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Version test", nil)
+		mockManager.TitleReturns("Version test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			mockVersionGet,
+			ready,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockManager.SetVersionCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify version was set with correct value
+		_, path, version := mockManager.SetVersionArgsForCall(0)
+		Expect(path).To(Equal(promptPath))
+		Expect(version).To(Equal("v0.0.1-test"))
 
 		cancel()
 	})

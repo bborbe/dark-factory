@@ -526,6 +526,105 @@ Content here.
 		})
 	})
 
+	Describe("SetVersion", func() {
+		Context("with existing frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				path = createPromptFile(tempDir, "001-test.md", "queued")
+			})
+
+			It("adds version field", func() {
+				err := prompt.SetVersion(ctx, path, "v0.2.37")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.37"))
+				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+			})
+		})
+
+		Context("without frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				// Plain markdown file with no frontmatter
+				content := "# Test Prompt\n\nContent here.\n"
+				path = filepath.Join(tempDir, "001-plain.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("adds frontmatter with version field", func() {
+				err := prompt.SetVersion(ctx, path, "v0.1.0")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.DarkFactoryVersion).To(Equal("v0.1.0"))
+			})
+		})
+
+		Context("with existing version field", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+dark-factory-version: v0.1.0
+---
+
+# Test Prompt
+
+Content here.
+`
+				path = filepath.Join(tempDir, "001-test.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("updates version field", func() {
+				err := prompt.SetVersion(ctx, path, "v0.2.0")
+				Expect(err).To(BeNil())
+
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.0"))
+				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+			})
+		})
+
+		Context("version persists through move to completed", func() {
+			var path string
+
+			BeforeEach(func() {
+				path = createPromptFile(tempDir, "001-test.md", "queued")
+			})
+
+			It("preserves version when moved to completed", func() {
+				// Set container and version
+				err := prompt.SetContainer(ctx, path, "dark-factory-001-test")
+				Expect(err).To(BeNil())
+
+				err = prompt.SetVersion(ctx, path, "v0.5.0")
+				Expect(err).To(BeNil())
+
+				// Move to completed
+				err = prompt.MoveToCompleted(ctx, path, mover)
+				Expect(err).To(BeNil())
+
+				// Verify version is preserved in completed file
+				completedPath := filepath.Join(tempDir, "completed", "001-test.md")
+				fm, err := prompt.ReadFrontmatter(ctx, completedPath)
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("completed"))
+				Expect(fm.Container).To(Equal("dark-factory-001-test"))
+				Expect(fm.DarkFactoryVersion).To(Equal("v0.5.0"))
+			})
+		})
+	})
+
 	Describe("Title", func() {
 		Context("with frontmatter", func() {
 			var path string

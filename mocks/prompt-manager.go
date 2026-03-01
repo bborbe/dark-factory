@@ -135,6 +135,19 @@ type Manager struct {
 	setStatusReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetVersionStub        func(context.Context, string, string) error
+	setVersionMutex       sync.RWMutex
+	setVersionArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	setVersionReturns struct {
+		result1 error
+	}
+	setVersionReturnsOnCall map[int]struct {
+		result1 error
+	}
 	TitleStub        func(context.Context, string) (string, error)
 	titleMutex       sync.RWMutex
 	titleArgsForCall []struct {
@@ -779,6 +792,69 @@ func (fake *Manager) SetStatusReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.setStatusReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetVersion(arg1 context.Context, arg2 string, arg3 string) error {
+	fake.setVersionMutex.Lock()
+	ret, specificReturn := fake.setVersionReturnsOnCall[len(fake.setVersionArgsForCall)]
+	fake.setVersionArgsForCall = append(fake.setVersionArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.SetVersionStub
+	fakeReturns := fake.setVersionReturns
+	fake.recordInvocation("SetVersion", []interface{}{arg1, arg2, arg3})
+	fake.setVersionMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) SetVersionCallCount() int {
+	fake.setVersionMutex.RLock()
+	defer fake.setVersionMutex.RUnlock()
+	return len(fake.setVersionArgsForCall)
+}
+
+func (fake *Manager) SetVersionCalls(stub func(context.Context, string, string) error) {
+	fake.setVersionMutex.Lock()
+	defer fake.setVersionMutex.Unlock()
+	fake.SetVersionStub = stub
+}
+
+func (fake *Manager) SetVersionArgsForCall(i int) (context.Context, string, string) {
+	fake.setVersionMutex.RLock()
+	defer fake.setVersionMutex.RUnlock()
+	argsForCall := fake.setVersionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Manager) SetVersionReturns(result1 error) {
+	fake.setVersionMutex.Lock()
+	defer fake.setVersionMutex.Unlock()
+	fake.SetVersionStub = nil
+	fake.setVersionReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetVersionReturnsOnCall(i int, result1 error) {
+	fake.setVersionMutex.Lock()
+	defer fake.setVersionMutex.Unlock()
+	fake.SetVersionStub = nil
+	if fake.setVersionReturnsOnCall == nil {
+		fake.setVersionReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setVersionReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

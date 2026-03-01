@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/version"
 )
 
 // Processor processes queued prompts.
@@ -33,6 +34,7 @@ type processor struct {
 	executor      executor.Executor
 	promptManager prompt.Manager
 	releaser      git.Releaser
+	versionGetter version.Getter
 	ready         <-chan struct{}
 }
 
@@ -42,6 +44,7 @@ func NewProcessor(
 	exec executor.Executor,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
+	versionGetter version.Getter,
 	ready <-chan struct{},
 ) Processor {
 	return &processor{
@@ -49,6 +52,7 @@ func NewProcessor(
 		executor:      exec,
 		promptManager: promptManager,
 		releaser:      releaser,
+		versionGetter: versionGetter,
 		ready:         ready,
 	}
 }
@@ -163,20 +167,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "get prompt content")
 	}
 
-	// Derive container name from prompt filename
-	baseName := strings.TrimSuffix(filepath.Base(pr.Path), ".md")
-	// Sanitize baseName to Docker-safe charset [a-zA-Z0-9_-]
-	baseName = sanitizeContainerName(baseName)
-	containerName := "dark-factory-" + baseName
-
-	// Set container name in frontmatter
-	if err := p.promptManager.SetContainer(ctx, pr.Path, containerName); err != nil {
-		return errors.Wrap(ctx, err, "set container name")
-	}
-
-	// Set status to executing
-	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusExecuting)); err != nil {
-		return errors.Wrap(ctx, err, "set executing status")
+	// Prepare prompt metadata and set executing status
+	baseName, containerName, err := p.setupPromptMetadata(ctx, pr.Path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "setup prompt metadata")
 	}
 
 	// Get prompt title for logging
@@ -237,6 +231,35 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	log.Printf("dark-factory: committed and tagged %s", nextVersion)
 
 	return nil
+}
+
+// setupPromptMetadata sets container name, version, and executing status in frontmatter.
+// Returns baseName and containerName for use in execution.
+func (p *processor) setupPromptMetadata(
+	ctx context.Context,
+	path string,
+) (string, string, error) {
+	// Derive container name from prompt filename
+	baseName := strings.TrimSuffix(filepath.Base(path), ".md")
+	baseName = sanitizeContainerName(baseName)
+	containerName := "dark-factory-" + baseName
+
+	// Set container name in frontmatter
+	if err := p.promptManager.SetContainer(ctx, path, containerName); err != nil {
+		return "", "", errors.Wrap(ctx, err, "set container name")
+	}
+
+	// Set dark-factory version in frontmatter
+	if err := p.promptManager.SetVersion(ctx, path, p.versionGetter.Get()); err != nil {
+		return "", "", errors.Wrap(ctx, err, "set version")
+	}
+
+	// Set status to executing
+	if err := p.promptManager.SetStatus(ctx, path, string(prompt.StatusExecuting)); err != nil {
+		return "", "", errors.Wrap(ctx, err, "set executing status")
+	}
+
+	return baseName, containerName, nil
 }
 
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]

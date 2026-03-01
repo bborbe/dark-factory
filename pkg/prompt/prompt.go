@@ -92,8 +92,9 @@ func (p Prompt) Number() int {
 
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
-	Status    string `yaml:"status"`
-	Container string `yaml:"container,omitempty"`
+	Status             string `yaml:"status"`
+	Container          string `yaml:"container,omitempty"`
+	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`
 }
 
 // FileMover handles file move operations with git awareness.
@@ -113,6 +114,7 @@ type Manager interface {
 	ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error)
 	SetStatus(ctx context.Context, path string, status string) error
 	SetContainer(ctx context.Context, path string, name string) error
+	SetVersion(ctx context.Context, path string, version string) error
 	Content(ctx context.Context, path string) (string, error)
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
@@ -162,6 +164,11 @@ func (pm *manager) SetStatus(ctx context.Context, path string, status string) er
 // SetContainer updates the container field in a prompt file's frontmatter.
 func (pm *manager) SetContainer(ctx context.Context, path string, name string) error {
 	return SetContainer(ctx, path, name)
+}
+
+// SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
+func (pm *manager) SetVersion(ctx context.Context, path string, version string) error {
+	return SetVersion(ctx, path, version)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
@@ -276,6 +283,14 @@ func SetStatus(ctx context.Context, path string, status string) error {
 func SetContainer(ctx context.Context, path string, container string) error {
 	return setField(ctx, path, func(fm *Frontmatter) {
 		fm.Container = container
+	})
+}
+
+// SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
+// If the file has no frontmatter, adds frontmatter with the version field.
+func SetVersion(ctx context.Context, path string, version string) error {
+	return setField(ctx, path, func(fm *Frontmatter) {
+		fm.DarkFactoryVersion = version
 	})
 }
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
+	"github.com/bborbe/dark-factory/pkg/version"
 )
 
 func main() {
@@ -31,6 +32,6 @@ func run() error {
 	}
 
 	// Create and run factory
-	r := factory.CreateRunner(cfg)
+	r := factory.CreateRunner(cfg, version.Version)
 	return r.Run(ctx)
 }

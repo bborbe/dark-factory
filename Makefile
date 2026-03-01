@@ -2,8 +2,10 @@ BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
 HOSTNAME ?= $(shell hostname -s)
 ROOTDIR ?= $(shell git rev-parse --show-toplevel)
 TEAMVAULT ?= ~/.teamvault.json
+VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+LDFLAGS := -X github.com/bborbe/dark-factory/pkg/version.Version=$(VERSION)
 
-.PHONY: default precommit ensure format generate test check lint vet errcheck vulncheck osv-scanner gosec trivy addlicense run
+.PHONY: default precommit ensure format generate test check lint vet errcheck vulncheck osv-scanner gosec trivy addlicense run build
 
 default: precommit
 
@@ -69,5 +71,8 @@ trivy:
 addlicense:
 	go run -mod=mod github.com/google/addlicense -c "Benjamin Borbe" -y $$(date +'%Y') -l bsd $$(find . -name "*.go" -not -path './vendor/*')
 
+build:
+	go build -ldflags "$(LDFLAGS)" -o dark-factory .
+
 run:
-	go run main.go
+	go run -ldflags "$(LDFLAGS)" main.go

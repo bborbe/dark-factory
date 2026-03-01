@@ -14,14 +14,16 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
+	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
-func CreateRunner(cfg config.Config) runner.Runner {
+func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	promptsDir := cfg.PromptsDir
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(promptsDir, releaser)
+	versionGetter := version.NewGetter(ver)
 
 	// Communication channel between watcher and processor
 	ready := make(chan struct{}, 10)
@@ -36,7 +38,14 @@ func CreateRunner(cfg config.Config) runner.Runner {
 			ready,
 			time.Duration(cfg.DebounceMs)*time.Millisecond,
 		),
-		CreateProcessor(promptsDir, promptManager, releaser, ready, cfg.ContainerImage),
+		CreateProcessor(
+			promptsDir,
+			promptManager,
+			releaser,
+			versionGetter,
+			ready,
+			cfg.ContainerImage,
+		),
 	)
 }
 
@@ -55,6 +64,7 @@ func CreateProcessor(
 	promptsDir string,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
+	versionGetter version.Getter,
 	ready <-chan struct{},
 	containerImage string,
 ) processor.Processor {
@@ -63,6 +73,7 @@ func CreateProcessor(
 		executor.NewDockerExecutor(containerImage),
 		promptManager,
 		releaser,
+		versionGetter,
 		ready,
 	)
 }

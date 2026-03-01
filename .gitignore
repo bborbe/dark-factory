@@ -12,3 +12,5 @@ gha-creds-*.json
 /.update-logs/
 /.mcp-*
 /prompts/log/
+/coverage.out
+/.idea

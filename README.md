@@ -1,4 +1,4 @@
-# dark-factory
+# Dark Factory
 
 Autonomous coding pipeline — drop prompts in, get commits out.
 
@@ -17,21 +17,67 @@ You (fast)                              Factory (slow, unattended)
 You come back                       ←── changes committed and pushed
 ```
 
+## Prerequisites
+
+- **Go 1.24+** — to build dark-factory
+- **Docker** — to run claude-yolo containers
+- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.0.7`
+- **Anthropic API key** — set `ANTHROPIC_API_KEY` environment variable (passed to container)
+- **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Configuration](#yolo-container-configuration))
+
+## Installation
+
+```bash
+go install github.com/bborbe/dark-factory@latest
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/bborbe/dark-factory.git
+cd dark-factory
+make install   # installs to $GOPATH/bin
+```
+
 ## Quick Start
 
 ```bash
+# 1. Set up your project
 cd ~/Documents/workspaces/your-project
-dark-factory
-```
+mkdir -p prompts/queue prompts/completed
 
-Watches `prompts/queue/` for prompts to execute. See `example/` for a complete project layout.
+# 2. Write a prompt
+cat > prompts/my-feature.md << 'EOF'
+# Add health check endpoint
+
+## Goal
+
+Add a `/health` endpoint that returns 200 OK.
+
+## Constraints
+
+- Run `make precommit` for validation only
+- Do NOT commit, tag, or push
+EOF
+
+# 3. Queue it for execution
+mv prompts/my-feature.md prompts/queue/
+
+# 4. Start dark-factory
+dark-factory
+
+# 5. Watch it work — watcher renames to 001-my-feature.md, processor executes
+# When done, prompt moves to prompts/completed/001-my-feature.md
+# Logs at prompts/log/001-my-feature.log
+```
 
 ## Directory Structure
 
 ```
 your-project/
 ├── .dark-factory.yaml      # optional config
-├── prompts/                 # inbox (passive, drop prompts here)
+├── CHANGELOG.md            # optional — enables auto-versioning with tags
+├── prompts/                # inbox (passive, drop prompts here)
 │   ├── my-new-feature.md   # draft, nothing happens
 │   ├── queue/              # watcher watches here, processor executes
 │   │   └── 001-my-task.md  # will be picked up and executed
@@ -46,29 +92,85 @@ your-project/
 
 1. Write a prompt in `prompts/` (inbox — nothing happens automatically)
 2. When ready, move it to `prompts/queue/`
-3. Watcher detects the file, renames to `NNN-name.md`, sets frontmatter
+3. Watcher detects the file, renames to `NNN-name.md`, sets `status: queued` in frontmatter
 4. Processor picks the lowest-numbered queued prompt
-5. Spins up a claude-yolo Docker container
-6. On success: commits, tags, pushes, moves to `prompts/completed/`
-7. On failure: sets `status: failed` in frontmatter
+5. Validates: correct number prefix, status is queued, all previous prompts completed
+6. Sets `status: executing`, spins up a claude-yolo Docker container
+7. On success: commits, tags, pushes, moves to `prompts/completed/`
+8. On failure: sets `status: failed` in frontmatter
 
-## Prompt Format
+### Handling Failures
 
-Markdown with optional YAML frontmatter:
+When a prompt fails (`status: failed`):
+
+1. Check the log: `prompts/log/NNN-name.log`
+2. Fix the prompt (clarify instructions, reduce scope, fix constraints)
+3. Reset status to `queued` in the frontmatter and move back to `prompts/queue/`
+4. Dark-factory will retry it
+
+### Versioning
+
+If your project has a `CHANGELOG.md`, dark-factory automatically:
+- Determines version bump (patch/minor) from changes
+- Updates CHANGELOG.md with new version
+- Creates a git tag (e.g., `v0.3.4`)
+- Pushes both commit and tag
+
+Without `CHANGELOG.md`, dark-factory commits and pushes without tagging.
+
+## Writing Good Prompts
+
+A prompt is a markdown file that tells the YOLO agent what to build. Structure:
 
 ```markdown
-# Add user authentication
+# Short title describing the change
 
 ## Goal
 
-Add JWT-based authentication to the REST API.
+One paragraph: what should change and why.
+
+## Current Behavior (optional)
+
+What happens now, if fixing a bug or changing existing code.
+
+## Expected Behavior (optional)
+
+What should happen after this prompt is executed.
 
 ## Implementation
 
-...
+Step-by-step plan. Be specific — the agent follows this literally:
+
+### 1. Create/modify package X
+
+Code examples, interface definitions, function signatures.
+
+### 2. Update wiring
+
+Where and how to connect the new code.
+
+### 3. Tests
+
+List specific test cases (valid input passes, invalid input fails, edge cases).
+
+## Constraints
+
+- Run `make precommit` for validation only
+- Do NOT commit, tag, or push (dark-factory handles git)
+- Follow specific coding guides (reference by path)
+- Coverage ≥80% for changed packages
 ```
 
-Frontmatter is managed by dark-factory:
+Tips:
+- **Be specific** — "add a Validate() method" beats "add validation"
+- **Include code examples** — show interfaces, function signatures, expected behavior
+- **Reference coding guides** — `~/.claude-yolo/docs/go-patterns.md` etc.
+- **Always include constraints** — especially "do NOT commit" (dark-factory handles git)
+- **One concern per prompt** — smaller prompts succeed more often than large ones
+
+## Prompt Format
+
+Frontmatter is managed by dark-factory (you don't need to add it):
 
 | Status | Who | What |
 |--------|-----|------|
@@ -100,7 +202,7 @@ Runs on port 8080 (configurable via `serverPort`):
 
 ## Configuration
 
-Optional `.dark-factory.yaml` in project root:
+Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses defaults.
 
 ```yaml
 workflow: direct                                    # "direct" (default) or "pr"
@@ -112,7 +214,27 @@ debounceMs: 500                                     # watcher debounce in ms
 serverPort: 8080                                    # REST API port
 ```
 
-All fields optional. Missing file or fields use defaults.
+**Important**: Without a config file, `queueDir` defaults to `prompts` (not `prompts/queue`). Create a `.dark-factory.yaml` to use the inbox/queue separation. See `example/` for a complete setup.
+
+## YOLO Container Configuration
+
+Dark-factory executes prompts inside a [claude-yolo](https://github.com/bborbe/claude-yolo) Docker container. The container gets its Claude Code configuration from `~/.claude-yolo/` on the host, mounted as `/home/node/.claude` inside the container.
+
+```
+~/.claude-yolo/
+├── CLAUDE.md          # instructions for the YOLO agent
+├── docs/              # coding guides (go-patterns.md, go-testing.md, ...)
+├── commands/          # custom slash commands
+└── agents/            # custom agents
+```
+
+Set up `~/.claude-yolo/` before first use:
+
+1. Create the directory: `mkdir -p ~/.claude-yolo/docs`
+2. Add a `CLAUDE.md` with instructions for your YOLO agent (workflow rules, git constraints, verification steps)
+3. Add coding guides in `docs/` for project-specific conventions the AI wouldn't know
+
+The docs teach YOLO conventions like custom library patterns, naming rules, and linter limits. See `~/.claude-yolo/docs/README.md` for details on writing effective guides.
 
 ## Design Principles
 

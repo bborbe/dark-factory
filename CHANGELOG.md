@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.2
+- Update README with prerequisites, installation, quick start, prompt writing guide
+- Add example project with config, inbox prompt, queued prompt, completed prompt
+- Add `make install` target to Makefile
+- Remove `build` target from Makefile
+- Split `.PHONY` declarations next to each target
+
 ## v0.8.1
 
 ### Added

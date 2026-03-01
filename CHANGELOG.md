@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.1
+
+### Added
+- Fix log directory path
+
 ## v0.9.0
 
 ### Added

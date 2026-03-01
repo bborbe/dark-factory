@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.8.0
+
+### Added
+- Add `dark-factory status` CLI subcommand
+
 ## v0.7.0
 
 ### Added

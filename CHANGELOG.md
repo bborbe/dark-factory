@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.0
+
+### Added
+- Add PR-based workflow (feature branch + pull request)
+
 ## v0.8.2
 - Update README with prerequisites, installation, quick start, prompt writing guide
 - Add example project with config, inbox prompt, queued prompt, completed prompt

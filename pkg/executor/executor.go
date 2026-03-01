@@ -14,8 +14,6 @@ import (
 	"github.com/bborbe/errors"
 )
 
-const claudeYoloImage = "docker.io/bborbe/claude-yolo:v0.0.7"
-
 // Executor executes a prompt.
 //
 //counterfeiter:generate -o ../../mocks/executor.go --fake-name Executor . Executor
@@ -24,11 +22,15 @@ type Executor interface {
 }
 
 // dockerExecutor implements Executor using Docker.
-type dockerExecutor struct{}
+type dockerExecutor struct {
+	containerImage string
+}
 
-// NewDockerExecutor creates a new Executor using Docker.
-func NewDockerExecutor() Executor {
-	return &dockerExecutor{}
+// NewDockerExecutor creates a new Executor using Docker with the specified container image.
+func NewDockerExecutor(containerImage string) Executor {
+	return &dockerExecutor{
+		containerImage: containerImage,
+	}
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -67,7 +69,7 @@ func (e *dockerExecutor) Execute(
 	defer cleanup()
 
 	// Build and run docker command
-	cmd := buildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
+	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
 
 	// Pipe stdout/stderr to both terminal and log file
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
@@ -126,7 +128,7 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 }
 
 // buildDockerCommand builds the docker run command with all necessary arguments.
-func buildDockerCommand(
+func (e *dockerExecutor) buildDockerCommand(
 	ctx context.Context,
 	containerName string,
 	promptFilePath string,
@@ -146,6 +148,6 @@ func buildDockerCommand(
 		"-v", projectRoot+":/workspace",
 		"-v", home+"/.claude-yolo:/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
-		claudeYoloImage,
+		e.containerImage,
 	)
 }

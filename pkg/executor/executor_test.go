@@ -25,7 +25,7 @@ var _ = Describe("DockerExecutor", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		e = executor.NewDockerExecutor()
+		e = executor.NewDockerExecutor("docker.io/bborbe/claude-yolo:v0.0.7")
 
 		var err error
 		tempDir, err = os.MkdirTemp("", "executor-test-*")
@@ -140,8 +140,8 @@ More lines...`
 	})
 
 	Describe("NewDockerExecutor", func() {
-		It("creates a new DockerExecutor", func() {
-			executor := executor.NewDockerExecutor()
+		It("creates a new DockerExecutor with specified container image", func() {
+			executor := executor.NewDockerExecutor("custom-image:latest")
 			Expect(executor).NotTo(BeNil())
 		})
 	})

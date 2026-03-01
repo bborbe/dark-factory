@@ -51,7 +51,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -82,7 +82,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -114,7 +114,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -145,7 +145,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -172,7 +172,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns(nil, os.ErrPermission)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -219,7 +219,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready)
+		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {

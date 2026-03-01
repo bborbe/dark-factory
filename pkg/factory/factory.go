@@ -5,6 +5,9 @@
 package factory
 
 import (
+	"time"
+
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/lock"
@@ -14,8 +17,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
-// CreateRunner creates a Runner that coordinates watcher and processor.
-func CreateRunner(promptsDir string) runner.Runner {
+// CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
+func CreateRunner(cfg config.Config) runner.Runner {
+	promptsDir := cfg.PromptsDir
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(promptsDir, releaser)
 
@@ -26,8 +30,13 @@ func CreateRunner(promptsDir string) runner.Runner {
 		promptsDir,
 		promptManager,
 		CreateLocker(promptsDir),
-		CreateWatcher(promptsDir, promptManager, ready),
-		CreateProcessor(promptsDir, promptManager, releaser, ready),
+		CreateWatcher(
+			promptsDir,
+			promptManager,
+			ready,
+			time.Duration(cfg.DebounceMs)*time.Millisecond,
+		),
+		CreateProcessor(promptsDir, promptManager, releaser, ready, cfg.ContainerImage),
 	)
 }
 
@@ -36,8 +45,9 @@ func CreateWatcher(
 	promptsDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
+	debounce time.Duration,
 ) watcher.Watcher {
-	return watcher.NewWatcher(promptsDir, promptManager, ready)
+	return watcher.NewWatcher(promptsDir, promptManager, ready, debounce)
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.
@@ -46,10 +56,11 @@ func CreateProcessor(
 	promptManager prompt.Manager,
 	releaser git.Releaser,
 	ready <-chan struct{},
+	containerImage string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		promptsDir,
-		executor.NewDockerExecutor(),
+		executor.NewDockerExecutor(containerImage),
 		promptManager,
 		releaser,
 		ready,

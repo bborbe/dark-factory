@@ -1,3 +1,9 @@
+---
+status: completed
+container: dark-factory-030-add-project-config
+---
+
+
 # Add project configuration file support
 
 ## Goal

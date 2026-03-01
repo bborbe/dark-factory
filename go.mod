@@ -3,6 +3,7 @@ module github.com/bborbe/dark-factory
 go 1.26.0
 
 require (
+	github.com/bborbe/collection v1.20.3
 	github.com/bborbe/errors v1.5.3
 	github.com/bborbe/run v1.9.3
 	github.com/bborbe/validation v1.4.4

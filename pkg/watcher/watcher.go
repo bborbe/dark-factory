@@ -31,18 +31,21 @@ type watcher struct {
 	promptsDir    string
 	promptManager prompt.Manager
 	ready         chan<- struct{}
+	debounce      time.Duration
 }
 
-// NewWatcher creates a new Watcher.
+// NewWatcher creates a new Watcher with the specified debounce duration.
 func NewWatcher(
 	promptsDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
+	debounce time.Duration,
 ) Watcher {
 	return &watcher{
 		promptsDir:    promptsDir,
 		promptManager: promptManager,
 		ready:         ready,
+		debounce:      debounce,
 	}
 }
 
@@ -117,7 +120,7 @@ func (w *watcher) handleWatchEvent(
 
 	// Set new timer
 	eventName := event.Name // Capture for closure
-	debounceTimers[eventName] = time.AfterFunc(500*time.Millisecond, func() {
+	debounceTimers[eventName] = time.AfterFunc(w.debounce, func() {
 		debounceMu.Lock()
 		delete(debounceTimers, eventName)
 		debounceMu.Unlock()

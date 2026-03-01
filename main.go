@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
 )
 
@@ -20,6 +21,16 @@ func main() {
 }
 
 func run() error {
-	r := factory.CreateRunner("prompts")
-	return r.Run(context.Background())
+	ctx := context.Background()
+
+	// Load configuration
+	loader := config.NewLoader()
+	cfg, err := loader.Load(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Create and run factory
+	r := factory.CreateRunner(cfg)
+	return r.Run(ctx)
 }

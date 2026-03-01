@@ -50,48 +50,22 @@ func (e *DockerExecutor) Execute(
 		return errors.Wrap(ctx, err, "get home directory")
 	}
 
-	// Create log file directory if it doesn't exist
-	logDir := filepath.Dir(logFile)
-	if err := os.MkdirAll(logDir, 0750); err != nil {
-		return errors.Wrap(ctx, err, "create log directory")
-	}
-
-	// Open log file for writing (create/truncate)
-	// #nosec G304 -- logFile is derived from prompt filename, not user input
-	logFileHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	// Prepare log file
+	logFileHandle, err := PrepareLogFile(ctx, logFile)
 	if err != nil {
-		return errors.Wrap(ctx, err, "open log file")
+		return err
 	}
 	defer logFileHandle.Close()
 
-	// Write prompt to temp file (avoids shell/docker escaping issues with -e flag)
-	promptFile, err := os.CreateTemp("", "dark-factory-prompt-*.md")
+	// Create temp file with prompt content
+	promptFilePath, cleanup, err := CreatePromptTempFile(ctx, promptContent)
 	if err != nil {
-		return errors.Wrap(ctx, err, "create prompt temp file")
+		return err
 	}
-	defer func() { _ = os.Remove(promptFile.Name()) }()
+	defer cleanup()
 
-	if _, err := promptFile.WriteString(promptContent); err != nil {
-		promptFile.Close()
-		return errors.Wrap(ctx, err, "write prompt temp file")
-	}
-	promptFile.Close()
-
-	// Build docker run command
-	// Mount prompt as file to avoid shell escaping issues with -e flag
-	// #nosec G204 -- promptContent is user-provided by design
-	cmd := exec.CommandContext(
-		ctx,
-		"docker", "run", "--rm",
-		"--name", containerName,
-		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
-		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
-		"-v", promptFile.Name()+":/tmp/prompt.md:ro",
-		"-v", projectRoot+":/workspace",
-		"-v", home+"/.claude-yolo:/home/node/.claude",
-		"-v", home+"/go/pkg:/home/node/go/pkg",
-		"docker.io/bborbe/claude-yolo:latest",
-	)
+	// Build and run docker command
+	cmd := BuildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
 
 	// Pipe stdout/stderr to both terminal and log file
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
@@ -103,4 +77,73 @@ func (e *DockerExecutor) Execute(
 	}
 
 	return nil
+}
+
+// PrepareLogFile creates the log directory and opens the log file for writing.
+func PrepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
+	// Create log file directory if it doesn't exist
+	logDir := filepath.Dir(logFile)
+	if err := os.MkdirAll(logDir, 0750); err != nil {
+		return nil, errors.Wrap(ctx, err, "create log directory")
+	}
+
+	// Open log file for writing (create/truncate)
+	// #nosec G304 -- logFile is derived from prompt filename, not user input
+	logFileHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "open log file")
+	}
+
+	return logFileHandle, nil
+}
+
+// CreatePromptTempFile creates a temp file with the prompt content and returns the path and cleanup function.
+func CreatePromptTempFile(ctx context.Context, promptContent string) (string, func(), error) {
+	// Write prompt to temp file (avoids shell/docker escaping issues with -e flag)
+	promptFile, err := os.CreateTemp("", "dark-factory-prompt-*.md")
+	if err != nil {
+		return "", nil, errors.Wrap(ctx, err, "create prompt temp file")
+	}
+
+	cleanup := func() {
+		promptFile.Close()
+		_ = os.Remove(promptFile.Name())
+	}
+
+	if _, err := promptFile.WriteString(promptContent); err != nil {
+		cleanup()
+		return "", nil, errors.Wrap(ctx, err, "write prompt temp file")
+	}
+
+	if err := promptFile.Close(); err != nil {
+		cleanup()
+		return "", nil, errors.Wrap(ctx, err, "close prompt temp file")
+	}
+
+	return promptFile.Name(), cleanup, nil
+}
+
+// BuildDockerCommand builds the docker run command with all necessary arguments.
+func BuildDockerCommand(
+	ctx context.Context,
+	containerName string,
+	promptFilePath string,
+	projectRoot string,
+	home string,
+) *exec.Cmd {
+	// Build docker run command
+	// Mount prompt as file to avoid shell escaping issues with -e flag
+	// #nosec G204 -- promptContent is user-provided by design
+	return exec.CommandContext(
+		ctx,
+		"docker", "run", "--rm",
+		"--name", containerName,
+		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
+		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
+		"-v", promptFilePath+":/tmp/prompt.md:ro",
+		"-v", projectRoot+":/workspace",
+		"-v", home+"/.claude-yolo:/home/node/.claude",
+		"-v", home+"/go/pkg:/home/node/go/pkg",
+		"docker.io/bborbe/claude-yolo:latest",
+	)
 }

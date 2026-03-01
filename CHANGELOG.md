@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.12
+
+### Added
+- Increase test coverage to ≥80% for all packages
+
 All notable changes to this project will be documented in this file.
 
 Please choose versions by [Semantic Versioning](http://semver.org/).

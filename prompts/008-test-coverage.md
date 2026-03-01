@@ -1,6 +1,7 @@
 ---
-status: queued
+status: executing
 ---
+
 # Increase test coverage to ≥80% for all packages
 
 ## Goal

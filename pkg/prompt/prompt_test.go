@@ -388,6 +388,158 @@ This is the content.
 			Expect(fm.Status).To(Equal("completed"))
 		})
 	})
+
+	Describe("ResetExecuting", func() {
+		Context("with mixed statuses", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-executing.md", "executing")
+				createPromptFile(tempDir, "003-completed.md", "completed")
+				createPromptFile(tempDir, "004-executing.md", "executing")
+				createPromptFile(tempDir, "005-failed.md", "failed")
+			})
+
+			It("resets only executing prompts to queued", func() {
+				err := prompt.ResetExecuting(ctx, tempDir)
+				Expect(err).To(BeNil())
+
+				// Check that executing prompts are now queued
+				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-executing.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				// Check that other statuses are unchanged
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("completed"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("failed"))
+			})
+		})
+
+		Context("with no executing prompts", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "002-completed.md", "completed")
+			})
+
+			It("does nothing", func() {
+				err := prompt.ResetExecuting(ctx, tempDir)
+				Expect(err).To(BeNil())
+
+				// Verify statuses are unchanged
+				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("completed"))
+			})
+		})
+
+		Context("with empty directory", func() {
+			It("does nothing", func() {
+				err := prompt.ResetExecuting(ctx, tempDir)
+				Expect(err).To(BeNil())
+			})
+		})
+	})
+
+	Describe("splitFrontmatter edge cases", func() {
+		Context("with inline --- in content", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+# Test Prompt
+
+This content has --- inline which should not be confused with frontmatter.
+
+More content here.
+`
+				path = filepath.Join(tempDir, "001-inline.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("correctly extracts frontmatter and content", func() {
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).To(ContainSubstring("# Test Prompt"))
+				Expect(content).To(ContainSubstring("This content has --- inline"))
+				Expect(content).NotTo(ContainSubstring("status: queued"))
+			})
+		})
+
+		Context("with --- at EOF without newline", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---`
+				path = filepath.Join(tempDir, "002-eof.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("correctly parses frontmatter", func() {
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("queued"))
+			})
+
+			It("returns empty content error", func() {
+				_, err := prompt.Content(ctx, path)
+				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			})
+		})
+
+		Context("with only opening --- and no closing", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+
+# This is not valid frontmatter
+Content here.
+`
+				path = filepath.Join(tempDir, "003-unclosed.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("treats entire file as content (no frontmatter)", func() {
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal("")) // No frontmatter parsed
+
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).To(ContainSubstring("---"))
+				Expect(content).To(ContainSubstring("status: queued"))
+			})
+		})
+	})
 })
 
 // Helper function to create a prompt file with given status

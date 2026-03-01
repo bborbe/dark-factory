@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.3
+
+### Added
+- Fix security issues from code review
+
 ## v0.10.2
 
 ### Added

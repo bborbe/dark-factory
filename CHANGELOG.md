@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.5
+
+### Added
+- Runner should not normalize inbox directory
+
 ## v0.10.4
 
 ### Added

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.22
+
+### Added
+- Pin claude-yolo image to a specific version tag
+
 ## v0.2.21
 
 ### Fixed

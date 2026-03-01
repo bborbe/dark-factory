@@ -289,7 +289,7 @@ More lines...`
 			Expect(cmd.Args).To(ContainElement(promptFilePath + ":/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement(projectRoot + ":/workspace"))
 			Expect(cmd.Args).To(ContainElement(home + "/.claude-yolo:/home/node/.claude"))
-			Expect(cmd.Args).To(ContainElement("docker.io/bborbe/claude-yolo:latest"))
+			Expect(cmd.Args).To(ContainElement("docker.io/bborbe/claude-yolo:v0.0.7"))
 		})
 
 		It("includes network capabilities", func() {

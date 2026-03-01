@@ -14,6 +14,8 @@ import (
 	"github.com/bborbe/errors"
 )
 
+const claudeYoloImage = "docker.io/bborbe/claude-yolo:v0.0.7"
+
 // Executor executes a prompt.
 //
 //counterfeiter:generate -o ../../mocks/executor.go --fake-name Executor . Executor
@@ -144,6 +146,6 @@ func BuildDockerCommand(
 		"-v", projectRoot+":/workspace",
 		"-v", home+"/.claude-yolo:/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
-		"docker.io/bborbe/claude-yolo:latest",
+		claudeYoloImage,
 	)
 }

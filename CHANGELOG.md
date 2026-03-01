@@ -1,36 +1,36 @@
 # Changelog
 
-## v0.1.9
+## v0.2.32
 
 ### Added
 - Codebase cleanup: fix all existing code quality issues
 
-## v0.1.8
+## v0.2.31
 
 ### Added
 - Replace git subprocess calls with go-git library
 
-## v0.1.7
+## v0.2.30
 
 ### Added
 - Add minor version bump support (never major)
 
-## v0.1.6
+## v0.2.29
 
 ### Added
 - Make CHANGELOG.md and git release optional
 
-## v0.1.5
+## v0.2.28
 
 ### Added
 - Pin claude-yolo image to a specific version tag
 
-## v0.1.4
+## v0.2.27
 
 ### Added
 - Fix: completed/ prompt file missing from release commit
 
-## v0.1.3
+## v0.2.26
 
 ### Added
 - Extract service interfaces from runner god object

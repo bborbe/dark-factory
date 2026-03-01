@@ -1,48 +1,75 @@
-# Fix semver sorting in getNextVersion
+# Fix semver sorting with SemanticVersionNumber type
 
 ## Goal
 
-The `getNextVersion` function in `pkg/git/git.go` uses `sort.Strings()` to find the latest tag. This is **lexicographic**, not **semver** sort. It caused a version regression from v0.2.25 → v0.1.3 because lexicographically `v0.9.x > v0.2.x` and `v0.1.2` appeared on the same commit.
+The `getNextVersion` function in `pkg/git/git.go` uses `sort.Strings()` to find the latest tag. This is **lexicographic**, not **semver** sort. It caused a version regression from v0.2.25 → v0.1.3.
 
 ## Current Behavior (BUG)
 
 ```go
-// Line 241 in pkg/git/git.go
 sort.Strings(tagNames)
 latestTag := tagNames[len(tagNames)-1]
 ```
 
-Lexicographic: `v0.1.0 < v0.1.2 < v0.2.25 < v0.9.0`
-But `v0.10.0` would sort BEFORE `v0.9.0` (wrong!).
-And when `v0.1.2` and `v0.2.25` are both present, the result depends on sort stability.
-
-## Expected Behavior
-
-Parse all tags as semver, sort numerically by major.minor.patch, return the highest.
+Lexicographic sort is wrong for semver: `v0.10.0 < v0.9.0`, `v0.1.2 > v0.2.25` depending on context.
 
 ## Implementation
 
-1. In `getNextVersion()`, replace `sort.Strings(tagNames)` with a proper semver sort:
-   - Filter tagNames to only valid semver tags (`vX.Y.Z`)
-   - Parse each into (major, minor, patch) integers
-   - Sort by major desc, then minor desc, then patch desc
-   - Take the first (highest) as `latestTag`
+### 1. Create `SemanticVersionNumber` type in `pkg/git/`
 
-2. Create a helper function `sortSemverTags(tags []string) []string` that:
-   - Filters to valid `vX.Y.Z` format
-   - Sorts numerically (not lexicographically)
-   - Returns sorted slice (highest first)
+```go
+// SemanticVersionNumber represents a parsed semantic version.
+type SemanticVersionNumber struct {
+    Major int
+    Minor int
+    Patch int
+}
 
-3. Add tests:
-   - `v0.2.25` should be higher than `v0.1.9`
-   - `v0.10.0` should be higher than `v0.9.0`
-   - `v1.0.0` should be higher than `v0.99.99`
-   - Non-semver tags (e.g., `latest`, `beta`) should be filtered out
-   - Empty tag list returns `v0.1.0`
+// ParseSemanticVersionNumber parses "vX.Y.Z" into a SemanticVersionNumber.
+// Returns error if format is invalid.
+func ParseSemanticVersionNumber(tag string) (SemanticVersionNumber, error) { ... }
+
+// String returns the "vX.Y.Z" representation.
+func (v SemanticVersionNumber) String() string { ... }
+
+// BumpPatch returns a new version with patch incremented.
+func (v SemanticVersionNumber) BumpPatch() SemanticVersionNumber { ... }
+
+// BumpMinor returns a new version with minor incremented and patch reset to 0.
+func (v SemanticVersionNumber) BumpMinor() SemanticVersionNumber { ... }
+
+// Less returns true if v is lower than other.
+func (v SemanticVersionNumber) Less(other SemanticVersionNumber) bool { ... }
+```
+
+### 2. Refactor `getNextVersion` to use it
+
+- Iterate tags, parse each with `ParseSemanticVersionNumber` (skip invalid)
+- Find the max version using `Less()`
+- Call `BumpPatch()` or `BumpMinor()` on the result
+
+### 3. Remove standalone `BumpPatchVersion` / `BumpMinorVersion` functions
+
+Replace with `SemanticVersionNumber.BumpPatch()` / `BumpMinor()`.
+
+### 4. Tests
+
+- `ParseSemanticVersionNumber("v0.2.25")` → `{0, 2, 25}`
+- `ParseSemanticVersionNumber("invalid")` → error
+- `ParseSemanticVersionNumber("v1")` → error
+- `v0.2.25` is greater than `v0.1.9`
+- `v0.10.0` is greater than `v0.9.0`
+- `v1.0.0` is greater than `v0.99.99`
+- `BumpPatch()`: `v0.2.25` → `v0.2.26`
+- `BumpMinor()`: `v0.2.25` → `v0.3.0`
+- `String()`: `{0, 2, 25}` → `"v0.2.25"`
+- Non-semver tags filtered out
+- Empty tag list returns `v0.1.0`
 
 ## Constraints
 
 - Run `make precommit` for validation only
 - Do NOT commit, tag, or push (dark-factory handles git)
-- Follow patterns in `~/.claude-yolo/docs/go-testing.md` for tests
+- Follow patterns in `~/.claude-yolo/docs/go-patterns.md` (interface + struct + New*)
+- Follow `~/.claude-yolo/docs/go-testing.md` for tests
 - Coverage ≥80% for changed code

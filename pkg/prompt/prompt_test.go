@@ -734,6 +734,153 @@ This is the content.
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
+
+		Context("with duplicate empty frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+
+
+---
+---
+
+# Actual prompt title
+
+Prompt content here.
+`
+				path = filepath.Join(tempDir, "001-duplicate.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("strips the empty frontmatter block from content", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(HavePrefix("---"))
+				Expect(content).To(ContainSubstring("# Actual prompt title"))
+				Expect(content).To(ContainSubstring("Prompt content here."))
+			})
+		})
+
+		Context("with empty frontmatter block containing only whitespace", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+---
+
+
+---
+
+# Test Prompt
+
+Content here.
+`
+				path = filepath.Join(tempDir, "001-whitespace-fm.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("strips the whitespace-only frontmatter block", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(HavePrefix("---"))
+				Expect(content).To(ContainSubstring("# Test Prompt"))
+			})
+		})
+
+		Context("with multiple consecutive empty frontmatter blocks", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+---
+---
+
+---
+---
+
+# Test Prompt
+
+Content here.
+`
+				path = filepath.Join(tempDir, "001-multiple.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("strips all empty frontmatter blocks", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(HavePrefix("---"))
+				Expect(content).To(ContainSubstring("# Test Prompt"))
+			})
+		})
+
+		Context("with non-empty duplicate frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+---
+title: Some Title
+---
+
+# Test Prompt
+
+Content here.
+`
+				path = filepath.Join(tempDir, "001-nonempty.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("preserves non-empty frontmatter in content", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).To(ContainSubstring("---"))
+				Expect(content).To(ContainSubstring("title: Some Title"))
+				Expect(content).To(ContainSubstring("# Test Prompt"))
+			})
+		})
+
+		Context("with empty frontmatter at EOF", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: queued
+---
+
+---
+---`
+				path = filepath.Join(tempDir, "001-eof.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("strips empty frontmatter and returns empty prompt error", func() {
+				_, err := prompt.Content(ctx, path)
+				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			})
+		})
 	})
 
 	Describe("MoveToCompleted", func() {

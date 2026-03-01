@@ -1,6 +1,12 @@
 ---
-status: queued
+status: completed
+container: dark-factory-045-strip-duplicate-frontmatter
+dark-factory-version: v0.10.2
 ---
+
+
+
+
 
 # Strip duplicate/empty frontmatter from prompt content
 

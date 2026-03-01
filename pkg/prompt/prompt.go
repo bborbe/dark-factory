@@ -464,6 +464,9 @@ func Content(ctx context.Context, path string) (string, error) {
 		result = string(content)
 	}
 
+	// Strip any additional empty frontmatter blocks at the start of content
+	result = stripLeadingEmptyFrontmatter(result)
+
 	// Check if content is empty or only whitespace
 	if len(strings.TrimSpace(result)) == 0 {
 		return "", ErrEmptyPrompt
@@ -764,6 +767,61 @@ func extractNumberFromFilename(filename string) int {
 		return -1
 	}
 	return num
+}
+
+// stripLeadingEmptyFrontmatter removes any empty frontmatter blocks from the start of content.
+// This handles cases where a file was created with empty frontmatter (---\n---) and
+// the processor later prepended its own frontmatter, leaving the original empty block
+// in the content body.
+func stripLeadingEmptyFrontmatter(content string) string {
+	// Trim leading newlines/whitespace
+	trimmed := strings.TrimLeft(content, "\n\r \t")
+
+	// Check if content starts with frontmatter delimiter
+	if !strings.HasPrefix(trimmed, "---\n") && !strings.HasPrefix(trimmed, "---\r\n") {
+		return content
+	}
+
+	// Determine line ending
+	var lineEnding string
+	if strings.HasPrefix(trimmed, "---\r\n") {
+		lineEnding = "\r\n"
+	} else {
+		lineEnding = "\n"
+	}
+
+	// Check for immediate closing (empty frontmatter: ---\n---)
+	emptyFrontmatter := "---" + lineEnding + "---"
+	if strings.HasPrefix(trimmed, emptyFrontmatter) {
+		// This is an empty frontmatter block - skip it
+		remaining := strings.TrimPrefix(trimmed, emptyFrontmatter)
+		// Remove leading line ending if present
+		remaining = strings.TrimPrefix(remaining, lineEnding)
+		if len(strings.TrimSpace(remaining)) == 0 {
+			return remaining
+		}
+		return stripLeadingEmptyFrontmatter(remaining)
+	}
+
+	// Try to parse it as a frontmatter block using the same logic as splitFrontmatter
+	yamlBytes, body, hasFM := splitFrontmatter([]byte(trimmed))
+	if !hasFM {
+		// Not a valid frontmatter block
+		return content
+	}
+
+	// Check if the frontmatter is empty or contains only whitespace
+	if len(strings.TrimSpace(string(yamlBytes))) > 0 {
+		// Not an empty frontmatter block - keep original content
+		return content
+	}
+
+	// This is an empty frontmatter block - skip it and recursively process the rest
+	remaining := string(body)
+	if len(strings.TrimSpace(remaining)) == 0 {
+		return remaining
+	}
+	return stripLeadingEmptyFrontmatter(remaining)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed directory.

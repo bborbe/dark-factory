@@ -81,17 +81,25 @@ ready chan struct{}
 
 Watcher normalizes files, then signals processor. Processor also does a periodic scan (e.g., on startup) for any queued prompts that were there before the watcher started.
 
-### 4. Simplify runner
+### 4. Simplify runner using `github.com/bborbe/run`
 
-Runner becomes a thin coordinator:
+Use the existing `run.CancelOnFirstError` from `github.com/bborbe/run` to coordinate goroutines. If either goroutine fails, context cancels the other automatically.
+
 ```go
+import "github.com/bborbe/run"
+
 func (r *runner) Run(ctx context.Context) error {
     // Acquire lock
-    // Start watcher goroutine
-    // Start processor goroutine
-    // Wait for shutdown signal
+    return run.CancelOnFirstError(ctx,
+        r.watcher.Watch,     // goroutine 1: normalize files
+        r.processor.Process,  // goroutine 2: execute prompts
+    )
 }
 ```
+
+No manual goroutine management, no WaitGroup, no error collection — `run` handles it all.
+
+Add dependency: `go get github.com/bborbe/run`
 
 ### 5. Update factory
 

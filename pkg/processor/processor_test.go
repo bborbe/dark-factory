@@ -291,7 +291,9 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.StatusQueued},
 		}
 
-		mockManager.ListQueuedReturns(queued, nil)
+		// Return queued once, then empty (so loop exits after failure)
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 		mockManager.ContentReturns("# Fail test", nil)
 		mockManager.TitleReturns("Fail test", nil)
 		mockManager.SetContainerReturns(nil)
@@ -314,23 +316,15 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 		)
 
-		// Run processor in goroutine
-		errCh := make(chan error, 1)
+		// Run processor — marks failed and continues (no error returned)
 		go func() {
-			errCh <- p.Process(ctx)
+			_ = p.Process(ctx)
 		}()
 
-		// Wait for error
-		select {
-		case err := <-errCh:
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(ContainSubstring("execution failed"))
-		case <-time.After(2 * time.Second):
-			Fail("processor did not return error within timeout")
-		}
-
-		// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
-		Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
+		// Wait for Load to be called (marks prompt as failed)
+		Eventually(func() int {
+			return mockManager.LoadCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
 	})
@@ -883,7 +877,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.StatusQueued},
 			}
 
-			mockManager.ListQueuedReturns(queued, nil)
+			// Return queued once, then empty
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.ContentReturns("# Branch error test", nil)
 			mockManager.TitleReturns("Test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -907,23 +903,15 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 			)
 
-			// Run processor in goroutine
-			errCh := make(chan error, 1)
+			// Run processor — marks failed and continues
 			go func() {
-				errCh <- p.Process(ctx)
+				_ = p.Process(ctx)
 			}()
 
-			// Wait for error
-			select {
-			case err := <-errCh:
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("branch already exists"))
-			case <-time.After(2 * time.Second):
-				Fail("processor did not return error within timeout")
-			}
-
-			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
-			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
+			// Wait for Load to be called (marks prompt as failed)
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify executor was NOT called
 			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
@@ -937,7 +925,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.StatusQueued},
 			}
 
-			mockManager.ListQueuedReturns(queued, nil)
+			// Return queued once, then empty
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.ContentReturns("# PR error test", nil)
 			mockManager.TitleReturns("Test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -967,27 +957,19 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 			)
 
-			// Run processor in goroutine
-			errCh := make(chan error, 1)
+			// Run processor — marks failed and continues
 			go func() {
-				errCh <- p.Process(ctx)
+				_ = p.Process(ctx)
 			}()
 
-			// Wait for error
-			select {
-			case err := <-errCh:
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("gh pr create failed"))
-			case <-time.After(2 * time.Second):
-				Fail("processor did not return error within timeout")
-			}
+			// Wait for Load to be called (marks prompt as failed)
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify branch operations succeeded
 			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
 			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-
-			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
-			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 			cancel()
 		})
@@ -1058,7 +1040,7 @@ DARK-FACTORY-REPORT -->
 			cancel()
 		})
 
-		It("should fail when report status is failed", func() {
+		It("should mark failed and continue when report status is failed", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-failed.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.StatusQueued},
@@ -1067,7 +1049,9 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturns(queued, nil)
+			// Return queued once, then empty (so loop exits)
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.ContentReturns("# Report failed test", nil)
 			mockManager.TitleReturns("Report failed test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1101,31 +1085,24 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 			)
 
-			// Run processor in goroutine
+			// Run processor — should not return error (continues after failure)
 			errCh := make(chan error, 1)
 			go func() {
 				errCh <- p.Process(ctx)
 			}()
 
-			// Wait for error
-			select {
-			case err := <-errCh:
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("completion report status: failed"))
-			case <-time.After(2 * time.Second):
-				Fail("processor did not return error within timeout")
-			}
+			// Wait for processing to complete
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify moved to completed was NOT called
 			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
 
-			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
-			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
-
 			cancel()
 		})
 
-		It("should fail when report status is partial", func() {
+		It("should mark failed and continue when report status is partial", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-partial.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.StatusQueued},
@@ -1134,7 +1111,9 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturns(queued, nil)
+			// Return queued once, then empty (so loop exits)
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.ContentReturns("# Report partial test", nil)
 			mockManager.TitleReturns("Report partial test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1168,20 +1147,16 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 			)
 
-			// Run processor in goroutine
+			// Run processor — should not return error (continues after failure)
 			errCh := make(chan error, 1)
 			go func() {
 				errCh <- p.Process(ctx)
 			}()
 
-			// Wait for error
-			select {
-			case err := <-errCh:
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("completion report status: partial"))
-			case <-time.After(2 * time.Second):
-				Fail("processor did not return error within timeout")
-			}
+			// Wait for processing to complete
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify moved to completed was NOT called
 			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))

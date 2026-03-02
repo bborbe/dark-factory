@@ -155,21 +155,22 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 				"reason",
 				"previous prompt not completed",
 			)
-			continue
+			return nil // blocked — wait for watcher signal or periodic scan
 		}
 
 		slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
+			slog.Error("prompt failed", "file", filepath.Base(pr.Path), "error", err)
 			// Mark as failed — file may have been moved to completed/ before the error.
 			if pf, loadErr := p.promptManager.Load(ctx, pr.Path); loadErr == nil {
 				pf.MarkFailed()
 				if saveErr := pf.Save(); saveErr != nil {
-					slog.Info("failed to set failed status", "error", saveErr)
+					slog.Error("failed to set failed status", "error", saveErr)
 				}
 			}
-			return errors.Wrap(ctx, err, "process prompt")
+			return nil // failed — wait for watcher signal or periodic scan
 		}
 
 		slog.Info("watching for queued prompts", "dir", p.queueDir)

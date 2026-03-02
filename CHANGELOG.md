@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.2
+
+### Added
+- Count completed directory files as completed regardless of frontmatter
+
 ## v0.11.1
 
 ### Added

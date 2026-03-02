@@ -6,7 +6,7 @@ package watcher
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,7 +67,7 @@ func (w *watcher) Watch(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "add watch path")
 	}
 
-	log.Printf("dark-factory: watcher started on %s", absQueueDir)
+	slog.Info("watcher started", "dir", absQueueDir)
 
 	// Debounce map: file path -> timer (protected by mutex)
 	var debounceMu sync.Mutex
@@ -76,14 +76,14 @@ func (w *watcher) Watch(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("dark-factory: watcher shutting down")
+			slog.Info("watcher shutting down")
 			return nil
 
 		case err, ok := <-fsWatcher.Errors:
 			if !ok {
 				return errors.Errorf(ctx, "watcher error channel closed")
 			}
-			log.Printf("dark-factory: watcher error: %v", err)
+			slog.Info("watcher error", "error", err)
 			return errors.Wrap(ctx, err, "watcher error")
 
 		case event, ok := <-fsWatcher.Events:
@@ -112,10 +112,13 @@ func (w *watcher) handleWatchEvent(
 		return
 	}
 
+	slog.Debug("file event received", "operation", event.Op.String(), "path", event.Name)
+
 	// Debounce: cancel existing timer for this file
 	debounceMu.Lock()
 	if timer, exists := debounceTimers[event.Name]; exists {
 		timer.Stop()
+		slog.Debug("debounce timer reset", "path", event.Name)
 	}
 
 	// Set new timer
@@ -124,6 +127,7 @@ func (w *watcher) handleWatchEvent(
 		debounceMu.Lock()
 		delete(debounceTimers, eventName)
 		debounceMu.Unlock()
+		slog.Debug("debounce timer fired", "path", eventName)
 		w.handleFileEvent(ctx)
 	})
 	debounceMu.Unlock()
@@ -131,24 +135,29 @@ func (w *watcher) handleWatchEvent(
 
 // handleFileEvent normalizes filenames in queue directory.
 func (w *watcher) handleFileEvent(ctx context.Context) {
+	slog.Debug("normalizing filenames", "dir", w.queueDir)
+
 	// Normalize filenames in queue directory
 	renames, err := w.promptManager.NormalizeFilenames(ctx, w.queueDir)
 	if err != nil {
-		log.Printf("dark-factory: failed to normalize filenames: %v", err)
+		slog.Info("failed to normalize filenames", "error", err)
 		return
 	}
 
 	// Log renames
 	for _, rename := range renames {
-		log.Printf("dark-factory: renamed %s -> %s",
-			filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
+		slog.Debug("renamed file",
+			"from", filepath.Base(rename.OldPath),
+			"to", filepath.Base(rename.NewPath))
 	}
 
 	// Signal processor that files are ready
 	select {
 	case w.ready <- struct{}{}:
+		slog.Debug("signaled processor ready")
 	default:
 		// Non-blocking send - processor may already be working
+		slog.Debug("processor already working, signal skipped")
 	}
 }
 

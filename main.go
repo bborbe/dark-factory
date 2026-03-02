@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -25,7 +26,14 @@ func run() error {
 	ctx := context.Background()
 
 	// Parse command line arguments
-	command, args := parseArgs()
+	debug, command, args := parseArgs()
+
+	// Configure slog
+	level := slog.LevelInfo
+	if debug {
+		level = slog.LevelDebug
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 
 	// Load configuration
 	loader := config.NewLoader()
@@ -50,25 +58,37 @@ func run() error {
 	}
 }
 
-// parseArgs parses command line arguments and returns (command, args).
+// parseArgs parses command line arguments and returns (debug, command, args).
+// The -debug flag can appear anywhere and is extracted before parsing the command.
 // No args or "run" → run command
 // "status" → status command
 // "queue" → queue command
-func parseArgs() (string, []string) {
-	if len(os.Args) <= 1 {
-		return "run", []string{}
+func parseArgs() (bool, string, []string) {
+	// Filter out -debug flag from args
+	debug := false
+	filteredArgs := []string{os.Args[0]} // Keep program name
+	for _, arg := range os.Args[1:] {
+		if arg == "-debug" {
+			debug = true
+		} else {
+			filteredArgs = append(filteredArgs, arg)
+		}
 	}
 
-	command := os.Args[1]
+	if len(filteredArgs) <= 1 {
+		return debug, "run", []string{}
+	}
+
+	command := filteredArgs[1]
 	args := []string{}
-	if len(os.Args) > 2 {
-		args = os.Args[2:]
+	if len(filteredArgs) > 2 {
+		args = filteredArgs[2:]
 	}
 
 	if command == "run" || command == "status" || command == "queue" {
-		return command, args
+		return debug, command, args
 	}
 
 	// Unknown command - default to run and treat as args
-	return "run", os.Args[1:]
+	return debug, "run", filteredArgs[1:]
 }

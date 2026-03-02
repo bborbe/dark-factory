@@ -7,6 +7,7 @@ package executor
 import (
 	"context"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,8 +69,23 @@ func (e *dockerExecutor) Execute(
 	}
 	defer cleanup()
 
+	slog.Debug(
+		"prompt prepared for execution",
+		"contentSize",
+		len(promptContent),
+		"tempFile",
+		promptFilePath,
+	)
+
 	// Build and run docker command
 	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
+
+	slog.Debug("docker command prepared",
+		"image", e.containerImage,
+		"containerName", containerName,
+		"workspaceMount", projectRoot+":/workspace",
+		"configMount", home+"/.claude-yolo:/home/node/.claude",
+		"goPkgMount", home+"/go/pkg:/home/node/go/pkg")
 
 	// Pipe stdout/stderr to both terminal and log file
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)

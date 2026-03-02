@@ -6,6 +6,7 @@ package git
 
 import (
 	"context"
+	"log/slog"
 	"os/exec"
 	"strings"
 
@@ -32,6 +33,8 @@ func NewBrancher() Brancher {
 
 // CreateAndSwitch creates a new branch and switches to it.
 func (b *brancher) CreateAndSwitch(ctx context.Context, name string) error {
+	slog.Debug("creating and switching to branch", "branch", name)
+
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
 	cmd := exec.CommandContext(ctx, "git", "checkout", "-b", name)
 	if err := cmd.Run(); err != nil {
@@ -42,6 +45,8 @@ func (b *brancher) CreateAndSwitch(ctx context.Context, name string) error {
 
 // Push pushes a branch to the remote repository.
 func (b *brancher) Push(ctx context.Context, name string) error {
+	slog.Debug("pushing branch to remote", "branch", name)
+
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
 	cmd := exec.CommandContext(ctx, "git", "push", "-u", "origin", name)
 	if err := cmd.Run(); err != nil {
@@ -52,6 +57,8 @@ func (b *brancher) Push(ctx context.Context, name string) error {
 
 // Switch switches to an existing branch.
 func (b *brancher) Switch(ctx context.Context, name string) error {
+	slog.Debug("switching to branch", "branch", name)
+
 	// #nosec G204 -- branch name is controlled by the application
 	cmd := exec.CommandContext(ctx, "git", "checkout", name)
 	if err := cmd.Run(); err != nil {
@@ -67,5 +74,7 @@ func (b *brancher) CurrentBranch(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "get current branch")
 	}
-	return strings.TrimSpace(string(output)), nil
+	branch := strings.TrimSpace(string(output))
+	slog.Debug("current branch", "branch", branch)
+	return branch, nil
 }

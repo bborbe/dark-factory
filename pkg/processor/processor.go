@@ -7,7 +7,7 @@ package processor
 import (
 	"context"
 	stderrors "errors"
-	"log"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -77,7 +77,7 @@ func NewProcessor(
 // Process starts processing queued prompts.
 // It processes existing queued prompts on startup, then listens for signals from the watcher.
 func (p *processor) Process(ctx context.Context) error {
-	log.Printf("dark-factory: processor started")
+	slog.Info("processor started")
 
 	// Reset failed prompts to queued on startup
 	if err := p.promptManager.ResetFailed(ctx); err != nil {
@@ -96,7 +96,7 @@ func (p *processor) Process(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("dark-factory: processor shutting down")
+			slog.Info("processor shutting down")
 			return nil
 
 		case <-p.ready:
@@ -131,28 +131,34 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// No more queued prompts - done
 		if len(queued) == 0 {
+			slog.Debug("queue scan complete", "queuedCount", 0)
 			return nil
 		}
+
+		slog.Debug("queue scan complete", "queuedCount", len(queued))
 
 		// Pick first prompt (already sorted alphabetically)
 		pr := queued[0]
 
 		// Validate prompt before execution
 		if err := pr.ValidateForExecution(ctx); err != nil {
-			log.Printf("dark-factory: skipping %s: %v", filepath.Base(pr.Path), err)
+			slog.Debug("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
 			continue
 		}
 
 		// Check ordering - all previous prompts must be completed
 		if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
-			log.Printf(
-				"dark-factory: skipping %s: previous prompt not completed",
+			slog.Debug(
+				"skipping prompt",
+				"file",
 				filepath.Base(pr.Path),
+				"reason",
+				"previous prompt not completed",
 			)
 			continue
 		}
 
-		log.Printf("dark-factory: found queued prompt: %s", filepath.Base(pr.Path))
+		slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
@@ -160,13 +166,13 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 			if pf, loadErr := p.promptManager.Load(ctx, pr.Path); loadErr == nil {
 				pf.MarkFailed()
 				if saveErr := pf.Save(); saveErr != nil {
-					log.Printf("dark-factory: failed to set failed status: %v", saveErr)
+					slog.Info("failed to set failed status", "error", saveErr)
 				}
 			}
 			return errors.Wrap(ctx, err, "process prompt")
 		}
 
-		log.Printf("dark-factory: watching %s for queued prompts...", p.queueDir)
+		slog.Info("watching for queued prompts", "dir", p.queueDir)
 
 		// Loop again to process next prompt
 	}
@@ -179,15 +185,17 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
-
 	// Check if empty
 	content, err := pf.Content()
 	if err != nil {
 		// If prompt is empty, move to completed and skip execution
 		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
-			log.Printf(
-				"dark-factory: skipping empty prompt: %s (file may still be in progress)",
+			slog.Debug(
+				"skipping empty prompt",
+				"file",
 				filepath.Base(pr.Path),
+				"reason",
+				"file may still be in progress",
 			)
 			// Move empty prompts to completed/ (but don't commit)
 			if err := p.promptManager.MoveToCompleted(ctx, pr.Path); err != nil {
@@ -208,11 +216,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if err != nil {
 		return err
 	}
-
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
 
-	log.Printf("dark-factory: executing prompt: %s", title)
+	slog.Info("executing prompt", "title", title)
 
 	// PR mode: create feature branch before execution
 	originalBranch := ""
@@ -234,11 +241,11 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	// Execute via executor
 	if err := p.executor.Execute(ctx, content, logFile, containerName); err != nil {
-		log.Printf("dark-factory: docker container exited with error: %v", err)
+		slog.Info("docker container exited with error", "error", err)
 		return errors.Wrap(ctx, err, "execute prompt")
 	}
 
-	log.Printf("dark-factory: docker container exited with code 0")
+	slog.Info("docker container exited", "exitCode", 0)
 
 	// Validate completion report from log
 	if err := validateCompletionReport(ctx, logFile); err != nil {
@@ -250,7 +257,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
 
-	log.Printf("dark-factory: moved %s to completed/", filepath.Base(pr.Path))
+	slog.Info("moved to completed", "file", filepath.Base(pr.Path))
 
 	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
 	gitCtx := context.WithoutCancel(ctx)
@@ -291,7 +298,7 @@ func (p *processor) handlePRWorkflow(
 	if err != nil {
 		return errors.Wrap(ctx, err, "create pull request")
 	}
-	log.Printf("dark-factory: created PR: %s", prURL)
+	slog.Info("created PR", "url", prURL)
 
 	// Switch back to original branch for next prompt
 	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
@@ -312,7 +319,7 @@ func (p *processor) handleDirectWorkflow(
 		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit")
 		}
-		log.Printf("dark-factory: committed changes")
+		slog.Info("committed changes")
 		return nil
 	}
 
@@ -327,7 +334,7 @@ func (p *processor) handleDirectWorkflow(
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 
-	log.Printf("dark-factory: committed and tagged %s", nextVersion)
+	slog.Info("committed and tagged", "version", nextVersion)
 
 	return nil
 }
@@ -363,7 +370,7 @@ func preparePromptForExecution(
 func validateCompletionReport(ctx context.Context, logFile string) error {
 	completionReport, err := report.ParseFromLog(logFile)
 	if err != nil {
-		log.Printf("dark-factory: failed to parse completion report: %v", err)
+		slog.Debug("failed to parse completion report", "error", err)
 		// Continue — don't fail the prompt just because report parsing failed
 		return nil
 	}
@@ -372,20 +379,19 @@ func validateCompletionReport(ctx context.Context, logFile string) error {
 		return nil
 	}
 
-	log.Printf(
-		"dark-factory: completion report: status=%s summary=%s",
+	slog.Info(
+		"completion report",
+		"status",
 		completionReport.Status,
+		"summary",
 		completionReport.Summary,
 	)
 
 	if completionReport.Status != "success" {
 		// Report says not success — treat as failure
-		log.Printf(
-			"dark-factory: completion report status is %q, treating as failed",
-			completionReport.Status,
-		)
+		slog.Info("completion report indicates failure", "status", completionReport.Status)
 		if len(completionReport.Blockers) > 0 {
-			log.Printf("dark-factory: blockers: %v", completionReport.Blockers)
+			slog.Info("blockers reported", "blockers", completionReport.Blockers)
 		}
 		return errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
 	}

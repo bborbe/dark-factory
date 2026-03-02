@@ -6,6 +6,7 @@ package git
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -434,6 +435,8 @@ func findInsertIndex(lines []string) int {
 
 // gitCommit creates a commit with the given message
 func gitCommit(ctx context.Context, message string) error {
+	slog.Debug("creating commit", "message", message)
+
 	repo, err := gogit.PlainOpen(".")
 	if err != nil {
 		return errors.Wrap(ctx, err, "open git repository")
@@ -470,6 +473,8 @@ func gitCommit(ctx context.Context, message string) error {
 
 // gitTag creates a tag
 func gitTag(ctx context.Context, tag string) error {
+	slog.Debug("creating tag", "tag", tag)
+
 	repo, err := gogit.PlainOpen(".")
 	if err != nil {
 		return errors.Wrap(ctx, err, "open git repository")
@@ -490,6 +495,8 @@ func gitTag(ctx context.Context, tag string) error {
 
 // gitPush pushes commits to remote using subprocess
 func gitPush(ctx context.Context) error {
+	slog.Debug("pushing commits to remote")
+
 	cmd := exec.CommandContext(ctx, "git", "push")
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "push to remote")
@@ -504,6 +511,8 @@ func gitPushTag(ctx context.Context, tag string) error {
 	if _, err := ParseSemanticVersionNumber(ctx, tag); err != nil {
 		return errors.Wrap(ctx, err, "invalid tag format")
 	}
+
+	slog.Debug("pushing tag to remote", "tag", tag)
 
 	// #nosec G204 -- tag is validated as semantic version above
 	cmd := exec.CommandContext(ctx, "git", "push", "origin", tag)

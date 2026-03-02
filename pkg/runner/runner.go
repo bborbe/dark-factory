@@ -6,7 +6,7 @@ package runner
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -74,11 +74,11 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	defer func() {
 		if err := r.locker.Release(context.WithoutCancel(ctx)); err != nil {
-			log.Printf("dark-factory: failed to release lock: %v", err)
+			slog.Info("failed to release lock", "error", err)
 		}
 	}()
 
-	log.Printf("dark-factory: acquired lock .dark-factory.lock")
+	slog.Info("acquired lock", "file", ".dark-factory.lock")
 
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
@@ -89,7 +89,7 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "create directories")
 	}
 
-	log.Printf("dark-factory: watching %s for queued prompts...", r.queueDir)
+	slog.Info("watching for queued prompts", "dir", r.queueDir)
 
 	// Reset any stuck "executing" prompts from previous crash
 	if err := r.promptManager.ResetExecuting(ctx); err != nil {
@@ -121,8 +121,9 @@ func (r *runner) normalizeFilenames(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "normalize queue filenames")
 	}
 	for _, rename := range renames {
-		log.Printf("dark-factory: renamed %s -> %s",
-			filepath.Base(rename.OldPath), filepath.Base(rename.NewPath))
+		slog.Debug("renamed file",
+			"from", filepath.Base(rename.OldPath),
+			"to", filepath.Base(rename.NewPath))
 	}
 	return nil
 }

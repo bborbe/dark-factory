@@ -10,7 +10,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -126,14 +126,18 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
 	if err != nil {
 		// No frontmatter — entire file is body
-		return &PromptFile{Path: path, Body: content}, nil
+		pf := &PromptFile{Path: path, Body: content}
+		slog.Debug("file loaded", "path", path, "bodySize", len(content), "hasStatus", false)
+		return pf, nil
 	}
 
-	return &PromptFile{
+	pf := &PromptFile{
 		Path:        path,
 		Frontmatter: fm,
 		Body:        body,
-	}, nil
+	}
+	slog.Debug("file loaded", "path", path, "bodySize", len(body), "hasStatus", fm.Status != "")
+	return pf, nil
 }
 
 // Save writes the prompt file back to disk: frontmatter + body.
@@ -149,7 +153,21 @@ func (pf *PromptFile) Save() error {
 	buf.Write(fm)
 	buf.WriteString("---\n")
 	buf.Write(pf.Body)
-	return os.WriteFile(pf.Path, buf.Bytes(), 0600)
+
+	if err := os.WriteFile(pf.Path, buf.Bytes(), 0600); err != nil {
+		return err
+	}
+
+	slog.Debug(
+		"file saved",
+		"path",
+		pf.Path,
+		"bodySize",
+		len(pf.Body),
+		"status",
+		pf.Frontmatter.Status,
+	)
+	return nil
 }
 
 // Content returns the body as a string, stripped of leading empty frontmatter blocks.
@@ -428,7 +446,7 @@ func ResetFailed(ctx context.Context, dir string) error {
 			if err := pf.Save(); err != nil {
 				return errors.Wrap(ctx, err, "reset failed prompt")
 			}
-			log.Printf("dark-factory: reset failed prompt %s to queued", entry.Name())
+			slog.Info("reset failed prompt to queued", "file", entry.Name())
 		}
 	}
 
@@ -444,8 +462,10 @@ func SetStatus(ctx context.Context, path string, status string) error {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
+	oldStatus := pf.Frontmatter.Status
 	now := time.Now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.Status = status
+	slog.Debug("status changed", "path", path, "oldStatus", oldStatus, "newStatus", status)
 
 	// Set timestamps based on status
 	switch Status(status) {
@@ -545,6 +565,8 @@ func MoveToCompleted(ctx context.Context, path string, completedDir string, move
 	// Move file
 	filename := filepath.Base(path)
 	dest := filepath.Join(completedDir, filename)
+
+	slog.Debug("moving to completed", "from", path, "to", dest)
 
 	if err := mover.MoveFile(ctx, path, dest); err != nil {
 		return errors.Wrap(ctx, err, "move file")
@@ -749,6 +771,8 @@ func performRename(
 	oldPath := filepath.Join(dir, f.name)
 	newName := fmt.Sprintf("%03d-%s.md", newNumber, f.slug)
 	newPath := filepath.Join(dir, newName)
+
+	slog.Debug("normalizing filename", "from", f.name, "to", newName, "number", newNumber)
 
 	if err := mover.MoveFile(ctx, oldPath, newPath); err != nil {
 		return Rename{}, errors.Wrap(ctx, err, "rename file")

@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-027-add-instance-lock
 ---
 
-
 # Add instance lock to prevent concurrent dark-factory runs
 
 ## Goal

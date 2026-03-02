@@ -4,10 +4,6 @@ container: dark-factory-043-fix-runner-no-inbox-normalize
 dark-factory-version: v0.10.2
 ---
 
-
-
-
-
 # Runner should not normalize inbox directory
 
 ## Bug

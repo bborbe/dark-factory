@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-025-fix-go-git-push-auth
 ---
 
-
 # Fix go-git push authentication
 
 ## Goal

@@ -2,7 +2,6 @@
 status: completed
 ---
 
-
 # Add prompt filename validation and auto-renumbering
 
 ## Goal

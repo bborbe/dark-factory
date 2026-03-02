@@ -4,8 +4,6 @@ container: dark-factory-034-add-status-cli
 dark-factory-version: v0.6.1
 ---
 
-
-
 # Add `dark-factory status` CLI subcommand
 
 ## Goal

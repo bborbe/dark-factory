@@ -2,9 +2,6 @@
 status: completed
 ---
 
-
-
-
 # Track Docker container name in prompt frontmatter
 
 ## Goal

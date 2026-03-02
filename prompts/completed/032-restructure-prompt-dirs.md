@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-032-restructure-prompt-dirs
 ---
 
-
 # Restructure prompt directories with configurable paths
 
 ## Goal

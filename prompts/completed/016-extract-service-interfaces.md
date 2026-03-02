@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-016-extract-service-interfaces
 ---
 
-
 # Extract service interfaces from runner god object
 
 ## Goal

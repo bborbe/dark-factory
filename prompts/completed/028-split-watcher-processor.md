@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-split-watcher-processor
 ---
 
-
 # Split watcher and processor into independent goroutines
 
 ## Goal

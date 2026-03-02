@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-023-fix-semver-sort
 ---
 
-
 # Fix semver sorting with SemanticVersionNumber type
 
 ## Goal

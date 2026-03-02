@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-026-rename-prompt
 ---
 
-
 # Use git mv for prompt file renames and moves
 
 ## Goal

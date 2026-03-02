@@ -3,8 +3,6 @@ status: completed
 container: dark-factory-022-codebase-cleanup
 ---
 
-
-
 # Codebase cleanup: fix all existing code quality issues
 
 ## Goal

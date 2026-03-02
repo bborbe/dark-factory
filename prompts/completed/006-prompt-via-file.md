@@ -68,5 +68,3 @@ This avoids the shell parsing issue entirely since Go's `exec.Command` passes ar
 - Clean up temp file even on error (use defer)
 - Run `make precommit` before finishing
 
-
-

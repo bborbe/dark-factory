@@ -4,10 +4,6 @@ container: dark-factory-045-strip-duplicate-frontmatter
 dark-factory-version: v0.10.2
 ---
 
-
-
-
-
 # Strip duplicate/empty frontmatter from prompt content
 
 When the processor reads a prompt file, it may contain a duplicate or empty frontmatter block in the content body. This happens when a prompt was created with empty frontmatter (`---\n---`) and the processor later prepended its own frontmatter — leaving the original empty block as content.
@@ -17,8 +13,6 @@ Example of broken file:
 ---
 status: queued
 ---
-
-
 
 ---
 ---

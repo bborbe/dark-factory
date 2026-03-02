@@ -4,10 +4,6 @@ container: dark-factory-044-reset-failed-on-startup
 dark-factory-version: v0.10.2
 ---
 
-
-
-
-
 # Reset failed prompts to queued on startup
 
 On startup, the processor should scan the queue directory and reset any prompts with `status: failed` back to `status: queued`. This allows the factory to retry failed prompts after a restart without manual intervention.

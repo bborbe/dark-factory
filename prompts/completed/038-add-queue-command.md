@@ -4,8 +4,6 @@ container: dark-factory-038-add-queue-command
 dark-factory-version: v0.9.1
 ---
 
-
-
 # Add CLI and API endpoint to queue prompts
 
 ## Goal

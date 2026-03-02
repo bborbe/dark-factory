@@ -3,7 +3,6 @@ status: completed
 container: dark-factory-015-factory-refactor
 ---
 
-
 # Refactor factory to follow Go factory pattern
 
 ## Goal

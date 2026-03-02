@@ -4,8 +4,6 @@ container: dark-factory-035-fix-watcher-watches-queue
 dark-factory-version: v0.6.1
 ---
 
-
-
 # Fix watcher to watch queueDir instead of inboxDir
 
 ## Goal

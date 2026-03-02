@@ -3,9 +3,6 @@ status: completed
 container: dark-factory-024-fix-commit-completed-file
 ---
 
-
-
-
 # Fix CommitCompletedFile "entry not found" error
 
 ## Goal

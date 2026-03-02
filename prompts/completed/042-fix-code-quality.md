@@ -4,10 +4,6 @@ container: dark-factory-042-fix-code-quality
 dark-factory-version: v0.10.2
 ---
 
-
-
-
-
 # Fix code quality issues from code review
 
 ## Tasks

@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -187,6 +188,9 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		}
 		return errors.Wrap(ctx, err, "get prompt content")
 	}
+
+	// Append completion report suffix to make output machine-parseable
+	content = content + report.Suffix()
 
 	// Prepare prompt metadata and set executing status
 	baseName, containerName, err := p.setupPromptMetadata(ctx, pr.Path)

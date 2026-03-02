@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/report"
 )
 
 var _ = Describe("Processor", func() {
@@ -697,6 +698,60 @@ var _ = Describe("Processor", func() {
 		_, path, version := mockManager.SetVersionArgsForCall(0)
 		Expect(path).To(Equal(promptPath))
 		Expect(version).To(Equal("v0.0.1-test"))
+
+		cancel()
+	})
+
+	It("should append completion report suffix to content before executor call", func() {
+		promptPath := filepath.Join(promptsDir, "001-suffix-test.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.StatusQueued},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.ContentReturns("# Test prompt content", nil)
+		mockManager.TitleReturns("Suffix test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			mockVersionGet,
+			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
+		)
+
+		// Run processor in goroutine
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for processing
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		// Verify executor was called with content including suffix
+		_, promptContent, _, _ := mockExecutor.ExecuteArgsForCall(0)
+		Expect(promptContent).To(ContainSubstring("# Test prompt content"))
+		Expect(promptContent).To(ContainSubstring("DARK-FACTORY-REPORT"))
+		Expect(promptContent).To(ContainSubstring("Completion Report (MANDATORY)"))
+		Expect(promptContent).To(HaveSuffix(report.Suffix()))
 
 		cancel()
 	})

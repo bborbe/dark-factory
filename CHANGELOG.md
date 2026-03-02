@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.8
+
+### Added
+- 051-test-success-completion-report
+
 ## v0.11.7
 
 ### Added

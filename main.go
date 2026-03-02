@@ -34,6 +34,7 @@ func run() error {
 		level = slog.LevelDebug
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+	slog.Info("dark-factory starting", "version", version.Version)
 
 	// Load configuration
 	loader := config.NewLoader()

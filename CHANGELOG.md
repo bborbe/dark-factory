@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.11.5
+
+- Add prompt for Load/Save rewrite of prompt file handling
+
 ## v0.11.4
 
 ### Added

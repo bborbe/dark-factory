@@ -1,3 +1,12 @@
+---
+status: completed
+container: dark-factory-054-add-debug-logging
+dark-factory-version: v0.12.2
+created: "2026-03-02T22:32:16Z"
+queued: "2026-03-02T22:32:16Z"
+started: "2026-03-02T22:32:16Z"
+completed: "2026-03-02T22:36:46Z"
+---
 <objective>
 Add a -debug flag that enables verbose debug logging using Go's log/slog (stdlib).
 Replace all existing log.Printf calls with slog.Info/slog.Debug as appropriate.

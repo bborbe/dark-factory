@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.6
+
+### Added
+- 049-rewrite-prompt-file-load-save
+
 ## v0.11.5
 
 - Add prompt for Load/Save rewrite of prompt file handling

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.12.1
+
+### Added
+- 053-project-name-container-prefix
+
 ## v0.12.0
 
 ### Added

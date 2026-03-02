@@ -198,25 +198,19 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "get prompt content")
 	}
 
+	// Prepare prompt for execution
+	baseName, containerName, title, err := preparePromptForExecution(
+		ctx,
+		pf,
+		pr.Path,
+		p.versionGetter.Get(),
+	)
+	if err != nil {
+		return err
+	}
+
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
-
-	// Prepare prompt metadata and set executing status
-	baseName := strings.TrimSuffix(filepath.Base(pr.Path), ".md")
-	baseName = sanitizeContainerName(baseName)
-	containerName := "dark-factory-" + baseName
-
-	pf.PrepareForExecution(containerName, p.versionGetter.Get())
-	if err := pf.Save(); err != nil {
-		return errors.Wrap(ctx, err, "save prompt metadata")
-	}
-
-	// Get prompt title for logging
-	title := pf.Title()
-	if title == "" {
-		// Fallback to filename if no title found
-		title = strings.TrimSuffix(filepath.Base(pr.Path), ".md")
-	}
 
 	log.Printf("dark-factory: executing prompt: %s", title)
 
@@ -245,6 +239,11 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	log.Printf("dark-factory: docker container exited with code 0")
+
+	// Validate completion report from log
+	if err := validateCompletionReport(ctx, logFile); err != nil {
+		return err
+	}
 
 	// Move to completed/ before commit so it's included in the release
 	if err := p.promptManager.MoveToCompleted(ctx, pr.Path); err != nil {
@@ -329,6 +328,67 @@ func (p *processor) handleDirectWorkflow(
 	}
 
 	log.Printf("dark-factory: committed and tagged %s", nextVersion)
+
+	return nil
+}
+
+// preparePromptForExecution sets up the prompt metadata and returns execution parameters.
+func preparePromptForExecution(
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	promptPath string,
+	version string,
+) (baseName string, containerName string, title string, err error) {
+	baseName = strings.TrimSuffix(filepath.Base(promptPath), ".md")
+	baseName = sanitizeContainerName(baseName)
+	containerName = "dark-factory-" + baseName
+
+	pf.PrepareForExecution(containerName, version)
+	if err := pf.Save(); err != nil {
+		return "", "", "", errors.Wrap(ctx, err, "save prompt metadata")
+	}
+
+	title = pf.Title()
+	if title == "" {
+		// Fallback to filename if no title found
+		title = strings.TrimSuffix(filepath.Base(promptPath), ".md")
+	}
+
+	return baseName, containerName, title, nil
+}
+
+// validateCompletionReport parses and validates the completion report from the log file.
+// Returns an error if the report indicates failure.
+// Returns nil if no report found (backwards compatible) or report indicates success.
+func validateCompletionReport(ctx context.Context, logFile string) error {
+	completionReport, err := report.ParseFromLog(logFile)
+	if err != nil {
+		log.Printf("dark-factory: failed to parse completion report: %v", err)
+		// Continue — don't fail the prompt just because report parsing failed
+		return nil
+	}
+	if completionReport == nil {
+		// No report found — backwards compatible
+		return nil
+	}
+
+	log.Printf(
+		"dark-factory: completion report: status=%s summary=%s",
+		completionReport.Status,
+		completionReport.Summary,
+	)
+
+	if completionReport.Status != "success" {
+		// Report says not success — treat as failure
+		log.Printf(
+			"dark-factory: completion report status is %q, treating as failed",
+			completionReport.Status,
+		)
+		if len(completionReport.Blockers) > 0 {
+			log.Printf("dark-factory: blockers: %v", completionReport.Blockers)
+		}
+		return errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
+	}
 
 	return nil
 }

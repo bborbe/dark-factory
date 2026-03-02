@@ -992,4 +992,326 @@ var _ = Describe("Processor", func() {
 			cancel()
 		})
 	})
+
+	Describe("Completion Report Parsing", func() {
+		It("should continue to commit when report status is success", func() {
+			promptPath := filepath.Join(promptsDir, "001-report-success.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.ContentReturns("# Report success test", nil)
+			mockManager.TitleReturns("Report success test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			// Mock executor writes log with success report
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Completed successfully","blockers":[]}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockReleaser.CommitOnlyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify moved to completed
+			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
+		It("should fail when report status is failed", func() {
+			promptPath := filepath.Join(promptsDir, "001-report-failed.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturns(queued, nil)
+			mockManager.ContentReturns("# Report failed test", nil)
+			mockManager.TitleReturns("Report failed test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+
+			// Mock executor writes log with failed report
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{"status":"failed","summary":"Could not complete","blockers":["tests failed","lint errors"]}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Wait for error
+			select {
+			case err := <-errCh:
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("completion report status: failed"))
+			case <-time.After(2 * time.Second):
+				Fail("processor did not return error within timeout")
+			}
+
+			// Verify moved to completed was NOT called
+			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+
+			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
+			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
+
+			cancel()
+		})
+
+		It("should fail when report status is partial", func() {
+			promptPath := filepath.Join(promptsDir, "001-report-partial.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturns(queued, nil)
+			mockManager.ContentReturns("# Report partial test", nil)
+			mockManager.TitleReturns("Report partial test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+
+			// Mock executor writes log with partial report
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{"status":"partial","summary":"Half done","blockers":["make precommit fails"]}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Wait for error
+			select {
+			case err := <-errCh:
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(ContainSubstring("completion report status: partial"))
+			case <-time.After(2 * time.Second):
+				Fail("processor did not return error within timeout")
+			}
+
+			// Verify moved to completed was NOT called
+			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("should continue when no report found (backwards compatible)", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-report.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.ContentReturns("# No report test", nil)
+			mockManager.TitleReturns("No report test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			// Mock executor writes log WITHOUT report (old-style prompt)
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+more output
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockReleaser.CommitOnlyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify moved to completed
+			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
+		It("should continue when report parsing fails (graceful degradation)", func() {
+			promptPath := filepath.Join(promptsDir, "001-malformed-report.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.ContentReturns("# Malformed report test", nil)
+			mockManager.TitleReturns("Malformed report test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			// Mock executor writes log with malformed JSON
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{this is not valid json}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing - should continue despite malformed JSON
+			Eventually(func() int {
+				return mockReleaser.CommitOnlyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify moved to completed
+			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+
+			cancel()
+		})
+	})
 })

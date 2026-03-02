@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.7
+
+### Added
+- 050-completion-report-parse-log
+
 ## v0.11.6
 
 ### Added

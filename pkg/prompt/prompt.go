@@ -569,7 +569,7 @@ func splitFrontmatter(content []byte) ([]byte, []byte, bool) {
 	rest := content[4:] // skip opening "---\n"
 	idx := bytes.Index(rest, []byte("\n---\n"))
 	if idx >= 0 {
-		return rest[:idx], rest[idx+4:], true
+		return rest[:idx], rest[idx+5:], true
 	}
 
 	// Check for "---" at end of file (no trailing newline)

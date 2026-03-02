@@ -1291,6 +1291,65 @@ Content here.
 		})
 	})
 
+	Describe("setField does not accumulate blank lines", func() {
+		It("preserves body without adding extra newlines across multiple calls", func() {
+			path := filepath.Join(tempDir, "001-no-growth.md")
+			original := "# My Prompt\n\nDo the thing.\n"
+			err := os.WriteFile(path, []byte(original), 0600)
+			Expect(err).To(BeNil())
+
+			// Simulate full lifecycle: created, queued, container, version, executing, completed
+			err = prompt.SetStatus(ctx, path, "queued")
+			Expect(err).To(BeNil())
+			err = prompt.SetContainer(ctx, path, "test-container")
+			Expect(err).To(BeNil())
+			err = prompt.SetVersion(ctx, path, "v1.0.0")
+			Expect(err).To(BeNil())
+			err = prompt.SetStatus(ctx, path, "executing")
+			Expect(err).To(BeNil())
+			err = prompt.SetStatus(ctx, path, "completed")
+			Expect(err).To(BeNil())
+
+			// Read content — should have no leading blank lines
+			content, err := prompt.Content(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(content).To(HavePrefix("# My Prompt"))
+		})
+
+		It("body size stays constant across 20 setField cycles", func() {
+			path := filepath.Join(tempDir, "001-stable.md")
+			original := "---\nstatus: queued\n---\n# Prompt\n\nContent here.\n"
+			err := os.WriteFile(path, []byte(original), 0600)
+			Expect(err).To(BeNil())
+
+			// Read initial file size
+			initialData, err := os.ReadFile(path)
+			Expect(err).To(BeNil())
+			initialSize := len(initialData)
+
+			// Run 20 setField cycles (simulates retries)
+			for i := 0; i < 20; i++ {
+				err = prompt.SetStatus(ctx, path, "executing")
+				Expect(err).To(BeNil())
+				err = prompt.SetStatus(ctx, path, "queued")
+				Expect(err).To(BeNil())
+			}
+
+			// File should not have grown significantly (only timestamp changes)
+			finalData, err := os.ReadFile(path)
+			Expect(err).To(BeNil())
+
+			// Allow for timestamp field additions but not blank line growth
+			// Timestamps add ~80 bytes max, blank line growth would add 20+ bytes per cycle
+			Expect(len(finalData)).To(BeNumerically("<", initialSize+200))
+
+			// Content should still start correctly
+			content, err := prompt.Content(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(content).To(HavePrefix("# Prompt"))
+		})
+	})
+
 	Describe("NormalizeFilenames", func() {
 		Context("with file missing numeric prefix", func() {
 			BeforeEach(func() {

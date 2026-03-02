@@ -6,6 +6,7 @@ package factory
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/server"
@@ -35,6 +37,10 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(queueDir, completedDir, releaser)
 	versionGetter := version.NewGetter(ver)
+
+	// Resolve project name
+	projectName := project.Name(cfg.ProjectName)
+	slog.Info("project name resolved", "name", projectName)
 
 	// Communication channel between watcher and processor
 	ready := make(chan struct{}, 10)
@@ -66,6 +72,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			queueDir,
 			completedDir,
 			cfg.LogDir,
+			projectName,
 			promptManager,
 			releaser,
 			versionGetter,
@@ -92,6 +99,7 @@ func CreateProcessor(
 	queueDir string,
 	completedDir string,
 	logDir string,
+	projectName string,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
@@ -103,7 +111,8 @@ func CreateProcessor(
 		queueDir,
 		completedDir,
 		logDir,
-		executor.NewDockerExecutor(containerImage),
+		projectName,
+		executor.NewDockerExecutor(containerImage, projectName),
 		promptManager,
 		releaser,
 		versionGetter,

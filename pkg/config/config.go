@@ -13,6 +13,7 @@ import (
 
 // Config holds the dark-factory configuration.
 type Config struct {
+	ProjectName    string   `yaml:"projectName"`
 	Workflow       Workflow `yaml:"workflow"`
 	InboxDir       string   `yaml:"inboxDir"`
 	QueueDir       string   `yaml:"queueDir"`

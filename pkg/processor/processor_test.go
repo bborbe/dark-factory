@@ -90,6 +90,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -145,6 +146,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -169,7 +171,7 @@ var _ = Describe("Processor", func() {
 		// Verify executor was called with correct log path
 		_, _, logFile, containerName := mockExecutor.ExecuteArgsForCall(0)
 		Expect(logFile).To(Equal(filepath.Join(promptsDir, "log", "001-test.log")))
-		Expect(containerName).To(Equal("dark-factory-001-test"))
+		Expect(containerName).To(Equal("test-project-001-test"))
 
 		// Verify Load was called (processor uses Load/Save pattern now)
 		Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
@@ -204,6 +206,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -259,6 +262,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -306,6 +310,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -353,6 +358,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -404,6 +410,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -467,6 +474,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -524,6 +532,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -571,6 +580,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -593,7 +603,7 @@ var _ = Describe("Processor", func() {
 
 		// Verify container name was sanitized
 		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
-		Expect(containerName).To(Equal("dark-factory-001-test-file-name"))
+		Expect(containerName).To(Equal("test-project-001-test-file-name"))
 
 		cancel()
 	})
@@ -612,6 +622,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -650,6 +661,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -698,6 +710,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -757,6 +770,7 @@ var _ = Describe("Processor", func() {
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
+			"test-project",
 			mockExecutor,
 			mockManager,
 			mockReleaser,
@@ -824,6 +838,7 @@ var _ = Describe("Processor", func() {
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -893,6 +908,7 @@ var _ = Describe("Processor", func() {
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -947,6 +963,7 @@ var _ = Describe("Processor", func() {
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -1014,6 +1031,7 @@ DARK-FACTORY-REPORT -->
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -1075,6 +1093,7 @@ DARK-FACTORY-REPORT -->
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -1137,6 +1156,7 @@ DARK-FACTORY-REPORT -->
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -1199,6 +1219,7 @@ more output
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,
@@ -1263,6 +1284,7 @@ DARK-FACTORY-REPORT -->
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
+				"test-project",
 				mockExecutor,
 				mockManager,
 				mockReleaser,

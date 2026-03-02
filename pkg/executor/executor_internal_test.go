@@ -173,6 +173,7 @@ var _ = Describe("Internal helper functions", func() {
 		BeforeEach(func() {
 			exec = &dockerExecutor{
 				containerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+				projectName:    "test-project",
 			}
 		})
 
@@ -183,6 +184,7 @@ var _ = Describe("Internal helper functions", func() {
 				"/tmp/prompt.md",
 				"/workspace",
 				"/home/user",
+				"test-prompt",
 			)
 
 			Expect(cmd).NotTo(BeNil())
@@ -194,7 +196,14 @@ var _ = Describe("Internal helper functions", func() {
 		})
 
 		It("includes volume mounts", func() {
-			cmd := exec.buildDockerCommand(ctx, "test", "/tmp/test.md", "/workspace", "/home/user")
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user",
+				"test",
+			)
 
 			Expect(cmd.Args).To(ContainElement("/tmp/test.md:/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement("/workspace:/workspace"))
@@ -203,14 +212,28 @@ var _ = Describe("Internal helper functions", func() {
 		})
 
 		It("includes network capabilities", func() {
-			cmd := exec.buildDockerCommand(ctx, "test", "/tmp/test", "/workspace", "/home/user")
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user",
+				"test",
+			)
 
 			Expect(cmd.Args).To(ContainElement("--cap-add=NET_ADMIN"))
 			Expect(cmd.Args).To(ContainElement("--cap-add=NET_RAW"))
 		})
 
 		It("includes environment variable", func() {
-			cmd := exec.buildDockerCommand(ctx, "test", "/tmp/test", "/workspace", "/home/user")
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user",
+				"test",
+			)
 
 			Expect(cmd.Args).To(ContainElement("-e"))
 			Expect(cmd.Args).To(ContainElement("YOLO_PROMPT_FILE=/tmp/prompt.md"))
@@ -220,7 +243,14 @@ var _ = Describe("Internal helper functions", func() {
 			testCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			defer cancel()
 
-			cmd := exec.buildDockerCommand(testCtx, "test", "/tmp/test", "/workspace", "/home/user")
+			cmd := exec.buildDockerCommand(
+				testCtx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user",
+				"test",
+			)
 
 			Expect(cmd).NotTo(BeNil())
 			Expect(cmd.Path).NotTo(BeEmpty())
@@ -228,7 +258,14 @@ var _ = Describe("Internal helper functions", func() {
 
 		It("uses injected container image", func() {
 			exec.containerImage = "custom-image:v1.2.3"
-			cmd := exec.buildDockerCommand(ctx, "test", "/tmp/test", "/workspace", "/home/user")
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user",
+				"test",
+			)
 
 			Expect(cmd.Args).To(ContainElement("custom-image:v1.2.3"))
 		})

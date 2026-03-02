@@ -25,12 +25,14 @@ type Executor interface {
 // dockerExecutor implements Executor using Docker.
 type dockerExecutor struct {
 	containerImage string
+	projectName    string
 }
 
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
-func NewDockerExecutor(containerImage string) Executor {
+func NewDockerExecutor(containerImage string, projectName string) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
+		projectName:    projectName,
 	}
 }
 
@@ -77,8 +79,18 @@ func (e *dockerExecutor) Execute(
 		promptFilePath,
 	)
 
+	// Extract prompt basename from containerName (format: projectName-basename)
+	promptBaseName := extractPromptBaseName(containerName, e.projectName)
+
 	// Build and run docker command
-	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, projectRoot, home)
+	cmd := e.buildDockerCommand(
+		ctx,
+		containerName,
+		promptFilePath,
+		projectRoot,
+		home,
+		promptBaseName,
+	)
 
 	slog.Debug("docker command prepared",
 		"image", e.containerImage,
@@ -150,6 +162,7 @@ func (e *dockerExecutor) buildDockerCommand(
 	promptFilePath string,
 	projectRoot string,
 	home string,
+	promptBaseName string,
 ) *exec.Cmd {
 	// Build docker run command
 	// Mount prompt as file to avoid shell escaping issues with -e flag
@@ -158,6 +171,8 @@ func (e *dockerExecutor) buildDockerCommand(
 		ctx,
 		"docker", "run", "--rm",
 		"--name", containerName,
+		"--label", "dark-factory.project="+e.projectName,
+		"--label", "dark-factory.prompt="+promptBaseName,
 		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
@@ -166,4 +181,15 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		e.containerImage,
 	)
+}
+
+// extractPromptBaseName extracts the prompt basename from the containerName.
+// containerName is in the format "projectName-basename".
+func extractPromptBaseName(containerName string, projectName string) string {
+	prefix := projectName + "-"
+	if len(containerName) > len(prefix) && containerName[:len(prefix)] == prefix {
+		return containerName[len(prefix):]
+	}
+	// Fallback if format doesn't match (should not happen)
+	return containerName
 }

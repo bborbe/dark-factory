@@ -35,6 +35,7 @@ type processor struct {
 	queueDir      string
 	completedDir  string
 	logDir        string
+	projectName   string
 	executor      executor.Executor
 	promptManager prompt.Manager
 	releaser      git.Releaser
@@ -50,6 +51,7 @@ func NewProcessor(
 	queueDir string,
 	completedDir string,
 	logDir string,
+	projectName string,
 	exec executor.Executor,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
@@ -63,6 +65,7 @@ func NewProcessor(
 		queueDir:      queueDir,
 		completedDir:  completedDir,
 		logDir:        logDir,
+		projectName:   projectName,
 		executor:      exec,
 		promptManager: promptManager,
 		releaser:      releaser,
@@ -189,22 +192,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Check if empty
 	content, err := pf.Content()
 	if err != nil {
-		// If prompt is empty, move to completed and skip execution
-		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
-			slog.Debug(
-				"skipping empty prompt",
-				"file",
-				filepath.Base(pr.Path),
-				"reason",
-				"file may still be in progress",
-			)
-			// Move empty prompts to completed/ (but don't commit)
-			if err := p.promptManager.MoveToCompleted(ctx, pr.Path); err != nil {
-				return errors.Wrap(ctx, err, "move empty prompt to completed")
-			}
-			return nil
-		}
-		return errors.Wrap(ctx, err, "get prompt content")
+		return p.handleEmptyPrompt(ctx, pr.Path, err)
 	}
 
 	// Prepare prompt for execution
@@ -213,6 +201,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		pf,
 		pr.Path,
 		p.versionGetter.Get(),
+		p.projectName,
 	)
 	if err != nil {
 		return err
@@ -274,6 +263,30 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	return p.handleDirectWorkflow(gitCtx, ctx, title)
+}
+
+// handleEmptyPrompt handles empty prompts by moving them to completed without execution.
+func (p *processor) handleEmptyPrompt(
+	ctx context.Context,
+	promptPath string,
+	contentErr error,
+) error {
+	// If prompt is empty, move to completed and skip execution
+	if stderrors.Is(contentErr, prompt.ErrEmptyPrompt) {
+		slog.Debug(
+			"skipping empty prompt",
+			"file",
+			filepath.Base(promptPath),
+			"reason",
+			"file may still be in progress",
+		)
+		// Move empty prompts to completed/ (but don't commit)
+		if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
+			return errors.Wrap(ctx, err, "move empty prompt to completed")
+		}
+		return nil
+	}
+	return errors.Wrap(ctx, contentErr, "get prompt content")
 }
 
 // handlePRWorkflow handles the PR-based workflow: commit, push, create PR, switch back.
@@ -346,10 +359,11 @@ func preparePromptForExecution(
 	pf *prompt.PromptFile,
 	promptPath string,
 	version string,
+	projectName string,
 ) (baseName string, containerName string, title string, err error) {
 	baseName = strings.TrimSuffix(filepath.Base(promptPath), ".md")
 	baseName = sanitizeContainerName(baseName)
-	containerName = "dark-factory-" + baseName
+	containerName = projectName + "-" + baseName
 
 	pf.PrepareForExecution(containerName, version)
 	if err := pf.Save(); err != nil {

@@ -1,3 +1,12 @@
+---
+status: completed
+container: dark-factory-053-project-name-container-prefix
+dark-factory-version: v0.12.0
+created: "2026-03-02T21:53:52Z"
+queued: "2026-03-02T21:53:52Z"
+started: "2026-03-02T21:53:52Z"
+completed: "2026-03-02T22:05:39Z"
+---
 <objective>
 Use the project name as Docker container prefix instead of "dark-factory".
 Container names become `{project}-{prompt-basename}` instead of `dark-factory-{prompt-basename}`.

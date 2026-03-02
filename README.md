@@ -1,4 +1,4 @@
-# Dark Factory
+# 🏭 Dark Factory
 
 Autonomous coding pipeline — drop prompts in, get commits out.
 

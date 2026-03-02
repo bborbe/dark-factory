@@ -310,6 +310,73 @@ var _ = Describe("Prompt", func() {
 				Expect(result).To(BeFalse())
 			})
 		})
+
+		Context("with files lacking frontmatter", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				// File with no frontmatter at all
+				path := filepath.Join(completedDir, "001-no-frontmatter.md")
+				err = os.WriteFile(path, []byte("# Test Prompt\n\nContent here.\n"), 0600)
+				Expect(err).To(BeNil())
+				// Normal file with frontmatter
+				createPromptFile(completedDir, "002-normal.md", "completed")
+			})
+
+			It("counts files without frontmatter as completed", func() {
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with files having wrong status in frontmatter", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				// File in completed/ with status: failed (should still count as completed)
+				createPromptFile(completedDir, "001-wrong-status.md", "failed")
+				createPromptFile(completedDir, "002-another.md", "queued")
+			})
+
+			It("counts all files in completed/ as completed regardless of status field", func() {
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				Expect(result).To(BeTrue())
+			})
+		})
+
+		Context("with mix of frontmatter and no-frontmatter files", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				// Mix of different file types
+				path1 := filepath.Join(completedDir, "001-no-fm.md")
+				err = os.WriteFile(path1, []byte("# Test 1\n"), 0600)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "002-with-status.md", "completed")
+				path3 := filepath.Join(completedDir, "003-empty-fm.md")
+				err = os.WriteFile(path3, []byte("---\n---\n# Test 3\n"), 0600)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "004-normal.md", "completed")
+			})
+
+			It("counts all files as completed", func() {
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 5)
+				Expect(result).To(BeTrue())
+			})
+
+			It("detects gaps correctly even with mixed file types", func() {
+				// Remove file 003 to create a gap
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.Remove(filepath.Join(completedDir, "003-empty-fm.md"))
+				Expect(err).To(BeNil())
+
+				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				Expect(result).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("ListQueued", func() {
@@ -1403,6 +1470,38 @@ Content here.
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("004-new-feature.md"))
+			})
+		})
+
+		Context("with completed/ files lacking frontmatter", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				// completed/ has files without frontmatter
+				path1 := filepath.Join(completedDir, "001-no-fm.md")
+				err = os.WriteFile(path1, []byte("# Old prompt\n"), 0600)
+				Expect(err).To(BeNil())
+				// And one with frontmatter
+				createPromptFile(completedDir, "002-with-fm.md", "completed")
+				// And one with empty frontmatter
+				path3 := filepath.Join(completedDir, "003-empty-fm.md")
+				err = os.WriteFile(path3, []byte("---\n---\n# Empty\n"), 0600)
+				Expect(err).To(BeNil())
+
+				// root has unnumbered file
+				createPromptFile(tempDir, "new-task.md", "queued")
+			})
+
+			It("scans completed/ without errors and avoids used numbers", func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				// Should assign 004 (not 001-003 which are used in completed/)
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-task.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("004-new-task.md"))
 			})
 		})
 

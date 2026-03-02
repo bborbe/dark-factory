@@ -319,5 +319,46 @@ status: executing
 			Expect(err).NotTo(HaveOccurred())
 			Expect(completed).To(HaveLen(0))
 		})
+
+		It("handles files without frontmatter by using file mod time", func() {
+			// Create file without frontmatter
+			file1 := filepath.Join(completedDir, "001-no-frontmatter.md")
+			err := os.WriteFile(
+				file1,
+				[]byte("# Old Prompt\n\nContent without frontmatter.\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			time.Sleep(10 * time.Millisecond)
+
+			// Create file with frontmatter
+			file2 := filepath.Join(completedDir, "002-with-frontmatter.md")
+			content := "---\nstatus: completed\ncompleted: 2026-03-01T10:00:00Z\n---\n\n# New Prompt\n"
+			err = os.WriteFile(file2, []byte(content), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			completed, err := statusChecker.GetCompletedPrompts(ctx, 10)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(completed).To(HaveLen(2))
+
+			// Both files should be included
+			names := []string{completed[0].Name, completed[1].Name}
+			Expect(names).To(ContainElement("001-no-frontmatter.md"))
+			Expect(names).To(ContainElement("002-with-frontmatter.md"))
+		})
+
+		It("handles files with empty frontmatter by using file mod time", func() {
+			// Create file with empty frontmatter
+			file := filepath.Join(completedDir, "001-empty-fm.md")
+			err := os.WriteFile(file, []byte("---\n---\n\n# Prompt\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			completed, err := statusChecker.GetCompletedPrompts(ctx, 10)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(completed).To(HaveLen(1))
+			Expect(completed[0].Name).To(Equal("001-empty-fm.md"))
+			Expect(completed[0].CompletedAt).NotTo(BeZero())
+		})
 	})
 })

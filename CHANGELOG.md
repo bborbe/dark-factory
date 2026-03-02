@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.3
+
+### Added
+- 048-replace-splitfrontmatter-with-adrg-frontmatter
+
 ## v0.11.2
 
 ### Added

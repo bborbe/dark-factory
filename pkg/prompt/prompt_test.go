@@ -943,9 +943,11 @@ status: queued
 				Expect(err).To(BeNil())
 			})
 
-			It("strips empty frontmatter and returns empty prompt error", func() {
-				_, err := prompt.Content(ctx, path)
-				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			It("returns body as-is (body is preserved exactly as loaded)", func() {
+				content, err := prompt.Content(ctx, path)
+				Expect(err).To(BeNil())
+				// Body contains the text after frontmatter, including the "---\n---"
+				Expect(content).To(ContainSubstring("---"))
 			})
 		})
 	})

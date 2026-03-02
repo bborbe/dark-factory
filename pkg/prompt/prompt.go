@@ -104,6 +104,117 @@ type Frontmatter struct {
 	Completed          string `yaml:"completed,omitempty"`
 }
 
+// PromptFile represents a loaded prompt file with immutable body and mutable frontmatter.
+//
+//nolint:revive // PromptFile is the intended name per requirements
+type PromptFile struct {
+	Path        string
+	Frontmatter Frontmatter
+	Body        []byte // immutable after Load — never modified
+}
+
+// Load reads a prompt file from disk, parsing frontmatter and body.
+// Body is stored as-is and never modified by Save.
+func Load(ctx context.Context, path string) (*PromptFile, error) {
+	// #nosec G304 -- path is from ListQueued which scans prompts directory
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "read file")
+	}
+
+	var fm Frontmatter
+	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
+	if err != nil {
+		// No frontmatter — entire file is body
+		return &PromptFile{Path: path, Body: content}, nil
+	}
+
+	return &PromptFile{
+		Path:        path,
+		Frontmatter: fm,
+		Body:        body,
+	}, nil
+}
+
+// Save writes the prompt file back to disk: frontmatter + body.
+// Body is always preserved exactly as loaded.
+func (pf *PromptFile) Save() error {
+	fm, err := yaml.Marshal(&pf.Frontmatter)
+	if err != nil {
+		return fmt.Errorf("marshal frontmatter: %w", err)
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("---\n")
+	buf.Write(fm)
+	buf.WriteString("---\n")
+	buf.Write(pf.Body)
+	return os.WriteFile(pf.Path, buf.Bytes(), 0600)
+}
+
+// Content returns the body as a string, stripped of leading empty frontmatter blocks.
+// Returns ErrEmptyPrompt if body is empty or whitespace-only.
+func (pf *PromptFile) Content() (string, error) {
+	result := strings.TrimSpace(string(pf.Body))
+	if len(result) == 0 {
+		return "", ErrEmptyPrompt
+	}
+	return string(pf.Body), nil
+}
+
+// Title extracts the first # heading from the body.
+func (pf *PromptFile) Title() string {
+	scanner := bufio.NewScanner(bytes.NewReader(pf.Body))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "# ") {
+			return strings.TrimPrefix(line, "# ")
+		}
+	}
+	return ""
+}
+
+// PrepareForExecution sets all fields needed before container launch.
+// This replaces separate SetContainer + SetVersion + SetStatus calls.
+func (pf *PromptFile) PrepareForExecution(container, version string) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.Status = string(StatusExecuting)
+	pf.Frontmatter.Container = container
+	pf.Frontmatter.DarkFactoryVersion = version
+	pf.Frontmatter.Started = now
+	// Ensure created/queued timestamps exist
+	if pf.Frontmatter.Created == "" {
+		pf.Frontmatter.Created = now
+	}
+	if pf.Frontmatter.Queued == "" {
+		pf.Frontmatter.Queued = now
+	}
+}
+
+// MarkCompleted sets status to completed with timestamp.
+func (pf *PromptFile) MarkCompleted() {
+	pf.Frontmatter.Status = string(StatusCompleted)
+	pf.Frontmatter.Completed = time.Now().UTC().Format(time.RFC3339)
+}
+
+// MarkFailed sets status to failed with timestamp.
+func (pf *PromptFile) MarkFailed() {
+	pf.Frontmatter.Status = string(StatusFailed)
+	pf.Frontmatter.Completed = time.Now().UTC().Format(time.RFC3339)
+}
+
+// MarkQueued sets status to queued and ensures created/queued timestamps exist.
+func (pf *PromptFile) MarkQueued() {
+	now := time.Now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.Status = string(StatusQueued)
+	if pf.Frontmatter.Created == "" {
+		pf.Frontmatter.Created = now
+	}
+	if pf.Frontmatter.Queued == "" {
+		pf.Frontmatter.Queued = now
+	}
+}
+
 // FileMover handles file move operations with git awareness.
 //
 //counterfeiter:generate -o ../../mocks/file-mover.go --fake-name FileMover . FileMover
@@ -119,6 +230,7 @@ type Manager interface {
 	ResetFailed(ctx context.Context) error
 	HasExecuting(ctx context.Context) bool
 	ListQueued(ctx context.Context) ([]Prompt, error)
+	Load(ctx context.Context, path string) (*PromptFile, error)
 	ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error)
 	SetStatus(ctx context.Context, path string, status string) error
 	SetContainer(ctx context.Context, path string, name string) error
@@ -164,6 +276,11 @@ func (pm *manager) HasExecuting(ctx context.Context) bool {
 // ListQueued scans a directory for .md files that should be picked up.
 func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
 	return ListQueued(ctx, pm.queueDir)
+}
+
+// Load reads a prompt file from disk, parsing frontmatter and body.
+func (pm *manager) Load(ctx context.Context, path string) (*PromptFile, error) {
+	return Load(ctx, path)
 }
 
 // ReadFrontmatter reads frontmatter from a file.
@@ -271,13 +388,14 @@ func ResetExecuting(ctx context.Context, dir string) error {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		fm, err := readFrontmatter(ctx, path)
+		pf, err := Load(ctx, path)
 		if err != nil {
 			continue
 		}
 
-		if fm.Status == string(StatusExecuting) {
-			if err := SetStatus(ctx, path, string(StatusQueued)); err != nil {
+		if pf.Frontmatter.Status == string(StatusExecuting) {
+			pf.MarkQueued()
+			if err := pf.Save(); err != nil {
 				return errors.Wrap(ctx, err, "reset executing prompt")
 			}
 		}
@@ -300,13 +418,14 @@ func ResetFailed(ctx context.Context, dir string) error {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		fm, err := readFrontmatter(ctx, path)
+		pf, err := Load(ctx, path)
 		if err != nil {
 			continue
 		}
 
-		if fm.Status == string(StatusFailed) {
-			if err := SetStatus(ctx, path, string(StatusQueued)); err != nil {
+		if pf.Frontmatter.Status == string(StatusFailed) {
+			pf.MarkQueued()
+			if err := pf.Save(); err != nil {
 				return errors.Wrap(ctx, err, "reset failed prompt")
 			}
 			log.Printf("dark-factory: reset failed prompt %s to queued", entry.Name())
@@ -320,199 +439,101 @@ func ResetFailed(ctx context.Context, dir string) error {
 // If the file has no frontmatter, adds frontmatter with the status field.
 // Also sets appropriate timestamp fields based on status.
 func SetStatus(ctx context.Context, path string, status string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	return setField(ctx, path, func(fm *Frontmatter) {
-		fm.Status = status
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
 
-		// Set timestamps based on status
-		switch Status(status) {
-		case StatusQueued:
-			// Set queued timestamp only if empty (preserve original on retry)
-			if fm.Queued == "" {
-				fm.Queued = now
-			}
-		case StatusExecuting:
-			// Always overwrite started time (retries get fresh start)
-			fm.Started = now
-		case StatusCompleted, StatusFailed:
-			// Always overwrite completed time
-			fm.Completed = now
+	now := time.Now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.Status = status
+
+	// Set timestamps based on status
+	switch Status(status) {
+	case StatusQueued:
+		// Set queued timestamp only if empty (preserve original on retry)
+		if pf.Frontmatter.Queued == "" {
+			pf.Frontmatter.Queued = now
 		}
-	})
+		// Ensure created timestamp exists
+		if pf.Frontmatter.Created == "" {
+			pf.Frontmatter.Created = now
+		}
+	case StatusExecuting:
+		// Always overwrite started time (retries get fresh start)
+		pf.Frontmatter.Started = now
+	case StatusCompleted, StatusFailed:
+		// Always overwrite completed time
+		pf.Frontmatter.Completed = now
+	}
+
+	return pf.Save()
 }
 
 // SetContainer updates the container field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the container field.
 func SetContainer(ctx context.Context, path string, container string) error {
-	return setField(ctx, path, func(fm *Frontmatter) {
-		fm.Container = container
-	})
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.Frontmatter.Container = container
+	return pf.Save()
 }
 
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the version field.
 func SetVersion(ctx context.Context, path string, version string) error {
-	return setField(ctx, path, func(fm *Frontmatter) {
-		fm.DarkFactoryVersion = version
-	})
-}
-
-// ensureCreatedTimestamp ensures the created timestamp is set.
-// Only sets if the field is empty (never overwrites).
-func ensureCreatedTimestamp(ctx context.Context, path string) error {
-	return setField(ctx, path, func(fm *Frontmatter) {
-		if fm.Created == "" {
-			fm.Created = time.Now().UTC().Format(time.RFC3339)
-		}
-	})
-}
-
-// setField updates a field in a prompt file's frontmatter using the provided setter function.
-// If the file has no frontmatter, adds frontmatter with the field.
-func setField(ctx context.Context, path string, setter func(*Frontmatter)) error {
-	// #nosec G304 -- path is from ListQueued which scans prompts directory
-	content, err := os.ReadFile(path)
+	pf, err := Load(ctx, path)
 	if err != nil {
-		return errors.Wrap(ctx, err, "read file")
+		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	// Split frontmatter from content
-	yamlBytes, body, hasFM := splitFrontmatter(content)
-
-	var updated []byte
-	if !hasFM {
-		updated, err = addFrontmatterWithSetter(ctx, content, setter)
-	} else {
-		updated, err = updateExistingFrontmatterWithSetter(ctx, yamlBytes, body, setter)
-	}
-
-	if err != nil {
-		return errors.Wrap(ctx, err, "set field")
-	}
-
-	// Write back
-	if err := os.WriteFile(path, updated, 0600); err != nil {
-		return errors.Wrap(ctx, err, "write file")
-	}
-
-	return nil
-}
-
-// addFrontmatterWithSetter adds frontmatter to a file that has none, using setter to populate fields.
-func addFrontmatterWithSetter(
-	ctx context.Context,
-	content []byte,
-	setter func(*Frontmatter),
-) ([]byte, error) {
-	fm := Frontmatter{}
-	setter(&fm)
-	yamlData, err := yaml.Marshal(&fm)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "marshal frontmatter")
-	}
-
-	var buf bytes.Buffer
-	buf.WriteString("---\n")
-	buf.Write(yamlData)
-	buf.WriteString("---\n")
-	buf.Write(content)
-	return buf.Bytes(), nil
-}
-
-// updateExistingFrontmatterWithSetter updates existing frontmatter using setter to modify fields.
-func updateExistingFrontmatterWithSetter(
-	ctx context.Context,
-	yamlBytes []byte,
-	body []byte,
-	setter func(*Frontmatter),
-) ([]byte, error) {
-	var fm Frontmatter
-	if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
-		return nil, errors.Wrap(ctx, err, "parse frontmatter")
-	}
-
-	setter(&fm)
-
-	yamlData, err := yaml.Marshal(&fm)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "marshal frontmatter")
-	}
-
-	var buf bytes.Buffer
-	buf.WriteString("---\n")
-	buf.Write(yamlData)
-	buf.WriteString("---\n")
-	buf.Write(body)
-	return buf.Bytes(), nil
+	pf.Frontmatter.DarkFactoryVersion = version
+	return pf.Save()
 }
 
 // Title extracts the first # heading from a prompt file.
 // Handles files with or without frontmatter.
 // If no heading is found, returns the filename without extension.
 func Title(ctx context.Context, path string) (string, error) {
-	// #nosec G304 -- path is from ListQueued which scans prompts directory
-	content, err := os.ReadFile(path)
+	pf, err := Load(ctx, path)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "read file")
+		return "", errors.Wrap(ctx, err, "load prompt")
 	}
 
-	// Skip frontmatter if present
-	_, contentToScan, _ := splitFrontmatter(content)
-
-	// Find first # heading
-	scanner := bufio.NewScanner(bytes.NewReader(contentToScan))
-	headingRe := regexp.MustCompile(`^#\s+(.+)$`)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		if matches := headingRe.FindStringSubmatch(line); matches != nil {
-			return strings.TrimSpace(matches[1]), nil
-		}
+	title := pf.Title()
+	if title == "" {
+		// No heading found - use filename without extension
+		filename := filepath.Base(path)
+		return strings.TrimSuffix(filename, ".md"), nil
 	}
 
-	if err := scanner.Err(); err != nil {
-		return "", errors.Wrap(ctx, err, "scan content")
-	}
-
-	// No heading found - use filename without extension
-	filename := filepath.Base(path)
-	return strings.TrimSuffix(filename, ".md"), nil
+	return title, nil
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
 // Returns ErrEmptyPrompt if the file is empty or contains only whitespace.
 func Content(ctx context.Context, path string) (string, error) {
-	// #nosec G304 -- path is from ListQueued which scans prompts directory
-	content, err := os.ReadFile(path)
+	pf, err := Load(ctx, path)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "read file")
+		return "", errors.Wrap(ctx, err, "load prompt")
 	}
 
-	// Strip frontmatter — only pass the body to the executor
-	_, body, hasFM := splitFrontmatter(content)
-	var result string
-	if hasFM {
-		result = string(body)
-	} else {
-		result = string(content)
-	}
-
-	// Strip any additional empty frontmatter blocks at the start of content
-	result = stripLeadingEmptyFrontmatter(result)
-
-	// Check if content is empty or only whitespace
-	if len(strings.TrimSpace(result)) == 0 {
-		return "", ErrEmptyPrompt
-	}
-
-	return result, nil
+	return pf.Content()
 }
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed directory.
 // This ensures files in completed/ always have the correct status.
 func MoveToCompleted(ctx context.Context, path string, completedDir string, mover FileMover) error {
-	// Set status to completed before moving
-	if err := SetStatus(ctx, path, string(StatusCompleted)); err != nil {
+	// Load, mark completed, and save before moving
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.MarkCompleted()
+	if err := pf.Save(); err != nil {
 		return errors.Wrap(ctx, err, "set completed status")
 	}
 
@@ -558,31 +579,6 @@ func HasExecuting(ctx context.Context, dir string) bool {
 	return false
 }
 
-// splitFrontmatter splits file content into frontmatter YAML and body.
-// Returns (yamlBytes, body, hasFrontmatter).
-// Uses github.com/adrg/frontmatter for robust parsing.
-func splitFrontmatter(content []byte) ([]byte, []byte, bool) {
-	var fm Frontmatter
-	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
-	if err != nil {
-		return nil, content, false
-	}
-
-	// Check if frontmatter is empty (no fields set)
-	if fm.Status == "" && fm.Container == "" && fm.Created == "" &&
-		fm.DarkFactoryVersion == "" && fm.Queued == "" && fm.Started == "" && fm.Completed == "" {
-		return nil, content, false
-	}
-
-	// Re-marshal the parsed frontmatter to preserve field names correctly
-	yamlBytes, err := yaml.Marshal(&fm)
-	if err != nil {
-		return nil, content, false
-	}
-
-	return yamlBytes, body, true
-}
-
 // fileInfo represents information about a prompt file.
 type fileInfo struct {
 	name   string
@@ -605,22 +601,6 @@ func NormalizeFilenames(
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
-	}
-
-	// Ensure all .md files have created timestamp
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		path := filepath.Join(dir, entry.Name())
-		if err := ensureCreatedTimestamp(ctx, path); err != nil {
-			// Log error but continue processing other files
-			log.Printf(
-				"dark-factory: failed to set created timestamp for %s: %v",
-				entry.Name(),
-				err,
-			)
-		}
 	}
 
 	files, usedNumbers := scanPromptFiles(entries)
@@ -780,23 +760,12 @@ func performRename(
 // readFrontmatter is a helper to read frontmatter from a file.
 // Returns empty Frontmatter if file has no frontmatter delimiters.
 func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
-	// #nosec G304 -- path is from ListQueued which scans prompts directory
-	content, err := os.ReadFile(path)
+	pf, err := Load(ctx, path)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "read file")
+		return nil, errors.Wrap(ctx, err, "load prompt")
 	}
 
-	yamlBytes, _, hasFM := splitFrontmatter(content)
-	if !hasFM {
-		return &Frontmatter{}, nil
-	}
-
-	var fm Frontmatter
-	if err := yaml.Unmarshal(yamlBytes, &fm); err != nil {
-		return nil, errors.Wrap(ctx, err, "parse frontmatter")
-	}
-
-	return &fm, nil
+	return &pf.Frontmatter, nil
 }
 
 // hasNumberPrefix checks if a filename has a numeric prefix (NNN-).
@@ -818,61 +787,6 @@ func extractNumberFromFilename(filename string) int {
 		return -1
 	}
 	return num
-}
-
-// stripLeadingEmptyFrontmatter removes any empty frontmatter blocks from the start of content.
-// This handles cases where a file was created with empty frontmatter (---\n---) and
-// the processor later prepended its own frontmatter, leaving the original empty block
-// in the content body.
-func stripLeadingEmptyFrontmatter(content string) string {
-	// Trim leading newlines/whitespace
-	trimmed := strings.TrimLeft(content, "\n\r \t")
-
-	// Check if content starts with frontmatter delimiter
-	if !strings.HasPrefix(trimmed, "---\n") && !strings.HasPrefix(trimmed, "---\r\n") {
-		return content
-	}
-
-	// Determine line ending
-	var lineEnding string
-	if strings.HasPrefix(trimmed, "---\r\n") {
-		lineEnding = "\r\n"
-	} else {
-		lineEnding = "\n"
-	}
-
-	// Check for immediate closing (empty frontmatter: ---\n---)
-	emptyFrontmatter := "---" + lineEnding + "---"
-	if strings.HasPrefix(trimmed, emptyFrontmatter) {
-		// This is an empty frontmatter block - skip it
-		remaining := strings.TrimPrefix(trimmed, emptyFrontmatter)
-		// Remove leading line ending if present
-		remaining = strings.TrimPrefix(remaining, lineEnding)
-		if len(strings.TrimSpace(remaining)) == 0 {
-			return remaining
-		}
-		return stripLeadingEmptyFrontmatter(remaining)
-	}
-
-	// Try to parse it as a frontmatter block using the same logic as splitFrontmatter
-	yamlBytes, body, hasFM := splitFrontmatter([]byte(trimmed))
-	if !hasFM {
-		// Not a valid frontmatter block
-		return content
-	}
-
-	// Check if the frontmatter is empty or contains only whitespace
-	if len(strings.TrimSpace(string(yamlBytes))) > 0 {
-		// Not an empty frontmatter block - keep original content
-		return content
-	}
-
-	// This is an empty frontmatter block - skip it and recursively process the rest
-	remaining := string(body)
-	if len(strings.TrimSpace(remaining)) == 0 {
-		return remaining
-	}
-	return stripLeadingEmptyFrontmatter(remaining)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed directory.

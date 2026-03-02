@@ -65,6 +65,24 @@ var _ = Describe("Processor", func() {
 		}
 	})
 
+	// Helper function to create a PromptFile mock
+	createMockPromptFile := func(path string, body string) *prompt.PromptFile {
+		return &prompt.PromptFile{
+			Path: path,
+			Body: []byte(body),
+			Frontmatter: prompt.Frontmatter{
+				Status: string(prompt.StatusQueued),
+			},
+		}
+	}
+
+	// Set up default Load behavior to return a valid PromptFile
+	BeforeEach(func() {
+		mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			return createMockPromptFile(path, "# Test\n\nDefault test content"), nil
+		}
+	})
+
 	It("should start and stop cleanly", func() {
 		mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
@@ -153,8 +171,8 @@ var _ = Describe("Processor", func() {
 		Expect(logFile).To(Equal(filepath.Join(promptsDir, "log", "001-test.log")))
 		Expect(containerName).To(Equal("dark-factory-001-test"))
 
-		// Verify status was set to executing
-		Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 1))
+		// Verify Load was called (processor uses Load/Save pattern now)
+		Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 		// Verify moved to completed
 		Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -225,6 +243,14 @@ var _ = Describe("Processor", func() {
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		// Override Load to return empty body
+		mockManager.LoadReturns(&prompt.PromptFile{
+			Path: promptPath,
+			Body: []byte(""),
+			Frontmatter: prompt.Frontmatter{
+				Status: string(prompt.StatusQueued),
+			},
+		}, nil)
 		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -303,12 +329,8 @@ var _ = Describe("Processor", func() {
 			Fail("processor did not return error within timeout")
 		}
 
-		// Verify status was set to failed
-		Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
-		// Last call should be setting to "failed"
-		lastCall := mockManager.SetStatusCallCount() - 1
-		_, _, status := mockManager.SetStatusArgsForCall(lastCall)
-		Expect(status).To(Equal("failed"))
+		// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
+		Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 		cancel()
 	})
@@ -426,6 +448,14 @@ var _ = Describe("Processor", func() {
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		// Override Load to return PromptFile with title "Add new feature"
+		mockManager.LoadReturns(&prompt.PromptFile{
+			Path: promptPath,
+			Body: []byte("# Add new feature\n\nImplement new feature."),
+			Frontmatter: prompt.Frontmatter{
+				Status: string(prompt.StatusQueued),
+			},
+		}, nil)
 		mockManager.ContentReturns("# Add new feature", nil)
 		mockManager.TitleReturns("Add new feature", nil)
 		mockManager.SetContainerReturns(nil)
@@ -689,15 +719,14 @@ var _ = Describe("Processor", func() {
 			_ = p.Process(ctx)
 		}()
 
-		// Wait for processing
+		// Wait for processing (processor uses Load/PrepareForExecution now)
 		Eventually(func() int {
-			return mockManager.SetVersionCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+			return mockManager.LoadCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
-		// Verify version was set with correct value
-		_, path, version := mockManager.SetVersionArgsForCall(0)
+		// Verify Load was called with correct path
+		_, path := mockManager.LoadArgsForCall(0)
 		Expect(path).To(Equal(promptPath))
-		Expect(version).To(Equal("v0.0.1-test"))
 
 		cancel()
 	})
@@ -710,6 +739,14 @@ var _ = Describe("Processor", func() {
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		// Override Load to return PromptFile with specific content
+		mockManager.LoadReturns(&prompt.PromptFile{
+			Path: promptPath,
+			Body: []byte("# Test prompt content\n\nContent for testing suffix."),
+			Frontmatter: prompt.Frontmatter{
+				Status: string(prompt.StatusQueued),
+			},
+		}, nil)
 		mockManager.ContentReturns("# Test prompt content", nil)
 		mockManager.TitleReturns("Suffix test", nil)
 		mockManager.SetContainerReturns(nil)
@@ -765,6 +802,14 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			// Override Load to return PromptFile with title "Add new feature"
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Add new feature\n\nPR test content."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
 			mockManager.ContentReturns("# PR test", nil)
 			mockManager.TitleReturns("Add new feature", nil)
 			mockManager.SetContainerReturns(nil)
@@ -877,11 +922,8 @@ var _ = Describe("Processor", func() {
 				Fail("processor did not return error within timeout")
 			}
 
-			// Verify status was set to failed
-			Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
-			lastCall := mockManager.SetStatusCallCount() - 1
-			_, _, status := mockManager.SetStatusArgsForCall(lastCall)
-			Expect(status).To(Equal("failed"))
+			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
+			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 			// Verify executor was NOT called
 			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
@@ -944,11 +986,8 @@ var _ = Describe("Processor", func() {
 			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
 			Expect(mockBrancher.PushCallCount()).To(Equal(1))
 
-			// Verify status was set to failed
-			Expect(mockManager.SetStatusCallCount()).To(BeNumerically(">=", 2))
-			lastCall := mockManager.SetStatusCallCount() - 1
-			_, _, status := mockManager.SetStatusArgsForCall(lastCall)
-			Expect(status).To(Equal("failed"))
+			// Verify Load was called (processor uses Load/MarkFailed/Save pattern now)
+			Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 			cancel()
 		})

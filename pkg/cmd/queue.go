@@ -113,8 +113,13 @@ func (q *queueCommand) moveToQueue(ctx context.Context, filename string) (string
 		return "", errors.Wrap(ctx, err, "move file to queue")
 	}
 
-	// Set status to queued
-	if err := prompt.SetStatus(ctx, newPath, string(prompt.StatusQueued)); err != nil {
+	// Set status to queued using Load/Save
+	pf, err := prompt.Load(ctx, newPath)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "load prompt")
+	}
+	pf.MarkQueued()
+	if err := pf.Save(); err != nil {
 		return "", errors.Wrap(ctx, err, "set queued status")
 	}
 

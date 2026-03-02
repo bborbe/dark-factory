@@ -157,8 +157,11 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
 			// Mark as failed — file may have been moved to completed/ before the error.
-			if setErr := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusFailed)); setErr != nil {
-				log.Printf("dark-factory: failed to set failed status: %v", setErr)
+			if pf, loadErr := p.promptManager.Load(ctx, pr.Path); loadErr == nil {
+				pf.MarkFailed()
+				if saveErr := pf.Save(); saveErr != nil {
+					log.Printf("dark-factory: failed to set failed status: %v", saveErr)
+				}
 			}
 			return errors.Wrap(ctx, err, "process prompt")
 		}
@@ -171,8 +174,14 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
-	// Get prompt content first to check if empty
-	content, err := p.promptManager.Content(ctx, pr.Path)
+	// Load prompt file once
+	pf, err := p.promptManager.Load(ctx, pr.Path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	// Check if empty
+	content, err := pf.Content()
 	if err != nil {
 		// If prompt is empty, move to completed and skip execution
 		if stderrors.Is(err, prompt.ErrEmptyPrompt) {
@@ -193,15 +202,20 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	content = content + report.Suffix()
 
 	// Prepare prompt metadata and set executing status
-	baseName, containerName, err := p.setupPromptMetadata(ctx, pr.Path)
-	if err != nil {
-		return errors.Wrap(ctx, err, "setup prompt metadata")
+	baseName := strings.TrimSuffix(filepath.Base(pr.Path), ".md")
+	baseName = sanitizeContainerName(baseName)
+	containerName := "dark-factory-" + baseName
+
+	pf.PrepareForExecution(containerName, p.versionGetter.Get())
+	if err := pf.Save(); err != nil {
+		return errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
 	// Get prompt title for logging
-	title, err := p.promptManager.Title(ctx, pr.Path)
-	if err != nil {
-		return errors.Wrap(ctx, err, "get prompt title")
+	title := pf.Title()
+	if title == "" {
+		// Fallback to filename if no title found
+		title = strings.TrimSuffix(filepath.Base(pr.Path), ".md")
 	}
 
 	log.Printf("dark-factory: executing prompt: %s", title)
@@ -317,35 +331,6 @@ func (p *processor) handleDirectWorkflow(
 	log.Printf("dark-factory: committed and tagged %s", nextVersion)
 
 	return nil
-}
-
-// setupPromptMetadata sets container name, version, and executing status in frontmatter.
-// Returns baseName and containerName for use in execution.
-func (p *processor) setupPromptMetadata(
-	ctx context.Context,
-	path string,
-) (string, string, error) {
-	// Derive container name from prompt filename
-	baseName := strings.TrimSuffix(filepath.Base(path), ".md")
-	baseName = sanitizeContainerName(baseName)
-	containerName := "dark-factory-" + baseName
-
-	// Set container name in frontmatter
-	if err := p.promptManager.SetContainer(ctx, path, containerName); err != nil {
-		return "", "", errors.Wrap(ctx, err, "set container name")
-	}
-
-	// Set dark-factory version in frontmatter
-	if err := p.promptManager.SetVersion(ctx, path, p.versionGetter.Get()); err != nil {
-		return "", "", errors.Wrap(ctx, err, "set version")
-	}
-
-	// Set status to executing
-	if err := p.promptManager.SetStatus(ctx, path, string(prompt.StatusExecuting)); err != nil {
-		return "", "", errors.Wrap(ctx, err, "set executing status")
-	}
-
-	return baseName, containerName, nil
 }
 
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]

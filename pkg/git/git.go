@@ -190,7 +190,10 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 // Falls back to os.Rename if git operations fail or not in a git repo.
 func MoveFile(ctx context.Context, oldPath string, newPath string) error {
 	// Try git operations first
-	repo, err := gogit.PlainOpen(".")
+	repo, err := gogit.PlainOpenWithOptions(
+		filepath.Dir(oldPath),
+		&gogit.PlainOpenOptions{DetectDotGit: true},
+	)
 	if err != nil {
 		// Not in a git repo - fallback to os.Rename
 		return fallbackRename(ctx, oldPath, newPath)

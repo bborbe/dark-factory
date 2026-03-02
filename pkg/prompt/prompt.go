@@ -23,7 +23,6 @@ import (
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
-	"nonexistent"
 )
 
 // ErrEmptyPrompt is returned when a prompt file is empty or contains only whitespace.

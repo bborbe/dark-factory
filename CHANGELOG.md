@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.13.2
+
+### Added
+- 056-log-version-on-startup
+
 ## v0.13.1
 
 ### Added

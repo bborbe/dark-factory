@@ -25,7 +25,7 @@ var _ = Describe("DockerExecutor", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		e = executor.NewDockerExecutor("docker.io/bborbe/claude-yolo:v0.0.7", "test-project")
+		e = executor.NewDockerExecutor("docker.io/bborbe/claude-yolo:v0.0.8", "test-project")
 
 		var err error
 		tempDir, err = os.MkdirTemp("", "executor-test-*")

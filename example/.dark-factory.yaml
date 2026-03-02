@@ -17,7 +17,7 @@ queueDir: prompts/queue
 completedDir: prompts/completed
 
 # Docker image for YOLO execution
-containerImage: docker.io/bborbe/claude-yolo:v0.0.7
+containerImage: docker.io/bborbe/claude-yolo:v0.0.8
 
 # Watcher debounce in milliseconds
 debounceMs: 500

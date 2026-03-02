@@ -32,7 +32,7 @@ func Defaults() Config {
 		QueueDir:       "prompts",
 		CompletedDir:   "prompts/completed",
 		LogDir:         "prompts/log",
-		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.7",
+		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.8",
 		DebounceMs:     500,
 		ServerPort:     0,
 	}

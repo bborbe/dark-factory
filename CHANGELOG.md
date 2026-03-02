@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.12.2
+- Update claude-yolo image from v0.0.7 to v0.0.8
+
 ## v0.12.1
 
 ### Added

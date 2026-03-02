@@ -3,6 +3,6 @@ inboxDir: prompts
 queueDir: prompts/queue
 completedDir: prompts/completed
 logDir: prompts/log
-containerImage: docker.io/bborbe/claude-yolo:v0.0.7
+containerImage: docker.io/bborbe/claude-yolo:v0.0.8
 debounceMs: 500
 serverPort: 0

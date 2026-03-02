@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.12.0
+
+### Added
+- 052-add-debug-logging
+
 ## v0.11.8
 
 ### Added

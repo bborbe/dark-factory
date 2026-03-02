@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.13.0
+
+### Added
+- 054-add-debug-logging
+
 ## v0.12.2
 - Update claude-yolo image from v0.0.7 to v0.0.8
 

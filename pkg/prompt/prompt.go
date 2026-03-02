@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/adrg/frontmatter"
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
@@ -559,25 +560,27 @@ func HasExecuting(ctx context.Context, dir string) bool {
 
 // splitFrontmatter splits file content into frontmatter YAML and body.
 // Returns (yamlBytes, body, hasFrontmatter).
-// Frontmatter must start with "---\n" at the very beginning of the file
-// and end with "\n---\n" on its own line.
+// Uses github.com/adrg/frontmatter for robust parsing.
 func splitFrontmatter(content []byte) ([]byte, []byte, bool) {
-	if !bytes.HasPrefix(content, []byte("---\n")) {
+	var fm Frontmatter
+	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
+	if err != nil {
 		return nil, content, false
 	}
 
-	rest := content[4:] // skip opening "---\n"
-	idx := bytes.Index(rest, []byte("\n---\n"))
-	if idx >= 0 {
-		return rest[:idx], rest[idx+5:], true
+	// Check if frontmatter is empty (no fields set)
+	if fm.Status == "" && fm.Container == "" && fm.Created == "" &&
+		fm.DarkFactoryVersion == "" && fm.Queued == "" && fm.Started == "" && fm.Completed == "" {
+		return nil, content, false
 	}
 
-	// Check for "---" at end of file (no trailing newline)
-	if bytes.HasSuffix(rest, []byte("\n---")) {
-		return rest[:len(rest)-4], nil, true
+	// Re-marshal the parsed frontmatter to preserve field names correctly
+	yamlBytes, err := yaml.Marshal(&fm)
+	if err != nil {
+		return nil, content, false
 	}
 
-	return nil, content, false
+	return yamlBytes, body, true
 }
 
 // fileInfo represents information about a prompt file.

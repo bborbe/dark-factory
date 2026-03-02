@@ -238,8 +238,17 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	slog.Info("docker container exited", "exitCode", 0)
 
 	// Validate completion report from log
-	if err := validateCompletionReport(ctx, logFile); err != nil {
+	summary, err := validateCompletionReport(ctx, logFile)
+	if err != nil {
 		return err
+	}
+
+	// Store summary in frontmatter before moving to completed
+	if summary != "" {
+		pf.SetSummary(summary)
+		if err := pf.Save(); err != nil {
+			return errors.Wrap(ctx, err, "save summary")
+		}
 	}
 
 	// Move to completed/ before commit so it's included in the release
@@ -380,18 +389,19 @@ func preparePromptForExecution(
 }
 
 // validateCompletionReport parses and validates the completion report from the log file.
-// Returns an error if the report indicates failure.
-// Returns nil if no report found (backwards compatible) or report indicates success.
-func validateCompletionReport(ctx context.Context, logFile string) error {
+// Returns the summary and an error if the report indicates failure.
+// Returns ("", nil) if no report found (backwards compatible) or parse error.
+// Returns (summary, nil) if report indicates success.
+func validateCompletionReport(ctx context.Context, logFile string) (string, error) {
 	completionReport, err := report.ParseFromLog(logFile)
 	if err != nil {
 		slog.Debug("failed to parse completion report", "error", err)
 		// Continue — don't fail the prompt just because report parsing failed
-		return nil
+		return "", nil
 	}
 	if completionReport == nil {
 		// No report found — backwards compatible
-		return nil
+		return "", nil
 	}
 
 	slog.Info(
@@ -408,10 +418,10 @@ func validateCompletionReport(ctx context.Context, logFile string) error {
 		if len(completionReport.Blockers) > 0 {
 			slog.Info("blockers reported", "blockers", completionReport.Blockers)
 		}
-		return errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
+		return "", errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
 	}
 
-	return nil
+	return completionReport.Summary, nil
 }
 
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]

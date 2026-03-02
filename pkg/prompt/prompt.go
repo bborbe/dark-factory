@@ -96,6 +96,7 @@ func (p Prompt) Number() int {
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
 	Status             string `yaml:"status"`
+	Summary            string `yaml:"summary,omitempty"`
 	Container          string `yaml:"container,omitempty"`
 	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`
 	Created            string `yaml:"created,omitempty"`
@@ -231,6 +232,11 @@ func (pf *PromptFile) MarkQueued() {
 	if pf.Frontmatter.Queued == "" {
 		pf.Frontmatter.Queued = now
 	}
+}
+
+// SetSummary sets the summary field in frontmatter.
+func (pf *PromptFile) SetSummary(summary string) {
+	pf.Frontmatter.Summary = summary
 }
 
 // FileMover handles file move operations with git awareness.

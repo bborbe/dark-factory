@@ -993,6 +993,92 @@ var _ = Describe("Processor", func() {
 	})
 
 	Describe("Completion Report Parsing", func() {
+		It("should store summary in frontmatter when report has summary", func() {
+			promptPath := filepath.Join(promptsDir, "001-summary-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			completedDir := filepath.Join(promptsDir, "completed")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.MkdirAll(completedDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Track the PromptFile that gets loaded/saved
+			var savedPromptFile *prompt.PromptFile
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				// Create a real PromptFile with a temporary backing file
+				pf := &prompt.PromptFile{
+					Path: path,
+					Body: []byte("# Summary test\n\nTest content"),
+					Frontmatter: prompt.Frontmatter{
+						Status: string(prompt.StatusQueued),
+					},
+				}
+				savedPromptFile = pf
+				return pf, nil
+			}
+			mockManager.ContentReturns("# Summary test", nil)
+			mockManager.TitleReturns("Summary test", nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			// Mock executor writes log with success report containing summary
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Added feature successfully","blockers":[]}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			// Mock MoveToCompleted to verify frontmatter has summary
+			mockManager.MoveToCompletedStub = func(ctx context.Context, path string) error {
+				// Verify summary was set before moving
+				Expect(savedPromptFile.Frontmatter.Summary).To(Equal("Added feature successfully"))
+				return nil
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				completedDir,
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockManager.MoveToCompletedCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify summary was stored
+			Expect(savedPromptFile.Frontmatter.Summary).To(Equal("Added feature successfully"))
+
+			cancel()
+		})
+
 		It("should continue to commit when report status is success", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-success.md")
 			queued := []prompt.Prompt{

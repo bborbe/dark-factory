@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.4
+
+### Added
+- 049-completion-report-append-suffix
+
 ## v0.11.3
 
 ### Added

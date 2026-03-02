@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.13.1
+
+### Added
+- 055-store-summary-in-frontmatter
+
 ## v0.13.0
 
 ### Added

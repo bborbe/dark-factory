@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.0
+
+### Added
+- Add Worktree interface and WorkflowWorktree config
+
 ## v0.13.3
 
 ### Added

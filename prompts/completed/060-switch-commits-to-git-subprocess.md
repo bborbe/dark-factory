@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Switched git commit operations from go-git to subprocess calls for proper git config support
+container: dark-factory-060-switch-commits-to-git-subprocess
+dark-factory-version: v0.14.1
+created: "2026-03-03T18:54:30Z"
+queued: "2026-03-03T18:54:30Z"
+started: "2026-03-03T19:59:35Z"
+completed: "2026-03-03T20:04:29Z"
+---
 # Switch git commit from go-git to subprocess
 
 ## Goal

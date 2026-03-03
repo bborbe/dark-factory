@@ -11,12 +11,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bborbe/errors"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // VersionBump specifies the type of version bump to perform.
@@ -149,42 +147,30 @@ func CommitAndRelease(ctx context.Context, changelogEntry string, bump VersionBu
 // This is called after MoveToCompleted() to ensure the moved file is committed.
 // Does nothing if the file is already staged or committed.
 func CommitCompletedFile(ctx context.Context, path string) error {
-	repo, err := gogit.PlainOpen(".")
+	// Stage all changes (handles file moves properly)
+	cmd := exec.CommandContext(ctx, "git", "add", "-A")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "git add")
+	}
+
+	// Check if there's anything to commit
+	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	output, err := statusCmd.Output()
 	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
+		return errors.Wrap(ctx, err, "git status")
 	}
 
-	wt, err := repo.Worktree()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get worktree")
-	}
-
-	// Check if there's anything to commit before staging
-	statusBefore, err := wt.Status()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get status before add")
-	}
-
-	// Stage all changes (equivalent to git add -A)
-	// This handles file moves properly by staging both the deletion
-	// of the old path and the addition of the new path
-	if err := wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
-		return errors.Wrap(ctx, err, "add all changes")
-	}
-
-	// Check if there's anything to commit after staging
-	statusAfter, err := wt.Status()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get status after add")
-	}
-
-	// Nothing to commit - file already staged or committed
-	if statusBefore.IsClean() && statusAfter.IsClean() {
+	// Nothing to commit
+	if len(strings.TrimSpace(string(output))) == 0 {
 		return nil
 	}
 
-	// Commit the completed file
-	return gitCommit(ctx, "move prompt to completed")
+	// Commit
+	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", "move prompt to completed")
+	if err := commitCmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "git commit")
+	}
+	return nil
 }
 
 // MoveFile moves a file using git-aware operations to preserve history.
@@ -252,21 +238,10 @@ func fallbackRename(ctx context.Context, oldPath string, newPath string) error {
 
 // gitAddAll stages all changes
 func gitAddAll(ctx context.Context) error {
-	repo, err := gogit.PlainOpen(".")
-	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
+	cmd := exec.CommandContext(ctx, "git", "add", "-A")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "git add all")
 	}
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get worktree")
-	}
-
-	// Add all files (equivalent to git add -A)
-	if err := wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
-		return errors.Wrap(ctx, err, "add all files")
-	}
-
 	return nil
 }
 
@@ -437,59 +412,27 @@ func findInsertIndex(lines []string) int {
 func gitCommit(ctx context.Context, message string) error {
 	slog.Debug("creating commit", "message", message)
 
-	repo, err := gogit.PlainOpen(".")
-	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
-	}
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get worktree")
-	}
-
-	// Get git config for author information
-	cfg, err := repo.Config()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get git config")
-	}
-
-	author := &object.Signature{
-		Name:  cfg.User.Name,
-		Email: cfg.User.Email,
-		When:  time.Now(),
-	}
-
-	commitOpts := &gogit.CommitOptions{
-		Author: author,
-	}
-
-	_, err = wt.Commit(message, commitOpts)
-	if err != nil {
+	// #nosec G204 -- message is passed as argument to git commit, not executed
+	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
+	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "create commit")
 	}
-
 	return nil
 }
 
 // gitTag creates a tag
 func gitTag(ctx context.Context, tag string) error {
+	if _, err := ParseSemanticVersionNumber(ctx, tag); err != nil {
+		return errors.Wrap(ctx, err, "invalid tag format")
+	}
+
 	slog.Debug("creating tag", "tag", tag)
 
-	repo, err := gogit.PlainOpen(".")
-	if err != nil {
-		return errors.Wrap(ctx, err, "open git repository")
-	}
-
-	head, err := repo.Head()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get HEAD")
-	}
-
-	_, err = repo.CreateTag(tag, head.Hash(), nil)
-	if err != nil {
+	// #nosec G204 -- tag is validated as semantic version above
+	cmd := exec.CommandContext(ctx, "git", "tag", tag)
+	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "create tag")
 	}
-
 	return nil
 }
 

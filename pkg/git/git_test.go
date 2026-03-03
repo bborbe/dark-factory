@@ -125,7 +125,7 @@ var _ = Describe("Git", func() {
 			// Create CHANGELOG.md
 			err := os.WriteFile(
 				filepath.Join(tempDir, "CHANGELOG.md"),
-				[]byte("# Changelog\n\n## Unreleased\n\n### Added\n"),
+				[]byte("# Changelog\n\n## Unreleased\n\n"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -540,7 +540,7 @@ var _ = Describe("Git", func() {
 			changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
 			err = os.WriteFile(
 				changelogPath,
-				[]byte("# Changelog\n\n## Unreleased\n\n### Added\n"),
+				[]byte("# Changelog\n\n## Unreleased\n\n"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -743,16 +743,17 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("adds entry under existing subsection", func() {
+			It("replaces Unreleased with version section without subsections", func() {
 				err := git.CommitAndRelease(ctx, "Add new feature", git.PatchBump)
 				Expect(err).To(BeNil())
 
-				// Verify CHANGELOG has version with subsection preserved
+				// Verify CHANGELOG has version without subsections (### Fixed is removed)
 				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
-				Expect(string(changelogContent)).To(ContainSubstring("### Fixed"))
 				Expect(string(changelogContent)).To(ContainSubstring("- Add new feature"))
+				// Subsection should be removed in the new format
+				Expect(string(changelogContent)).NotTo(ContainSubstring("### Fixed"))
 			})
 		})
 	})

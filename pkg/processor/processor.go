@@ -292,7 +292,7 @@ func (p *processor) handlePostExecution(
 	}
 
 	if p.workflow == config.WorkflowPR {
-		return p.handlePRWorkflow(gitCtx, ctx, title, state.branchName, state.originalBranch)
+		return p.handlePRWorkflow(gitCtx, ctx, title, summary, state.branchName, state.originalBranch)
 	}
 
 	if p.workflow == config.WorkflowWorktree {
@@ -300,13 +300,14 @@ func (p *processor) handlePostExecution(
 			gitCtx,
 			ctx,
 			title,
+			summary,
 			state.branchName,
 			state.worktreePath,
 			state.originalDir,
 		)
 	}
 
-	return p.handleDirectWorkflow(gitCtx, ctx, title)
+	return p.handleDirectWorkflow(gitCtx, ctx, title, summary)
 }
 
 // setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
@@ -373,6 +374,7 @@ func (p *processor) handlePRWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
+	summary string,
 	branchName string,
 	originalBranch string,
 ) error {
@@ -406,6 +408,7 @@ func (p *processor) handleWorktreeWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
+	summary string,
 	branchName string,
 	worktreePath string,
 	originalDir string,
@@ -490,6 +493,7 @@ func (p *processor) handleDirectWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
+	summary string,
 ) error {
 	// Without CHANGELOG: simple commit only (no tag, no push)
 	if !p.releaser.HasChangelog(gitCtx) {
@@ -501,13 +505,19 @@ func (p *processor) handleDirectWorkflow(
 	}
 
 	// With CHANGELOG: update changelog, bump version, tag, push
+	// Use summary for changelog entry if available, otherwise fall back to title
+	changelogEntry := summary
+	if changelogEntry == "" {
+		changelogEntry = title
+	}
+
 	bump := determineBump(title)
 	nextVersion, err := p.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := p.releaser.CommitAndRelease(gitCtx, title, bump); err != nil {
+	if err := p.releaser.CommitAndRelease(gitCtx, changelogEntry, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 

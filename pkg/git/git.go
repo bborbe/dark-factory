@@ -336,29 +336,26 @@ func updateChangelog(ctx context.Context, entry string, version string) error {
 func processUnreleasedSection(lines []string, entry string, version string) ([]string, bool) {
 	result := make([]string, 0, len(lines)+3)
 	unreleasedFound := false
-	skip := false
+	inUnreleasedSection := false
 
-	for i, line := range lines {
-		if skip {
-			skip = false
+	for _, line := range lines {
+		if strings.HasPrefix(line, "## Unreleased") {
+			unreleasedFound = true
+			inUnreleasedSection = true
+			result = append(result, "## "+version)
+			result = append(result, "")
+			result = append(result, "- "+entry)
 			continue
 		}
 
-		if strings.HasPrefix(line, "## Unreleased") {
-			unreleasedFound = true
-			result = append(result, "## "+version)
-
-			if i+1 < len(lines) && strings.HasPrefix(lines[i+1], "###") {
-				result = append(result, lines[i+1])
-				result = append(result, "- "+entry)
-				skip = true
-				continue
-			}
-
-			result = append(result, "")
-			result = append(result, "### Added")
-			result = append(result, "- "+entry)
+		// Skip subsection headers (###) within the Unreleased section
+		if inUnreleasedSection && strings.HasPrefix(line, "###") {
 			continue
+		}
+
+		// Exit Unreleased section when we hit another ## section
+		if inUnreleasedSection && strings.HasPrefix(line, "##") {
+			inUnreleasedSection = false
 		}
 
 		result = append(result, line)
@@ -377,7 +374,6 @@ func insertNewVersionSection(lines []string, entry string, version string) []str
 	newSection := []string{
 		"## " + version,
 		"",
-		"### Added",
 		"- " + entry,
 		"",
 	}

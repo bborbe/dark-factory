@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.1
+
+### Added
+- Wire worktree workflow into processor and factory
+
 ## v0.14.0
 
 ### Added

@@ -120,6 +120,7 @@ func CreateProcessor(
 		workflow,
 		git.NewBrancher(),
 		git.NewPRCreator(),
+		git.NewWorktree(),
 	)
 }
 

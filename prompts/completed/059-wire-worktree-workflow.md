@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Wired worktree workflow into processor and factory with comprehensive tests and refactoring
+container: dark-factory-059-wire-worktree-workflow
+dark-factory-version: v0.13.2
+created: "2026-03-03T16:52:52Z"
+queued: "2026-03-03T16:52:52Z"
+started: "2026-03-03T16:52:52Z"
+completed: "2026-03-03T17:05:07Z"
+---
 # Wire worktree workflow into processor and factory
 
 ## Goal

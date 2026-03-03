@@ -35,6 +35,7 @@ var _ = Describe("Processor", func() {
 		mockVersionGet *mocks.VersionGetter
 		mockBrancher   *mocks.Brancher
 		mockPRCreator  *mocks.PRCreator
+		mockWorktree   *mocks.Worktree
 	)
 
 	BeforeEach(func() {
@@ -55,6 +56,7 @@ var _ = Describe("Processor", func() {
 		mockVersionGet = &mocks.VersionGetter{}
 		mockBrancher = &mocks.Brancher{}
 		mockPRCreator = &mocks.PRCreator{}
+		mockWorktree = &mocks.Worktree{}
 		mockVersionGet.GetReturns("v0.0.1-test")
 	})
 
@@ -99,6 +101,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -155,6 +158,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -215,6 +219,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -271,6 +276,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -319,6 +325,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -367,6 +374,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -419,6 +427,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -483,6 +492,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -541,6 +551,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -589,6 +600,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -631,6 +643,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -670,6 +683,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -719,6 +733,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -779,6 +794,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
+			mockWorktree,
 		)
 
 		// Run processor in goroutine
@@ -847,6 +863,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor in goroutine
@@ -917,6 +934,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor — marks failed and continues
@@ -972,6 +990,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor — marks failed and continues
@@ -987,6 +1006,280 @@ var _ = Describe("Processor", func() {
 			// Verify branch operations succeeded
 			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
 			Expect(mockBrancher.PushCallCount()).To(Equal(1))
+
+			cancel()
+		})
+	})
+
+	Describe("Worktree Workflow", func() {
+		It("should add worktree, commit, push, create PR, and remove worktree", func() {
+			promptPath := filepath.Join(promptsDir, "001-worktree-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Add new feature\n\nWorktree test content."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Worktree test", nil)
+			mockManager.TitleReturns("Add new feature", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			// Mock worktree.Add to create the actual directory
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify worktree operations
+			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+			_, worktreePath, branchName := mockWorktree.AddArgsForCall(0)
+			Expect(worktreePath).To(Equal("../test-project-001-worktree-test"))
+			Expect(branchName).To(Equal("dark-factory/001-worktree-test"))
+
+			// Verify push was called
+			Expect(mockBrancher.PushCallCount()).To(Equal(1))
+			_, pushedBranch := mockBrancher.PushArgsForCall(0)
+			Expect(pushedBranch).To(Equal("dark-factory/001-worktree-test"))
+
+			// Verify PR was created
+			_, title, body := mockPRCreator.CreateArgsForCall(0)
+			Expect(title).To(Equal("Add new feature"))
+			Expect(body).To(Equal("Automated by dark-factory"))
+
+			// Verify worktree was removed
+			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+			_, removedPath := mockWorktree.RemoveArgsForCall(0)
+			Expect(removedPath).To(Equal("../test-project-001-worktree-test"))
+
+			// Verify CommitOnly was called, not CommitAndRelease
+			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+			Expect(mockReleaser.HasChangelogCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("should clean up worktree even on execution failure", func() {
+			promptPath := filepath.Join(promptsDir, "001-worktree-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Test\n\nFail test."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Fail test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			// Mock worktree.Add to create the actual directory
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			// Run processor
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for worktree to be cleaned up (via defer)
+			Eventually(func() int {
+				return mockWorktree.RemoveCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			// Verify worktree was added
+			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+
+			// Verify worktree was removed despite failure
+			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+
+			cancel()
+		})
+
+		It("should log warning but not fail when worktree removal fails", func() {
+			promptPath := filepath.Join(promptsDir, "001-worktree-remove-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Test\n\nRemove fail test."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			// Mock worktree.Add to create the actual directory
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			// Mock worktree.Remove to return an error but don't actually remove
+			mockWorktree.RemoveReturns(stderrors.New("worktree removal failed"))
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			// Run processor
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing - should complete despite remove failure
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify worktree removal was attempted
+			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+
+			// Verify PR was created successfully despite cleanup failure
+			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
+		It("should handle worktree add error", func() {
+			promptPath := filepath.Join(promptsDir, "001-worktree-add-error.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+			mockManager.ContentReturns("# Worktree add error test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockWorktree.AddReturns(stderrors.New("worktree already exists"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			// Run processor
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for Load to be called (marks prompt as failed)
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			// Verify executor was NOT called
+			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -1061,6 +1354,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor in goroutine
@@ -1126,6 +1420,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor in goroutine
@@ -1188,6 +1483,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1251,6 +1547,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1314,6 +1611,7 @@ more output
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor in goroutine
@@ -1379,6 +1677,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
+				mockWorktree,
 			)
 
 			// Run processor in goroutine

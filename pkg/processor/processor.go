@@ -8,6 +8,7 @@ import (
 	"context"
 	stderrors "errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -44,6 +45,7 @@ type processor struct {
 	workflow      config.Workflow
 	brancher      git.Brancher
 	prCreator     git.PRCreator
+	worktree      git.Worktree
 }
 
 // NewProcessor creates a new Processor.
@@ -60,6 +62,7 @@ func NewProcessor(
 	workflow config.Workflow,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
+	worktree git.Worktree,
 ) Processor {
 	return &processor{
 		queueDir:      queueDir,
@@ -74,6 +77,7 @@ func NewProcessor(
 		workflow:      workflow,
 		brancher:      brancher,
 		prCreator:     prCreator,
+		worktree:      worktree,
 	}
 }
 
@@ -211,19 +215,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	slog.Info("executing prompt", "title", title)
 
-	// PR mode: create feature branch before execution
-	originalBranch := ""
-	branchName := ""
-	if p.workflow == config.WorkflowPR {
-		var err error
-		originalBranch, err = p.brancher.CurrentBranch(ctx)
-		if err != nil {
-			return errors.Wrap(ctx, err, "get current branch")
-		}
-		branchName = "dark-factory/" + baseName
-		if err := p.brancher.CreateAndSwitch(ctx, branchName); err != nil {
-			return errors.Wrap(ctx, err, "create feature branch")
-		}
+	// Setup workflow (branch or worktree) before execution
+	workflowState, err := p.setupWorkflow(ctx, baseName)
+	if err != nil {
+		return err
 	}
 
 	// Derive log file path: {logDir}/{basename}.log
@@ -237,6 +232,26 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	slog.Info("docker container exited", "exitCode", 0)
 
+	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
+}
+
+// workflowState holds state needed for workflow cleanup and completion.
+type workflowState struct {
+	branchName     string
+	originalBranch string
+	worktreePath   string
+	originalDir    string
+}
+
+// handlePostExecution handles validation, moving to completed, and workflow completion.
+func (p *processor) handlePostExecution(
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	promptPath string,
+	title string,
+	logFile string,
+	state *workflowState,
+) error {
 	// Validate completion report from log
 	summary, err := validateCompletionReport(ctx, logFile)
 	if err != nil {
@@ -252,26 +267,72 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Move to completed/ before commit so it's included in the release
-	if err := p.promptManager.MoveToCompleted(ctx, pr.Path); err != nil {
+	if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
 
-	slog.Info("moved to completed", "file", filepath.Base(pr.Path))
+	slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
 	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
 	gitCtx := context.WithoutCancel(ctx)
 
 	// Commit the completed file separately (YOLO may have already committed code changes)
-	completedPath := filepath.Join(p.completedDir, filepath.Base(pr.Path))
+	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
 	if err := p.releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
 	if p.workflow == config.WorkflowPR {
-		return p.handlePRWorkflow(gitCtx, ctx, title, branchName, originalBranch)
+		return p.handlePRWorkflow(gitCtx, ctx, title, state.branchName, state.originalBranch)
+	}
+
+	if p.workflow == config.WorkflowWorktree {
+		return p.handleWorktreeWorkflow(
+			gitCtx,
+			ctx,
+			title,
+			state.branchName,
+			state.worktreePath,
+			state.originalDir,
+		)
 	}
 
 	return p.handleDirectWorkflow(gitCtx, ctx, title)
+}
+
+// setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
+func (p *processor) setupWorkflow(ctx context.Context, baseName string) (*workflowState, error) {
+	state := &workflowState{}
+
+	if p.workflow == config.WorkflowPR {
+		var err error
+		state.originalBranch, err = p.brancher.CurrentBranch(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, "get current branch")
+		}
+		state.branchName = "dark-factory/" + baseName
+		if err := p.brancher.CreateAndSwitch(ctx, state.branchName); err != nil {
+			return nil, errors.Wrap(ctx, err, "create feature branch")
+		}
+		return state, nil
+	}
+
+	if p.workflow == config.WorkflowWorktree {
+		state.branchName = "dark-factory/" + baseName
+		state.worktreePath = filepath.Join("..", p.projectName+"-"+baseName)
+		var err error
+		state.originalDir, err = p.setupWorktreeForExecution(
+			ctx,
+			state.worktreePath,
+			state.branchName,
+		)
+		if err != nil {
+			return nil, err
+		}
+		return state, nil
+	}
+
+	return state, nil
 }
 
 // handleEmptyPrompt handles empty prompts by moving them to completed without execution.
@@ -329,6 +390,90 @@ func (p *processor) handlePRWorkflow(
 	}
 
 	return nil
+}
+
+// handleWorktreeWorkflow handles the worktree-based workflow: commit, push, create PR, remove worktree.
+func (p *processor) handleWorktreeWorkflow(
+	gitCtx context.Context,
+	ctx context.Context,
+	title string,
+	branchName string,
+	worktreePath string,
+	originalDir string,
+) error {
+	// Commit changes (we're already in the worktree directory)
+	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
+		return errors.Wrap(ctx, err, "commit changes")
+	}
+
+	// Push branch
+	if err := p.brancher.Push(gitCtx, branchName); err != nil {
+		return errors.Wrap(ctx, err, "push branch")
+	}
+
+	// Create PR
+	prURL, err := p.prCreator.Create(gitCtx, title, "Automated by dark-factory")
+	if err != nil {
+		return errors.Wrap(ctx, err, "create pull request")
+	}
+	slog.Info("created PR", "url", prURL)
+
+	// Switch back to original directory
+	if err := os.Chdir(originalDir); err != nil {
+		return errors.Wrap(ctx, err, "chdir back to original directory")
+	}
+
+	// Remove worktree (best-effort cleanup)
+	if err := p.worktree.Remove(gitCtx, worktreePath); err != nil {
+		slog.Warn("failed to remove worktree", "path", worktreePath, "error", err)
+		// Non-fatal — worktree cleanup is best-effort
+	}
+
+	return nil
+}
+
+// setupWorktreeForExecution creates a worktree, switches to it, and sets up cleanup.
+// Returns the original directory path for later restoration.
+func (p *processor) setupWorktreeForExecution(
+	ctx context.Context,
+	worktreePath string,
+	branchName string,
+) (string, error) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "get current directory")
+	}
+
+	if err := p.worktree.Add(ctx, worktreePath, branchName); err != nil {
+		return "", errors.Wrap(ctx, err, "add worktree")
+	}
+
+	// Ensure cleanup happens even if execution fails
+	defer func() {
+		if originalDir != "" {
+			if err := os.Chdir(originalDir); err != nil {
+				slog.Warn("failed to chdir back to original directory", "error", err)
+			}
+		}
+		if worktreePath != "" {
+			if err := p.worktree.Remove(ctx, worktreePath); err != nil {
+				slog.Warn(
+					"failed to remove worktree on defer",
+					"path",
+					worktreePath,
+					"error",
+					err,
+				)
+			}
+		}
+	}()
+
+	// Switch to worktree directory
+	if err := os.Chdir(worktreePath); err != nil {
+		return "", errors.Wrap(ctx, err, "chdir to worktree")
+	}
+
+	return originalDir, nil
 }
 
 // handleDirectWorkflow handles the direct commit workflow: commit, tag, push.

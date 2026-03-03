@@ -292,7 +292,13 @@ func (p *processor) handlePostExecution(
 	}
 
 	if p.workflow == config.WorkflowPR {
-		return p.handlePRWorkflow(gitCtx, ctx, title, summary, state.branchName, state.originalBranch)
+		return p.handlePRWorkflow(
+			gitCtx,
+			ctx,
+			title,
+			state.branchName,
+			state.originalBranch,
+		)
 	}
 
 	if p.workflow == config.WorkflowWorktree {
@@ -300,14 +306,13 @@ func (p *processor) handlePostExecution(
 			gitCtx,
 			ctx,
 			title,
-			summary,
 			state.branchName,
 			state.worktreePath,
 			state.originalDir,
 		)
 	}
 
-	return p.handleDirectWorkflow(gitCtx, ctx, title, summary)
+	return p.handleDirectWorkflow(gitCtx, ctx, title)
 }
 
 // setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
@@ -374,7 +379,6 @@ func (p *processor) handlePRWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
-	summary string,
 	branchName string,
 	originalBranch string,
 ) error {
@@ -408,7 +412,6 @@ func (p *processor) handleWorktreeWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
-	summary string,
 	branchName string,
 	worktreePath string,
 	originalDir string,
@@ -493,7 +496,6 @@ func (p *processor) handleDirectWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
-	summary string,
 ) error {
 	// Without CHANGELOG: simple commit only (no tag, no push)
 	if !p.releaser.HasChangelog(gitCtx) {
@@ -504,20 +506,14 @@ func (p *processor) handleDirectWorkflow(
 		return nil
 	}
 
-	// With CHANGELOG: update changelog, bump version, tag, push
-	// Use summary for changelog entry if available, otherwise fall back to title
-	changelogEntry := summary
-	if changelogEntry == "" {
-		changelogEntry = title
-	}
-
-	bump := determineBump(title)
+	// With CHANGELOG: rename ## Unreleased to version, bump version, tag, push
+	bump := determineBump()
 	nextVersion, err := p.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := p.releaser.CommitAndRelease(gitCtx, changelogEntry, bump); err != nil {
+	if err := p.releaser.CommitAndRelease(gitCtx, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 
@@ -595,14 +591,51 @@ func sanitizeContainerName(name string) string {
 	return re.ReplaceAllString(name, "-")
 }
 
-// determineBump determines the version bump type based on the title.
+// determineBump determines the version bump type by analyzing CHANGELOG.md content.
 // Returns MinorBump for new features, PatchBump for everything else.
-func determineBump(title string) git.VersionBump {
-	lower := strings.ToLower(title)
+func determineBump() git.VersionBump {
+	// Read CHANGELOG.md
+	content, err := os.ReadFile("CHANGELOG.md")
+	if err != nil {
+		// If CHANGELOG doesn't exist or can't be read, default to PatchBump
+		return git.PatchBump
+	}
+
+	// Extract ## Unreleased section content
+	unreleasedContent := extractUnreleasedSection(string(content))
+	if unreleasedContent == "" {
+		return git.PatchBump
+	}
+
+	// Analyze content for feature keywords
+	lower := strings.ToLower(unreleasedContent)
 	for _, kw := range []string{"add", "implement", "new", "support", "feature"} {
 		if strings.Contains(lower, kw) {
 			return git.MinorBump
 		}
 	}
 	return git.PatchBump
+}
+
+// extractUnreleasedSection extracts content between ## Unreleased and the next ## section
+func extractUnreleasedSection(content string) string {
+	lines := strings.Split(content, "\n")
+	inUnreleased := false
+	var unreleasedLines []string
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "## Unreleased") {
+			inUnreleased = true
+			continue
+		}
+		if inUnreleased && strings.HasPrefix(line, "##") {
+			// Hit next version section, stop
+			break
+		}
+		if inUnreleased {
+			unreleasedLines = append(unreleasedLines, line)
+		}
+	}
+
+	return strings.Join(unreleasedLines, "\n")
 }

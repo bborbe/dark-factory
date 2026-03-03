@@ -1,3 +1,13 @@
+---
+status: completed
+summary: 'Simplified changelog handling to only rename ## Unreleased section, preserving all content'
+container: dark-factory-063-changelog-from-unreleased
+dark-factory-version: v0.14.2
+created: "2026-03-03T20:43:09Z"
+queued: "2026-03-03T20:43:09Z"
+started: "2026-03-03T20:43:09Z"
+completed: "2026-03-03T20:57:14Z"
+---
 <objective>
 Change dark-factory to stop generating changelog entries. Instead, only rename an existing `## Unreleased` section to `## vX.Y.Z` at release time. The YOLO container (Claude) writes the actual changelog content — dark-factory should never invent changelog text.
 </objective>

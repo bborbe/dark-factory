@@ -32,7 +32,7 @@ const (
 //counterfeiter:generate -o ../../mocks/releaser.go --fake-name Releaser . Releaser
 type Releaser interface {
 	GetNextVersion(ctx context.Context, bump VersionBump) (string, error)
-	CommitAndRelease(ctx context.Context, title string, bump VersionBump) error
+	CommitAndRelease(ctx context.Context, bump VersionBump) error
 	CommitCompletedFile(ctx context.Context, path string) error
 	CommitOnly(ctx context.Context, message string) error
 	HasChangelog(ctx context.Context) bool
@@ -53,8 +53,8 @@ func (r *releaser) GetNextVersion(ctx context.Context, bump VersionBump) (string
 }
 
 // CommitAndRelease performs the full git workflow.
-func (r *releaser) CommitAndRelease(ctx context.Context, title string, bump VersionBump) error {
-	return CommitAndRelease(ctx, title, bump)
+func (r *releaser) CommitAndRelease(ctx context.Context, bump VersionBump) error {
+	return CommitAndRelease(ctx, bump)
 }
 
 // CommitCompletedFile commits a completed prompt file to git.
@@ -92,12 +92,12 @@ func (r *releaser) MoveFile(ctx context.Context, oldPath string, newPath string)
 
 // CommitAndRelease performs the full git workflow:
 // 1. git add -A
-// 2. Read CHANGELOG.md and add entry
+// 2. Read CHANGELOG.md and rename ## Unreleased to version
 // 3. Bump version (patch or minor)
 // 4. git commit
 // 5. git tag
 // 6. git push + push tag
-func CommitAndRelease(ctx context.Context, changelogEntry string, bump VersionBump) error {
+func CommitAndRelease(ctx context.Context, bump VersionBump) error {
 	// Stage all changes
 	if err := gitAddAll(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git add")
@@ -110,7 +110,7 @@ func CommitAndRelease(ctx context.Context, changelogEntry string, bump VersionBu
 	}
 
 	// Update CHANGELOG
-	if err := updateChangelog(ctx, changelogEntry, nextVersion); err != nil {
+	if err := updateChangelog(ctx, nextVersion); err != nil {
 		return errors.Wrap(ctx, err, "update changelog")
 	}
 
@@ -306,10 +306,9 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 	return nextVersion.String(), nil
 }
 
-// updateChangelog adds an entry to CHANGELOG.md and renames ## Unreleased to version
-//
-//nolint:gocognit
-func updateChangelog(ctx context.Context, entry string, version string) error {
+// updateChangelog renames ## Unreleased to version in CHANGELOG.md
+// If no ## Unreleased section exists, does nothing (no error).
+func updateChangelog(ctx context.Context, version string) error {
 	changelogPath := "CHANGELOG.md"
 
 	content, err := os.ReadFile(changelogPath)
@@ -318,10 +317,11 @@ func updateChangelog(ctx context.Context, entry string, version string) error {
 	}
 
 	lines := strings.Split(string(content), "\n")
-	result, unreleasedFound := processUnreleasedSection(lines, entry, version)
+	result, unreleasedFound := processUnreleasedSection(lines, version)
 
+	// If no Unreleased section found, do nothing
 	if !unreleasedFound {
-		result = insertNewVersionSection(lines, entry, version)
+		return nil
 	}
 
 	output := strings.Join(result, "\n")
@@ -332,76 +332,22 @@ func updateChangelog(ctx context.Context, entry string, version string) error {
 	return nil
 }
 
-// processUnreleasedSection processes lines and replaces ## Unreleased with version
-func processUnreleasedSection(lines []string, entry string, version string) ([]string, bool) {
-	result := make([]string, 0, len(lines)+3)
+// processUnreleasedSection renames ## Unreleased to ## version, preserving all content
+func processUnreleasedSection(lines []string, version string) ([]string, bool) {
+	result := make([]string, 0, len(lines))
 	unreleasedFound := false
-	inUnreleasedSection := false
 
 	for _, line := range lines {
 		if strings.HasPrefix(line, "## Unreleased") {
 			unreleasedFound = true
-			inUnreleasedSection = true
 			result = append(result, "## "+version)
-			result = append(result, "")
-			result = append(result, "- "+entry)
 			continue
-		}
-
-		// Skip subsection headers (###) within the Unreleased section
-		if inUnreleasedSection && strings.HasPrefix(line, "###") {
-			continue
-		}
-
-		// Exit Unreleased section when we hit another ## section
-		if inUnreleasedSection && strings.HasPrefix(line, "##") {
-			inUnreleasedSection = false
 		}
 
 		result = append(result, line)
 	}
 
 	return result, unreleasedFound
-}
-
-// insertNewVersionSection inserts a new version section when no Unreleased exists
-func insertNewVersionSection(lines []string, entry string, version string) []string {
-	insertIndex := findInsertIndex(lines)
-	if insertIndex == -1 {
-		return lines
-	}
-
-	newSection := []string{
-		"## " + version,
-		"",
-		"- " + entry,
-		"",
-	}
-
-	result := make([]string, 0, len(lines)+len(newSection))
-	result = append(result, lines[:insertIndex]...)
-	result = append(result, newSection...)
-	result = append(result, lines[insertIndex:]...)
-
-	return result
-}
-
-// findInsertIndex finds where to insert a new version section
-func findInsertIndex(lines []string) int {
-	for i, line := range lines {
-		if line == "" && i > 0 &&
-			(strings.HasPrefix(lines[i-1], "#") || strings.Contains(lines[i-1], "Semantic Versioning")) {
-			return i + 1
-		}
-	}
-
-	for i, line := range lines {
-		if line == "" {
-			return i + 1
-		}
-	}
-
-	return -1
 }
 
 // gitCommit creates a commit with the given message

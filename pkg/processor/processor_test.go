@@ -441,7 +441,7 @@ var _ = Describe("Processor", func() {
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify PatchBump was used
-		_, _, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.PatchBump))
 
 		// Verify CommitOnly was NOT called
@@ -451,6 +451,20 @@ var _ = Describe("Processor", func() {
 	})
 
 	It("should call CommitAndRelease with MinorBump for feature title", func() {
+		// Create CHANGELOG.md with "Add new feature" in Unreleased section
+		// determineBump reads from current directory
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+
+		err = os.Chdir(tempDir)
+		Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			_ = os.Chdir(originalDir)
+		}()
+
+		err = os.WriteFile("CHANGELOG.md", []byte("## Unreleased\n\n- Add new feature\n"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
 		promptPath := filepath.Join(promptsDir, "001-feature.md")
 		queued := []prompt.Prompt{
 			{Path: promptPath, Status: prompt.StatusQueued},
@@ -506,7 +520,7 @@ var _ = Describe("Processor", func() {
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify MinorBump was used
-		_, _, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.MinorBump))
 
 		cancel()

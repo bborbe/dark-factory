@@ -122,10 +122,10 @@ var _ = Describe("Git", func() {
 		})
 
 		It("CommitAndRelease performs full workflow", func() {
-			// Create CHANGELOG.md
+			// Create CHANGELOG.md with entry in Unreleased
 			err := os.WriteFile(
 				filepath.Join(tempDir, "CHANGELOG.md"),
-				[]byte("# Changelog\n\n## Unreleased\n\n"),
+				[]byte("# Changelog\n\n## Unreleased\n\n- Add test feature\n"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -164,7 +164,7 @@ var _ = Describe("Git", func() {
 			err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = r.CommitAndRelease(ctx, "Add test feature", git.PatchBump)
+			err = r.CommitAndRelease(ctx, git.PatchBump)
 			Expect(err).To(BeNil())
 
 			// Verify tag was created
@@ -593,10 +593,29 @@ var _ = Describe("Git", func() {
 			}
 		})
 
-		Context("with changes to commit", func() {
+		Context("with changes to commit and ## Unreleased with entries", func() {
 			BeforeEach(func() {
-				// Create a new file to commit
+				// Update CHANGELOG to have entries in Unreleased
+				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
 				err := os.WriteFile(
+					changelogPath,
+					[]byte("# Changelog\n\n## Unreleased\n\n- Add test feature\n- Fix bug\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "update changelog")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create a new file to commit
+				err = os.WriteFile(
 					filepath.Join(tempDir, "test.txt"),
 					[]byte("test content"),
 					0600,
@@ -604,8 +623,8 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("creates commit, tag, and updates CHANGELOG with PatchBump", func() {
-				err := git.CommitAndRelease(ctx, "Add test feature", git.PatchBump)
+			It("renames ## Unreleased to version and preserves entries", func() {
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify commit was created
@@ -622,18 +641,31 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(output)).To(ContainSubstring("v0.1.0"))
 
-				// Verify CHANGELOG was updated
+				// Verify CHANGELOG was updated - ## Unreleased renamed to ## v0.1.0
 				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
+				// Original entries should be preserved
 				Expect(string(changelogContent)).To(ContainSubstring("- Add test feature"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Fix bug"))
+				// Should NOT contain ## Unreleased anymore
+				Expect(string(changelogContent)).NotTo(ContainSubstring("## Unreleased"))
 			})
 		})
 
 		Context("with existing version tag", func() {
 			BeforeEach(func() {
+				// Update CHANGELOG to have v0.1.0 section
+				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
+				err := os.WriteFile(
+					changelogPath,
+					[]byte("# Changelog\n\n## v0.1.0\n\n- First feature\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
 				// Create a file and commit it with v0.1.0 tag
-				err := os.WriteFile(filepath.Join(tempDir, "first.txt"), []byte("first"), 0600)
+				err = os.WriteFile(filepath.Join(tempDir, "first.txt"), []byte("first"), 0600)
 				Expect(err).NotTo(HaveOccurred())
 
 				cmd := exec.Command("git", "add", ".")
@@ -651,13 +683,33 @@ var _ = Describe("Git", func() {
 				err = cmd.Run()
 				Expect(err).NotTo(HaveOccurred())
 
+				// Add ## Unreleased section with new entries
+				err = os.WriteFile(
+					changelogPath,
+					[]byte(
+						"# Changelog\n\n## Unreleased\n\n- Add second feature\n\n## v0.1.0\n\n- First feature\n",
+					),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "add unreleased section")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
 				// Now create another file for next release
 				err = os.WriteFile(filepath.Join(tempDir, "second.txt"), []byte("second"), 0600)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("bumps to next version with PatchBump", func() {
-				err := git.CommitAndRelease(ctx, "Add second feature", git.PatchBump)
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify new tag was created
@@ -672,6 +724,7 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.1"))
 				Expect(string(changelogContent)).To(ContainSubstring("- Add second feature"))
+				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
 			})
 		})
 
@@ -679,10 +732,51 @@ var _ = Describe("Git", func() {
 			BeforeEach(func() {
 				// Update CHANGELOG to not have Unreleased section
 				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
+				originalContent := "# Changelog\n\nAll notable changes to this project will be documented in this file.\n"
+				err := os.WriteFile(
+					changelogPath,
+					[]byte(originalContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "update changelog")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create a new file to commit
+				err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("does nothing to CHANGELOG when no Unreleased section", func() {
+				originalContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
+				Expect(err).NotTo(HaveOccurred())
+
+				err = git.CommitAndRelease(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+
+				// Verify CHANGELOG was NOT modified (no Unreleased section to rename)
+				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(changelogContent)).To(Equal(string(originalContent)))
+			})
+		})
+
+		Context("with CHANGELOG with existing subsection in Unreleased", func() {
+			BeforeEach(func() {
+				// Update CHANGELOG to have subsection in Unreleased
+				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
 				err := os.WriteFile(
 					changelogPath,
 					[]byte(
-						"# Changelog\n\nAll notable changes to this project will be documented in this file.\n",
+						"# Changelog\n\n## Unreleased\n\n### Fixed\n- Some bug fix\n\n### Added\n- New feature\n",
 					),
 					0600,
 				)
@@ -703,27 +797,79 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("inserts new version section", func() {
-				err := git.CommitAndRelease(ctx, "Add feature without unreleased", git.PatchBump)
+			It("renames Unreleased to version and preserves all subsections", func() {
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
-				// Verify CHANGELOG has new version
+				// Verify CHANGELOG has version WITH subsections preserved
 				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
-				Expect(
-					string(changelogContent),
-				).To(ContainSubstring("- Add feature without unreleased"))
+				// Subsections should be preserved
+				Expect(string(changelogContent)).To(ContainSubstring("### Fixed"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Some bug fix"))
+				Expect(string(changelogContent)).To(ContainSubstring("### Added"))
+				Expect(string(changelogContent)).To(ContainSubstring("- New feature"))
+				// Should NOT contain ## Unreleased anymore
+				Expect(string(changelogContent)).NotTo(ContainSubstring("## Unreleased"))
 			})
 		})
 
-		Context("with CHANGELOG with existing subsection in Unreleased", func() {
+		Context("with empty Unreleased section", func() {
 			BeforeEach(func() {
-				// Update CHANGELOG to have subsection in Unreleased
+				// Update CHANGELOG to have empty Unreleased section
 				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
 				err := os.WriteFile(
 					changelogPath,
-					[]byte("# Changelog\n\n## Unreleased\n### Fixed\n- Some bug fix\n"),
+					[]byte("# Changelog\n\n## Unreleased\n\n## v0.0.1\n\n- Initial release\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "update changelog")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Tag v0.0.1
+				cmd = exec.Command("git", "tag", "v0.0.1")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create a new file to commit
+				err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("renames empty Unreleased to version", func() {
+				err := git.CommitAndRelease(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+
+				// Verify CHANGELOG renamed empty section
+				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(changelogContent)).To(ContainSubstring("## v0.0.2"))
+				Expect(string(changelogContent)).NotTo(ContainSubstring("## Unreleased"))
+				// Should still have old version
+				Expect(string(changelogContent)).To(ContainSubstring("## v0.0.1"))
+			})
+		})
+
+		Context("with multiple entries under Unreleased", func() {
+			BeforeEach(func() {
+				// Update CHANGELOG to have multiple entries
+				changelogPath := filepath.Join(tempDir, "CHANGELOG.md")
+				err := os.WriteFile(
+					changelogPath,
+					[]byte(
+						"# Changelog\n\n## Unreleased\n\n- Add feature A\n- Add feature B\n- Fix bug C\n- Update documentation D\n",
+					),
 					0600,
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -743,17 +889,19 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("replaces Unreleased with version section without subsections", func() {
-				err := git.CommitAndRelease(ctx, "Add new feature", git.PatchBump)
+			It("preserves all entries after renaming", func() {
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
-				// Verify CHANGELOG has version without subsections (### Fixed is removed)
+				// Verify all entries are preserved
 				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
-				Expect(string(changelogContent)).To(ContainSubstring("- Add new feature"))
-				// Subsection should be removed in the new format
-				Expect(string(changelogContent)).NotTo(ContainSubstring("### Fixed"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Add feature A"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Add feature B"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Fix bug C"))
+				Expect(string(changelogContent)).To(ContainSubstring("- Update documentation D"))
+				Expect(string(changelogContent)).NotTo(ContainSubstring("## Unreleased"))
 			})
 		})
 	})

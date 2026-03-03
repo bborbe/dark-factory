@@ -14,12 +14,13 @@ import (
 
 // Workflow defines how prompts are processed.
 const (
-	WorkflowDirect Workflow = "direct"
-	WorkflowPR     Workflow = "pr"
+	WorkflowDirect   Workflow = "direct"
+	WorkflowPR       Workflow = "pr"
+	WorkflowWorktree Workflow = "worktree"
 )
 
 // AvailableWorkflows contains all valid workflow values.
-var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR}
+var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR, WorkflowWorktree}
 
 // Workflow is a string-based enum for workflow types.
 type Workflow string

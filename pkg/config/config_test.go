@@ -67,6 +67,21 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("succeeds for worktree workflow", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowWorktree,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.8",
+				DebounceMs:     500,
+				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("fails for invalid workflow", func() {
 			cfg := config.Config{
 				Workflow:       "invalid",
@@ -302,6 +317,11 @@ var _ = Describe("Config", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			It("succeeds for worktree workflow", func() {
+				err := config.WorkflowWorktree.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
 			It("fails for unknown workflow", func() {
 				err := config.Workflow("unknown").Validate(ctx)
 				Expect(err).To(HaveOccurred())
@@ -313,6 +333,7 @@ var _ = Describe("Config", func() {
 			It("returns string representation", func() {
 				Expect(config.WorkflowDirect.String()).To(Equal("direct"))
 				Expect(config.WorkflowPR.String()).To(Equal("pr"))
+				Expect(config.WorkflowWorktree.String()).To(Equal("worktree"))
 			})
 		})
 
@@ -330,6 +351,7 @@ var _ = Describe("Config", func() {
 			It("returns true for valid workflow", func() {
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowDirect)).To(BeTrue())
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowPR)).To(BeTrue())
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowWorktree)).To(BeTrue())
 			})
 
 			It("returns false for invalid workflow", func() {

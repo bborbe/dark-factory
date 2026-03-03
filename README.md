@@ -205,7 +205,7 @@ Runs on port 8080 (configurable via `serverPort`):
 Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses defaults.
 
 ```yaml
-workflow: direct                                    # "direct" (default) or "pr"
+workflow: direct                                    # "direct" (default), "pr", or "worktree"
 inboxDir: prompts                                   # passive drop zone (default: prompts)
 queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
 completedDir: prompts/completed                     # archive dir (default: prompts/completed)

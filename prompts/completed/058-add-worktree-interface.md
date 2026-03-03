@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Added Worktree interface in pkg/git and WorkflowWorktree config constant alongside existing code
+container: dark-factory-058-add-worktree-interface
+dark-factory-version: v0.13.2
+created: "2026-03-03T16:46:19Z"
+queued: "2026-03-03T16:46:19Z"
+started: "2026-03-03T16:46:19Z"
+completed: "2026-03-03T16:52:49Z"
+---
 # Add Worktree interface and WorkflowWorktree config
 
 ## Goal

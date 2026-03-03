@@ -10,8 +10,8 @@
 /.serena
 /.update-logs/
 /CLAUDE.md
-/coverage.out
-/coverage.html
+coverage.out
+coverage.html
 /dark-factory
 /data
 /gha-creds-*.json

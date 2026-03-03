@@ -10,23 +10,23 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.14.5
 
-- Simplify changelog handling to only rename ## Unreleased section
+- Refactor changelog handling to only rename ## Unreleased section
 
 ## v0.14.4
 
-- Use prompt summary as changelog entry instead of prompt filename
+- Refactor changelog entry to use prompt summary instead of filename
 
 ## v0.14.3
 
-- Fetch and merge origin/master before each prompt execution
+- Add origin/master fetch and merge before each prompt execution
 
 ## v0.14.2
 
-- Switch git commit from go-git to subprocess
+- Refactor git commit from go-git to subprocess
 
 ## v0.14.1
 
-- Wire worktree workflow into processor and factory
+- Add worktree workflow to processor and factory
 
 ## v0.14.0
 
@@ -34,26 +34,27 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.13.3
 
-- Change queueDir default to prompts/queue
+- Update queueDir default to prompts/queue
 
 ## v0.13.2
 
-- Log dark-factory version on startup
+- Add dark-factory version logging on startup
 
 ## v0.13.1
 
-- Store completion summary in prompt frontmatter
+- Add completion summary to prompt frontmatter
 
 ## v0.13.0
 
 - Add debug logging to watcher and processor
 
 ## v0.12.2
+
 - Update claude-yolo image from v0.0.7 to v0.0.8
 
 ## v0.12.1
 
-- Use project name as Docker container name prefix
+- Add project name as Docker container name prefix
 
 ## v0.12.0
 
@@ -61,31 +62,31 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.11.8
 
-- Only accept success completion report for commit
+- Fix commit to only accept success completion report
 
 ## v0.11.7
 
-- Parse completion report from YOLO log output
+- Add completion report parsing from YOLO log output
 
 ## v0.11.6
 
-- Rewrite prompt file Load/Save handling
+- Refactor prompt file Load/Save handling
 
 ## v0.11.5
 
-- Add prompt for Load/Save rewrite of prompt file handling
+- Add prompt for prompt file Load/Save refactor
 
 ## v0.11.4
 
-- Append completion report suffix to prompt content
+- Add completion report suffix to prompt content
 
 ## v0.11.3
 
-- Replace custom frontmatter parser with adrg/frontmatter library
+- Refactor frontmatter parser to use adrg/frontmatter library
 
 ## v0.11.2
 
-- Count completed directory files as completed regardless of frontmatter
+- Fix completed directory files counted regardless of frontmatter
 
 ## v0.11.1
 
@@ -97,15 +98,15 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.10.7
 
-- Strip duplicate/empty frontmatter from prompt content
+- Remove duplicate/empty frontmatter from prompt content
 
 ## v0.10.6
 
-- Reset failed prompts to queued on startup
+- Fix failed prompts by resetting to queued on startup
 
 ## v0.10.5
 
-- Runner should not normalize inbox directory
+- Fix Runner incorrectly normalizing inbox directory
 
 ## v0.10.4
 
@@ -121,7 +122,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.10.1
 
-- Disable HTTP server when serverPort is 0 or missing
+- Update HTTP server to disable when serverPort is 0 or missing
 
 ## v0.10.0
 
@@ -136,11 +137,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 - Add PR-based workflow (feature branch + pull request)
 
 ## v0.8.2
+
 - Update README with prerequisites, installation, quick start, prompt writing guide
 - Add example project with config, inbox prompt, queued prompt, completed prompt
 - Add `make install` target to Makefile
 - Remove `build` target from Makefile
-- Split `.PHONY` declarations next to each target
+- Refactor `.PHONY` declarations next to each target
 
 ## v0.8.1
 
@@ -156,7 +158,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.6.1
 
-- Restructure prompt directories with configurable paths
+- Refactor prompt directories with configurable paths
 
 ## v0.6.0
 
@@ -172,7 +174,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.3.1
 
-- Split watcher and processor into independent goroutines
+- Refactor watcher and processor into independent goroutines
 
 ## v0.3.0
 
@@ -180,7 +182,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.36
 
-- Use git mv for prompt file renames and moves
+- Refactor prompt file renames and moves to use git mv
 
 ## v0.2.35
 
@@ -196,11 +198,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.32
 
-- Codebase cleanup: fix all existing code quality issues
+- Fix code quality issues across codebase
 
 ## v0.2.31
 
-- Replace git subprocess calls with go-git library
+- Refactor git subprocess calls to use go-git library
 
 ## v0.2.30
 
@@ -208,19 +210,19 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.29
 
-- Make CHANGELOG.md and git release optional
+- Update CHANGELOG.md and git release to be optional
 
 ## v0.2.28
 
-- Pin claude-yolo image to a specific version tag
+- Update claude-yolo image from latest to v0.0.7
 
 ## v0.2.27
 
-- Fix: completed/ prompt file missing from release commit
+- Fix completed/ prompt file missing from release commit
 
 ## v0.2.26
 
-- Extract service interfaces from runner god object
+- Refactor runner god object to extract service interfaces
 
 ## v0.2.25
 
@@ -228,42 +230,42 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.24
 
-- Serialize prompt execution to prevent concurrent git conflicts
+- Add prompt execution serialization to prevent concurrent git conflicts
 
 ## v0.2.23
 
-- Fix: NormalizeFilenames must include completed/ numbers when assigning new numbers
+- Fix NormalizeFilenames to include completed/ numbers when assigning new numbers
 
 ## v0.2.22
 
-- Pin claude-yolo image to a specific version tag
+- Update claude-yolo image from latest to v0.0.7
 
 ## v0.2.21
 
-- Mount .claude-yolo as read-write so Claude Code can write session data
-- Revert unimplemented prompts 012/013 back to ideas
+- Update .claude-yolo mount to read-write so Claude Code can write session data
+- Remove unimplemented prompts 012/013 (reverted to ideas)
 
 ## v0.2.20
 
-- Pin claude-yolo image to a specific version tag
+- Update claude-yolo image from latest to v0.0.7
 
 ## v0.2.19
 
-- NormalizeFilenames now scans completed/ to avoid duplicate number assignment
-- processPrompt uses context.WithoutCancel for git ops to prevent shutdown interruption
-- processExistingQueued logs SetStatus failure gracefully when file already moved
+- Fix NormalizeFilenames to scan completed/ and avoid duplicate number assignment
+- Fix processPrompt to use context.WithoutCancel for git ops to prevent shutdown interruption
+- Fix processExistingQueued to log SetStatus failure gracefully when file already moved
 
 ## v0.2.18
 
-- Fix: NormalizeFilenames must include completed/ numbers when assigning new numbers
+- Fix NormalizeFilenames to include completed/ numbers when assigning new numbers
 
 ## v0.2.17
 
-- Fix: NormalizeFilenames must include completed/ numbers when assigning new numbers
+- Fix NormalizeFilenames to include completed/ numbers when assigning new numbers
 
 ## v0.2.16
 
-- Fix: completed/ prompt file missing from release commit
+- Fix completed/ prompt file missing from release commit
 
 ## v0.2.15
 
@@ -271,55 +273,55 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.14
 
-- Fix: completed/ files not staged before git commit
+- Fix completed/ files not staged before git commit
 
 ## v0.2.13
 
-- Fix code review findings
+- Fix code quality issues from code review
 
 ## v0.2.12
 
-- Increase test coverage to ≥80% for all packages
+- Improve test coverage to ≥80% for all packages
 
 ## v0.2.11
 
-- Track Docker container name in prompt frontmatter
+- Add Docker container name tracking to prompt frontmatter
 
 ## v0.2.10
 
-- Strip frontmatter from prompt content before passing to executor (fixes `---` parsed as CLI option)
-- Reset prompt 007 to queued after failure
+- Remove frontmatter from prompt content before passing to executor (fixes `---` parsed as CLI option)
+- Fix prompt 007 status by resetting to queued after failure
 
 ## v0.2.9
 
-- Pass prompt content via file instead of env var
+- Refactor prompt content to pass via file instead of env var
 
 ## v0.2.8
 
-- Frontmatter parser no longer matches inline `---` in content (only line-boundary delimiters)
-- Watcher now handles CHMOD events (macOS touch)
+- Fix frontmatter parser to not match inline `---` in content (only line-boundary delimiters)
+- Fix Watcher to handle CHMOD events (macOS touch)
 
 ## v0.2.7
 
-- Pass prompt via mounted temp file instead of `-e` env var (fixes shell escaping with backticks, `---`, quotes)
+- Refactor prompt delivery to use mounted temp file instead of `-e` env var (fixes shell escaping with backticks, `---`, quotes)
 
 ## v0.2.6
 
-- Reset stuck "executing" prompts to "queued" on startup
-- Fixed status in completed prompts 003 and 004
-- Prompt 006 for container name tracking
-- YOLO docs for counterfeiter and suite file patterns
+- Fix stuck "executing" prompts by resetting to "queued" on startup
+- Fix status in completed prompts 003 and 004
+- Add prompt 006 for container name tracking
+- Add YOLO docs for counterfeiter and suite file patterns
 
 ## v0.2.5
 
-- Save container output to log file
+- Add container output logging to file
 
 ## v0.2.4
 
-- Save container output to `prompts/log/{name}.log` while streaming to terminal
-- Counterfeiter-generated mock for Executor interface
-- Executor and factory suite test files with `//go:generate` for counterfeiter
-- Hand-written MockExecutor in factory tests (replaced by counterfeiter)
+- Add container output logging to `prompts/log/{name}.log` while streaming to terminal
+- Add counterfeiter-generated mock for Executor interface
+- Add Executor and factory suite test files with `//go:generate` for counterfeiter
+- Remove hand-written MockExecutor in factory tests (replaced by counterfeiter)
 
 ## v0.2.3
 
@@ -327,29 +329,29 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.2.2
 
-- Title fallback to filename when no heading found (instead of failing)
-- Empty/whitespace-only prompts skipped gracefully (not marked as failed)
+- Fix Title to fallback to filename when no heading found (instead of failing)
+- Fix empty/whitespace-only prompts to skip gracefully (not marked as failed)
 
 ## v0.2.1
 
-- Make frontmatter optional for prompt pickup (no frontmatter = pick it up)
-- MoveToCompleted now sets status to completed before moving
-- Completed prompts had wrong status (queued/failed instead of completed)
+- Update frontmatter to be optional for prompt pickup (no frontmatter = pick it up)
+- Fix MoveToCompleted to set status to completed before moving
+- Fix completed prompts having wrong status (queued/failed instead of completed)
 
 ## v0.2.0
 
-- fsnotify-based directory watching for persistent daemon mode
-- Executor interface for testability with mock executor
-- Integration tests for factory watch-and-process flow
-- Signal handling (SIGINT/SIGTERM) for graceful shutdown
-- 500ms debounce for editor multi-event noise
-- Logging with dark-factory: prefix
+- Add fsnotify-based directory watching for persistent daemon mode
+- Add Executor interface for testability with mock executor
+- Add integration tests for factory watch-and-process flow
+- Add signal handling (SIGINT/SIGTERM) for graceful shutdown
+- Add 500ms debounce for editor multi-event noise
+- Add logging with dark-factory: prefix
 
 ## v0.1.0
 
-- Initial project structure from go-skeleton
-- MVP main loop: scan prompts/ for queued prompts, execute via Docker, commit + tag + push
-- pkg/prompt: YAML frontmatter parsing, status management, prompt listing
-- pkg/executor: Docker claude-yolo container execution in attached mode
-- pkg/git: commit, CHANGELOG update, semver tagging, push
-- pkg/factory: main loop orchestrating prompt → execute → release cycle
+- Add initial project structure from go-skeleton
+- Add MVP main loop to scan prompts/ for queued prompts, execute via Docker, commit + tag + push
+- Add pkg/prompt with YAML frontmatter parsing, status management, prompt listing
+- Add pkg/executor with Docker claude-yolo container execution in attached mode
+- Add pkg/git with commit, CHANGELOG update, semver tagging, push
+- Add pkg/factory with main loop orchestrating prompt → execute → release cycle

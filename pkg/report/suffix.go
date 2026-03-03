@@ -22,13 +22,14 @@ As your VERY LAST output, you MUST produce a completion report in this EXACT for
 The JSON must be on a SINGLE LINE between the markers.
 
 ` + MarkerStart + `
-{"status":"success","summary":"Replaced splitFrontmatter with adrg/frontmatter library","blockers":[]}
+{"status":"success","summary":"Replaced splitFrontmatter with adrg/frontmatter library","blockers":[],"verification":{"command":"make precommit","exitCode":0}}
 ` + MarkerEnd + `
 
 Field values:
 - status: "success" = all requirements met, verification passed. "partial" = some work done but blockers remain. "failed" = could not complete the task.
 - summary: One sentence describing what was accomplished.
 - blockers: Array of strings explaining what prevented success. Empty array [] when status is "success".
+- verification: Optional object with "command" and "exitCode" fields. If status is "success", exitCode must be 0.
 
 This report is MANDATORY. Do not skip it.
 `

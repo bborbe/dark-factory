@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Added verification field to completion report with validation
+container: dark-factory-064-add-verification-to-completion-report
+dark-factory-version: v0.14.5
+created: "2026-03-03T21:01:45Z"
+queued: "2026-03-03T21:01:45Z"
+started: "2026-03-03T21:01:45Z"
+completed: "2026-03-03T21:09:57Z"
+---
 # Add verification field to completion report
 
 ## Goal

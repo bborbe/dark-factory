@@ -572,6 +572,19 @@ func validateCompletionReport(ctx context.Context, logFile string) (string, erro
 		completionReport.Summary,
 	)
 
+	// Validate consistency between status and verification results
+	correctedStatus, overridden := completionReport.ValidateConsistency()
+	if overridden {
+		slog.Warn(
+			"overriding self-reported status",
+			"reported", completionReport.Status,
+			"corrected", correctedStatus,
+			"verificationCommand", completionReport.Verification.Command,
+			"verificationExitCode", completionReport.Verification.ExitCode,
+		)
+		completionReport.Status = correctedStatus
+	}
+
 	if completionReport.Status != "success" {
 		// Report says not success — treat as failure
 		slog.Info("completion report indicates failure", "status", completionReport.Status)

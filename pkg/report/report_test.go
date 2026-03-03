@@ -130,4 +130,136 @@ var _ = Describe("CompletionReport", func() {
 		Expect(restored.Blockers).To(HaveLen(3))
 		Expect(restored.Blockers).To(Equal(original.Blockers))
 	})
+
+	It("should marshal with verification field", func() {
+		cr := report.CompletionReport{
+			Status:   "success",
+			Summary:  "Task completed",
+			Blockers: []string{},
+			Verification: &report.Verification{
+				Command:  "make precommit",
+				ExitCode: 0,
+			},
+		}
+
+		data, err := json.Marshal(cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(data)).To(ContainSubstring(`"verification":`))
+		Expect(string(data)).To(ContainSubstring(`"command":"make precommit"`))
+		Expect(string(data)).To(ContainSubstring(`"exitCode":0`))
+	})
+
+	It("should omit verification field when nil", func() {
+		cr := report.CompletionReport{
+			Status:       "success",
+			Summary:      "Task completed",
+			Blockers:     []string{},
+			Verification: nil,
+		}
+
+		data, err := json.Marshal(cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(data)).NotTo(ContainSubstring(`"verification"`))
+	})
+
+	It("should unmarshal from JSON with verification field", func() {
+		jsonData := `{"status":"success","summary":"Done","blockers":[],"verification":{"command":"make test","exitCode":0}}`
+
+		var cr report.CompletionReport
+		err := json.Unmarshal([]byte(jsonData), &cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Verification).NotTo(BeNil())
+		Expect(cr.Verification.Command).To(Equal("make test"))
+		Expect(cr.Verification.ExitCode).To(Equal(0))
+	})
+
+	It("should unmarshal from JSON without verification field (backwards compatible)", func() {
+		jsonData := `{"status":"success","summary":"Done","blockers":[]}`
+
+		var cr report.CompletionReport
+		err := json.Unmarshal([]byte(jsonData), &cr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cr.Status).To(Equal("success"))
+		Expect(cr.Summary).To(Equal("Done"))
+		Expect(cr.Verification).To(BeNil())
+	})
+})
+
+var _ = Describe("ValidateConsistency", func() {
+	It("should return success unchanged when verification is nil", func() {
+		cr := report.CompletionReport{
+			Status:       "success",
+			Summary:      "Task completed",
+			Blockers:     []string{},
+			Verification: nil,
+		}
+
+		correctedStatus, overridden := cr.ValidateConsistency()
+		Expect(correctedStatus).To(Equal("success"))
+		Expect(overridden).To(BeFalse())
+	})
+
+	It("should return success unchanged when verification exitCode is 0", func() {
+		cr := report.CompletionReport{
+			Status:   "success",
+			Summary:  "Task completed",
+			Blockers: []string{},
+			Verification: &report.Verification{
+				Command:  "make precommit",
+				ExitCode: 0,
+			},
+		}
+
+		correctedStatus, overridden := cr.ValidateConsistency()
+		Expect(correctedStatus).To(Equal("success"))
+		Expect(overridden).To(BeFalse())
+	})
+
+	It("should override success to partial when verification exitCode is non-zero", func() {
+		cr := report.CompletionReport{
+			Status:   "success",
+			Summary:  "Task completed",
+			Blockers: []string{},
+			Verification: &report.Verification{
+				Command:  "make precommit",
+				ExitCode: 1,
+			},
+		}
+
+		correctedStatus, overridden := cr.ValidateConsistency()
+		Expect(correctedStatus).To(Equal("partial"))
+		Expect(overridden).To(BeTrue())
+	})
+
+	It("should not override failed status even with non-zero exitCode", func() {
+		cr := report.CompletionReport{
+			Status:   "failed",
+			Summary:  "Task failed",
+			Blockers: []string{"build error"},
+			Verification: &report.Verification{
+				Command:  "make test",
+				ExitCode: 1,
+			},
+		}
+
+		correctedStatus, overridden := cr.ValidateConsistency()
+		Expect(correctedStatus).To(Equal("failed"))
+		Expect(overridden).To(BeFalse())
+	})
+
+	It("should not override partial status even with non-zero exitCode", func() {
+		cr := report.CompletionReport{
+			Status:   "partial",
+			Summary:  "Partially completed",
+			Blockers: []string{"some issues"},
+			Verification: &report.Verification{
+				Command:  "make precommit",
+				ExitCode: 1,
+			},
+		}
+
+		correctedStatus, overridden := cr.ValidateConsistency()
+		Expect(correctedStatus).To(Equal("partial"))
+		Expect(overridden).To(BeFalse())
+	})
 })

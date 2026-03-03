@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.13.3
+
+### Added
+- Change queueDir default to prompts/queue
+
 ## v0.13.2
 
 ### Added

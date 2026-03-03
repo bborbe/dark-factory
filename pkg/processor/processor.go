@@ -188,6 +188,15 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
+	// Sync with remote before execution
+	slog.Info("syncing with origin/master")
+	if err := p.brancher.Fetch(ctx); err != nil {
+		return errors.Wrap(ctx, err, "git fetch origin")
+	}
+	if err := p.brancher.MergeOriginMaster(ctx); err != nil {
+		return errors.Wrap(ctx, err, "git merge origin/master")
+	}
+
 	// Load prompt file once
 	pf, err := p.promptManager.Load(ctx, pr.Path)
 	if err != nil {

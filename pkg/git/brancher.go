@@ -21,6 +21,8 @@ type Brancher interface {
 	Push(ctx context.Context, name string) error
 	Switch(ctx context.Context, name string) error
 	CurrentBranch(ctx context.Context) (string, error)
+	Fetch(ctx context.Context) error
+	MergeOriginMaster(ctx context.Context) error
 }
 
 // brancher implements Brancher.
@@ -77,4 +79,26 @@ func (b *brancher) CurrentBranch(ctx context.Context) (string, error) {
 	branch := strings.TrimSpace(string(output))
 	slog.Debug("current branch", "branch", branch)
 	return branch, nil
+}
+
+// Fetch fetches updates from the remote repository.
+func (b *brancher) Fetch(ctx context.Context) error {
+	slog.Debug("fetching from origin")
+
+	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "fetch from origin")
+	}
+	return nil
+}
+
+// MergeOriginMaster merges origin/master into the current branch.
+func (b *brancher) MergeOriginMaster(ctx context.Context) error {
+	slog.Debug("merging origin/master")
+
+	cmd := exec.CommandContext(ctx, "git", "merge", "origin/master")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "merge origin/master")
+	}
+	return nil
 }

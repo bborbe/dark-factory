@@ -157,4 +157,130 @@ var _ = Describe("Brancher", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	Describe("Fetch", func() {
+		It("returns error when no remote is configured", func() {
+			// Try to fetch (should fail since no remote)
+			err := b.Fetch(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("succeeds when remote is configured", func() {
+			// Configure a remote (using the same repo as remote for test purposes)
+			cmd := exec.Command("git", "remote", "add", "origin", tempDir)
+			cmd.Dir = tempDir
+			err := cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Fetch should succeed now
+			err = b.Fetch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("MergeOriginMaster", func() {
+		It("returns error when no remote tracking branch exists", func() {
+			// Try to merge origin/master (should fail since no remote tracking branch)
+			err := b.MergeOriginMaster(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("succeeds when no conflicts exist", func() {
+			// Set up a remote tracking branch
+			cmd := exec.Command("git", "remote", "add", "origin", tempDir)
+			cmd.Dir = tempDir
+			err := cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Fetch to establish tracking
+			err = b.Fetch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Merge should succeed (no changes to merge, but command should succeed)
+			err = b.MergeOriginMaster(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns error when conflicts exist", func() {
+			// Create a second repo to simulate a remote with conflicts
+			remoteDir, err := os.MkdirTemp("", "brancher-remote-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(remoteDir) }()
+
+			// Initialize remote repo
+			cmd := exec.Command("git", "init", "--bare")
+			cmd.Dir = remoteDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Add remote
+			cmd = exec.Command("git", "remote", "add", "origin", remoteDir)
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Push to remote
+			cmd = exec.Command("git", "push", "-u", "origin", "master")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			// Ignore error if branch name is main instead of master
+			if err != nil {
+				cmd = exec.Command("git", "push", "-u", "origin", "main")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+			}
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create conflicting changes locally
+			err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("local change"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-am", "local change")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create conflicting changes in a clone (simulating remote changes)
+			cloneDir, err := os.MkdirTemp("", "brancher-clone-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(cloneDir) }()
+
+			cmd = exec.Command("git", "clone", remoteDir, cloneDir)
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Configure git in clone
+			cmd = exec.Command("git", "config", "user.email", "test@example.com")
+			cmd.Dir = cloneDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "config", "user.name", "Test User")
+			cmd.Dir = cloneDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Make conflicting change in clone
+			err = os.WriteFile(filepath.Join(cloneDir, "test.txt"), []byte("remote change"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "commit", "-am", "remote change")
+			cmd.Dir = cloneDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd = exec.Command("git", "push")
+			cmd.Dir = cloneDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Fetch the conflicting changes
+			err = b.Fetch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to merge - should fail due to conflict
+			err = b.MergeOriginMaster(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })

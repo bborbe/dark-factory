@@ -1696,4 +1696,154 @@ DARK-FACTORY-REPORT -->
 			cancel()
 		})
 	})
+
+	Describe("Git sync before execution", func() {
+		It("should call Fetch and MergeOriginMaster before processing prompt", func() {
+			promptPath := filepath.Join(promptsDir, "001-sync-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginMasterReturns(nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for processing
+			Eventually(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify Fetch and MergeOriginMaster were called
+			Expect(mockBrancher.FetchCallCount()).To(Equal(1))
+			Expect(mockBrancher.MergeOriginMasterCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
+		It("should fail prompt if Fetch fails", func() {
+			promptPath := filepath.Join(promptsDir, "001-fetch-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockBrancher.FetchReturns(stderrors.New("fetch failed"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for Fetch to be called
+			Eventually(func() int {
+				return mockBrancher.FetchCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Executor should NOT be called since Fetch failed
+			Consistently(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+			// Load should be called to mark as failed
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			cancel()
+		})
+
+		It("should fail prompt if MergeOriginMaster fails", func() {
+			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginMasterReturns(stderrors.New("merge conflict"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for MergeOriginMaster to be called
+			Eventually(func() int {
+				return mockBrancher.MergeOriginMasterCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Executor should NOT be called since MergeOriginMaster failed
+			Consistently(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+			// Load should be called to mark as failed
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			cancel()
+		})
+	})
 })

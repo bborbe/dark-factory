@@ -29,7 +29,7 @@ func Defaults() Config {
 	return Config{
 		Workflow:       WorkflowDirect,
 		InboxDir:       "prompts",
-		QueueDir:       "prompts",
+		QueueDir:       "prompts/queue",
 		CompletedDir:   "prompts/completed",
 		LogDir:         "prompts/log",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.8",

@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Changed default QueueDir from prompts to prompts/queue
+container: dark-factory-057-change-queuedir-default
+dark-factory-version: v0.13.2
+created: "2026-03-03T16:21:50Z"
+queued: "2026-03-03T16:21:50Z"
+started: "2026-03-03T16:21:50Z"
+completed: "2026-03-03T16:27:31Z"
+---
 # Change queueDir default to prompts/queue
 
 ## Goal

@@ -207,14 +207,14 @@ Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses def
 ```yaml
 workflow: direct                                    # "direct" (default) or "pr"
 inboxDir: prompts                                   # passive drop zone (default: prompts)
-queueDir: prompts/queue                             # watcher + processor dir (default: prompts)
+queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
 completedDir: prompts/completed                     # archive dir (default: prompts/completed)
 containerImage: docker.io/bborbe/claude-yolo:v0.0.8 # YOLO Docker image
 debounceMs: 500                                     # watcher debounce in ms
 serverPort: 8080                                    # REST API port
 ```
 
-**Important**: Without a config file, `queueDir` defaults to `prompts` (not `prompts/queue`). Create a `.dark-factory.yaml` to use the inbox/queue separation. See `example/` for a complete setup.
+The inbox/queue/completed separation works out of the box with these defaults. You can customize any of these paths via `.dark-factory.yaml`. See `example/` for a complete setup.
 
 ## YOLO Container Configuration
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.3
+
+### Added
+- Fetch and merge origin/master before each prompt execution
+
 ## v0.14.2
 
 ### Added

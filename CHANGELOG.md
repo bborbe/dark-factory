@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.2
+
+### Added
+- Switch git commit from go-git to subprocess
+
 ## v0.14.1
 
 ### Added

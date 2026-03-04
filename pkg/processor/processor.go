@@ -299,6 +299,7 @@ func (p *processor) handlePostExecution(
 			title,
 			state.branchName,
 			state.originalBranch,
+			completedPath,
 		)
 	}
 
@@ -310,6 +311,7 @@ func (p *processor) handlePostExecution(
 			state.branchName,
 			state.worktreePath,
 			state.originalDir,
+			completedPath,
 		)
 	}
 
@@ -383,6 +385,7 @@ func (p *processor) handlePRWorkflow(
 	title string,
 	branchName string,
 	originalBranch string,
+	completedPath string,
 ) error {
 	// Commit changes
 	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
@@ -401,6 +404,9 @@ func (p *processor) handlePRWorkflow(
 	}
 	slog.Info("created PR", "url", prURL)
 
+	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
+	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL, branchName)
+
 	// Switch back to original branch for next prompt
 	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
 		return errors.Wrap(ctx, err, "switch back to "+originalBranch)
@@ -417,6 +423,7 @@ func (p *processor) handleWorktreeWorkflow(
 	branchName string,
 	worktreePath string,
 	originalDir string,
+	completedPath string,
 ) error {
 	// Commit changes (we're already in the worktree directory)
 	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
@@ -434,6 +441,9 @@ func (p *processor) handleWorktreeWorkflow(
 		return errors.Wrap(ctx, err, "create pull request")
 	}
 	slog.Info("created PR", "url", prURL)
+
+	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
+	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL, branchName)
 
 	// Switch back to original directory
 	if err := os.Chdir(originalDir); err != nil {
@@ -597,6 +607,33 @@ func validateCompletionReport(ctx context.Context, logFile string) (string, erro
 	}
 
 	return completionReport.Summary, nil
+}
+
+// savePRURLToFrontmatter saves the PR URL to the prompt frontmatter and amends the commit.
+// This is best-effort and non-fatal — all failures are logged as warnings.
+func (p *processor) savePRURLToFrontmatter(
+	ctx context.Context,
+	completedPath string,
+	prURL string,
+	branchName string,
+) {
+	// Save PR URL to frontmatter
+	if err := p.promptManager.SetPRURL(ctx, completedPath, prURL); err != nil {
+		slog.Warn("failed to save PR URL to frontmatter", "error", err)
+		return // Non-fatal — PR was already created
+	}
+
+	// Amend the previous commit to include the updated frontmatter
+	if err := p.releaser.AmendCommit(ctx, completedPath); err != nil {
+		slog.Warn("failed to amend commit with PR URL", "error", err)
+		return // Non-fatal — file was saved to disk
+	}
+
+	// Force-push the amended commit
+	if err := p.brancher.ForcePush(ctx, branchName); err != nil {
+		slog.Warn("failed to force-push amended commit", "error", err)
+		return // Non-fatal — local commit was amended
+	}
 }
 
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]

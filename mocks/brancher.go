@@ -45,6 +45,18 @@ type Brancher struct {
 	fetchReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ForcePushStub        func(context.Context, string) error
+	forcePushMutex       sync.RWMutex
+	forcePushArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	forcePushReturns struct {
+		result1 error
+	}
+	forcePushReturnsOnCall map[int]struct {
+		result1 error
+	}
 	MergeOriginMasterStub        func(context.Context) error
 	mergeOriginMasterMutex       sync.RWMutex
 	mergeOriginMasterArgsForCall []struct {
@@ -267,6 +279,68 @@ func (fake *Brancher) FetchReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.fetchReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) ForcePush(arg1 context.Context, arg2 string) error {
+	fake.forcePushMutex.Lock()
+	ret, specificReturn := fake.forcePushReturnsOnCall[len(fake.forcePushArgsForCall)]
+	fake.forcePushArgsForCall = append(fake.forcePushArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.ForcePushStub
+	fakeReturns := fake.forcePushReturns
+	fake.recordInvocation("ForcePush", []interface{}{arg1, arg2})
+	fake.forcePushMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) ForcePushCallCount() int {
+	fake.forcePushMutex.RLock()
+	defer fake.forcePushMutex.RUnlock()
+	return len(fake.forcePushArgsForCall)
+}
+
+func (fake *Brancher) ForcePushCalls(stub func(context.Context, string) error) {
+	fake.forcePushMutex.Lock()
+	defer fake.forcePushMutex.Unlock()
+	fake.ForcePushStub = stub
+}
+
+func (fake *Brancher) ForcePushArgsForCall(i int) (context.Context, string) {
+	fake.forcePushMutex.RLock()
+	defer fake.forcePushMutex.RUnlock()
+	argsForCall := fake.forcePushArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) ForcePushReturns(result1 error) {
+	fake.forcePushMutex.Lock()
+	defer fake.forcePushMutex.Unlock()
+	fake.ForcePushStub = nil
+	fake.forcePushReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) ForcePushReturnsOnCall(i int, result1 error) {
+	fake.forcePushMutex.Lock()
+	defer fake.forcePushMutex.Unlock()
+	fake.ForcePushStub = nil
+	if fake.forcePushReturnsOnCall == nil {
+		fake.forcePushReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.forcePushReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

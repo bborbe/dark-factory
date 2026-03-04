@@ -19,6 +19,7 @@ import (
 type Brancher interface {
 	CreateAndSwitch(ctx context.Context, name string) error
 	Push(ctx context.Context, name string) error
+	ForcePush(ctx context.Context, name string) error
 	Switch(ctx context.Context, name string) error
 	CurrentBranch(ctx context.Context) (string, error)
 	Fetch(ctx context.Context) error
@@ -53,6 +54,19 @@ func (b *brancher) Push(ctx context.Context, name string) error {
 	cmd := exec.CommandContext(ctx, "git", "push", "-u", "origin", name)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "push branch to remote")
+	}
+	return nil
+}
+
+// ForcePush force-pushes a branch to the remote repository.
+// Used after amending commits on feature branches.
+func (b *brancher) ForcePush(ctx context.Context, name string) error {
+	slog.Debug("force-pushing branch to remote", "branch", name)
+
+	// #nosec G204 -- branch name is derived from prompt filename and sanitized
+	cmd := exec.CommandContext(ctx, "git", "push", "--force-with-lease", "origin", name)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "force-push branch to remote")
 	}
 	return nil
 }

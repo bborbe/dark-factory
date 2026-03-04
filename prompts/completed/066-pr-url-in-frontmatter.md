@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Added pr-url field to prompt frontmatter with amend/force-push support
+container: dark-factory-066-pr-url-in-frontmatter
+dark-factory-version: v0.15.1
+created: "2026-03-04T21:36:04Z"
+queued: "2026-03-04T21:36:04Z"
+started: "2026-03-04T21:36:04Z"
+completed: "2026-03-04T21:47:22Z"
+---
 <objective>
 Store the PR URL in prompt frontmatter when using the PR workflow, so completed prompts link back to their pull request.
 </objective>

@@ -18,3 +18,4 @@ coverage.html
 /prompts/log/
 /prompts/queue/log/
 /vendor
+/.claude

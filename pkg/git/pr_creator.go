@@ -6,6 +6,7 @@ package git
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -20,17 +21,24 @@ type PRCreator interface {
 }
 
 // prCreator implements PRCreator.
-type prCreator struct{}
+type prCreator struct {
+	ghToken string
+}
 
 // NewPRCreator creates a new PRCreator.
-func NewPRCreator() PRCreator {
-	return &prCreator{}
+func NewPRCreator(ghToken string) PRCreator {
+	return &prCreator{
+		ghToken: ghToken,
+	}
 }
 
 // Create creates a pull request and returns the PR URL.
 func (p *prCreator) Create(ctx context.Context, title string, body string) (string, error) {
 	// #nosec G204 -- title is from prompt frontmatter, body is static text
 	cmd := exec.CommandContext(ctx, "gh", "pr", "create", "--title", title, "--body", body)
+	if p.ghToken != "" {
+		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
+	}
 	output, err := cmd.Output()
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "create pull request")

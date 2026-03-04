@@ -498,6 +498,93 @@ debounceMs: -100
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("validate config"))
 			})
+
+			It("loads config with github token from env var", func() {
+				configContent := `workflow: pr
+github:
+  token: ${TEST_VAR}
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.Setenv("TEST_VAR", "test-token-value")
+				Expect(err).NotTo(HaveOccurred())
+				defer func() {
+					err := os.Unsetenv("TEST_VAR")
+					Expect(err).NotTo(HaveOccurred())
+				}()
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.GitHub.Token).To(Equal("${TEST_VAR}"))
+				Expect(cfg.ResolvedGitHubToken()).To(Equal("test-token-value"))
+			})
+
+			It("loads config without github section", func() {
+				configContent := `workflow: pr
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.GitHub.Token).To(Equal(""))
+				Expect(cfg.ResolvedGitHubToken()).To(Equal(""))
+			})
+		})
+	})
+
+	Describe("ResolvedGitHubToken", func() {
+		It("returns empty string when github token is not set", func() {
+			cfg := config.Config{}
+			Expect(cfg.ResolvedGitHubToken()).To(Equal(""))
+		})
+
+		It("resolves env var when token matches pattern", func() {
+			err := os.Setenv("TEST_VAR", "resolved-value")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() {
+				err := os.Unsetenv("TEST_VAR")
+				Expect(err).NotTo(HaveOccurred())
+			}()
+
+			cfg := config.Config{
+				// #nosec G101 -- test value, not a real credential
+				GitHub: config.GitHubConfig{
+					Token: "${TEST_VAR}",
+				},
+			}
+			Expect(cfg.ResolvedGitHubToken()).To(Equal("resolved-value"))
+		})
+
+		It("returns empty string when env var is unset", func() {
+			err := os.Unsetenv("UNSET_VAR")
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg := config.Config{
+				// #nosec G101 -- test value, not a real credential
+				GitHub: config.GitHubConfig{
+					Token: "${UNSET_VAR}",
+				},
+			}
+			Expect(cfg.ResolvedGitHubToken()).To(Equal(""))
+		})
+
+		It("returns literal value when token does not match pattern", func() {
+			cfg := config.Config{
+				GitHub: config.GitHubConfig{
+					Token: "literal-token",
+				},
+			}
+			Expect(cfg.ResolvedGitHubToken()).To(Equal("literal-token"))
 		})
 	})
 })

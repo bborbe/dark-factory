@@ -42,6 +42,12 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	projectName := project.Name(cfg.ProjectName)
 	slog.Info("project name resolved", "name", projectName)
 
+	// Resolve GitHub token
+	ghToken := cfg.ResolvedGitHubToken()
+	if cfg.GitHub.Token != "" && ghToken == "" {
+		slog.Warn("github.token configured but env var is empty, using default gh auth")
+	}
+
 	// Communication channel between watcher and processor
 	ready := make(chan struct{}, 10)
 
@@ -79,6 +85,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			ready,
 			cfg.ContainerImage,
 			cfg.Workflow,
+			ghToken,
 		),
 		srv,
 	)
@@ -106,6 +113,7 @@ func CreateProcessor(
 	ready <-chan struct{},
 	containerImage string,
 	workflow config.Workflow,
+	ghToken string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		queueDir,
@@ -118,8 +126,8 @@ func CreateProcessor(
 		versionGetter,
 		ready,
 		workflow,
-		git.NewBrancher(),
-		git.NewPRCreator(),
+		git.NewBrancher(ghToken),
+		git.NewPRCreator(ghToken),
 		git.NewWorktree(),
 	)
 }

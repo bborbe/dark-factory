@@ -26,11 +26,15 @@ type Brancher interface {
 }
 
 // brancher implements Brancher.
-type brancher struct{}
+type brancher struct {
+	ghToken string
+}
 
 // NewBrancher creates a new Brancher.
-func NewBrancher() Brancher {
-	return &brancher{}
+func NewBrancher(ghToken string) Brancher {
+	return &brancher{
+		ghToken: ghToken,
+	}
 }
 
 // CreateAndSwitch creates a new branch and switches to it.

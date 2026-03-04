@@ -205,6 +205,8 @@ Runs on port 8080 (configurable via `serverPort`):
 Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses defaults.
 
 ```yaml
+github:
+  token: ${DARK_FACTORY_TOKEN}                      # optional GitHub token (env var)
 workflow: direct                                    # "direct" (default), "pr", or "worktree"
 inboxDir: prompts                                   # passive drop zone (default: prompts)
 queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
@@ -213,6 +215,16 @@ containerImage: docker.io/bborbe/claude-yolo:v0.0.9 # YOLO Docker image
 debounceMs: 500                                     # watcher debounce in ms
 serverPort: 8080                                    # REST API port
 ```
+
+### GitHub Token
+
+The optional `github.token` field allows dark-factory to use a specific GitHub identity for `gh` CLI operations (creating PRs, checking PR status, etc.). This is useful when you want dark-factory to create PRs under a bot account instead of your personal account.
+
+- Use `${VAR_NAME}` syntax to reference environment variables
+- When set, all `gh` commands use this token via the `GH_TOKEN` environment variable
+- When not set or empty, `gh` uses its default authentication (from `gh auth login`)
+- Token must never be committed — use environment variable reference only
+- For security, ensure `.dark-factory.yaml` is not world-readable: `chmod 600 .dark-factory.yaml`
 
 The inbox/queue/completed separation works out of the box with these defaults. You can customize any of these paths via `.dark-factory.yaml`. See `example/` for a complete setup.
 

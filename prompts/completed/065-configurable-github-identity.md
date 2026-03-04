@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Added configurable GitHub identity via GH_TOKEN for bot account PR creation
+container: dark-factory-065-configurable-github-identity
+dark-factory-version: v0.14.5
+created: "2026-03-04T19:42:19Z"
+queued: "2026-03-04T19:42:19Z"
+started: "2026-03-04T19:42:19Z"
+completed: "2026-03-04T19:53:54Z"
+---
 <objective>
 Add configurable GitHub identity via GH_TOKEN so dark-factory can create PRs under a bot account, enabling separate identities for dark-factory and pr-reviewer.
 </objective>

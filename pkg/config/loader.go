@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
 	"github.com/bborbe/errors"
@@ -34,14 +35,15 @@ func NewLoader() Loader {
 // partialConfig is used for YAML unmarshaling to distinguish between
 // explicitly set zero values and missing fields.
 type partialConfig struct {
-	Workflow       *Workflow `yaml:"workflow"`
-	InboxDir       *string   `yaml:"inboxDir"`
-	QueueDir       *string   `yaml:"queueDir"`
-	CompletedDir   *string   `yaml:"completedDir"`
-	LogDir         *string   `yaml:"logDir"`
-	ContainerImage *string   `yaml:"containerImage"`
-	DebounceMs     *int      `yaml:"debounceMs"`
-	ServerPort     *int      `yaml:"serverPort"`
+	Workflow       *Workflow     `yaml:"workflow"`
+	InboxDir       *string       `yaml:"inboxDir"`
+	QueueDir       *string       `yaml:"queueDir"`
+	CompletedDir   *string       `yaml:"completedDir"`
+	LogDir         *string       `yaml:"logDir"`
+	ContainerImage *string       `yaml:"containerImage"`
+	DebounceMs     *int          `yaml:"debounceMs"`
+	ServerPort     *int          `yaml:"serverPort"`
+	GitHub         *GitHubConfig `yaml:"github"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -58,6 +60,14 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 			return cfg, nil
 		}
 		return Config{}, errors.Wrap(ctx, err, "read config file")
+	}
+
+	// Check file permissions
+	fileInfo, statErr := os.Stat(l.configPath)
+	if statErr != nil {
+		slog.Warn("failed to stat config file", "path", l.configPath, "error", statErr)
+	} else if fileInfo.Mode()&0004 != 0 {
+		slog.Warn("config file is world-readable, consider: chmod 600", "path", l.configPath)
 	}
 
 	// Parse YAML into partial config to preserve defaults for missing fields
@@ -90,6 +100,9 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 	}
 	if partial.ServerPort != nil {
 		cfg.ServerPort = *partial.ServerPort
+	}
+	if partial.GitHub != nil {
+		cfg.GitHub = *partial.GitHub
 	}
 
 	// Validate merged config

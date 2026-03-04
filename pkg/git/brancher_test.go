@@ -83,6 +83,13 @@ var _ = Describe("Brancher", func() {
 		}
 	})
 
+	Describe("NewBrancher", func() {
+		It("creates Brancher", func() {
+			brancher := git.NewBrancher()
+			Expect(brancher).NotTo(BeNil())
+		})
+	})
+
 	Describe("CurrentBranch", func() {
 		It("returns the current branch name", func() {
 			branch, err := b.CurrentBranch(ctx)

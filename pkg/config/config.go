@@ -6,22 +6,31 @@ package config
 
 import (
 	"context"
+	"log/slog"
+	"os"
+	"regexp"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
 )
 
+// GitHubConfig holds GitHub-specific configuration.
+type GitHubConfig struct {
+	Token string `yaml:"token"`
+}
+
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName    string   `yaml:"projectName"`
-	Workflow       Workflow `yaml:"workflow"`
-	InboxDir       string   `yaml:"inboxDir"`
-	QueueDir       string   `yaml:"queueDir"`
-	CompletedDir   string   `yaml:"completedDir"`
-	LogDir         string   `yaml:"logDir"`
-	ContainerImage string   `yaml:"containerImage"`
-	DebounceMs     int      `yaml:"debounceMs"`
-	ServerPort     int      `yaml:"serverPort"`
+	ProjectName    string       `yaml:"projectName"`
+	Workflow       Workflow     `yaml:"workflow"`
+	InboxDir       string       `yaml:"inboxDir"`
+	QueueDir       string       `yaml:"queueDir"`
+	CompletedDir   string       `yaml:"completedDir"`
+	LogDir         string       `yaml:"logDir"`
+	ContainerImage string       `yaml:"containerImage"`
+	DebounceMs     int          `yaml:"debounceMs"`
+	ServerPort     int          `yaml:"serverPort"`
+	GitHub         GitHubConfig `yaml:"github"`
 }
 
 // Defaults returns a Config with all default values.
@@ -76,4 +85,27 @@ func (c Config) Validate(ctx context.Context) error {
 			}),
 		),
 	}.Validate(ctx)
+}
+
+var envVarPattern = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
+
+// resolveEnvVar resolves environment variable references in the form ${VAR_NAME}.
+// If the value matches the pattern, it returns the environment variable value.
+// Otherwise, it returns the value as-is.
+func resolveEnvVar(value string) string {
+	matches := envVarPattern.FindStringSubmatch(value)
+	if len(matches) == 2 {
+		return os.Getenv(matches[1])
+	}
+	return value
+}
+
+// ResolvedGitHubToken returns the GitHub token with environment variables resolved.
+// Logs a warning if the token is configured but the env var is empty.
+func (c Config) ResolvedGitHubToken() string {
+	token := resolveEnvVar(c.GitHub.Token)
+	if c.GitHub.Token != "" && token == "" {
+		slog.Warn("github.token configured but env var is empty, using default gh auth")
+	}
+	return token
 }

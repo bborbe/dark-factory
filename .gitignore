@@ -1,7 +1,6 @@
 /.claude
 /.cursorignore
 /.dark-factory.lock
-/prompts/.dark-factory.lock
 /.gemini/
 /.idea
 /.mcp-*
@@ -10,12 +9,12 @@
 /.serena
 /.update-logs/
 /CLAUDE.md
-coverage.out
-coverage.html
 /dark-factory
 /data
 /gha-creds-*.json
+/prompts/.dark-factory.lock
 /prompts/log/
 /prompts/queue/log/
 /vendor
-/.claude
+coverage.html
+coverage.out

@@ -1612,6 +1612,83 @@ Content here.
 			})
 		})
 	})
+
+	Describe("PromptFile.SetPRURL", func() {
+		It("sets the pr-url field in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: completed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+
+			pf.SetPRURL("https://github.com/user/repo/pull/42")
+			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/42"))
+		})
+
+		It("preserves pr-url after save and load roundtrip", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: completed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			// Load, set PR URL, and save
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			pf.SetPRURL("https://github.com/user/repo/pull/99")
+			err = pf.Save()
+			Expect(err).To(BeNil())
+
+			// Load again and verify
+			pf2, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf2.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/99"))
+		})
+
+		It("loads files without pr-url field", func() {
+			path := filepath.Join(tempDir, "001-old-prompt.md")
+			content := "---\nstatus: completed\nsummary: Old prompt\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.PRURL).To(Equal(""))
+		})
+	})
+
+	Describe("SetPRURL", func() {
+		It("sets pr-url field in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: completed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.SetPRURL(ctx, path, "https://github.com/user/repo/pull/123")
+			Expect(err).To(BeNil())
+
+			// Verify the file was updated
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/123"))
+		})
+
+		It("adds frontmatter if file has none", func() {
+			path := filepath.Join(tempDir, "001-no-frontmatter.md")
+			content := "# Test Prompt\n\nContent here.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.SetPRURL(ctx, path, "https://github.com/user/repo/pull/1")
+			Expect(err).To(BeNil())
+
+			// Verify frontmatter was added with pr-url
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/1"))
+		})
+	})
 })
 
 // Helper function to create a prompt file with given status

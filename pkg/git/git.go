@@ -35,6 +35,7 @@ type Releaser interface {
 	CommitAndRelease(ctx context.Context, bump VersionBump) error
 	CommitCompletedFile(ctx context.Context, path string) error
 	CommitOnly(ctx context.Context, message string) error
+	AmendCommit(ctx context.Context, path string) error
 	HasChangelog(ctx context.Context) bool
 	MoveFile(ctx context.Context, oldPath string, newPath string) error
 }
@@ -82,6 +83,12 @@ func (r *releaser) CommitOnly(ctx context.Context, message string) error {
 	}
 
 	return nil
+}
+
+// AmendCommit stages a file and amends the previous commit.
+// This is used to update frontmatter after PR creation.
+func (r *releaser) AmendCommit(ctx context.Context, path string) error {
+	return AmendCommit(ctx, path)
 }
 
 // MoveFile moves a file using git mv to preserve history.
@@ -359,6 +366,26 @@ func gitCommit(ctx context.Context, message string) error {
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "create commit")
 	}
+	return nil
+}
+
+// AmendCommit stages a file and amends the previous commit.
+func AmendCommit(ctx context.Context, path string) error {
+	slog.Debug("amending commit with file", "path", path)
+
+	// Stage the file
+	// #nosec G204 -- path is from completed prompt file, controlled by application
+	addCmd := exec.CommandContext(ctx, "git", "add", path)
+	if err := addCmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "git add file")
+	}
+
+	// Amend the previous commit (no-edit to keep the same message)
+	amendCmd := exec.CommandContext(ctx, "git", "commit", "--amend", "--no-edit")
+	if err := amendCmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "amend commit")
+	}
+
 	return nil
 }
 

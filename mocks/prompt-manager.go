@@ -148,6 +148,19 @@ type Manager struct {
 	setContainerReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetPRURLStub        func(context.Context, string, string) error
+	setPRURLMutex       sync.RWMutex
+	setPRURLArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	setPRURLReturns struct {
+		result1 error
+	}
+	setPRURLReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SetStatusStub        func(context.Context, string, string) error
 	setStatusMutex       sync.RWMutex
 	setStatusArgsForCall []struct {
@@ -882,6 +895,69 @@ func (fake *Manager) SetContainerReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.setContainerReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetPRURL(arg1 context.Context, arg2 string, arg3 string) error {
+	fake.setPRURLMutex.Lock()
+	ret, specificReturn := fake.setPRURLReturnsOnCall[len(fake.setPRURLArgsForCall)]
+	fake.setPRURLArgsForCall = append(fake.setPRURLArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.SetPRURLStub
+	fakeReturns := fake.setPRURLReturns
+	fake.recordInvocation("SetPRURL", []interface{}{arg1, arg2, arg3})
+	fake.setPRURLMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) SetPRURLCallCount() int {
+	fake.setPRURLMutex.RLock()
+	defer fake.setPRURLMutex.RUnlock()
+	return len(fake.setPRURLArgsForCall)
+}
+
+func (fake *Manager) SetPRURLCalls(stub func(context.Context, string, string) error) {
+	fake.setPRURLMutex.Lock()
+	defer fake.setPRURLMutex.Unlock()
+	fake.SetPRURLStub = stub
+}
+
+func (fake *Manager) SetPRURLArgsForCall(i int) (context.Context, string, string) {
+	fake.setPRURLMutex.RLock()
+	defer fake.setPRURLMutex.RUnlock()
+	argsForCall := fake.setPRURLArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Manager) SetPRURLReturns(result1 error) {
+	fake.setPRURLMutex.Lock()
+	defer fake.setPRURLMutex.Unlock()
+	fake.SetPRURLStub = nil
+	fake.setPRURLReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetPRURLReturnsOnCall(i int, result1 error) {
+	fake.setPRURLMutex.Lock()
+	defer fake.setPRURLMutex.Unlock()
+	fake.SetPRURLStub = nil
+	if fake.setPRURLReturnsOnCall == nil {
+		fake.setPRURLReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setPRURLReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

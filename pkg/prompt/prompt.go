@@ -103,6 +103,7 @@ type Frontmatter struct {
 	Queued             string `yaml:"queued,omitempty"`
 	Started            string `yaml:"started,omitempty"`
 	Completed          string `yaml:"completed,omitempty"`
+	PRURL              string `yaml:"pr-url,omitempty"`
 }
 
 // PromptFile represents a loaded prompt file with immutable body and mutable frontmatter.
@@ -239,6 +240,11 @@ func (pf *PromptFile) SetSummary(summary string) {
 	pf.Frontmatter.Summary = summary
 }
 
+// SetPRURL sets the pr-url field in frontmatter.
+func (pf *PromptFile) SetPRURL(url string) {
+	pf.Frontmatter.PRURL = url
+}
+
 // FileMover handles file move operations with git awareness.
 //
 //counterfeiter:generate -o ../../mocks/file-mover.go --fake-name FileMover . FileMover
@@ -259,6 +265,7 @@ type Manager interface {
 	SetStatus(ctx context.Context, path string, status string) error
 	SetContainer(ctx context.Context, path string, name string) error
 	SetVersion(ctx context.Context, path string, version string) error
+	SetPRURL(ctx context.Context, path string, url string) error
 	Content(ctx context.Context, path string) (string, error)
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
@@ -325,6 +332,11 @@ func (pm *manager) SetContainer(ctx context.Context, path string, name string) e
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
 func (pm *manager) SetVersion(ctx context.Context, path string, version string) error {
 	return SetVersion(ctx, path, version)
+}
+
+// SetPRURL updates the pr-url field in a prompt file's frontmatter.
+func (pm *manager) SetPRURL(ctx context.Context, path string, url string) error {
+	return SetPRURL(ctx, path, url)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
@@ -516,6 +528,18 @@ func SetVersion(ctx context.Context, path string, version string) error {
 	}
 
 	pf.Frontmatter.DarkFactoryVersion = version
+	return pf.Save()
+}
+
+// SetPRURL updates the pr-url field in a prompt file's frontmatter.
+// If the file has no frontmatter, adds frontmatter with the pr-url field.
+func SetPRURL(ctx context.Context, path string, url string) error {
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.SetPRURL(url)
 	return pf.Save()
 }
 

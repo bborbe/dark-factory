@@ -1,4 +1,4 @@
-workflow: pr
+workflow: direct
 inboxDir: prompts
 queueDir: prompts/queue
 completedDir: prompts/completed

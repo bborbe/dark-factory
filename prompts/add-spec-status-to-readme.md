@@ -1,3 +1,6 @@
+---
+created: "2026-03-04T17:50:28Z"
+---
 <objective>
 Add a "Specs" section to README.md that lists all spec files from specs/ with their filename and Problem section as a one-line summary.
 </objective>

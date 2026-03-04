@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
 
@@ -25,7 +26,7 @@ var _ = Describe("DockerExecutor", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		e = executor.NewDockerExecutor("docker.io/bborbe/claude-yolo:v0.0.8", "test-project")
+		e = executor.NewDockerExecutor(config.Defaults().ContainerImage, "test-project")
 
 		var err error
 		tempDir, err = os.MkdirTemp("", "executor-test-*")

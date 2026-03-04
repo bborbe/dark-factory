@@ -12,6 +12,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/bborbe/dark-factory/pkg/config"
 )
 
 var _ = Describe("Internal helper functions", func() {
@@ -172,7 +174,7 @@ var _ = Describe("Internal helper functions", func() {
 
 		BeforeEach(func() {
 			exec = &dockerExecutor{
-				containerImage: "docker.io/bborbe/claude-yolo:v0.0.8",
+				containerImage: config.Defaults().ContainerImage,
 				projectName:    "test-project",
 			}
 		})

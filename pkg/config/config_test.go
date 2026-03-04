@@ -33,6 +33,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.9"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
+			Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
 		})
 	})
 
@@ -540,7 +541,7 @@ github:
 				Expect(cfg.ResolvedGitHubToken()).To(Equal("test-token-value"))
 			})
 
-			It("loads config without github section", func() {
+			It("loads config without github section uses default token ref", func() {
 				configContent := `workflow: pr
 `
 				err := os.WriteFile(
@@ -552,8 +553,7 @@ github:
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.GitHub.Token).To(Equal(""))
-				Expect(cfg.ResolvedGitHubToken()).To(Equal(""))
+				Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
 			})
 		})
 	})

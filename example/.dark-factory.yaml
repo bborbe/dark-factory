@@ -2,11 +2,12 @@
 #
 # All fields are optional. Missing fields use defaults shown below.
 
-# GitHub API authentication (optional)
-# Use ${VAR_NAME} to reference environment variables
-# When set, gh CLI commands use this token instead of default auth
+# GitHub API authentication
+# Default: ${DARK_FACTORY_GITHUB_TOKEN} — reads from env var automatically
+# Set the env var to use a bot account for PR creation
+# If env var is unset, falls back to default gh auth silently
 # github:
-#   token: ${DARK_FACTORY_TOKEN}
+#   token: ${DARK_FACTORY_GITHUB_TOKEN}
 
 # Git workflow after prompt execution
 # "direct" = commit + tag + push to current branch (default)

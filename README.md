@@ -206,7 +206,7 @@ Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses def
 
 ```yaml
 github:
-  token: ${DARK_FACTORY_TOKEN}                      # optional GitHub token (env var)
+  token: ${DARK_FACTORY_GITHUB_TOKEN}                      # default — reads from env var
 workflow: direct                                    # "direct" (default), "pr", or "worktree"
 inboxDir: prompts                                   # passive drop zone (default: prompts)
 queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)

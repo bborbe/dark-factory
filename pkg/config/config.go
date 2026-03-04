@@ -44,6 +44,9 @@ func Defaults() Config {
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
 		DebounceMs:     500,
 		ServerPort:     0,
+		GitHub: GitHubConfig{
+			Token: "${DARK_FACTORY_GITHUB_TOKEN}",
+		}, // #nosec G101 -- env var reference, not a credential
 	}
 }
 
@@ -100,11 +103,14 @@ func resolveEnvVar(value string) string {
 	return value
 }
 
+// DefaultGitHubTokenRef is the default env var reference for the GitHub token.
+const DefaultGitHubTokenRef = "${DARK_FACTORY_GITHUB_TOKEN}" // #nosec G101 -- env var reference, not a credential
+
 // ResolvedGitHubToken returns the GitHub token with environment variables resolved.
-// Logs a warning if the token is configured but the env var is empty.
+// Logs a warning if a non-default token is configured but the env var is empty.
 func (c Config) ResolvedGitHubToken() string {
 	token := resolveEnvVar(c.GitHub.Token)
-	if c.GitHub.Token != "" && token == "" {
+	if c.GitHub.Token != "" && c.GitHub.Token != DefaultGitHubTokenRef && token == "" {
 		slog.Warn("github.token configured but env var is empty, using default gh auth")
 	}
 	return token

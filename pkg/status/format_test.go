@@ -5,6 +5,7 @@
 package status
 
 import (
+	"strconv"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -39,17 +40,17 @@ var _ = Describe("Format Functions", func() {
 		})
 	})
 
-	Describe("formatInt", func() {
+	Describe("strconv.Itoa", func() {
 		It("formats zero", func() {
-			Expect(formatInt(0)).To(Equal("0"))
+			Expect(strconv.Itoa(0)).To(Equal("0"))
 		})
 
 		It("formats single digit", func() {
-			Expect(formatInt(5)).To(Equal("5"))
+			Expect(strconv.Itoa(5)).To(Equal("5"))
 		})
 
 		It("formats multiple digits", func() {
-			Expect(formatInt(123)).To(Equal("123"))
+			Expect(strconv.Itoa(123)).To(Equal("123"))
 		})
 	})
 

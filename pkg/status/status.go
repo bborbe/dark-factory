@@ -8,6 +8,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -64,25 +66,8 @@ type checker struct {
 	promptMgr    prompt.Manager
 }
 
-// NewChecker creates a new Checker.
+// NewChecker creates a new Checker with additional options.
 func NewChecker(
-	queueDir string,
-	completedDir string,
-	ideasDir string,
-	promptMgr prompt.Manager,
-) Checker {
-	return &checker{
-		queueDir:     queueDir,
-		completedDir: completedDir,
-		ideasDir:     ideasDir,
-		logDir:       "prompts/log",
-		serverPort:   8080,
-		promptMgr:    promptMgr,
-	}
-}
-
-// NewCheckerWithOptions creates a new Checker with additional options.
-func NewCheckerWithOptions(
 	queueDir string,
 	completedDir string,
 	ideasDir string,
@@ -250,13 +235,9 @@ func (s *checker) getCompletionTime(ctx context.Context, entry os.DirEntry) time
 
 // sortPromptsByTimeDescending sorts prompts by completion time (most recent first).
 func sortPromptsByTimeDescending(prompts []promptWithTime) {
-	for i := 0; i < len(prompts)-1; i++ {
-		for j := i + 1; j < len(prompts); j++ {
-			if prompts[j].completedTime.After(prompts[i].completedTime) {
-				prompts[i], prompts[j] = prompts[j], prompts[i]
-			}
-		}
-	}
+	sort.Slice(prompts, func(i, j int) bool {
+		return prompts[i].completedTime.After(prompts[j].completedTime)
+	})
 }
 
 // applyLimit limits the number of prompts.
@@ -380,44 +361,29 @@ func formatTime(h, m, s int) string {
 func formatHMS(h, m, s int) string {
 	result := ""
 	if h > 0 {
-		result += formatInt(h) + "h"
+		result += strconv.Itoa(h) + "h"
 	}
 	if m > 0 {
-		result += formatInt(m) + "m"
+		result += strconv.Itoa(m) + "m"
 	}
 	if s > 0 {
-		result += formatInt(s) + "s"
+		result += strconv.Itoa(s) + "s"
 	}
 	return result
 }
 
 // formatMS formats minutes:seconds.
 func formatMS(m, s int) string {
-	result := formatInt(m) + "m"
+	result := strconv.Itoa(m) + "m"
 	if s > 0 {
-		result += formatInt(s) + "s"
+		result += strconv.Itoa(s) + "s"
 	}
 	return result
 }
 
 // formatS formats seconds only.
 func formatS(s int) string {
-	return formatInt(s) + "s"
-}
-
-// formatInt converts int to string.
-func formatInt(n int) string {
-	if n == 0 {
-		return "0"
-	}
-
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-
-	return string(digits)
+	return strconv.Itoa(s) + "s"
 }
 
 // populateExecutingPrompt populates executing prompt info in the status.

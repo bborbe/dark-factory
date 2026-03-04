@@ -5,6 +5,7 @@
 package report_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +45,7 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
 			Expect(result.Status).To(Equal("success"))
@@ -63,7 +64,7 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
 			Expect(result.Status).To(Equal("partial"))
@@ -80,7 +81,7 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
 			Expect(result.Status).To(Equal("failed"))
@@ -99,7 +100,7 @@ Type /exit to close container
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
 			Expect(result.Status).To(Equal("success"))
@@ -118,7 +119,7 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).NotTo(BeNil())
 			Expect(result.Status).To(Equal("success"))
@@ -134,7 +135,7 @@ more output
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeNil())
 		})
@@ -142,7 +143,7 @@ more output
 		It("returns nil for empty log file", func() {
 			Expect(os.WriteFile(logFile, []byte(""), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeNil())
 		})
@@ -158,7 +159,7 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unmarshal"))
 			Expect(result).To(BeNil())
@@ -172,14 +173,17 @@ DARK-FACTORY-REPORT -->
 `
 			Expect(os.WriteFile(logFile, []byte(content), 0600)).To(Succeed())
 
-			result, err := report.ParseFromLog(logFile)
+			result, err := report.ParseFromLog(context.Background(), logFile)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no valid end marker"))
 			Expect(result).To(BeNil())
 		})
 
 		It("returns error when log file does not exist", func() {
-			result, err := report.ParseFromLog(filepath.Join(tempDir, "nonexistent.log"))
+			result, err := report.ParseFromLog(
+				context.Background(),
+				filepath.Join(tempDir, "nonexistent.log"),
+			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("open log file"))
 			Expect(result).To(BeNil())

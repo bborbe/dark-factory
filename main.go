@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/bborbe/errors"
+
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -55,7 +57,7 @@ func run() error {
 		r := factory.CreateRunner(cfg, version.Version)
 		return r.Run(ctx)
 	default:
-		return fmt.Errorf("unknown command: %s", command)
+		return errors.Errorf(ctx, "unknown command: %s", command)
 	}
 }
 

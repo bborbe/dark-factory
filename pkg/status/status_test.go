@@ -48,7 +48,14 @@ var _ = Describe("StatusChecker", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		mockPromptMgr = &mocks.Manager{}
-		statusChecker = status.NewChecker(queueDir, completedDir, ideasDir, mockPromptMgr)
+		statusChecker = status.NewChecker(
+			queueDir,
+			completedDir,
+			ideasDir,
+			"prompts/log",
+			8080,
+			mockPromptMgr,
+		)
 	})
 
 	AfterEach(func() {
@@ -233,7 +240,7 @@ status: executing
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create checker with log directory
-			checkerWithLogs := status.NewCheckerWithOptions(
+			checkerWithLogs := status.NewChecker(
 				queueDir,
 				completedDir,
 				ideasDir,
@@ -253,7 +260,7 @@ status: executing
 			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Create checker with non-existent log directory
-			checkerWithLogs := status.NewCheckerWithOptions(
+			checkerWithLogs := status.NewChecker(
 				queueDir,
 				completedDir,
 				ideasDir,

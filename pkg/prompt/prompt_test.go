@@ -1637,7 +1637,7 @@ Content here.
 			pf, err := prompt.Load(ctx, path)
 			Expect(err).To(BeNil())
 			pf.SetPRURL("https://github.com/user/repo/pull/99")
-			err = pf.Save()
+			err = pf.Save(ctx)
 			Expect(err).To(BeNil())
 
 			// Load again and verify

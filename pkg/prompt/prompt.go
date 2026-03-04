@@ -28,6 +28,13 @@ import (
 // ErrEmptyPrompt is returned when a prompt file is empty or contains only whitespace.
 var ErrEmptyPrompt = stderrors.New("prompt file is empty")
 
+var (
+	validPatternRegexp        = regexp.MustCompile(`^(\d{3})-(.+)\.md$`)
+	numericPatternRegexp      = regexp.MustCompile(`^(\d+)-(.+)\.md$`)
+	hasNumberPrefixRegexp     = regexp.MustCompile(`^\d{3}-`)
+	extractNumberPrefixRegexp = regexp.MustCompile(`^(\d{3})-`)
+)
+
 // Status represents the current state of a prompt.
 type Status string
 
@@ -113,6 +120,7 @@ type PromptFile struct {
 	Path        string
 	Frontmatter Frontmatter
 	Body        []byte // immutable after Load — never modified
+	nowFunc     func() time.Time
 }
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
@@ -128,7 +136,11 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
 	if err != nil {
 		// No frontmatter — entire file is body
-		pf := &PromptFile{Path: path, Body: content}
+		pf := &PromptFile{
+			Path:    path,
+			Body:    content,
+			nowFunc: time.Now,
+		}
 		slog.Debug("file loaded", "path", path, "bodySize", len(content), "hasStatus", false)
 		return pf, nil
 	}
@@ -137,6 +149,7 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 		Path:        path,
 		Frontmatter: fm,
 		Body:        body,
+		nowFunc:     time.Now,
 	}
 	slog.Debug("file loaded", "path", path, "bodySize", len(body), "hasStatus", fm.Status != "")
 	return pf, nil
@@ -144,10 +157,10 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 
 // Save writes the prompt file back to disk: frontmatter + body.
 // Body is always preserved exactly as loaded.
-func (pf *PromptFile) Save() error {
+func (pf *PromptFile) Save(ctx context.Context) error {
 	fm, err := yaml.Marshal(&pf.Frontmatter)
 	if err != nil {
-		return fmt.Errorf("marshal frontmatter: %w", err)
+		return errors.Wrap(ctx, err, "marshal frontmatter")
 	}
 
 	var buf bytes.Buffer
@@ -157,7 +170,7 @@ func (pf *PromptFile) Save() error {
 	buf.Write(pf.Body)
 
 	if err := os.WriteFile(pf.Path, buf.Bytes(), 0600); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "write file")
 	}
 
 	slog.Debug(
@@ -194,10 +207,18 @@ func (pf *PromptFile) Title() string {
 	return ""
 }
 
+// now returns the current time, handling nil nowFunc gracefully.
+func (pf *PromptFile) now() time.Time {
+	if pf.nowFunc == nil {
+		return time.Now()
+	}
+	return pf.now()
+}
+
 // PrepareForExecution sets all fields needed before container launch.
 // This replaces separate SetContainer + SetVersion + SetStatus calls.
 func (pf *PromptFile) PrepareForExecution(container, version string) {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := pf.now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.Status = string(StatusExecuting)
 	pf.Frontmatter.Container = container
 	pf.Frontmatter.DarkFactoryVersion = version
@@ -214,18 +235,18 @@ func (pf *PromptFile) PrepareForExecution(container, version string) {
 // MarkCompleted sets status to completed with timestamp.
 func (pf *PromptFile) MarkCompleted() {
 	pf.Frontmatter.Status = string(StatusCompleted)
-	pf.Frontmatter.Completed = time.Now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 }
 
 // MarkFailed sets status to failed with timestamp.
 func (pf *PromptFile) MarkFailed() {
 	pf.Frontmatter.Status = string(StatusFailed)
-	pf.Frontmatter.Completed = time.Now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 }
 
 // MarkQueued sets status to queued and ensures created/queued timestamps exist.
 func (pf *PromptFile) MarkQueued() {
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := pf.now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.Status = string(StatusQueued)
 	if pf.Frontmatter.Created == "" {
 		pf.Frontmatter.Created = now
@@ -431,7 +452,7 @@ func ResetExecuting(ctx context.Context, dir string) error {
 
 		if pf.Frontmatter.Status == string(StatusExecuting) {
 			pf.MarkQueued()
-			if err := pf.Save(); err != nil {
+			if err := pf.Save(ctx); err != nil {
 				return errors.Wrap(ctx, err, "reset executing prompt")
 			}
 		}
@@ -461,7 +482,7 @@ func ResetFailed(ctx context.Context, dir string) error {
 
 		if pf.Frontmatter.Status == string(StatusFailed) {
 			pf.MarkQueued()
-			if err := pf.Save(); err != nil {
+			if err := pf.Save(ctx); err != nil {
 				return errors.Wrap(ctx, err, "reset failed prompt")
 			}
 			slog.Info("reset failed prompt to queued", "file", entry.Name())
@@ -481,7 +502,7 @@ func SetStatus(ctx context.Context, path string, status string) error {
 	}
 
 	oldStatus := pf.Frontmatter.Status
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := pf.now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.Status = status
 	slog.Debug("status changed", "path", path, "oldStatus", oldStatus, "newStatus", status)
 
@@ -504,7 +525,7 @@ func SetStatus(ctx context.Context, path string, status string) error {
 		pf.Frontmatter.Completed = now
 	}
 
-	return pf.Save()
+	return pf.Save(ctx)
 }
 
 // SetContainer updates the container field in a prompt file's frontmatter.
@@ -516,7 +537,7 @@ func SetContainer(ctx context.Context, path string, container string) error {
 	}
 
 	pf.Frontmatter.Container = container
-	return pf.Save()
+	return pf.Save(ctx)
 }
 
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
@@ -528,7 +549,7 @@ func SetVersion(ctx context.Context, path string, version string) error {
 	}
 
 	pf.Frontmatter.DarkFactoryVersion = version
-	return pf.Save()
+	return pf.Save(ctx)
 }
 
 // SetPRURL updates the pr-url field in a prompt file's frontmatter.
@@ -540,7 +561,7 @@ func SetPRURL(ctx context.Context, path string, url string) error {
 	}
 
 	pf.SetPRURL(url)
-	return pf.Save()
+	return pf.Save(ctx)
 }
 
 // Title extracts the first # heading from a prompt file.
@@ -583,7 +604,7 @@ func MoveToCompleted(ctx context.Context, path string, completedDir string, move
 	}
 
 	pf.MarkCompleted()
-	if err := pf.Save(); err != nil {
+	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "set completed status")
 	}
 
@@ -676,9 +697,6 @@ func NormalizeFilenames(
 
 // scanPromptFiles scans directory entries and extracts file information.
 func scanPromptFiles(entries []os.DirEntry) ([]fileInfo, map[int]bool) {
-	validPattern := regexp.MustCompile(`^(\d{3})-(.+)\.md$`)
-	numericPattern := regexp.MustCompile(`^(\d+)-(.+)\.md$`)
-
 	files := make([]fileInfo, 0, len(entries))
 	usedNumbers := make(map[int]bool)
 
@@ -687,7 +705,7 @@ func scanPromptFiles(entries []os.DirEntry) ([]fileInfo, map[int]bool) {
 			continue
 		}
 
-		info := parseFilename(entry.Name(), validPattern, numericPattern)
+		info := parseFilename(entry.Name(), validPatternRegexp, numericPatternRegexp)
 		files = append(files, info)
 
 		if info.number != -1 {
@@ -824,15 +842,13 @@ func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 
 // hasNumberPrefix checks if a filename has a numeric prefix (NNN-).
 func hasNumberPrefix(filename string) bool {
-	pattern := regexp.MustCompile(`^\d{3}-`)
-	return pattern.MatchString(filename)
+	return hasNumberPrefixRegexp.MatchString(filename)
 }
 
 // extractNumberFromFilename extracts the numeric prefix from a filename.
 // Returns -1 if the filename has no numeric prefix.
 func extractNumberFromFilename(filename string) int {
-	pattern := regexp.MustCompile(`^(\d{3})-`)
-	matches := pattern.FindStringSubmatch(filename)
+	matches := extractNumberPrefixRegexp.FindStringSubmatch(filename)
 	if matches == nil {
 		return -1
 	}

@@ -91,7 +91,7 @@ func moveToQueue(
 		return "", errors.Wrap(ctx, err, "load prompt")
 	}
 	pf.MarkQueued()
-	if err := pf.Save(); err != nil {
+	if err := pf.Save(ctx); err != nil {
 		return "", errors.Wrap(ctx, err, "set queued status")
 	}
 

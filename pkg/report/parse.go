@@ -18,8 +18,7 @@ const tailBytes = 4096
 
 // ParseFromLog reads the last N bytes of a log file and extracts the CompletionReport.
 // Returns nil if no report found (graceful — old prompts won't have one).
-func ParseFromLog(logFile string) (*CompletionReport, error) {
-	ctx := context.Background()
+func ParseFromLog(ctx context.Context, logFile string) (*CompletionReport, error) {
 
 	// Open the file
 	// #nosec G304 -- logFile path is constructed internally by dark-factory, not user input

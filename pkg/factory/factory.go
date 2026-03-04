@@ -6,7 +6,6 @@ package factory
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -29,18 +28,23 @@ import (
 
 const defaultIdeasDir = "prompts/ideas"
 
+// createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
+func createPromptManager(queueDir string, completedDir string) (prompt.Manager, git.Releaser) {
+	releaser := git.NewReleaser()
+	promptManager := prompt.NewManager(queueDir, completedDir, releaser)
+	return promptManager, releaser
+}
+
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	inboxDir := cfg.InboxDir
 	queueDir := cfg.QueueDir
 	completedDir := cfg.CompletedDir
-	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(queueDir, completedDir, releaser)
+	promptManager, releaser := createPromptManager(queueDir, completedDir)
 	versionGetter := version.NewGetter(ver)
 
 	// Resolve project name
 	projectName := project.Name(cfg.ProjectName)
-	slog.Info("project name resolved", "name", projectName)
 
 	// Resolve GitHub token (warns internally if env var is empty)
 	ghToken := cfg.ResolvedGitHubToken()
@@ -55,6 +59,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			inboxDir,
 			queueDir,
 			completedDir,
+			cfg.LogDir,
 			promptManager,
 		)
 	}
@@ -140,10 +145,18 @@ func CreateServer(
 	inboxDir string,
 	queueDir string,
 	completedDir string,
+	logDir string,
 	promptManager prompt.Manager,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	statusChecker := status.NewChecker(queueDir, completedDir, defaultIdeasDir, promptManager)
+	statusChecker := status.NewChecker(
+		queueDir,
+		completedDir,
+		defaultIdeasDir,
+		logDir,
+		port,
+		promptManager,
+	)
 
 	// Build the mux with all routes
 	mux := http.NewServeMux()
@@ -171,10 +184,9 @@ func CreateServer(
 
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
-	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
+	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
 
-	statusChecker := status.NewCheckerWithOptions(
+	statusChecker := status.NewChecker(
 		cfg.QueueDir,
 		cfg.CompletedDir,
 		defaultIdeasDir,
@@ -189,8 +201,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 
 // CreateQueueCommand creates a QueueCommand.
 func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
-	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(cfg.QueueDir, cfg.CompletedDir, releaser)
+	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
 
 	return cmd.NewQueueCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
 }

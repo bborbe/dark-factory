@@ -24,6 +24,8 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
+var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+
 // Processor processes queued prompts.
 //
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
@@ -173,7 +175,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 			// Mark as failed — file may have been moved to completed/ before the error.
 			if pf, loadErr := p.promptManager.Load(ctx, pr.Path); loadErr == nil {
 				pf.MarkFailed()
-				if saveErr := pf.Save(); saveErr != nil {
+				if saveErr := pf.Save(ctx); saveErr != nil {
 					slog.Error("failed to set failed status", "error", saveErr)
 				}
 			}
@@ -230,6 +232,23 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return err
 	}
 
+	// Ensure worktree cleanup on error (success path cleanup is in handleWorktreeWorkflow)
+	if p.workflow == config.WorkflowWorktree && workflowState.worktreePath != "" {
+		defer func() {
+			if workflowState.cleanedUp {
+				return // Already cleaned up by handleWorktreeWorkflow
+			}
+			if workflowState.originalDir != "" {
+				if err := os.Chdir(workflowState.originalDir); err != nil {
+					slog.Warn("failed to chdir back to original directory on error", "error", err)
+				}
+			}
+			if err := p.worktree.Remove(ctx, workflowState.worktreePath); err != nil {
+				slog.Warn("failed to remove worktree on error", "path", workflowState.worktreePath, "error", err)
+			}
+		}()
+	}
+
 	// Derive log file path: {logDir}/{basename}.log
 	logFile := filepath.Join(p.logDir, baseName+".log")
 
@@ -250,6 +269,7 @@ type workflowState struct {
 	originalBranch string
 	worktreePath   string
 	originalDir    string
+	cleanedUp      bool
 }
 
 // handlePostExecution handles validation, moving to completed, and workflow completion.
@@ -270,7 +290,7 @@ func (p *processor) handlePostExecution(
 	// Store summary in frontmatter before moving to completed
 	if summary != "" {
 		pf.SetSummary(summary)
-		if err := pf.Save(); err != nil {
+		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "save summary")
 		}
 	}
@@ -308,9 +328,7 @@ func (p *processor) handlePostExecution(
 			gitCtx,
 			ctx,
 			title,
-			state.branchName,
-			state.worktreePath,
-			state.originalDir,
+			state,
 			completedPath,
 		)
 	}
@@ -420,11 +438,12 @@ func (p *processor) handleWorktreeWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
-	branchName string,
-	worktreePath string,
-	originalDir string,
+	state *workflowState,
 	completedPath string,
 ) error {
+	branchName := state.branchName
+	worktreePath := state.worktreePath
+	originalDir := state.originalDir
 	// Commit changes (we're already in the worktree directory)
 	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit changes")
@@ -455,6 +474,7 @@ func (p *processor) handleWorktreeWorkflow(
 		slog.Warn("failed to remove worktree", "path", worktreePath, "error", err)
 		// Non-fatal — worktree cleanup is best-effort
 	}
+	state.cleanedUp = true
 
 	return nil
 }
@@ -474,26 +494,6 @@ func (p *processor) setupWorktreeForExecution(
 	if err := p.worktree.Add(ctx, worktreePath, branchName); err != nil {
 		return "", errors.Wrap(ctx, err, "add worktree")
 	}
-
-	// Ensure cleanup happens even if execution fails
-	defer func() {
-		if originalDir != "" {
-			if err := os.Chdir(originalDir); err != nil {
-				slog.Warn("failed to chdir back to original directory", "error", err)
-			}
-		}
-		if worktreePath != "" {
-			if err := p.worktree.Remove(ctx, worktreePath); err != nil {
-				slog.Warn(
-					"failed to remove worktree on defer",
-					"path",
-					worktreePath,
-					"error",
-					err,
-				)
-			}
-		}
-	}()
 
 	// Switch to worktree directory
 	if err := os.Chdir(worktreePath); err != nil {
@@ -547,7 +547,7 @@ func preparePromptForExecution(
 	containerName = projectName + "-" + baseName
 
 	pf.PrepareForExecution(containerName, version)
-	if err := pf.Save(); err != nil {
+	if err := pf.Save(ctx); err != nil {
 		return "", "", "", errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
@@ -565,7 +565,7 @@ func preparePromptForExecution(
 // Returns ("", nil) if no report found (backwards compatible) or parse error.
 // Returns (summary, nil) if report indicates success.
 func validateCompletionReport(ctx context.Context, logFile string) (string, error) {
-	completionReport, err := report.ParseFromLog(logFile)
+	completionReport, err := report.ParseFromLog(ctx, logFile)
 	if err != nil {
 		slog.Debug("failed to parse completion report", "error", err)
 		// Continue — don't fail the prompt just because report parsing failed
@@ -639,8 +639,7 @@ func (p *processor) savePRURLToFrontmatter(
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]
 func sanitizeContainerName(name string) string {
 	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
-	re := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
-	return re.ReplaceAllString(name, "-")
+	return sanitizeContainerNameRegexp.ReplaceAllString(name, "-")
 }
 
 // determineBump determines the version bump type by analyzing CHANGELOG.md content.

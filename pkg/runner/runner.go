@@ -6,6 +6,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -133,7 +134,7 @@ func (r *runner) createDirectories(ctx context.Context) error {
 	dirs := []string{r.inboxDir, r.queueDir, r.completedDir}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0750); err != nil {
-			return errors.Wrapf(ctx, err, "create directory %s", dir)
+			return errors.Wrap(ctx, err, fmt.Sprintf("create directory %s", dir))
 		}
 	}
 	return nil

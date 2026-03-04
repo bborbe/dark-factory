@@ -73,6 +73,7 @@ var _ = Describe("Factory", func() {
 				cfg.InboxDir,
 				cfg.QueueDir,
 				cfg.CompletedDir,
+				cfg.LogDir,
 				nil, // promptManager not needed for nil check
 			)
 			Expect(server).NotTo(BeNil())

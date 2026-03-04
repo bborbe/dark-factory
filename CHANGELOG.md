@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.15.0
+
+- Add configurable GitHub identity via `github.token` config with `${ENV_VAR}` resolution
+- Add `GH_TOKEN` injection for `gh` CLI calls in PR creator
+- Add config file permission warning for world-readable files
+- Add env var resolution tests and backward compatibility tests
+
 ## v0.14.5
 
 - Refactor changelog handling to only rename ## Unreleased section

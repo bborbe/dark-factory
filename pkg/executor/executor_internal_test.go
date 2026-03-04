@@ -172,7 +172,7 @@ var _ = Describe("Internal helper functions", func() {
 
 		BeforeEach(func() {
 			exec = &dockerExecutor{
-				containerImage: "docker.io/bborbe/claude-yolo:v0.0.8",
+				containerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
 				projectName:    "test-project",
 			}
 		})

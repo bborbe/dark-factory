@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"regexp"
 
@@ -100,6 +101,11 @@ func resolveEnvVar(value string) string {
 }
 
 // ResolvedGitHubToken returns the GitHub token with environment variables resolved.
+// Logs a warning if the token is configured but the env var is empty.
 func (c Config) ResolvedGitHubToken() string {
-	return resolveEnvVar(c.GitHub.Token)
+	token := resolveEnvVar(c.GitHub.Token)
+	if c.GitHub.Token != "" && token == "" {
+		slog.Warn("github.token configured but env var is empty, using default gh auth")
+	}
+	return token
 }

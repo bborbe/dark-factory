@@ -499,6 +499,22 @@ debounceMs: -100
 				Expect(err.Error()).To(ContainSubstring("validate config"))
 			})
 
+			It("loads config from world-readable file without error", func() {
+				configContent := `workflow: pr
+`
+				configPath := filepath.Join(tmpDir, ".dark-factory.yaml")
+				err := os.WriteFile(configPath, []byte(configContent), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Make world-readable after creation to avoid gosec G306
+				err = os.Chmod(configPath, 0644) // #nosec G302 -- intentional for test
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+			})
+
 			It("loads config with github token from env var", func() {
 				configContent := `workflow: pr
 github:

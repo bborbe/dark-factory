@@ -69,7 +69,7 @@ var _ = Describe("Brancher", func() {
 		err = os.Chdir(tempDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		b = git.NewBrancher("")
+		b = git.NewBrancher()
 	})
 
 	AfterEach(func() {
@@ -84,13 +84,8 @@ var _ = Describe("Brancher", func() {
 	})
 
 	Describe("NewBrancher", func() {
-		It("creates Brancher without token", func() {
-			brancher := git.NewBrancher("")
-			Expect(brancher).NotTo(BeNil())
-		})
-
-		It("creates Brancher with token", func() {
-			brancher := git.NewBrancher("test-token")
+		It("creates Brancher", func() {
+			brancher := git.NewBrancher()
 			Expect(brancher).NotTo(BeNil())
 		})
 	})

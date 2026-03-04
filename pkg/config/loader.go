@@ -63,12 +63,11 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 	}
 
 	// Check file permissions
-	fileInfo, err := os.Stat(l.configPath)
-	if err == nil {
-		mode := fileInfo.Mode()
-		if mode&0004 != 0 {
-			slog.Warn("config file is world-readable, consider: chmod 600 .dark-factory.yaml")
-		}
+	fileInfo, statErr := os.Stat(l.configPath)
+	if statErr != nil {
+		slog.Warn("failed to stat config file", "path", l.configPath, "error", statErr)
+	} else if fileInfo.Mode()&0004 != 0 {
+		slog.Warn("config file is world-readable, consider: chmod 600", "path", l.configPath)
 	}
 
 	// Parse YAML into partial config to preserve defaults for missing fields

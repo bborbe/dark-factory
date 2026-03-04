@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.16.0
+
+- Add `pr-url` field to prompt frontmatter in PR and worktree workflows
+- Add `ForcePush` with `--force-with-lease` for safe force-pushing
+- Add `AmendCommit` for amending commits with frontmatter updates
+- Add spec 016: prompt status frontmatter (draft)
+
 ## v0.15.0
 
 - Add configurable GitHub identity via `github.token` config with `${ENV_VAR}` resolution

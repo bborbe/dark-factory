@@ -291,6 +291,7 @@ func (p *processor) handlePostExecution(
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
+	// TODO: refactor to switch on p.workflow to make all cases explicit
 	if p.workflow == config.WorkflowPR {
 		return p.handlePRWorkflow(
 			gitCtx,
@@ -319,6 +320,7 @@ func (p *processor) handlePostExecution(
 func (p *processor) setupWorkflow(ctx context.Context, baseName string) (*workflowState, error) {
 	state := &workflowState{}
 
+	// TODO: refactor to switch on p.workflow to make all cases explicit
 	if p.workflow == config.WorkflowPR {
 		var err error
 		state.originalBranch, err = p.brancher.CurrentBranch(ctx)

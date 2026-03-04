@@ -17,6 +17,27 @@ You (fast)                              Factory (slow, unattended)
 You come back                       ←── changes committed and pushed
 ```
 
+## Specs
+
+| Spec | Problem |
+|------|---------|
+| [001-core-pipeline](specs/001-core-pipeline.md) | Running AI coding prompts requires babysitting: open terminal, paste prompt, wait, review, commit, repeat. |
+| [002-configuration](specs/002-configuration.md) | All paths, image names, and settings are hardcoded. |
+| [003-filename-normalization](specs/003-filename-normalization.md) | Users create prompt files with arbitrary names (`add-health-check.md`, `9-fix-bug.md`, `my task.md`). |
+| [004-directory-separation](specs/004-directory-separation.md) | All prompts live in one directory. |
+| [005-instance-locking](specs/005-instance-locking.md) | Running two dark-factory instances in the same project causes race conditions: both pick the same prompt, both try to commit, git conflicts. |
+| [006-crash-recovery](specs/006-crash-recovery.md) | If dark-factory crashes mid-execution, a prompt is left with `status: executing` — it's stuck. |
+| [007-git-direct-workflow](specs/007-git-direct-workflow.md) | After the Docker container makes changes, those changes need to be committed and pushed. |
+| [008-http-api](specs/008-http-api.md) | When dark-factory runs unattended, there's no way to check progress without reading files directly. |
+| [009-cli-commands](specs/009-cli-commands.md) | The only way to interact with dark-factory is to start the daemon. |
+| [010-pr-workflow](specs/010-pr-workflow.md) | Direct workflow commits to the current branch. |
+| [011-timestamp-frontmatter](specs/011-timestamp-frontmatter.md) | No visibility into when prompts were created, queued, started, or completed. |
+| [012-duplicate-frontmatter-handling](specs/012-duplicate-frontmatter-handling.md) | Prompts created with empty frontmatter (`---\n---`) end up with a duplicate frontmatter block in the content body after the processor prepends real frontmatter. |
+| [013-auto-merge-and-release](specs/013-auto-merge-and-release.md) | When `workflow: pr` or `workflow: worktree` is configured, dark-factory creates a PR and moves on. |
+| [014-configurable-github-identity](specs/014-configurable-github-identity.md) | Dark-factory creates PRs using the current user's `gh` auth. |
+| [015-pr-url-in-frontmatter](specs/015-pr-url-in-frontmatter.md) | When dark-factory creates a PR via the `pr` workflow, the PR URL is logged but not persisted in the prompt's frontmatter. |
+| [016-prompt-status-frontmatter](specs/016-prompt-status-frontmatter.md) | Prompt lifecycle tracking relies solely on folder location (inbox/queue/completed). |
+
 ## Prerequisites
 
 - **Go 1.24+** — to build dark-factory

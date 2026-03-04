@@ -26,6 +26,7 @@ type Executor interface {
 type dockerExecutor struct {
 	containerImage string
 	projectName    string
+	commandRunner  commandRunner
 }
 
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
@@ -33,6 +34,7 @@ func NewDockerExecutor(containerImage string, projectName string) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
+		commandRunner:  &defaultCommandRunner{},
 	}
 }
 
@@ -104,7 +106,7 @@ func (e *dockerExecutor) Execute(
 	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
 
 	// Run and wait for completion
-	if err := cmd.Run(); err != nil {
+	if err := e.commandRunner.Run(ctx, cmd); err != nil {
 		return errors.Wrap(ctx, err, "docker run failed")
 	}
 

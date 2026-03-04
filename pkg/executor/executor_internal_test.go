@@ -7,14 +7,27 @@ package executor
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/bborbe/errors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 )
+
+// fakeCommandRunner is a test double for commandRunner.
+type fakeCommandRunner struct {
+	err       error
+	runCalled bool
+}
+
+func (f *fakeCommandRunner) Run(ctx context.Context, cmd *exec.Cmd) error {
+	f.runCalled = true
+	return f.err
+}
 
 var _ = Describe("Internal helper functions", func() {
 	var (
@@ -169,6 +182,38 @@ var _ = Describe("Internal helper functions", func() {
 		})
 	})
 
+	Describe("extractPromptBaseName", func() {
+		It("extracts basename when prefix matches", func() {
+			result := extractPromptBaseName("myproject-042-fix-bug", "myproject")
+			Expect(result).To(Equal("042-fix-bug"))
+		})
+
+		It("returns full name when prefix does not match", func() {
+			result := extractPromptBaseName("other-042-fix-bug", "myproject")
+			Expect(result).To(Equal("other-042-fix-bug"))
+		})
+
+		It("returns containerName when it equals prefix with dash", func() {
+			result := extractPromptBaseName("myproject-", "myproject")
+			Expect(result).To(Equal("myproject-"))
+		})
+
+		It("returns full name when containerName is shorter than prefix", func() {
+			result := extractPromptBaseName("my", "myproject")
+			Expect(result).To(Equal("my"))
+		})
+
+		It("handles empty project name", func() {
+			result := extractPromptBaseName("some-container", "")
+			Expect(result).To(Equal("some-container"))
+		})
+
+		It("handles empty container name", func() {
+			result := extractPromptBaseName("", "myproject")
+			Expect(result).To(Equal(""))
+		})
+	})
+
 	Describe("buildDockerCommand", func() {
 		var exec *dockerExecutor
 
@@ -270,6 +315,107 @@ var _ = Describe("Internal helper functions", func() {
 			)
 
 			Expect(cmd.Args).To(ContainElement("custom-image:v1.2.3"))
+		})
+	})
+
+	Describe("Execute", func() {
+		var (
+			exec       *dockerExecutor
+			fakeRunner *fakeCommandRunner
+			logFile    string
+			logDir     string
+		)
+
+		BeforeEach(func() {
+			fakeRunner = &fakeCommandRunner{}
+			exec = &dockerExecutor{
+				containerImage: config.Defaults().ContainerImage,
+				projectName:    "test-project",
+				commandRunner:  fakeRunner,
+			}
+
+			logDir = filepath.Join(tempDir, "logs")
+			logFile = filepath.Join(logDir, "test.log")
+		})
+
+		Context("with successful command execution", func() {
+			It("creates log file and temp prompt file", func() {
+				promptContent := "# Test prompt\n\nThis is a test."
+
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.runCalled).To(BeTrue())
+
+				// Verify log file was created
+				_, err = os.Stat(logFile)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("handles empty prompt content", func() {
+				err := exec.Execute(ctx, "", logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
+
+			It("handles special characters in prompt", func() {
+				promptContent := "# Test\n\n```bash\necho `whoami` && echo \"test\"\n```"
+
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
+		})
+
+		Context("when log dir creation fails", func() {
+			It("returns error", func() {
+				invalidLogFile := "/invalid/path/that/does/not/exist/test.log"
+
+				err := exec.Execute(ctx, "test", invalidLogFile, "test-container")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("create log directory"))
+				Expect(fakeRunner.runCalled).To(BeFalse())
+			})
+		})
+
+		Context("when command runner fails", func() {
+			BeforeEach(func() {
+				fakeRunner.err = errors.New(ctx, "command execution failed")
+			})
+
+			It("returns error", func() {
+				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("docker run failed"))
+				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
+		})
+
+		Context("with context cancellation", func() {
+			It("passes context to command runner", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel() // Cancel immediately
+
+				fakeRunner.err = context.Canceled
+				err := exec.Execute(cancelCtx, "test", logFile, "test-container")
+				Expect(err).To(HaveOccurred())
+				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
+		})
+
+		Context("with YAML frontmatter", func() {
+			It("handles frontmatter correctly", func() {
+				promptContent := `---
+status: queued
+priority: high
+---
+# Test prompt
+
+This has frontmatter.`
+
+				err := exec.Execute(ctx, promptContent, logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
 		})
 	})
 })

@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Bumped test coverage for pkg/executor (46.9% → 80.0%) and pkg/factory (41.7% → 97.3%)
+container: dark-factory-068-bump-test-coverage
+dark-factory-version: v0.16.0
+created: "2026-03-04T23:31:45Z"
+queued: "2026-03-04T23:31:45Z"
+started: "2026-03-04T23:31:45Z"
+completed: "2026-03-04T23:38:31Z"
+---
 # Bump test coverage to ≥80% for executor and factory packages
 
 ## Goal

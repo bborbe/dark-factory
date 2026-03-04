@@ -13,11 +13,83 @@ import (
 )
 
 var _ = Describe("Factory", func() {
+	var cfg config.Config
+
+	BeforeEach(func() {
+		cfg = config.Defaults()
+	})
+
 	Describe("CreateRunner", func() {
 		It("should return a non-nil runner", func() {
-			cfg := config.Defaults()
 			runner := factory.CreateRunner(cfg, "v0.0.1")
 			Expect(runner).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateWatcher", func() {
+		It("should return a non-nil watcher", func() {
+			ready := make(chan struct{}, 10)
+			watcher := factory.CreateWatcher(
+				cfg.QueueDir,
+				nil, // promptManager not needed for nil check
+				ready,
+				100,
+			)
+			Expect(watcher).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateProcessor", func() {
+		It("should return a non-nil processor", func() {
+			ready := make(chan struct{}, 10)
+			processor := factory.CreateProcessor(
+				cfg.QueueDir,
+				cfg.CompletedDir,
+				cfg.LogDir,
+				"test-project",
+				nil, // promptManager not needed for nil check
+				nil, // releaser not needed for nil check
+				nil, // versionGetter not needed for nil check
+				ready,
+				cfg.ContainerImage,
+				cfg.Workflow,
+				"test-token",
+			)
+			Expect(processor).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateLocker", func() {
+		It("should return a non-nil locker", func() {
+			locker := factory.CreateLocker(".")
+			Expect(locker).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateServer", func() {
+		It("should return a non-nil server", func() {
+			server := factory.CreateServer(
+				8080,
+				cfg.InboxDir,
+				cfg.QueueDir,
+				cfg.CompletedDir,
+				nil, // promptManager not needed for nil check
+			)
+			Expect(server).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateStatusCommand", func() {
+		It("should return a non-nil status command", func() {
+			cmd := factory.CreateStatusCommand(cfg)
+			Expect(cmd).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateQueueCommand", func() {
+		It("should return a non-nil queue command", func() {
+			cmd := factory.CreateQueueCommand(cfg)
+			Expect(cmd).NotTo(BeNil())
 		})
 	})
 })

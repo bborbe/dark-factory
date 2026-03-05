@@ -26,14 +26,16 @@ type Executor interface {
 type dockerExecutor struct {
 	containerImage string
 	projectName    string
+	model          string
 	commandRunner  commandRunner
 }
 
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
-func NewDockerExecutor(containerImage string, projectName string) Executor {
+func NewDockerExecutor(containerImage string, projectName string, model string) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
+		model:          model,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -177,6 +179,7 @@ func (e *dockerExecutor) buildDockerCommand(
 		"--label", "dark-factory.prompt="+promptBaseName,
 		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
+		"-e", "ANTHROPIC_MODEL="+e.model,
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
 		"-v", home+"/.claude-yolo:/home/node/.claude",

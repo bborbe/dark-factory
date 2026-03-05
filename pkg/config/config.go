@@ -28,6 +28,7 @@ type Config struct {
 	CompletedDir   string       `yaml:"completedDir"`
 	LogDir         string       `yaml:"logDir"`
 	ContainerImage string       `yaml:"containerImage"`
+	Model          string       `yaml:"model"`
 	DebounceMs     int          `yaml:"debounceMs"`
 	ServerPort     int          `yaml:"serverPort"`
 	AutoMerge      bool         `yaml:"autoMerge"`
@@ -44,6 +45,7 @@ func Defaults() Config {
 		CompletedDir:   "prompts/completed",
 		LogDir:         "prompts/log",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
+		Model:          "claude-sonnet-4-6",
 		DebounceMs:     500,
 		ServerPort:     0,
 		AutoMerge:      false,
@@ -63,6 +65,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("completedDir", validation.NotEmptyString(c.CompletedDir)),
 		validation.Name("logDir", validation.NotEmptyString(c.LogDir)),
 		validation.Name("containerImage", validation.NotEmptyString(c.ContainerImage)),
+		validation.Name("model", validation.NotEmptyString(c.Model)),
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.DebounceMs <= 0 {
 				return errors.Errorf(ctx, "debounceMs must be positive, got %d", c.DebounceMs)

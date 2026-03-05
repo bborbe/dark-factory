@@ -52,6 +52,7 @@ var _ = Describe("Factory", func() {
 				nil, // versionGetter not needed for nil check
 				ready,
 				cfg.ContainerImage,
+				cfg.Model,
 				cfg.Workflow,
 				"test-token",
 				false,

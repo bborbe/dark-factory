@@ -224,25 +224,29 @@ func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool
 	return false
 }
 
-// autoSetQueuedStatus sets status to "queued" if it's empty or "created".
+// autoSetQueuedStatus sets status to "queued" for any non-terminal status.
 // This makes the folder location the source of truth - if a file is in queue/, it should be queued.
 func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) error {
-	if pr.Status == "" || pr.Status == prompt.Status("created") {
-		baseName := filepath.Base(pr.Path)
-		previousStatus := pr.Status
-		slog.Info(
-			"auto-setting status to queued",
-			"file",
-			baseName,
-			"previousStatus",
-			previousStatus,
-		)
-		if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusQueued)); err != nil {
-			return errors.Wrap(ctx, err, "set status to queued")
-		}
-		// Update local status so ValidateForExecution passes
-		pr.Status = prompt.StatusQueued
+	switch pr.Status {
+	case prompt.StatusQueued, prompt.StatusExecuting, prompt.StatusCompleted, prompt.StatusFailed:
+		// Already in a valid processing state — don't override
+		return nil
 	}
+	// Any other status (empty, "created", "approved", "draft", etc.) → auto-set to queued
+	baseName := filepath.Base(pr.Path)
+	previousStatus := pr.Status
+	slog.Info(
+		"auto-setting status to queued",
+		"file",
+		baseName,
+		"previousStatus",
+		previousStatus,
+	)
+	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusQueued)); err != nil {
+		return errors.Wrap(ctx, err, "set status to queued")
+	}
+	// Update local status so ValidateForExecution passes
+	pr.Status = prompt.StatusQueued
 	return nil
 }
 

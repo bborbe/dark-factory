@@ -8,6 +8,9 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.8
+- Add --help/-h and --version/-v flags (exit before factory starts)
+
 ## v0.17.2
 
 - Fix CommitCompletedFile to stage only the completed file instead of `git add -A`

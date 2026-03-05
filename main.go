@@ -30,6 +30,18 @@ func run() error {
 	// Parse command line arguments
 	debug, command, args := parseArgs()
 
+	switch command {
+	case "help":
+		fmt.Fprintf(
+			os.Stdout,
+			"Usage: dark-factory [options] [command]\n\nCommands:\n  run     Watch for queued prompts and execute them (default)\n  status  Show status of prompts\n  queue   Queue a prompt for execution\n\nOptions:\n  -debug  Enable debug logging\n\nFlags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
+		)
+		return nil
+	case "version":
+		fmt.Fprintf(os.Stdout, "dark-factory %s\n", version.Version)
+		return nil
+	}
+
 	// Configure slog
 	level := slog.LevelInfo
 	if debug {
@@ -88,8 +100,13 @@ func parseArgs() (bool, string, []string) {
 		args = filteredArgs[2:]
 	}
 
-	if command == "run" || command == "status" || command == "queue" {
+	switch command {
+	case "run", "status", "queue":
 		return debug, command, args
+	case "--help", "-help", "-h":
+		return debug, "help", []string{}
+	case "--version", "-version", "-v":
+		return debug, "version", []string{}
 	}
 
 	// Unknown command - default to run and treat as args

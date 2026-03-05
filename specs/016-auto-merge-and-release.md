@@ -1,5 +1,5 @@
 ---
-status: todo
+status: draft
 ---
 
 # Auto-Merge and Auto-Release for PR Workflow

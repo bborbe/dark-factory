@@ -1,3 +1,7 @@
+---
+status: created
+---
+
 # Add auto-merge and auto-release to PR workflow
 
 ## Goal

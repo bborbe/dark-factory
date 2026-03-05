@@ -33,10 +33,10 @@ You come back                       ←── changes committed and pushed
 | [010-pr-workflow](specs/010-pr-workflow.md) | Direct workflow commits to the current branch. |
 | [011-timestamp-frontmatter](specs/011-timestamp-frontmatter.md) | No visibility into when prompts were created, queued, started, or completed. |
 | [012-duplicate-frontmatter-handling](specs/012-duplicate-frontmatter-handling.md) | Prompts created with empty frontmatter (`---\n---`) end up with a duplicate frontmatter block in the content body after the processor prepends real frontmatter. |
-| [013-auto-merge-and-release](specs/013-auto-merge-and-release.md) | When `workflow: pr` or `workflow: worktree` is configured, dark-factory creates a PR and moves on. |
-| [014-configurable-github-identity](specs/014-configurable-github-identity.md) | Dark-factory creates PRs using the current user's `gh` auth. |
-| [015-pr-url-in-frontmatter](specs/015-pr-url-in-frontmatter.md) | When dark-factory creates a PR via the `pr` workflow, the PR URL is logged but not persisted in the prompt's frontmatter. |
-| [016-prompt-status-frontmatter](specs/016-prompt-status-frontmatter.md) | Prompt lifecycle tracking relies solely on folder location (inbox/queue/completed). |
+| [013-configurable-github-identity](specs/013-configurable-github-identity.md) | Dark-factory creates PRs using the current user's `gh` auth. |
+| [014-pr-url-in-frontmatter](specs/014-pr-url-in-frontmatter.md) | When dark-factory creates a PR via the `pr` workflow, the PR URL is logged but not persisted in the prompt's frontmatter. |
+| [015-prompt-status-frontmatter](specs/015-prompt-status-frontmatter.md) | Prompt lifecycle tracking relies solely on folder location (inbox/queue/completed). |
+| [016-auto-merge-and-release](specs/016-auto-merge-and-release.md) | When `workflow: pr` or `workflow: worktree` is configured, dark-factory creates a PR and moves on. |
 
 ## Prerequisites
 

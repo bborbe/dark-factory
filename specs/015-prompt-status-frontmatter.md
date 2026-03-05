@@ -2,7 +2,7 @@
 tags:
   - dark-factory
   - spec
-status: draft
+status: completed
 ---
 Tags: [[Dark Factory Guide]]
 

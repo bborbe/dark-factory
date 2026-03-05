@@ -1,5 +1,5 @@
 ---
-status: todo
+status: completed
 ---
 
 # Configurable GitHub Identity via GH_TOKEN

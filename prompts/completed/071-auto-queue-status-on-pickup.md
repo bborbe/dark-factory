@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Implemented auto-setting status to queued when prompts are picked up from queue directory
+container: dark-factory-071-auto-queue-status-on-pickup
+dark-factory-version: v0.16.0
+created: "2026-03-05T13:15:41Z"
+queued: "2026-03-05T13:15:41Z"
+started: "2026-03-05T13:15:41Z"
+completed: "2026-03-05T13:23:39Z"
 ---
 <objective>
 Auto-set `status: queued` when dark-factory picks up a prompt from the queue directory, regardless of current status value.

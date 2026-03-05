@@ -149,6 +149,11 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		// Pick first prompt (already sorted alphabetically)
 		pr := queued[0]
 
+		// Auto-set status to queued if empty or created (folder location is source of truth)
+		if err := p.autoSetQueuedStatus(ctx, &pr); err != nil {
+			return err
+		}
+
 		// Validate prompt before execution
 		if err := pr.ValidateForExecution(ctx); err != nil {
 			slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
@@ -171,20 +176,47 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
-			slog.Error("prompt failed", "file", filepath.Base(pr.Path), "error", err)
-			// Mark as failed — file may have been moved to completed/ before the error.
-			if pf, loadErr := p.promptManager.Load(ctx, pr.Path); loadErr == nil {
-				pf.MarkFailed()
-				if saveErr := pf.Save(ctx); saveErr != nil {
-					slog.Error("failed to set failed status", "error", saveErr)
-				}
-			}
+			p.handlePromptFailure(ctx, pr.Path, err)
 			return nil // failed — wait for watcher signal or periodic scan
 		}
 
 		slog.Info("watching for queued prompts", "dir", p.queueDir)
 
 		// Loop again to process next prompt
+	}
+}
+
+// autoSetQueuedStatus sets status to "queued" if it's empty or "created".
+// This makes the folder location the source of truth - if a file is in queue/, it should be queued.
+func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) error {
+	if pr.Status == "" || pr.Status == prompt.Status("created") {
+		baseName := filepath.Base(pr.Path)
+		previousStatus := pr.Status
+		slog.Info(
+			"auto-setting status to queued",
+			"file",
+			baseName,
+			"previousStatus",
+			previousStatus,
+		)
+		if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusQueued)); err != nil {
+			return errors.Wrap(ctx, err, "set status to queued")
+		}
+		// Update local status so ValidateForExecution passes
+		pr.Status = prompt.StatusQueued
+	}
+	return nil
+}
+
+// handlePromptFailure marks a prompt as failed after execution error.
+func (p *processor) handlePromptFailure(ctx context.Context, path string, err error) {
+	slog.Error("prompt failed", "file", filepath.Base(path), "error", err)
+	// Mark as failed — file may have been moved to completed/ before the error.
+	if pf, loadErr := p.promptManager.Load(ctx, path); loadErr == nil {
+		pf.MarkFailed()
+		if saveErr := pf.Save(ctx); saveErr != nil {
+			slog.Error("failed to set failed status", "error", saveErr)
+		}
 	}
 }
 

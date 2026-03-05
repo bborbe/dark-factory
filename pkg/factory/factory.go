@@ -88,6 +88,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.ContainerImage,
 			cfg.Workflow,
 			ghToken,
+			cfg.AutoMerge,
+			cfg.AutoRelease,
 		),
 		srv,
 	)
@@ -116,6 +118,8 @@ func CreateProcessor(
 	containerImage string,
 	workflow config.Workflow,
 	ghToken string,
+	autoMerge bool,
+	autoRelease bool,
 ) processor.Processor {
 	return processor.NewProcessor(
 		queueDir,
@@ -131,6 +135,9 @@ func CreateProcessor(
 		git.NewBrancher(),
 		git.NewPRCreator(ghToken),
 		git.NewWorktree(),
+		git.NewPRMerger(ghToken),
+		autoMerge,
+		autoRelease,
 	)
 }
 

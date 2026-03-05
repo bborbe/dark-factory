@@ -36,6 +36,7 @@ var _ = Describe("Processor", func() {
 		mockBrancher   *mocks.Brancher
 		mockPRCreator  *mocks.PRCreator
 		mockWorktree   *mocks.Worktree
+		mockPRMerger   *mocks.PRMerger
 	)
 
 	BeforeEach(func() {
@@ -57,6 +58,7 @@ var _ = Describe("Processor", func() {
 		mockBrancher = &mocks.Brancher{}
 		mockPRCreator = &mocks.PRCreator{}
 		mockWorktree = &mocks.Worktree{}
+		mockPRMerger = &mocks.PRMerger{}
 		mockVersionGet.GetReturns("v0.0.1-test")
 	})
 
@@ -102,6 +104,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -159,6 +164,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -220,6 +228,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -277,6 +288,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -326,6 +340,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -375,6 +392,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -428,6 +448,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -507,6 +530,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -566,6 +592,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -615,6 +644,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -658,6 +690,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -698,6 +733,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -748,6 +786,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -809,6 +850,9 @@ var _ = Describe("Processor", func() {
 			mockBrancher,
 			mockPRCreator,
 			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
 		)
 
 		// Run processor in goroutine
@@ -878,6 +922,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -949,6 +996,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor — marks failed and continues
@@ -1005,6 +1055,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor — marks failed and continues
@@ -1075,6 +1128,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1160,6 +1216,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor
@@ -1229,6 +1288,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor
@@ -1280,6 +1342,9 @@ var _ = Describe("Processor", func() {
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor
@@ -1369,6 +1434,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1435,6 +1503,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1498,6 +1569,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1562,6 +1636,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1626,6 +1703,9 @@ more output
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1689,6 +1769,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1756,6 +1839,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1807,6 +1893,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			go func() {
@@ -1850,6 +1939,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			go func() {
@@ -1900,6 +1992,9 @@ DARK-FACTORY-REPORT -->
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
 			)
 
 			go func() {
@@ -1920,6 +2015,466 @@ DARK-FACTORY-REPORT -->
 			Eventually(func() int {
 				return mockManager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			cancel()
+		})
+	})
+
+	Context("Auto-merge", func() {
+		It("should not call WaitAndMerge when autoMerge is false (PR workflow)", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-automerge.md")
+			// completedPath not needed
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
+			mockBrancher.CurrentBranchReturns("main", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.SetPRURLReturns(nil)
+			mockReleaser.AmendCommitReturns(nil)
+			mockBrancher.ForcePushReturns(nil)
+
+			// Create log file with success report
+			logDir := filepath.Join(promptsDir, "log")
+			_ = os.MkdirAll(logDir, 0750)
+			logPath := filepath.Join(logDir, "001-no-automerge.log")
+			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Auto-merge test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				false, // autoMerge disabled
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for PR to be created
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// WaitAndMerge should NOT be called
+			Consistently(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+			// Should switch back to original branch
+			Eventually(func() int {
+				return mockBrancher.SwitchCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+			_, branch := mockBrancher.SwitchArgsForCall(0)
+			Expect(branch).To(Equal("main"))
+
+			cancel()
+		})
+
+		It(
+			"should call WaitAndMerge when autoMerge is true and merge succeeds (PR workflow)",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-automerge.md")
+				// completedPath not needed
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.StatusQueued},
+				}
+
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.CommitOnlyReturns(nil)
+				mockBrancher.FetchReturns(nil)
+				mockBrancher.MergeOriginDefaultReturns(nil)
+				mockBrancher.CurrentBranchReturns("main", nil)
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.PushReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.PullReturns(nil)
+				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+				mockPRMerger.WaitAndMergeReturns(nil)
+				mockManager.MoveToCompletedReturns(nil)
+				mockManager.SetPRURLReturns(nil)
+				mockReleaser.AmendCommitReturns(nil)
+				mockBrancher.ForcePushReturns(nil)
+				mockReleaser.HasChangelogReturns(false)
+
+				// Create log file with success report
+				logDir := filepath.Join(promptsDir, "log")
+				_ = os.MkdirAll(logDir, 0750)
+				logPath := filepath.Join(logDir, "001-automerge.log")
+				_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Auto-merge test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					logDir,
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowPR,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					true, // autoMerge enabled
+					false,
+				)
+
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				// Wait for WaitAndMerge to be called
+				Eventually(func() int {
+					return mockPRMerger.WaitAndMergeCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// Verify DefaultBranch was called
+				Eventually(func() int {
+					return mockBrancher.DefaultBranchCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// Verify Switch to default branch was called
+				Eventually(func() int {
+					return mockBrancher.SwitchCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+				// Verify Pull was called
+				Eventually(func() int {
+					return mockBrancher.PullCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				cancel()
+			},
+		)
+
+		It("should switch back to original branch when WaitAndMerge fails (PR workflow)", func() {
+			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
+			// completedPath not needed
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
+			mockBrancher.CurrentBranchReturns("main", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			mockPRMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.SetPRURLReturns(nil)
+			mockReleaser.AmendCommitReturns(nil)
+			mockBrancher.ForcePushReturns(nil)
+
+			// Create log file with success report
+			logDir := filepath.Join(promptsDir, "log")
+			_ = os.MkdirAll(logDir, 0750)
+			logPath := filepath.Join(logDir, "001-merge-fail.log")
+			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Auto-merge test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				true, // autoMerge enabled
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for WaitAndMerge to be called
+			Eventually(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Should switch back to original branch on error
+			Eventually(func() int {
+				return mockBrancher.SwitchCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+			_, branch := mockBrancher.SwitchArgsForCall(0)
+			Expect(branch).To(Equal("main"))
+
+			// Load should be called to mark as failed
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			cancel()
+		})
+
+		It("should call CommitAndRelease when autoRelease is true and changelog exists", func() {
+			promptPath := filepath.Join(promptsDir, "001-autorelease.md")
+			// completedPath not needed
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
+			mockBrancher.CurrentBranchReturns("main", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.PullReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			mockPRMerger.WaitAndMergeReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.SetPRURLReturns(nil)
+			mockReleaser.AmendCommitReturns(nil)
+			mockBrancher.ForcePushReturns(nil)
+			mockReleaser.HasChangelogReturns(true)
+			mockReleaser.GetNextVersionReturns("v0.0.2", nil)
+			mockReleaser.CommitAndReleaseReturns(nil)
+
+			// Create log file with success report
+			logDir := filepath.Join(promptsDir, "log")
+			_ = os.MkdirAll(logDir, 0750)
+			logPath := filepath.Join(logDir, "001-autorelease.log")
+			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Auto-release test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				true, // autoMerge enabled
+				true, // autoRelease enabled
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for CommitAndRelease to be called
+			Eventually(func() int {
+				return mockReleaser.CommitAndReleaseCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			cancel()
+		})
+
+		It(
+			"should not call CommitAndRelease when autoRelease is true but no changelog exists",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-no-changelog.md")
+				// completedPath not needed
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.StatusQueued},
+				}
+
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.CommitOnlyReturns(nil)
+				mockBrancher.FetchReturns(nil)
+				mockBrancher.MergeOriginDefaultReturns(nil)
+				mockBrancher.CurrentBranchReturns("main", nil)
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.PushReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.PullReturns(nil)
+				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+				mockPRMerger.WaitAndMergeReturns(nil)
+				mockManager.MoveToCompletedReturns(nil)
+				mockManager.SetPRURLReturns(nil)
+				mockReleaser.AmendCommitReturns(nil)
+				mockBrancher.ForcePushReturns(nil)
+				mockReleaser.HasChangelogReturns(false) // No changelog
+
+				// Create log file with success report
+				logDir := filepath.Join(promptsDir, "log")
+				_ = os.MkdirAll(logDir, 0750)
+				logPath := filepath.Join(logDir, "001-no-changelog.log")
+				_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"No changelog test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					logDir,
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowPR,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					true, // autoMerge enabled
+					true, // autoRelease enabled
+				)
+
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				// Wait for WaitAndMerge to complete
+				Eventually(func() int {
+					return mockPRMerger.WaitAndMergeCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// CommitAndRelease should NOT be called
+				Consistently(func() int {
+					return mockReleaser.CommitAndReleaseCallCount()
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+				cancel()
+			},
+		)
+
+		It("should not call CommitAndRelease when autoRelease is false", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-autorelease.md")
+			// completedPath not needed
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
+			mockBrancher.CurrentBranchReturns("main", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.PullReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			mockPRMerger.WaitAndMergeReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.SetPRURLReturns(nil)
+			mockReleaser.AmendCommitReturns(nil)
+			mockBrancher.ForcePushReturns(nil)
+			mockReleaser.HasChangelogReturns(true) // Changelog exists but autoRelease is false
+
+			// Create log file with success report
+			logDir := filepath.Join(promptsDir, "log")
+			_ = os.MkdirAll(logDir, 0750)
+			logPath := filepath.Join(logDir, "001-no-autorelease.log")
+			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"No autorelease test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				true,  // autoMerge enabled
+				false, // autoRelease disabled
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for WaitAndMerge to complete
+			Eventually(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// CommitAndRelease should NOT be called
+			Consistently(func() int {
+				return mockReleaser.CommitAndReleaseCallCount()
+			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 			cancel()
 		})

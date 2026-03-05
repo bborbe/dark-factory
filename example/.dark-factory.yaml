@@ -11,8 +11,19 @@
 
 # Git workflow after prompt execution
 # "direct" = commit + tag + push to current branch (default)
-# "pr" = create feature branch + PR (not yet implemented)
+# "pr" = create feature branch + PR
+# "worktree" = create worktree + feature branch + PR
 workflow: direct
+
+# Auto-merge PRs after they pass checks (requires workflow: pr or worktree)
+# When enabled, dark-factory waits for PR to be mergeable and merges it
+# Default: false
+# autoMerge: false
+
+# Auto-release after PR merge (requires autoMerge: true)
+# When enabled and CHANGELOG.md exists, creates a release after merge
+# Default: false
+# autoRelease: false
 
 # Passive drop zone for new prompts (no automation)
 inboxDir: prompts

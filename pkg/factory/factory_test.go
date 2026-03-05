@@ -54,6 +54,8 @@ var _ = Describe("Factory", func() {
 				cfg.ContainerImage,
 				cfg.Workflow,
 				"test-token",
+				false,
+				false,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

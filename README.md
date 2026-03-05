@@ -229,6 +229,8 @@ Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses def
 github:
   token: ${DARK_FACTORY_GITHUB_TOKEN}                      # default — reads from env var
 workflow: direct                                    # "direct" (default), "pr", or "worktree"
+autoMerge: false                                    # wait for PR approval and merge (requires workflow: pr or worktree)
+autoRelease: false                                  # create release after merge (requires autoMerge: true)
 inboxDir: prompts                                   # passive drop zone (default: prompts)
 queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
 completedDir: prompts/completed                     # archive dir (default: prompts/completed)

@@ -48,6 +48,9 @@ type processor struct {
 	brancher       git.Brancher
 	prCreator      git.PRCreator
 	worktree       git.Worktree
+	autoMerge      bool
+	autoRelease    bool
+	prMerger       git.PRMerger
 	skippedPrompts map[string]time.Time // filename → mod time when skipped
 }
 
@@ -66,6 +69,9 @@ func NewProcessor(
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	worktree git.Worktree,
+	prMerger git.PRMerger,
+	autoMerge bool,
+	autoRelease bool,
 ) Processor {
 	return &processor{
 		queueDir:       queueDir,
@@ -81,6 +87,9 @@ func NewProcessor(
 		brancher:       brancher,
 		prCreator:      prCreator,
 		worktree:       worktree,
+		autoMerge:      autoMerge,
+		autoRelease:    autoRelease,
+		prMerger:       prMerger,
 		skippedPrompts: make(map[string]time.Time),
 	}
 }
@@ -503,9 +512,70 @@ func (p *processor) handlePRWorkflow(
 	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
 	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL, branchName)
 
-	// Switch back to original branch for next prompt
+	// Handle auto-merge if enabled
+	if p.autoMerge {
+		return p.handleAutoMerge(gitCtx, ctx, prURL, originalBranch, title)
+	}
+
+	// Auto-merge disabled — switch back to original branch for next prompt
 	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
 		return errors.Wrap(ctx, err, "switch back to "+originalBranch)
+	}
+
+	return nil
+}
+
+// handleAutoMerge handles the auto-merge workflow for PR workflow (with fallback to original branch on error).
+func (p *processor) handleAutoMerge(
+	gitCtx context.Context,
+	ctx context.Context,
+	prURL string,
+	originalBranch string,
+	title string,
+) error {
+	// Wait for PR to be mergeable and merge it
+	if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
+		// On error, switch back to original branch before returning
+		if switchErr := p.brancher.Switch(gitCtx, originalBranch); switchErr != nil {
+			slog.Warn(
+				"failed to switch back to original branch after merge error",
+				"error",
+				switchErr,
+			)
+		}
+		return errors.Wrap(ctx, err, "wait and merge PR")
+	}
+
+	return p.postMergeActions(gitCtx, ctx, title)
+}
+
+// postMergeActions performs post-merge actions: switch to default branch, pull, and optionally release.
+func (p *processor) postMergeActions(
+	gitCtx context.Context,
+	ctx context.Context,
+	title string,
+) error {
+	// PR merged successfully — switch to default branch
+	defaultBranch, err := p.brancher.DefaultBranch(gitCtx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "get default branch")
+	}
+
+	if err := p.brancher.Switch(gitCtx, defaultBranch); err != nil {
+		return errors.Wrap(ctx, err, "switch to default branch")
+	}
+
+	if err := p.brancher.Pull(gitCtx); err != nil {
+		return errors.Wrap(ctx, err, "pull default branch")
+	}
+
+	slog.Info("merged PR and updated default branch", "branch", defaultBranch)
+
+	// If autoRelease enabled and has changelog, create release
+	if p.autoRelease && p.releaser.HasChangelog(gitCtx) {
+		if err := p.handleDirectWorkflow(gitCtx, ctx, title); err != nil {
+			return errors.Wrap(ctx, err, "auto-release after merge")
+		}
 	}
 
 	return nil
@@ -553,6 +623,14 @@ func (p *processor) handleWorktreeWorkflow(
 		// Non-fatal — worktree cleanup is best-effort
 	}
 	state.cleanedUp = true
+
+	// Handle auto-merge if enabled (no originalBranch fallback — already back in main repo)
+	if p.autoMerge {
+		if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
+			return errors.Wrap(ctx, err, "wait and merge PR")
+		}
+		return p.postMergeActions(gitCtx, ctx, title)
+	}
 
 	return nil
 }

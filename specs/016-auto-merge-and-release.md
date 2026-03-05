@@ -1,5 +1,5 @@
 ---
-status: draft
+status: completed
 ---
 
 # Auto-Merge and Auto-Release for PR Workflow

@@ -1776,7 +1776,7 @@ DARK-FACTORY-REPORT -->
 	})
 
 	Describe("Git sync before execution", func() {
-		It("should call Fetch and MergeOriginMaster before processing prompt", func() {
+		It("should call Fetch and MergeOriginDefault before processing prompt", func() {
 			promptPath := filepath.Join(promptsDir, "001-sync-test.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.StatusQueued},
@@ -1791,7 +1791,7 @@ DARK-FACTORY-REPORT -->
 			mockReleaser.HasChangelogReturns(false)
 			mockReleaser.CommitOnlyReturns(nil)
 			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginMasterReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
 
 			p := processor.NewProcessor(
 				promptsDir,
@@ -1818,9 +1818,9 @@ DARK-FACTORY-REPORT -->
 				return mockExecutor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			// Verify Fetch and MergeOriginMaster were called
+			// Verify Fetch and MergeOriginDefault were called
 			Expect(mockBrancher.FetchCallCount()).To(Equal(1))
-			Expect(mockBrancher.MergeOriginMasterCallCount()).To(Equal(1))
+			Expect(mockBrancher.MergeOriginDefaultCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -1874,7 +1874,7 @@ DARK-FACTORY-REPORT -->
 			cancel()
 		})
 
-		It("should fail prompt if MergeOriginMaster fails", func() {
+		It("should fail prompt if MergeOriginDefault fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.StatusQueued},
@@ -1884,7 +1884,7 @@ DARK-FACTORY-REPORT -->
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
 			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginMasterReturns(stderrors.New("merge conflict"))
+			mockBrancher.MergeOriginDefaultReturns(stderrors.New("merge conflict"))
 
 			p := processor.NewProcessor(
 				promptsDir,
@@ -1906,12 +1906,12 @@ DARK-FACTORY-REPORT -->
 				_ = p.Process(ctx)
 			}()
 
-			// Wait for MergeOriginMaster to be called
+			// Wait for MergeOriginDefault to be called
 			Eventually(func() int {
-				return mockBrancher.MergeOriginMasterCallCount()
+				return mockBrancher.MergeOriginDefaultCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			// Executor should NOT be called since MergeOriginMaster failed
+			// Executor should NOT be called since MergeOriginDefault failed
 			Consistently(func() int {
 				return mockExecutor.ExecuteCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))

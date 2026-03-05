@@ -23,7 +23,9 @@ type Brancher interface {
 	Switch(ctx context.Context, name string) error
 	CurrentBranch(ctx context.Context) (string, error)
 	Fetch(ctx context.Context) error
-	MergeOriginMaster(ctx context.Context) error
+	DefaultBranch(ctx context.Context) (string, error)
+	Pull(ctx context.Context) error
+	MergeOriginDefault(ctx context.Context) error
 }
 
 // brancher implements Brancher.
@@ -106,13 +108,55 @@ func (b *brancher) Fetch(ctx context.Context) error {
 	return nil
 }
 
-// MergeOriginMaster merges origin/master into the current branch.
-func (b *brancher) MergeOriginMaster(ctx context.Context) error {
-	slog.Debug("merging origin/master")
+// DefaultBranch returns the repository's default branch name via gh CLI.
+func (b *brancher) DefaultBranch(ctx context.Context) (string, error) {
+	// #nosec G204 -- static command with no user input
+	cmd := exec.CommandContext(
+		ctx,
+		"gh",
+		"repo",
+		"view",
+		"--json",
+		"defaultBranchRef",
+		"--jq",
+		".defaultBranchRef.name",
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "get default branch")
+	}
+	branch := strings.TrimSpace(string(output))
+	if branch == "" {
+		return "", errors.Errorf(ctx, "default branch is empty")
+	}
+	slog.Debug("default branch", "branch", branch)
+	return branch, nil
+}
 
-	cmd := exec.CommandContext(ctx, "git", "merge", "origin/master")
+// Pull runs git pull on the current branch.
+func (b *brancher) Pull(ctx context.Context) error {
+	slog.Debug("pulling current branch")
+
+	cmd := exec.CommandContext(ctx, "git", "pull")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "merge origin/master")
+		return errors.Wrap(ctx, err, "pull current branch")
+	}
+	return nil
+}
+
+// MergeOriginDefault merges the remote default branch into the current branch.
+func (b *brancher) MergeOriginDefault(ctx context.Context) error {
+	defaultBranch, err := b.DefaultBranch(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "get default branch")
+	}
+
+	slog.Debug("merging origin default branch", "branch", defaultBranch)
+
+	// #nosec G204 -- branch name is fetched via gh CLI from GitHub API, not user input
+	cmd := exec.CommandContext(ctx, "git", "merge", "origin/"+defaultBranch)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "merge origin/"+defaultBranch)
 	}
 	return nil
 }

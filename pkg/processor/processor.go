@@ -265,12 +265,12 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Sync with remote before execution
-	slog.Info("syncing with origin/master")
+	slog.Info("syncing with remote default branch")
 	if err := p.brancher.Fetch(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git fetch origin")
 	}
-	if err := p.brancher.MergeOriginMaster(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git merge origin/master")
+	if err := p.brancher.MergeOriginDefault(ctx); err != nil {
+		return errors.Wrap(ctx, err, "git merge origin default branch")
 	}
 
 	// Load prompt file once

@@ -34,6 +34,19 @@ type Brancher struct {
 		result1 string
 		result2 error
 	}
+	DefaultBranchStub        func(context.Context) (string, error)
+	defaultBranchMutex       sync.RWMutex
+	defaultBranchArgsForCall []struct {
+		arg1 context.Context
+	}
+	defaultBranchReturns struct {
+		result1 string
+		result2 error
+	}
+	defaultBranchReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	FetchStub        func(context.Context) error
 	fetchMutex       sync.RWMutex
 	fetchArgsForCall []struct {
@@ -57,15 +70,26 @@ type Brancher struct {
 	forcePushReturnsOnCall map[int]struct {
 		result1 error
 	}
-	MergeOriginMasterStub        func(context.Context) error
-	mergeOriginMasterMutex       sync.RWMutex
-	mergeOriginMasterArgsForCall []struct {
+	MergeOriginDefaultStub        func(context.Context) error
+	mergeOriginDefaultMutex       sync.RWMutex
+	mergeOriginDefaultArgsForCall []struct {
 		arg1 context.Context
 	}
-	mergeOriginMasterReturns struct {
+	mergeOriginDefaultReturns struct {
 		result1 error
 	}
-	mergeOriginMasterReturnsOnCall map[int]struct {
+	mergeOriginDefaultReturnsOnCall map[int]struct {
+		result1 error
+	}
+	PullStub        func(context.Context) error
+	pullMutex       sync.RWMutex
+	pullArgsForCall []struct {
+		arg1 context.Context
+	}
+	pullReturns struct {
+		result1 error
+	}
+	pullReturnsOnCall map[int]struct {
 		result1 error
 	}
 	PushStub        func(context.Context, string) error
@@ -222,6 +246,70 @@ func (fake *Brancher) CurrentBranchReturnsOnCall(i int, result1 string, result2 
 	}{result1, result2}
 }
 
+func (fake *Brancher) DefaultBranch(arg1 context.Context) (string, error) {
+	fake.defaultBranchMutex.Lock()
+	ret, specificReturn := fake.defaultBranchReturnsOnCall[len(fake.defaultBranchArgsForCall)]
+	fake.defaultBranchArgsForCall = append(fake.defaultBranchArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.DefaultBranchStub
+	fakeReturns := fake.defaultBranchReturns
+	fake.recordInvocation("DefaultBranch", []interface{}{arg1})
+	fake.defaultBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Brancher) DefaultBranchCallCount() int {
+	fake.defaultBranchMutex.RLock()
+	defer fake.defaultBranchMutex.RUnlock()
+	return len(fake.defaultBranchArgsForCall)
+}
+
+func (fake *Brancher) DefaultBranchCalls(stub func(context.Context) (string, error)) {
+	fake.defaultBranchMutex.Lock()
+	defer fake.defaultBranchMutex.Unlock()
+	fake.DefaultBranchStub = stub
+}
+
+func (fake *Brancher) DefaultBranchArgsForCall(i int) context.Context {
+	fake.defaultBranchMutex.RLock()
+	defer fake.defaultBranchMutex.RUnlock()
+	argsForCall := fake.defaultBranchArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Brancher) DefaultBranchReturns(result1 string, result2 error) {
+	fake.defaultBranchMutex.Lock()
+	defer fake.defaultBranchMutex.Unlock()
+	fake.DefaultBranchStub = nil
+	fake.defaultBranchReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) DefaultBranchReturnsOnCall(i int, result1 string, result2 error) {
+	fake.defaultBranchMutex.Lock()
+	defer fake.defaultBranchMutex.Unlock()
+	fake.DefaultBranchStub = nil
+	if fake.defaultBranchReturnsOnCall == nil {
+		fake.defaultBranchReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.defaultBranchReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *Brancher) Fetch(arg1 context.Context) error {
 	fake.fetchMutex.Lock()
 	ret, specificReturn := fake.fetchReturnsOnCall[len(fake.fetchArgsForCall)]
@@ -345,16 +433,16 @@ func (fake *Brancher) ForcePushReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Brancher) MergeOriginMaster(arg1 context.Context) error {
-	fake.mergeOriginMasterMutex.Lock()
-	ret, specificReturn := fake.mergeOriginMasterReturnsOnCall[len(fake.mergeOriginMasterArgsForCall)]
-	fake.mergeOriginMasterArgsForCall = append(fake.mergeOriginMasterArgsForCall, struct {
+func (fake *Brancher) MergeOriginDefault(arg1 context.Context) error {
+	fake.mergeOriginDefaultMutex.Lock()
+	ret, specificReturn := fake.mergeOriginDefaultReturnsOnCall[len(fake.mergeOriginDefaultArgsForCall)]
+	fake.mergeOriginDefaultArgsForCall = append(fake.mergeOriginDefaultArgsForCall, struct {
 		arg1 context.Context
 	}{arg1})
-	stub := fake.MergeOriginMasterStub
-	fakeReturns := fake.mergeOriginMasterReturns
-	fake.recordInvocation("MergeOriginMaster", []interface{}{arg1})
-	fake.mergeOriginMasterMutex.Unlock()
+	stub := fake.MergeOriginDefaultStub
+	fakeReturns := fake.mergeOriginDefaultReturns
+	fake.recordInvocation("MergeOriginDefault", []interface{}{arg1})
+	fake.mergeOriginDefaultMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
 	}
@@ -364,44 +452,105 @@ func (fake *Brancher) MergeOriginMaster(arg1 context.Context) error {
 	return fakeReturns.result1
 }
 
-func (fake *Brancher) MergeOriginMasterCallCount() int {
-	fake.mergeOriginMasterMutex.RLock()
-	defer fake.mergeOriginMasterMutex.RUnlock()
-	return len(fake.mergeOriginMasterArgsForCall)
+func (fake *Brancher) MergeOriginDefaultCallCount() int {
+	fake.mergeOriginDefaultMutex.RLock()
+	defer fake.mergeOriginDefaultMutex.RUnlock()
+	return len(fake.mergeOriginDefaultArgsForCall)
 }
 
-func (fake *Brancher) MergeOriginMasterCalls(stub func(context.Context) error) {
-	fake.mergeOriginMasterMutex.Lock()
-	defer fake.mergeOriginMasterMutex.Unlock()
-	fake.MergeOriginMasterStub = stub
+func (fake *Brancher) MergeOriginDefaultCalls(stub func(context.Context) error) {
+	fake.mergeOriginDefaultMutex.Lock()
+	defer fake.mergeOriginDefaultMutex.Unlock()
+	fake.MergeOriginDefaultStub = stub
 }
 
-func (fake *Brancher) MergeOriginMasterArgsForCall(i int) context.Context {
-	fake.mergeOriginMasterMutex.RLock()
-	defer fake.mergeOriginMasterMutex.RUnlock()
-	argsForCall := fake.mergeOriginMasterArgsForCall[i]
+func (fake *Brancher) MergeOriginDefaultArgsForCall(i int) context.Context {
+	fake.mergeOriginDefaultMutex.RLock()
+	defer fake.mergeOriginDefaultMutex.RUnlock()
+	argsForCall := fake.mergeOriginDefaultArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *Brancher) MergeOriginMasterReturns(result1 error) {
-	fake.mergeOriginMasterMutex.Lock()
-	defer fake.mergeOriginMasterMutex.Unlock()
-	fake.MergeOriginMasterStub = nil
-	fake.mergeOriginMasterReturns = struct {
+func (fake *Brancher) MergeOriginDefaultReturns(result1 error) {
+	fake.mergeOriginDefaultMutex.Lock()
+	defer fake.mergeOriginDefaultMutex.Unlock()
+	fake.MergeOriginDefaultStub = nil
+	fake.mergeOriginDefaultReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *Brancher) MergeOriginMasterReturnsOnCall(i int, result1 error) {
-	fake.mergeOriginMasterMutex.Lock()
-	defer fake.mergeOriginMasterMutex.Unlock()
-	fake.MergeOriginMasterStub = nil
-	if fake.mergeOriginMasterReturnsOnCall == nil {
-		fake.mergeOriginMasterReturnsOnCall = make(map[int]struct {
+func (fake *Brancher) MergeOriginDefaultReturnsOnCall(i int, result1 error) {
+	fake.mergeOriginDefaultMutex.Lock()
+	defer fake.mergeOriginDefaultMutex.Unlock()
+	fake.MergeOriginDefaultStub = nil
+	if fake.mergeOriginDefaultReturnsOnCall == nil {
+		fake.mergeOriginDefaultReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.mergeOriginMasterReturnsOnCall[i] = struct {
+	fake.mergeOriginDefaultReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) Pull(arg1 context.Context) error {
+	fake.pullMutex.Lock()
+	ret, specificReturn := fake.pullReturnsOnCall[len(fake.pullArgsForCall)]
+	fake.pullArgsForCall = append(fake.pullArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.PullStub
+	fakeReturns := fake.pullReturns
+	fake.recordInvocation("Pull", []interface{}{arg1})
+	fake.pullMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) PullCallCount() int {
+	fake.pullMutex.RLock()
+	defer fake.pullMutex.RUnlock()
+	return len(fake.pullArgsForCall)
+}
+
+func (fake *Brancher) PullCalls(stub func(context.Context) error) {
+	fake.pullMutex.Lock()
+	defer fake.pullMutex.Unlock()
+	fake.PullStub = stub
+}
+
+func (fake *Brancher) PullArgsForCall(i int) context.Context {
+	fake.pullMutex.RLock()
+	defer fake.pullMutex.RUnlock()
+	argsForCall := fake.pullArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Brancher) PullReturns(result1 error) {
+	fake.pullMutex.Lock()
+	defer fake.pullMutex.Unlock()
+	fake.PullStub = nil
+	fake.pullReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) PullReturnsOnCall(i int, result1 error) {
+	fake.pullMutex.Lock()
+	defer fake.pullMutex.Unlock()
+	fake.PullStub = nil
+	if fake.pullReturnsOnCall == nil {
+		fake.pullReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.pullReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

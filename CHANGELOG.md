@@ -8,6 +8,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.0
+
+- Add specs section to README listing all 16 specs with problem summaries
+- Bump test coverage: executor 46.9% → 80.0%, factory 41.7% → 97.3%
+- Code review cleanup: accept ctx in ParseFromLog, inject time dependency, fix hardcoded defaults, add ctx to Save, fix worktree double-cleanup, hoist regexps, replace bubble sort with sort.Slice
+- Fix infinite recursion in PromptFile.now()
+- Extract worktree cleanup to reduce cognitive complexity
+
 ## v0.16.0
 
 - Add `pr-url` field to prompt frontmatter in PR and worktree workflows

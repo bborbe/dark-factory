@@ -212,7 +212,7 @@ func (pf *PromptFile) now() time.Time {
 	if pf.nowFunc == nil {
 		return time.Now()
 	}
-	return pf.now()
+	return pf.nowFunc()
 }
 
 // PrepareForExecution sets all fields needed before container launch.

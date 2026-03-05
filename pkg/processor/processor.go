@@ -234,19 +234,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	// Ensure worktree cleanup on error (success path cleanup is in handleWorktreeWorkflow)
 	if p.workflow == config.WorkflowWorktree && workflowState.worktreePath != "" {
-		defer func() {
-			if workflowState.cleanedUp {
-				return // Already cleaned up by handleWorktreeWorkflow
-			}
-			if workflowState.originalDir != "" {
-				if err := os.Chdir(workflowState.originalDir); err != nil {
-					slog.Warn("failed to chdir back to original directory on error", "error", err)
-				}
-			}
-			if err := p.worktree.Remove(ctx, workflowState.worktreePath); err != nil {
-				slog.Warn("failed to remove worktree on error", "path", workflowState.worktreePath, "error", err)
-			}
-		}()
+		defer p.cleanupWorktreeOnError(ctx, workflowState)
 	}
 
 	// Derive log file path: {logDir}/{basename}.log
@@ -270,6 +258,22 @@ type workflowState struct {
 	worktreePath   string
 	originalDir    string
 	cleanedUp      bool
+}
+
+// cleanupWorktreeOnError restores the original directory and removes the worktree
+// when processPrompt exits with an error (success path is handled by handleWorktreeWorkflow).
+func (p *processor) cleanupWorktreeOnError(ctx context.Context, state *workflowState) {
+	if state.cleanedUp {
+		return // Already cleaned up by handleWorktreeWorkflow
+	}
+	if state.originalDir != "" {
+		if err := os.Chdir(state.originalDir); err != nil {
+			slog.Warn("failed to chdir back to original directory on error", "error", err)
+		}
+	}
+	if err := p.worktree.Remove(ctx, state.worktreePath); err != nil {
+		slog.Warn("failed to remove worktree on error", "path", state.worktreePath, "error", err)
+	}
 }
 
 // handlePostExecution handles validation, moving to completed, and workflow completion.

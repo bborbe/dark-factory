@@ -1,5 +1,10 @@
 ---
-status: queued
+status: executing
+container: dark-factory-073-skip-invalid-prompts-until-modified
+dark-factory-version: v0.17.2
+created: "2026-03-05T18:34:46Z"
+queued: "2026-03-05T18:34:46Z"
+started: "2026-03-05T18:34:46Z"
 ---
 
 # Skip invalid prompts until file is modified

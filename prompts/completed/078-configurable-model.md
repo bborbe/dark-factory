@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Added configurable model field to Config struct with default claude-sonnet-4-6
+container: dark-factory-078-configurable-model
+dark-factory-version: v0.17.9
+created: "2026-03-05T21:30:25Z"
+queued: "2026-03-05T21:30:25Z"
+started: "2026-03-05T21:30:25Z"
+completed: "2026-03-05T21:39:51Z"
 ---
 
 Add a `model` field to `pkg/config/config.go` `Config` struct with default value `"claude-sonnet-4-6"` and yaml tag `model`.

@@ -1,5 +1,12 @@
 ---
-status: created
+status: completed
+summary: Wired auto-merge and auto-release into processor and factory
+container: dark-factory-077-wire-auto-merge-into-processor
+dark-factory-version: dev
+created: "2026-03-05T19:39:30Z"
+queued: "2026-03-05T19:39:30Z"
+started: "2026-03-05T19:39:30Z"
+completed: "2026-03-05T19:53:31Z"
 ---
 
 # Wire auto-merge and auto-release into processor

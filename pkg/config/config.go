@@ -30,6 +30,8 @@ type Config struct {
 	ContainerImage string       `yaml:"containerImage"`
 	DebounceMs     int          `yaml:"debounceMs"`
 	ServerPort     int          `yaml:"serverPort"`
+	AutoMerge      bool         `yaml:"autoMerge"`
+	AutoRelease    bool         `yaml:"autoRelease"`
 	GitHub         GitHubConfig `yaml:"github"`
 }
 
@@ -44,6 +46,8 @@ func Defaults() Config {
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
 		DebounceMs:     500,
 		ServerPort:     0,
+		AutoMerge:      false,
+		AutoRelease:    false,
 		GitHub: GitHubConfig{
 			Token: "${DARK_FACTORY_GITHUB_TOKEN}",
 		}, // #nosec G101 -- env var reference, not a credential
@@ -83,6 +87,21 @@ func (c Config) Validate(ctx context.Context) error {
 				}
 				if c.CompletedDir == c.InboxDir {
 					return errors.Errorf(ctx, "completedDir cannot equal inboxDir")
+				}
+				return nil
+			}),
+		),
+		validation.Name("autoMerge", validation.HasValidationFunc(func(ctx context.Context) error {
+			if c.AutoMerge && c.Workflow != WorkflowPR && c.Workflow != WorkflowWorktree {
+				return errors.Errorf(ctx, "autoMerge requires workflow 'pr' or 'worktree'")
+			}
+			return nil
+		})),
+		validation.Name(
+			"autoRelease",
+			validation.HasValidationFunc(func(ctx context.Context) error {
+				if c.AutoRelease && !c.AutoMerge {
+					return errors.Errorf(ctx, "autoRelease requires autoMerge")
 				}
 				return nil
 			}),

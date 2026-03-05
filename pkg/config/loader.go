@@ -43,6 +43,8 @@ type partialConfig struct {
 	ContainerImage *string       `yaml:"containerImage"`
 	DebounceMs     *int          `yaml:"debounceMs"`
 	ServerPort     *int          `yaml:"serverPort"`
+	AutoMerge      *bool         `yaml:"autoMerge"`
+	AutoRelease    *bool         `yaml:"autoRelease"`
 	GitHub         *GitHubConfig `yaml:"github"`
 }
 
@@ -100,6 +102,12 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 	}
 	if partial.ServerPort != nil {
 		cfg.ServerPort = *partial.ServerPort
+	}
+	if partial.AutoMerge != nil {
+		cfg.AutoMerge = *partial.AutoMerge
+	}
+	if partial.AutoRelease != nil {
+		cfg.AutoRelease = *partial.AutoRelease
 	}
 	if partial.GitHub != nil {
 		cfg.GitHub = *partial.GitHub

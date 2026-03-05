@@ -33,6 +33,8 @@ var _ = Describe("Config", func() {
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.9"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
+			Expect(cfg.AutoMerge).To(BeFalse())
+			Expect(cfg.AutoRelease).To(BeFalse())
 			Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
 		})
 	})
@@ -304,6 +306,92 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("serverPort"))
 		})
+
+		It("succeeds for autoMerge true with workflow pr", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowPR,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds for autoMerge true with workflow worktree", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowWorktree,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("fails for autoMerge true with workflow direct", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowDirect,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoMerge requires workflow 'pr' or 'worktree'"))
+		})
+
+		It("succeeds for autoRelease true with autoMerge true", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowPR,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+				AutoRelease:    true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("fails for autoRelease true with autoMerge false", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowPR,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      false,
+				AutoRelease:    true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoRelease requires autoMerge"))
+		})
 	})
 
 	Describe("Workflow", func() {
@@ -554,6 +642,25 @@ github:
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
+			})
+
+			It("loads config with autoMerge and autoRelease", func() {
+				configContent := `workflow: pr
+autoMerge: true
+autoRelease: true
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+				Expect(cfg.AutoMerge).To(BeTrue())
+				Expect(cfg.AutoRelease).To(BeTrue())
 			})
 		})
 	})

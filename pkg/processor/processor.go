@@ -35,19 +35,20 @@ type Processor interface {
 
 // processor implements Processor.
 type processor struct {
-	queueDir      string
-	completedDir  string
-	logDir        string
-	projectName   string
-	executor      executor.Executor
-	promptManager prompt.Manager
-	releaser      git.Releaser
-	versionGetter version.Getter
-	ready         <-chan struct{}
-	workflow      config.Workflow
-	brancher      git.Brancher
-	prCreator     git.PRCreator
-	worktree      git.Worktree
+	queueDir       string
+	completedDir   string
+	logDir         string
+	projectName    string
+	executor       executor.Executor
+	promptManager  prompt.Manager
+	releaser       git.Releaser
+	versionGetter  version.Getter
+	ready          <-chan struct{}
+	workflow       config.Workflow
+	brancher       git.Brancher
+	prCreator      git.PRCreator
+	worktree       git.Worktree
+	skippedPrompts map[string]time.Time // filename → mod time when skipped
 }
 
 // NewProcessor creates a new Processor.
@@ -67,19 +68,20 @@ func NewProcessor(
 	worktree git.Worktree,
 ) Processor {
 	return &processor{
-		queueDir:      queueDir,
-		completedDir:  completedDir,
-		logDir:        logDir,
-		projectName:   projectName,
-		executor:      exec,
-		promptManager: promptManager,
-		releaser:      releaser,
-		versionGetter: versionGetter,
-		ready:         ready,
-		workflow:      workflow,
-		brancher:      brancher,
-		prCreator:     prCreator,
-		worktree:      worktree,
+		queueDir:       queueDir,
+		completedDir:   completedDir,
+		logDir:         logDir,
+		projectName:    projectName,
+		executor:       exec,
+		promptManager:  promptManager,
+		releaser:       releaser,
+		versionGetter:  versionGetter,
+		ready:          ready,
+		workflow:       workflow,
+		brancher:       brancher,
+		prCreator:      prCreator,
+		worktree:       worktree,
+		skippedPrompts: make(map[string]time.Time),
 	}
 }
 
@@ -110,6 +112,8 @@ func (p *processor) Process(ctx context.Context) error {
 
 		case <-p.ready:
 			// Watcher normalized files, check for new queued prompts
+			// Clear skipped prompts so all files get re-evaluated after fsnotify event
+			p.skippedPrompts = make(map[string]time.Time)
 			if err := p.processExistingQueued(ctx); err != nil {
 				return errors.Wrap(ctx, err, "process queued prompts")
 			}
@@ -154,9 +158,8 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 			return err
 		}
 
-		// Validate prompt before execution
-		if err := pr.ValidateForExecution(ctx); err != nil {
-			slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
+		// Check if prompt should be skipped (validation or previously failed)
+		if p.shouldSkipPrompt(ctx, pr) {
 			continue
 		}
 
@@ -184,6 +187,41 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Loop again to process next prompt
 	}
+}
+
+// shouldSkipPrompt checks if a prompt should be skipped due to validation failure.
+// Returns true if the prompt should be skipped, false if it's ready to process.
+// Handles both previously-failed prompts (silent skip) and new validation failures (logged).
+func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool {
+	// Check if this prompt was previously skipped and hasn't been modified
+	fileInfo, err := os.Stat(pr.Path)
+	if err == nil {
+		if lastSkipped, wasSkipped := p.skippedPrompts[pr.Path]; wasSkipped {
+			if fileInfo.ModTime().Equal(lastSkipped) {
+				// File hasn't changed since we last skipped it - skip silently
+				slog.Debug(
+					"skipping previously-failed prompt (unchanged)",
+					"file",
+					filepath.Base(pr.Path),
+				)
+				return true
+			}
+			// File was modified - remove from skipped list and re-validate
+			delete(p.skippedPrompts, pr.Path)
+		}
+	}
+
+	// Validate prompt before execution
+	if err := pr.ValidateForExecution(ctx); err != nil {
+		slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
+		// Record this prompt as skipped so we don't spam logs on next cycle
+		if fileInfo != nil {
+			p.skippedPrompts[pr.Path] = fileInfo.ModTime()
+		}
+		return true
+	}
+
+	return false
 }
 
 // autoSetQueuedStatus sets status to "queued" if it's empty or "created".

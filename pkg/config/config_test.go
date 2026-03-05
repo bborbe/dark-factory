@@ -30,7 +30,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.QueueDir).To(Equal("prompts/queue"))
 			Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
 			Expect(cfg.LogDir).To(Equal("prompts/log"))
-			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.9"))
+			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.1.2"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
 			Expect(cfg.AutoMerge).To(BeFalse())
@@ -47,7 +47,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -62,7 +62,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -77,7 +77,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -92,7 +92,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -108,7 +108,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -124,7 +124,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -140,7 +140,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -156,7 +156,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -172,7 +172,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/queue",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -188,7 +188,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -220,7 +220,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     -1,
 				ServerPort:     8080,
 			}
@@ -236,7 +236,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     0,
 				ServerPort:     8080,
 			}
@@ -252,7 +252,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     0,
 			}
@@ -267,7 +267,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 			}
@@ -282,7 +282,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     -1,
 			}
@@ -298,7 +298,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     65536,
 			}
@@ -314,7 +314,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 				AutoMerge:      true,
@@ -330,7 +330,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 				AutoMerge:      true,
@@ -346,7 +346,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 				AutoMerge:      true,
@@ -365,7 +365,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 				AutoMerge:      true,
@@ -382,7 +382,7 @@ var _ = Describe("Config", func() {
 				QueueDir:       "prompts/queue",
 				CompletedDir:   "prompts/completed",
 				LogDir:         "prompts/log",
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.0.9",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.1.2",
 				DebounceMs:     500,
 				ServerPort:     8080,
 				AutoMerge:      false,
@@ -526,7 +526,7 @@ debounceMs: 1000
 				Expect(cfg.QueueDir).To(Equal("prompts/queue"))
 				Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
 				Expect(cfg.LogDir).To(Equal("prompts/log"))
-				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.0.9"))
+				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.1.2"))
 				Expect(cfg.DebounceMs).To(Equal(500))
 			})
 
@@ -552,7 +552,7 @@ inboxDir: prompts
 queueDir: prompts
 completedDir: prompts/completed
 logDir: prompts/log
-containerImage: docker.io/bborbe/claude-yolo:v0.0.9
+containerImage: docker.io/bborbe/claude-yolo:v0.1.2
 debounceMs: 500
 `
 				err := os.WriteFile(
@@ -573,7 +573,7 @@ inboxDir: prompts
 queueDir: prompts
 completedDir: prompts/completed
 logDir: prompts/log
-containerImage: docker.io/bborbe/claude-yolo:v0.0.9
+containerImage: docker.io/bborbe/claude-yolo:v0.1.2
 debounceMs: -100
 `
 				err := os.WriteFile(

@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Fixed changelog entry creation when no Unreleased section exists by passing title through CommitAndRelease
+container: dark-factory-079-fix-changelog-entry-before-tag
+dark-factory-version: v0.17.9
+created: "2026-03-05T21:39:56Z"
+queued: "2026-03-05T21:39:56Z"
+started: "2026-03-05T21:39:56Z"
+completed: "2026-03-05T21:53:01Z"
 ---
 
 <objective>

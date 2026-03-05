@@ -21,11 +21,12 @@ type Releaser struct {
 	amendCommitReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CommitAndReleaseStub        func(context.Context, git.VersionBump) error
+	CommitAndReleaseStub        func(context.Context, git.VersionBump, string) error
 	commitAndReleaseMutex       sync.RWMutex
 	commitAndReleaseArgsForCall []struct {
 		arg1 context.Context
 		arg2 git.VersionBump
+		arg3 string
 	}
 	commitAndReleaseReturns struct {
 		result1 error
@@ -161,19 +162,20 @@ func (fake *Releaser) AmendCommitReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Releaser) CommitAndRelease(arg1 context.Context, arg2 git.VersionBump) error {
+func (fake *Releaser) CommitAndRelease(arg1 context.Context, arg2 git.VersionBump, arg3 string) error {
 	fake.commitAndReleaseMutex.Lock()
 	ret, specificReturn := fake.commitAndReleaseReturnsOnCall[len(fake.commitAndReleaseArgsForCall)]
 	fake.commitAndReleaseArgsForCall = append(fake.commitAndReleaseArgsForCall, struct {
 		arg1 context.Context
 		arg2 git.VersionBump
-	}{arg1, arg2})
+		arg3 string
+	}{arg1, arg2, arg3})
 	stub := fake.CommitAndReleaseStub
 	fakeReturns := fake.commitAndReleaseReturns
-	fake.recordInvocation("CommitAndRelease", []interface{}{arg1, arg2})
+	fake.recordInvocation("CommitAndRelease", []interface{}{arg1, arg2, arg3})
 	fake.commitAndReleaseMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -187,17 +189,17 @@ func (fake *Releaser) CommitAndReleaseCallCount() int {
 	return len(fake.commitAndReleaseArgsForCall)
 }
 
-func (fake *Releaser) CommitAndReleaseCalls(stub func(context.Context, git.VersionBump) error) {
+func (fake *Releaser) CommitAndReleaseCalls(stub func(context.Context, git.VersionBump, string) error) {
 	fake.commitAndReleaseMutex.Lock()
 	defer fake.commitAndReleaseMutex.Unlock()
 	fake.CommitAndReleaseStub = stub
 }
 
-func (fake *Releaser) CommitAndReleaseArgsForCall(i int) (context.Context, git.VersionBump) {
+func (fake *Releaser) CommitAndReleaseArgsForCall(i int) (context.Context, git.VersionBump, string) {
 	fake.commitAndReleaseMutex.RLock()
 	defer fake.commitAndReleaseMutex.RUnlock()
 	argsForCall := fake.commitAndReleaseArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Releaser) CommitAndReleaseReturns(result1 error) {

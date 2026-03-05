@@ -464,7 +464,7 @@ var _ = Describe("Processor", func() {
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify PatchBump was used
-		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump, _ := mockReleaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.PatchBump))
 
 		// Verify CommitOnly was NOT called
@@ -546,7 +546,7 @@ var _ = Describe("Processor", func() {
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify MinorBump was used
-		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump, _ := mockReleaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.MinorBump))
 
 		cancel()

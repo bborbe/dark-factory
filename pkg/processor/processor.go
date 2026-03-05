@@ -681,7 +681,7 @@ func (p *processor) handleDirectWorkflow(
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := p.releaser.CommitAndRelease(gitCtx, bump); err != nil {
+	if err := p.releaser.CommitAndRelease(gitCtx, bump, title); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 

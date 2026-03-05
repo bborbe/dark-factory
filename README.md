@@ -42,7 +42,7 @@ You come back                       ←── changes committed and pushed
 
 - **Go 1.24+** — to build dark-factory
 - **Docker** — to run claude-yolo containers
-- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.0.9`
+- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.2.0`
 - **Anthropic API key** — set `ANTHROPIC_API_KEY` environment variable (passed to container)
 - **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Configuration](#yolo-container-configuration))
 
@@ -234,7 +234,7 @@ autoRelease: false                                  # create release after merge
 inboxDir: prompts                                   # passive drop zone (default: prompts)
 queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
 completedDir: prompts/completed                     # archive dir (default: prompts/completed)
-containerImage: docker.io/bborbe/claude-yolo:v0.0.9 # YOLO Docker image
+containerImage: docker.io/bborbe/claude-yolo:v0.2.0 # YOLO Docker image
 debounceMs: 500                                     # watcher debounce in ms
 serverPort: 8080                                    # REST API port
 ```

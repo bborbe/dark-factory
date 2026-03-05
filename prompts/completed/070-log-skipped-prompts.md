@@ -1,5 +1,12 @@
 ---
-status: created
+status: completed
+summary: Added logging for skipped prompts at appropriate log levels
+container: dark-factory-070-log-skipped-prompts
+dark-factory-version: v0.16.0
+created: "2026-03-05T13:09:30Z"
+queued: "2026-03-05T13:09:30Z"
+started: "2026-03-05T13:09:30Z"
+completed: "2026-03-05T13:15:40Z"
 ---
 <objective>
 Log why prompts in the queue are skipped instead of silently ignoring them.

@@ -395,7 +395,7 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		return nil, errors.Wrap(ctx, err, "read directory")
 	}
 
-	var queued []Prompt
+	queued := make([]Prompt, 0, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -405,22 +405,26 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		fm, err := readFrontmatter(ctx, path)
 		if err != nil {
 			// Skip files with read errors
+			slog.Warn("skipping prompt", "file", entry.Name(), "error", err)
 			continue
 		}
 
-		// Pick up files UNLESS they have an explicit skip status
-		if fm.Status != string(StatusExecuting) && fm.Status != string(StatusCompleted) &&
-			fm.Status != string(StatusFailed) {
-			// Normalize status to "queued" for consistency
-			status := Status(fm.Status)
-			if fm.Status == "" {
-				status = StatusQueued
-			}
-			queued = append(queued, Prompt{
-				Path:   path,
-				Status: status,
-			})
+		// Skip files with explicit skip status
+		if fm.Status == string(StatusExecuting) || fm.Status == string(StatusCompleted) ||
+			fm.Status == string(StatusFailed) {
+			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)
+			continue
 		}
+
+		// Normalize status to "queued" for consistency
+		status := Status(fm.Status)
+		if fm.Status == "" {
+			status = StatusQueued
+		}
+		queued = append(queued, Prompt{
+			Path:   path,
+			Status: status,
+		})
 	}
 
 	// Sort alphabetically by filename

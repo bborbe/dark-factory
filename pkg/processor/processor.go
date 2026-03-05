@@ -151,14 +151,14 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Validate prompt before execution
 		if err := pr.ValidateForExecution(ctx); err != nil {
-			slog.Debug("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
+			slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
 			continue
 		}
 
 		// Check ordering - all previous prompts must be completed
 		if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
-			slog.Debug(
-				"skipping prompt",
+			slog.Info(
+				"prompt blocked",
 				"file",
 				filepath.Base(pr.Path),
 				"reason",

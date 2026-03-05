@@ -154,8 +154,9 @@ func CommitAndRelease(ctx context.Context, bump VersionBump) error {
 // This is called after MoveToCompleted() to ensure the moved file is committed.
 // Does nothing if the file is already staged or committed.
 func CommitCompletedFile(ctx context.Context, path string) error {
-	// Stage all changes (handles file moves properly)
-	cmd := exec.CommandContext(ctx, "git", "add", "-A")
+	// Stage only the specified file
+	// #nosec G204 -- path is from completed prompt file, controlled by application
+	cmd := exec.CommandContext(ctx, "git", "add", path)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "git add")
 	}

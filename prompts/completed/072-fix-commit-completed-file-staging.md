@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Fixed CommitCompletedFile to stage only the specified file instead of all changes
+container: dark-factory-072-fix-commit-completed-file-staging
+dark-factory-version: v0.16.0
+created: "2026-03-05T13:49:35Z"
+queued: "2026-03-05T13:49:35Z"
+started: "2026-03-05T13:49:35Z"
+completed: "2026-03-05T13:57:21Z"
 ---
 
 # Fix CommitCompletedFile to only stage the completed file

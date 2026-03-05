@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Updated autoSetQueuedStatus to handle any non-terminal status using switch statement
+container: dark-factory-074-auto-queue-any-non-terminal-status
+dark-factory-version: v0.17.2
+created: "2026-03-05T18:43:45Z"
+queued: "2026-03-05T18:43:45Z"
+started: "2026-03-05T18:43:45Z"
+completed: "2026-03-05T18:49:49Z"
 ---
 
 # Auto-queue any non-terminal status in queue folder

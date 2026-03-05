@@ -1,5 +1,12 @@
 ---
-status: created
+status: completed
+summary: Added autoMerge/autoRelease config fields and PRMerger interface
+container: dark-factory-076-auto-merge-config-and-pr-merger
+dark-factory-version: dev
+created: "2026-03-05T19:29:54Z"
+queued: "2026-03-05T19:29:54Z"
+started: "2026-03-05T19:29:55Z"
+completed: "2026-03-05T19:39:25Z"
 ---
 
 # Add autoMerge/autoRelease config and PRMerger interface

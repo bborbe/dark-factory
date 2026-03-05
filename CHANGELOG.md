@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.1
+
+- Log skipped prompts at Warn/Info level instead of Debug
+- Auto-set `status: queued` when prompt is picked up from queue directory
+
 ## v0.17.0
 
 - Add specs section to README listing all 16 specs with problem summaries

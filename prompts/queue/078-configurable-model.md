@@ -1,5 +1,5 @@
 ---
-status: created
+status: queued
 ---
 
 Add a `model` field to `pkg/config/config.go` `Config` struct with default value `"claude-sonnet-4-6"` and yaml tag `model`.

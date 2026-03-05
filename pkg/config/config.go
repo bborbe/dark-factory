@@ -44,7 +44,7 @@ func Defaults() Config {
 		QueueDir:       "prompts/queue",
 		CompletedDir:   "prompts/completed",
 		LogDir:         "prompts/log",
-		ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.0",
+		ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 		Model:          "claude-sonnet-4-6",
 		DebounceMs:     500,
 		ServerPort:     0,

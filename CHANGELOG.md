@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.37
+
+- 104-spec-019-review-poller
+
 ## v0.17.36
 
 - 103-spec-019-fix-prompt-generator

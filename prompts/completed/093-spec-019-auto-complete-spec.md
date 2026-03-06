@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: 'Spec auto-complete feature fully implemented: AutoCompleter interface in pkg/spec/spec.go, wired into processor with best-effort error handling, and tests for all required scenarios pass with make precommit exit 0.'
+container: dark-factory-093-spec-019-auto-complete-spec
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
+started: "2026-03-06T12:00:29Z"
+completed: "2026-03-06T12:05:20Z"
 ---
 <objective>
 Auto-complete a spec when all its linked prompts are completed. When the processor finishes a prompt and moves it to completed, check if all prompts referencing the same spec are now completed — if so, mark the spec as completed.

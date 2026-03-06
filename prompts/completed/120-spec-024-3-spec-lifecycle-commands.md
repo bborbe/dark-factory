@@ -1,7 +1,13 @@
 ---
+status: completed
 spec: ["024"]
-status: created
+summary: 'Implemented spec directory lifecycle: spec verify marks completed and moves file to completedDir, spec list/status aggregate across all three dirs, AutoCompleter searches all three spec dirs, FindSpecFileInDirs searches multiple dirs in order'
+container: dark-factory-120-spec-024-3-spec-lifecycle-commands
+dark-factory-version: v0.20.2
 created: "2026-03-06T00:00:00Z"
+queued: "2026-03-06T19:46:23Z"
+started: "2026-03-06T19:46:24Z"
+completed: "2026-03-06T19:57:40Z"
 ---
 <summary>
 - Changes `spec verify` to move the spec file to `specs.completedDir` after marking it completed

@@ -10,107 +10,107 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.17.38
 
-- 105-spec-019-wire-into-factory
+- Add ReviewPoller and fix-prompt pipeline wired into factory runner (completes spec 019 review-fix loop)
 
 ## v0.17.37
 
-- 104-spec-019-review-poller
+- Add ReviewPoller goroutine to watch in-review prompts and trigger fix-prompt generation on PR review comments
 
 ## v0.17.36
 
-- 103-spec-019-fix-prompt-generator
+- Add FixPromptGenerator to write fix prompts to inbox from PR review comment content
 
 ## v0.17.35
 
-- 102-spec-019-review-fetcher
+- Add ReviewFetcher to poll GitHub PR review comments for prompts in `in_review` status
 
 ## v0.17.34
 
-- 101-spec-019-retry-count-frontmatter
+- Add retry_count field to prompt frontmatter to track fix-loop attempts and enforce retry limit
 
 ## v0.17.33
 
-- autoReview: false        # watch PRs for reviews and generate fix prompts
+- Add autoReview config option to enable automated PR review-fix loop (default: false)
 
 ## v0.17.32
 
-- 099-spec-019-compact-list-output
+- Improve dark-factory list output with compact aligned columns
 
 ## v0.17.31
 
-- 098-spec-019-backfill-spec-fields
+- Add backfill command to populate spec fields on existing completed prompts
 
 ## v0.17.30
 
-- 097-spec-019-spec-array-field
+- Add spec[] array field to prompt frontmatter for linking prompts to their source spec
 
 ## v0.17.29
 
-- 096-fix-unknown-command-shows-help
+- Fix unknown subcommand to display help text instead of silently failing
 
 ## v0.17.28
 
-- 095-fix-normalize-wrong-format-number-conflict
+- Fix NormalizeFilenames number conflict when renaming prompts with non-standard filename format
 
 ## v0.17.27
 
-- 094-remove-approve-all
+- Remove approve-all command (superseded by per-spec approve)
 
 ## v0.17.26
 
-- 093-spec-019-auto-complete-spec
+- Auto-transition spec to completed when all linked prompts are merged
 
 ## v0.17.25
 
-- 092-spec-019-combined-views
+- Add combined spec+prompt view to dark-factory list output
 
 ## v0.17.24
 
-- 091-spec-019-prompt-spec-field
+- Add spec field to prompt frontmatter for linking prompts to their source spec
 
 ## v0.17.23
 
-- 090-spec-019-spec-commands
+- Add dark-factory spec subcommands: list, approve, show
 
 ## v0.17.22
 
-- 089-spec-019-two-level-commands
+- Restructure CLI to two-level commands (dark-factory spec <subcommand>, dark-factory prompt <subcommand>)
 
 ## v0.17.21
 
-- 088-fix-status-daemon-detection
+- Fix dark-factory status to correctly detect running daemon process
 
 ## v0.17.20
 
-- 087-spec-019-spec-model
+- Add Spec model with YAML frontmatter parsing and status lifecycle (draft → approved → prompted → completed)
 
 ## v0.17.19
 
-- 086-wire-existing-branch-into-processor
+- Add branch reuse to processor: resume existing feature branch when prompt already has one assigned
 
 ## v0.17.18
 
-- 085-brancher-fetch-and-verify
+- Add fetch-and-verify step to Brancher to confirm remote branch state before push
 
 ## v0.17.17
 
-- 084-branch-frontmatter-field
+- Add branch field to prompt frontmatter to track the associated feature branch
 
 ## v0.17.16
 
-- 083-processor-test-coverage
+- Improve processor test coverage to ≥80%
 
 ## v0.17.15
 
-- 082-list-requeue-retry-commands
+- Add dark-factory list, requeue, and retry CLI subcommands
 
 ## v0.17.14
 
-- 081-remove-stale-container-before-run
+- Fix executor to remove stale Docker container before starting a new run
 
 ## v0.17.13
 
-- 080-workflow-test-coverage
+- Improve workflow package test coverage to ≥80%
 
 ## v0.17.9
 - Bump default container image to claude-yolo:v0.1.2

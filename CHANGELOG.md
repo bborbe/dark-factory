@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.20.2
+
+- Confirm keyword list is gone
+
 ## v0.20.1
 
 - feat: stamp `created` timestamp on inbox prompt files that lack one when watcher detects a file event

@@ -42,7 +42,117 @@ var _ = Describe("determineBump", func() {
 		}
 	})
 
-	It("returns MinorBump for changelog with 'add'", func() {
+	It("returns MinorBump for entry starting with '- feat:'", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- feat: Add SpecWatcher\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump for feat: entry with different description", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- feat: Implement authentication\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns MinorBump when multiple entries include one feat: line", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte(
+				"## Unreleased\n\n- fix: Remove stale container\n- feat: Add SpecWatcher\n- chore: Update deps\n",
+			),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.MinorBump))
+	})
+
+	It("returns PatchBump for '- fix:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- fix: Remove stale container\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for '- refactor:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- refactor: Extract worktree cleanup\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for '- chore:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- chore: Update github.com/bborbe/errors to v1.5.2\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for '- test:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- test: Add processor test suite\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for '- docs:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- docs: Add changelog writing guide\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for '- perf:' entry", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- perf: Improve startup latency\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump for entry with no prefix (backward compat)", func() {
 		err := os.WriteFile(
 			"CHANGELOG.md",
 			[]byte("## Unreleased\n\n- Add container name tracking\n"),
@@ -51,65 +161,13 @@ var _ = Describe("determineBump", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
+		Expect(bump).To(Equal(git.PatchBump))
 	})
 
-	It("returns MinorBump for changelog with 'Add' (capitalized)", func() {
-		err := os.WriteFile("CHANGELOG.md", []byte("## Unreleased\n\n- Add new feature\n"), 0600)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
-	})
-
-	It("returns MinorBump for changelog with 'implement'", func() {
+	It("returns PatchBump for '- feature:' entry (not exact prefix)", func() {
 		err := os.WriteFile(
 			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Implement authentication\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
-	})
-
-	It("returns MinorBump for changelog with 'new'", func() {
-		err := os.WriteFile("CHANGELOG.md", []byte("## Unreleased\n\n- New logging system\n"), 0600)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
-	})
-
-	It("returns MinorBump for changelog with 'support'", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Support multiple databases\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
-	})
-
-	It("returns MinorBump for changelog with 'feature'", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Feature flag system\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
-	})
-
-	It("returns PatchBump for changelog with 'fix'", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Fix frontmatter parser\n"),
+			[]byte("## Unreleased\n\n- feature: Flag system\n"),
 			0600,
 		)
 		Expect(err).NotTo(HaveOccurred())
@@ -118,52 +176,16 @@ var _ = Describe("determineBump", func() {
 		Expect(bump).To(Equal(git.PatchBump))
 	})
 
-	It("returns PatchBump for changelog with 'refactor'", func() {
+	It("returns PatchBump when feat: appears in middle of line", func() {
 		err := os.WriteFile(
 			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Refactor executor logic\n"),
+			[]byte("## Unreleased\n\n- fix: rename feat: related function\n"),
 			0600,
 		)
 		Expect(err).NotTo(HaveOccurred())
 
 		bump := determineBump()
 		Expect(bump).To(Equal(git.PatchBump))
-	})
-
-	It("returns PatchBump for changelog with 'update'", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Update dependencies\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.PatchBump))
-	})
-
-	It("returns PatchBump for generic changelog content", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Improve performance\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.PatchBump))
-	})
-
-	It("returns MinorBump when keyword is part of larger word", func() {
-		err := os.WriteFile(
-			"CHANGELOG.md",
-			[]byte("## Unreleased\n\n- Address authentication issues\n"),
-			0600,
-		)
-		Expect(err).NotTo(HaveOccurred())
-
-		bump := determineBump()
-		Expect(bump).To(Equal(git.MinorBump))
 	})
 
 	It("returns PatchBump when CHANGELOG.md does not exist", func() {
@@ -175,6 +197,18 @@ var _ = Describe("determineBump", func() {
 		err := os.WriteFile(
 			"CHANGELOG.md",
 			[]byte("# Changelog\n\n## v1.0.0\n\n- Initial release\n"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		bump := determineBump()
+		Expect(bump).To(Equal(git.PatchBump))
+	})
+
+	It("returns PatchBump when Unreleased section is empty", func() {
+		err := os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("# Changelog\n\n## Unreleased\n\n## v1.0.0\n\n- Initial release\n"),
 			0600,
 		)
 		Expect(err).NotTo(HaveOccurred())

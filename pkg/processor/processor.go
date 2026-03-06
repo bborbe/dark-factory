@@ -904,25 +904,20 @@ func sanitizeContainerName(name string) string {
 }
 
 // determineBump determines the version bump type by analyzing CHANGELOG.md content.
-// Returns MinorBump for new features, PatchBump for everything else.
+// Returns MinorBump if any ## Unreleased entry starts with "- feat:", PatchBump otherwise.
 func determineBump() git.VersionBump {
-	// Read CHANGELOG.md
 	content, err := os.ReadFile("CHANGELOG.md")
 	if err != nil {
-		// If CHANGELOG doesn't exist or can't be read, default to PatchBump
 		return git.PatchBump
 	}
 
-	// Extract ## Unreleased section content
 	unreleasedContent := extractUnreleasedSection(string(content))
 	if unreleasedContent == "" {
 		return git.PatchBump
 	}
 
-	// Analyze content for feature keywords
-	lower := strings.ToLower(unreleasedContent)
-	for _, kw := range []string{"add", "implement", "new", "support", "feature"} {
-		if strings.Contains(lower, kw) {
+	for _, line := range strings.Split(unreleasedContent, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "- feat:") {
 			return git.MinorBump
 		}
 	}

@@ -501,7 +501,11 @@ var _ = Describe("Processor", func() {
 			_ = os.Chdir(originalDir)
 		}()
 
-		err = os.WriteFile("CHANGELOG.md", []byte("## Unreleased\n\n- Add new feature\n"), 0600)
+		err = os.WriteFile(
+			"CHANGELOG.md",
+			[]byte("## Unreleased\n\n- feat: Add new feature\n"),
+			0600,
+		)
 		Expect(err).NotTo(HaveOccurred())
 
 		promptPath := filepath.Join(promptsDir, "001-feature.md")

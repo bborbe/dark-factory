@@ -84,12 +84,8 @@ func (c *combinedListCommand) Run(ctx context.Context, args []string) error {
 
 func (c *combinedListCommand) collectPromptEntries(ctx context.Context) ([]PromptEntry, error) {
 	var entries []PromptEntry
-	for _, pair := range []struct{ dir, loc string }{
-		{c.inboxDir, "inbox"},
-		{c.queueDir, "queue"},
-		{c.completedDir, "completed"},
-	} {
-		dirEntries, err := os.ReadDir(pair.dir)
+	for _, dir := range []string{c.inboxDir, c.queueDir, c.completedDir} {
+		dirEntries, err := os.ReadDir(dir)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
@@ -100,7 +96,7 @@ func (c *combinedListCommand) collectPromptEntries(ctx context.Context) ([]Promp
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 				continue
 			}
-			path := filepath.Join(pair.dir, entry.Name())
+			path := filepath.Join(dir, entry.Name())
 			pf, err := prompt.Load(ctx, path)
 			if err != nil {
 				continue
@@ -110,9 +106,8 @@ func (c *combinedListCommand) collectPromptEntries(ctx context.Context) ([]Promp
 				st = "created"
 			}
 			entries = append(entries, PromptEntry{
-				Location: pair.loc,
-				Status:   st,
-				File:     entry.Name(),
+				Status: st,
+				File:   entry.Name(),
 			})
 		}
 	}
@@ -152,9 +147,9 @@ func (c *combinedListCommand) outputJSON(prompts []PromptEntry, specs []SpecEntr
 
 func (c *combinedListCommand) outputHuman(prompts []PromptEntry, specs []SpecEntry) error {
 	fmt.Println("PROMPTS:")
-	fmt.Printf("%-10s %-10s %s\n", "LOCATION", "STATUS", "FILE")
+	fmt.Printf("%-12s %s\n", "STATUS", "FILE")
 	for _, e := range prompts {
-		fmt.Printf("%-10s %-10s %s\n", e.Location, e.Status, e.File)
+		fmt.Printf("%-12s %s\n", e.Status, e.File)
 	}
 	fmt.Println()
 	fmt.Println("SPECS:")

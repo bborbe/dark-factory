@@ -26,9 +26,8 @@ type ListCommand interface {
 
 // PromptEntry represents a single prompt entry in the list output.
 type PromptEntry struct {
-	Location string `json:"location"`
-	Status   string `json:"status"`
-	File     string `json:"file"`
+	Status string `json:"status"`
+	File   string `json:"file"`
 }
 
 // listCommand implements ListCommand.
@@ -70,26 +69,33 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 
 	var entries []PromptEntry
 
-	if !queueOnly {
-		inboxEntries, err := l.scanDir(ctx, l.inboxDir, "inbox")
-		if err != nil {
-			return errors.Wrap(ctx, err, "scan inbox")
-		}
-		entries = append(entries, inboxEntries...)
+	inboxEntries, err := l.scanDir(ctx, l.inboxDir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "scan inbox")
 	}
+	entries = append(entries, inboxEntries...)
 
-	queueEntries, err := l.scanDir(ctx, l.queueDir, "queue")
+	queueEntries, err := l.scanDir(ctx, l.queueDir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "scan queue")
 	}
 	entries = append(entries, queueEntries...)
 
-	if !queueOnly {
-		completedEntries, err := l.scanDir(ctx, l.completedDir, "completed")
-		if err != nil {
-			return errors.Wrap(ctx, err, "scan completed")
+	completedEntries, err := l.scanDir(ctx, l.completedDir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "scan completed")
+	}
+	entries = append(entries, completedEntries...)
+
+	if queueOnly {
+		filtered := entries[:0]
+		for _, e := range entries {
+			if e.Status == string(prompt.StatusQueued) ||
+				e.Status == string(prompt.StatusExecuting) {
+				filtered = append(filtered, e)
+			}
 		}
-		entries = append(entries, completedEntries...)
+		entries = filtered
 	}
 
 	if failedOnly {
@@ -112,7 +118,6 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 func (l *listCommand) scanDir(
 	ctx context.Context,
 	dir string,
-	location string,
 ) ([]PromptEntry, error) {
 	dirEntries, err := os.ReadDir(dir)
 	if err != nil {
@@ -140,9 +145,8 @@ func (l *listCommand) scanDir(
 		}
 
 		entries = append(entries, PromptEntry{
-			Location: location,
-			Status:   st,
-			File:     entry.Name(),
+			Status: st,
+			File:   entry.Name(),
 		})
 	}
 	return entries, nil
@@ -150,9 +154,9 @@ func (l *listCommand) scanDir(
 
 // outputTable outputs entries as a human-readable table.
 func (l *listCommand) outputTable(entries []PromptEntry) error {
-	fmt.Printf("%-10s %-10s %s\n", "LOCATION", "STATUS", "FILE")
+	fmt.Printf("%-12s %s\n", "STATUS", "FILE")
 	for _, e := range entries {
-		fmt.Printf("%-10s %-10s %s\n", e.Location, e.Status, e.File)
+		fmt.Printf("%-12s %s\n", e.Status, e.File)
 	}
 	return nil
 }

@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Implemented PID-based daemon detection in status checker by reading .dark-factory.lock and verifying the process is alive via Signal(0)
+container: dark-factory-088-fix-status-daemon-detection
+dark-factory-version: v0.17.15
+created: "2026-03-06T11:14:38Z"
+queued: "2026-03-06T11:14:38Z"
+started: "2026-03-06T11:14:38Z"
+completed: "2026-03-06T11:22:33Z"
 ---
 
 Fix: `dark-factory status` always shows "Daemon: not running" even when a dark-factory process is active.

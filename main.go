@@ -34,7 +34,7 @@ func run() error {
 	case "help":
 		fmt.Fprintf(
 			os.Stdout,
-			"Usage: dark-factory [options] [command]\n\nCommands:\n  run     Watch for queued prompts and execute them (default)\n  status  Show status of prompts\n  queue   Queue a prompt for execution\n\nOptions:\n  -debug  Enable debug logging\n\nFlags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
+			"Usage: dark-factory [options] [command]\n\nCommands:\n  run      Watch for queued prompts and execute them (default)\n  status   Show status of prompts\n  list     List all prompts with their status\n  queue    Queue a prompt for execution\n  approve  Approve a prompt (move from inbox to queue)\n  requeue  Reset a prompt's status to queued\n  retry    Shorthand for requeue --failed\n\nOptions:\n  -debug  Enable debug logging\n\nFlags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
 		)
 		return nil
 	case "version":
@@ -62,9 +62,17 @@ func run() error {
 	case "status":
 		statusCmd := factory.CreateStatusCommand(cfg)
 		return statusCmd.Run(ctx, args)
+	case "list":
+		return factory.CreateListCommand(cfg).Run(ctx, args)
 	case "queue":
 		queueCmd := factory.CreateQueueCommand(cfg)
 		return queueCmd.Run(ctx, args)
+	case "approve":
+		return factory.CreateApproveCommand(cfg).Run(ctx, args)
+	case "requeue":
+		return factory.CreateRequeueCommand(cfg).Run(ctx, args)
+	case "retry":
+		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
 	case "run":
 		r := factory.CreateRunner(cfg, version.Version)
 		return r.Run(ctx)
@@ -101,7 +109,7 @@ func parseArgs() (bool, string, []string) {
 	}
 
 	switch command {
-	case "run", "status", "queue":
+	case "run", "status", "list", "queue", "approve", "requeue", "retry":
 		return debug, command, args
 	case "--help", "-help", "-h":
 		return debug, "help", []string{}

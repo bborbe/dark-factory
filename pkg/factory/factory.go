@@ -214,3 +214,20 @@ func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
 
 	return cmd.NewQueueCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
 }
+
+// CreateListCommand creates a ListCommand.
+func CreateListCommand(cfg config.Config) cmd.ListCommand {
+	return cmd.NewListCommand(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+}
+
+// CreateRequeueCommand creates a RequeueCommand.
+func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
+	return cmd.NewRequeueCommand(cfg.QueueDir)
+}
+
+// CreateApproveCommand creates an ApproveCommand.
+func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
+	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+
+	return cmd.NewApproveCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
+}

@@ -33,7 +33,7 @@ type Runner interface {
 // runner orchestrates the main processing loop.
 type runner struct {
 	inboxDir      string
-	queueDir      string
+	inProgressDir string
 	completedDir  string
 	promptManager prompt.Manager
 	locker        lock.Locker
@@ -47,7 +47,7 @@ type runner struct {
 // NewRunner creates a new Runner.
 func NewRunner(
 	inboxDir string,
-	queueDir string,
+	inProgressDir string,
 	completedDir string,
 	promptManager prompt.Manager,
 	locker lock.Locker,
@@ -59,7 +59,7 @@ func NewRunner(
 ) Runner {
 	return &runner{
 		inboxDir:      inboxDir,
-		queueDir:      queueDir,
+		inProgressDir: inProgressDir,
 		completedDir:  completedDir,
 		promptManager: promptManager,
 		locker:        locker,
@@ -98,7 +98,7 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "create directories")
 	}
 
-	slog.Info("watching for queued prompts", "dir", r.queueDir)
+	slog.Info("watching for queued prompts", "dir", r.inProgressDir)
 
 	// Reset any stuck "executing" prompts from previous crash
 	if err := r.promptManager.ResetExecuting(ctx); err != nil {
@@ -128,10 +128,10 @@ func (r *runner) Run(ctx context.Context) error {
 	return run.CancelOnFirstError(ctx, runners...)
 }
 
-// normalizeFilenames normalizes filenames in the queue directory only.
+// normalizeFilenames normalizes filenames in the in-progress directory only.
 // The inbox directory is not normalized as it contains draft files.
 func (r *runner) normalizeFilenames(ctx context.Context) error {
-	renames, err := r.promptManager.NormalizeFilenames(ctx, r.queueDir)
+	renames, err := r.promptManager.NormalizeFilenames(ctx, r.inProgressDir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "normalize queue filenames")
 	}
@@ -143,9 +143,9 @@ func (r *runner) normalizeFilenames(ctx context.Context) error {
 	return nil
 }
 
-// createDirectories creates the inbox, queue, and completed directories if they don't exist.
+// createDirectories creates the inbox, in-progress, and completed directories if they don't exist.
 func (r *runner) createDirectories(ctx context.Context) error {
-	dirs := []string{r.inboxDir, r.queueDir, r.completedDir}
+	dirs := []string{r.inboxDir, r.inProgressDir, r.completedDir}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0750); err != nil {
 			return errors.Wrap(ctx, err, fmt.Sprintf("create directory %s", dir))

@@ -19,38 +19,58 @@ type GitHubConfig struct {
 	Token string `yaml:"token"`
 }
 
+// PromptsConfig holds directories for the prompt lifecycle.
+type PromptsConfig struct {
+	InboxDir      string `yaml:"inboxDir"`
+	InProgressDir string `yaml:"inProgressDir"`
+	CompletedDir  string `yaml:"completedDir"`
+	LogDir        string `yaml:"logDir"`
+}
+
+// SpecsConfig holds directories for the spec lifecycle.
+type SpecsConfig struct {
+	InboxDir      string `yaml:"inboxDir"`
+	InProgressDir string `yaml:"inProgressDir"`
+	CompletedDir  string `yaml:"completedDir"`
+	LogDir        string `yaml:"logDir"`
+}
+
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName      string       `yaml:"projectName"`
-	Workflow         Workflow     `yaml:"workflow"`
-	InboxDir         string       `yaml:"inboxDir"`
-	QueueDir         string       `yaml:"queueDir"`
-	CompletedDir     string       `yaml:"completedDir"`
-	LogDir           string       `yaml:"logDir"`
-	SpecDir          string       `yaml:"specDir"`
-	ContainerImage   string       `yaml:"containerImage"`
-	Model            string       `yaml:"model"`
-	DebounceMs       int          `yaml:"debounceMs"`
-	ServerPort       int          `yaml:"serverPort"`
-	AutoMerge        bool         `yaml:"autoMerge"`
-	AutoRelease      bool         `yaml:"autoRelease"`
-	AutoReview       bool         `yaml:"autoReview"`
-	MaxReviewRetries int          `yaml:"maxReviewRetries"`
-	AllowedReviewers []string     `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators bool         `yaml:"useCollaborators"`
-	PollIntervalSec  int          `yaml:"pollIntervalSec"`
-	GitHub           GitHubConfig `yaml:"github"`
+	ProjectName      string        `yaml:"projectName"`
+	Workflow         Workflow      `yaml:"workflow"`
+	Prompts          PromptsConfig `yaml:"prompts"`
+	Specs            SpecsConfig   `yaml:"specs"`
+	ContainerImage   string        `yaml:"containerImage"`
+	Model            string        `yaml:"model"`
+	DebounceMs       int           `yaml:"debounceMs"`
+	ServerPort       int           `yaml:"serverPort"`
+	AutoMerge        bool          `yaml:"autoMerge"`
+	AutoRelease      bool          `yaml:"autoRelease"`
+	AutoReview       bool          `yaml:"autoReview"`
+	MaxReviewRetries int           `yaml:"maxReviewRetries"`
+	AllowedReviewers []string      `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators bool          `yaml:"useCollaborators"`
+	PollIntervalSec  int           `yaml:"pollIntervalSec"`
+	GitHub           GitHubConfig  `yaml:"github"`
 }
 
 // Defaults returns a Config with all default values.
 func Defaults() Config {
 	return Config{
-		Workflow:         WorkflowDirect,
-		InboxDir:         "prompts",
-		QueueDir:         "prompts/queue",
-		CompletedDir:     "prompts/completed",
-		LogDir:           "prompts/log",
-		SpecDir:          "specs",
+		Workflow: WorkflowDirect,
+		Prompts: PromptsConfig{
+			InboxDir:      "prompts",
+			InProgressDir: "prompts/in-progress",
+			CompletedDir:  "prompts/completed",
+			LogDir:        "prompts/log",
+		},
+		Specs: SpecsConfig{
+			InboxDir:      "specs",
+			InProgressDir: "specs/in-progress",
+			CompletedDir:  "specs/completed",
+			LogDir:        "specs/log",
+		},
 		ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
 		Model:            "claude-sonnet-4-6",
 		DebounceMs:       500,
@@ -71,10 +91,10 @@ func Defaults() Config {
 func (c Config) Validate(ctx context.Context) error {
 	return validation.All{
 		validation.Name("workflow", c.Workflow),
-		validation.Name("inboxDir", validation.NotEmptyString(c.InboxDir)),
-		validation.Name("queueDir", validation.NotEmptyString(c.QueueDir)),
-		validation.Name("completedDir", validation.NotEmptyString(c.CompletedDir)),
-		validation.Name("logDir", validation.NotEmptyString(c.LogDir)),
+		validation.Name("inboxDir", validation.NotEmptyString(c.Prompts.InboxDir)),
+		validation.Name("inProgressDir", validation.NotEmptyString(c.Prompts.InProgressDir)),
+		validation.Name("completedDir", validation.NotEmptyString(c.Prompts.CompletedDir)),
+		validation.Name("logDir", validation.NotEmptyString(c.Prompts.LogDir)),
 		validation.Name("containerImage", validation.NotEmptyString(c.ContainerImage)),
 		validation.Name("model", validation.NotEmptyString(c.Model)),
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
@@ -96,10 +116,10 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name(
 			"completedDir",
 			validation.HasValidationFunc(func(ctx context.Context) error {
-				if c.CompletedDir == c.QueueDir {
-					return errors.Errorf(ctx, "completedDir cannot equal queueDir")
+				if c.Prompts.CompletedDir == c.Prompts.InProgressDir {
+					return errors.Errorf(ctx, "completedDir cannot equal inProgressDir")
 				}
-				if c.CompletedDir == c.InboxDir {
+				if c.Prompts.CompletedDir == c.Prompts.InboxDir {
 					return errors.Errorf(ctx, "completedDir cannot equal inboxDir")
 				}
 				return nil

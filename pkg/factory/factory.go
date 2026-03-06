@@ -37,18 +37,18 @@ import (
 const defaultIdeasDir = "prompts/ideas"
 
 // createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
-func createPromptManager(queueDir string, completedDir string) (prompt.Manager, git.Releaser) {
+func createPromptManager(inProgressDir string, completedDir string) (prompt.Manager, git.Releaser) {
 	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(queueDir, completedDir, releaser)
+	promptManager := prompt.NewManager(inProgressDir, completedDir, releaser)
 	return promptManager, releaser
 }
 
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
-	inboxDir := cfg.InboxDir
-	queueDir := cfg.QueueDir
-	completedDir := cfg.CompletedDir
-	promptManager, releaser := createPromptManager(queueDir, completedDir)
+	inboxDir := cfg.Prompts.InboxDir
+	inProgressDir := cfg.Prompts.InProgressDir
+	completedDir := cfg.Prompts.CompletedDir
+	promptManager, releaser := createPromptManager(inProgressDir, completedDir)
 	versionGetter := version.NewGetter(ver)
 
 	// Resolve project name
@@ -65,9 +65,9 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		srv = CreateServer(
 			cfg.ServerPort,
 			inboxDir,
-			queueDir,
+			inProgressDir,
 			completedDir,
-			cfg.LogDir,
+			cfg.Prompts.LogDir,
 			promptManager,
 		)
 	}
@@ -82,21 +82,21 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 
 	return runner.NewRunner(
 		inboxDir,
-		queueDir,
+		inProgressDir,
 		completedDir,
 		promptManager,
 		CreateLocker("."),
 		CreateWatcher(
-			queueDir,
+			inProgressDir,
 			inboxDir,
 			promptManager,
 			ready,
 			time.Duration(cfg.DebounceMs)*time.Millisecond,
 		),
 		CreateProcessor(
-			queueDir,
+			inProgressDir,
 			completedDir,
-			cfg.LogDir,
+			cfg.Prompts.LogDir,
 			projectName,
 			promptManager,
 			releaser,
@@ -109,7 +109,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.AutoMerge,
 			cfg.AutoRelease,
 			cfg.AutoReview,
-			"specs",
+			cfg.Specs.InboxDir,
 		),
 		srv,
 		reviewPoller,
@@ -121,17 +121,17 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 func CreateSpecGenerator(cfg config.Config, containerImage string) generator.SpecGenerator {
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(containerImage, project.Name(cfg.ProjectName), cfg.Model),
-		cfg.InboxDir,
-		cfg.CompletedDir,
-		cfg.SpecDir,
-		cfg.LogDir,
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.CompletedDir,
+		cfg.Specs.InboxDir,
+		cfg.Specs.LogDir,
 	)
 }
 
 // CreateSpecWatcher creates a SpecWatcher that triggers generation on approved specs.
 func CreateSpecWatcher(cfg config.Config, gen generator.SpecGenerator) specwatcher.SpecWatcher {
 	return specwatcher.NewSpecWatcher(
-		cfg.SpecDir,
+		cfg.Specs.InboxDir,
 		gen,
 		time.Duration(cfg.DebounceMs)*time.Millisecond,
 	)
@@ -139,18 +139,18 @@ func CreateSpecWatcher(cfg config.Config, gen generator.SpecGenerator) specwatch
 
 // CreateWatcher creates a Watcher that normalizes filenames on file events.
 func CreateWatcher(
-	queueDir string,
+	inProgressDir string,
 	inboxDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 ) watcher.Watcher {
-	return watcher.NewWatcher(queueDir, inboxDir, promptManager, ready, debounce)
+	return watcher.NewWatcher(inProgressDir, inboxDir, promptManager, ready, debounce)
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.
 func CreateProcessor(
-	queueDir string,
+	inProgressDir string,
 	completedDir string,
 	logDir string,
 	projectName string,
@@ -168,7 +168,7 @@ func CreateProcessor(
 	specsDir string,
 ) processor.Processor {
 	return processor.NewProcessor(
-		queueDir,
+		inProgressDir,
 		completedDir,
 		logDir,
 		projectName,
@@ -185,7 +185,7 @@ func CreateProcessor(
 		autoMerge,
 		autoRelease,
 		autoReview,
-		spec.NewAutoCompleter(queueDir, completedDir, specsDir),
+		spec.NewAutoCompleter(inProgressDir, completedDir, specsDir),
 	)
 }
 
@@ -199,8 +199,8 @@ func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.
 	}
 
 	return review.NewReviewPoller(
-		cfg.QueueDir,
-		cfg.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.InboxDir,
 		allowedReviewers,
 		cfg.MaxReviewRetries,
 		time.Duration(cfg.PollIntervalSec)*time.Second,
@@ -269,14 +269,14 @@ func CreateLocker(dir string) lock.Locker {
 func CreateServer(
 	port int,
 	inboxDir string,
-	queueDir string,
+	inProgressDir string,
 	completedDir string,
 	logDir string,
 	promptManager prompt.Manager,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	statusChecker := status.NewChecker(
-		queueDir,
+		inProgressDir,
 		completedDir,
 		defaultIdeasDir,
 		logDir,
@@ -292,11 +292,15 @@ func CreateServer(
 	mux.Handle("/api/v1/queue", libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker)))
 	mux.Handle(
 		"/api/v1/queue/action",
-		libhttp.NewErrorHandler(server.NewQueueActionHandler(inboxDir, queueDir, promptManager)),
+		libhttp.NewErrorHandler(
+			server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
+		),
 	)
 	mux.Handle(
 		"/api/v1/queue/action/all",
-		libhttp.NewErrorHandler(server.NewQueueActionHandler(inboxDir, queueDir, promptManager)),
+		libhttp.NewErrorHandler(
+			server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
+		),
 	)
 	mux.Handle("/api/v1/inbox", libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir)))
 	mux.Handle(
@@ -311,13 +315,13 @@ func CreateServer(
 
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
-	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
 
 	statusChecker := status.NewChecker(
-		cfg.QueueDir,
-		cfg.CompletedDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
 		defaultIdeasDir,
-		cfg.LogDir,
+		cfg.Prompts.LogDir,
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
@@ -329,82 +333,102 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 
 // CreateQueueCommand creates a QueueCommand.
 func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
-	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
 
-	return cmd.NewQueueCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
+	return cmd.NewQueueCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
 }
 
 // CreateListCommand creates a ListCommand.
 func CreateListCommand(cfg config.Config) cmd.ListCommand {
-	return cmd.NewListCommand(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+	return cmd.NewListCommand(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 }
 
 // CreateRequeueCommand creates a RequeueCommand.
 func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
-	return cmd.NewRequeueCommand(cfg.QueueDir)
+	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir)
 }
 
 // CreateApproveCommand creates an ApproveCommand.
 func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
-	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
 
-	return cmd.NewApproveCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
+	return cmd.NewApproveCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
 }
 
 // CreateSpecListCommand creates a SpecListCommand.
 func CreateSpecListCommand(cfg config.Config) cmd.SpecListCommand {
-	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
-	return cmd.NewSpecListCommand(spec.NewLister(cfg.SpecDir), counter)
+	counter := prompt.NewCounter(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
+	return cmd.NewSpecListCommand(spec.NewLister(cfg.Specs.InboxDir), counter)
 }
 
 // CreateSpecStatusCommand creates a SpecStatusCommand.
 func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
-	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
-	return cmd.NewSpecStatusCommand(spec.NewLister(cfg.SpecDir), counter)
+	counter := prompt.NewCounter(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
+	return cmd.NewSpecStatusCommand(spec.NewLister(cfg.Specs.InboxDir), counter)
 }
 
 // CreateSpecApproveCommand creates a SpecApproveCommand.
 func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
-	return cmd.NewSpecApproveCommand(cfg.SpecDir)
+	return cmd.NewSpecApproveCommand(cfg.Specs.InboxDir)
 }
 
 // CreateSpecVerifyCommand creates a SpecVerifyCommand.
 func CreateSpecVerifyCommand(cfg config.Config) cmd.SpecVerifyCommand {
-	return cmd.NewSpecVerifyCommand(cfg.SpecDir)
+	return cmd.NewSpecVerifyCommand(cfg.Specs.InboxDir)
 }
 
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
 func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
-	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
 
 	statusChecker := status.NewChecker(
-		cfg.QueueDir,
-		cfg.CompletedDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
 		defaultIdeasDir,
-		cfg.LogDir,
+		cfg.Prompts.LogDir,
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
 	)
 	formatter := status.NewFormatter()
-	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+	counter := prompt.NewCounter(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 
 	return cmd.NewCombinedStatusCommand(
 		statusChecker,
 		formatter,
-		spec.NewLister(cfg.SpecDir),
+		spec.NewLister(cfg.Specs.InboxDir),
 		counter,
 	)
 }
 
 // CreateCombinedListCommand creates a CombinedListCommand.
 func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
-	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+	counter := prompt.NewCounter(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 	return cmd.NewCombinedListCommand(
-		cfg.InboxDir,
-		cfg.QueueDir,
-		cfg.CompletedDir,
-		spec.NewLister(cfg.SpecDir),
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		spec.NewLister(cfg.Specs.InboxDir),
 		counter,
 	)
 }

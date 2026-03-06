@@ -26,15 +26,18 @@ var _ = Describe("Config", func() {
 		It("returns config with default values", func() {
 			cfg := config.Defaults()
 			Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
-			Expect(cfg.InboxDir).To(Equal("prompts"))
-			Expect(cfg.QueueDir).To(Equal("prompts/queue"))
-			Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
-			Expect(cfg.LogDir).To(Equal("prompts/log"))
+			Expect(cfg.Prompts.InboxDir).To(Equal("prompts"))
+			Expect(cfg.Prompts.InProgressDir).To(Equal("prompts/in-progress"))
+			Expect(cfg.Prompts.CompletedDir).To(Equal("prompts/completed"))
+			Expect(cfg.Prompts.LogDir).To(Equal("prompts/log"))
+			Expect(cfg.Specs.InboxDir).To(Equal("specs"))
+			Expect(cfg.Specs.InProgressDir).To(Equal("specs/in-progress"))
+			Expect(cfg.Specs.CompletedDir).To(Equal("specs/completed"))
+			Expect(cfg.Specs.LogDir).To(Equal("specs/log"))
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.2"))
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
-			Expect(cfg.SpecDir).To(Equal("specs"))
 			Expect(cfg.AutoMerge).To(BeFalse())
 			Expect(cfg.AutoRelease).To(BeFalse())
 			Expect(cfg.AutoReview).To(BeFalse())
@@ -48,11 +51,13 @@ var _ = Describe("Config", func() {
 	Describe("Validate", func() {
 		It("succeeds for valid config", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -62,13 +67,15 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("succeeds for separate inbox and queue dirs", func() {
+		It("succeeds for separate inbox and inProgress dirs", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -80,11 +87,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for worktree workflow", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowWorktree,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowWorktree,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -96,11 +105,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for invalid workflow", func() {
 			cfg := config.Config{
-				Workflow:       "invalid",
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: "invalid",
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -113,11 +124,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for empty inboxDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -128,13 +141,15 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("inboxDir"))
 		})
 
-		It("fails for empty queueDir", func() {
+		It("fails for empty inProgressDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -142,16 +157,18 @@ var _ = Describe("Config", func() {
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("queueDir"))
+			Expect(err.Error()).To(ContainSubstring("inProgressDir"))
 		})
 
 		It("fails for empty completedDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -164,11 +181,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for empty logDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -179,13 +198,15 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("logDir"))
 		})
 
-		It("fails when completedDir equals queueDir", func() {
+		It("fails when completedDir equals inProgressDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/queue",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/in-progress",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -193,16 +214,18 @@ var _ = Describe("Config", func() {
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("completedDir cannot equal queueDir"))
+			Expect(err.Error()).To(ContainSubstring("completedDir cannot equal inProgressDir"))
 		})
 
 		It("fails when completedDir equals inboxDir", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -215,11 +238,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for empty containerImage", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -232,11 +257,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for negative debounceMs", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     -1,
@@ -249,11 +276,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for zero debounceMs", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     0,
@@ -266,11 +295,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for serverPort 0 (disabled)", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -282,11 +313,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for valid serverPort", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -298,11 +331,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for negative serverPort", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -315,11 +350,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for serverPort greater than 65535", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -332,11 +369,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoMerge true with workflow pr", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowPR,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -349,11 +388,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoMerge true with workflow worktree", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowWorktree,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowWorktree,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -366,11 +407,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoMerge true with workflow direct", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowDirect,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -386,11 +429,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoRelease true with autoMerge true", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowPR,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -404,11 +449,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoRelease true with autoMerge false", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowPR,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -423,11 +470,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoReview true with workflow direct", func() {
 			cfg := config.Config{
-				Workflow:         config.WorkflowDirect,
-				InboxDir:         "prompts",
-				QueueDir:         "prompts/queue",
-				CompletedDir:     "prompts/completed",
-				LogDir:           "prompts/log",
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
@@ -445,11 +494,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoReview true with autoMerge false", func() {
 			cfg := config.Config{
-				Workflow:         config.WorkflowPR,
-				InboxDir:         "prompts",
-				QueueDir:         "prompts/queue",
-				CompletedDir:     "prompts/completed",
-				LogDir:           "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
@@ -465,11 +516,13 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoReview true with no reviewer source", func() {
 			cfg := config.Config{
-				Workflow:       config.WorkflowPR,
-				InboxDir:       "prompts",
-				QueueDir:       "prompts/queue",
-				CompletedDir:   "prompts/completed",
-				LogDir:         "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
@@ -486,11 +539,13 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoReview true with all required fields", func() {
 			cfg := config.Config{
-				Workflow:         config.WorkflowPR,
-				InboxDir:         "prompts",
-				QueueDir:         "prompts/queue",
-				CompletedDir:     "prompts/completed",
-				LogDir:           "prompts/log",
+				Workflow: config.WorkflowPR,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
 				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
@@ -594,10 +649,11 @@ var _ = Describe("Config", func() {
 
 			It("loads full config from file", func() {
 				configContent := `workflow: pr
-inboxDir: custom-prompts
-queueDir: custom-prompts/queue
-completedDir: custom-prompts/done
-logDir: custom-prompts/logs
+prompts:
+  inboxDir: custom-prompts
+  inProgressDir: custom-prompts/in-progress
+  completedDir: custom-prompts/done
+  logDir: custom-prompts/logs
 containerImage: custom-image:latest
 debounceMs: 1000
 `
@@ -611,10 +667,10 @@ debounceMs: 1000
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
-				Expect(cfg.InboxDir).To(Equal("custom-prompts"))
-				Expect(cfg.QueueDir).To(Equal("custom-prompts/queue"))
-				Expect(cfg.CompletedDir).To(Equal("custom-prompts/done"))
-				Expect(cfg.LogDir).To(Equal("custom-prompts/logs"))
+				Expect(cfg.Prompts.InboxDir).To(Equal("custom-prompts"))
+				Expect(cfg.Prompts.InProgressDir).To(Equal("custom-prompts/in-progress"))
+				Expect(cfg.Prompts.CompletedDir).To(Equal("custom-prompts/done"))
+				Expect(cfg.Prompts.LogDir).To(Equal("custom-prompts/logs"))
 				Expect(cfg.ContainerImage).To(Equal("custom-image:latest"))
 				Expect(cfg.DebounceMs).To(Equal(1000))
 			})
@@ -632,10 +688,10 @@ debounceMs: 1000
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
-				Expect(cfg.InboxDir).To(Equal("prompts"))
-				Expect(cfg.QueueDir).To(Equal("prompts/queue"))
-				Expect(cfg.CompletedDir).To(Equal("prompts/completed"))
-				Expect(cfg.LogDir).To(Equal("prompts/log"))
+				Expect(cfg.Prompts.InboxDir).To(Equal("prompts"))
+				Expect(cfg.Prompts.InProgressDir).To(Equal("prompts/in-progress"))
+				Expect(cfg.Prompts.CompletedDir).To(Equal("prompts/completed"))
+				Expect(cfg.Prompts.LogDir).To(Equal("prompts/log"))
 				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.2"))
 				Expect(cfg.DebounceMs).To(Equal(500))
 			})
@@ -658,10 +714,6 @@ invalid yaml: [unclosed
 
 			It("returns error for invalid workflow value", func() {
 				configContent := `workflow: invalid
-inboxDir: prompts
-queueDir: prompts
-completedDir: prompts/completed
-logDir: prompts/log
 containerImage: docker.io/bborbe/claude-yolo:v0.2.2
 debounceMs: 500
 `
@@ -679,10 +731,6 @@ debounceMs: 500
 
 			It("returns error for negative debounceMs", func() {
 				configContent := `workflow: direct
-inboxDir: prompts
-queueDir: prompts
-completedDir: prompts/completed
-logDir: prompts/log
 containerImage: docker.io/bborbe/claude-yolo:v0.2.2
 debounceMs: -100
 `

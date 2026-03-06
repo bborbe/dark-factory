@@ -28,7 +28,7 @@ type Watcher interface {
 
 // watcher implements Watcher.
 type watcher struct {
-	queueDir      string
+	inProgressDir string
 	inboxDir      string
 	promptManager prompt.Manager
 	ready         chan<- struct{}
@@ -37,14 +37,14 @@ type watcher struct {
 
 // NewWatcher creates a new Watcher with the specified debounce duration.
 func NewWatcher(
-	queueDir string,
+	inProgressDir string,
 	inboxDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 ) Watcher {
 	return &watcher{
-		queueDir:      queueDir,
+		inProgressDir: inProgressDir,
 		inboxDir:      inboxDir,
 		promptManager: promptManager,
 		ready:         ready,
@@ -62,15 +62,15 @@ func (w *watcher) Watch(ctx context.Context) error {
 	}
 	defer fsWatcher.Close()
 
-	// Get absolute path for queue directory
-	absQueueDir := w.getQueueDir()
+	// Get absolute path for in-progress directory
+	absInProgressDir := w.getInProgressDir()
 
-	// Watch the queue directory
-	if err := fsWatcher.Add(absQueueDir); err != nil {
+	// Watch the in-progress directory
+	if err := fsWatcher.Add(absInProgressDir); err != nil {
 		return errors.Wrap(ctx, err, "add watch path")
 	}
 
-	slog.Info("watcher started", "dir", absQueueDir)
+	slog.Info("watcher started", "dir", absInProgressDir)
 
 	// Debounce map: file path -> timer (protected by mutex)
 	var debounceMu sync.Mutex
@@ -136,12 +136,12 @@ func (w *watcher) handleWatchEvent(
 	debounceMu.Unlock()
 }
 
-// handleFileEvent normalizes filenames in queue directory.
+// handleFileEvent normalizes filenames in in-progress directory.
 func (w *watcher) handleFileEvent(ctx context.Context) {
-	slog.Debug("normalizing filenames", "dir", w.queueDir)
+	slog.Debug("normalizing filenames", "dir", w.inProgressDir)
 
-	// Normalize filenames in queue directory
-	renames, err := w.promptManager.NormalizeFilenames(ctx, w.queueDir)
+	// Normalize filenames in in-progress directory
+	renames, err := w.promptManager.NormalizeFilenames(ctx, w.inProgressDir)
 	if err != nil {
 		slog.Info("failed to normalize filenames", "error", err)
 		return
@@ -195,15 +195,15 @@ func (w *watcher) stampCreatedTimestamps(ctx context.Context) {
 	}
 }
 
-// getQueueDir returns the queue directory.
-func (w *watcher) getQueueDir() string {
+// getInProgressDir returns the in-progress directory.
+func (w *watcher) getInProgressDir() string {
 	// If relative path, make it absolute
-	if !filepath.IsAbs(w.queueDir) {
+	if !filepath.IsAbs(w.inProgressDir) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return w.queueDir
+			return w.inProgressDir
 		}
-		return filepath.Join(cwd, w.queueDir)
+		return filepath.Join(cwd, w.inProgressDir)
 	}
-	return w.queueDir
+	return w.inProgressDir
 }

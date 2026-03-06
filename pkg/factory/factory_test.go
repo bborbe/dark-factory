@@ -30,8 +30,8 @@ var _ = Describe("Factory", func() {
 		It("should return a non-nil watcher", func() {
 			ready := make(chan struct{}, 10)
 			watcher := factory.CreateWatcher(
-				cfg.QueueDir,
-				cfg.InboxDir,
+				cfg.Prompts.InProgressDir,
+				cfg.Prompts.InboxDir,
 				nil, // promptManager not needed for nil check
 				ready,
 				100,
@@ -44,9 +44,9 @@ var _ = Describe("Factory", func() {
 		It("should return a non-nil processor", func() {
 			ready := make(chan struct{}, 10)
 			processor := factory.CreateProcessor(
-				cfg.QueueDir,
-				cfg.CompletedDir,
-				cfg.LogDir,
+				cfg.Prompts.InProgressDir,
+				cfg.Prompts.CompletedDir,
+				cfg.Prompts.LogDir,
 				"test-project",
 				nil, // promptManager not needed for nil check
 				nil, // releaser not needed for nil check
@@ -76,10 +76,10 @@ var _ = Describe("Factory", func() {
 		It("should return a non-nil server", func() {
 			server := factory.CreateServer(
 				8080,
-				cfg.InboxDir,
-				cfg.QueueDir,
-				cfg.CompletedDir,
-				cfg.LogDir,
+				cfg.Prompts.InboxDir,
+				cfg.Prompts.InProgressDir,
+				cfg.Prompts.CompletedDir,
+				cfg.Prompts.LogDir,
 				nil, // promptManager not needed for nil check
 			)
 			Expect(server).NotTo(BeNil())

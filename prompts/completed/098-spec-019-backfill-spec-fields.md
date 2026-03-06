@@ -1,3 +1,13 @@
+---
+status: completed
+summary: 'Added spec frontmatter field to 9 completed prompts: 084-086 tagged spec 017, 087-093 tagged spec 018'
+container: dark-factory-098-spec-019-backfill-spec-fields
+dark-factory-version: v0.17.29
+created: "2026-03-06T14:11:25Z"
+queued: "2026-03-06T14:11:25Z"
+started: "2026-03-06T14:11:25Z"
+completed: "2026-03-06T14:16:13Z"
+---
 <objective>
 Backfill the `spec` frontmatter field in all completed prompts that belong to a known spec, so the PROMPTS counter in `dark-factory spec list` shows correct counts instead of `0/0`.
 </objective>

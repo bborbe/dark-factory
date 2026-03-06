@@ -1131,6 +1131,214 @@ var _ = Describe("Processor", func() {
 
 			cancel()
 		})
+
+		It("should use existing branch when branch set in frontmatter", func() {
+			promptPath := filepath.Join(promptsDir, "001-existing-branch.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Continue feature\n\nMore work on existing branch."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+					Branch: "dark-factory/existing-feature",
+				},
+			}, nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.FetchAndVerifyBranchReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// FetchAndVerifyBranch called with existing branch
+			Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
+			_, verifiedBranch := mockBrancher.FetchAndVerifyBranchArgsForCall(0)
+			Expect(verifiedBranch).To(Equal("dark-factory/existing-feature"))
+
+			// Switch called twice: once to existing branch, once back to master
+			Expect(mockBrancher.SwitchCallCount()).To(Equal(2))
+			_, switchedTo := mockBrancher.SwitchArgsForCall(0)
+			Expect(switchedTo).To(Equal("dark-factory/existing-feature"))
+			_, switchedBack := mockBrancher.SwitchArgsForCall(1)
+			Expect(switchedBack).To(Equal("master"))
+
+			// CreateAndSwitch NOT called
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+
+			// Pushed with existing branch name
+			Expect(mockBrancher.PushCallCount()).To(Equal(1))
+			_, pushedBranch := mockBrancher.PushArgsForCall(0)
+			Expect(pushedBranch).To(Equal("dark-factory/existing-feature"))
+
+			cancel()
+		})
+
+		It("should fail prompt when FetchAndVerifyBranch returns error", func() {
+			promptPath := filepath.Join(promptsDir, "001-bad-branch.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Bad branch\n\nContent."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+					Branch: "dark-factory/nonexistent-branch",
+				},
+			}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.FetchAndVerifyBranchReturns(
+				stderrors.New("branch not found: dark-factory/nonexistent-branch"),
+			)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for Load to be called (marks prompt as failed)
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			// Executor was NOT called — failed before execution
+			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+			// CreateAndSwitch was NOT called
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("should not overwrite pr-url when already set in frontmatter", func() {
+			promptPath := filepath.Join(promptsDir, "001-pr-existing-url.md")
+			completedPath := filepath.Join(promptsDir, "completed", "001-pr-existing-url.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			// Return different PromptFiles based on path
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				if path == completedPath {
+					return &prompt.PromptFile{
+						Path: path,
+						Body: []byte("# Continue feature\n\nContent."),
+						Frontmatter: prompt.Frontmatter{
+							Status: string(prompt.StatusCompleted),
+							PRURL:  "https://github.com/user/repo/pull/99",
+						},
+					}, nil
+				}
+				return &prompt.PromptFile{
+					Path: path,
+					Body: []byte("# Continue feature\n\nContent."),
+					Frontmatter: prompt.Frontmatter{
+						Status: string(prompt.StatusQueued),
+					},
+				}, nil
+			}
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.CurrentBranchReturns("master", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/456", nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				false,
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// SetPRURL was NOT called — existing URL preserved
+			Expect(mockManager.SetPRURLCallCount()).To(Equal(0))
+
+			cancel()
+		})
 	})
 
 	Describe("Worktree Workflow", func() {

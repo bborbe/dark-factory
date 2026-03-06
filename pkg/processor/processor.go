@@ -310,7 +310,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	slog.Info("executing prompt", "title", title)
 
 	// Setup workflow (branch or worktree) before execution
-	workflowState, err := p.setupWorkflow(ctx, baseName)
+	workflowState, err := p.setupWorkflow(ctx, baseName, pf)
 	if err != nil {
 		return err
 	}
@@ -424,38 +424,81 @@ func (p *processor) handlePostExecution(
 }
 
 // setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
-func (p *processor) setupWorkflow(ctx context.Context, baseName string) (*workflowState, error) {
+func (p *processor) setupWorkflow(
+	ctx context.Context,
+	baseName string,
+	pf *prompt.PromptFile,
+) (*workflowState, error) {
 	state := &workflowState{}
 
 	// TODO: refactor to switch on p.workflow to make all cases explicit
 	if p.workflow == config.WorkflowPR {
-		var err error
-		state.originalBranch, err = p.brancher.CurrentBranch(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, "get current branch")
-		}
-		state.branchName = "dark-factory/" + baseName
-		if err := p.brancher.CreateAndSwitch(ctx, state.branchName); err != nil {
-			return nil, errors.Wrap(ctx, err, "create feature branch")
-		}
-		return state, nil
+		return p.setupPRWorkflowState(ctx, baseName, pf, state)
 	}
 
 	if p.workflow == config.WorkflowWorktree {
-		state.branchName = "dark-factory/" + baseName
-		state.worktreePath = filepath.Join("..", p.projectName+"-"+baseName)
-		var err error
-		state.originalDir, err = p.setupWorktreeForExecution(
-			ctx,
-			state.worktreePath,
-			state.branchName,
-		)
-		if err != nil {
-			return nil, err
-		}
-		return state, nil
+		return p.setupWorktreeWorkflowState(ctx, baseName, pf, state)
 	}
 
+	return state, nil
+}
+
+// setupPRWorkflowState configures state for the PR workflow, using an existing branch or creating a new one.
+func (p *processor) setupPRWorkflowState(
+	ctx context.Context,
+	baseName string,
+	pf *prompt.PromptFile,
+	state *workflowState,
+) (*workflowState, error) {
+	var err error
+	state.originalBranch, err = p.brancher.CurrentBranch(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "get current branch")
+	}
+	if branch := pf.Branch(); branch != "" {
+		return p.switchToExistingBranch(ctx, branch, state)
+	}
+	state.branchName = "dark-factory/" + baseName
+	if err := p.brancher.CreateAndSwitch(ctx, state.branchName); err != nil {
+		return nil, errors.Wrap(ctx, err, "create feature branch")
+	}
+	return state, nil
+}
+
+// switchToExistingBranch fetches, verifies, and switches to an existing branch.
+func (p *processor) switchToExistingBranch(
+	ctx context.Context,
+	branch string,
+	state *workflowState,
+) (*workflowState, error) {
+	if err := p.brancher.FetchAndVerifyBranch(ctx, branch); err != nil {
+		return nil, errors.Wrap(ctx, err, "fetch and verify branch")
+	}
+	if err := p.brancher.Switch(ctx, branch); err != nil {
+		return nil, errors.Wrap(ctx, err, "switch to existing branch")
+	}
+	state.branchName = branch
+	return state, nil
+}
+
+// setupWorktreeWorkflowState configures state for the worktree workflow.
+func (p *processor) setupWorktreeWorkflowState(
+	ctx context.Context,
+	baseName string,
+	pf *prompt.PromptFile,
+	state *workflowState,
+) (*workflowState, error) {
+	if branch := pf.Branch(); branch != "" {
+		state.branchName = branch
+	} else {
+		state.branchName = "dark-factory/" + baseName
+	}
+	state.worktreePath = filepath.Join("..", p.projectName+"-"+baseName)
+	var err error
+	state.originalDir, err = p.setupWorktreeForExecution(ctx, state.worktreePath, state.branchName)
+	if err != nil {
+		return nil, err
+	}
 	return state, nil
 }
 
@@ -773,6 +816,13 @@ func (p *processor) savePRURLToFrontmatter(
 	prURL string,
 	branchName string,
 ) {
+	// Check if pr-url is already set — preserve it for follow-up prompts on existing branches
+	if existingPF, err := p.promptManager.Load(ctx, completedPath); err == nil &&
+		existingPF.PRURL() != "" {
+		slog.Debug("pr-url already set, preserving existing value")
+		return
+	}
+
 	// Save PR URL to frontmatter
 	if err := p.promptManager.SetPRURL(ctx, completedPath, prURL); err != nil {
 		slog.Warn("failed to save PR URL to frontmatter", "error", err)

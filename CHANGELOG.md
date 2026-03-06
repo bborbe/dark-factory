@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.33
+
+- autoReview: false        # watch PRs for reviews and generate fix prompts
+
 ## v0.17.32
 
 - 099-spec-019-compact-list-output

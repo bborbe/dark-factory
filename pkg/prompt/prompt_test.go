@@ -63,6 +63,11 @@ var _ = Describe("Prompt", func() {
 				err := prompt.StatusFailed.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
+
+			It("accepts in_review", func() {
+				err := prompt.StatusInReview.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
 		})
 
 		Context("with invalid status", func() {
@@ -1263,6 +1268,29 @@ status: queued
 			It("returns empty content error", func() {
 				_, err := prompt.Content(ctx, path)
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
+			})
+		})
+
+		Context("with in_review status in frontmatter", func() {
+			var path string
+
+			BeforeEach(func() {
+				content := `---
+status: in_review
+pr-url: https://github.com/example/repo/pull/42
+---
+# Some Prompt
+Content here.
+`
+				path = filepath.Join(tempDir, "004-in-review.md")
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+			})
+
+			It("parses in_review status from frontmatter", func() {
+				fm, err := prompt.ReadFrontmatter(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(fm.Status).To(Equal(string(prompt.StatusInReview)))
 			})
 		})
 

@@ -37,6 +37,10 @@ var _ = Describe("Config", func() {
 			Expect(cfg.SpecDir).To(Equal("specs"))
 			Expect(cfg.AutoMerge).To(BeFalse())
 			Expect(cfg.AutoRelease).To(BeFalse())
+			Expect(cfg.AutoReview).To(BeFalse())
+			Expect(cfg.MaxReviewRetries).To(Equal(3))
+			Expect(cfg.PollIntervalSec).To(Equal(60))
+			Expect(cfg.UseCollaborators).To(BeFalse())
 			Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
 		})
 	})
@@ -415,6 +419,88 @@ var _ = Describe("Config", func() {
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("autoRelease requires autoMerge"))
+		})
+
+		It("fails for autoReview true with workflow direct", func() {
+			cfg := config.Config{
+				Workflow:         config.WorkflowDirect,
+				InboxDir:         "prompts",
+				QueueDir:         "prompts/queue",
+				CompletedDir:     "prompts/completed",
+				LogDir:           "prompts/log",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
+				Model:            "claude-sonnet-4-6",
+				DebounceMs:       500,
+				ServerPort:       8080,
+				AutoMerge:        false,
+				AutoReview:       true,
+				AllowedReviewers: []string{"bborbe"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoReview requires workflow 'pr' or 'worktree'"))
+		})
+
+		It("fails for autoReview true with autoMerge false", func() {
+			cfg := config.Config{
+				Workflow:         config.WorkflowPR,
+				InboxDir:         "prompts",
+				QueueDir:         "prompts/queue",
+				CompletedDir:     "prompts/completed",
+				LogDir:           "prompts/log",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
+				Model:            "claude-sonnet-4-6",
+				DebounceMs:       500,
+				ServerPort:       8080,
+				AutoMerge:        false,
+				AutoReview:       true,
+				AllowedReviewers: []string{"bborbe"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoReview requires autoMerge"))
+		})
+
+		It("fails for autoReview true with no reviewer source", func() {
+			cfg := config.Config{
+				Workflow:       config.WorkflowPR,
+				InboxDir:       "prompts",
+				QueueDir:       "prompts/queue",
+				CompletedDir:   "prompts/completed",
+				LogDir:         "prompts/log",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+				AutoReview:     true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoReview requires allowedReviewers or useCollaborators: true"))
+		})
+
+		It("succeeds for autoReview true with all required fields", func() {
+			cfg := config.Config{
+				Workflow:         config.WorkflowPR,
+				InboxDir:         "prompts",
+				QueueDir:         "prompts/queue",
+				CompletedDir:     "prompts/completed",
+				LogDir:           "prompts/log",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
+				Model:            "claude-sonnet-4-6",
+				DebounceMs:       500,
+				ServerPort:       8080,
+				AutoMerge:        true,
+				AutoReview:       true,
+				AllowedReviewers: []string{"bborbe"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 

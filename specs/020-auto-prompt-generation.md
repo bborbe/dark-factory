@@ -10,26 +10,32 @@ Writing prompts for an approved spec is manual and slow. The human must context-
 
 ## Goal
 
-When a spec reaches `approved`, dark-factory automatically generates prompt files in the inbox and transitions the spec to `prompted`. The human then reviews and queues the prompts as before.
+When the human approves a spec, dark-factory detects it automatically, runs Claude Code to generate prompt files in the inbox, and transitions the spec to `prompted`. The human then reviews and queues the prompts as before.
 
 ## Non-goals
 
 - No automatic queuing of generated prompts — human gates that step
 - No modification of the spec content
-- No prompt generation for specs that are not `approved`
+- No multi-turn conversation or interactive refinement during generation
 
 ## Desired Behavior
 
-1. Dark-factory detects specs with `status: approved` and generates prompts for them automatically.
-2. Generation runs Claude Code in the project directory so it can read the spec, existing code, and the Dark Factory Guide for context.
-3. Generated prompt files are written to `prompts/` (inbox) with `status: created` and `spec: ["NNN"]` in frontmatter.
-4. After successful generation the spec transitions to `prompted`.
-5. If generation fails or produces no files, the spec stays `approved`, an error is logged, and the cycle retries.
-6. Only one spec is generated at a time.
+1. Dark-factory watches the `specs/` directory using the same fsnotify mechanism as the queue watcher.
+2. When a spec file changes and its status is `approved`, the spec watcher signals the generator.
+3. Generation runs `claude /generate-prompts-for-spec <spec-file>` via the existing YOLO mechanism. The YOLO container mounts `~/.claude-yolo` as `/home/node/.claude`, so slash commands are resolved from `~/.claude-yolo/commands/` — not from the host's `~/.claude/commands/`.
+4. The `/generate-prompts-for-spec` command (in `~/.claude-yolo/commands/`) reads the spec, reads the Dark Factory Guide for conventions, and writes one or more prompt files to `prompts/` (inbox).
+5. Each generated prompt has `status: created` and `spec: ["NNN"]` in its frontmatter.
+6. After successful generation the spec transitions from `approved` to `prompted`.
+7. If generation fails or produces no prompt files, the spec stays `approved`, an error is logged, and the next file change retriggers.
+8. Only one spec is generated at a time.
 
 ## Constraints
 
+- The `/generate-prompts-for-spec` command must be non-interactive — no `AskUserQuestion`, no user prompts
 - Generated prompts land in `prompts/` (inbox) only — never directly in `prompts/queue/`
+- After writing the command file, it must be committed to both repos:
+  - `~/.claude-yolo` (git remote: `claude-yolo-config`) — where the YOLO container reads commands from
+  - `~/Documents/workspaces/claude-yolo` — the canonical source repo
 - Existing `dark-factory spec approve` behavior is unchanged
 - No new required config fields
 
@@ -38,12 +44,13 @@ When a spec reaches `approved`, dark-factory automatically generates prompt file
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
 | Claude Code produces no prompt files | Spec stays `approved`, retried next cycle | Improve spec quality |
-| Generation crashes | Spec stays `approved`, error logged | Auto-retried |
+| Generation crashes | Spec stays `approved`, error logged, auto-retried | — |
 
 ## Acceptance Criteria
 
+- [ ] `~/.claude-yolo/commands/generate-prompts-for-spec.md` exists, is non-interactive, and committed to both repos
 - [ ] Approving a spec triggers automatic prompt generation
-- [ ] Generated prompts appear in `prompts/` with correct frontmatter
+- [ ] Generated prompts appear in `prompts/` with `spec: ["NNN"]` and `status: created`
 - [ ] Spec transitions to `prompted` after successful generation
 - [ ] Failed generation leaves spec `approved` and retries
 - [ ] `make precommit` passes

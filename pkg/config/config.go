@@ -21,37 +21,46 @@ type GitHubConfig struct {
 
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName    string       `yaml:"projectName"`
-	Workflow       Workflow     `yaml:"workflow"`
-	InboxDir       string       `yaml:"inboxDir"`
-	QueueDir       string       `yaml:"queueDir"`
-	CompletedDir   string       `yaml:"completedDir"`
-	LogDir         string       `yaml:"logDir"`
-	SpecDir        string       `yaml:"specDir"`
-	ContainerImage string       `yaml:"containerImage"`
-	Model          string       `yaml:"model"`
-	DebounceMs     int          `yaml:"debounceMs"`
-	ServerPort     int          `yaml:"serverPort"`
-	AutoMerge      bool         `yaml:"autoMerge"`
-	AutoRelease    bool         `yaml:"autoRelease"`
-	GitHub         GitHubConfig `yaml:"github"`
+	ProjectName      string       `yaml:"projectName"`
+	Workflow         Workflow     `yaml:"workflow"`
+	InboxDir         string       `yaml:"inboxDir"`
+	QueueDir         string       `yaml:"queueDir"`
+	CompletedDir     string       `yaml:"completedDir"`
+	LogDir           string       `yaml:"logDir"`
+	SpecDir          string       `yaml:"specDir"`
+	ContainerImage   string       `yaml:"containerImage"`
+	Model            string       `yaml:"model"`
+	DebounceMs       int          `yaml:"debounceMs"`
+	ServerPort       int          `yaml:"serverPort"`
+	AutoMerge        bool         `yaml:"autoMerge"`
+	AutoRelease      bool         `yaml:"autoRelease"`
+	AutoReview       bool         `yaml:"autoReview"`
+	MaxReviewRetries int          `yaml:"maxReviewRetries"`
+	AllowedReviewers []string     `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators bool         `yaml:"useCollaborators"`
+	PollIntervalSec  int          `yaml:"pollIntervalSec"`
+	GitHub           GitHubConfig `yaml:"github"`
 }
 
 // Defaults returns a Config with all default values.
 func Defaults() Config {
 	return Config{
-		Workflow:       WorkflowDirect,
-		InboxDir:       "prompts",
-		QueueDir:       "prompts/queue",
-		CompletedDir:   "prompts/completed",
-		LogDir:         "prompts/log",
-		SpecDir:        "specs",
-		ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
-		Model:          "claude-sonnet-4-6",
-		DebounceMs:     500,
-		ServerPort:     0,
-		AutoMerge:      false,
-		AutoRelease:    false,
+		Workflow:         WorkflowDirect,
+		InboxDir:         "prompts",
+		QueueDir:         "prompts/queue",
+		CompletedDir:     "prompts/completed",
+		LogDir:           "prompts/log",
+		SpecDir:          "specs",
+		ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
+		Model:            "claude-sonnet-4-6",
+		DebounceMs:       500,
+		ServerPort:       0,
+		AutoMerge:        false,
+		AutoRelease:      false,
+		AutoReview:       false,
+		MaxReviewRetries: 3,
+		PollIntervalSec:  60,
+		UseCollaborators: false,
 		GitHub: GitHubConfig{
 			Token: "${DARK_FACTORY_GITHUB_TOKEN}",
 		}, // #nosec G101 -- env var reference, not a credential
@@ -111,7 +120,25 @@ func (c Config) Validate(ctx context.Context) error {
 				return nil
 			}),
 		),
+		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
 	}.Validate(ctx)
+}
+
+// validateAutoReview validates the autoReview configuration.
+func (c Config) validateAutoReview(ctx context.Context) error {
+	if !c.AutoReview {
+		return nil
+	}
+	if c.Workflow != WorkflowPR && c.Workflow != WorkflowWorktree {
+		return errors.Errorf(ctx, "autoReview requires workflow 'pr' or 'worktree'")
+	}
+	if !c.AutoMerge {
+		return errors.Errorf(ctx, "autoReview requires autoMerge")
+	}
+	if len(c.AllowedReviewers) == 0 && !c.UseCollaborators {
+		return errors.Errorf(ctx, "autoReview requires allowedReviewers or useCollaborators: true")
+	}
+	return nil
 }
 
 var envVarPattern = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)

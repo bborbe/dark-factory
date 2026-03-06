@@ -25,6 +25,13 @@ workflow: direct
 # Default: false
 # autoRelease: false
 
+# Watch PRs for reviews and generate fix prompts (requires workflow: pr or worktree, autoMerge: true)
+# autoReview: false        # watch PRs for reviews and generate fix prompts
+# maxReviewRetries: 3      # max fix iterations before marking failed
+# allowedReviewers: []     # trusted GitHub usernames (or use useCollaborators)
+# useCollaborators: false  # trust repo collaborators as reviewers
+# pollIntervalSec: 60      # how often to poll in_review prompts (seconds)
+
 # Passive drop zone for new prompts (no automation)
 inboxDir: prompts
 

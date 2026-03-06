@@ -43,11 +43,12 @@ const (
 	StatusExecuting Status = "executing"
 	StatusCompleted Status = "completed"
 	StatusFailed    Status = "failed"
+	StatusInReview  Status = "in_review"
 )
 
 // Validate validates the Status value.
 func (s Status) Validate(ctx context.Context) error {
-	for _, valid := range []Status{StatusQueued, StatusExecuting, StatusCompleted, StatusFailed} {
+	for _, valid := range []Status{StatusQueued, StatusExecuting, StatusCompleted, StatusFailed, StatusInReview} {
 		if s == valid {
 			return nil
 		}
@@ -478,7 +479,7 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 
 		// Skip files with explicit skip status
 		if fm.Status == string(StatusExecuting) || fm.Status == string(StatusCompleted) ||
-			fm.Status == string(StatusFailed) {
+			fm.Status == string(StatusFailed) || fm.Status == string(StatusInReview) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)
 			continue
 		}

@@ -365,6 +365,11 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 	return cmd.NewSpecApproveCommand(cfg.SpecDir)
 }
 
+// CreateSpecVerifyCommand creates a SpecVerifyCommand.
+func CreateSpecVerifyCommand(cfg config.Config) cmd.SpecVerifyCommand {
+	return cmd.NewSpecVerifyCommand(cfg.SpecDir)
+}
+
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
 func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)

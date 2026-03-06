@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.21
+
+- 088-fix-status-daemon-detection
+
 ## v0.17.20
 
 - 087-spec-019-spec-model

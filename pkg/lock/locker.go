@@ -18,6 +18,11 @@ import (
 
 const lockFileName = ".dark-factory.lock"
 
+// FilePath returns the lock file path for a given directory.
+func FilePath(dir string) string {
+	return filepath.Join(dir, lockFileName)
+}
+
 //counterfeiter:generate -o ../../mocks/locker.go --fake-name Locker . Locker
 
 // Locker provides exclusive access control to prevent concurrent dark-factory instances.

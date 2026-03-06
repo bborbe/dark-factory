@@ -167,6 +167,7 @@ func CreateServer(
 		completedDir,
 		defaultIdeasDir,
 		logDir,
+		lock.FilePath("."),
 		port,
 		promptManager,
 	)
@@ -204,6 +205,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		cfg.CompletedDir,
 		defaultIdeasDir,
 		cfg.LogDir,
+		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
 	)

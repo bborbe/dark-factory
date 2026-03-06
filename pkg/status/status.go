@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -62,6 +63,7 @@ type checker struct {
 	completedDir string
 	ideasDir     string
 	logDir       string
+	lockFilePath string
 	serverPort   int
 	promptMgr    prompt.Manager
 }
@@ -72,6 +74,7 @@ func NewChecker(
 	completedDir string,
 	ideasDir string,
 	logDir string,
+	lockFilePath string,
 	serverPort int,
 	promptMgr prompt.Manager,
 ) Checker {
@@ -80,6 +83,7 @@ func NewChecker(
 		completedDir: completedDir,
 		ideasDir:     ideasDir,
 		logDir:       logDir,
+		lockFilePath: lockFilePath,
 		serverPort:   serverPort,
 		promptMgr:    promptMgr,
 	}
@@ -415,13 +419,35 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	return nil
 }
 
-// populateDaemonStatus checks if daemon is running.
+// populateDaemonStatus checks if daemon is running via lock file PID.
 func (s *checker) populateDaemonStatus(st *Status) {
-	// Check if server port is listening
-	if s.isDaemonRunning() {
-		st.Daemon = "running"
-		// TODO: get PID from daemon when available
+	pid, err := s.readLockFilePID()
+	if err != nil || pid <= 0 {
+		return
 	}
+	if s.isProcessAlive(pid) {
+		st.Daemon = "running"
+		st.DaemonPID = pid
+	}
+}
+
+// readLockFilePID reads the PID from the lock file.
+func (s *checker) readLockFilePID() (int, error) {
+	data, err := os.ReadFile(s.lockFilePath)
+	if err != nil {
+		return 0, err
+	}
+	pidStr := strings.TrimSpace(string(data))
+	return strconv.Atoi(pidStr)
+}
+
+// isProcessAlive checks if a process with the given PID is alive.
+func (s *checker) isProcessAlive(pid int) bool {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+	return proc.Signal(syscall.Signal(0)) == nil
 }
 
 // populateLogInfo finds the latest log file.
@@ -464,14 +490,6 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 	}
 
 	return nil
-}
-
-// isDaemonRunning checks if the daemon is running by attempting to connect to the server port.
-func (s *checker) isDaemonRunning() bool {
-	// Try to connect to the server port
-	// For now, we check if the port is open by attempting a TCP connection
-	// This is a simple check - in production you might want to check a PID file or use a health endpoint
-	return false // TODO: implement port check or PID file check
 }
 
 // isContainerRunning checks if a Docker container is running.

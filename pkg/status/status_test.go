@@ -6,6 +6,7 @@ package status_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -25,6 +26,7 @@ var _ = Describe("StatusChecker", func() {
 		queueDir      string
 		completedDir  string
 		ideasDir      string
+		lockFilePath  string
 		mockPromptMgr *mocks.Manager
 		statusChecker status.Checker
 	)
@@ -39,6 +41,7 @@ var _ = Describe("StatusChecker", func() {
 		queueDir = filepath.Join(tempDir, "prompts")
 		completedDir = filepath.Join(tempDir, "prompts", "completed")
 		ideasDir = filepath.Join(tempDir, "prompts", "ideas")
+		lockFilePath = filepath.Join(tempDir, ".dark-factory.lock")
 
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
@@ -53,6 +56,7 @@ var _ = Describe("StatusChecker", func() {
 			completedDir,
 			ideasDir,
 			"prompts/log",
+			lockFilePath,
 			8080,
 			mockPromptMgr,
 		)
@@ -191,6 +195,70 @@ status: executing
 		})
 	})
 
+	Describe("Daemon detection", func() {
+		It("shows not running when lock file is missing", func() {
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Daemon).To(Equal("not running"))
+			Expect(st.DaemonPID).To(Equal(0))
+		})
+
+		It("shows not running when lock file contains dead PID", func() {
+			// Write a PID that is guaranteed not to exist
+			err := os.WriteFile(lockFilePath, []byte("99999999\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Daemon).To(Equal("not running"))
+			Expect(st.DaemonPID).To(Equal(0))
+		})
+
+		It("shows running when lock file contains the current process PID", func() {
+			pid := os.Getpid()
+			err := os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d\n", pid)), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Daemon).To(Equal("running"))
+			Expect(st.DaemonPID).To(Equal(pid))
+		})
+
+		It("shows not running when lock file is empty", func() {
+			err := os.WriteFile(lockFilePath, []byte(""), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Daemon).To(Equal("not running"))
+		})
+
+		It("shows not running when lock file contains invalid content", func() {
+			err := os.WriteFile(lockFilePath, []byte("not-a-pid\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockPromptMgr.HasExecutingReturns(false)
+			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Daemon).To(Equal("not running"))
+		})
+	})
+
 	Describe("GetQueuedPrompts", func() {
 		It("returns queued prompts with metadata", func() {
 			queuedPath1 := filepath.Join(queueDir, "001-test.md")
@@ -245,6 +313,7 @@ status: executing
 				completedDir,
 				ideasDir,
 				logDir,
+				lockFilePath,
 				8080,
 				mockPromptMgr,
 			)
@@ -265,6 +334,7 @@ status: executing
 				completedDir,
 				ideasDir,
 				"/nonexistent/log",
+				lockFilePath,
 				8080,
 				mockPromptMgr,
 			)

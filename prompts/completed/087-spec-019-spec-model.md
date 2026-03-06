@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: 'Added spec package foundations: Status type with constants, Frontmatter/SpecFile structs, Load/Save/SetStatus, Lister interface with List/Summary, wired AutoCompleter into processor, updated all callers'
 container: dark-factory-087-spec-019-spec-model
 dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
 started: "2026-03-06T11:02:43Z"
+completed: "2026-03-06T11:14:34Z"
 ---
 <objective>
 Add a spec package that can parse spec files from a directory, extract frontmatter (status field), and provide listing and summary functionality. This is the foundation for native spec integration (spec 019).

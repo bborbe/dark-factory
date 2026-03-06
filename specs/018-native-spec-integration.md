@@ -1,5 +1,5 @@
 ---
-status: approved
+status: completed
 ---
 
 # Review-Fix Loop

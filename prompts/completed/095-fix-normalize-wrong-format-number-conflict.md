@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: 'Fixed NormalizeFilenames bug: scanPromptFiles now only claims numbers for properly-formatted files, determineRename Case 3 checks usedNumbers before keeping a wrong-format file''s number, added 4 new tests, and fixed pre-existing yaml.v2/v3 mismatch in frontmatter parsing.'
 container: dark-factory-095-fix-normalize-wrong-format-number-conflict
 dark-factory-version: v0.17.27
 created: "2026-03-06T13:29:57Z"
 queued: "2026-03-06T13:29:57Z"
 started: "2026-03-06T13:29:57Z"
+completed: "2026-03-06T13:44:26Z"
 ---
 <objective>
 Fix a bug in NormalizeFilenames: files with wrong-format numeric prefixes (e.g. `01-foo.md`) are renamed to `001-foo.md` even when that number is already used by a completed file, causing duplicates like `001-foo.md` alongside `001-core-pipeline.md` in completed.

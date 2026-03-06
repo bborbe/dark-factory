@@ -1,5 +1,5 @@
 ---
-status: approved
+status: prompted
 ---
 
 # Config Restructure: Nested Prompts and Specs Sections

@@ -1,3 +1,13 @@
+---
+status: completed
+summary: 'Fixed unknown command fallthrough: ParseArgs now returns ''unknown'' for unrecognized commands, run() handles it with a helpful error before config loading, and tests cover the new behavior.'
+container: dark-factory-096-fix-unknown-command-shows-help
+dark-factory-version: v0.17.27
+created: "2026-03-06T13:44:29Z"
+queued: "2026-03-06T13:44:29Z"
+started: "2026-03-06T13:44:29Z"
+completed: "2026-03-06T13:53:09Z"
+---
 <objective>
 Fix dark-factory to return an error on unknown commands instead of silently falling through to `run`. Currently `dark-factory prompts --help` starts the factory instead of showing an error.
 </objective>

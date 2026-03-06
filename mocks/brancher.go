@@ -58,6 +58,18 @@ type Brancher struct {
 	fetchReturnsOnCall map[int]struct {
 		result1 error
 	}
+	FetchAndVerifyBranchStub        func(context.Context, string) error
+	fetchAndVerifyBranchMutex       sync.RWMutex
+	fetchAndVerifyBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	fetchAndVerifyBranchReturns struct {
+		result1 error
+	}
+	fetchAndVerifyBranchReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ForcePushStub        func(context.Context, string) error
 	forcePushMutex       sync.RWMutex
 	forcePushArgsForCall []struct {
@@ -367,6 +379,68 @@ func (fake *Brancher) FetchReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.fetchReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) FetchAndVerifyBranch(arg1 context.Context, arg2 string) error {
+	fake.fetchAndVerifyBranchMutex.Lock()
+	ret, specificReturn := fake.fetchAndVerifyBranchReturnsOnCall[len(fake.fetchAndVerifyBranchArgsForCall)]
+	fake.fetchAndVerifyBranchArgsForCall = append(fake.fetchAndVerifyBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.FetchAndVerifyBranchStub
+	fakeReturns := fake.fetchAndVerifyBranchReturns
+	fake.recordInvocation("FetchAndVerifyBranch", []interface{}{arg1, arg2})
+	fake.fetchAndVerifyBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) FetchAndVerifyBranchCallCount() int {
+	fake.fetchAndVerifyBranchMutex.RLock()
+	defer fake.fetchAndVerifyBranchMutex.RUnlock()
+	return len(fake.fetchAndVerifyBranchArgsForCall)
+}
+
+func (fake *Brancher) FetchAndVerifyBranchCalls(stub func(context.Context, string) error) {
+	fake.fetchAndVerifyBranchMutex.Lock()
+	defer fake.fetchAndVerifyBranchMutex.Unlock()
+	fake.FetchAndVerifyBranchStub = stub
+}
+
+func (fake *Brancher) FetchAndVerifyBranchArgsForCall(i int) (context.Context, string) {
+	fake.fetchAndVerifyBranchMutex.RLock()
+	defer fake.fetchAndVerifyBranchMutex.RUnlock()
+	argsForCall := fake.fetchAndVerifyBranchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) FetchAndVerifyBranchReturns(result1 error) {
+	fake.fetchAndVerifyBranchMutex.Lock()
+	defer fake.fetchAndVerifyBranchMutex.Unlock()
+	fake.FetchAndVerifyBranchStub = nil
+	fake.fetchAndVerifyBranchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) FetchAndVerifyBranchReturnsOnCall(i int, result1 error) {
+	fake.fetchAndVerifyBranchMutex.Lock()
+	defer fake.fetchAndVerifyBranchMutex.Unlock()
+	fake.FetchAndVerifyBranchStub = nil
+	if fake.fetchAndVerifyBranchReturnsOnCall == nil {
+		fake.fetchAndVerifyBranchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.fetchAndVerifyBranchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

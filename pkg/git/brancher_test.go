@@ -185,6 +185,50 @@ var _ = Describe("Brancher", func() {
 		})
 	})
 
+	Describe("FetchAndVerifyBranch", func() {
+		It("returns error when no remote is configured", func() {
+			err := b.FetchAndVerifyBranch(ctx, "some-branch")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error containing branch name when branch does not exist remotely", func() {
+			// Configure a remote (using the same repo as remote)
+			cmd := exec.Command("git", "remote", "add", "origin", tempDir)
+			cmd.Dir = tempDir
+			err := cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			err = b.FetchAndVerifyBranch(ctx, "nonexistent-branch")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("nonexistent-branch"))
+		})
+
+		It("returns nil when branch exists remotely", func() {
+			// Set up a bare clone to act as origin
+			bareDir, err := os.MkdirTemp("", "brancher-bare-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(bareDir) }()
+
+			// Clone the tempDir as a bare repo
+			cmd := exec.Command("git", "clone", "--bare", tempDir, bareDir)
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Add the bare clone as origin
+			cmd = exec.Command("git", "remote", "add", "origin", bareDir)
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Get default branch name
+			branch, err := b.CurrentBranch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = b.FetchAndVerifyBranch(ctx, branch)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 	Describe("DefaultBranch", func() {
 		It("returns error when not in a GitHub repository", func() {
 			// DefaultBranch requires gh CLI and a GitHub repository

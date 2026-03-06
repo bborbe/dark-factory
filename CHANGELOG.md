@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.18
+
+- 085-brancher-fetch-and-verify
+
 ## v0.17.17
 
 - 084-branch-frontmatter-field

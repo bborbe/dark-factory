@@ -23,6 +23,7 @@ type Brancher interface {
 	Switch(ctx context.Context, name string) error
 	CurrentBranch(ctx context.Context) (string, error)
 	Fetch(ctx context.Context) error
+	FetchAndVerifyBranch(ctx context.Context, branch string) error
 	DefaultBranch(ctx context.Context) (string, error)
 	Pull(ctx context.Context) error
 	MergeOriginDefault(ctx context.Context) error
@@ -104,6 +105,24 @@ func (b *brancher) Fetch(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "fetch from origin")
+	}
+	return nil
+}
+
+// FetchAndVerifyBranch fetches from origin and verifies the branch exists remotely.
+func (b *brancher) FetchAndVerifyBranch(ctx context.Context, branch string) error {
+	slog.Debug("fetching from origin and verifying branch", "branch", branch)
+
+	// #nosec G204 -- branch name comes from validated frontmatter
+	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrap(ctx, err, "fetch from origin")
+	}
+
+	// #nosec G204 -- branch name comes from validated frontmatter
+	cmd = exec.CommandContext(ctx, "git", "rev-parse", "--verify", "origin/"+branch)
+	if err := cmd.Run(); err != nil {
+		return errors.Errorf(ctx, "branch not found at origin: %s", branch)
 	}
 	return nil
 }

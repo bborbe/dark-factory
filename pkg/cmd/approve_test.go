@@ -129,43 +129,11 @@ var _ = Describe("ApproveCommand", func() {
 		})
 	})
 
-	Describe("Approve all from inbox", func() {
-		It("approves all .md files from inbox", func() {
-			err := os.WriteFile(filepath.Join(inboxDir, "fix1.md"), []byte("# Fix 1"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-			err = os.WriteFile(filepath.Join(inboxDir, "fix2.md"), []byte("# Fix 2"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = approveCmd.Run(ctx, []string{})
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = os.Stat(filepath.Join(inboxDir, "fix1.md"))
-			Expect(os.IsNotExist(err)).To(BeTrue())
-			_, err = os.Stat(filepath.Join(inboxDir, "fix2.md"))
-			Expect(os.IsNotExist(err)).To(BeTrue())
-
-			Expect(mockPromptManager.NormalizeFilenamesCallCount()).To(Equal(2))
-		})
-
-		It("handles empty inbox", func() {
+	Describe("No args", func() {
+		It("returns error with usage message", func() {
 			err := approveCmd.Run(ctx, []string{})
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("skips non-.md files", func() {
-			err := os.WriteFile(filepath.Join(inboxDir, "notes.txt"), []byte("notes"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-			err = os.WriteFile(filepath.Join(inboxDir, "fix.md"), []byte("# Fix"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = approveCmd.Run(ctx, []string{})
-			Expect(err).NotTo(HaveOccurred())
-
-			// txt file should still be in inbox
-			_, err = os.Stat(filepath.Join(inboxDir, "notes.txt"))
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(mockPromptManager.NormalizeFilenamesCallCount()).To(Equal(1))
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("usage: dark-factory approve <file>"))
 		})
 	})
 

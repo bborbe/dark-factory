@@ -45,10 +45,10 @@ func NewApproveCommand(
 
 // Run executes the approve command.
 func (a *approveCommand) Run(ctx context.Context, args []string) error {
-	if len(args) > 0 {
-		return a.approveByID(ctx, args[0])
+	if len(args) == 0 {
+		return errors.Errorf(ctx, "usage: dark-factory approve <file>")
 	}
-	return a.approveAll(ctx)
+	return a.approveByID(ctx, args[0])
 }
 
 // approveByID approves a prompt matching a short ID or exact filename.
@@ -137,33 +137,5 @@ func (a *approveCommand) approveInQueue(ctx context.Context, filename string) er
 	}
 
 	fmt.Printf("approved: %s\n", filename)
-	return nil
-}
-
-// approveAll approves all prompts in the inbox.
-func (a *approveCommand) approveAll(ctx context.Context) error {
-	entries, err := os.ReadDir(a.inboxDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("no files to approve")
-			return nil
-		}
-		return errors.Wrap(ctx, err, "read inbox directory")
-	}
-
-	approved := 0
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		if err := a.approveFromInbox(ctx, entry.Name()); err != nil {
-			return errors.Wrap(ctx, err, "approve file")
-		}
-		approved++
-	}
-
-	if approved == 0 {
-		fmt.Println("no files to approve")
-	}
 	return nil
 }

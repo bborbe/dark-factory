@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Created pkg/generator package with SpecGenerator interface, dockerSpecGenerator implementation, counterfeiter mock, and 8 tests covering all required paths including success, no-files-produced, executor-error, missing-inbox-dir, and spec-load-error scenarios
 container: dark-factory-106-spec-020-1-spec-generator
 dark-factory-version: v0.17.38
 created: "2026-03-06T15:34:16Z"
 queued: "2026-03-06T15:34:16Z"
 started: "2026-03-06T15:34:16Z"
+completed: "2026-03-06T15:44:40Z"
 ---
 <objective>
 Add a `SpecGenerator` to dark-factory that runs the `/generate-prompts-for-spec` claude-yolo command for a given spec file. This is the Go side of spec 020: it receives a spec path, runs the YOLO container with the slash command as the prompt, and transitions the spec to `prompted` on success.

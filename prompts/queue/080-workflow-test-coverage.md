@@ -1,10 +1,10 @@
 ---
-status: failed
+status: executing
 container: dark-factory-080-workflow-test-coverage
 dark-factory-version: v0.17.12
 created: "2026-03-06T08:30:31Z"
 queued: "2026-03-06T08:30:31Z"
-started: "2026-03-06T08:32:52Z"
+started: "2026-03-06T08:36:29Z"
 completed: "2026-03-06T08:32:52Z"
 ---
 

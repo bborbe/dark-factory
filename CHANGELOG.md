@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.17
+
+- 084-branch-frontmatter-field
+
 ## v0.17.16
 
 - 083-processor-test-coverage

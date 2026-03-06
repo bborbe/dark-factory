@@ -111,6 +111,7 @@ type Frontmatter struct {
 	Started            string `yaml:"started,omitempty"`
 	Completed          string `yaml:"completed,omitempty"`
 	PRURL              string `yaml:"pr-url,omitempty"`
+	Branch             string `yaml:"branch,omitempty"`
 }
 
 // PromptFile represents a loaded prompt file with immutable body and mutable frontmatter.
@@ -261,9 +262,24 @@ func (pf *PromptFile) SetSummary(summary string) {
 	pf.Frontmatter.Summary = summary
 }
 
+// PRURL returns the pr-url field from frontmatter.
+func (pf *PromptFile) PRURL() string {
+	return pf.Frontmatter.PRURL
+}
+
 // SetPRURL sets the pr-url field in frontmatter.
 func (pf *PromptFile) SetPRURL(url string) {
 	pf.Frontmatter.PRURL = url
+}
+
+// Branch returns the branch field from frontmatter.
+func (pf *PromptFile) Branch() string {
+	return pf.Frontmatter.Branch
+}
+
+// SetBranch sets the branch field in frontmatter.
+func (pf *PromptFile) SetBranch(branch string) {
+	pf.Frontmatter.Branch = branch
 }
 
 // FileMover handles file move operations with git awareness.
@@ -287,6 +303,7 @@ type Manager interface {
 	SetContainer(ctx context.Context, path string, name string) error
 	SetVersion(ctx context.Context, path string, version string) error
 	SetPRURL(ctx context.Context, path string, url string) error
+	SetBranch(ctx context.Context, path string, branch string) error
 	Content(ctx context.Context, path string) (string, error)
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
@@ -358,6 +375,11 @@ func (pm *manager) SetVersion(ctx context.Context, path string, version string) 
 // SetPRURL updates the pr-url field in a prompt file's frontmatter.
 func (pm *manager) SetPRURL(ctx context.Context, path string, url string) error {
 	return SetPRURL(ctx, path, url)
+}
+
+// SetBranch updates the branch field in a prompt file's frontmatter.
+func (pm *manager) SetBranch(ctx context.Context, path string, branch string) error {
+	return SetBranch(ctx, path, branch)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
@@ -565,6 +587,18 @@ func SetPRURL(ctx context.Context, path string, url string) error {
 	}
 
 	pf.SetPRURL(url)
+	return pf.Save(ctx)
+}
+
+// SetBranch updates the branch field in a prompt file's frontmatter.
+// If the file has no frontmatter, adds frontmatter with the branch field.
+func SetBranch(ctx context.Context, path string, branch string) error {
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.SetBranch(branch)
 	return pf.Save(ctx)
 }
 

@@ -1689,6 +1689,115 @@ Content here.
 			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/1"))
 		})
 	})
+
+	Describe("PromptFile.PRURL", func() {
+		It("returns pr-url value when set in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: completed\npr-url: https://github.com/user/repo/pull/42\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.PRURL()).To(Equal("https://github.com/user/repo/pull/42"))
+		})
+
+		It("returns empty string when pr-url is not set", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: completed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.PRURL()).To(Equal(""))
+		})
+	})
+
+	Describe("PromptFile.MarkFailed", func() {
+		It("sets status to failed with timestamp", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: executing\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+
+			pf.MarkFailed()
+			Expect(pf.Frontmatter.Status).To(Equal("failed"))
+			Expect(pf.Frontmatter.Completed).NotTo(BeEmpty())
+		})
+	})
+
+	Describe("PromptFile.SetBranch", func() {
+		It("sets the branch field in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+
+			pf.SetBranch("dark-factory/042-add-feature")
+			Expect(pf.Frontmatter.Branch).To(Equal("dark-factory/042-add-feature"))
+		})
+	})
+
+	Describe("PromptFile.Branch", func() {
+		It("returns branch value when branch field is set in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\nbranch: dark-factory/042-add-feature\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
+		})
+
+		It("returns empty string when branch field is not set", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Branch()).To(Equal(""))
+		})
+	})
+
+	Describe("SetBranch", func() {
+		It("writes the branch value into frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.SetBranch(ctx, path, "dark-factory/042-add-feature")
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
+		})
+
+		It("adds frontmatter if file has none", func() {
+			path := filepath.Join(tempDir, "001-no-frontmatter.md")
+			content := "# Test Prompt\n\nContent here.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.SetBranch(ctx, path, "dark-factory/042-add-feature")
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
+		})
+	})
 })
 
 // Helper function to create a prompt file with given status

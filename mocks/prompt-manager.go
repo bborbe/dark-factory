@@ -135,6 +135,19 @@ type Manager struct {
 	resetFailedReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetBranchStub        func(context.Context, string, string) error
+	setBranchMutex       sync.RWMutex
+	setBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	setBranchReturns struct {
+		result1 error
+	}
+	setBranchReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SetContainerStub        func(context.Context, string, string) error
 	setContainerMutex       sync.RWMutex
 	setContainerArgsForCall []struct {
@@ -832,6 +845,69 @@ func (fake *Manager) ResetFailedReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.resetFailedReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetBranch(arg1 context.Context, arg2 string, arg3 string) error {
+	fake.setBranchMutex.Lock()
+	ret, specificReturn := fake.setBranchReturnsOnCall[len(fake.setBranchArgsForCall)]
+	fake.setBranchArgsForCall = append(fake.setBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.SetBranchStub
+	fakeReturns := fake.setBranchReturns
+	fake.recordInvocation("SetBranch", []interface{}{arg1, arg2, arg3})
+	fake.setBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) SetBranchCallCount() int {
+	fake.setBranchMutex.RLock()
+	defer fake.setBranchMutex.RUnlock()
+	return len(fake.setBranchArgsForCall)
+}
+
+func (fake *Manager) SetBranchCalls(stub func(context.Context, string, string) error) {
+	fake.setBranchMutex.Lock()
+	defer fake.setBranchMutex.Unlock()
+	fake.SetBranchStub = stub
+}
+
+func (fake *Manager) SetBranchArgsForCall(i int) (context.Context, string, string) {
+	fake.setBranchMutex.RLock()
+	defer fake.setBranchMutex.RUnlock()
+	argsForCall := fake.setBranchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Manager) SetBranchReturns(result1 error) {
+	fake.setBranchMutex.Lock()
+	defer fake.setBranchMutex.Unlock()
+	fake.SetBranchStub = nil
+	fake.setBranchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) SetBranchReturnsOnCall(i int, result1 error) {
+	fake.setBranchMutex.Lock()
+	defer fake.setBranchMutex.Unlock()
+	fake.SetBranchStub = nil
+	if fake.setBranchReturnsOnCall == nil {
+		fake.setBranchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.setBranchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

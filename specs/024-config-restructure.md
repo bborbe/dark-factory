@@ -47,12 +47,14 @@ serverPort: 0
 | `queued`, `executing`, `failed`, `in_review` | `prompts/in-progress/` (inProgressDir) |
 | `completed` | `prompts/completed/` (completedDir) |
 
-**Specs** (new — specs now move between directories):
+**Specs** (new — file move is the signal, not frontmatter polling):
 | Status | Directory |
 |--------|-----------|
-| `draft`, `approved` | `specs/` (inboxDir) |
-| `prompted`, `verifying` | `specs/in-progress/` (inProgressDir) |
+| `draft` | `specs/` (inboxDir) |
+| `approved`, `prompted`, `verifying` | `specs/in-progress/` (inProgressDir) |
 | `completed` | `specs/completed/` (completedDir) |
+
+`dark-factory spec approve` sets `status: approved` **and** moves the file to `specs/in-progress/`. The SpecWatcher watches `specs/in-progress/` for new file Create events — no frontmatter polling needed. A file appearing in `in-progress/` is the unambiguous signal to generate prompts.
 
 ### Migration
 
@@ -77,7 +79,9 @@ serverPort: 0
 
 - [ ] Config struct has nested `PromptsConfig` and `SpecsConfig` with `InboxDir`, `InProgressDir`, `CompletedDir`, `LogDir`
 - [ ] Factory, watcher, processor, specwatcher all use new config fields
-- [ ] Spec files move to `in-progress/` on `prompted` transition and `completed/` on `completed` transition
+- [ ] `spec approve` moves spec file from `inboxDir` to `inProgressDir` (file move = signal to generate)
+- [ ] SpecWatcher watches `specs/inProgressDir` for Create events — no frontmatter polling
+- [ ] Spec files move to `completedDir` on `completed` transition
 - [ ] `prompts/queue/` → `prompts/in-progress/` migration runs on startup
 - [ ] All directories created on startup if missing
 - [ ] Old flat config keys log deprecation warning and still work

@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Refactored CLI to two-level subcommands (prompt <cmd>, spec <cmd>) with updated ParseArgs, nested switch routing, and comprehensive tests.
+container: dark-factory-089-spec-019-two-level-commands
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
+started: "2026-03-06T11:22:36Z"
+completed: "2026-03-06T11:31:03Z"
 ---
 <objective>
 Refactor CLI command routing from flat commands to two-level subcommands: `prompt <cmd>` and `spec <cmd>`. Remove old flat commands. This restructures the entry point for spec 019.

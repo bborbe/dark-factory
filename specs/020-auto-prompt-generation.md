@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # Auto-Prompt Generation from Spec
@@ -24,7 +24,7 @@ When the human approves a spec, dark-factory detects it automatically, runs Clau
 2. When a spec file changes and its status is `approved`, the spec watcher signals the generator.
 3. Generation runs `claude /generate-prompts-for-spec <spec-file>` via the existing YOLO mechanism. The YOLO container mounts `~/.claude-yolo` as `/home/node/.claude`, so slash commands are resolved from `~/.claude-yolo/commands/` — not from the host's `~/.claude/commands/`.
 4. The `/generate-prompts-for-spec` command (in `~/.claude-yolo/commands/`) reads the spec, reads the Dark Factory Guide for conventions, and writes one or more prompt files to `prompts/` (inbox).
-5. Each generated prompt has `status: created` and `spec: ["NNN"]` in its frontmatter.
+5. Each generated prompt has `status: created`, `spec: ["NNN"]`, and `created: "<ISO timestamp>"` in its frontmatter.
 6. After successful generation the spec transitions from `approved` to `prompted`.
 7. If generation fails or produces no prompt files, the spec stays `approved`, an error is logged, and the next file change retriggers.
 8. Only one spec is generated at a time.

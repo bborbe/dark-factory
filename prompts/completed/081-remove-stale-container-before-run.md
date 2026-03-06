@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Added removeContainerIfExists to docker executor that runs docker rm -f before each docker run to handle stale containers from interrupted runs, with test verifying command ordering.
+container: dark-factory-081-remove-stale-container-before-run
+dark-factory-version: v0.17.12
+created: "2026-03-06T08:53:25Z"
+queued: "2026-03-06T08:53:25Z"
+started: "2026-03-06T08:53:25Z"
+completed: "2026-03-06T09:01:15Z"
 ---
 
 Fix: `docker run` fails with "container name already in use" when a previous run was interrupted (killed/crashed) and the container was not cleaned up. dark-factory should remove any existing container with the same name before starting a new one.

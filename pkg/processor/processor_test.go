@@ -666,6 +666,61 @@ var _ = Describe("Processor", func() {
 		cancel()
 	})
 
+	It("should auto-set status to queued when prompt has non-standard status", func() {
+		promptPath := filepath.Join(promptsDir, "001-auto-status.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: ""}, // empty status triggers auto-set
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.ContentReturns("# Auto status test", nil)
+		mockManager.TitleReturns("Auto status test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			mockVersionGet,
+			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
+			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		// Wait for SetStatus to be called (auto-set to queued)
+		Eventually(func() int {
+			return mockManager.SetStatusCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		// Verify SetStatus was called with "queued"
+		_, _, status := mockManager.SetStatusArgsForCall(0)
+		Expect(status).To(Equal("queued"))
+
+		cancel()
+	})
+
 	It("should skip prompt with invalid status", func() {
 		promptPath := filepath.Join(promptsDir, "001-invalid-status.md")
 		queued := []prompt.Prompt{
@@ -1172,6 +1227,100 @@ var _ = Describe("Processor", func() {
 			cancel()
 		})
 
+		It("should processes prompt, create PR and auto-merge via worktree", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
+			promptPath := filepath.Join(promptsDir, "001-worktree-automerge.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Add feature\n\nWorktree auto-merge test."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Worktree automerge test", nil)
+			mockManager.TitleReturns("Add feature", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/2", nil)
+			mockPRMerger.WaitAndMergeReturns(nil)
+			mockBrancher.DefaultBranchReturns("master", nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.PullReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				true, // autoMerge enabled
+				false,
+			)
+
+			// Run processor in goroutine
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for WaitAndMerge to be called
+			Eventually(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify worktree operations
+			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
+			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+
+			// Verify WaitAndMerge was called with correct PR URL
+			_, mergedURL := mockPRMerger.WaitAndMergeArgsForCall(0)
+			Expect(mergedURL).To(Equal("https://github.com/test/repo/pull/2"))
+
+			// Verify post-merge actions
+			Eventually(func() int {
+				return mockBrancher.DefaultBranchCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+			Eventually(func() int {
+				return mockBrancher.PullCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			cancel()
+		})
+
 		It("should clean up worktree even on execution failure", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-fail.md")
 			queued := []prompt.Prompt{
@@ -1308,6 +1457,87 @@ var _ = Describe("Processor", func() {
 
 			// Verify PR was created successfully despite cleanup failure
 			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
+		It("should mark prompt failed when WaitAndMerge fails in worktree workflow", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
+			promptPath := filepath.Join(promptsDir, "001-worktree-merge-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Test\n\nWorktree merge fail test."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.StatusQueued),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Test", nil)
+			mockManager.TitleReturns("Test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/3", nil)
+			mockPRMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowWorktree,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				true, // autoMerge enabled
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for WaitAndMerge to be called
+			Eventually(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Worktree was added and removed before merge attempt
+			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+
+			// Load should be called to mark prompt as failed
+			Eventually(func() int {
+				return mockManager.LoadCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
 		})

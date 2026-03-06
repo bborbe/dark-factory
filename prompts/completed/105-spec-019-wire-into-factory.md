@@ -6,6 +6,7 @@ created: "2026-03-06T15:10:01Z"
 queued: "2026-03-06T15:10:01Z"
 started: "2026-03-06T15:10:01Z"
 completed: "2026-03-06T15:26:19Z"
+spec: ["019"]
 ---
 <objective>
 Wire the review-fix loop into the factory and runner: transition prompts to `in_review` after PR creation (when autoReview is enabled), and add the ReviewPoller as a third goroutine alongside watcher and processor. This completes spec 018.

@@ -7,6 +7,7 @@ created: "2026-03-06T14:21:44Z"
 queued: "2026-03-06T14:21:44Z"
 started: "2026-03-06T14:21:44Z"
 completed: "2026-03-06T14:31:56Z"
+spec: ["019"]
 ---
 <objective>
 Add `in_review` as a new prompt status and add config fields for the review-fix loop (spec 018). This is the foundation — no polling logic yet, just the data model and config.

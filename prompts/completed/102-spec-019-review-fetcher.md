@@ -7,6 +7,7 @@ created: "2026-03-06T14:38:10Z"
 queued: "2026-03-06T14:38:10Z"
 started: "2026-03-06T14:38:10Z"
 completed: "2026-03-06T14:49:44Z"
+spec: ["019"]
 ---
 <objective>
 Create a `ReviewFetcher` that polls a GitHub PR for reviews from trusted reviewers and returns the latest verdict. This is the GitHub API layer for spec 018 — no processor wiring yet, just the fetching logic.

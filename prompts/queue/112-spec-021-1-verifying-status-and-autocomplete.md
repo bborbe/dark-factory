@@ -1,6 +1,6 @@
 ---
 spec: ["021"]
-status: created
+status: queued
 created: "2026-03-06T18:00:00Z"
 ---
 <objective>

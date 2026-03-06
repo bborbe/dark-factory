@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.31
+
+- 098-spec-019-backfill-spec-fields
+
 ## v0.17.30
 
 - 097-spec-019-spec-array-field

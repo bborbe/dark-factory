@@ -128,10 +128,10 @@ func CreateSpecGenerator(cfg config.Config, containerImage string) generator.Spe
 	)
 }
 
-// CreateSpecWatcher creates a SpecWatcher that triggers generation on approved specs.
+// CreateSpecWatcher creates a SpecWatcher that triggers generation when a spec appears in inProgressDir.
 func CreateSpecWatcher(cfg config.Config, gen generator.SpecGenerator) specwatcher.SpecWatcher {
 	return specwatcher.NewSpecWatcher(
-		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
 		gen,
 		time.Duration(cfg.DebounceMs)*time.Millisecond,
 	)
@@ -381,7 +381,7 @@ func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
 
 // CreateSpecApproveCommand creates a SpecApproveCommand.
 func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
-	return cmd.NewSpecApproveCommand(cfg.Specs.InboxDir)
+	return cmd.NewSpecApproveCommand(cfg.Specs.InboxDir, cfg.Specs.InProgressDir)
 }
 
 // CreateSpecVerifyCommand creates a SpecVerifyCommand.

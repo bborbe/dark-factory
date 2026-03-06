@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/bborbe/errors"
@@ -23,12 +24,16 @@ type SpecApproveCommand interface {
 
 // specApproveCommand implements SpecApproveCommand.
 type specApproveCommand struct {
-	specsDir string
+	inboxDir      string
+	inProgressDir string
 }
 
 // NewSpecApproveCommand creates a new SpecApproveCommand.
-func NewSpecApproveCommand(specsDir string) SpecApproveCommand {
-	return &specApproveCommand{specsDir: specsDir}
+func NewSpecApproveCommand(inboxDir string, inProgressDir string) SpecApproveCommand {
+	return &specApproveCommand{
+		inboxDir:      inboxDir,
+		inProgressDir: inProgressDir,
+	}
 }
 
 // Run executes the spec approve command.
@@ -38,7 +43,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	id := args[0]
-	path, err := FindSpecFile(ctx, s.specsDir, id)
+	path, err := FindSpecFile(ctx, s.inboxDir, id)
 	if err != nil {
 		return err
 	}
@@ -57,6 +62,17 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "save spec")
 	}
 
-	fmt.Printf("approved: %s\n", filepath.Base(path))
+	// Ensure inProgressDir exists
+	if err := os.MkdirAll(s.inProgressDir, 0750); err != nil {
+		return errors.Wrap(ctx, err, "create in-progress dir")
+	}
+
+	// Move file to inProgressDir — the file move is the signal to SpecWatcher
+	dest := filepath.Join(s.inProgressDir, filepath.Base(path))
+	if err := os.Rename(path, dest); err != nil {
+		return errors.Wrap(ctx, err, "move spec to in-progress")
+	}
+
+	fmt.Printf("approved: %s\n", filepath.Base(dest))
 	return nil
 }

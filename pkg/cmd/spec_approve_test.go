@@ -19,6 +19,7 @@ var _ = Describe("SpecApproveCommand", func() {
 	var (
 		tempDir        string
 		specsDir       string
+		inProgressDir  string
 		specApproveCmd cmd.SpecApproveCommand
 		ctx            context.Context
 	)
@@ -32,7 +33,9 @@ var _ = Describe("SpecApproveCommand", func() {
 		err = os.MkdirAll(specsDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		specApproveCmd = cmd.NewSpecApproveCommand(specsDir)
+		inProgressDir = filepath.Join(tempDir, "specs", "in-progress")
+
+		specApproveCmd = cmd.NewSpecApproveCommand(specsDir, inProgressDir)
 		ctx = context.Background()
 	})
 
@@ -47,7 +50,7 @@ var _ = Describe("SpecApproveCommand", func() {
 			Expect(err.Error()).To(ContainSubstring("spec identifier required"))
 		})
 
-		It("approves a spec by exact filename", func() {
+		It("approves a spec by exact filename and moves it to inProgressDir", func() {
 			specFile := filepath.Join(specsDir, "001-my-spec.md")
 			err := os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
@@ -55,7 +58,13 @@ var _ = Describe("SpecApproveCommand", func() {
 			err = specApproveCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).NotTo(HaveOccurred())
 
-			content, err := os.ReadFile(specFile)
+			// File should be gone from inboxDir
+			_, statErr := os.Stat(specFile)
+			Expect(os.IsNotExist(statErr)).To(BeTrue())
+
+			// File should be present in inProgressDir with approved status
+			dest := filepath.Join(inProgressDir, "001-my-spec.md")
+			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
@@ -68,7 +77,9 @@ var _ = Describe("SpecApproveCommand", func() {
 			err = specApproveCmd.Run(ctx, []string{"001-my-spec"})
 			Expect(err).NotTo(HaveOccurred())
 
-			content, err := os.ReadFile(specFile)
+			// File should be moved to inProgressDir
+			dest := filepath.Join(inProgressDir, "001-my-spec.md")
+			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
@@ -81,7 +92,9 @@ var _ = Describe("SpecApproveCommand", func() {
 			err = specApproveCmd.Run(ctx, []string{"001"})
 			Expect(err).NotTo(HaveOccurred())
 
-			content, err := os.ReadFile(specFile)
+			// File should be moved to inProgressDir
+			dest := filepath.Join(inProgressDir, "001-my-spec.md")
+			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
@@ -103,10 +116,26 @@ var _ = Describe("SpecApproveCommand", func() {
 		})
 
 		It("returns error when specs dir does not exist", func() {
-			specApproveCmd = cmd.NewSpecApproveCommand("/nonexistent/specs")
+			specApproveCmd = cmd.NewSpecApproveCommand(
+				"/nonexistent/specs",
+				"/nonexistent/specs/in-progress",
+			)
 			err := specApproveCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec not found"))
+		})
+
+		It("creates inProgressDir if it does not exist", func() {
+			specFile := filepath.Join(specsDir, "002-new-spec.md")
+			err := os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# New Spec"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"002-new-spec.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(inProgressDir, "002-new-spec.md")
+			_, statErr := os.Stat(dest)
+			Expect(statErr).NotTo(HaveOccurred())
 		})
 	})
 })

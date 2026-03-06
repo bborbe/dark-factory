@@ -17,10 +17,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/bborbe/dark-factory/pkg/generator"
-	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
-// SpecWatcher watches the specs directory and triggers generation when a spec is approved.
+// SpecWatcher watches the specs in-progress directory and triggers generation when a spec appears there.
 //
 //counterfeiter:generate -o ../../mocks/spec-watcher.go --fake-name SpecWatcher . SpecWatcher
 type SpecWatcher interface {
@@ -29,26 +28,26 @@ type SpecWatcher interface {
 
 // specWatcher implements SpecWatcher.
 type specWatcher struct {
-	specsDir  string
-	generator generator.SpecGenerator
-	debounce  time.Duration
-	mu        sync.Mutex
+	inProgressDir string
+	generator     generator.SpecGenerator
+	debounce      time.Duration
+	mu            sync.Mutex
 }
 
 // NewSpecWatcher creates a new SpecWatcher.
 func NewSpecWatcher(
-	specsDir string,
+	inProgressDir string,
 	generator generator.SpecGenerator,
 	debounce time.Duration,
 ) SpecWatcher {
 	return &specWatcher{
-		specsDir:  specsDir,
-		generator: generator,
-		debounce:  debounce,
+		inProgressDir: inProgressDir,
+		generator:     generator,
+		debounce:      debounce,
 	}
 }
 
-// Watch starts watching the specs directory for file changes.
+// Watch starts watching the in-progress directory for new spec files.
 func (w *specWatcher) Watch(ctx context.Context) error {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -56,16 +55,16 @@ func (w *specWatcher) Watch(ctx context.Context) error {
 	}
 	defer fsWatcher.Close()
 
-	absSpecsDir := w.getSpecsDir()
+	absInProgressDir := w.getInProgressDir()
 
-	if err := fsWatcher.Add(absSpecsDir); err != nil {
+	if err := fsWatcher.Add(absInProgressDir); err != nil {
 		return errors.Wrap(ctx, err, "add watch path")
 	}
 
-	slog.Info("spec watcher started", "dir", absSpecsDir)
+	slog.Info("spec watcher started", "dir", absInProgressDir)
 
-	// Scan for already-approved specs before entering the event loop.
-	w.scanExistingApproved(ctx, absSpecsDir)
+	// Scan for specs already present in inProgressDir before entering the event loop.
+	w.scanExistingInProgress(ctx, absInProgressDir)
 
 	var debounceMu sync.Mutex
 	debounceTimers := make(map[string]*time.Timer)
@@ -102,8 +101,7 @@ func (w *specWatcher) handleWatchEvent(
 	if !strings.HasSuffix(event.Name, ".md") {
 		return
 	}
-	if event.Op&fsnotify.Write == 0 && event.Op&fsnotify.Create == 0 &&
-		event.Op&fsnotify.Chmod == 0 {
+	if event.Op&fsnotify.Create == 0 {
 		return
 	}
 
@@ -125,20 +123,9 @@ func (w *specWatcher) handleWatchEvent(
 	debounceMu.Unlock()
 }
 
-// handleFileEvent checks spec status and triggers generation if approved.
+// handleFileEvent triggers generation for a spec file in inProgressDir.
 func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
-	sf, err := spec.Load(ctx, specPath)
-	if err != nil {
-		slog.Info("failed to load spec file", "path", specPath, "error", err)
-		return
-	}
-
-	if sf.Frontmatter.Status != string(spec.StatusApproved) {
-		slog.Debug("spec not approved, skipping", "path", specPath, "status", sf.Frontmatter.Status)
-		return
-	}
-
-	slog.Info("spec approved, triggering generation", "path", specPath)
+	slog.Info("spec file created in in-progress, triggering generation", "path", specPath)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -152,30 +139,36 @@ func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
 	}
 }
 
-// scanExistingApproved scans specsDir for .md files that are already approved and
-// calls generator.Generate for each one. Errors are logged but do not abort.
-func (w *specWatcher) scanExistingApproved(ctx context.Context, specsDir string) {
-	entries, err := os.ReadDir(specsDir)
+// scanExistingInProgress scans inProgressDir for .md files on startup and triggers
+// generation for each. This handles specs that were moved here before the daemon started.
+func (w *specWatcher) scanExistingInProgress(ctx context.Context, inProgressDir string) {
+	entries, err := os.ReadDir(inProgressDir)
 	if err != nil {
-		slog.Info("failed to read specs dir on startup", "dir", specsDir, "error", err)
+		slog.Info(
+			"failed to read spec in-progress dir on startup",
+			"dir",
+			inProgressDir,
+			"error",
+			err,
+		)
 		return
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		w.handleFileEvent(ctx, filepath.Join(specsDir, entry.Name()))
+		w.handleFileEvent(ctx, filepath.Join(inProgressDir, entry.Name()))
 	}
 }
 
-// getSpecsDir returns the absolute specs directory path.
-func (w *specWatcher) getSpecsDir() string {
-	if !filepath.IsAbs(w.specsDir) {
+// getInProgressDir returns the absolute in-progress directory path.
+func (w *specWatcher) getInProgressDir() string {
+	if !filepath.IsAbs(w.inProgressDir) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return w.specsDir
+			return w.inProgressDir
 		}
-		return filepath.Join(cwd, w.specsDir)
+		return filepath.Join(cwd, w.inProgressDir)
 	}
-	return w.specsDir
+	return w.inProgressDir
 }

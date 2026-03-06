@@ -50,10 +50,10 @@ func (h *captureHandler) Messages() []string {
 
 var _ = Describe("SpecWatcher", func() {
 	var (
-		tempDir  string
-		specsDir string
-		ctx      context.Context
-		cancel   context.CancelFunc
+		tempDir       string
+		inProgressDir string
+		ctx           context.Context
+		cancel        context.CancelFunc
 	)
 
 	BeforeEach(func() {
@@ -61,8 +61,8 @@ var _ = Describe("SpecWatcher", func() {
 		tempDir, err = os.MkdirTemp("", "specwatcher-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		specsDir = filepath.Join(tempDir, "specs")
-		err = os.MkdirAll(specsDir, 0750)
+		inProgressDir = filepath.Join(tempDir, "specs", "in-progress")
+		err = os.MkdirAll(inProgressDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
 		ctx, cancel = context.WithCancel(context.Background())
@@ -76,18 +76,18 @@ var _ = Describe("SpecWatcher", func() {
 	})
 
 	It(
-		"should call generator for approved spec present on startup before any fsnotify events",
+		"should call generator for spec present in inProgressDir on startup",
 		func() {
 			gen := &mocks.SpecGenerator{}
 			gen.GenerateReturns(nil)
 
-			// Create approved spec BEFORE starting the watcher.
-			specFile := filepath.Join(specsDir, "pre-existing-spec.md")
+			// Create spec BEFORE starting the watcher.
+			specFile := filepath.Join(inProgressDir, "pre-existing-spec.md")
 			content := "---\nstatus: approved\n---\n# Pre-existing Spec\n"
 			err := os.WriteFile(specFile, []byte(content), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+			w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 			go func() {
 				_ = w.Watch(ctx)
@@ -104,35 +104,14 @@ var _ = Describe("SpecWatcher", func() {
 		},
 	)
 
-	It("should not call generator for draft spec present on startup", func() {
+	It("should ignore non-markdown files in inProgressDir on startup", func() {
 		gen := &mocks.SpecGenerator{}
 
-		specFile := filepath.Join(specsDir, "draft-startup.md")
-		content := "---\nstatus: draft\n---\n# Draft Spec\n"
-		err := os.WriteFile(specFile, []byte(content), 0600)
-		Expect(err).NotTo(HaveOccurred())
-
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
-
-		go func() {
-			_ = w.Watch(ctx)
-		}()
-
-		Consistently(func() int {
-			return gen.GenerateCallCount()
-		}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-		cancel()
-	})
-
-	It("should ignore non-markdown files in specsDir on startup", func() {
-		gen := &mocks.SpecGenerator{}
-
-		txtFile := filepath.Join(specsDir, "readme.txt")
+		txtFile := filepath.Join(inProgressDir, "readme.txt")
 		err := os.WriteFile(txtFile, []byte("hello"), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -148,7 +127,7 @@ var _ = Describe("SpecWatcher", func() {
 	It("should start and stop cleanly", func() {
 		gen := &mocks.SpecGenerator{}
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 500*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 500*time.Millisecond)
 
 		errCh := make(chan error, 1)
 		go func() {
@@ -166,11 +145,11 @@ var _ = Describe("SpecWatcher", func() {
 		}
 	})
 
-	It("should call generator when approved spec is written", func() {
+	It("should call generator when a new .md file is created in inProgressDir", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -178,7 +157,7 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		specFile := filepath.Join(specsDir, "my-spec.md")
+		specFile := filepath.Join(inProgressDir, "my-spec.md")
 		content := "---\nstatus: approved\n---\n# My Spec\n"
 		err := os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
@@ -193,48 +172,37 @@ var _ = Describe("SpecWatcher", func() {
 		cancel()
 	})
 
-	It("should NOT call generator when spec is in draft status", func() {
+	It("should NOT call generator on Write events (only Create triggers generation)", func() {
 		gen := &mocks.SpecGenerator{}
+		gen.GenerateReturns(nil)
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+		// Create the file before starting the watcher so startup scan fires once
+		specFile := filepath.Join(inProgressDir, "write-test.md")
+		content := "---\nstatus: approved\n---\n# Write Test\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
 		}()
 
-		time.Sleep(100 * time.Millisecond)
+		// Wait for startup scan to complete
+		Eventually(func() int {
+			return gen.GenerateCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
-		specFile := filepath.Join(specsDir, "draft-spec.md")
-		content := "---\nstatus: draft\n---\n# Draft Spec\n"
-		err := os.WriteFile(specFile, []byte(content), 0600)
+		callsBefore := gen.GenerateCallCount()
+
+		// Write to the existing file (Write event, not Create)
+		err = os.WriteFile(specFile, []byte(content+"updated\n"), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
+		// Generator should not be called again for a Write event
 		Consistently(func() int {
 			return gen.GenerateCallCount()
-		}, 800*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-		cancel()
-	})
-
-	It("should NOT call generator when spec is completed", func() {
-		gen := &mocks.SpecGenerator{}
-
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
-
-		go func() {
-			_ = w.Watch(ctx)
-		}()
-
-		time.Sleep(100 * time.Millisecond)
-
-		specFile := filepath.Join(specsDir, "completed-spec.md")
-		content := "---\nstatus: completed\n---\n# Completed Spec\n"
-		err := os.WriteFile(specFile, []byte(content), 0600)
-		Expect(err).NotTo(HaveOccurred())
-
-		Consistently(func() int {
-			return gen.GenerateCallCount()
-		}, 800*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+		}, 800*time.Millisecond, 50*time.Millisecond).Should(Equal(callsBefore))
 
 		cancel()
 	})
@@ -243,7 +211,7 @@ var _ = Describe("SpecWatcher", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(os.ErrPermission)
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 		errCh := make(chan error, 1)
 		go func() {
@@ -252,7 +220,7 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		specFile := filepath.Join(specsDir, "failing-spec.md")
+		specFile := filepath.Join(inProgressDir, "failing-spec.md")
 		content := "---\nstatus: approved\n---\n# Failing Spec\n"
 		err := os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
@@ -282,7 +250,7 @@ var _ = Describe("SpecWatcher", func() {
 	It("should ignore non-markdown files", func() {
 		gen := &mocks.SpecGenerator{}
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -290,7 +258,7 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		testFile := filepath.Join(specsDir, "readme.txt")
+		testFile := filepath.Join(inProgressDir, "readme.txt")
 		err := os.WriteFile(testFile, []byte("Hello"), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -313,7 +281,7 @@ var _ = Describe("SpecWatcher", func() {
 			return context.Canceled
 		}
 
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 50*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 50*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -321,7 +289,7 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		specFile := filepath.Join(specsDir, "cancel-spec.md")
+		specFile := filepath.Join(inProgressDir, "cancel-spec.md")
 		content := "---\nstatus: approved\n---\n# Cancel Spec\n"
 		err := os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
@@ -340,34 +308,6 @@ var _ = Describe("SpecWatcher", func() {
 		Expect(msgs).NotTo(ContainElement("spec generation failed"))
 	})
 
-	It("should debounce rapid writes and call generator once", func() {
-		gen := &mocks.SpecGenerator{}
-		gen.GenerateReturns(nil)
-
-		w := specwatcher.NewSpecWatcher(specsDir, gen, 400*time.Millisecond)
-
-		go func() {
-			_ = w.Watch(ctx)
-		}()
-
-		time.Sleep(100 * time.Millisecond)
-
-		specFile := filepath.Join(specsDir, "debounce-spec.md")
-		content := "---\nstatus: approved\n---\n# Debounce Spec\n"
-
-		for i := 0; i < 5; i++ {
-			err := os.WriteFile(specFile, []byte(content), 0600)
-			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(50 * time.Millisecond)
-		}
-
-		time.Sleep(700 * time.Millisecond)
-
-		Expect(gen.GenerateCallCount()).To(Equal(1))
-
-		cancel()
-	})
-
 	It("should work with relative paths", func() {
 		origDir, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
@@ -378,14 +318,14 @@ var _ = Describe("SpecWatcher", func() {
 		err = os.Chdir(tempDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		relSpecsDir := "specs-rel"
-		err = os.MkdirAll(relSpecsDir, 0750)
+		relInProgressDir := "specs-rel/in-progress"
+		err = os.MkdirAll(relInProgressDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
-		w := specwatcher.NewSpecWatcher(relSpecsDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(relInProgressDir, gen, 200*time.Millisecond)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -393,8 +333,8 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		absSpecsRelDir := filepath.Join(tempDir, relSpecsDir)
-		specFile := filepath.Join(absSpecsRelDir, "rel-spec.md")
+		absInProgressRelDir := filepath.Join(tempDir, relInProgressDir)
+		specFile := filepath.Join(absInProgressRelDir, "rel-spec.md")
 		content := "---\nstatus: approved\n---\n# Rel Spec\n"
 		err = os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())

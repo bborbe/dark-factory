@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Removed Location field from PromptEntry, updated scanDir signature, changed --queue to status-based filtering, and updated table output format to two columns in both list.go and combined_list.go.
+container: dark-factory-099-spec-019-compact-list-output
+dark-factory-version: v0.17.29
+created: "2026-03-06T14:16:17Z"
+queued: "2026-03-06T14:16:17Z"
+started: "2026-03-06T14:16:17Z"
+completed: "2026-03-06T14:21:40Z"
+---
 <objective>
 Simplify `dark-factory list` prompt output by removing the LOCATION column. The status value already encodes location (created=inbox, queued/executing=queue, completed/failed=completed), so showing both is redundant.
 </objective>

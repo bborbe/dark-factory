@@ -1,7 +1,13 @@
 ---
-status: queued
+status: completed
 spec: ["020"]
+summary: Added startup scan to SpecWatcher that calls generator.Generate for any already-approved specs before entering the fsnotify event loop, with tests covering the happy path and negative cases
+container: dark-factory-109-fix-spec-watcher-startup-scan
+dark-factory-version: v0.18.1
 created: "2026-03-06T17:15:00Z"
+queued: "2026-03-06T16:10:28Z"
+started: "2026-03-06T16:10:28Z"
+completed: "2026-03-06T16:18:34Z"
 ---
 
 <objective>

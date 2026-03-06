@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["019"]
+summary: 'Added spec: ["019"] frontmatter field to six completed prompt files (100-105) that implement the review-fix loop.'
 container: dark-factory-111-spec-019-1-backfill-review-fix-loop-spec-tags
 dark-factory-version: v0.18.2
 created: "2026-03-06T17:30:00Z"
 queued: "2026-03-06T16:41:33Z"
 started: "2026-03-06T16:41:33Z"
+completed: "2026-03-06T16:50:39Z"
 ---
 <objective>
 Backfill `spec: ["019"]` into the six completed prompts that implement the review-fix loop (spec 019), so the auto-complete mechanism can detect that all spec-019 prompts are done and mark the spec as completed.

@@ -1,5 +1,10 @@
 ---
-status: created
+status: executing
+container: dark-factory-083-processor-test-coverage
+dark-factory-version: v0.17.12
+created: "2026-03-06T09:19:57Z"
+queued: "2026-03-06T09:19:57Z"
+started: "2026-03-06T09:19:58Z"
 ---
 
 Increase processor test coverage from 81.4% to 90%+. Focus on untested and low-coverage functions.

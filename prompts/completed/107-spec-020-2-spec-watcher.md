@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Add SpecWatcher to pkg/specwatcher that watches specs/ with fsnotify, debounces events, and calls SpecGenerator.Generate when a spec file status is approved
+container: dark-factory-107-spec-020-2-spec-watcher
+dark-factory-version: v0.17.38
+created: "2026-03-06T15:44:44Z"
+queued: "2026-03-06T15:44:44Z"
+started: "2026-03-06T15:44:44Z"
+completed: "2026-03-06T15:54:01Z"
+---
 <objective>
 Add a `SpecWatcher` to dark-factory that watches the `specs/` directory with fsnotify. When a spec file changes and its status is `approved`, it signals the SpecGenerator. This mirrors the existing queue Watcher pattern exactly.
 </objective>

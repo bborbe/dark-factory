@@ -38,7 +38,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	id := args[0]
-	path, err := findSpecFile(ctx, s.specsDir, id)
+	path, err := FindSpecFile(ctx, s.specsDir, id)
 	if err != nil {
 		return err
 	}

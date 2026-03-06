@@ -13,8 +13,15 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// findSpecFile finds a spec by exact filename or numeric prefix match within specsDir.
-func findSpecFile(ctx context.Context, specsDir, id string) (string, error) {
+// FindSpecFile finds a spec by absolute/relative path, exact filename, or numeric prefix match within specsDir.
+func FindSpecFile(ctx context.Context, specsDir, id string) (string, error) {
+	// Try as a direct path (absolute or relative with directory component)
+	if filepath.IsAbs(id) || strings.ContainsRune(id, '/') {
+		if _, err := os.Stat(id); err == nil {
+			return id, nil
+		}
+	}
+
 	// Try exact match with .md extension
 	if strings.HasSuffix(id, ".md") {
 		path := filepath.Join(specsDir, id)

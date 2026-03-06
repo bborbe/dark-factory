@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:57:15Z"
+queued: "2026-03-06T10:57:15Z"
+---
 <objective>
 Implement the combined top-level `dark-factory status` and `dark-factory list` commands that show both prompt and spec information together.
 </objective>

@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:57:15Z"
+queued: "2026-03-06T10:57:15Z"
+---
 <objective>
 Add a spec package that can parse spec files from a directory, extract frontmatter (status field), and provide listing and summary functionality. This is the foundation for native spec integration (spec 019).
 </objective>

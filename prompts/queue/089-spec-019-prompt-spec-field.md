@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:57:15Z"
+queued: "2026-03-06T10:57:15Z"
+---
 <objective>
 Add a `spec` field to prompt frontmatter that links a prompt to its parent spec. This enables spec-prompt linkage for status tracking and auto-completion.
 </objective>

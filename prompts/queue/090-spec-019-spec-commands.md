@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:57:15Z"
+queued: "2026-03-06T10:57:15Z"
+---
 <objective>
 Implement the spec CLI commands: `spec list`, `spec status`, and `spec approve`. Replace the placeholders from the previous prompt with real implementations using the spec package.
 </objective>

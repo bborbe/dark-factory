@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:57:15Z"
+queued: "2026-03-06T10:57:15Z"
+---
 <objective>
 Refactor CLI command routing from flat commands to two-level subcommands: `prompt <cmd>` and `spec <cmd>`. Remove old flat commands. This restructures the entry point for spec 019.
 </objective>

@@ -1,7 +1,11 @@
 ---
+status: executing
 spec: ["024"]
-status: created
+container: dark-factory-118-spec-024-1-config-restructure
+dark-factory-version: v0.20.2
 created: "2026-03-06T00:00:00Z"
+queued: "2026-03-06T19:20:56Z"
+started: "2026-03-06T19:20:58Z"
 ---
 <summary>
 - Adds two nested config structs: `PromptsConfig` (inboxDir, inProgressDir, completedDir, logDir) and `SpecsConfig` (inboxDir, inProgressDir, completedDir, logDir)

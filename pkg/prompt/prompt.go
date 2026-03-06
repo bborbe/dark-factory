@@ -100,19 +100,54 @@ func (p Prompt) Number() int {
 	return extractNumberFromFilename(filepath.Base(p.Path))
 }
 
+// SpecList is a []string that handles both YAML scalar and sequence for the spec field.
+// This enables backward compatibility where spec was a single string (e.g. spec: "017")
+// while also supporting multiple specs (e.g. spec: ["017", "019"]).
+type SpecList []string
+
+// UnmarshalYAML implements yaml.Unmarshaler to accept both scalar and sequence.
+func (s *SpecList) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		if value.Value != "" {
+			*s = SpecList{value.Value}
+		}
+		return nil
+	case yaml.SequenceNode:
+		var slice []string
+		if err := value.Decode(&slice); err != nil {
+			return err
+		}
+		*s = SpecList(slice)
+		return nil
+	default:
+		return fmt.Errorf("unexpected YAML node kind for spec: %v", value.Kind)
+	}
+}
+
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
-	Status             string `yaml:"status"`
-	Spec               string `yaml:"spec,omitempty"`
-	Summary            string `yaml:"summary,omitempty"`
-	Container          string `yaml:"container,omitempty"`
-	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`
-	Created            string `yaml:"created,omitempty"`
-	Queued             string `yaml:"queued,omitempty"`
-	Started            string `yaml:"started,omitempty"`
-	Completed          string `yaml:"completed,omitempty"`
-	PRURL              string `yaml:"pr-url,omitempty"`
-	Branch             string `yaml:"branch,omitempty"`
+	Status             string   `yaml:"status"`
+	Specs              SpecList `yaml:"spec,omitempty,flow"`
+	Summary            string   `yaml:"summary,omitempty"`
+	Container          string   `yaml:"container,omitempty"`
+	DarkFactoryVersion string   `yaml:"dark-factory-version,omitempty"`
+	Created            string   `yaml:"created,omitempty"`
+	Queued             string   `yaml:"queued,omitempty"`
+	Started            string   `yaml:"started,omitempty"`
+	Completed          string   `yaml:"completed,omitempty"`
+	PRURL              string   `yaml:"pr-url,omitempty"`
+	Branch             string   `yaml:"branch,omitempty"`
+}
+
+// HasSpec returns true if the given spec ID is in the Specs list.
+func (f Frontmatter) HasSpec(id string) bool {
+	for _, s := range f.Specs {
+		if s == id {
+			return true
+		}
+	}
+	return false
 }
 
 // PromptFile represents a loaded prompt file with immutable body and mutable frontmatter.
@@ -135,7 +170,8 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 	}
 
 	var fm Frontmatter
-	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
+	yamlV3Format := frontmatter.NewFormat("---", "---", yaml.Unmarshal)
+	body, err := frontmatter.Parse(bytes.NewReader(content), &fm, yamlV3Format)
 	if err != nil {
 		// No frontmatter — entire file is body
 		pf := &PromptFile{
@@ -281,6 +317,14 @@ func (pf *PromptFile) Branch() string {
 // SetBranch sets the branch field in frontmatter.
 func (pf *PromptFile) SetBranch(branch string) {
 	pf.Frontmatter.Branch = branch
+}
+
+// Specs returns the specs slice from frontmatter. Returns an empty slice if nil.
+func (pf *PromptFile) Specs() []string {
+	if pf.Frontmatter.Specs == nil {
+		return []string{}
+	}
+	return []string(pf.Frontmatter.Specs)
 }
 
 // FileMover handles file move operations with git awareness.
@@ -747,7 +791,9 @@ func scanPromptFiles(entries []os.DirEntry) ([]fileInfo, map[int]bool) {
 		info := parseFilename(entry.Name(), validPatternRegexp, numericPatternRegexp)
 		files = append(files, info)
 
-		if info.number != -1 {
+		// Only claim the number if the file is already properly formatted (NNN-slug.md).
+		// Wrong-format files (e.g. 01-foo.md) have a parsed number but haven't earned it yet.
+		if info.number != -1 && validPatternRegexp.MatchString(entry.Name()) {
 			usedNumbers[info.number] = true
 		}
 	}
@@ -832,6 +878,12 @@ func determineRename(
 	// Case 3: Wrong format
 	expectedName := fmt.Sprintf("%03d-%s.md", f.number, f.slug)
 	if f.name != expectedName {
+		if usedNumbers[f.number] {
+			newNum := findNextAvailableNumber(usedNumbers)
+			usedNumbers[newNum] = true
+			return newNum, true
+		}
+		usedNumbers[f.number] = true
 		return f.number, true
 	}
 

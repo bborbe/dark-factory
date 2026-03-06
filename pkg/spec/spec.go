@@ -222,7 +222,7 @@ func (a *autoCompleter) scanDirForSpec(
 			continue
 		}
 
-		if pf.Frontmatter.Spec != specID {
+		if !pf.Frontmatter.HasSpec(specID) {
 			continue
 		}
 

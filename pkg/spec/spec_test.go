@@ -285,4 +285,42 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})
 	})
+
+	Context("when prompts use multi-spec array", func() {
+		It("counts prompts that include the spec in their array", func() {
+			// Prompt belongs to both spec-005 and spec-006 — completed
+			fm := "---\nstatus: completed\nspec: [\"spec-005\", \"spec-006\"]\n---\n# Test\n\nContent.\n"
+			Expect(
+				os.WriteFile(filepath.Join(completedDir, "001-multi.md"), []byte(fm), 0600),
+			).To(Succeed())
+
+			writeSpec(filepath.Join(specsDir, "spec-005.md"), "queued")
+
+			err := ac.CheckAndComplete(ctx, "spec-005")
+			Expect(err).NotTo(HaveOccurred())
+
+			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-005.md"))
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("completed"))
+		})
+
+		It("does not complete spec when one of multiple prompts is still queued", func() {
+			// Prompt 1: completed, references spec-007
+			writePrompt(filepath.Join(completedDir, "001-done.md"), "completed", "spec-007")
+			// Prompt 2: queued, multi-spec including spec-007
+			fm := "---\nstatus: queued\nspec: [\"spec-007\", \"spec-008\"]\n---\n# Test\n\nContent.\n"
+			Expect(
+				os.WriteFile(filepath.Join(queueDir, "002-multi.md"), []byte(fm), 0600),
+			).To(Succeed())
+
+			writeSpec(filepath.Join(specsDir, "spec-007.md"), "queued")
+
+			err := ac.CheckAndComplete(ctx, "spec-007")
+			Expect(err).NotTo(HaveOccurred())
+
+			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-007.md"))
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("queued"))
+		})
+	})
 })

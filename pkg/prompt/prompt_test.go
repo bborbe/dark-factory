@@ -6,6 +6,7 @@ package prompt_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -1611,6 +1612,77 @@ Content here.
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))
 			})
 		})
+
+		Context("with wrong-format file conflicting with completed/ number", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				createPromptFile(completedDir, "001-core-pipeline.md", "completed")
+				createPromptFile(tempDir, "01-foo.md", "queued")
+			})
+
+			It("renames to next available number instead of conflicting 001", func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-foo.md"))
+			})
+		})
+
+		Context("with wrong-format file conflicting with many completed/ numbers", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				for i := 1; i <= 94; i++ {
+					name := fmt.Sprintf("%03d-done.md", i)
+					createPromptFile(completedDir, name, "completed")
+				}
+				createPromptFile(tempDir, "01-foo.md", "queued")
+			})
+
+			It("renames to first number above completed/ maximum", func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("095-foo.md"))
+			})
+		})
+
+		Context("with wrong-format file and no completed files", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "01-foo.md", "queued")
+			})
+
+			It("reformats to 3-digit prefix keeping same number", func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("001-foo.md"))
+			})
+		})
+
+		Context("with already-correct 3-digit file in queue", func() {
+			BeforeEach(func() {
+				createPromptFile(tempDir, "095-foo.md", "queued")
+			})
+
+			It("does not rename the file", func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(0))
+			})
+		})
 	})
 
 	Describe("PromptFile.SetPRURL", func() {
@@ -1833,15 +1905,29 @@ var _ = Describe("Frontmatter spec field", func() {
 		_ = os.RemoveAll(tempDir)
 	})
 
-	It("loads spec field from frontmatter", func() {
+	It("loads spec field from frontmatter (scalar string)", func() {
 		path := filepath.Join(tempDir, "091-test.md")
 		content := "---\nstatus: queued\nspec: \"017\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
-		Expect(pf.Frontmatter.Spec).To(Equal("017"))
+		Expect(pf.Specs()).To(Equal([]string{"017"}))
+		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
 		Expect(pf.Frontmatter.Status).To(Equal("queued"))
+	})
+
+	It("loads spec field from frontmatter (array)", func() {
+		path := filepath.Join(tempDir, "091-array.md")
+		content := "---\nstatus: queued\nspec: [\"017\", \"019\"]\n---\n\n# Test\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		pf, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf.Specs()).To(Equal([]string{"017", "019"}))
+		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
+		Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
+		Expect(pf.Frontmatter.HasSpec("018")).To(BeFalse())
 	})
 
 	It("saves and reloads spec field correctly", func() {
@@ -1851,14 +1937,14 @@ var _ = Describe("Frontmatter spec field", func() {
 
 		pf, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
-		Expect(pf.Frontmatter.Spec).To(Equal("019"))
+		Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
 
 		pf.Frontmatter.Status = "completed"
 		Expect(pf.Save(ctx)).To(Succeed())
 
 		pf2, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
-		Expect(pf2.Frontmatter.Spec).To(Equal("019"))
+		Expect(pf2.Frontmatter.HasSpec("019")).To(BeTrue())
 		Expect(pf2.Frontmatter.Status).To(Equal("completed"))
 	})
 
@@ -1869,7 +1955,7 @@ var _ = Describe("Frontmatter spec field", func() {
 
 		pf, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
-		Expect(pf.Frontmatter.Spec).To(Equal(""))
+		Expect(pf.Specs()).To(BeEmpty())
 		Expect(pf.Frontmatter.Status).To(Equal("queued"))
 	})
 

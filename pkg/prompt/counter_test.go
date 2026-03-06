@@ -92,4 +92,23 @@ var _ = Describe("PromptCounter", func() {
 		Expect(completed).To(Equal(0))
 		Expect(total).To(Equal(0))
 	})
+
+	It("counts prompts with multi-spec array that includes the target spec", func() {
+		// Prompt belongs to both 017 and 019
+		fm := "---\nstatus: completed\nspec: [\"017\", \"019\"]\n---\n# Test\n\nContent.\n"
+		Expect(os.WriteFile(filepath.Join(dir1, "001-multi.md"), []byte(fm), 0600)).To(Succeed())
+		// Prompt belongs only to 018
+		writeLinkedPrompt(filepath.Join(dir1, "002-other.md"), "completed", "018")
+
+		completed, total, err := counter.CountBySpec(ctx, "017")
+		Expect(err).To(BeNil())
+		Expect(total).To(Equal(1))
+		Expect(completed).To(Equal(1))
+
+		// Also counts for 019
+		completed, total, err = counter.CountBySpec(ctx, "019")
+		Expect(err).To(BeNil())
+		Expect(total).To(Equal(1))
+		Expect(completed).To(Equal(1))
+	})
 })

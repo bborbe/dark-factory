@@ -393,8 +393,8 @@ func (p *processor) handlePostExecution(
 
 	slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
-	// Auto-complete linked spec if all its prompts are now done
-	if specID := pf.Frontmatter.Spec; specID != "" {
+	// Auto-complete linked specs if all their prompts are now done
+	for _, specID := range pf.Specs() {
 		if err := p.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
 			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
 		}

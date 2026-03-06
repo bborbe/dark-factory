@@ -68,7 +68,7 @@ func countInDir(ctx context.Context, dir, specID string) (int, int, error) {
 			slog.Warn("skipping prompt during count", "file", entry.Name(), "error", err)
 			continue
 		}
-		if pf.Frontmatter.Spec != specID {
+		if !pf.Frontmatter.HasSpec(specID) {
 			continue
 		}
 		total++

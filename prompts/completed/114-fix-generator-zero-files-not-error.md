@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["020"]
+summary: SpecGenerator now checks completedDir for linked prompts before erroring on zero new files, skipping generation when spec is already covered
 container: dark-factory-114-fix-generator-zero-files-not-error
 dark-factory-version: v0.18.6
 created: "2026-03-06T18:25:00Z"
 queued: "2026-03-06T17:23:38Z"
 started: "2026-03-06T17:23:38Z"
+completed: "2026-03-06T17:32:19Z"
 ---
 
 <objective>

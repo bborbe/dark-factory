@@ -26,23 +26,17 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-
-	// Parse command line arguments
-	debug, command, args := parseArgs()
+	debug, command, subcommand, args := ParseArgs(os.Args[1:])
 
 	switch command {
 	case "help":
-		fmt.Fprintf(
-			os.Stdout,
-			"Usage: dark-factory [options] [command]\n\nCommands:\n  run      Watch for queued prompts and execute them (default)\n  status   Show status of prompts\n  list     List all prompts with their status\n  queue    Queue a prompt for execution\n  approve  Approve a prompt (move from inbox to queue)\n  requeue  Reset a prompt's status to queued\n  retry    Shorthand for requeue --failed\n\nOptions:\n  -debug  Enable debug logging\n\nFlags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
-		)
+		printHelp()
 		return nil
 	case "version":
 		fmt.Fprintf(os.Stdout, "dark-factory %s\n", version.Version)
 		return nil
 	}
 
-	// Configure slog
 	level := slog.LevelInfo
 	if debug {
 		level = slog.LevelDebug
@@ -50,73 +44,120 @@ func run() error {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 	slog.Info("dark-factory starting", "version", version.Version)
 
-	// Load configuration
 	loader := config.NewLoader()
 	cfg, err := loader.Load(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Execute command
 	switch command {
+	case "prompt":
+		return runPromptCommand(ctx, cfg, subcommand, args)
+	case "spec":
+		return runSpecCommand(ctx, subcommand)
 	case "status":
-		statusCmd := factory.CreateStatusCommand(cfg)
-		return statusCmd.Run(ctx, args)
+		return factory.CreateStatusCommand(cfg).Run(ctx, args)
+	case "list":
+		return factory.CreateListCommand(cfg).Run(ctx, args)
+	case "run":
+		return factory.CreateRunner(cfg, version.Version).Run(ctx)
+	default:
+		return errors.Errorf(ctx, "unknown command: %s", command)
+	}
+}
+
+func runPromptCommand(
+	ctx context.Context,
+	cfg config.Config,
+	subcommand string,
+	args []string,
+) error {
+	switch subcommand {
+	case "status":
+		return factory.CreateStatusCommand(cfg).Run(ctx, args)
 	case "list":
 		return factory.CreateListCommand(cfg).Run(ctx, args)
 	case "queue":
-		queueCmd := factory.CreateQueueCommand(cfg)
-		return queueCmd.Run(ctx, args)
+		return factory.CreateQueueCommand(cfg).Run(ctx, args)
 	case "approve":
 		return factory.CreateApproveCommand(cfg).Run(ctx, args)
 	case "requeue":
 		return factory.CreateRequeueCommand(cfg).Run(ctx, args)
 	case "retry":
 		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
-	case "run":
-		r := factory.CreateRunner(cfg, version.Version)
-		return r.Run(ctx)
 	default:
-		return errors.Errorf(ctx, "unknown command: %s", command)
+		return errors.Errorf(ctx, "unknown prompt subcommand: %s", subcommand)
 	}
 }
 
-// parseArgs parses command line arguments and returns (debug, command, args).
-// The -debug flag can appear anywhere and is extracted before parsing the command.
-// No args or "run" → run command
-// "status" → status command
-// "queue" → queue command
-func parseArgs() (bool, string, []string) {
-	// Filter out -debug flag from args
+func runSpecCommand(ctx context.Context, subcommand string) error {
+	switch subcommand {
+	case "list", "status", "approve":
+		fmt.Fprintln(os.Stdout, "not implemented")
+		return nil
+	default:
+		return errors.Errorf(ctx, "unknown spec subcommand: %s", subcommand)
+	}
+}
+
+func printHelp() {
+	fmt.Fprintf(
+		os.Stdout,
+		"Usage: dark-factory [options] [command [subcommand]]\n\nCommands:\n"+
+			"  run                    Watch for queued prompts and execute them (default)\n"+
+			"  status                 Show combined status of prompts and specs\n"+
+			"  list                   List all prompts and specs with their status\n\n"+
+			"  prompt list            List prompts with their status\n"+
+			"  prompt status          Show prompt status\n"+
+			"  prompt queue <id>      Queue a prompt for execution\n"+
+			"  prompt approve <id>    Approve a prompt (move from inbox to queue)\n"+
+			"  prompt requeue <id>    Reset a prompt's status to queued\n"+
+			"  prompt retry           Shorthand for prompt requeue --failed\n\n"+
+			"  spec list              List specs\n"+
+			"  spec status            Show spec status\n"+
+			"  spec approve <id>      Approve a spec\n\n"+
+			"Options:\n  -debug  Enable debug logging\n\n"+
+			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
+	)
+}
+
+// ParseArgs parses command line arguments (without program name) and returns
+// (debug, command, subcommand, args).
+// The -debug flag can appear anywhere and is extracted before parsing.
+// No args or unknown → command="run"
+// Two-level: "prompt list" → command="prompt", subcommand="list"
+// Top-level: "status", "list", "run" → command=<cmd>, subcommand=""
+func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 	debug := false
-	filteredArgs := []string{os.Args[0]} // Keep program name
-	for _, arg := range os.Args[1:] {
+	filtered := make([]string, 0, len(rawArgs))
+	for _, arg := range rawArgs {
 		if arg == "-debug" {
 			debug = true
 		} else {
-			filteredArgs = append(filteredArgs, arg)
+			filtered = append(filtered, arg)
 		}
 	}
 
-	if len(filteredArgs) <= 1 {
-		return debug, "run", []string{}
+	if len(filtered) == 0 {
+		return debug, "run", "", []string{}
 	}
 
-	command := filteredArgs[1]
-	args := []string{}
-	if len(filteredArgs) > 2 {
-		args = filteredArgs[2:]
-	}
+	command := filtered[0]
+	rest := filtered[1:]
 
 	switch command {
-	case "run", "status", "list", "queue", "approve", "requeue", "retry":
-		return debug, command, args
 	case "--help", "-help", "-h":
-		return debug, "help", []string{}
+		return debug, "help", "", []string{}
 	case "--version", "-version", "-v":
-		return debug, "version", []string{}
+		return debug, "version", "", []string{}
+	case "run", "status", "list":
+		return debug, command, "", rest
+	case "prompt", "spec":
+		if len(rest) == 0 {
+			return debug, command, "", []string{}
+		}
+		return debug, command, rest[0], rest[1:]
 	}
 
-	// Unknown command - default to run and treat as args
-	return debug, "run", filteredArgs[1:]
+	return debug, "run", "", filtered
 }

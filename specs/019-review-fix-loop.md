@@ -1,5 +1,5 @@
 ---
-status: approved
+status: prompted
 ---
 
 # Native Spec Integration

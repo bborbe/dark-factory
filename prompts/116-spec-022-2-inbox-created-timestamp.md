@@ -3,6 +3,14 @@ spec: ["022"]
 status: created
 created: "2026-03-06T18:35:00Z"
 ---
+<summary>
+- When a prompt file appears in the inbox (`prompts/`), dark-factory stamps it with a `created` timestamp
+- Only stamps if `created` is not already present — never overwrites
+- Scans the inbox directory (not the queue) after each debounced file event
+- Two new tests: file without `created` gets stamped, file with existing `created` is untouched
+- NOTE: current prompt scans `queueDir` instead of `inboxDir` — this needs to be fixed before queuing
+</summary>
+
 <objective>
 When a new prompt file appears in the inbox (`prompts/` directory), dark-factory immediately adds a `created` timestamp to its frontmatter if one is not already present. This ensures every inbox file has an exact creation record from the moment it is first detected by the watcher.
 </objective>

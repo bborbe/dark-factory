@@ -3,6 +3,14 @@ spec: ["023"]
 status: created
 created: "2026-03-06T20:01:00Z"
 ---
+<summary>
+- Updates YOLO CLAUDE.md to require conventional prefixes on every `## Unreleased` entry
+- Updates changelog-guide.md with the prefix table and anti-patterns
+- Documentation-only change — no Go code touched
+- NOTE: these docs were already updated manually today — this prompt is likely redundant
+- NOTE: changes to `/home/node/.claude/` won't be committed by dark-factory (outside workspace)
+</summary>
+
 <objective>
 Ensure the YOLO container documentation explicitly requires conventional prefixes on every `## Unreleased` changelog entry, and that the changelog guide documents the prefix→version-bump mapping with examples. The Go code change (spec-023-1) is a precondition — this prompt updates only documentation files.
 </objective>

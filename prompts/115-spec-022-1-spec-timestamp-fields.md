@@ -3,6 +3,16 @@ spec: ["022"]
 status: created
 created: "2026-03-06T18:35:00Z"
 ---
+<summary>
+- Adds four timestamp fields to spec frontmatter: `approved`, `prompted`, `verifying`, `completed`
+- Each timestamp is written once when the spec enters that status — never overwritten
+- Timestamps survive save/load round-trips in YAML
+- Uses an injected `nowFunc` for deterministic testing
+- `SetStatus()` handles all four transitions automatically
+- `MarkVerifying()` and `MarkCompleted()` delegate to `SetStatus()` so timestamps are always written
+- Tests cover all transitions including the no-overwrite rule
+</summary>
+
 <objective>
 Add lifecycle timestamp fields to `spec.Frontmatter` and write them automatically on each status transition. When a spec moves to `approved`, `prompted`, `verifying`, or `completed`, the corresponding timestamp field is written once and never overwritten.
 </objective>

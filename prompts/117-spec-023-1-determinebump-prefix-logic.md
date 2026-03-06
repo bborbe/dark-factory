@@ -3,6 +3,15 @@ spec: ["023"]
 status: created
 created: "2026-03-06T20:00:00Z"
 ---
+<summary>
+- Replaces fragile keyword matching in `determineBump()` with exact `- feat:` prefix detection
+- Any `## Unreleased` entry starting with `- feat:` triggers a minor bump, everything else triggers a patch bump
+- Entries without a prefix still work (backward compatible, treated as patch)
+- `- feature:` does NOT match — only the exact prefix `- feat:` counts
+- All old keyword-based tests replaced with prefix-based ones
+- 15 test cases covering all prefixes, edge cases, and missing CHANGELOG scenarios
+</summary>
+
 <objective>
 Replace the fragile keyword-matching logic in `determineBump()` with conventional prefix detection. After this change, `determineBump()` returns `MinorBump` if any `## Unreleased` entry starts with `- feat:`, and `PatchBump` for everything else — including entries with no prefix (backward compatible).
 </objective>

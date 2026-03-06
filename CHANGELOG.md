@@ -14,11 +14,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.18.0
 
-- Add SpecWatcher to pkg/specwatcher to watch specs/ directory and trigger SpecGenerator when a spec transitions to approved status
+- feat: Add SpecWatcher to watch specs/ directory and trigger SpecGenerator when a spec transitions to approved status
 
 ## v0.17.39
 
-- 106-spec-020-1-spec-generator
+- feat: Add SpecGenerator interface and dockerSpecGenerator to run /generate-prompts-for-spec via YOLO container
 
 ## v0.17.38
 

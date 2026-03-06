@@ -1,8 +1,11 @@
 ---
-status: queued
+status: executing
 spec: ["023"]
+container: dark-factory-117-spec-023-1-determinebump-prefix-logic
+dark-factory-version: v0.19.0
 created: "2026-03-06T20:00:00Z"
 queued: "2026-03-06T18:45:26Z"
+started: "2026-03-06T19:03:27Z"
 ---
 <summary>
 - Replaces fragile keyword matching in `determineBump()` with exact `- feat:` prefix detection

@@ -80,6 +80,20 @@ func TestParseArgsSpec(t *testing.T) {
 	assertParseArgs(t, []string{"spec", "list"}, parseArgsResult{false, "spec", "list", []string{}})
 }
 
+func TestParseArgsUnknown(t *testing.T) {
+	t.Parallel()
+	assertParseArgs(
+		t,
+		[]string{"prompts"},
+		parseArgsResult{false, "unknown", "", []string{"prompts"}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"foo"},
+		parseArgsResult{false, "unknown", "", []string{"foo"}},
+	)
+}
+
 func TestParseArgsDebug(t *testing.T) {
 	t.Parallel()
 	assertParseArgs(

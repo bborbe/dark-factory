@@ -35,6 +35,13 @@ func run() error {
 	case "version":
 		fmt.Fprintf(os.Stdout, "dark-factory %s\n", version.Version)
 		return nil
+	case "unknown":
+		cmdName := ""
+		if len(args) > 0 {
+			cmdName = args[0]
+		}
+		fmt.Fprintf(os.Stderr, "Run 'dark-factory help' for usage.\n")
+		return errors.Errorf(ctx, "unknown command: %q", cmdName)
 	}
 
 	level := slog.LevelInfo
@@ -132,7 +139,8 @@ func printHelp() {
 // ParseArgs parses command line arguments (without program name) and returns
 // (debug, command, subcommand, args).
 // The -debug flag can appear anywhere and is extracted before parsing.
-// No args or unknown → command="run"
+// No args → command="run"
+// Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run" → command=<cmd>, subcommand=""
 func ParseArgs(rawArgs []string) (bool, string, string, []string) {
@@ -167,5 +175,5 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 		return debug, command, rest[0], rest[1:]
 	}
 
-	return debug, "run", "", filtered
+	return debug, "unknown", "", filtered
 }

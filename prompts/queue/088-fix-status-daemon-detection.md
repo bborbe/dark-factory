@@ -1,5 +1,5 @@
 ---
-status: created
+status: queued
 ---
 
 Fix: `dark-factory status` always shows "Daemon: not running" even when a dark-factory process is active.

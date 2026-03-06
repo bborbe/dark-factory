@@ -103,6 +103,7 @@ func (p Prompt) Number() int {
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
 	Status             string `yaml:"status"`
+	Spec               string `yaml:"spec,omitempty"`
 	Summary            string `yaml:"summary,omitempty"`
 	Container          string `yaml:"container,omitempty"`
 	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`

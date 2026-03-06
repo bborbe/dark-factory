@@ -19,15 +19,29 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
-// SpecFrontmatter represents the YAML frontmatter in a spec file.
-type SpecFrontmatter struct {
-	Status string `yaml:"status"`
+// Status represents the lifecycle state of a spec.
+type Status string
+
+const (
+	StatusDraft     Status = "draft"
+	StatusApproved  Status = "approved"
+	StatusPrompted  Status = "prompted"
+	StatusCompleted Status = "completed"
+)
+
+// Frontmatter represents the YAML frontmatter in a spec file.
+type Frontmatter struct {
+	Status string   `yaml:"status"`
+	Tags   []string `yaml:"tags,omitempty"`
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.
+//
+//nolint:revive // SpecFile is the intended name per requirements
 type SpecFile struct {
 	Path        string
-	Frontmatter SpecFrontmatter
+	Frontmatter Frontmatter
+	Name        string // filename without extension
 	Body        []byte
 }
 
@@ -39,11 +53,14 @@ func Load(ctx context.Context, path string) (*SpecFile, error) {
 		return nil, errors.Wrap(ctx, err, "read spec file")
 	}
 
-	var fm SpecFrontmatter
+	name := strings.TrimSuffix(filepath.Base(path), ".md")
+
+	var fm Frontmatter
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
 	if err != nil {
 		return &SpecFile{
 			Path: path,
+			Name: name,
 			Body: content,
 		}, nil
 	}
@@ -51,8 +68,14 @@ func Load(ctx context.Context, path string) (*SpecFile, error) {
 	return &SpecFile{
 		Path:        path,
 		Frontmatter: fm,
+		Name:        name,
 		Body:        body,
 	}, nil
+}
+
+// SetStatus sets the status field in the frontmatter.
+func (s *SpecFile) SetStatus(status string) {
+	s.Frontmatter.Status = status
 }
 
 // Save writes the spec file back to disk.
@@ -77,7 +100,7 @@ func (s *SpecFile) Save(ctx context.Context) error {
 
 // MarkCompleted sets the spec status to completed.
 func (s *SpecFile) MarkCompleted() {
-	s.Frontmatter.Status = string(prompt.StatusCompleted)
+	s.Frontmatter.Status = string(StatusCompleted)
 }
 
 // AutoCompleter checks if all linked prompts are completed and marks the spec as completed.
@@ -133,7 +156,7 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 		return errors.Wrap(ctx, err, "load spec file")
 	}
 
-	if sf.Frontmatter.Status == string(prompt.StatusCompleted) {
+	if sf.Frontmatter.Status == string(StatusCompleted) {
 		// Already completed — no-op
 		return nil
 	}

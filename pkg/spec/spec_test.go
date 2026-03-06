@@ -32,6 +32,148 @@ func writeSpec(path, status string) {
 	Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 }
 
+var _ = Describe("Load", func() {
+	var ctx context.Context
+	var dir string
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		dir, err = os.MkdirTemp("", "spec-load-*")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	Context("with valid frontmatter", func() {
+		It("parses the status correctly", func() {
+			path := filepath.Join(dir, "019-native.md")
+			writeSpec(path, "approved")
+
+			sf, err := spec.Load(ctx, path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("approved"))
+			Expect(sf.Name).To(Equal("019-native"))
+			Expect(sf.Path).To(Equal(path))
+		})
+	})
+
+	Context("without frontmatter", func() {
+		It("returns empty status", func() {
+			path := filepath.Join(dir, "no-fm.md")
+			Expect(os.WriteFile(path, []byte("# Just a title\n\nNo frontmatter here.\n"), 0600)).To(Succeed())
+
+			sf, err := spec.Load(ctx, path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal(""))
+			Expect(sf.Name).To(Equal("no-fm"))
+		})
+	})
+})
+
+var _ = Describe("SetStatus and Save", func() {
+	var ctx context.Context
+	var dir string
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		dir, err = os.MkdirTemp("", "spec-save-*")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	It("roundtrips status correctly", func() {
+		path := filepath.Join(dir, "001-spec.md")
+		writeSpec(path, "draft")
+
+		sf, err := spec.Load(ctx, path)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sf.Frontmatter.Status).To(Equal("draft"))
+
+		sf.SetStatus("approved")
+		Expect(sf.Save(ctx)).To(Succeed())
+
+		sf2, err := spec.Load(ctx, path)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sf2.Frontmatter.Status).To(Equal("approved"))
+	})
+})
+
+var _ = Describe("Lister", func() {
+	var ctx context.Context
+	var dir string
+	var lister spec.Lister
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		dir, err = os.MkdirTemp("", "spec-lister-*")
+		Expect(err).NotTo(HaveOccurred())
+		lister = spec.NewLister(dir)
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	Describe("Summary", func() {
+		It("counts specs by status correctly", func() {
+			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
+			writeSpec(filepath.Join(dir, "002-b.md"), "draft")
+			writeSpec(filepath.Join(dir, "003-c.md"), "approved")
+			writeSpec(filepath.Join(dir, "004-d.md"), "prompted")
+			writeSpec(filepath.Join(dir, "005-e.md"), "completed")
+
+			s, err := lister.Summary(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(s.Total).To(Equal(5))
+			Expect(s.Draft).To(Equal(2))
+			Expect(s.Approved).To(Equal(1))
+			Expect(s.Prompted).To(Equal(1))
+			Expect(s.Completed).To(Equal(1))
+		})
+
+		It("returns empty summary for empty directory", func() {
+			s, err := lister.Summary(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(s.Total).To(Equal(0))
+		})
+
+		It("returns empty summary for non-existent directory", func() {
+			l := spec.NewLister("/nonexistent/path")
+			s, err := l.Summary(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(s.Total).To(Equal(0))
+		})
+	})
+
+	Describe("List", func() {
+		It("returns all .md files", func() {
+			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
+			writeSpec(filepath.Join(dir, "002-b.md"), "approved")
+
+			specs, err := lister.List(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(specs).To(HaveLen(2))
+		})
+
+		It("ignores non-.md files", func() {
+			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
+			Expect(os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("text"), 0600)).To(Succeed())
+
+			specs, err := lister.List(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(specs).To(HaveLen(1))
+		})
+	})
+})
+
 var _ = Describe("AutoCompleter", func() {
 	var (
 		ctx          context.Context

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.18.0
+
+- Add SpecWatcher to pkg/specwatcher to watch specs/ directory and trigger SpecGenerator when a spec transitions to approved status
+
 ## v0.17.39
 
 - 106-spec-020-1-spec-generator

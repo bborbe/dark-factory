@@ -1,3 +1,13 @@
+---
+status: completed
+summary: 'Wired SpecWatcher and SpecGenerator into Runner and Factory: added specWatcher field/parameter to NewRunner, added CreateSpecGenerator and CreateSpecWatcher factory functions, updated CreateRunner to instantiate and pass the SpecWatcher as a third goroutine, and updated all test call sites.'
+container: dark-factory-108-spec-020-3-wire-into-runner
+dark-factory-version: v0.17.38
+created: "2026-03-06T15:54:05Z"
+queued: "2026-03-06T15:54:05Z"
+started: "2026-03-06T15:54:05Z"
+completed: "2026-03-06T16:01:29Z"
+---
 <objective>
 Wire the SpecWatcher and SpecGenerator into the dark-factory Runner and Factory. After this prompt, approving a spec automatically triggers prompt generation.
 </objective>

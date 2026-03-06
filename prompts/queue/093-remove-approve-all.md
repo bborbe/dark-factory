@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-06T10:59:53Z"
+queued: "2026-03-06T10:59:53Z"
+---
 <objective>
 Remove the approve-all behavior from the approve command. Require an explicit file argument for both prompt and spec approve — approving all at once is too dangerous.
 </objective>

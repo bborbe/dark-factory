@@ -1,10 +1,7 @@
 ---
-status: executing
-container: dark-factory-087-spec-019-auto-complete-spec
-dark-factory-version: v0.17.12
+status: queued
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
-started: "2026-03-06T10:57:18Z"
 ---
 <objective>
 Auto-complete a spec when all its linked prompts are completed. When the processor finishes a prompt and moves it to completed, check if all prompts referencing the same spec are now completed — if so, mark the spec as completed.

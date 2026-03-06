@@ -1,4 +1,5 @@
 ---
+spec: ["002"]
 status: queued
 ---
 

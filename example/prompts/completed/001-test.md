@@ -1,4 +1,5 @@
 ---
+spec: ["001"]
 status: completed
 container: example-project-001-test
 dark-factory-version: v0.8.1

@@ -1,5 +1,8 @@
 ---
 status: queued
+created: "2026-03-06T08:30:31Z"
+queued: "2026-03-06T08:30:31Z"
+started: "2026-03-06T08:30:31Z"
 ---
 
 Add missing processor test cases for `WorkflowPR` and `WorkflowWorktree`. All existing tests use `WorkflowDirect` only.

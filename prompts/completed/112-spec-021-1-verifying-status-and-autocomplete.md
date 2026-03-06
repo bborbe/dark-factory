@@ -1,7 +1,13 @@
 ---
+status: completed
 spec: ["021"]
-status: queued
+summary: Added StatusVerifying to the spec lifecycle so CheckAndComplete transitions specs to verifying instead of completed when all linked prompts are done, with full test coverage and UI updates to spec_list and spec_status commands.
+container: dark-factory-112-spec-021-1-verifying-status-and-autocomplete
+dark-factory-version: v0.18.2
 created: "2026-03-06T18:00:00Z"
+queued: "2026-03-06T16:50:42Z"
+started: "2026-03-06T16:50:42Z"
+completed: "2026-03-06T16:59:37Z"
 ---
 <objective>
 Add a `verifying` status to the spec lifecycle so that when all linked prompts complete, the spec transitions to `verifying` instead of `completed`. This gives the human an explicit gate to evaluate whether the spec's acceptance criteria were met before closing it.

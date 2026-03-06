@@ -7,6 +7,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/bborbe/errors"
@@ -23,12 +24,18 @@ type SpecVerifyCommand interface {
 
 // specVerifyCommand implements SpecVerifyCommand.
 type specVerifyCommand struct {
-	specsDir string
+	inboxDir      string
+	inProgressDir string
+	completedDir  string
 }
 
 // NewSpecVerifyCommand creates a new SpecVerifyCommand.
-func NewSpecVerifyCommand(specsDir string) SpecVerifyCommand {
-	return &specVerifyCommand{specsDir: specsDir}
+func NewSpecVerifyCommand(inboxDir, inProgressDir, completedDir string) SpecVerifyCommand {
+	return &specVerifyCommand{
+		inboxDir:      inboxDir,
+		inProgressDir: inProgressDir,
+		completedDir:  completedDir,
+	}
 }
 
 // Run executes the spec verify command.
@@ -38,7 +45,9 @@ func (s *specVerifyCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	id := args[0]
-	path, err := FindSpecFile(ctx, s.specsDir, id)
+	// Search all three dirs — a verifying spec is in inProgressDir, but allow
+	// searching all dirs for convenience
+	path, err := FindSpecFileInDirs(ctx, id, s.inboxDir, s.inProgressDir, s.completedDir)
 	if err != nil {
 		return err
 	}
@@ -61,6 +70,17 @@ func (s *specVerifyCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "save spec")
 	}
 
-	fmt.Printf("verified: %s\n", filepath.Base(path))
+	// Ensure completedDir exists
+	if err := os.MkdirAll(s.completedDir, 0750); err != nil {
+		return errors.Wrap(ctx, err, "create completed dir")
+	}
+
+	// Move file to completedDir
+	dest := filepath.Join(s.completedDir, filepath.Base(path))
+	if err := os.Rename(path, dest); err != nil {
+		return errors.Wrap(ctx, err, "move spec to completed")
+	}
+
+	fmt.Printf("verified: %s\n", filepath.Base(dest))
 	return nil
 }

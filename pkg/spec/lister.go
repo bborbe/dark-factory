@@ -35,39 +35,38 @@ type Lister interface {
 
 // lister implements Lister.
 type lister struct {
-	specsDir string
+	dirs []string
 }
 
-// NewLister creates a new Lister that scans the given directory.
-func NewLister(specsDir string) Lister {
-	return &lister{specsDir: specsDir}
+// NewLister creates a new Lister that scans the given directories.
+func NewLister(dirs ...string) Lister {
+	return &lister{dirs: dirs}
 }
 
-// List returns all spec files found in the specs directory.
+// List returns all spec files found across all configured directories.
 func (l *lister) List(ctx context.Context) ([]*SpecFile, error) {
-	entries, err := os.ReadDir(l.specsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, "read specs directory")
-	}
-
-	specs := make([]*SpecFile, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-
-		path := filepath.Join(l.specsDir, entry.Name())
-		sf, err := Load(ctx, path)
+	var all []*SpecFile
+	for _, dir := range l.dirs {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			return nil, errors.Wrap(ctx, err, "load spec file")
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, errors.Wrap(ctx, err, "read specs directory")
 		}
-		specs = append(specs, sf)
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
+			path := filepath.Join(dir, entry.Name())
+			sf, err := Load(ctx, path)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, "load spec file")
+			}
+			all = append(all, sf)
+		}
 	}
-
-	return specs, nil
+	return all, nil
 }
 
 // Summary returns counts of specs grouped by status.

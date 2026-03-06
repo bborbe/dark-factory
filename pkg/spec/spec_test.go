@@ -275,6 +275,31 @@ var _ = Describe("Lister", func() {
 			Expect(specs).To(HaveLen(1))
 		})
 	})
+
+	Describe("multi-dir NewLister", func() {
+		It("aggregates specs from multiple directories", func() {
+			dir2, err := os.MkdirTemp("", "spec-lister-dir2-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(dir2) }()
+
+			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
+			writeSpec(filepath.Join(dir2, "002-b.md"), "approved")
+
+			l := spec.NewLister(dir, dir2)
+			specs, err := l.List(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(specs).To(HaveLen(2))
+		})
+
+		It("skips missing dirs silently", func() {
+			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
+
+			l := spec.NewLister("/nonexistent/path", dir)
+			specs, err := l.List(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(specs).To(HaveLen(1))
+		})
+	})
 })
 
 var _ = Describe("AutoCompleter", func() {
@@ -299,7 +324,7 @@ var _ = Describe("AutoCompleter", func() {
 		specsDir, err = os.MkdirTemp("", "spec-test-specs-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		ac = spec.NewAutoCompleter(queueDir, completedDir, specsDir)
+		ac = spec.NewAutoCompleter(queueDir, completedDir, specsDir, specsDir, specsDir)
 	})
 
 	AfterEach(func() {

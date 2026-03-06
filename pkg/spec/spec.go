@@ -155,17 +155,23 @@ type AutoCompleter interface {
 
 // autoCompleter implements AutoCompleter.
 type autoCompleter struct {
-	queueDir     string
-	completedDir string
-	specsDir     string
+	queueDir           string
+	completedDir       string
+	specsInboxDir      string
+	specsInProgressDir string
+	specsCompletedDir  string
 }
 
 // NewAutoCompleter creates a new AutoCompleter.
-func NewAutoCompleter(queueDir, completedDir, specsDir string) AutoCompleter {
+func NewAutoCompleter(
+	queueDir, completedDir, specsInboxDir, specsInProgressDir, specsCompletedDir string,
+) AutoCompleter {
 	return &autoCompleter{
-		queueDir:     queueDir,
-		completedDir: completedDir,
-		specsDir:     specsDir,
+		queueDir:           queueDir,
+		completedDir:       completedDir,
+		specsInboxDir:      specsInboxDir,
+		specsInProgressDir: specsInProgressDir,
+		specsCompletedDir:  specsCompletedDir,
 	}
 }
 
@@ -192,8 +198,20 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 		return nil
 	}
 
-	// All linked prompts are completed — mark the spec as completed
-	specPath := filepath.Join(a.specsDir, specID+".md")
+	// All linked prompts are completed — find the spec file in any of the three spec dirs
+	var specPath string
+	for _, dir := range []string{a.specsInboxDir, a.specsInProgressDir, a.specsCompletedDir} {
+		candidate := filepath.Join(dir, specID+".md")
+		if _, err := os.Stat(candidate); err == nil {
+			specPath = candidate
+			break
+		}
+	}
+	if specPath == "" {
+		slog.Warn("spec file not found in any spec dir", "specID", specID)
+		return nil
+	}
+
 	sf, err := Load(ctx, specPath)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec file")

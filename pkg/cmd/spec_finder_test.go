@@ -86,3 +86,67 @@ var _ = Describe("findSpecFile", func() {
 		Expect(err.Error()).To(ContainSubstring("spec not found"))
 	})
 })
+
+var _ = Describe("FindSpecFileInDirs", func() {
+	var (
+		dir1 string
+		dir2 string
+		ctx  context.Context
+	)
+
+	BeforeEach(func() {
+		var err error
+		dir1, err = os.MkdirTemp("", "spec-finder-dirs1-*")
+		Expect(err).NotTo(HaveOccurred())
+		dir2, err = os.MkdirTemp("", "spec-finder-dirs2-*")
+		Expect(err).NotTo(HaveOccurred())
+		ctx = context.Background()
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir1)
+		_ = os.RemoveAll(dir2)
+	})
+
+	It("finds spec in first dir", func() {
+		path := filepath.Join(dir1, "001-spec.md")
+		Expect(os.WriteFile(path, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		result, err := cmd.FindSpecFileInDirs(ctx, "001-spec.md", dir1, dir2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(path))
+	})
+
+	It("finds spec in second dir when not in first", func() {
+		path := filepath.Join(dir2, "002-spec.md")
+		Expect(os.WriteFile(path, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		result, err := cmd.FindSpecFileInDirs(ctx, "002-spec.md", dir1, dir2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(path))
+	})
+
+	It("returns error when not found in any dir", func() {
+		_, err := cmd.FindSpecFileInDirs(ctx, "999-missing.md", dir1, dir2)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("spec not found"))
+	})
+
+	It("finds spec by numeric prefix in second dir", func() {
+		path := filepath.Join(dir2, "042-my-spec.md")
+		Expect(os.WriteFile(path, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		result, err := cmd.FindSpecFileInDirs(ctx, "042", dir1, dir2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(path))
+	})
+
+	It("skips missing dirs silently", func() {
+		path := filepath.Join(dir2, "003-spec.md")
+		Expect(os.WriteFile(path, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		result, err := cmd.FindSpecFileInDirs(ctx, "003-spec.md", "/nonexistent/dir", dir2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(path))
+	})
+})

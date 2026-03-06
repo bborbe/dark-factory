@@ -110,6 +110,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.AutoRelease,
 			cfg.AutoReview,
 			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
 		),
 		srv,
 		reviewPoller,
@@ -165,7 +167,9 @@ func CreateProcessor(
 	autoMerge bool,
 	autoRelease bool,
 	autoReview bool,
-	specsDir string,
+	specsInboxDir string,
+	specsInProgressDir string,
+	specsCompletedDir string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -185,7 +189,13 @@ func CreateProcessor(
 		autoMerge,
 		autoRelease,
 		autoReview,
-		spec.NewAutoCompleter(inProgressDir, completedDir, specsDir),
+		spec.NewAutoCompleter(
+			inProgressDir,
+			completedDir,
+			specsInboxDir,
+			specsInProgressDir,
+			specsCompletedDir,
+		),
 	)
 }
 
@@ -366,7 +376,10 @@ func CreateSpecListCommand(cfg config.Config) cmd.SpecListCommand {
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 	)
-	return cmd.NewSpecListCommand(spec.NewLister(cfg.Specs.InboxDir), counter)
+	return cmd.NewSpecListCommand(
+		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		counter,
+	)
 }
 
 // CreateSpecStatusCommand creates a SpecStatusCommand.
@@ -376,7 +389,10 @@ func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 	)
-	return cmd.NewSpecStatusCommand(spec.NewLister(cfg.Specs.InboxDir), counter)
+	return cmd.NewSpecStatusCommand(
+		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		counter,
+	)
 }
 
 // CreateSpecApproveCommand creates a SpecApproveCommand.
@@ -386,7 +402,11 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 
 // CreateSpecVerifyCommand creates a SpecVerifyCommand.
 func CreateSpecVerifyCommand(cfg config.Config) cmd.SpecVerifyCommand {
-	return cmd.NewSpecVerifyCommand(cfg.Specs.InboxDir)
+	return cmd.NewSpecVerifyCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+	)
 }
 
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
@@ -412,7 +432,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	return cmd.NewCombinedStatusCommand(
 		statusChecker,
 		formatter,
-		spec.NewLister(cfg.Specs.InboxDir),
+		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
 		counter,
 	)
 }
@@ -428,7 +448,7 @@ func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		spec.NewLister(cfg.Specs.InboxDir),
+		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
 		counter,
 	)
 }

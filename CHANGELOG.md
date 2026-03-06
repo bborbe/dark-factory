@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.18.3
+
+- 110-fix-spec-watcher-clean-shutdown
+
 ## v0.18.2
 
 - fix: scan specsDir for already-approved specs on SpecWatcher startup so approved specs are not missed before fsnotify fires

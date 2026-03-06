@@ -6,8 +6,10 @@ package specwatcher_test
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,6 +18,35 @@ import (
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 )
+
+// captureHandler captures slog records for test assertions.
+type captureHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *captureHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	h.records = append(h.records, r)
+	h.mu.Unlock()
+	return nil
+}
+
+func (h *captureHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+
+func (h *captureHandler) WithGroup(_ string) slog.Handler { return h }
+
+func (h *captureHandler) Messages() []string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	msgs := make([]string, len(h.records))
+	for i, r := range h.records {
+		msgs[i] = r.Message
+	}
+	return msgs
+}
 
 var _ = Describe("SpecWatcher", func() {
 	var (
@@ -268,6 +299,45 @@ var _ = Describe("SpecWatcher", func() {
 		}, 800*time.Millisecond, 100*time.Millisecond).Should(Equal(0))
 
 		cancel()
+	})
+
+	It("should log cancelled not failed when context is cancelled during generation", func() {
+		handler := &captureHandler{}
+		origLogger := slog.Default()
+		slog.SetDefault(slog.New(handler))
+		defer slog.SetDefault(origLogger)
+
+		gen := &mocks.SpecGenerator{}
+		gen.GenerateStub = func(ctx context.Context, _ string) error {
+			<-ctx.Done()
+			return context.Canceled
+		}
+
+		w := specwatcher.NewSpecWatcher(specsDir, gen, 50*time.Millisecond)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		time.Sleep(100 * time.Millisecond)
+
+		specFile := filepath.Join(specsDir, "cancel-spec.md")
+		content := "---\nstatus: approved\n---\n# Cancel Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() int {
+			return gen.GenerateCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		cancel()
+
+		// Allow the goroutine to finish after cancellation.
+		time.Sleep(200 * time.Millisecond)
+
+		msgs := handler.Messages()
+		Expect(msgs).To(ContainElement("spec generation cancelled"))
+		Expect(msgs).NotTo(ContainElement("spec generation failed"))
 	})
 
 	It("should debounce rapid writes and call generator once", func() {

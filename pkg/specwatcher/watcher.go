@@ -144,7 +144,11 @@ func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
 	defer w.mu.Unlock()
 
 	if err := w.generator.Generate(ctx, specPath); err != nil {
-		slog.Info("spec generation failed", "path", specPath, "error", err)
+		if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+			slog.Info("spec generation cancelled", "path", specPath)
+		} else {
+			slog.Info("spec generation failed", "path", specPath, "error", err)
+		}
 	}
 }
 

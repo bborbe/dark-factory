@@ -1,5 +1,5 @@
 ---
-status: approved
+status: completed
 ---
 
 # Continue on Existing Branch/PR

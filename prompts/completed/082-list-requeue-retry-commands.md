@@ -1,5 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Added list, requeue, retry, and approve subcommands with tests, mocks, factory wiring, and main.go dispatch
+container: dark-factory-082-list-requeue-retry-commands
+dark-factory-version: v0.17.12
+created: "2026-03-06T09:01:24Z"
+queued: "2026-03-06T09:01:24Z"
+started: "2026-03-06T09:01:24Z"
+completed: "2026-03-06T09:11:01Z"
 ---
 
 Add three new subcommands: `list`, `requeue`, and `retry`.

@@ -1,7 +1,11 @@
 ---
-status: queued
+status: executing
 spec: ["020"]
+container: dark-factory-114-fix-generator-zero-files-not-error
+dark-factory-version: v0.18.6
 created: "2026-03-06T18:25:00Z"
+queued: "2026-03-06T17:23:38Z"
+started: "2026-03-06T17:23:38Z"
 ---
 
 <objective>

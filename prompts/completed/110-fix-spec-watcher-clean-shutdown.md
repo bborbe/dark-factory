@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["020"]
+summary: 'In handleFileEvent, differentiate context-cancelled errors from real failures: log ''spec generation cancelled'' at Info (no stack trace) when ctx is done or err is context.Canceled, otherwise log ''spec generation failed'' as before; added captureHandler and test to verify the correct log message on cancellation.'
 container: dark-factory-110-fix-spec-watcher-clean-shutdown
 dark-factory-version: v0.18.2
 created: "2026-03-06T17:30:00Z"
 queued: "2026-03-06T16:28:09Z"
 started: "2026-03-06T16:28:09Z"
+completed: "2026-03-06T16:41:28Z"
 ---
 
 <objective>

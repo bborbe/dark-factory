@@ -1,7 +1,13 @@
 ---
+status: completed
 spec: ["024"]
-status: created
+summary: Updated spec approve to move file from inboxDir to inProgressDir after setting status, and changed SpecWatcher to watch inProgressDir for Create events only (no status check needed).
+container: dark-factory-119-spec-024-2-spec-approve-move-and-watcher
+dark-factory-version: v0.20.2
 created: "2026-03-06T00:00:00Z"
+queued: "2026-03-06T19:37:49Z"
+started: "2026-03-06T19:37:50Z"
+completed: "2026-03-06T19:46:21Z"
 ---
 <summary>
 - Changes `spec approve` to move the spec file from `specs.inboxDir` to `specs.inProgressDir` after setting status to approved

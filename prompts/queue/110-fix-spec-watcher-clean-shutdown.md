@@ -1,7 +1,11 @@
 ---
-status: queued
+status: executing
 spec: ["020"]
+container: dark-factory-110-fix-spec-watcher-clean-shutdown
+dark-factory-version: v0.18.2
 created: "2026-03-06T17:30:00Z"
+queued: "2026-03-06T16:28:09Z"
+started: "2026-03-06T16:28:09Z"
 ---
 
 <objective>

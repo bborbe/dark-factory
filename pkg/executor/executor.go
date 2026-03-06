@@ -83,6 +83,9 @@ func (e *dockerExecutor) Execute(
 		promptFilePath,
 	)
 
+	// Remove any existing container with this name (handles interrupted previous runs)
+	e.removeContainerIfExists(ctx, containerName)
+
 	// Extract prompt basename from containerName (format: projectName-basename)
 	promptBaseName := extractPromptBaseName(containerName, e.projectName)
 
@@ -186,6 +189,17 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		e.containerImage,
 	)
+}
+
+// removeContainerIfExists removes a container by name if it exists, ignoring errors.
+// docker rm -f is idempotent: it returns non-zero if the container doesn't exist, which is fine.
+func (e *dockerExecutor) removeContainerIfExists(ctx context.Context, containerName string) {
+	// #nosec G204 -- containerName is derived from prompt filename, not user input
+	cmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
+	if err := e.commandRunner.Run(ctx, cmd); err != nil {
+		// Non-zero exit is expected when container doesn't exist
+		slog.Debug("docker rm -f", "containerName", containerName, "error", err)
+	}
 }
 
 // extractPromptBaseName extracts the prompt basename from the containerName.

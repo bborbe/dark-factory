@@ -22,10 +22,12 @@ import (
 type fakeCommandRunner struct {
 	err       error
 	runCalled bool
+	commands  []*exec.Cmd
 }
 
 func (f *fakeCommandRunner) Run(ctx context.Context, cmd *exec.Cmd) error {
 	f.runCalled = true
+	f.commands = append(f.commands, cmd)
 	return f.err
 }
 
@@ -399,6 +401,18 @@ var _ = Describe("Internal helper functions", func() {
 				err := exec.Execute(cancelCtx, "test", logFile, "test-container")
 				Expect(err).To(HaveOccurred())
 				Expect(fakeRunner.runCalled).To(BeTrue())
+			})
+		})
+
+		Context("container cleanup before run", func() {
+			It("calls docker rm -f before docker run", func() {
+				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(
+					fakeRunner.commands[0].Args,
+				).To(ContainElements("docker", "rm", "-f", "test-container"))
+				Expect(fakeRunner.commands[1].Args).To(ContainElements("docker", "run"))
 			})
 		})
 

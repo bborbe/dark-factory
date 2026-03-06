@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.14
+
+- 081-remove-stale-container-before-run
+
 ## v0.17.13
 
 - 080-workflow-test-coverage

@@ -29,7 +29,7 @@ var _ = Describe("findSpecFile", func() {
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(specsDir)
+		_ = os.RemoveAll(specsDir)
 	})
 
 	writeSpec := func(name string) string {

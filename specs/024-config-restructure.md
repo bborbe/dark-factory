@@ -56,11 +56,14 @@ serverPort: 0
 
 `dark-factory spec approve` sets `status: approved` **and** moves the file to `specs/in-progress/`. The SpecWatcher watches `specs/in-progress/` for new file Create events — no frontmatter polling needed. A file appearing in `in-progress/` is the unambiguous signal to generate prompts.
 
+### Number assignment
+
+When dark-factory assigns the next prompt or spec number, it scans **all three directories** (`inboxDir`, `inProgressDir`, `completedDir`) to find the current highest number, then uses `+1`. Scanning only the inbox would miss files that have already been processed and moved — leading to number reuse.
+
 ### Migration
 
 - `prompts/queue/` → `prompts/in-progress/` (rename on startup if old path exists)
 - All other directories created on startup if missing
-- Old flat config keys (`inboxDir`, `queueDir`, `completedDir`) supported as fallback with deprecation warning
 
 ## Constraints
 
@@ -85,6 +88,7 @@ serverPort: 0
 - [ ] `prompts/queue/` → `prompts/in-progress/` migration runs on startup
 - [ ] All directories created on startup if missing
 - [ ] Old flat config keys log deprecation warning and still work
+- [ ] Number assignment scans all three dirs (inbox + in-progress + completed) to find highest existing number
 - [ ] `make precommit` passes
 
 ## Do-Nothing Option

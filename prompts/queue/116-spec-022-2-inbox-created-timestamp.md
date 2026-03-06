@@ -1,7 +1,8 @@
 ---
+status: queued
 spec: ["022"]
-status: created
 created: "2026-03-06T18:35:00Z"
+queued: "2026-03-06T18:45:26Z"
 ---
 <summary>
 - When a prompt file appears in the inbox (`prompts/`), dark-factory stamps it with a `created` timestamp

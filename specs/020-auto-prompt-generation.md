@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 ---
 
 # Auto-Prompt Generation from Spec

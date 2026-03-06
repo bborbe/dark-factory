@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/adrg/frontmatter"
 	"github.com/bborbe/errors"
@@ -32,8 +33,12 @@ const (
 
 // Frontmatter represents the YAML frontmatter in a spec file.
 type Frontmatter struct {
-	Status string   `yaml:"status"`
-	Tags   []string `yaml:"tags,omitempty"`
+	Status    string   `yaml:"status"`
+	Tags      []string `yaml:"tags,omitempty"`
+	Approved  string   `yaml:"approved,omitempty"`
+	Prompted  string   `yaml:"prompted,omitempty"`
+	Verifying string   `yaml:"verifying,omitempty"`
+	Completed string   `yaml:"completed,omitempty"`
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.
@@ -44,6 +49,26 @@ type SpecFile struct {
 	Frontmatter Frontmatter
 	Name        string // filename without extension
 	Body        []byte
+	nowFunc     func() time.Time
+}
+
+func (s *SpecFile) now() time.Time {
+	if s.nowFunc == nil {
+		return time.Now()
+	}
+	return s.nowFunc()
+}
+
+// SetNowFunc sets the time source for testability.
+func (s *SpecFile) SetNowFunc(f func() time.Time) {
+	s.nowFunc = f
+}
+
+// stampOnce sets *field to the current UTC RFC3339 timestamp only if *field is empty.
+func (s *SpecFile) stampOnce(field *string) {
+	if *field == "" {
+		*field = s.now().UTC().Format(time.RFC3339)
+	}
 }
 
 // Load reads a spec file from disk, parsing frontmatter and body.
@@ -60,9 +85,10 @@ func Load(ctx context.Context, path string) (*SpecFile, error) {
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
 	if err != nil {
 		return &SpecFile{
-			Path: path,
-			Name: name,
-			Body: content,
+			Path:    path,
+			Name:    name,
+			Body:    content,
+			nowFunc: time.Now,
 		}, nil
 	}
 
@@ -71,12 +97,23 @@ func Load(ctx context.Context, path string) (*SpecFile, error) {
 		Frontmatter: fm,
 		Name:        name,
 		Body:        body,
+		nowFunc:     time.Now,
 	}, nil
 }
 
-// SetStatus sets the status field in the frontmatter.
+// SetStatus sets the status field in the frontmatter and stamps the matching timestamp once.
 func (s *SpecFile) SetStatus(status string) {
 	s.Frontmatter.Status = status
+	switch Status(status) {
+	case StatusApproved:
+		s.stampOnce(&s.Frontmatter.Approved)
+	case StatusPrompted:
+		s.stampOnce(&s.Frontmatter.Prompted)
+	case StatusVerifying:
+		s.stampOnce(&s.Frontmatter.Verifying)
+	case StatusCompleted:
+		s.stampOnce(&s.Frontmatter.Completed)
+	}
 }
 
 // Save writes the spec file back to disk.
@@ -101,12 +138,12 @@ func (s *SpecFile) Save(ctx context.Context) error {
 
 // MarkCompleted sets the spec status to completed.
 func (s *SpecFile) MarkCompleted() {
-	s.Frontmatter.Status = string(StatusCompleted)
+	s.SetStatus(string(StatusCompleted))
 }
 
 // MarkVerifying sets the spec status to verifying.
 func (s *SpecFile) MarkVerifying() {
-	s.Frontmatter.Status = string(StatusVerifying)
+	s.SetStatus(string(StatusVerifying))
 }
 
 // AutoCompleter checks if all linked prompts are completed and marks the spec as completed.

@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 ---
 
 # Spec Verification Gate

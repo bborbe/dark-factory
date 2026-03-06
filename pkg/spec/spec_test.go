@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -104,6 +105,102 @@ var _ = Describe("SetStatus and Save", func() {
 		sf2, err := spec.Load(ctx, path)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sf2.Frontmatter.Status).To(Equal("approved"))
+	})
+})
+
+var _ = Describe("Timestamp fields", func() {
+	var ctx context.Context
+	var dir string
+	fixedTime := time.Date(2026, 3, 6, 12, 0, 0, 0, time.UTC)
+	fixedStamp := fixedTime.UTC().Format(time.RFC3339)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		dir, err = os.MkdirTemp("", "spec-ts-*")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	newSpecFile := func() *spec.SpecFile {
+		path := filepath.Join(dir, "001-spec.md")
+		writeSpec(path, "draft")
+		sf, err := spec.Load(ctx, path)
+		Expect(err).NotTo(HaveOccurred())
+		sf.SetNowFunc(func() time.Time { return fixedTime })
+		return sf
+	}
+
+	It("SetStatus approved sets Approved timestamp", func() {
+		sf := newSpecFile()
+		sf.SetStatus("approved")
+		Expect(sf.Frontmatter.Approved).To(Equal(fixedStamp))
+		Expect(sf.Frontmatter.Status).To(Equal("approved"))
+	})
+
+	It("SetStatus approved does NOT overwrite existing Approved timestamp", func() {
+		sf := newSpecFile()
+		sf.Frontmatter.Approved = "2025-01-01T00:00:00Z"
+		sf.SetStatus("approved")
+		Expect(sf.Frontmatter.Approved).To(Equal("2025-01-01T00:00:00Z"))
+	})
+
+	It("SetStatus prompted sets Prompted timestamp", func() {
+		sf := newSpecFile()
+		sf.SetStatus("prompted")
+		Expect(sf.Frontmatter.Prompted).To(Equal(fixedStamp))
+	})
+
+	It("SetStatus verifying sets Verifying timestamp", func() {
+		sf := newSpecFile()
+		sf.SetStatus("verifying")
+		Expect(sf.Frontmatter.Verifying).To(Equal(fixedStamp))
+	})
+
+	It("SetStatus completed sets Completed timestamp", func() {
+		sf := newSpecFile()
+		sf.SetStatus("completed")
+		Expect(sf.Frontmatter.Completed).To(Equal(fixedStamp))
+	})
+
+	It("MarkVerifying sets Verifying timestamp", func() {
+		sf := newSpecFile()
+		sf.MarkVerifying()
+		Expect(sf.Frontmatter.Verifying).To(Equal(fixedStamp))
+		Expect(sf.Frontmatter.Status).To(Equal("verifying"))
+	})
+
+	It("MarkCompleted sets Completed timestamp", func() {
+		sf := newSpecFile()
+		sf.MarkCompleted()
+		Expect(sf.Frontmatter.Completed).To(Equal(fixedStamp))
+		Expect(sf.Frontmatter.Status).To(Equal("completed"))
+	})
+
+	It("roundtrips all four timestamp fields through Save/Load", func() {
+		path := filepath.Join(dir, "002-spec.md")
+		writeSpec(path, "draft")
+
+		sf, err := spec.Load(ctx, path)
+		Expect(err).NotTo(HaveOccurred())
+		sf.SetNowFunc(func() time.Time { return fixedTime })
+
+		sf.Frontmatter.Approved = fixedStamp
+		sf.Frontmatter.Prompted = fixedStamp
+		sf.Frontmatter.Verifying = fixedStamp
+		sf.Frontmatter.Completed = fixedStamp
+
+		Expect(sf.Save(ctx)).To(Succeed())
+
+		sf2, err := spec.Load(ctx, path)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sf2.Frontmatter.Approved).To(Equal(fixedStamp))
+		Expect(sf2.Frontmatter.Prompted).To(Equal(fixedStamp))
+		Expect(sf2.Frontmatter.Verifying).To(Equal(fixedStamp))
+		Expect(sf2.Frontmatter.Completed).To(Equal(fixedStamp))
 	})
 })
 

@@ -1,7 +1,8 @@
 ---
+status: queued
 spec: ["023"]
-status: created
 created: "2026-03-06T20:00:00Z"
+queued: "2026-03-06T18:45:26Z"
 ---
 <summary>
 - Replaces fragile keyword matching in `determineBump()` with exact `- feat:` prefix detection

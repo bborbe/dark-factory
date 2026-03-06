@@ -1,3 +1,13 @@
+---
+status: completed
+summary: Added FetchAndVerifyBranch method to Brancher interface with implementation (git fetch + rev-parse verify), regenerated mocks, and added tests for success and error cases.
+container: dark-factory-085-brancher-fetch-and-verify
+dark-factory-version: v0.17.12
+created: "2026-03-06T10:05:42Z"
+queued: "2026-03-06T10:05:42Z"
+started: "2026-03-06T10:05:42Z"
+completed: "2026-03-06T10:10:57Z"
+---
 <objective>
 Add a `FetchAndVerifyBranch` method to the Brancher interface that fetches from origin and verifies a branch exists remotely. This is needed so the processor can fail fast with a clear error when a declared branch does not exist (spec 017).
 </objective>

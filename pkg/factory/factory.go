@@ -254,3 +254,39 @@ func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
 func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 	return cmd.NewSpecApproveCommand(cfg.SpecDir)
 }
+
+// CreateCombinedStatusCommand creates a CombinedStatusCommand.
+func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
+	promptManager, _ := createPromptManager(cfg.QueueDir, cfg.CompletedDir)
+
+	statusChecker := status.NewChecker(
+		cfg.QueueDir,
+		cfg.CompletedDir,
+		defaultIdeasDir,
+		cfg.LogDir,
+		lock.FilePath("."),
+		cfg.ServerPort,
+		promptManager,
+	)
+	formatter := status.NewFormatter()
+	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+
+	return cmd.NewCombinedStatusCommand(
+		statusChecker,
+		formatter,
+		spec.NewLister(cfg.SpecDir),
+		counter,
+	)
+}
+
+// CreateCombinedListCommand creates a CombinedListCommand.
+func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
+	counter := prompt.NewCounter(cfg.InboxDir, cfg.QueueDir, cfg.CompletedDir)
+	return cmd.NewCombinedListCommand(
+		cfg.InboxDir,
+		cfg.QueueDir,
+		cfg.CompletedDir,
+		spec.NewLister(cfg.SpecDir),
+		counter,
+	)
+}

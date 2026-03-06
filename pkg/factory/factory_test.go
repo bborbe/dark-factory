@@ -97,4 +97,18 @@ var _ = Describe("Factory", func() {
 			Expect(cmd).NotTo(BeNil())
 		})
 	})
+
+	Describe("CreateCombinedStatusCommand", func() {
+		It("should return a non-nil combined status command", func() {
+			cmd := factory.CreateCombinedStatusCommand(cfg)
+			Expect(cmd).NotTo(BeNil())
+		})
+	})
+
+	Describe("CreateCombinedListCommand", func() {
+		It("should return a non-nil combined list command", func() {
+			cmd := factory.CreateCombinedListCommand(cfg)
+			Expect(cmd).NotTo(BeNil())
+		})
+	})
 })

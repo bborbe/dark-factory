@@ -56,9 +56,9 @@ func run() error {
 	case "spec":
 		return runSpecCommand(ctx, cfg, subcommand, args)
 	case "status":
-		return factory.CreateStatusCommand(cfg).Run(ctx, args)
+		return factory.CreateCombinedStatusCommand(cfg).Run(ctx, args)
 	case "list":
-		return factory.CreateListCommand(cfg).Run(ctx, args)
+		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
 	case "run":
 		return factory.CreateRunner(cfg, version.Version).Run(ctx)
 	default:

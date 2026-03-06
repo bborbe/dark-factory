@@ -31,6 +31,7 @@ var _ = Describe("Factory", func() {
 			ready := make(chan struct{}, 10)
 			watcher := factory.CreateWatcher(
 				cfg.QueueDir,
+				cfg.InboxDir,
 				nil, // promptManager not needed for nil check
 				ready,
 				100,

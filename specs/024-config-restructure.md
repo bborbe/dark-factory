@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # Config Restructure: Nested Prompts and Specs Sections
@@ -38,6 +38,8 @@ debounceMs: 500
 serverPort: 0
 ```
 
+Feature flags (`autoMerge`, `autoRelease`, `autoReview`) default to `false` and are omitted from the default config — only set them explicitly when enabling.
+
 ### Directory lifecycle
 
 **Prompts** (unchanged behavior, new directory name):
@@ -56,9 +58,21 @@ serverPort: 0
 
 `dark-factory spec approve` sets `status: approved` **and** moves the file to `specs/in-progress/`. The SpecWatcher watches `specs/in-progress/` for new file Create events — no frontmatter polling needed. A file appearing in `in-progress/` is the unambiguous signal to generate prompts.
 
+The prompt generator logs its output (the YOLO container run for spec prompt generation) to `specs.logDir`, mirroring how prompt execution logs to `prompts.logDir`.
+
 ### Number assignment
 
 When dark-factory assigns the next prompt or spec number, it scans **all three directories** (`inboxDir`, `inProgressDir`, `completedDir`) to find the current highest number, then uses `+1`. Scanning only the inbox would miss files that have already been processed and moved — leading to number reuse.
+
+### Command scope
+
+| Command | Searches |
+|---------|----------|
+| `spec approve` | `specs.inboxDir` only — only draft specs live there |
+| `spec verify` | all three dirs (inbox + in-progress + completed) |
+| `spec list` | all three dirs — same as `prompt list` across all prompt dirs |
+
+The flat `specDir` config field is removed; all spec commands switch to `cfg.Specs.InboxDir` / `cfg.Specs.InProgressDir` / `cfg.Specs.CompletedDir` as appropriate.
 
 ### Migration
 
@@ -75,7 +89,6 @@ When dark-factory assigns the next prompt or spec number, it scans **all three d
 
 | Trigger | Expected behavior |
 |---------|------------------|
-| Old `queueDir` config key present | Log deprecation warning, use value as `prompts.inProgressDir` |
 | `in-progress/` dir missing | Create on startup |
 
 ## Acceptance Criteria
@@ -84,12 +97,20 @@ When dark-factory assigns the next prompt or spec number, it scans **all three d
 - [ ] Factory, watcher, processor, specwatcher all use new config fields
 - [ ] `spec approve` moves spec file from `inboxDir` to `inProgressDir` (file move = signal to generate)
 - [ ] SpecWatcher watches `specs/inProgressDir` for Create events — no frontmatter polling
+- [ ] Prompt generator logs to `specs.logDir`
 - [ ] Spec files move to `completedDir` on `completed` transition
 - [ ] `prompts/queue/` → `prompts/in-progress/` migration runs on startup
 - [ ] All directories created on startup if missing
-- [ ] Old flat config keys log deprecation warning and still work
 - [ ] Number assignment scans all three dirs (inbox + in-progress + completed) to find highest existing number
+- [ ] `spec approve` searches only `specs.inboxDir`
+- [ ] `spec verify` searches all three spec dirs
+- [ ] `spec list` lists specs from all three dirs
+- [ ] Flat `specDir` config field removed; all spec commands use nested fields
 - [ ] `make precommit` passes
+
+## Post-Implementation
+
+After the spec is completed, manually update `.dark-factory.yaml` (and any other dark-factory instances) to the new nested format. No migration code needed — just edit the file by hand and restart.
 
 ## Do-Nothing Option
 

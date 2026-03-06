@@ -29,6 +29,7 @@ type Watcher interface {
 // watcher implements Watcher.
 type watcher struct {
 	queueDir      string
+	inboxDir      string
 	promptManager prompt.Manager
 	ready         chan<- struct{}
 	debounce      time.Duration
@@ -37,12 +38,14 @@ type watcher struct {
 // NewWatcher creates a new Watcher with the specified debounce duration.
 func NewWatcher(
 	queueDir string,
+	inboxDir string,
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 ) Watcher {
 	return &watcher{
 		queueDir:      queueDir,
+		inboxDir:      inboxDir,
 		promptManager: promptManager,
 		ready:         ready,
 		debounce:      debounce,
@@ -151,6 +154,9 @@ func (w *watcher) handleFileEvent(ctx context.Context) {
 			"to", filepath.Base(rename.NewPath))
 	}
 
+	// Stamp created timestamps on inbox files that don't have one yet
+	w.stampCreatedTimestamps(ctx)
+
 	// Signal processor that files are ready
 	select {
 	case w.ready <- struct{}{}:
@@ -158,6 +164,34 @@ func (w *watcher) handleFileEvent(ctx context.Context) {
 	default:
 		// Non-blocking send - processor may already be working
 		slog.Debug("processor already working, signal skipped")
+	}
+}
+
+// stampCreatedTimestamps scans inboxDir and sets Created on any prompt that lacks it.
+func (w *watcher) stampCreatedTimestamps(ctx context.Context) {
+	entries, err := os.ReadDir(w.inboxDir)
+	if err != nil {
+		slog.Debug("inbox scan failed for created stamping", "error", err)
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(w.inboxDir, entry.Name())
+		pf, err := prompt.Load(ctx, path)
+		if err != nil {
+			continue
+		}
+		if pf.Frontmatter.Created != "" {
+			continue
+		}
+		pf.Frontmatter.Created = time.Now().UTC().Format(time.RFC3339)
+		if err := pf.Save(ctx); err != nil {
+			slog.Debug("failed to stamp created timestamp", "path", path, "error", err)
+			continue
+		}
+		slog.Info("stamped created timestamp", "file", entry.Name())
 	}
 }
 

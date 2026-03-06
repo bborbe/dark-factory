@@ -21,6 +21,7 @@ import (
 var _ = Describe("Watcher", func() {
 	var (
 		tempDir    string
+		inboxDir   string
 		promptsDir string
 		ready      chan struct{}
 		ctx        context.Context
@@ -30,6 +31,10 @@ var _ = Describe("Watcher", func() {
 	BeforeEach(func() {
 		var err error
 		tempDir, err = os.MkdirTemp("", "watcher-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		inboxDir = filepath.Join(tempDir, "inbox")
+		err = os.MkdirAll(inboxDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
 		promptsDir = filepath.Join(tempDir, "prompts")
@@ -51,7 +56,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -82,7 +87,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -114,7 +119,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -145,7 +150,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -172,7 +177,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns(nil, os.ErrPermission)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -219,7 +224,7 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -255,7 +260,7 @@ var _ = Describe("Watcher", func() {
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use the absolute path directly (tempDir is already absolute)
-		w := watcher.NewWatcher(queueDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(queueDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -286,7 +291,7 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {
@@ -314,6 +319,84 @@ var _ = Describe("Watcher", func() {
 		cancel()
 	})
 
+	It("should stamp created timestamp on inbox file without one", func() {
+		promptManager := &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+
+		// Write a prompt file with frontmatter but no created field
+		testFile := filepath.Join(inboxDir, "001-test.md")
+		content := "---\nstatus: inbox\n---\n\n# Test\n"
+		err := os.WriteFile(testFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+
+		// Run watcher in goroutine
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(200 * time.Millisecond)
+
+		// Create a file in the watched queue dir to trigger handleFileEvent
+		triggerFile := filepath.Join(promptsDir, "trigger.md")
+		err = os.WriteFile(triggerFile, []byte("# Trigger"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for stamping to occur
+		Eventually(func() string {
+			data, readErr := os.ReadFile(testFile)
+			if readErr != nil {
+				return ""
+			}
+			return string(data)
+		}, 2*time.Second, 100*time.Millisecond).Should(ContainSubstring("created:"))
+
+		cancel()
+	})
+
+	It("should not overwrite existing created timestamp on inbox file", func() {
+		promptManager := &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+
+		existingCreated := "2026-01-01T00:00:00Z"
+		// Write a prompt file with an existing created field
+		testFile := filepath.Join(inboxDir, "002-test.md")
+		content := "---\nstatus: inbox\ncreated: " + existingCreated + "\n---\n\n# Test\n"
+		err := os.WriteFile(testFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+
+		// Run watcher in goroutine
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		// Wait for watcher to start
+		time.Sleep(200 * time.Millisecond)
+
+		// Create a file in the watched queue dir to trigger handleFileEvent
+		triggerFile := filepath.Join(promptsDir, "trigger2.md")
+		err = os.WriteFile(triggerFile, []byte("# Trigger"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait for normalize to be called, then verify the created field is unchanged
+		Eventually(func() int {
+			return promptManager.NormalizeFilenamesCallCount()
+		}, 2*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		// Allow a moment for any potential write
+		time.Sleep(200 * time.Millisecond)
+
+		data, err := os.ReadFile(testFile)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(data)).To(ContainSubstring("created: " + existingCreated))
+
+		cancel()
+	})
+
 	It("should handle relative paths", func() {
 		// Save current directory
 		origDir, err := os.Getwd()
@@ -335,7 +418,7 @@ var _ = Describe("Watcher", func() {
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use relative path
-		w := watcher.NewWatcher(relPromptDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(relPromptDir, inboxDir, promptManager, ready, 500*time.Millisecond)
 
 		// Run watcher in goroutine
 		go func() {

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.18.5
+
+- Confirm StatusVerifying is exported and the constant value is "verifying"
+
 ## v0.18.4
 
 - 111-spec-019-1-backfill-review-fix-loop-spec-tags

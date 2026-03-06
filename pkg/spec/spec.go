@@ -26,6 +26,7 @@ const (
 	StatusDraft     Status = "draft"
 	StatusApproved  Status = "approved"
 	StatusPrompted  Status = "prompted"
+	StatusVerifying Status = "verifying"
 	StatusCompleted Status = "completed"
 )
 
@@ -103,6 +104,11 @@ func (s *SpecFile) MarkCompleted() {
 	s.Frontmatter.Status = string(StatusCompleted)
 }
 
+// MarkVerifying sets the spec status to verifying.
+func (s *SpecFile) MarkVerifying() {
+	s.Frontmatter.Status = string(StatusVerifying)
+}
+
 // AutoCompleter checks if all linked prompts are completed and marks the spec as completed.
 //
 //counterfeiter:generate -o ../../mocks/spec-auto-completer.go --fake-name AutoCompleter . AutoCompleter
@@ -156,17 +162,18 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 		return errors.Wrap(ctx, err, "load spec file")
 	}
 
-	if sf.Frontmatter.Status == string(StatusCompleted) {
-		// Already completed — no-op
+	if sf.Frontmatter.Status == string(StatusCompleted) ||
+		sf.Frontmatter.Status == string(StatusVerifying) {
+		// Already completed or awaiting verification — no-op
 		return nil
 	}
 
-	sf.MarkCompleted()
+	sf.MarkVerifying()
 	if err := sf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save spec file")
 	}
 
-	slog.Info("spec auto-completed", "spec", specID)
+	slog.Info("spec awaiting verification", "spec", specID)
 	return nil
 }
 

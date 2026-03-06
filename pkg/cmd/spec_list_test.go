@@ -86,6 +86,19 @@ var _ = Describe("SpecListCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("renders verifying spec with ! prefix in STATUS column", func() {
+			mockLister.ListReturns([]*spec.SpecFile{
+				{
+					Name:        "021-verifying-spec",
+					Frontmatter: spec.Frontmatter{Status: "verifying"},
+				},
+			}, nil)
+
+			err := specListCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+		})
+
 		It("calls counter for each spec and shows prompt counts", func() {
 			mockLister.ListReturns([]*spec.SpecFile{
 				{Name: "017-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},

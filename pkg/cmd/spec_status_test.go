@@ -73,6 +73,21 @@ var _ = Describe("SpecStatusCommand", func() {
 			Expect(err.Error()).To(ContainSubstring("get spec summary"))
 		})
 
+		It("includes verifying count in summary output", func() {
+			mockLister.SummaryReturns(&spec.Summary{
+				Total:     5,
+				Draft:     1,
+				Approved:  1,
+				Prompted:  1,
+				Verifying: 1,
+				Completed: 1,
+			}, nil)
+
+			err := specStatusCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockLister.SummaryCallCount()).To(Equal(1))
+		})
+
 		It("includes linked prompt counts from counter", func() {
 			mockLister.SummaryReturns(&spec.Summary{Total: 1, Completed: 1}, nil)
 			mockLister.ListReturns([]*spec.SpecFile{

@@ -18,6 +18,7 @@ type Summary struct {
 	Draft                  int
 	Approved               int
 	Prompted               int
+	Verifying              int
 	Completed              int
 	Total                  int
 	LinkedPromptsCompleted int `json:"linked_prompts_completed,omitempty"`
@@ -85,6 +86,8 @@ func (l *lister) Summary(ctx context.Context) (*Summary, error) {
 			s.Approved++
 		case StatusPrompted:
 			s.Prompted++
+		case StatusVerifying:
+			s.Verifying++
 		case StatusCompleted:
 			s.Completed++
 		}

@@ -78,10 +78,14 @@ func (s *specListCommand) Run(ctx context.Context, args []string) error {
 
 // outputSpecListTable outputs spec entries as a human-readable table.
 func outputSpecListTable(entries []SpecEntry) error {
-	fmt.Printf("%-10s %-8s %s\n", "STATUS", "PROMPTS", "FILE")
+	fmt.Printf("%-11s %-8s %s\n", "STATUS", "PROMPTS", "FILE")
 	for _, e := range entries {
 		prompts := fmt.Sprintf("%d/%d", e.PromptsCompleted, e.PromptsTotal)
-		fmt.Printf("%-10s %-8s %s\n", e.Status, prompts, e.File)
+		status := e.Status
+		if e.Status == "verifying" {
+			status = "!" + e.Status
+		}
+		fmt.Printf("%-11s %-8s %s\n", status, prompts, e.File)
 	}
 	return nil
 }

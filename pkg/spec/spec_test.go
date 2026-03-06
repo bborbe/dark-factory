@@ -130,14 +130,16 @@ var _ = Describe("Lister", func() {
 			writeSpec(filepath.Join(dir, "002-b.md"), "draft")
 			writeSpec(filepath.Join(dir, "003-c.md"), "approved")
 			writeSpec(filepath.Join(dir, "004-d.md"), "prompted")
-			writeSpec(filepath.Join(dir, "005-e.md"), "completed")
+			writeSpec(filepath.Join(dir, "005-e.md"), "verifying")
+			writeSpec(filepath.Join(dir, "006-f.md"), "completed")
 
 			s, err := lister.Summary(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(s.Total).To(Equal(5))
+			Expect(s.Total).To(Equal(6))
 			Expect(s.Draft).To(Equal(2))
 			Expect(s.Approved).To(Equal(1))
 			Expect(s.Prompted).To(Equal(1))
+			Expect(s.Verifying).To(Equal(1))
 			Expect(s.Completed).To(Equal(1))
 		})
 
@@ -217,7 +219,7 @@ var _ = Describe("AutoCompleter", func() {
 	})
 
 	Context("when all linked prompts are completed", func() {
-		It("marks the spec as completed", func() {
+		It("marks the spec as verifying", func() {
 			// Two completed prompts referencing spec-001
 			writePrompt(filepath.Join(completedDir, "001-first.md"), "completed", "spec-001")
 			writePrompt(filepath.Join(completedDir, "002-second.md"), "completed", "spec-001")
@@ -228,10 +230,10 @@ var _ = Describe("AutoCompleter", func() {
 			err := ac.CheckAndComplete(ctx, "spec-001")
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify spec file is now completed
+			// Verify spec file is now verifying
 			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-001.md"))
 			Expect(loadErr).NotTo(HaveOccurred())
-			Expect(sf.Frontmatter.Status).To(Equal("completed"))
+			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
 	})
 
@@ -271,6 +273,23 @@ var _ = Describe("AutoCompleter", func() {
 		})
 	})
 
+	Context("when spec is already verifying", func() {
+		It("is a no-op", func() {
+			writePrompt(filepath.Join(completedDir, "001-first.md"), "completed", "spec-009")
+
+			// Create spec file already in verifying state
+			writeSpec(filepath.Join(specsDir, "spec-009.md"), "verifying")
+
+			err := ac.CheckAndComplete(ctx, "spec-009")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Status unchanged
+			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-009.md"))
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
+		})
+	})
+
 	Context("when no prompts reference the spec", func() {
 		It("does nothing", func() {
 			// No prompts link to spec-004
@@ -301,7 +320,7 @@ var _ = Describe("AutoCompleter", func() {
 
 			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-005.md"))
 			Expect(loadErr).NotTo(HaveOccurred())
-			Expect(sf.Frontmatter.Status).To(Equal("completed"))
+			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
 
 		It("does not complete spec when one of multiple prompts is still queued", func() {

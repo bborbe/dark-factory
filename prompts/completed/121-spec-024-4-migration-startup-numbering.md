@@ -1,7 +1,13 @@
 ---
+status: completed
 spec: ["024"]
-status: created
+summary: Implemented startup directory creation for all 8 lifecycle dirs, queue→in-progress migration, and inbox number scanning in NormalizeFilenames
+container: dark-factory-121-spec-024-4-migration-startup-numbering
+dark-factory-version: v0.20.2
 created: "2026-03-06T00:00:00Z"
+queued: "2026-03-06T19:57:43Z"
+started: "2026-03-06T19:57:44Z"
+completed: "2026-03-06T20:15:09Z"
 ---
 <summary>
 - On startup, creates all required directories if they don't exist: prompts.inboxDir, prompts.inProgressDir, prompts.completedDir, prompts.logDir, specs.inboxDir, specs.inProgressDir, specs.completedDir, specs.logDir

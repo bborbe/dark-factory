@@ -1,8 +1,11 @@
 ---
-status: queued
+status: failed
+container: dark-factory-080-workflow-test-coverage
+dark-factory-version: v0.17.12
 created: "2026-03-06T08:30:31Z"
 queued: "2026-03-06T08:30:31Z"
-started: "2026-03-06T08:30:31Z"
+started: "2026-03-06T08:32:52Z"
+completed: "2026-03-06T08:32:52Z"
 ---
 
 Add missing processor test cases for `WorkflowPR` and `WorkflowWorktree`. All existing tests use `WorkflowDirect` only.

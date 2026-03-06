@@ -10,19 +10,19 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.18.6
 
-- Create a test spec in verifying state
+- feat: Add dark-factory spec verify command to transition specs from verifying to completed
 
 ## v0.18.5
 
-- Confirm StatusVerifying is exported and the constant value is "verifying"
+- feat: Add StatusVerifying to spec lifecycle so all-prompts-merged transitions spec to verifying instead of completed
 
 ## v0.18.4
 
-- 111-spec-019-1-backfill-review-fix-loop-spec-tags
+- fix: Backfill spec: ["019"] field into completed spec-019 prompts so auto-complete can detect all linked prompts are done
 
 ## v0.18.3
 
-- 110-fix-spec-watcher-clean-shutdown
+- fix: Suppress noisy stack trace when SpecWatcher generation is cancelled by context on shutdown
 
 ## v0.18.2
 

@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
@@ -27,6 +28,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/spec"
+	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/status"
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
@@ -75,6 +77,9 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		reviewPoller = CreateReviewPoller(cfg, promptManager)
 	}
 
+	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage)
+	specWatcher := CreateSpecWatcher(cfg, specGen)
+
 	return runner.NewRunner(
 		inboxDir,
 		queueDir,
@@ -107,6 +112,26 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		),
 		srv,
 		reviewPoller,
+		specWatcher,
+	)
+}
+
+// CreateSpecGenerator creates a SpecGenerator using the Docker executor.
+func CreateSpecGenerator(cfg config.Config, containerImage string) generator.SpecGenerator {
+	return generator.NewSpecGenerator(
+		executor.NewDockerExecutor(containerImage, project.Name(cfg.ProjectName), cfg.Model),
+		cfg.InboxDir,
+		cfg.SpecDir,
+		cfg.LogDir,
+	)
+}
+
+// CreateSpecWatcher creates a SpecWatcher that triggers generation on approved specs.
+func CreateSpecWatcher(cfg config.Config, gen generator.SpecGenerator) specwatcher.SpecWatcher {
+	return specwatcher.NewSpecWatcher(
+		cfg.SpecDir,
+		gen,
+		time.Duration(cfg.DebounceMs)*time.Millisecond,
 	)
 }
 

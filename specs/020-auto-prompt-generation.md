@@ -1,5 +1,5 @@
 ---
-status: approved
+status: prompted
 ---
 
 # Auto-Prompt Generation from Spec

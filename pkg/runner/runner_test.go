@@ -86,6 +86,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		// Run with timeout
@@ -129,6 +130,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -173,6 +175,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -223,6 +226,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		go func() {
@@ -265,6 +269,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithCancel(ctx)
@@ -307,6 +312,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -364,6 +370,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			mockServer,
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -401,6 +408,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			nil, // No server
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -447,6 +455,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			nil, // No server
 			mockReviewPoller,
+			nil, // no specWatcher
 		)
 
 		go func() {
@@ -483,6 +492,7 @@ var _ = Describe("Runner", func() {
 			mockProcessor,
 			nil, // No server
 			nil, // no reviewPoller
+			nil, // no specWatcher
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)

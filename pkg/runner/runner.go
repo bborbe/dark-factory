@@ -21,6 +21,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/server"
+	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
@@ -40,6 +41,7 @@ type runner struct {
 	processor     processor.Processor
 	server        server.Server
 	reviewPoller  review.ReviewPoller
+	specWatcher   specwatcher.SpecWatcher
 }
 
 // NewRunner creates a new Runner.
@@ -53,6 +55,7 @@ func NewRunner(
 	processor processor.Processor,
 	server server.Server,
 	reviewPoller review.ReviewPoller,
+	specWatcher specwatcher.SpecWatcher,
 ) Runner {
 	return &runner{
 		inboxDir:      inboxDir,
@@ -64,6 +67,7 @@ func NewRunner(
 		processor:     processor,
 		server:        server,
 		reviewPoller:  reviewPoller,
+		specWatcher:   specWatcher,
 	}
 }
 
@@ -117,6 +121,9 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	if r.reviewPoller != nil {
 		runners = append(runners, r.reviewPoller.Run)
+	}
+	if r.specWatcher != nil {
+		runners = append(runners, r.specWatcher.Watch)
 	}
 	return run.CancelOnFirstError(ctx, runners...)
 }

@@ -1815,3 +1815,75 @@ func createPromptFile(dir, filename, status string) string {
 	}
 	return path
 }
+
+var _ = Describe("Frontmatter spec field", func() {
+	var (
+		ctx     context.Context
+		tempDir string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		tempDir, err = os.MkdirTemp("", "prompt-spec-test-*")
+		Expect(err).To(BeNil())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	It("loads spec field from frontmatter", func() {
+		path := filepath.Join(tempDir, "091-test.md")
+		content := "---\nstatus: queued\nspec: \"017\"\n---\n\n# Test\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		pf, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf.Frontmatter.Spec).To(Equal("017"))
+		Expect(pf.Frontmatter.Status).To(Equal("queued"))
+	})
+
+	It("saves and reloads spec field correctly", func() {
+		path := filepath.Join(tempDir, "091-test.md")
+		content := "---\nstatus: queued\nspec: \"019\"\n---\n\n# Test\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		pf, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf.Frontmatter.Spec).To(Equal("019"))
+
+		pf.Frontmatter.Status = "completed"
+		Expect(pf.Save(ctx)).To(Succeed())
+
+		pf2, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf2.Frontmatter.Spec).To(Equal("019"))
+		Expect(pf2.Frontmatter.Status).To(Equal("completed"))
+	})
+
+	It("works without spec field (backward compatible)", func() {
+		path := filepath.Join(tempDir, "001-no-spec.md")
+		content := "---\nstatus: queued\n---\n\n# No spec\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		pf, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf.Frontmatter.Spec).To(Equal(""))
+		Expect(pf.Frontmatter.Status).To(Equal("queued"))
+	})
+
+	It("omits spec field when empty on save", func() {
+		path := filepath.Join(tempDir, "001-no-spec.md")
+		content := "---\nstatus: queued\n---\n\n# No spec\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		pf, err := prompt.Load(ctx, path)
+		Expect(err).To(BeNil())
+		Expect(pf.Save(ctx)).To(Succeed())
+
+		saved, err := os.ReadFile(path)
+		Expect(err).To(BeNil())
+		Expect(string(saved)).NotTo(ContainSubstring("spec:"))
+	})
+})

@@ -12,6 +12,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -24,12 +25,13 @@ type SpecStatusCommand interface {
 
 // specStatusCommand implements SpecStatusCommand.
 type specStatusCommand struct {
-	lister spec.Lister
+	lister  spec.Lister
+	counter prompt.Counter
 }
 
 // NewSpecStatusCommand creates a new SpecStatusCommand.
-func NewSpecStatusCommand(lister spec.Lister) SpecStatusCommand {
-	return &specStatusCommand{lister: lister}
+func NewSpecStatusCommand(lister spec.Lister, counter prompt.Counter) SpecStatusCommand {
+	return &specStatusCommand{lister: lister, counter: counter}
 }
 
 // Run executes the spec status command.
@@ -46,6 +48,20 @@ func (s *specStatusCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "get spec summary")
 	}
 
+	specs, err := s.lister.List(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "list specs")
+	}
+
+	for _, sf := range specs {
+		c, t, err := s.counter.CountBySpec(ctx, sf.Name)
+		if err != nil {
+			return errors.Wrap(ctx, err, "count prompts for spec")
+		}
+		summary.LinkedPromptsCompleted += c
+		summary.LinkedPromptsTotal += t
+	}
+
 	if jsonOutput {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
@@ -53,12 +69,14 @@ func (s *specStatusCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	fmt.Printf(
-		"Specs: %d total (%d draft, %d approved, %d prompted, %d completed)\n",
+		"Specs: %d total (%d draft, %d approved, %d prompted, %d completed) | Linked prompts: %d/%d\n",
 		summary.Total,
 		summary.Draft,
 		summary.Approved,
 		summary.Prompted,
 		summary.Completed,
+		summary.LinkedPromptsCompleted,
+		summary.LinkedPromptsTotal,
 	)
 	return nil
 }

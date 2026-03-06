@@ -12,6 +12,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -24,18 +25,21 @@ type SpecListCommand interface {
 
 // SpecEntry represents a single spec entry in the list output.
 type SpecEntry struct {
-	Status string `json:"status"`
-	File   string `json:"file"`
+	Status           string `json:"status"`
+	File             string `json:"file"`
+	PromptsCompleted int    `json:"prompts_completed"`
+	PromptsTotal     int    `json:"prompts_total"`
 }
 
 // specListCommand implements SpecListCommand.
 type specListCommand struct {
-	lister spec.Lister
+	lister  spec.Lister
+	counter prompt.Counter
 }
 
 // NewSpecListCommand creates a new SpecListCommand.
-func NewSpecListCommand(lister spec.Lister) SpecListCommand {
-	return &specListCommand{lister: lister}
+func NewSpecListCommand(lister spec.Lister, counter prompt.Counter) SpecListCommand {
+	return &specListCommand{lister: lister, counter: counter}
 }
 
 // Run executes the spec list command.
@@ -54,9 +58,15 @@ func (s *specListCommand) Run(ctx context.Context, args []string) error {
 
 	entries := make([]SpecEntry, 0, len(specs))
 	for _, sf := range specs {
+		completed, total, err := s.counter.CountBySpec(ctx, sf.Name)
+		if err != nil {
+			return errors.Wrap(ctx, err, "count prompts for spec")
+		}
 		entries = append(entries, SpecEntry{
-			Status: sf.Frontmatter.Status,
-			File:   sf.Name + ".md",
+			Status:           sf.Frontmatter.Status,
+			File:             sf.Name + ".md",
+			PromptsCompleted: completed,
+			PromptsTotal:     total,
 		})
 	}
 
@@ -68,9 +78,10 @@ func (s *specListCommand) Run(ctx context.Context, args []string) error {
 
 // outputSpecListTable outputs spec entries as a human-readable table.
 func outputSpecListTable(entries []SpecEntry) error {
-	fmt.Printf("%-10s %s\n", "STATUS", "FILE")
+	fmt.Printf("%-10s %-8s %s\n", "STATUS", "PROMPTS", "FILE")
 	for _, e := range entries {
-		fmt.Printf("%-10s %s\n", e.Status, e.File)
+		prompts := fmt.Sprintf("%d/%d", e.PromptsCompleted, e.PromptsTotal)
+		fmt.Printf("%-10s %-8s %s\n", e.Status, prompts, e.File)
 	}
 	return nil
 }

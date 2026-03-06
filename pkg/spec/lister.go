@@ -15,11 +15,13 @@ import (
 
 // Summary holds counts of specs grouped by status.
 type Summary struct {
-	Draft     int
-	Approved  int
-	Prompted  int
-	Completed int
-	Total     int
+	Draft                  int
+	Approved               int
+	Prompted               int
+	Completed              int
+	Total                  int
+	LinkedPromptsCompleted int `json:"linked_prompts_completed,omitempty"`
+	LinkedPromptsTotal     int `json:"linked_prompts_total,omitempty"`
 }
 
 // Lister lists spec files from a directory.

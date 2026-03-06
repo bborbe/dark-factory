@@ -19,13 +19,15 @@ import (
 var _ = Describe("SpecStatusCommand", func() {
 	var (
 		mockLister    *mocks.Lister
+		mockCounter   *mocks.PromptCounter
 		specStatusCmd cmd.SpecStatusCommand
 		ctx           context.Context
 	)
 
 	BeforeEach(func() {
 		mockLister = &mocks.Lister{}
-		specStatusCmd = cmd.NewSpecStatusCommand(mockLister)
+		mockCounter = &mocks.PromptCounter{}
+		specStatusCmd = cmd.NewSpecStatusCommand(mockLister, mockCounter)
 		ctx = context.Background()
 	})
 
@@ -69,6 +71,18 @@ var _ = Describe("SpecStatusCommand", func() {
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("get spec summary"))
+		})
+
+		It("includes linked prompt counts from counter", func() {
+			mockLister.SummaryReturns(&spec.Summary{Total: 1, Completed: 1}, nil)
+			mockLister.ListReturns([]*spec.SpecFile{
+				{Name: "001-my-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
+			}, nil)
+			mockCounter.CountBySpecReturns(3, 5, nil)
+
+			err := specStatusCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
 		})
 	})
 })

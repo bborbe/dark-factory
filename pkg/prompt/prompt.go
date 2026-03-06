@@ -139,6 +139,7 @@ type Frontmatter struct {
 	Completed          string   `yaml:"completed,omitempty"`
 	PRURL              string   `yaml:"pr-url,omitempty"`
 	Branch             string   `yaml:"branch,omitempty"`
+	RetryCount         int      `yaml:"retryCount,omitempty"`
 }
 
 // HasSpec returns true if the given spec ID is in the Specs list.
@@ -310,6 +311,11 @@ func (pf *PromptFile) SetPRURL(url string) {
 	pf.Frontmatter.PRURL = url
 }
 
+// RetryCount returns the retryCount field from frontmatter.
+func (pf *PromptFile) RetryCount() int {
+	return pf.Frontmatter.RetryCount
+}
+
 // Branch returns the branch field from frontmatter.
 func (pf *PromptFile) Branch() string {
 	return pf.Frontmatter.Branch
@@ -350,6 +356,7 @@ type Manager interface {
 	SetVersion(ctx context.Context, path string, version string) error
 	SetPRURL(ctx context.Context, path string, url string) error
 	SetBranch(ctx context.Context, path string, branch string) error
+	IncrementRetryCount(ctx context.Context, path string) error
 	Content(ctx context.Context, path string) (string, error)
 	Title(ctx context.Context, path string) (string, error)
 	MoveToCompleted(ctx context.Context, path string) error
@@ -426,6 +433,11 @@ func (pm *manager) SetPRURL(ctx context.Context, path string, url string) error 
 // SetBranch updates the branch field in a prompt file's frontmatter.
 func (pm *manager) SetBranch(ctx context.Context, path string, branch string) error {
 	return SetBranch(ctx, path, branch)
+}
+
+// IncrementRetryCount increments the retryCount field in a prompt file's frontmatter.
+func (pm *manager) IncrementRetryCount(ctx context.Context, path string) error {
+	return IncrementRetryCount(ctx, path)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
@@ -645,6 +657,18 @@ func SetBranch(ctx context.Context, path string, branch string) error {
 	}
 
 	pf.SetBranch(branch)
+	return pf.Save(ctx)
+}
+
+// IncrementRetryCount increments the retryCount field in a prompt file's frontmatter by 1.
+// If the file has no frontmatter, adds frontmatter with retryCount set to 1.
+func IncrementRetryCount(ctx context.Context, path string) error {
+	pf, err := Load(ctx, path)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.Frontmatter.RetryCount++
 	return pf.Save(ctx)
 }
 

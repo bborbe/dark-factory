@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.34
+
+- 101-spec-019-retry-count-frontmatter
+
 ## v0.17.33
 
 - autoReview: false        # watch PRs for reviews and generate fix prompts

@@ -46,6 +46,18 @@ type Manager struct {
 	hasExecutingReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	IncrementRetryCountStub        func(context.Context, string) error
+	incrementRetryCountMutex       sync.RWMutex
+	incrementRetryCountArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	incrementRetryCountReturns struct {
+		result1 error
+	}
+	incrementRetryCountReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ListQueuedStub        func(context.Context) ([]prompt.Prompt, error)
 	listQueuedMutex       sync.RWMutex
 	listQueuedArgsForCall []struct {
@@ -403,6 +415,68 @@ func (fake *Manager) HasExecutingReturnsOnCall(i int, result1 bool) {
 	}
 	fake.hasExecutingReturnsOnCall[i] = struct {
 		result1 bool
+	}{result1}
+}
+
+func (fake *Manager) IncrementRetryCount(arg1 context.Context, arg2 string) error {
+	fake.incrementRetryCountMutex.Lock()
+	ret, specificReturn := fake.incrementRetryCountReturnsOnCall[len(fake.incrementRetryCountArgsForCall)]
+	fake.incrementRetryCountArgsForCall = append(fake.incrementRetryCountArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.IncrementRetryCountStub
+	fakeReturns := fake.incrementRetryCountReturns
+	fake.recordInvocation("IncrementRetryCount", []interface{}{arg1, arg2})
+	fake.incrementRetryCountMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) IncrementRetryCountCallCount() int {
+	fake.incrementRetryCountMutex.RLock()
+	defer fake.incrementRetryCountMutex.RUnlock()
+	return len(fake.incrementRetryCountArgsForCall)
+}
+
+func (fake *Manager) IncrementRetryCountCalls(stub func(context.Context, string) error) {
+	fake.incrementRetryCountMutex.Lock()
+	defer fake.incrementRetryCountMutex.Unlock()
+	fake.IncrementRetryCountStub = stub
+}
+
+func (fake *Manager) IncrementRetryCountArgsForCall(i int) (context.Context, string) {
+	fake.incrementRetryCountMutex.RLock()
+	defer fake.incrementRetryCountMutex.RUnlock()
+	argsForCall := fake.incrementRetryCountArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Manager) IncrementRetryCountReturns(result1 error) {
+	fake.incrementRetryCountMutex.Lock()
+	defer fake.incrementRetryCountMutex.Unlock()
+	fake.IncrementRetryCountStub = nil
+	fake.incrementRetryCountReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Manager) IncrementRetryCountReturnsOnCall(i int, result1 error) {
+	fake.incrementRetryCountMutex.Lock()
+	defer fake.incrementRetryCountMutex.Unlock()
+	fake.IncrementRetryCountStub = nil
+	if fake.incrementRetryCountReturnsOnCall == nil {
+		fake.incrementRetryCountReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.incrementRetryCountReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 

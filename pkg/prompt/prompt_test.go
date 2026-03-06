@@ -2000,4 +2000,58 @@ var _ = Describe("Frontmatter spec field", func() {
 		Expect(err).To(BeNil())
 		Expect(string(saved)).NotTo(ContainSubstring("spec:"))
 	})
+
+	Describe("PromptFile.RetryCount", func() {
+		It("returns retryCount value when set in frontmatter", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\nretryCount: 2\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.RetryCount()).To(Equal(2))
+		})
+
+		It("returns 0 when retryCount is not set", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.RetryCount()).To(Equal(0))
+		})
+	})
+
+	Describe("IncrementRetryCount", func() {
+		It("increments retryCount from 0 to 1", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.IncrementRetryCount(ctx, path)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.RetryCount()).To(Equal(1))
+		})
+
+		It("increments retryCount from 2 to 3", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: queued\nretryCount: 2\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			err = prompt.IncrementRetryCount(ctx, path)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.RetryCount()).To(Equal(3))
+		})
+	})
 })

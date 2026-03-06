@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Added spec field to prompt frontmatter, prompt.Counter interface for counting prompts by spec, updated spec_list.go and spec_status.go to show linked prompt counts, added LinkedPromptsCompleted/LinkedPromptsTotal to spec.Summary, wired factory, and added tests.
+container: dark-factory-091-spec-019-prompt-spec-field
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
+started: "2026-03-06T11:38:40Z"
+completed: "2026-03-06T11:51:17Z"
 ---
 <objective>
 Add a `spec` field to prompt frontmatter that links a prompt to its parent spec. This enables spec-prompt linkage for status tracking and auto-completion.

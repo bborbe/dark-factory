@@ -1,7 +1,1 @@
 workflow: direct
-inboxDir: prompts
-queueDir: prompts/queue
-completedDir: prompts/completed
-logDir: prompts/log
-debounceMs: 500
-serverPort: 0

@@ -1,5 +1,10 @@
 ---
+status: executing
+container: dark-factory-097-spec-019-spec-array-field
+dark-factory-version: v0.17.29
 created: "2026-03-06T13:21:49Z"
+queued: "2026-03-06T14:06:39Z"
+started: "2026-03-06T14:06:39Z"
 ---
 <objective>
 Change the `spec` frontmatter field in prompts from a single string to an array of strings, so a prompt can belong to multiple specs. Update the PROMPTS counter in spec list to count prompts that include the spec's number in their `spec` array.

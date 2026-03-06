@@ -1,5 +1,5 @@
 ---
-status: prompted
+status: verifying
 ---
 
 # Native Spec Integration

@@ -1,5 +1,5 @@
 ---
-status: prompted
+status: verifying
 ---
 
 # Auto-Prompt Generation from Spec

@@ -32,16 +32,21 @@ type Runner interface {
 
 // runner orchestrates the main processing loop.
 type runner struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
-	promptManager prompt.Manager
-	locker        lock.Locker
-	watcher       watcher.Watcher
-	processor     processor.Processor
-	server        server.Server
-	reviewPoller  review.ReviewPoller
-	specWatcher   specwatcher.SpecWatcher
+	inboxDir           string
+	inProgressDir      string
+	completedDir       string
+	logDir             string
+	specsInboxDir      string
+	specsInProgressDir string
+	specsCompletedDir  string
+	specsLogDir        string
+	promptManager      prompt.Manager
+	locker             lock.Locker
+	watcher            watcher.Watcher
+	processor          processor.Processor
+	server             server.Server
+	reviewPoller       review.ReviewPoller
+	specWatcher        specwatcher.SpecWatcher
 }
 
 // NewRunner creates a new Runner.
@@ -49,6 +54,11 @@ func NewRunner(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
+	logDir string,
+	specsInboxDir string,
+	specsInProgressDir string,
+	specsCompletedDir string,
+	specsLogDir string,
 	promptManager prompt.Manager,
 	locker lock.Locker,
 	watcher watcher.Watcher,
@@ -58,16 +68,21 @@ func NewRunner(
 	specWatcher specwatcher.SpecWatcher,
 ) Runner {
 	return &runner{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
-		promptManager: promptManager,
-		locker:        locker,
-		watcher:       watcher,
-		processor:     processor,
-		server:        server,
-		reviewPoller:  reviewPoller,
-		specWatcher:   specWatcher,
+		inboxDir:           inboxDir,
+		inProgressDir:      inProgressDir,
+		completedDir:       completedDir,
+		logDir:             logDir,
+		specsInboxDir:      specsInboxDir,
+		specsInProgressDir: specsInProgressDir,
+		specsCompletedDir:  specsCompletedDir,
+		specsLogDir:        specsLogDir,
+		promptManager:      promptManager,
+		locker:             locker,
+		watcher:            watcher,
+		processor:          processor,
+		server:             server,
+		reviewPoller:       reviewPoller,
+		specWatcher:        specWatcher,
 	}
 }
 
@@ -92,6 +107,11 @@ func (r *runner) Run(ctx context.Context) error {
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	// Migrate old prompts/queue/ → prompts/in-progress/ if needed
+	if err := r.migrateQueueDir(ctx); err != nil {
+		return errors.Wrap(ctx, err, "migrate queue dir")
+	}
 
 	// Create directories if they don't exist
 	if err := r.createDirectories(ctx); err != nil {
@@ -143,9 +163,39 @@ func (r *runner) normalizeFilenames(ctx context.Context) error {
 	return nil
 }
 
-// createDirectories creates the inbox, in-progress, and completed directories if they don't exist.
+// migrateQueueDir renames prompts/queue/ → prompts/in-progress/ if the old path
+// exists and the new path does not. This is a one-time migration.
+func (r *runner) migrateQueueDir(ctx context.Context) error {
+	oldQueue := filepath.Join(filepath.Dir(r.inProgressDir), "queue")
+	// Only migrate if old dir exists
+	if _, err := os.Stat(oldQueue); os.IsNotExist(err) {
+		return nil
+	}
+	// Skip if new dir already exists (migration already done or manually created)
+	if _, err := os.Stat(r.inProgressDir); err == nil {
+		slog.Info("skipping queue migration: in-progress dir already exists",
+			"old", oldQueue, "new", r.inProgressDir)
+		return nil
+	}
+	if err := os.Rename(oldQueue, r.inProgressDir); err != nil {
+		return errors.Wrap(ctx, err, "migrate queue dir to in-progress")
+	}
+	slog.Info("migrated queue dir to in-progress", "old", oldQueue, "new", r.inProgressDir)
+	return nil
+}
+
+// createDirectories creates all eight lifecycle directories if they don't exist.
 func (r *runner) createDirectories(ctx context.Context) error {
-	dirs := []string{r.inboxDir, r.inProgressDir, r.completedDir}
+	dirs := []string{
+		r.inboxDir,
+		r.inProgressDir,
+		r.completedDir,
+		r.logDir,
+		r.specsInboxDir,
+		r.specsInProgressDir,
+		r.specsCompletedDir,
+		r.specsLogDir,
+	}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0750); err != nil {
 			return errors.Wrap(ctx, err, fmt.Sprintf("create directory %s", dir))

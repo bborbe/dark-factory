@@ -37,9 +37,13 @@ import (
 const defaultIdeasDir = "prompts/ideas"
 
 // createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
-func createPromptManager(inProgressDir string, completedDir string) (prompt.Manager, git.Releaser) {
+func createPromptManager(
+	inboxDir string,
+	inProgressDir string,
+	completedDir string,
+) (prompt.Manager, git.Releaser) {
 	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(inProgressDir, completedDir, releaser)
+	promptManager := prompt.NewManager(inboxDir, inProgressDir, completedDir, releaser)
 	return promptManager, releaser
 }
 
@@ -48,7 +52,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
-	promptManager, releaser := createPromptManager(inProgressDir, completedDir)
+	promptManager, releaser := createPromptManager(inboxDir, inProgressDir, completedDir)
 	versionGetter := version.NewGetter(ver)
 
 	// Resolve project name
@@ -84,6 +88,11 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		inboxDir,
 		inProgressDir,
 		completedDir,
+		cfg.Prompts.LogDir,
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		cfg.Specs.LogDir,
 		promptManager,
 		CreateLocker("."),
 		CreateWatcher(
@@ -325,7 +334,11 @@ func CreateServer(
 
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
-	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 
 	statusChecker := status.NewChecker(
 		cfg.Prompts.InProgressDir,
@@ -343,7 +356,11 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 
 // CreateQueueCommand creates a QueueCommand.
 func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
-	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 
 	return cmd.NewQueueCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
 }
@@ -364,7 +381,11 @@ func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
 
 // CreateApproveCommand creates an ApproveCommand.
 func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
-	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 
 	return cmd.NewApproveCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
 }
@@ -411,7 +432,11 @@ func CreateSpecVerifyCommand(cfg config.Config) cmd.SpecVerifyCommand {
 
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
 func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
-	promptManager, _ := createPromptManager(cfg.Prompts.InProgressDir, cfg.Prompts.CompletedDir)
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
 
 	statusChecker := status.NewChecker(
 		cfg.Prompts.InProgressDir,

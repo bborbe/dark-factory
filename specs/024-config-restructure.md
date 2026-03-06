@@ -110,7 +110,38 @@ The flat `specDir` config field is removed; all spec commands switch to `cfg.Spe
 
 ## Post-Implementation
 
-After the spec is completed, manually update `.dark-factory.yaml` (and any other dark-factory instances) to the new nested format. No migration code needed — just edit the file by hand and restart.
+Do these steps after `make install` succeeds with the new config format.
+
+### 1. Update all `.dark-factory.yaml` configs
+
+All projects slim down to a single line (defaults cover everything else):
+
+```yaml
+workflow: direct
+```
+
+Trading projects (`trading`, `trading-dev`, `trading-prod`):
+```yaml
+workflow: pr
+```
+
+Projects to update:
+- `go-skeleton`, `pr-reviewer`, `dark-factory`, `claude-yolo`, `updater`, `time`, `vault-cli` → `workflow: direct`
+- `trading`, `trading-dev`, `trading-prod` → `workflow: pr`
+
+### 2. Move files to new directory structure
+
+For each project:
+- `prompts/queue/` → `prompts/in-progress/` (rename directory)
+- Spec files: move based on current status
+  - `draft` → stays in `specs/`
+  - `approved`, `prompted`, `verifying` → move to `specs/in-progress/`
+  - `completed` → move to `specs/completed/`
+
+### 3. Fix frontmatter for all existing prompts and specs
+
+- Prompts: ensure `status` field is present and correct for their directory
+- Specs: ensure `status` field matches their directory location
 
 ## Do-Nothing Option
 

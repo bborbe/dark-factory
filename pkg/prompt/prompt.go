@@ -366,38 +366,45 @@ type Manager interface {
 
 // manager implements Manager.
 type manager struct {
-	queueDir     string
-	completedDir string
-	mover        FileMover
+	inboxDir      string
+	inProgressDir string
+	completedDir  string
+	mover         FileMover
 }
 
 // NewManager creates a new Manager.
-func NewManager(queueDir string, completedDir string, mover FileMover) Manager {
+func NewManager(
+	inboxDir string,
+	inProgressDir string,
+	completedDir string,
+	mover FileMover,
+) Manager {
 	return &manager{
-		queueDir:     queueDir,
-		completedDir: completedDir,
-		mover:        mover,
+		inboxDir:      inboxDir,
+		inProgressDir: inProgressDir,
+		completedDir:  completedDir,
+		mover:         mover,
 	}
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "queued".
 func (pm *manager) ResetExecuting(ctx context.Context) error {
-	return ResetExecuting(ctx, pm.queueDir)
+	return ResetExecuting(ctx, pm.inProgressDir)
 }
 
 // ResetFailed resets any prompts with status "failed" back to "queued".
 func (pm *manager) ResetFailed(ctx context.Context) error {
-	return ResetFailed(ctx, pm.queueDir)
+	return ResetFailed(ctx, pm.inProgressDir)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
 func (pm *manager) HasExecuting(ctx context.Context) bool {
-	return HasExecuting(ctx, pm.queueDir)
+	return HasExecuting(ctx, pm.inProgressDir)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
 func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
-	return ListQueued(ctx, pm.queueDir)
+	return ListQueued(ctx, pm.inProgressDir)
 }
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
@@ -456,9 +463,9 @@ func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
-// It also checks the completed directory for used numbers.
+// It also checks the inbox and completed directories for used numbers.
 func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
-	return NormalizeFilenames(ctx, dir, pm.completedDir, pm.mover)
+	return NormalizeFilenames(ctx, dir, pm.inboxDir, pm.completedDir, pm.mover)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
@@ -776,6 +783,7 @@ type fileInfo struct {
 func NormalizeFilenames(
 	ctx context.Context,
 	dir string,
+	inboxDir string,
 	completedDir string,
 	mover FileMover,
 ) ([]Rename, error) {
@@ -785,6 +793,16 @@ func NormalizeFilenames(
 	}
 
 	files, usedNumbers := scanPromptFiles(entries)
+
+	// Also collect numbers used in inboxDir so we don't reuse numbers from draft prompts.
+	inboxEntries, err := os.ReadDir(inboxDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrap(ctx, err, "read inbox directory")
+	}
+	_, inboxNumbers := scanPromptFiles(inboxEntries)
+	for n := range inboxNumbers {
+		usedNumbers[n] = true
+	}
 
 	// Also collect numbers used in completed/ so we don't assign duplicates.
 	completedEntries, err := os.ReadDir(completedDir)

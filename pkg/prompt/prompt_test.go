@@ -1391,7 +1391,13 @@ Content here.
 
 			It("assigns next available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("fix-something.md"))
@@ -1413,7 +1419,13 @@ Content here.
 
 			It("renames later file to next available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// First file alphabetically (009-bar.md) is kept, second (009-foo.md) is renamed
@@ -1437,7 +1449,13 @@ Content here.
 
 			It("normalizes to zero-padded 3-digit format", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("9-foo.md"))
@@ -1458,7 +1476,13 @@ Content here.
 
 			It("normalizes to zero-padded 3-digit format", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("42-answer.md"))
@@ -1475,7 +1499,13 @@ Content here.
 
 			It("does not rename any files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1498,7 +1528,13 @@ Content here.
 
 			It("renames only invalid files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(2))
 
@@ -1528,7 +1564,13 @@ Content here.
 
 			It("does not rename files in subdirectories", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1555,7 +1597,13 @@ Content here.
 
 			It("assigns next number above completed/ maximum", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
@@ -1586,7 +1634,13 @@ Content here.
 
 			It("scans completed/ without errors and avoids used numbers", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// Should assign 004 (not 001-003 which are used in completed/)
@@ -1605,7 +1659,13 @@ Content here.
 
 			It("ignores non-markdown files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -1618,7 +1678,13 @@ Content here.
 		Context("with empty directory", func() {
 			It("returns no renames", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 			})
@@ -1634,7 +1700,13 @@ Content here.
 
 			It("assigns smallest available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))
@@ -1653,7 +1725,13 @@ Content here.
 
 			It("renames to next available number instead of conflicting 001", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -1676,7 +1754,13 @@ Content here.
 
 			It("renames to first number above completed/ maximum", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -1691,7 +1775,13 @@ Content here.
 
 			It("reformats to 3-digit prefix keeping same number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -1706,9 +1796,80 @@ Content here.
 
 			It("does not rename the file", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(ctx, tempDir, completedDir, mover)
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					filepath.Join(tempDir, "inbox"),
+					completedDir,
+					mover,
+				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
+			})
+		})
+
+		Context("with numbers used in inboxDir", func() {
+			It("does not reuse numbers already taken by inbox files", func() {
+				inboxDir := filepath.Join(tempDir, "inbox")
+				err := os.MkdirAll(inboxDir, 0750)
+				Expect(err).To(BeNil())
+
+				// inbox has 001-003
+				createPromptFile(inboxDir, "001-draft.md", "queued")
+				createPromptFile(inboxDir, "002-draft.md", "queued")
+				createPromptFile(inboxDir, "003-draft.md", "queued")
+
+				// in-progress has one unnumbered file
+				createPromptFile(tempDir, "new-feature.md", "queued")
+
+				completedDir := filepath.Join(tempDir, "completed")
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					inboxDir,
+					completedDir,
+					mover,
+				)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
+				// Should assign 004 (not 001-003 which are used in inbox)
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("004-new-feature.md"))
+			})
+		})
+
+		Context("with numbers used in both inboxDir and completedDir", func() {
+			It("does not reuse numbers from either directory", func() {
+				inboxDir := filepath.Join(tempDir, "inbox")
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(inboxDir, 0750)
+				Expect(err).To(BeNil())
+				err = os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+
+				// inbox has 001-002
+				createPromptFile(inboxDir, "001-draft.md", "queued")
+				createPromptFile(inboxDir, "002-draft.md", "queued")
+
+				// completed has 003-004
+				createPromptFile(completedDir, "003-done.md", "completed")
+				createPromptFile(completedDir, "004-done.md", "completed")
+
+				// in-progress has one unnumbered file
+				createPromptFile(tempDir, "another-feature.md", "queued")
+
+				renames, err := prompt.NormalizeFilenames(
+					ctx,
+					tempDir,
+					inboxDir,
+					completedDir,
+					mover,
+				)
+				Expect(err).To(BeNil())
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Base(renames[0].OldPath)).To(Equal("another-feature.md"))
+				// Should assign 005 (001-004 are all taken across inbox and completed)
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("005-another-feature.md"))
 			})
 		})
 	})

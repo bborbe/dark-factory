@@ -57,6 +57,7 @@ var _ = Describe("Factory", func() {
 				"test-token",
 				false,
 				false,
+				"specs",
 			)
 			Expect(processor).NotTo(BeNil())
 		})

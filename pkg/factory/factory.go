@@ -21,6 +21,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/server"
+	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/status"
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
@@ -91,6 +92,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			ghToken,
 			cfg.AutoMerge,
 			cfg.AutoRelease,
+			"specs",
 		),
 		srv,
 	)
@@ -122,6 +124,7 @@ func CreateProcessor(
 	ghToken string,
 	autoMerge bool,
 	autoRelease bool,
+	specsDir string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		queueDir,
@@ -140,6 +143,7 @@ func CreateProcessor(
 		git.NewPRMerger(ghToken),
 		autoMerge,
 		autoRelease,
+		spec.NewAutoCompleter(queueDir, completedDir, specsDir),
 	)
 }
 

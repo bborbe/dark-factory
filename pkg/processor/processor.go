@@ -52,6 +52,7 @@ type processor struct {
 	autoMerge      bool
 	autoRelease    bool
 	prMerger       git.PRMerger
+	autoCompleter  spec.AutoCompleter
 	skippedPrompts map[string]time.Time // filename → mod time when skipped
 }
 
@@ -73,6 +74,7 @@ func NewProcessor(
 	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
+	autoCompleter spec.AutoCompleter,
 ) Processor {
 	return &processor{
 		queueDir:       queueDir,
@@ -91,6 +93,7 @@ func NewProcessor(
 		autoMerge:      autoMerge,
 		autoRelease:    autoRelease,
 		prMerger:       prMerger,
+		autoCompleter:  autoCompleter,
 		skippedPrompts: make(map[string]time.Time),
 	}
 }
@@ -389,6 +392,13 @@ func (p *processor) handlePostExecution(
 	}
 
 	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+
+	// Auto-complete linked spec if all its prompts are now done
+	if specID := pf.Frontmatter.Spec; specID != "" {
+		if err := p.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
+			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
+		}
+	}
 
 	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
 	gitCtx := context.WithoutCancel(ctx)

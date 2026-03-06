@@ -63,7 +63,9 @@ var _ = Describe("Load", func() {
 	Context("without frontmatter", func() {
 		It("returns empty status", func() {
 			path := filepath.Join(dir, "no-fm.md")
-			Expect(os.WriteFile(path, []byte("# Just a title\n\nNo frontmatter here.\n"), 0600)).To(Succeed())
+			Expect(
+				os.WriteFile(path, []byte("# Just a title\n\nNo frontmatter here.\n"), 0600),
+			).To(Succeed())
 
 			sf, err := spec.Load(ctx, path)
 			Expect(err).NotTo(HaveOccurred())
@@ -165,7 +167,9 @@ var _ = Describe("Lister", func() {
 
 		It("ignores non-.md files", func() {
 			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
-			Expect(os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("text"), 0600)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("text"), 0600),
+			).To(Succeed())
 
 			specs, err := lister.List(ctx)
 			Expect(err).NotTo(HaveOccurred())

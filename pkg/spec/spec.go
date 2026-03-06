@@ -179,34 +179,56 @@ func (a *autoCompleter) allLinkedPromptsCompleted(
 	found := false
 
 	for _, dir := range []string{a.queueDir, a.completedDir} {
-		entries, err := os.ReadDir(dir)
+		allDone, dirFound, err := a.scanDirForSpec(ctx, dir, specID)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return false, false, errors.Wrap(ctx, err, "read directory")
+			return false, false, err
+		}
+		if dirFound {
+			found = true
+		}
+		if !allDone {
+			return false, true, nil
+		}
+	}
+
+	return true, found, nil
+}
+
+// scanDirForSpec scans a single directory for prompts linked to specID.
+// Returns (allCompleted, found, error).
+func (a *autoCompleter) scanDirForSpec(
+	ctx context.Context,
+	dir string,
+	specID string,
+) (bool, bool, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, false, nil
+		}
+		return false, false, errors.Wrap(ctx, err, "read directory")
+	}
+
+	found := false
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
 		}
 
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
+		path := filepath.Join(dir, entry.Name())
+		pf, err := prompt.Load(ctx, path)
+		if err != nil {
+			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
+			continue
+		}
 
-			path := filepath.Join(dir, entry.Name())
-			pf, err := prompt.Load(ctx, path)
-			if err != nil {
-				slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
-				continue
-			}
+		if pf.Frontmatter.Spec != specID {
+			continue
+		}
 
-			if pf.Frontmatter.Spec != specID {
-				continue
-			}
-
-			found = true
-			if pf.Frontmatter.Status != string(prompt.StatusCompleted) {
-				return false, true, nil
-			}
+		found = true
+		if pf.Frontmatter.Status != string(prompt.StatusCompleted) {
+			return false, true, nil
 		}
 	}
 

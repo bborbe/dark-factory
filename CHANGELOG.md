@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.20
+
+- 087-spec-019-spec-model
+
 ## v0.17.19
 
 - 086-wire-existing-branch-into-processor

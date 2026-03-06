@@ -24,19 +24,20 @@ import (
 
 var _ = Describe("Processor", func() {
 	var (
-		tempDir        string
-		promptsDir     string
-		ready          chan struct{}
-		ctx            context.Context
-		cancel         context.CancelFunc
-		mockExecutor   *mocks.Executor
-		mockManager    *mocks.Manager
-		mockReleaser   *mocks.Releaser
-		mockVersionGet *mocks.VersionGetter
-		mockBrancher   *mocks.Brancher
-		mockPRCreator  *mocks.PRCreator
-		mockWorktree   *mocks.Worktree
-		mockPRMerger   *mocks.PRMerger
+		tempDir           string
+		promptsDir        string
+		ready             chan struct{}
+		ctx               context.Context
+		cancel            context.CancelFunc
+		mockExecutor      *mocks.Executor
+		mockManager       *mocks.Manager
+		mockReleaser      *mocks.Releaser
+		mockVersionGet    *mocks.VersionGetter
+		mockBrancher      *mocks.Brancher
+		mockPRCreator     *mocks.PRCreator
+		mockWorktree      *mocks.Worktree
+		mockPRMerger      *mocks.PRMerger
+		mockAutoCompleter *mocks.AutoCompleter
 	)
 
 	BeforeEach(func() {
@@ -59,6 +60,7 @@ var _ = Describe("Processor", func() {
 		mockPRCreator = &mocks.PRCreator{}
 		mockWorktree = &mocks.Worktree{}
 		mockPRMerger = &mocks.PRMerger{}
+		mockAutoCompleter = &mocks.AutoCompleter{}
 		mockVersionGet.GetReturns("v0.0.1-test")
 	})
 
@@ -107,6 +109,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -167,6 +170,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -231,6 +235,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -291,6 +296,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -343,6 +349,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -395,6 +402,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -451,6 +459,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -533,6 +542,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -595,6 +605,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -647,6 +658,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -703,6 +715,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -748,6 +761,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -791,6 +805,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -844,6 +859,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -908,6 +924,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		// Run processor in goroutine
@@ -980,6 +997,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -1054,6 +1072,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor — marks failed and continues
@@ -1113,6 +1132,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor — marks failed and continues
@@ -1176,6 +1196,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -1248,6 +1269,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -1324,6 +1346,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -1394,6 +1417,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -1497,6 +1521,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -1576,6 +1601,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor
@@ -1648,6 +1674,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor
@@ -1727,6 +1754,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -1783,6 +1811,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor
@@ -1875,6 +1904,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -1944,6 +1974,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -2010,6 +2041,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2077,6 +2109,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2144,6 +2177,7 @@ more output
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -2210,6 +2244,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2280,6 +2315,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			// Run processor in goroutine
@@ -2334,6 +2370,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2380,6 +2417,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2433,6 +2471,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2499,6 +2538,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2558,6 +2598,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2621,6 +2662,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2685,6 +2727,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2741,6 +2784,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2809,6 +2853,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -2857,6 +2902,7 @@ DARK-FACTORY-REPORT -->
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -2912,6 +2958,7 @@ DARK-FACTORY-REPORT -->
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -2983,6 +3030,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3027,6 +3075,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		err := p.Process(ctx)
@@ -3054,6 +3103,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		err := p.Process(ctx)
@@ -3091,6 +3141,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3136,6 +3187,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3199,6 +3251,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3268,6 +3321,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3338,6 +3392,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3389,6 +3444,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3457,6 +3513,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			mockAutoCompleter,
 		)
 
 		go func() {
@@ -3532,6 +3589,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				false, // autoMerge disabled
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -3614,6 +3672,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockPRMerger,
 					true, // autoMerge enabled
 					false,
+					mockAutoCompleter,
 				)
 
 				go func() {
@@ -3695,6 +3754,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -3777,6 +3837,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				true, // autoMerge enabled
 				true, // autoRelease enabled
+				mockAutoCompleter,
 			)
 
 			go func() {
@@ -3847,6 +3908,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockPRMerger,
 					true, // autoMerge enabled
 					true, // autoRelease enabled
+					mockAutoCompleter,
 				)
 
 				go func() {
@@ -3921,6 +3983,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				true,  // autoMerge enabled
 				false, // autoRelease disabled
+				mockAutoCompleter,
 			)
 
 			go func() {

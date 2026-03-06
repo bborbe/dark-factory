@@ -121,6 +121,7 @@ func CreateSpecGenerator(cfg config.Config, containerImage string) generator.Spe
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(containerImage, project.Name(cfg.ProjectName), cfg.Model),
 		cfg.InboxDir,
+		cfg.CompletedDir,
 		cfg.SpecDir,
 		cfg.LogDir,
 	)

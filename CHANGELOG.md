@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.19.0
+
+- fix: SpecGenerator no longer errors on zero new prompt files when completed prompts already exist for the spec
+
 ## v0.18.6
 
 - feat: Add dark-factory spec verify command to transition specs from verifying to completed

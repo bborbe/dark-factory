@@ -23,6 +23,7 @@ var _ = Describe("SpecGenerator", func() {
 		ctx          context.Context
 		mockExecutor *mocks.Executor
 		inboxDir     string
+		completedDir string
 		specsDir     string
 		logDir       string
 		sg           generator.SpecGenerator
@@ -37,13 +38,16 @@ var _ = Describe("SpecGenerator", func() {
 		inboxDir, err = os.MkdirTemp("", "generator-inbox-*")
 		Expect(err).NotTo(HaveOccurred())
 
+		completedDir, err = os.MkdirTemp("", "generator-completed-*")
+		Expect(err).NotTo(HaveOccurred())
+
 		specsDir, err = os.MkdirTemp("", "generator-specs-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		logDir, err = os.MkdirTemp("", "generator-logs-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		sg = generator.NewSpecGenerator(mockExecutor, inboxDir, specsDir, logDir)
+		sg = generator.NewSpecGenerator(mockExecutor, inboxDir, completedDir, specsDir, logDir)
 
 		// Write a spec file with status "approved"
 		specPath = filepath.Join(specsDir, "020-auto-prompt-generation.md")
@@ -53,6 +57,7 @@ var _ = Describe("SpecGenerator", func() {
 
 	AfterEach(func() {
 		_ = os.RemoveAll(inboxDir)
+		_ = os.RemoveAll(completedDir)
 		_ = os.RemoveAll(specsDir)
 		_ = os.RemoveAll(logDir)
 	})
@@ -110,6 +115,54 @@ var _ = Describe("SpecGenerator", func() {
 				sf, err := spec.Load(ctx, specPath)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal("approved"))
+			})
+		})
+
+		Context("no files produced but completed prompts exist for spec", func() {
+			BeforeEach(func() {
+				mockExecutor.ExecuteStub = nil
+				mockExecutor.ExecuteReturns(nil)
+
+				// Write a completed prompt linked to "020-auto-prompt-generation" in completedDir
+				content := "---\nstatus: completed\nspec: \"020-auto-prompt-generation\"\n---\n# Done\n"
+				Expect(os.WriteFile(
+					filepath.Join(completedDir, "020-some-prompt.md"),
+					[]byte(content),
+					0600,
+				)).To(Succeed())
+			})
+
+			It("returns no error", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+			})
+
+			It("does not change the spec status", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				sf, err := spec.Load(ctx, specPath)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sf.Frontmatter.Status).To(Equal("approved"))
+			})
+		})
+
+		Context("no files produced and no completed prompts for spec", func() {
+			BeforeEach(func() {
+				mockExecutor.ExecuteStub = nil
+				mockExecutor.ExecuteReturns(nil)
+
+				// Write a completed prompt linked to a different spec
+				content := "---\nstatus: completed\nspec: \"999-other-spec\"\n---\n# Other\n"
+				Expect(os.WriteFile(
+					filepath.Join(completedDir, "001-other.md"),
+					[]byte(content),
+					0600,
+				)).To(Succeed())
+			})
+
+			It("returns an error about no prompt files", func() {
+				err := sg.Generate(ctx, specPath)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("generation produced no prompt files"))
 			})
 		})
 

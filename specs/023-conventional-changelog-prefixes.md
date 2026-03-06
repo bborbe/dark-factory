@@ -1,5 +1,5 @@
 ---
-status: approved
+status: prompted
 ---
 
 # Conventional Changelog Prefixes for Version Bumping

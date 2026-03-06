@@ -1,5 +1,5 @@
 ---
-status: approved
+status: prompted
 ---
 
 # Lifecycle Timestamps for Specs and Prompts

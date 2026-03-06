@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Removed approveAll from approve.go so no-args returns a usage error, and updated tests accordingly; spec_approve.go already required an argument.
+container: dark-factory-094-remove-approve-all
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:59:53Z"
 queued: "2026-03-06T10:59:53Z"
+started: "2026-03-06T12:05:23Z"
+completed: "2026-03-06T12:10:05Z"
 ---
 <objective>
 Remove the approve-all behavior from the approve command. Require an explicit file argument for both prompt and spec approve — approving all at once is too dangerous.

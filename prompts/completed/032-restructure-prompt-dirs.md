@@ -1,4 +1,5 @@
 ---
+spec: ["004"]
 status: completed
 container: dark-factory-032-restructure-prompt-dirs
 ---

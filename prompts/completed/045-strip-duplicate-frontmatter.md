@@ -1,4 +1,5 @@
 ---
+spec: ["012"]
 status: completed
 container: dark-factory-045-strip-duplicate-frontmatter
 dark-factory-version: v0.10.2

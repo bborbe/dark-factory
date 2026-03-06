@@ -1,4 +1,5 @@
 ---
+spec: ["009"]
 status: completed
 container: dark-factory-038-add-queue-command
 dark-factory-version: v0.9.1

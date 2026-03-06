@@ -1,4 +1,5 @@
 ---
+spec: ["008"]
 status: completed
 container: dark-factory-039-disable-server-when-no-port
 dark-factory-version: v0.9.1

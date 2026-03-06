@@ -1,4 +1,5 @@
 ---
+spec: ["015"]
 status: completed
 summary: Implemented skip-invalid-prompts-until-modified feature to prevent log spam from repeatedly validating failed prompts
 container: dark-factory-073-skip-invalid-prompts-until-modified

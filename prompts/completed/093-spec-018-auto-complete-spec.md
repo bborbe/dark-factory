@@ -1,4 +1,5 @@
 ---
+spec: ["018"]
 status: completed
 summary: 'Spec auto-complete feature fully implemented: AutoCompleter interface in pkg/spec/spec.go, wired into processor with best-effort error handling, and tests for all required scenarios pass with make precommit exit 0.'
 container: dark-factory-093-spec-019-auto-complete-spec

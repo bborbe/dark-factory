@@ -1,4 +1,5 @@
 ---
+spec: ["016"]
 status: completed
 summary: Fixed changelog entry creation when no Unreleased section exists by passing title through CommitAndRelease
 container: dark-factory-079-fix-changelog-entry-before-tag

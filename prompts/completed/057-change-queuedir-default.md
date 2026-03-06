@@ -1,4 +1,5 @@
 ---
+spec: ["004"]
 status: completed
 summary: Changed default QueueDir from prompts to prompts/queue
 container: dark-factory-057-change-queuedir-default

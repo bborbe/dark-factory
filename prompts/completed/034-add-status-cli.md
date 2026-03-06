@@ -1,4 +1,5 @@
 ---
+spec: ["009"]
 status: completed
 container: dark-factory-034-add-status-cli
 dark-factory-version: v0.6.1

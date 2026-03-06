@@ -1,4 +1,5 @@
 ---
+spec: ["014"]
 status: completed
 summary: Added pr-url field to prompt frontmatter with amend/force-push support
 container: dark-factory-066-pr-url-in-frontmatter

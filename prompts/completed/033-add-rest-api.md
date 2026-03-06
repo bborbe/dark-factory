@@ -1,4 +1,5 @@
 ---
+spec: ["008"]
 status: completed
 container: dark-factory-033-add-rest-api
 dark-factory-version: v0.6.1

@@ -1,4 +1,5 @@
 ---
+spec: ["015"]
 status: completed
 summary: Implemented auto-setting status to queued when prompts are picked up from queue directory
 container: dark-factory-071-auto-queue-status-on-pickup

@@ -1,4 +1,5 @@
 ---
+spec: ["010"]
 status: completed
 summary: Added DefaultBranch, Pull, and renamed MergeOriginMaster to MergeOriginDefault for dynamic default branch detection
 container: dark-factory-075-brancher-default-branch

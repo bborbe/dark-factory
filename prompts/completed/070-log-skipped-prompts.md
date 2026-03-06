@@ -1,4 +1,5 @@
 ---
+spec: ["015"]
 status: completed
 summary: Added logging for skipped prompts at appropriate log levels
 container: dark-factory-070-log-skipped-prompts

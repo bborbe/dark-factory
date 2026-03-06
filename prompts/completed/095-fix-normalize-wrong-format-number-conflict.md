@@ -1,4 +1,5 @@
 ---
+spec: ["003"]
 status: completed
 summary: 'Fixed NormalizeFilenames bug: scanPromptFiles now only claims numbers for properly-formatted files, determineRename Case 3 checks usedNumbers before keeping a wrong-format file''s number, added 4 new tests, and fixed pre-existing yaml.v2/v3 mismatch in frontmatter parsing.'
 container: dark-factory-095-fix-normalize-wrong-format-number-conflict

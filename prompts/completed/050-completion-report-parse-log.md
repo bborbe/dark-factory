@@ -1,4 +1,5 @@
 ---
+spec: ["001"]
 status: completed
 container: dark-factory-050-completion-report-parse-log
 dark-factory-version: dev

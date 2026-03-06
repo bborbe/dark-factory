@@ -1,4 +1,5 @@
 ---
+spec: ["007"]
 status: completed
 container: dark-factory-019-optional-changelog
 ---

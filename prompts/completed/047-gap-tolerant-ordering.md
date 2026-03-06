@@ -1,4 +1,5 @@
 ---
+spec: ["003"]
 status: completed
 container: dark-factory-047-gap-tolerant-ordering
 dark-factory-version: v0.11.1

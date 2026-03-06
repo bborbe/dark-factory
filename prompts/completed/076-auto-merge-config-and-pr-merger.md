@@ -1,4 +1,5 @@
 ---
+spec: ["016"]
 status: completed
 summary: Added autoMerge/autoRelease config fields and PRMerger interface
 container: dark-factory-076-auto-merge-config-and-pr-merger

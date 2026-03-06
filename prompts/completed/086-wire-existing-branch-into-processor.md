@@ -1,4 +1,5 @@
 ---
+spec: ["017"]
 status: completed
 summary: 'Wired branch frontmatter field into processor: setupWorkflow now checks Branch() and uses FetchAndVerifyBranch+Switch for existing branches, savePRURLToFrontmatter preserves existing pr-url, refactored into helper methods to satisfy nestif linter, added 3 new tests.'
 container: dark-factory-086-wire-existing-branch-into-processor

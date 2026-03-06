@@ -1,4 +1,5 @@
 ---
+spec: ["018"]
 status: completed
 summary: Refactored CLI to two-level subcommands (prompt <cmd>, spec <cmd>) with updated ParseArgs, nested switch routing, and comprehensive tests.
 container: dark-factory-089-spec-019-two-level-commands

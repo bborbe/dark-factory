@@ -1,4 +1,5 @@
 ---
+spec: ["010"]
 status: completed
 summary: Wired worktree workflow into processor and factory with comprehensive tests and refactoring
 container: dark-factory-059-wire-worktree-workflow

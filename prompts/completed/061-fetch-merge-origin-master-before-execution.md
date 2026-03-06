@@ -1,4 +1,5 @@
 ---
+spec: ["007"]
 status: completed
 summary: Added git fetch and merge origin/master before prompt execution
 container: dark-factory-061-fetch-merge-origin-master-before-execution

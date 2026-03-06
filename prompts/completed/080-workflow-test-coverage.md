@@ -1,4 +1,5 @@
 ---
+spec: ["010"]
 status: completed
 summary: Added WorkflowWorktree auto-merge, WaitAndMerge failure, and autoSetQueuedStatus tests pushing processor coverage from 78.1% to 81.4%
 container: dark-factory-080-workflow-test-coverage

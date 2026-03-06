@@ -1,4 +1,5 @@
 ---
+spec: ["013"]
 status: completed
 summary: Added configurable GitHub identity via GH_TOKEN for bot account PR creation
 container: dark-factory-065-configurable-github-identity

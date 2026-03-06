@@ -1,4 +1,5 @@
 ---
+spec: ["002"]
 status: completed
 container: dark-factory-030-add-project-config
 ---

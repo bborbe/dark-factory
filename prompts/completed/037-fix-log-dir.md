@@ -1,4 +1,5 @@
 ---
+spec: ["004"]
 status: completed
 container: dark-factory-037-fix-log-dir
 dark-factory-version: v0.8.1

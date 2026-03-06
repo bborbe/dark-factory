@@ -1,4 +1,5 @@
 ---
+spec: ["011"]
 status: completed
 container: dark-factory-031-add-version-to-frontmatter
 ---

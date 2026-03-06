@@ -1,4 +1,5 @@
 ---
+spec: ["011"]
 status: completed
 container: workspace-055-store-summary-in-frontmatter
 dark-factory-version: dev

@@ -1,4 +1,5 @@
 ---
+spec: ["018"]
 status: completed
 summary: Added spec field to prompt frontmatter, prompt.Counter interface for counting prompts by spec, updated spec_list.go and spec_status.go to show linked prompt counts, added LinkedPromptsCompleted/LinkedPromptsTotal to spec.Summary, wired factory, and added tests.
 container: dark-factory-091-spec-019-prompt-spec-field

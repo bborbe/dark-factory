@@ -1,4 +1,5 @@
 ---
+spec: ["015"]
 status: completed
 summary: Updated autoSetQueuedStatus to handle any non-terminal status using switch statement
 container: dark-factory-074-auto-queue-any-non-terminal-status

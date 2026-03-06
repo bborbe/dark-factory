@@ -1,4 +1,5 @@
 ---
+spec: ["006"]
 status: completed
 container: dark-factory-044-reset-failed-on-startup
 dark-factory-version: v0.10.2

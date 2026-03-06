@@ -1,4 +1,5 @@
 ---
+spec: ["012"]
 status: completed
 container: dark-factory-049-rewrite-prompt-file-load-save
 dark-factory-version: dev

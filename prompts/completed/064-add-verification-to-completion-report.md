@@ -1,4 +1,5 @@
 ---
+spec: ["001"]
 status: completed
 summary: Added verification field to completion report with validation
 container: dark-factory-064-add-verification-to-completion-report

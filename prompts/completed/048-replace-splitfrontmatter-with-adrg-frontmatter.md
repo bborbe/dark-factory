@@ -1,4 +1,5 @@
 ---
+spec: ["012"]
 status: completed
 container: dark-factory-048-replace-splitfrontmatter-with-adrg-frontmatter
 dark-factory-version: v0.11.2

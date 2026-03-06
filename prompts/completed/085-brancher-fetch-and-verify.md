@@ -1,4 +1,5 @@
 ---
+spec: ["017"]
 status: completed
 summary: Added FetchAndVerifyBranch method to Brancher interface with implementation (git fetch + rev-parse verify), regenerated mocks, and added tests for success and error cases.
 container: dark-factory-085-brancher-fetch-and-verify

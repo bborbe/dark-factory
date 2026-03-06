@@ -1,4 +1,5 @@
 ---
+spec: ["010"]
 status: completed
 summary: Added Worktree interface in pkg/git and WorkflowWorktree config constant alongside existing code
 container: dark-factory-058-add-worktree-interface

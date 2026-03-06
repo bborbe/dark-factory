@@ -1,4 +1,5 @@
 ---
+spec: ["018"]
 status: completed
 summary: Implemented spec list, status, and approve CLI commands with factory wiring, config field, and full tests
 container: dark-factory-090-spec-019-spec-commands

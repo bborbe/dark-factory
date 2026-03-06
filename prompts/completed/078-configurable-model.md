@@ -1,4 +1,5 @@
 ---
+spec: ["002"]
 status: completed
 summary: Added configurable model field to Config struct with default claude-sonnet-4-6
 container: dark-factory-078-configurable-model

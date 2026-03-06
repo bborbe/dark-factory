@@ -1,4 +1,5 @@
 ---
+spec: ["007"]
 status: completed
 summary: Switched git commit operations from go-git to subprocess calls for proper git config support
 container: dark-factory-060-switch-commits-to-git-subprocess

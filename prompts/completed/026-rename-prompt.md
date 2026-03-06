@@ -1,4 +1,5 @@
 ---
+spec: ["003"]
 status: completed
 container: dark-factory-026-rename-prompt
 ---

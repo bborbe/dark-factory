@@ -1,4 +1,5 @@
 ---
+spec: ["001"]
 status: completed
 container: dark-factory-014-serialize-prompt-execution
 ---

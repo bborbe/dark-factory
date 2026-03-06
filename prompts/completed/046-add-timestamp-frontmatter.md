@@ -1,4 +1,5 @@
 ---
+spec: ["011"]
 status: completed
 container: dark-factory-046-add-timestamp-frontmatter
 dark-factory-version: v0.10.2

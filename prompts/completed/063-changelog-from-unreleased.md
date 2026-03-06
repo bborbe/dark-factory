@@ -1,4 +1,5 @@
 ---
+spec: ["007"]
 status: completed
 summary: 'Simplified changelog handling to only rename ## Unreleased section, preserving all content'
 container: dark-factory-063-changelog-from-unreleased

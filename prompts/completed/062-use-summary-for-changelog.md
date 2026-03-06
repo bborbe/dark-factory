@@ -1,4 +1,5 @@
 ---
+spec: ["007"]
 status: completed
 summary: 'Modified changelog generation to use DARK-FACTORY-REPORT summary instead of filename, removed ### Added subsections for cleaner format'
 container: dark-factory-062-use-summary-for-changelog

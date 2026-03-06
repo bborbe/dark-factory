@@ -1,4 +1,5 @@
 ---
+spec: ["009"]
 status: completed
 summary: 'Fixed unknown command fallthrough: ParseArgs now returns ''unknown'' for unrecognized commands, run() handles it with a helpful error before config loading, and tests cover the new behavior.'
 container: dark-factory-096-fix-unknown-command-shows-help

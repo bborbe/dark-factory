@@ -1,4 +1,5 @@
 ---
+spec: ["018"]
 status: completed
 summary: 'Added spec package foundations: Status type with constants, Frontmatter/SpecFile structs, Load/Save/SetStatus, Lister interface with List/Summary, wired AutoCompleter into processor, updated all callers'
 container: dark-factory-087-spec-019-spec-model

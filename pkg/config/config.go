@@ -27,6 +27,7 @@ type Config struct {
 	QueueDir       string       `yaml:"queueDir"`
 	CompletedDir   string       `yaml:"completedDir"`
 	LogDir         string       `yaml:"logDir"`
+	SpecDir        string       `yaml:"specDir"`
 	ContainerImage string       `yaml:"containerImage"`
 	Model          string       `yaml:"model"`
 	DebounceMs     int          `yaml:"debounceMs"`
@@ -44,6 +45,7 @@ func Defaults() Config {
 		QueueDir:       "prompts/queue",
 		CompletedDir:   "prompts/completed",
 		LogDir:         "prompts/log",
+		SpecDir:        "specs",
 		ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.2",
 		Model:          "claude-sonnet-4-6",
 		DebounceMs:     500,

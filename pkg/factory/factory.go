@@ -237,3 +237,18 @@ func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
 
 	return cmd.NewApproveCommand(cfg.InboxDir, cfg.QueueDir, promptManager)
 }
+
+// CreateSpecListCommand creates a SpecListCommand.
+func CreateSpecListCommand(cfg config.Config) cmd.SpecListCommand {
+	return cmd.NewSpecListCommand(spec.NewLister(cfg.SpecDir))
+}
+
+// CreateSpecStatusCommand creates a SpecStatusCommand.
+func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
+	return cmd.NewSpecStatusCommand(spec.NewLister(cfg.SpecDir))
+}
+
+// CreateSpecApproveCommand creates a SpecApproveCommand.
+func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
+	return cmd.NewSpecApproveCommand(cfg.SpecDir)
+}

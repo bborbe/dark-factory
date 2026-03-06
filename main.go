@@ -54,7 +54,7 @@ func run() error {
 	case "prompt":
 		return runPromptCommand(ctx, cfg, subcommand, args)
 	case "spec":
-		return runSpecCommand(ctx, subcommand)
+		return runSpecCommand(ctx, cfg, subcommand, args)
 	case "status":
 		return factory.CreateStatusCommand(cfg).Run(ctx, args)
 	case "list":
@@ -90,11 +90,19 @@ func runPromptCommand(
 	}
 }
 
-func runSpecCommand(ctx context.Context, subcommand string) error {
+func runSpecCommand(
+	ctx context.Context,
+	cfg config.Config,
+	subcommand string,
+	args []string,
+) error {
 	switch subcommand {
-	case "list", "status", "approve":
-		fmt.Fprintln(os.Stdout, "not implemented")
-		return nil
+	case "list":
+		return factory.CreateSpecListCommand(cfg).Run(ctx, args)
+	case "status":
+		return factory.CreateSpecStatusCommand(cfg).Run(ctx, args)
+	case "approve":
+		return factory.CreateSpecApproveCommand(cfg).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown spec subcommand: %s", subcommand)
 	}

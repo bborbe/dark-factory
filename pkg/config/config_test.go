@@ -34,6 +34,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
+			Expect(cfg.SpecDir).To(Equal("specs"))
 			Expect(cfg.AutoMerge).To(BeFalse())
 			Expect(cfg.AutoRelease).To(BeFalse())
 			Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))

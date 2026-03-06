@@ -44,6 +44,76 @@ var _ = Describe("SpecWatcher", func() {
 		}
 	})
 
+	It(
+		"should call generator for approved spec present on startup before any fsnotify events",
+		func() {
+			gen := &mocks.SpecGenerator{}
+			gen.GenerateReturns(nil)
+
+			// Create approved spec BEFORE starting the watcher.
+			specFile := filepath.Join(specsDir, "pre-existing-spec.md")
+			content := "---\nstatus: approved\n---\n# Pre-existing Spec\n"
+			err := os.WriteFile(specFile, []byte(content), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+
+			go func() {
+				_ = w.Watch(ctx)
+			}()
+
+			Eventually(func() int {
+				return gen.GenerateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			_, passedPath := gen.GenerateArgsForCall(0)
+			Expect(passedPath).To(Equal(specFile))
+
+			cancel()
+		},
+	)
+
+	It("should not call generator for draft spec present on startup", func() {
+		gen := &mocks.SpecGenerator{}
+
+		specFile := filepath.Join(specsDir, "draft-startup.md")
+		content := "---\nstatus: draft\n---\n# Draft Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		Consistently(func() int {
+			return gen.GenerateCallCount()
+		}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+		cancel()
+	})
+
+	It("should ignore non-markdown files in specsDir on startup", func() {
+		gen := &mocks.SpecGenerator{}
+
+		txtFile := filepath.Join(specsDir, "readme.txt")
+		err := os.WriteFile(txtFile, []byte("hello"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := specwatcher.NewSpecWatcher(specsDir, gen, 200*time.Millisecond)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		Consistently(func() int {
+			return gen.GenerateCallCount()
+		}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+		cancel()
+	})
+
 	It("should start and stop cleanly", func() {
 		gen := &mocks.SpecGenerator{}
 

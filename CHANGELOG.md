@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.18.2
+
+- fix: scan specsDir for already-approved specs on SpecWatcher startup so approved specs are not missed before fsnotify fires
+
 ## v0.18.1
 
 - feat: wire SpecWatcher and SpecGenerator into Runner and Factory so approved specs automatically trigger prompt generation

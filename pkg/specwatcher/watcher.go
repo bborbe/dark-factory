@@ -64,6 +64,9 @@ func (w *specWatcher) Watch(ctx context.Context) error {
 
 	slog.Info("spec watcher started", "dir", absSpecsDir)
 
+	// Scan for already-approved specs before entering the event loop.
+	w.scanExistingApproved(ctx, absSpecsDir)
+
 	var debounceMu sync.Mutex
 	debounceTimers := make(map[string]*time.Timer)
 
@@ -142,6 +145,22 @@ func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
 
 	if err := w.generator.Generate(ctx, specPath); err != nil {
 		slog.Info("spec generation failed", "path", specPath, "error", err)
+	}
+}
+
+// scanExistingApproved scans specsDir for .md files that are already approved and
+// calls generator.Generate for each one. Errors are logged but do not abort.
+func (w *specWatcher) scanExistingApproved(ctx context.Context, specsDir string) {
+	entries, err := os.ReadDir(specsDir)
+	if err != nil {
+		slog.Info("failed to read specs dir on startup", "dir", specsDir, "error", err)
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		w.handleFileEvent(ctx, filepath.Join(specsDir, entry.Name()))
 	}
 }
 

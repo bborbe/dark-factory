@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Implemented CombinedStatusCommand and CombinedListCommand that show both prompt and spec information together, wired into top-level dark-factory status and list commands with --json flag support
+container: dark-factory-092-spec-019-combined-views
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
+started: "2026-03-06T11:51:20Z"
+completed: "2026-03-06T12:00:23Z"
 ---
 <objective>
 Implement the combined top-level `dark-factory status` and `dark-factory list` commands that show both prompt and spec information together.

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.39
+
+- 106-spec-020-1-spec-generator
+
 ## v0.17.38
 
 - Add ReviewPoller and fix-prompt pipeline wired into factory runner (completes spec 019 review-fix loop)

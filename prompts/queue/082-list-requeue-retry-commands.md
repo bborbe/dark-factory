@@ -122,3 +122,47 @@ Key test cases:
 ## Verification
 
 Run `make precommit` — must pass.
+
+### `dark-factory approve [id|file]`
+
+Move a prompt from inbox to queue (or requeue from queue dir) using a short ID or filename.
+
+```bash
+dark-factory approve 080                              # matches 080-*.md in inbox or queue
+dark-factory approve 080-workflow-test-coverage.md    # exact filename
+dark-factory approve                                  # approve all in inbox
+```
+
+Behavior:
+- Search inbox first, then queue dir for a file matching the prefix `id`
+- If found in inbox: move to queue dir + set `status: queued` (same as existing `queue` cmd)
+- If found in queue with `status: failed` or `status: created`: set `status: queued`
+- Short ID match: file whose name starts with `<id>-` or equals `<id>.md`
+- Print: `approved: <filename>`
+
+`approve` replaces the existing `queue` command as the primary human-facing command. `queue` stays for backwards compatibility.
+
+### `pkg/cmd/approve.go`
+
+New file. Interface + implementation:
+```go
+//counterfeiter:generate -o ../../mocks/approve-command.go --fake-name ApproveCommand . ApproveCommand
+type ApproveCommand interface {
+    Run(ctx context.Context, args []string) error
+}
+```
+
+Add to `pkg/factory/factory.go`:
+```go
+func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand
+```
+
+Add to `main.go` dispatch:
+```go
+case "approve":
+    return factory.CreateApproveCommand(cfg).Run(ctx, args)
+```
+
+Add `"approve"` to `parseArgs()` known commands and `--help` output.
+
+Add `pkg/cmd/approve_test.go` with Ginkgo v2 tests covering short ID match, exact filename, and approve-all.

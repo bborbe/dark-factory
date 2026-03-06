@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Implemented spec list, status, and approve CLI commands with factory wiring, config field, and full tests
+container: dark-factory-090-spec-019-spec-commands
+dark-factory-version: v0.17.15
 created: "2026-03-06T10:57:15Z"
 queued: "2026-03-06T10:57:15Z"
+started: "2026-03-06T11:31:06Z"
+completed: "2026-03-06T11:38:37Z"
 ---
 <objective>
 Implement the spec CLI commands: `spec list`, `spec status`, and `spec approve`. Replace the placeholders from the previous prompt with real implementations using the spec package.

@@ -1,5 +1,5 @@
 ---
-status: approved
+status: draft
 ---
 
 # Lifecycle Timestamps for Specs and Prompts

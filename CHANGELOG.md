@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.17.38
+
+- 105-spec-019-wire-into-factory
+
 ## v0.17.37
 
 - 104-spec-019-review-poller

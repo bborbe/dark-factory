@@ -109,6 +109,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -168,6 +169,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -235,6 +237,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -296,6 +299,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -349,6 +353,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -400,6 +405,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -457,6 +463,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -542,6 +549,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -605,6 +613,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -656,6 +665,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -715,6 +725,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -761,6 +772,7 @@ var _ = Describe("Processor", func() {
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -803,6 +815,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -857,6 +870,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -922,6 +936,7 @@ var _ = Describe("Processor", func() {
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -995,6 +1010,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1072,6 +1088,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1130,6 +1147,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1194,6 +1212,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1267,6 +1286,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1346,6 +1366,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1415,6 +1436,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1521,6 +1543,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1601,6 +1624,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1672,6 +1696,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1754,6 +1779,7 @@ var _ = Describe("Processor", func() {
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1809,6 +1835,7 @@ var _ = Describe("Processor", func() {
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -1904,6 +1931,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -1974,6 +2002,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2039,6 +2068,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2109,6 +2139,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2177,6 +2208,7 @@ more output
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2242,6 +2274,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2315,6 +2348,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2370,6 +2404,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2415,6 +2450,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2469,6 +2505,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2538,6 +2575,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2596,6 +2634,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2660,6 +2699,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2727,6 +2767,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2782,6 +2823,7 @@ DARK-FACTORY-REPORT -->
 				mockPRCreator,
 				mockWorktree,
 				mockPRMerger,
+				false,
 				false,
 				false,
 				mockAutoCompleter,
@@ -2853,6 +2895,7 @@ DARK-FACTORY-REPORT -->
 				mockPRMerger,
 				false,
 				false,
+				false,
 				mockAutoCompleter,
 			)
 
@@ -2900,6 +2943,7 @@ DARK-FACTORY-REPORT -->
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -2956,6 +3000,7 @@ DARK-FACTORY-REPORT -->
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3030,6 +3075,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -3075,6 +3121,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			false,
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -3101,6 +3148,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3139,6 +3187,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3185,6 +3234,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3249,6 +3299,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3321,6 +3372,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -3392,6 +3444,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
+			false,
 			mockAutoCompleter,
 		)
 
@@ -3442,6 +3495,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockPRCreator,
 			mockWorktree,
 			mockPRMerger,
+			false,
 			false,
 			false,
 			mockAutoCompleter,
@@ -3512,6 +3566,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockWorktree,
 			mockPRMerger,
 			true, // autoMerge enabled
+			false,
 			false,
 			mockAutoCompleter,
 		)
@@ -3588,6 +3643,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockWorktree,
 				mockPRMerger,
 				false, // autoMerge disabled
+				false,
 				false,
 				mockAutoCompleter,
 			)
@@ -3672,6 +3728,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockPRMerger,
 					true, // autoMerge enabled
 					false,
+					false,
 					mockAutoCompleter,
 				)
 
@@ -3753,6 +3810,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockWorktree,
 				mockPRMerger,
 				true, // autoMerge enabled
+				false,
 				false,
 				mockAutoCompleter,
 			)
@@ -3837,6 +3895,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				true, // autoMerge enabled
 				true, // autoRelease enabled
+				false,
 				mockAutoCompleter,
 			)
 
@@ -3908,6 +3967,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockPRMerger,
 					true, // autoMerge enabled
 					true, // autoRelease enabled
+					false,
 					mockAutoCompleter,
 				)
 
@@ -3983,6 +4043,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockPRMerger,
 				true,  // autoMerge enabled
 				false, // autoRelease disabled
+				false,
 				mockAutoCompleter,
 			)
 
@@ -3999,6 +4060,177 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Consistently(func() int {
 				return mockReleaser.CommitAndReleaseCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+			cancel()
+		})
+	})
+
+	Context("Auto-review", func() {
+		It(
+			"should set status to in_review and NOT move to completed when autoReview=true (PR workflow)",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-auto-review.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.StatusQueued},
+				}
+
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitOnlyReturns(nil)
+				mockBrancher.FetchReturns(nil)
+				mockBrancher.MergeOriginDefaultReturns(nil)
+				mockBrancher.CurrentBranchReturns("main", nil)
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.PushReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+				mockPRCreator.CreateReturns("https://github.com/test/test/pull/42", nil)
+				mockManager.SetStatusReturns(nil)
+				mockManager.SetPRURLReturns(nil)
+				mockReleaser.AmendCommitReturns(nil)
+				mockBrancher.ForcePushReturns(nil)
+
+				// Create log file with success report
+				logDir := filepath.Join(promptsDir, "log")
+				_ = os.MkdirAll(logDir, 0750)
+				logPath := filepath.Join(logDir, "001-auto-review.log")
+				_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"Auto-review test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					logDir,
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowPR,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					false, // autoMerge disabled
+					false,
+					true, // autoReview enabled
+					mockAutoCompleter,
+				)
+
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				// Wait for PR to be created
+				Eventually(func() int {
+					return mockPRCreator.CreateCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// SetStatus should be called with in_review
+				Eventually(func() string {
+					if mockManager.SetStatusCallCount() == 0 {
+						return ""
+					}
+					_, _, status := mockManager.SetStatusArgsForCall(
+						mockManager.SetStatusCallCount() - 1,
+					)
+					return status
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.StatusInReview)))
+
+				// MoveToCompleted should NOT be called
+				Consistently(func() int {
+					return mockManager.MoveToCompletedCallCount()
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+				// WaitAndMerge should NOT be called
+				Consistently(func() int {
+					return mockPRMerger.WaitAndMergeCallCount()
+				}, 200*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+				cancel()
+			},
+		)
+
+		It("should move to completed normally when autoReview=false (PR workflow)", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-auto-review.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.StatusQueued},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.FetchReturns(nil)
+			mockBrancher.MergeOriginDefaultReturns(nil)
+			mockBrancher.CurrentBranchReturns("main", nil)
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.PushReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.SetPRURLReturns(nil)
+			mockReleaser.AmendCommitReturns(nil)
+			mockBrancher.ForcePushReturns(nil)
+
+			// Create log file with success report
+			logDir := filepath.Join(promptsDir, "log")
+			_ = os.MkdirAll(logDir, 0750)
+			logPath := filepath.Join(logDir, "001-no-auto-review.log")
+			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+{"status":"success","summary":"No auto-review test","blockers":[]}
+DARK-FACTORY-REPORT -->`), 0600)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockWorktree,
+				mockPRMerger,
+				false, // autoMerge disabled
+				false,
+				false, // autoReview disabled
+				mockAutoCompleter,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for PR to be created
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// MoveToCompleted should be called (normal flow)
+			Eventually(func() int {
+				return mockManager.MoveToCompletedCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// SetStatus should NOT be called with in_review
+			Consistently(func() bool {
+				for i := 0; i < mockManager.SetStatusCallCount(); i++ {
+					_, _, status := mockManager.SetStatusArgsForCall(i)
+					if status == string(prompt.StatusInReview) {
+						return true
+					}
+				}
+				return false
+			}, 500*time.Millisecond, 50*time.Millisecond).Should(BeFalse())
 
 			cancel()
 		})

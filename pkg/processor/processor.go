@@ -51,6 +51,7 @@ type processor struct {
 	worktree       git.Worktree
 	autoMerge      bool
 	autoRelease    bool
+	autoReview     bool
 	prMerger       git.PRMerger
 	autoCompleter  spec.AutoCompleter
 	skippedPrompts map[string]time.Time // filename → mod time when skipped
@@ -74,6 +75,7 @@ func NewProcessor(
 	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
+	autoReview bool,
 	autoCompleter spec.AutoCompleter,
 ) Processor {
 	return &processor{
@@ -92,6 +94,7 @@ func NewProcessor(
 		worktree:       worktree,
 		autoMerge:      autoMerge,
 		autoRelease:    autoRelease,
+		autoReview:     autoReview,
 		prMerger:       prMerger,
 		autoCompleter:  autoCompleter,
 		skippedPrompts: make(map[string]time.Time),
@@ -386,6 +389,58 @@ func (p *processor) handlePostExecution(
 		}
 	}
 
+	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
+	gitCtx := context.WithoutCancel(ctx)
+
+	// In autoReview mode (autoReview+!autoMerge+PR/worktree), prompt stays in queueDir.
+	// Skip move-to-completed and commit of completed file until review approves.
+	isAutoReviewPR := p.autoReview && !p.autoMerge &&
+		(p.workflow == config.WorkflowPR || p.workflow == config.WorkflowWorktree)
+
+	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
+	prTargetPath := completedPath // path used for PR URL frontmatter
+
+	if isAutoReviewPR {
+		prTargetPath = promptPath // prompt stays in queueDir
+	} else {
+		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+			return err
+		}
+	}
+
+	// TODO: refactor to switch on p.workflow to make all cases explicit
+	if p.workflow == config.WorkflowPR {
+		return p.handlePRWorkflow(
+			gitCtx,
+			ctx,
+			title,
+			state.branchName,
+			state.originalBranch,
+			prTargetPath,
+		)
+	}
+
+	if p.workflow == config.WorkflowWorktree {
+		return p.handleWorktreeWorkflow(
+			gitCtx,
+			ctx,
+			title,
+			state,
+			prTargetPath,
+		)
+	}
+
+	return p.handleDirectWorkflow(gitCtx, ctx, title)
+}
+
+// moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits the file.
+func (p *processor) moveToCompletedAndCommit(
+	ctx context.Context,
+	gitCtx context.Context,
+	pf *prompt.PromptFile,
+	promptPath string,
+	completedPath string,
+) error {
 	// Move to completed/ before commit so it's included in the release
 	if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
@@ -400,38 +455,11 @@ func (p *processor) handlePostExecution(
 		}
 	}
 
-	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
-	gitCtx := context.WithoutCancel(ctx)
-
 	// Commit the completed file separately (YOLO may have already committed code changes)
-	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
 	if err := p.releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
-
-	// TODO: refactor to switch on p.workflow to make all cases explicit
-	if p.workflow == config.WorkflowPR {
-		return p.handlePRWorkflow(
-			gitCtx,
-			ctx,
-			title,
-			state.branchName,
-			state.originalBranch,
-			completedPath,
-		)
-	}
-
-	if p.workflow == config.WorkflowWorktree {
-		return p.handleWorktreeWorkflow(
-			gitCtx,
-			ctx,
-			title,
-			state,
-			completedPath,
-		)
-	}
-
-	return p.handleDirectWorkflow(gitCtx, ctx, title)
+	return nil
 }
 
 // setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
@@ -571,7 +599,15 @@ func (p *processor) handlePRWorkflow(
 		return p.handleAutoMerge(gitCtx, ctx, prURL, originalBranch, title)
 	}
 
-	// Auto-merge disabled — switch back to original branch for next prompt
+	// autoReview mode: set in_review status so poller can watch for approval
+	if p.autoReview {
+		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.StatusInReview)); err != nil {
+			return errors.Wrap(ctx, err, "set in_review status")
+		}
+		slog.Info("PR created, waiting for review", "url", prURL)
+	}
+
+	// Switch back to original branch for next prompt
 	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
 		return errors.Wrap(ctx, err, "switch back to "+originalBranch)
 	}
@@ -684,6 +720,14 @@ func (p *processor) handleWorktreeWorkflow(
 			return errors.Wrap(ctx, err, "wait and merge PR")
 		}
 		return p.postMergeActions(gitCtx, ctx, title)
+	}
+
+	// autoReview mode: set in_review status so poller can watch for approval
+	if p.autoReview {
+		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.StatusInReview)); err != nil {
+			return errors.Wrap(ctx, err, "set in_review status")
+		}
+		slog.Info("PR created, waiting for review", "url", prURL)
 	}
 
 	return nil

@@ -6,7 +6,11 @@ package factory
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	libhttp "github.com/bborbe/http"
@@ -19,6 +23,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -65,6 +70,11 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		)
 	}
 
+	var reviewPoller review.ReviewPoller
+	if cfg.AutoReview {
+		reviewPoller = CreateReviewPoller(cfg, promptManager)
+	}
+
 	return runner.NewRunner(
 		inboxDir,
 		queueDir,
@@ -92,9 +102,11 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			ghToken,
 			cfg.AutoMerge,
 			cfg.AutoRelease,
+			cfg.AutoReview,
 			"specs",
 		),
 		srv,
+		reviewPoller,
 	)
 }
 
@@ -124,6 +136,7 @@ func CreateProcessor(
 	ghToken string,
 	autoMerge bool,
 	autoRelease bool,
+	autoReview bool,
 	specsDir string,
 ) processor.Processor {
 	return processor.NewProcessor(
@@ -143,8 +156,80 @@ func CreateProcessor(
 		git.NewPRMerger(ghToken),
 		autoMerge,
 		autoRelease,
+		autoReview,
 		spec.NewAutoCompleter(queueDir, completedDir, specsDir),
 	)
+}
+
+// CreateReviewPoller creates a ReviewPoller that watches in_review prompts and handles approvals/changes.
+func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
+	ghToken := cfg.ResolvedGitHubToken()
+
+	allowedReviewers := cfg.AllowedReviewers
+	if len(allowedReviewers) == 0 && cfg.UseCollaborators {
+		allowedReviewers = fetchCollaborators(ghToken)
+	}
+
+	return review.NewReviewPoller(
+		cfg.QueueDir,
+		cfg.InboxDir,
+		allowedReviewers,
+		cfg.MaxReviewRetries,
+		time.Duration(cfg.PollIntervalSec)*time.Second,
+		git.NewReviewFetcher(ghToken),
+		git.NewPRMerger(ghToken),
+		promptManager,
+		review.NewFixPromptGenerator(),
+	)
+}
+
+// fetchCollaborators retrieves repository collaborator logins via the gh CLI.
+// Returns nil on any error (non-fatal — caller falls back to no allowed reviewers).
+func fetchCollaborators(ghToken string) []string {
+	// Get the repo name with owner
+	nameCmd := exec.Command(
+		"gh",
+		"repo",
+		"view",
+		"--json",
+		"nameWithOwner",
+		"--jq",
+		".nameWithOwner",
+	) // #nosec G204 -- fixed args, no user input
+	if ghToken != "" {
+		nameCmd.Env = append(os.Environ(), "GH_TOKEN="+ghToken)
+	}
+	nameOut, err := nameCmd.Output()
+	if err != nil {
+		slog.Warn("failed to get repo name for collaborators", "error", err)
+		return nil
+	}
+	repoName := strings.TrimSpace(string(nameOut))
+
+	// Fetch collaborator logins
+	collabCmd := exec.Command(
+		"gh",
+		"api",
+		"repos/"+repoName+"/collaborators",
+		"--jq",
+		".[].login",
+	) // #nosec G204 -- repoName from gh CLI, not user input
+	if ghToken != "" {
+		collabCmd.Env = append(os.Environ(), "GH_TOKEN="+ghToken)
+	}
+	collabOut, err := collabCmd.Output()
+	if err != nil {
+		slog.Warn("failed to fetch collaborators", "error", err)
+		return nil
+	}
+
+	var result []string
+	for _, line := range strings.Split(strings.TrimSpace(string(collabOut)), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			result = append(result, line)
+		}
+	}
+	return result
 }
 
 // CreateLocker creates a Locker for the specified directory.

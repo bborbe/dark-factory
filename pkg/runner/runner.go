@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
@@ -38,6 +39,7 @@ type runner struct {
 	watcher       watcher.Watcher
 	processor     processor.Processor
 	server        server.Server
+	reviewPoller  review.ReviewPoller
 }
 
 // NewRunner creates a new Runner.
@@ -50,6 +52,7 @@ func NewRunner(
 	watcher watcher.Watcher,
 	processor processor.Processor,
 	server server.Server,
+	reviewPoller review.ReviewPoller,
 ) Runner {
 	return &runner{
 		inboxDir:      inboxDir,
@@ -60,6 +63,7 @@ func NewRunner(
 		watcher:       watcher,
 		processor:     processor,
 		server:        server,
+		reviewPoller:  reviewPoller,
 	}
 }
 
@@ -102,7 +106,7 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
 
-	// Run watcher, processor, and server in parallel
+	// Run watcher, processor, server, and optional reviewPoller in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
 		r.watcher.Watch,
@@ -110,6 +114,9 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	if r.server != nil {
 		runners = append(runners, r.server.ListenAndServe)
+	}
+	if r.reviewPoller != nil {
+		runners = append(runners, r.reviewPoller.Run)
 	}
 	return run.CancelOnFirstError(ctx, runners...)
 }

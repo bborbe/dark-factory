@@ -85,6 +85,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		// Run with timeout
@@ -127,6 +128,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -170,6 +172,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -219,6 +222,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		go func() {
@@ -260,6 +264,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithCancel(ctx)
@@ -301,6 +306,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -357,6 +363,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			mockServer,
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -393,6 +400,7 @@ var _ = Describe("Runner", func() {
 			mockWatcher,
 			mockProcessor,
 			nil, // No server
+			nil, // no reviewPoller
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -402,6 +410,88 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify watcher and processor were called
+		Expect(mockWatcher.WatchCallCount()).To(Equal(1))
+		Expect(mockProcessor.ProcessCallCount()).To(Equal(1))
+	})
+
+	It("should include reviewPoller in run loop when non-nil", func() {
+		mockLocker.AcquireReturns(nil)
+		mockLocker.ReleaseReturns(nil)
+		mockManager.ResetExecutingReturns(nil)
+		mockManager.NormalizeFilenamesReturns(nil, nil)
+
+		mockReviewPoller := &mocks.ReviewPoller{}
+		pollerCalled := make(chan struct{})
+
+		mockWatcher.WatchStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockProcessor.ProcessStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockReviewPoller.RunStub = func(ctx context.Context) error {
+			close(pollerCalled)
+			<-ctx.Done()
+			return nil
+		}
+
+		r := runner.NewRunner(
+			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			mockManager,
+			mockLocker,
+			mockWatcher,
+			mockProcessor,
+			nil, // No server
+			mockReviewPoller,
+		)
+
+		go func() {
+			_ = r.Run(ctx)
+		}()
+
+		Eventually(pollerCalled, 1*time.Second).Should(BeClosed())
+
+		cancel()
+	})
+
+	It("should not include reviewPoller in run loop when nil", func() {
+		mockLocker.AcquireReturns(nil)
+		mockLocker.ReleaseReturns(nil)
+		mockManager.ResetExecutingReturns(nil)
+		mockManager.NormalizeFilenamesReturns(nil, nil)
+
+		mockWatcher.WatchStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+		mockProcessor.ProcessStub = func(ctx context.Context) error {
+			<-ctx.Done()
+			return nil
+		}
+
+		r := runner.NewRunner(
+			promptsDir,
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			mockManager,
+			mockLocker,
+			mockWatcher,
+			mockProcessor,
+			nil, // No server
+			nil, // no reviewPoller
+		)
+
+		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer runCancel()
+
+		err := r.Run(runCtx)
+		Expect(err).To(BeNil())
+
+		// Watcher and processor ran
 		Expect(mockWatcher.WatchCallCount()).To(Equal(1))
 		Expect(mockProcessor.ProcessCallCount()).To(Equal(1))
 	})

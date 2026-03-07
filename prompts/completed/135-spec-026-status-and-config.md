@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["026"]
+summary: Added PendingVerificationPromptStatus constant, MarkPendingVerification() and VerificationSection() methods on PromptFile, updated ListQueued to skip pending_verification, added VerificationGate config field with loader support, and tests for all new behavior.
 container: dark-factory-135-spec-026-status-and-config
 dark-factory-version: v0.26.0
 created: "2026-03-07T22:30:00Z"
 queued: "2026-03-07T22:21:54Z"
 started: "2026-03-07T22:21:56Z"
+completed: "2026-03-07T22:29:43Z"
 ---
 <summary>
 - Prompts can now represent a "pending verification" state — a human gate between execution and completion

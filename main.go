@@ -90,6 +90,8 @@ func runPromptCommand(
 		return factory.CreateRequeueCommand(cfg).Run(ctx, args)
 	case "retry":
 		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
+	case "show":
+		return factory.CreatePromptShowCommand(cfg).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown prompt subcommand: %s", subcommand)
 	}
@@ -110,6 +112,8 @@ func runSpecCommand(
 		return factory.CreateSpecApproveCommand(cfg).Run(ctx, args)
 	case "complete":
 		return factory.CreateSpecCompleteCommand(cfg).Run(ctx, args)
+	case "show":
+		return factory.CreateSpecShowCommand(cfg).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown spec subcommand: %s", subcommand)
 	}
@@ -126,11 +130,13 @@ func printHelp() {
 			"  prompt status          Show prompt status\n"+
 			"  prompt approve <id>    Approve a prompt (move from inbox to queue)\n"+
 			"  prompt requeue <id>    Reset a prompt's status to queued\n"+
-			"  prompt retry           Shorthand for prompt requeue --failed\n\n"+
+			"  prompt retry           Shorthand for prompt requeue --failed\n"+
+			"  prompt show <id>       Show details for a single prompt\n\n"+
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+
 			"  spec approve <id>      Approve a spec\n"+
-			"  spec complete <id>     Mark a verified spec as completed\n\n"+
+			"  spec complete <id>     Mark a verified spec as completed\n"+
+			"  spec show <id>         Show details for a single spec\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+
 			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
 	)

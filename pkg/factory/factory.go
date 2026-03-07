@@ -451,6 +451,31 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	)
 }
 
+// CreateSpecShowCommand creates a SpecShowCommand.
+func CreateSpecShowCommand(cfg config.Config) cmd.SpecShowCommand {
+	counter := prompt.NewCounter(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
+	return cmd.NewSpecShowCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		counter,
+	)
+}
+
+// CreatePromptShowCommand creates a PromptShowCommand.
+func CreatePromptShowCommand(cfg config.Config) cmd.PromptShowCommand {
+	return cmd.NewPromptShowCommand(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		cfg.Prompts.LogDir,
+	)
+}
+
 // CreateCombinedListCommand creates a CombinedListCommand.
 func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 	counter := prompt.NewCounter(

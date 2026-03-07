@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: 'Added startup scan for specs stuck in prompted status: new checkPromptedSpecs method on processor iterates all specs via spec.Lister, calls AutoCompleter.CheckAndComplete for each in prompted status, wired into Process() after ResetFailed; factory updated to pass spec.NewLister; all 50+ NewProcessor calls in tests updated; new test case verifies the startup scan transitions specs correctly'
 container: dark-factory-132-fix-spec-verifying-on-startup
 dark-factory-version: v0.25.0
 created: "2026-03-07T21:25:00Z"
 queued: "2026-03-07T20:28:43Z"
 started: "2026-03-07T20:28:54Z"
+completed: "2026-03-07T20:37:11Z"
 ---
 <summary>
 - Adds startup scan for specs stuck in `prompted` with all linked prompts already completed

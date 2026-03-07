@@ -1,10 +1,11 @@
 ---
-status: executing
+status: completed
 container: dark-factory-122-hide-completed-by-default-in-list
 dark-factory-version: v0.20.6
 created: "2026-03-07T11:00:00Z"
 queued: "2026-03-07T10:34:18Z"
 started: "2026-03-07T10:35:17Z"
+completed: "2026-03-07T10:52:27Z"
 ---
 <summary>
 - `prompt list`, `spec list`, and `list` hide completed items by default

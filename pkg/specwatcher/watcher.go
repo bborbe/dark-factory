@@ -17,6 +17,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/bborbe/dark-factory/pkg/generator"
+	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
 // SpecWatcher watches the specs in-progress directory and triggers generation when a spec appears there.
@@ -125,6 +126,22 @@ func (w *specWatcher) handleWatchEvent(
 
 // handleFileEvent triggers generation for a spec file in inProgressDir.
 func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
+	sf, err := spec.Load(ctx, specPath)
+	if err != nil {
+		slog.Warn("failed to load spec", "path", specPath, "error", err)
+		return
+	}
+	if sf.Frontmatter.Status != string(spec.StatusApproved) {
+		slog.Debug(
+			"skipping spec — not approved",
+			"path",
+			specPath,
+			"status",
+			sf.Frontmatter.Status,
+		)
+		return
+	}
+
 	slog.Info("spec file created in in-progress, triggering generation", "path", specPath)
 
 	w.mu.Lock()

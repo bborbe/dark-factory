@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/bborbe/errors"
 
@@ -54,51 +53,21 @@ func (a *approveCommand) Run(ctx context.Context, args []string) error {
 // approveByID approves a prompt matching a short ID or exact filename.
 func (a *approveCommand) approveByID(ctx context.Context, id string) error {
 	// Search inbox first
-	inboxMatch, err := a.findFile(a.inboxDir, id)
-	if err != nil {
-		return errors.Wrap(ctx, err, "search inbox")
-	}
-	if inboxMatch != "" {
-		return a.approveFromInbox(ctx, inboxMatch)
+	if inboxPath, err := FindPromptFile(ctx, a.inboxDir, id); err == nil {
+		return a.approveFromInbox(ctx, inboxPath)
 	}
 
 	// Then search queue
-	queueMatch, err := a.findFile(a.queueDir, id)
-	if err != nil {
-		return errors.Wrap(ctx, err, "search queue")
-	}
-	if queueMatch != "" {
-		return a.approveInQueue(ctx, queueMatch)
+	if queuePath, err := FindPromptFile(ctx, a.queueDir, id); err == nil {
+		return a.approveInQueue(ctx, queuePath)
 	}
 
 	return errors.Errorf(ctx, "file not found: %s", id)
 }
 
-// findFile finds a file in a directory matching the given ID (exact name or NNN- prefix match).
-func (a *approveCommand) findFile(dir string, id string) (string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
-		return "", err
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		name := entry.Name()
-		if name == id || strings.HasPrefix(name, id+"-") {
-			return name, nil
-		}
-	}
-	return "", nil
-}
-
 // approveFromInbox moves a file from inbox to queue and sets status to queued.
-func (a *approveCommand) approveFromInbox(ctx context.Context, filename string) error {
-	oldPath := filepath.Join(a.inboxDir, filename)
+func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) error {
+	filename := filepath.Base(oldPath)
 	newPath := filepath.Join(a.queueDir, filename)
 
 	if err := os.Rename(oldPath, newPath); err != nil {
@@ -123,9 +92,7 @@ func (a *approveCommand) approveFromInbox(ctx context.Context, filename string) 
 }
 
 // approveInQueue sets a prompt already in the queue to queued status.
-func (a *approveCommand) approveInQueue(ctx context.Context, filename string) error {
-	path := filepath.Join(a.queueDir, filename)
-
+func (a *approveCommand) approveInQueue(ctx context.Context, path string) error {
 	pf, err := prompt.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
@@ -136,6 +103,6 @@ func (a *approveCommand) approveInQueue(ctx context.Context, filename string) er
 		return errors.Wrap(ctx, err, "save prompt")
 	}
 
-	fmt.Printf("approved: %s\n", filename)
+	fmt.Printf("approved: %s\n", filepath.Base(path))
 	return nil
 }

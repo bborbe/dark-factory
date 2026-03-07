@@ -60,10 +60,10 @@ func (r *requeueCommand) Run(ctx context.Context, args []string) error {
 }
 
 // requeueFile requeues a specific file in the queue directory.
-func (r *requeueCommand) requeueFile(ctx context.Context, filename string) error {
-	path := filepath.Join(r.queueDir, filename)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return errors.Errorf(ctx, "file not found: %s", filename)
+func (r *requeueCommand) requeueFile(ctx context.Context, id string) error {
+	path, err := FindPromptFile(ctx, r.queueDir, id)
+	if err != nil {
+		return errors.Errorf(ctx, "file not found: %s", id)
 	}
 
 	pf, err := prompt.Load(ctx, path)
@@ -76,7 +76,7 @@ func (r *requeueCommand) requeueFile(ctx context.Context, filename string) error
 		return errors.Wrap(ctx, err, "save prompt")
 	}
 
-	fmt.Printf("requeued: %s\n", filename)
+	fmt.Printf("requeued: %s\n", filepath.Base(path))
 	return nil
 }
 

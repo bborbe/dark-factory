@@ -55,13 +55,13 @@ func (q *queueCommand) Run(ctx context.Context, args []string) error {
 }
 
 // queueFile queues a specific file from inbox to queue.
-func (q *queueCommand) queueFile(ctx context.Context, filename string) error {
-	oldPath := filepath.Join(q.inboxDir, filename)
-
-	// Check if file exists
-	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
-		return errors.Errorf(ctx, "file not found: %s", filename)
+func (q *queueCommand) queueFile(ctx context.Context, id string) error {
+	oldPath, err := FindPromptFile(ctx, q.inboxDir, id)
+	if err != nil {
+		return errors.Errorf(ctx, "file not found: %s", id)
 	}
+
+	filename := filepath.Base(oldPath)
 
 	// Move to queue directory
 	newFilename, err := q.moveToQueue(ctx, filename)

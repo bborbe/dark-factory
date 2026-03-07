@@ -71,7 +71,7 @@ func Defaults() Config {
 			CompletedDir:  "specs/completed",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.2",
+		ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.5",
 		Model:            "claude-sonnet-4-6",
 		DebounceMs:       500,
 		ServerPort:       0,

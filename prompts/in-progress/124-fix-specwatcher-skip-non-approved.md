@@ -1,5 +1,5 @@
 ---
-status: failed
+status: queued
 container: dark-factory-123-fix-specwatcher-skip-non-approved
 dark-factory-version: v0.20.6
 created: "2026-03-07T11:30:00Z"

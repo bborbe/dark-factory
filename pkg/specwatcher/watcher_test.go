@@ -308,6 +308,27 @@ var _ = Describe("SpecWatcher", func() {
 		Expect(msgs).NotTo(ContainElement("spec generation failed"))
 	})
 
+	It("should NOT call generator for spec with status prompted in inProgressDir", func() {
+		gen := &mocks.SpecGenerator{}
+
+		specFile := filepath.Join(inProgressDir, "already-prompted-spec.md")
+		content := "---\nstatus: prompted\n---\n# Already Prompted Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		Consistently(func() int {
+			return gen.GenerateCallCount()
+		}, 800*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+		cancel()
+	})
+
 	It("should work with relative paths", func() {
 		origDir, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())

@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: 'Removed duplicate `prompt queue` command: deleted pkg/cmd/queue.go, pkg/cmd/queue_test.go, mocks/queue-command.go, removed CreateQueueCommand from factory.go, removed case and help text from main.go'
 container: dark-factory-129-remove-prompt-queue-command
 dark-factory-version: v0.24.0
 created: "2026-03-07T19:34:00Z"
 queued: "2026-03-07T19:50:12Z"
 started: "2026-03-07T19:50:20Z"
+completed: "2026-03-07T19:55:03Z"
 ---
 <summary>
 - Removes the `dark-factory prompt queue` command entirely

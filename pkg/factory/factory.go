@@ -205,6 +205,7 @@ func CreateProcessor(
 			specsInProgressDir,
 			specsCompletedDir,
 		),
+		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
 	)
 }
 

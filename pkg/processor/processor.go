@@ -54,6 +54,7 @@ type processor struct {
 	autoReview     bool
 	prMerger       git.PRMerger
 	autoCompleter  spec.AutoCompleter
+	specLister     spec.Lister
 	skippedPrompts map[string]time.Time // filename → mod time when skipped
 }
 
@@ -77,6 +78,7 @@ func NewProcessor(
 	autoRelease bool,
 	autoReview bool,
 	autoCompleter spec.AutoCompleter,
+	specLister spec.Lister,
 ) Processor {
 	return &processor{
 		queueDir:       queueDir,
@@ -97,6 +99,7 @@ func NewProcessor(
 		autoReview:     autoReview,
 		prMerger:       prMerger,
 		autoCompleter:  autoCompleter,
+		specLister:     specLister,
 		skippedPrompts: make(map[string]time.Time),
 	}
 }
@@ -109,6 +112,11 @@ func (p *processor) Process(ctx context.Context) error {
 	// Reset failed prompts to queued on startup
 	if err := p.promptManager.ResetFailed(ctx); err != nil {
 		return errors.Wrap(ctx, err, "reset failed prompts")
+	}
+
+	// Transition prompted specs with all prompts completed to verifying
+	if err := p.checkPromptedSpecs(ctx); err != nil {
+		return errors.Wrap(ctx, err, "check prompted specs on startup")
 	}
 
 	// Process any existing queued prompts first
@@ -279,6 +287,27 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 			slog.Error("failed to set failed status", "error", saveErr)
 		}
 	}
+}
+
+// checkPromptedSpecs scans all specs and calls CheckAndComplete for any in "prompted" status.
+// This catches specs that were stuck in prompted state across daemon restarts.
+func (p *processor) checkPromptedSpecs(ctx context.Context) error {
+	specs, err := p.specLister.List(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "list specs")
+	}
+
+	for _, sf := range specs {
+		if sf.Frontmatter.Status != string(spec.StatusPrompted) {
+			continue
+		}
+		slog.Info("startup: checking prompted spec", "spec", sf.Name)
+		if err := p.autoCompleter.CheckAndComplete(ctx, sf.Name); err != nil {
+			return errors.Wrap(ctx, err, "check and complete spec")
+		}
+	}
+
+	return nil
 }
 
 // processPrompt executes a single prompt and commits the result.

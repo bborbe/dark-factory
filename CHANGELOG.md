@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.23.0
+
+- fix: Stop dark-factory from writing prompt filenames as changelog entries; remove `insertVersionSection` dead code
+- feat: Append changelog instructions to YOLO prompt when project has CHANGELOG.md, delegating entry authorship to the agent
+- fix: `updateChangelog` now returns an error when no `## Unreleased` section is found, causing the prompt to fail and retry
+
 ## v0.22.2
 
 - docs: Add spec for prompt verification gate (host-side verification after container execution)

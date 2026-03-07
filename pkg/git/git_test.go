@@ -164,7 +164,7 @@ var _ = Describe("Git", func() {
 			err = os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = r.CommitAndRelease(ctx, git.PatchBump, "test change")
+			err = r.CommitAndRelease(ctx, git.PatchBump)
 			Expect(err).To(BeNil())
 
 			// Verify tag was created
@@ -624,7 +624,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("renames ## Unreleased to version and preserves entries", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test change")
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify commit was created
@@ -709,7 +709,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("bumps to next version with PatchBump", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test change")
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify new tag was created
@@ -779,17 +779,10 @@ var _ = Describe("Git", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("creates changelog entry when no Unreleased section exists", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test feature")
-				Expect(err).To(BeNil())
-
-				// Verify CHANGELOG was modified with new version section
-				changelogContent, err := os.ReadFile(filepath.Join(tempDir, "CHANGELOG.md"))
-				Expect(err).NotTo(HaveOccurred())
-				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.1"))
-				Expect(string(changelogContent)).To(ContainSubstring("- test feature"))
-				// Verify it was inserted before the existing version
-				Expect(string(changelogContent)).To(ContainSubstring("## v0.1.0"))
+			It("returns error when no Unreleased section exists", func() {
+				err := git.CommitAndRelease(ctx, git.PatchBump)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("## Unreleased"))
 			})
 		})
 
@@ -822,7 +815,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("renames Unreleased to version and preserves all subsections", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test change")
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify CHANGELOG has version WITH subsections preserved
@@ -872,7 +865,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("renames empty Unreleased to version", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test change")
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify CHANGELOG renamed empty section
@@ -914,7 +907,7 @@ var _ = Describe("Git", func() {
 			})
 
 			It("preserves all entries after renaming", func() {
-				err := git.CommitAndRelease(ctx, git.PatchBump, "test change")
+				err := git.CommitAndRelease(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 
 				// Verify all entries are preserved

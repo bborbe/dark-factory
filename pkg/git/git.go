@@ -32,7 +32,7 @@ const (
 //counterfeiter:generate -o ../../mocks/releaser.go --fake-name Releaser . Releaser
 type Releaser interface {
 	GetNextVersion(ctx context.Context, bump VersionBump) (string, error)
-	CommitAndRelease(ctx context.Context, bump VersionBump, title string) error
+	CommitAndRelease(ctx context.Context, bump VersionBump) error
 	CommitCompletedFile(ctx context.Context, path string) error
 	CommitOnly(ctx context.Context, message string) error
 	AmendCommit(ctx context.Context, path string) error
@@ -54,8 +54,8 @@ func (r *releaser) GetNextVersion(ctx context.Context, bump VersionBump) (string
 }
 
 // CommitAndRelease performs the full git workflow.
-func (r *releaser) CommitAndRelease(ctx context.Context, bump VersionBump, title string) error {
-	return CommitAndRelease(ctx, bump, title)
+func (r *releaser) CommitAndRelease(ctx context.Context, bump VersionBump) error {
+	return CommitAndRelease(ctx, bump)
 }
 
 // CommitCompletedFile commits a completed prompt file to git.
@@ -104,7 +104,7 @@ func (r *releaser) MoveFile(ctx context.Context, oldPath string, newPath string)
 // 4. git commit
 // 5. git tag
 // 6. git push + push tag
-func CommitAndRelease(ctx context.Context, bump VersionBump, title string) error {
+func CommitAndRelease(ctx context.Context, bump VersionBump) error {
 	// Stage all changes
 	if err := gitAddAll(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git add")
@@ -117,7 +117,7 @@ func CommitAndRelease(ctx context.Context, bump VersionBump, title string) error
 	}
 
 	// Update CHANGELOG
-	if err := updateChangelog(ctx, nextVersion, title); err != nil {
+	if err := updateChangelog(ctx, nextVersion); err != nil {
 		return errors.Wrap(ctx, err, "update changelog")
 	}
 
@@ -314,9 +314,9 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 	return nextVersion.String(), nil
 }
 
-// updateChangelog renames ## Unreleased to version in CHANGELOG.md
-// If no ## Unreleased section exists, creates a new version section with the title.
-func updateChangelog(ctx context.Context, version string, title string) error {
+// updateChangelog renames ## Unreleased to version in CHANGELOG.md.
+// Returns an error if no ## Unreleased section is found — YOLO is expected to have written it.
+func updateChangelog(ctx context.Context, version string) error {
 	changelogPath := "CHANGELOG.md"
 
 	content, err := os.ReadFile(changelogPath)
@@ -327,9 +327,11 @@ func updateChangelog(ctx context.Context, version string, title string) error {
 	lines := strings.Split(string(content), "\n")
 	result, unreleasedFound := processUnreleasedSection(lines, version)
 
-	// If no Unreleased section found, create a new version section
 	if !unreleasedFound {
-		result = insertVersionSection(lines, version, title)
+		return errors.New(
+			ctx,
+			"CHANGELOG.md has no ## Unreleased section; YOLO must write changelog entries before release",
+		)
 	}
 
 	output := strings.Join(result, "\n")
@@ -356,40 +358,6 @@ func processUnreleasedSection(lines []string, version string) ([]string, bool) {
 	}
 
 	return result, unreleasedFound
-}
-
-// insertVersionSection creates a new version section when no Unreleased section exists.
-// It inserts the new version before the first existing version section, or at the end if none exist.
-func insertVersionSection(lines []string, version string, title string) []string {
-	result := make([]string, 0, len(lines)+4)
-	inserted := false
-
-	for i, line := range lines {
-		// Find the first version section (## v...)
-		if !inserted && strings.HasPrefix(line, "## v") {
-			// Insert new version section before this one
-			result = append(result, "## "+version)
-			result = append(result, "")
-			result = append(result, "- "+title)
-			result = append(result, "")
-			result = append(result, line)
-			inserted = true
-			continue
-		}
-
-		result = append(result, line)
-
-		// If we reached the end without finding a version section, insert at end
-		if !inserted && i == len(lines)-1 {
-			result = append(result, "")
-			result = append(result, "## "+version)
-			result = append(result, "")
-			result = append(result, "- "+title)
-			inserted = true
-		}
-	}
-
-	return result
 }
 
 // gitCommit creates a commit with the given message

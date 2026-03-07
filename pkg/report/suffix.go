@@ -34,3 +34,14 @@ Field values:
 This report is MANDATORY. Do not skip it.
 `
 }
+
+// ChangelogSuffix returns instructions for the YOLO agent to write a descriptive changelog entry.
+// It is appended to the prompt only when the project has a CHANGELOG.md.
+func ChangelogSuffix() string {
+	return `
+
+---
+
+Update CHANGELOG.md following ` + "`/home/node/.claude/docs/changelog-guide.md`" + `. Create ` + "`## Unreleased`" + ` if missing, extend it if it already exists.
+`
+}

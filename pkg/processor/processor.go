@@ -313,6 +313,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
+	// Append changelog instructions when the project has a CHANGELOG.md
+	if p.releaser.HasChangelog(ctx) {
+		content = content + report.ChangelogSuffix()
+	}
 
 	slog.Info("executing prompt", "title", title)
 
@@ -779,7 +783,7 @@ func (p *processor) handleDirectWorkflow(
 		return errors.Wrap(ctx, err, "get next version")
 	}
 
-	if err := p.releaser.CommitAndRelease(gitCtx, bump, title); err != nil {
+	if err := p.releaser.CommitAndRelease(gitCtx, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
 

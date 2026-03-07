@@ -1,7 +1,12 @@
 ---
-status: queued
+status: completed
+summary: Refactored prompt status type from Status to PromptStatus following go-enum-type-pattern, added DraftPromptStatus and ApprovedPromptStatus (replacing queued), renamed MarkQueued to MarkApproved, updated all callers and test files across pkg/
+container: dark-factory-130-refactor-prompt-status-enum
+dark-factory-version: v0.24.0
 created: "2026-03-07T19:34:00Z"
 queued: "2026-03-07T19:50:15Z"
+started: "2026-03-07T19:55:06Z"
+completed: "2026-03-07T20:11:14Z"
 ---
 <summary>
 - Renames prompt status type from `Status` to `PromptStatus` following go-enum-type-pattern

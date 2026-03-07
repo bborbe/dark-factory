@@ -48,6 +48,7 @@ type Config struct {
 	ServerPort        int           `yaml:"serverPort"`
 	AutoMerge         bool          `yaml:"autoMerge"`
 	AutoRelease       bool          `yaml:"autoRelease"`
+	VerificationGate  bool          `yaml:"verificationGate"`
 	AutoReview        bool          `yaml:"autoReview"`
 	MaxReviewRetries  int           `yaml:"maxReviewRetries"`
 	AllowedReviewers  []string      `yaml:"allowedReviewers,omitempty"`

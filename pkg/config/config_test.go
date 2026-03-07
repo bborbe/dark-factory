@@ -824,6 +824,37 @@ autoRelease: true
 		})
 	})
 
+	Describe("VerificationGate", func() {
+		It("defaults to false", func() {
+			cfg := config.Defaults()
+			Expect(cfg.VerificationGate).To(BeFalse())
+		})
+
+		It("round-trips verificationGate: true through YAML", func() {
+			tmpDir, err := os.MkdirTemp("", "vgate-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Chdir(origDir) }()
+
+			configContent := "verificationGate: true\n"
+			err = os.WriteFile(
+				filepath.Join(tmpDir, ".dark-factory.yaml"),
+				[]byte(configContent),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			cfg, err := config.NewLoader().Load(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.VerificationGate).To(BeTrue())
+		})
+	})
+
 	Describe("ResolvedGitHubToken", func() {
 		It("returns empty string when github token is not set", func() {
 			cfg := config.Config{}

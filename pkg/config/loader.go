@@ -51,15 +51,16 @@ type partialSpecsConfig struct {
 // partialConfig is used for YAML unmarshaling to distinguish between
 // explicitly set zero values and missing fields.
 type partialConfig struct {
-	Workflow       *Workflow             `yaml:"workflow"`
-	Prompts        *partialPromptsConfig `yaml:"prompts"`
-	Specs          *partialSpecsConfig   `yaml:"specs"`
-	ContainerImage *string               `yaml:"containerImage"`
-	DebounceMs     *int                  `yaml:"debounceMs"`
-	ServerPort     *int                  `yaml:"serverPort"`
-	AutoMerge      *bool                 `yaml:"autoMerge"`
-	AutoRelease    *bool                 `yaml:"autoRelease"`
-	GitHub         *GitHubConfig         `yaml:"github"`
+	Workflow         *Workflow             `yaml:"workflow"`
+	Prompts          *partialPromptsConfig `yaml:"prompts"`
+	Specs            *partialSpecsConfig   `yaml:"specs"`
+	ContainerImage   *string               `yaml:"containerImage"`
+	DebounceMs       *int                  `yaml:"debounceMs"`
+	ServerPort       *int                  `yaml:"serverPort"`
+	AutoMerge        *bool                 `yaml:"autoMerge"`
+	AutoRelease      *bool                 `yaml:"autoRelease"`
+	VerificationGate *bool                 `yaml:"verificationGate"`
+	GitHub           *GitHubConfig         `yaml:"github"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -124,6 +125,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.AutoRelease != nil {
 		cfg.AutoRelease = *partial.AutoRelease
+	}
+	if partial.VerificationGate != nil {
+		cfg.VerificationGate = *partial.VerificationGate
 	}
 	if partial.GitHub != nil {
 		cfg.GitHub = *partial.GitHub

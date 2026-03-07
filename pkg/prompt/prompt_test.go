@@ -2244,4 +2244,64 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(pf.RetryCount()).To(Equal(3))
 		})
 	})
+
+	Describe("PendingVerificationPromptStatus", func() {
+		It("is in AvailablePromptStatuses", func() {
+			Expect(
+				prompt.AvailablePromptStatuses,
+			).To(ContainElement(prompt.PendingVerificationPromptStatus))
+		})
+
+		It("is recognized by Contains", func() {
+			Expect(
+				prompt.AvailablePromptStatuses.Contains(prompt.PendingVerificationPromptStatus),
+			).To(BeTrue())
+		})
+	})
+
+	Describe("MarkPendingVerification", func() {
+		It("sets Frontmatter.Status to pending_verification", func() {
+			pf := &prompt.PromptFile{}
+			pf.MarkPendingVerification()
+			Expect(pf.Frontmatter.Status).To(Equal("pending_verification"))
+		})
+	})
+
+	Describe("VerificationSection", func() {
+		It("returns trimmed content between verification tags", func() {
+			pf := &prompt.PromptFile{
+				Body: []byte(
+					"Some text\n<verification>\n  Run make test\n</verification>\nMore text",
+				),
+			}
+			Expect(pf.VerificationSection()).To(Equal("Run make test"))
+		})
+
+		It("returns empty string when no verification tag is present", func() {
+			pf := &prompt.PromptFile{
+				Body: []byte("Some text without verification tags"),
+			}
+			Expect(pf.VerificationSection()).To(Equal(""))
+		})
+
+		It("returns empty string when only opening tag is present", func() {
+			pf := &prompt.PromptFile{
+				Body: []byte("Some text\n<verification>\nRun make test"),
+			}
+			Expect(pf.VerificationSection()).To(Equal(""))
+		})
+	})
+
+	Describe("ListQueued skips pending_verification", func() {
+		It("does not return a file with status pending_verification", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: pending_verification\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			prompts, err := prompt.ListQueued(ctx, tempDir)
+			Expect(err).To(BeNil())
+			Expect(prompts).To(BeEmpty())
+		})
+	})
 })

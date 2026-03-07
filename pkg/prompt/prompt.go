@@ -43,12 +43,13 @@ var (
 type PromptStatus string
 
 const (
-	DraftPromptStatus     PromptStatus = "draft"
-	ApprovedPromptStatus  PromptStatus = "approved"
-	ExecutingPromptStatus PromptStatus = "executing"
-	CompletedPromptStatus PromptStatus = "completed"
-	FailedPromptStatus    PromptStatus = "failed"
-	InReviewPromptStatus  PromptStatus = "in_review"
+	DraftPromptStatus               PromptStatus = "draft"
+	ApprovedPromptStatus            PromptStatus = "approved"
+	ExecutingPromptStatus           PromptStatus = "executing"
+	CompletedPromptStatus           PromptStatus = "completed"
+	FailedPromptStatus              PromptStatus = "failed"
+	InReviewPromptStatus            PromptStatus = "in_review"
+	PendingVerificationPromptStatus PromptStatus = "pending_verification"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
@@ -59,6 +60,7 @@ var AvailablePromptStatuses = PromptStatuses{
 	CompletedPromptStatus,
 	FailedPromptStatus,
 	InReviewPromptStatus,
+	PendingVerificationPromptStatus,
 }
 
 // PromptStatuses is a slice of PromptStatus values.
@@ -319,6 +321,11 @@ func (pf *PromptFile) MarkFailed() {
 	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 }
 
+// MarkPendingVerification sets status to pending_verification.
+func (pf *PromptFile) MarkPendingVerification() {
+	pf.Frontmatter.Status = string(PendingVerificationPromptStatus)
+}
+
 // MarkApproved sets status to approved and ensures created/queued timestamps exist.
 func (pf *PromptFile) MarkApproved() {
 	now := pf.now().UTC().Format(time.RFC3339)
@@ -329,6 +336,24 @@ func (pf *PromptFile) MarkApproved() {
 	if pf.Frontmatter.Queued == "" {
 		pf.Frontmatter.Queued = now
 	}
+}
+
+// VerificationSection extracts the content of the <verification> tag from the prompt body.
+// Returns an empty string if no <verification> tag is found.
+func (pf *PromptFile) VerificationSection() string {
+	body := string(pf.Body)
+	const openTag = "<verification>"
+	const closeTag = "</verification>"
+	start := strings.Index(body, openTag)
+	if start == -1 {
+		return ""
+	}
+	start += len(openTag)
+	end := strings.Index(body[start:], closeTag)
+	if end == -1 {
+		return ""
+	}
+	return strings.TrimSpace(body[start : start+end])
 }
 
 // SetSummary sets the summary field in frontmatter.
@@ -535,7 +560,8 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		if fm.Status == string(ExecutingPromptStatus) ||
 			fm.Status == string(CompletedPromptStatus) ||
 			fm.Status == string(FailedPromptStatus) ||
-			fm.Status == string(InReviewPromptStatus) {
+			fm.Status == string(InReviewPromptStatus) ||
+			fm.Status == string(PendingVerificationPromptStatus) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)
 			continue
 		}

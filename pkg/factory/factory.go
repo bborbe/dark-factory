@@ -354,17 +354,6 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	return cmd.NewStatusCommand(statusChecker, formatter)
 }
 
-// CreateQueueCommand creates a QueueCommand.
-func CreateQueueCommand(cfg config.Config) cmd.QueueCommand {
-	promptManager, _ := createPromptManager(
-		cfg.Prompts.InboxDir,
-		cfg.Prompts.InProgressDir,
-		cfg.Prompts.CompletedDir,
-	)
-
-	return cmd.NewQueueCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
-}
-
 // CreateListCommand creates a ListCommand.
 func CreateListCommand(cfg config.Config) cmd.ListCommand {
 	return cmd.NewListCommand(

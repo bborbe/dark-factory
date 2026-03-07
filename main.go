@@ -84,8 +84,6 @@ func runPromptCommand(
 		return factory.CreateStatusCommand(cfg).Run(ctx, args)
 	case "list":
 		return factory.CreateListCommand(cfg).Run(ctx, args)
-	case "queue":
-		return factory.CreateQueueCommand(cfg).Run(ctx, args)
 	case "approve":
 		return factory.CreateApproveCommand(cfg).Run(ctx, args)
 	case "requeue":
@@ -126,7 +124,6 @@ func printHelp() {
 			"  list                   List all prompts and specs with their status\n\n"+
 			"  prompt list            List prompts with their status\n"+
 			"  prompt status          Show prompt status\n"+
-			"  prompt queue <id>      Queue a prompt for execution\n"+
 			"  prompt approve <id>    Approve a prompt (move from inbox to queue)\n"+
 			"  prompt requeue <id>    Reset a prompt's status to queued\n"+
 			"  prompt retry           Shorthand for prompt requeue --failed\n\n"+

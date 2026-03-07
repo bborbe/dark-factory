@@ -95,13 +95,6 @@ var _ = Describe("Factory", func() {
 		})
 	})
 
-	Describe("CreateQueueCommand", func() {
-		It("should return a non-nil queue command", func() {
-			cmd := factory.CreateQueueCommand(cfg)
-			Expect(cmd).NotTo(BeNil())
-		})
-	})
-
 	Describe("CreateCombinedStatusCommand", func() {
 		It("should return a non-nil combined status command", func() {
 			cmd := factory.CreateCombinedStatusCommand(cfg)

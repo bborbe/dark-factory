@@ -1,17 +1,16 @@
 ---
-spec: ["prompt-validation-command"]
+spec: ["025"]
 status: created
 created: "2026-03-07T21:00:00Z"
 ---
 <summary>
-- Adds `validationCommand` field to `Config` in `pkg/config/config.go`, defaulting to `"make precommit"`
-- Adds `ValidationSuffix(cmd string) string` to `pkg/report/suffix.go` that produces injected instruction text
-- The injected text tells the agent to run the command and use its exit code as the authoritative success/failure signal, explicitly overriding any `<verification>` section in the prompt
-- Empty string disables injection — prompts fall back to their own `<verification>` sections
-- Adds `validationCommand string` field and constructor parameter to `processor` in `pkg/processor/processor.go`
-- Injects the validation suffix in `processPrompt`, after the report suffix and changelog suffix
-- Threads `validationCommand` through `CreateProcessor` in `pkg/factory/factory.go` and its call site in `CreateRunner`
-- Adds tests for `ValidationSuffix`, config default, and processor injection behaviour
+- Projects can configure a single validation command that applies to all prompts (default: `make precommit`)
+- The configured command is injected into every prompt before execution
+- The agent uses the command's exit code as the authoritative success/failure signal
+- Injected validation explicitly overrides any prompt-level `<verification>` section
+- Empty config disables injection — prompts fall back to their own verification
+- Existing projects get `make precommit` automatically with no config changes
+- Tests cover the config default, injection logic, and empty-string opt-out
 </summary>
 
 <objective>

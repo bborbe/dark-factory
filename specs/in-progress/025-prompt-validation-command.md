@@ -4,6 +4,15 @@ approved: "2026-03-07T20:55:40Z"
 prompted: "2026-03-07T20:58:28Z"
 ---
 
+## Summary
+
+- Every prompt currently needs its own verification command — repetitive and error-prone
+- Projects can now configure a single validation command (default: `make precommit`) as the source of truth
+- Dark-factory injects the command into every prompt before sending to the YOLO container
+- The agent uses the command's exit code for success/failure, overriding prompt-level verification
+- Empty config disables injection — prompts fall back to their own verification sections
+- Existing projects get `make precommit` automatically with no config changes
+
 ## Problem
 
 Every prompt must include a `<verification>` section telling the YOLO agent what command to run inside the container. This is repetitive — most projects use `make precommit` — and error-prone: prompt authors can specify commands that don't work in the container (e.g. `make build` requiring Docker). The completion report's success/failure depends entirely on what the prompt author remembered to include.

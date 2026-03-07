@@ -375,6 +375,25 @@ func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
 	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir)
 }
 
+// CreatePromptVerifyCommand creates a PromptVerifyCommand.
+func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
+	promptManager, releaser := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+	)
+	ghToken := cfg.ResolvedGitHubToken()
+	return cmd.NewPromptVerifyCommand(
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		promptManager,
+		releaser,
+		cfg.Workflow,
+		git.NewBrancher(),
+		git.NewPRCreator(ghToken),
+	)
+}
+
 // CreateApproveCommand creates an ApproveCommand.
 func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
 	promptManager, _ := createPromptManager(

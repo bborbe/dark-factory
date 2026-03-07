@@ -17,17 +17,25 @@ Dark-factory injects a project-level validation command into every prompt before
 - No change to how dark-factory interprets the completion report
 - Prompt-level `<verification>` sections still allowed — they provide additional context to the agent
 
+## Assumptions
+
+- The YOLO container has the configured validation command available (e.g. `make precommit` target exists in the project's Makefile)
+- Existing prompt content injection (report suffix, changelog suffix) continues to work alongside validation injection
+
 ## Desired Behavior
 
-1. New config field `validationCommand` (string, default: `make precommit`).
-2. Dark-factory appends the validation command to the prompt content before passing it to the executor, following the same pattern as `report.Suffix()` and `report.ChangelogSuffix()`.
-3. The injected text instructs the YOLO agent: "Run `<command>` as your final verification. Use its exit code to determine the completion report status. This overrides any `<verification>` section in the prompt."
-4. If `validationCommand` is empty string, no validation command is injected (opt-out).
+1. Projects can configure a single validation command in `.dark-factory.yaml` that applies to all prompts without each prompt specifying its own. Default: `make precommit`.
+2. When a validation command is configured, dark-factory injects it into the prompt content before sending to the executor. The YOLO agent runs this command as the authoritative success/failure signal.
+3. The injected instruction explicitly tells the agent to use the validation command's exit code for the completion report, overriding any prompt-level `<verification>` section.
+4. Prompt-level `<verification>` sections remain visible to the agent as additional context but do not override the project-level command.
+5. Setting `validationCommand` to empty string disables injection — prompts fall back to their own `<verification>` sections.
 
 ## Constraints
 
 - Default value is `make precommit` — existing projects get this behavior without config changes
-- Existing completion report suffix (`report.Suffix()`) format unchanged
+- Existing prompt content injection (report suffix, changelog suffix) must continue to work unchanged
+- Prompts currently in the queue must work correctly after this ships — injection applies to all prompts regardless of when they were queued
+- Existing executor and processor tests must keep passing
 - `make precommit` must pass
 
 ## Security
@@ -40,6 +48,7 @@ No security impact — validation command is set by the project owner in `.dark-
 |---------|-------------------|----------|
 | Project has no `make precommit` target | Agent reports failure in completion report | Set `validationCommand` to a valid command or empty string |
 | Validation command exits non-zero | Agent reports `status: partial` or `status: failed` | Fix the code or adjust the validation command |
+| Prompt has `<verification>` that contradicts injected command | Injected project-level command takes precedence; agent ignores prompt-level section | Remove or align the prompt-level section |
 
 ## Acceptance Criteria
 

@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["025"]
+summary: Added ValidationCommand config field with 'make precommit' default, ValidationSuffix function, and processor injection that appends the validation command override to every prompt before execution
 container: dark-factory-134-spec-025-prompt-validation-command
 dark-factory-version: v0.26.0
 created: "2026-03-07T21:00:00Z"
 queued: "2026-03-07T21:35:07Z"
 started: "2026-03-07T21:35:58Z"
+completed: "2026-03-07T21:45:31Z"
 ---
 <summary>
 - Projects can configure a single validation command that applies to all prompts (default: `make precommit`)

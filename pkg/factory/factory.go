@@ -122,6 +122,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.InboxDir,
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
+			cfg.VerificationGate,
 		),
 		srv,
 		reviewPoller,
@@ -181,6 +182,7 @@ func CreateProcessor(
 	specsInboxDir string,
 	specsInProgressDir string,
 	specsCompletedDir string,
+	verificationGate bool,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -209,6 +211,7 @@ func CreateProcessor(
 		),
 		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
+		verificationGate,
 	)
 }
 

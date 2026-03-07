@@ -117,6 +117,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -181,6 +182,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -249,6 +251,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -313,6 +316,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -369,6 +373,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -425,6 +430,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -485,6 +491,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -575,6 +582,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -641,6 +649,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -697,6 +706,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -757,6 +767,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -806,6 +817,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -853,6 +865,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -910,6 +923,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -978,6 +992,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		// Run processor in goroutine
@@ -1043,6 +1058,7 @@ var _ = Describe("Processor", func() {
 			mockAutoCompleter,
 			mockSpecLister,
 			"make precommit",
+			false,
 		)
 
 		go func() {
@@ -1113,6 +1129,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1192,6 +1209,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor — marks failed and continues
@@ -1255,6 +1273,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor — marks failed and continues
@@ -1322,6 +1341,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -1398,6 +1418,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -1478,6 +1499,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -1552,6 +1574,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1660,6 +1683,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -1743,6 +1767,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor
@@ -1819,6 +1844,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor
@@ -1902,6 +1928,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -1962,6 +1989,7 @@ var _ = Describe("Processor", func() {
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor
@@ -2058,6 +2086,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -2131,6 +2160,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -2201,6 +2231,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2272,6 +2303,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2343,6 +2375,7 @@ more output
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -2413,6 +2446,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2487,6 +2521,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			// Run processor in goroutine
@@ -2545,6 +2580,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2595,6 +2631,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2652,6 +2689,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2722,6 +2760,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2785,6 +2824,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2852,6 +2892,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2920,6 +2961,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -2980,6 +3022,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -3052,6 +3095,7 @@ DARK-FACTORY-REPORT -->
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -3104,6 +3148,7 @@ DARK-FACTORY-REPORT -->
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3163,6 +3208,7 @@ DARK-FACTORY-REPORT -->
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3238,6 +3284,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3286,6 +3333,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		err := p.Process(ctx)
@@ -3317,6 +3365,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		err := p.Process(ctx)
@@ -3358,6 +3407,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3407,6 +3457,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3474,6 +3525,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3547,6 +3599,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3621,6 +3674,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3676,6 +3730,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3748,6 +3803,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockAutoCompleter,
 			mockSpecLister,
 			"",
+			false,
 		)
 
 		go func() {
@@ -3827,6 +3883,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -3913,6 +3970,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockAutoCompleter,
 					mockSpecLister,
 					"",
+					false,
 				)
 
 				go func() {
@@ -3998,6 +4056,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -4084,6 +4143,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -4158,6 +4218,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockAutoCompleter,
 					mockSpecLister,
 					"",
+					false,
 				)
 
 				go func() {
@@ -4236,6 +4297,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -4311,6 +4373,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockAutoCompleter,
 					mockSpecLister,
 					"",
+					false,
 				)
 
 				go func() {
@@ -4400,6 +4463,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				mockSpecLister,
 				"",
+				false,
 			)
 
 			go func() {
@@ -4428,6 +4492,240 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(BeFalse())
 
 			cancel()
+		})
+	})
+
+	Describe("Verification Gate", func() {
+		var promptPath string
+
+		BeforeEach(func() {
+			promptPath = filepath.Join(promptsDir, "001-gate-test.md")
+			// Override Load stub to use real file I/O so pf.Save works
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return prompt.Load(ctx, path)
+			}
+		})
+
+		Context("gate enabled, execution succeeds", func() {
+			It("enters pending_verification and does not call MoveToCompleted", func() {
+				Expect(os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: approved\n---\n# Gate Test\n\nContent\n"),
+					0600,
+				)).To(Succeed())
+
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.HasChangelogReturns(false)
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					filepath.Join(promptsDir, "log"),
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowDirect,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					false,
+					false,
+					false,
+					mockAutoCompleter,
+					mockSpecLister,
+					"",
+					true, // verificationGate enabled
+				)
+
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- p.Process(ctx)
+				}()
+
+				Eventually(func() int {
+					return mockExecutor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// MoveToCompleted must NOT be called — git ops are deferred
+				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+
+				// File status must be pending_verification
+				pf, loadErr := prompt.Load(ctx, promptPath)
+				Expect(loadErr).NotTo(HaveOccurred())
+				Expect(
+					pf.Frontmatter.Status,
+				).To(Equal(string(prompt.PendingVerificationPromptStatus)))
+
+				cancel()
+				<-errCh
+			})
+		})
+
+		Context("gate enabled, execution fails", func() {
+			It("marks prompt failed without entering pending_verification", func() {
+				Expect(os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: approved\n---\n# Gate Test\n\nContent\n"),
+					0600,
+				)).To(Succeed())
+
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					filepath.Join(promptsDir, "log"),
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowDirect,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					false,
+					false,
+					false,
+					mockAutoCompleter,
+					mockSpecLister,
+					"",
+					true, // verificationGate enabled
+				)
+
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- p.Process(ctx)
+				}()
+
+				Eventually(func() int {
+					return mockExecutor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// MoveToCompleted must NOT be called
+				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+
+				// Status must be failed — gate does not apply to failed executions
+				pf, loadErr := prompt.Load(ctx, promptPath)
+				Expect(loadErr).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal(string(prompt.FailedPromptStatus)))
+
+				cancel()
+				<-errCh
+			})
+		})
+
+		Context("hasPendingVerification blocks queue", func() {
+			It(
+				"returns nil without calling ListQueued when pending_verification prompt exists",
+				func() {
+					Expect(os.WriteFile(
+						promptPath,
+						[]byte("---\nstatus: pending_verification\n---\n# Pending\n\nContent\n"),
+						0600,
+					)).To(Succeed())
+
+					p := processor.NewProcessor(
+						promptsDir,
+						filepath.Join(promptsDir, "completed"),
+						filepath.Join(promptsDir, "log"),
+						"test-project",
+						mockExecutor,
+						mockManager,
+						mockReleaser,
+						mockVersionGet,
+						ready,
+						config.WorkflowDirect,
+						mockBrancher,
+						mockPRCreator,
+						mockWorktree,
+						mockPRMerger,
+						false,
+						false,
+						false,
+						mockAutoCompleter,
+						mockSpecLister,
+						"",
+						false,
+					)
+
+					errCh := make(chan error, 1)
+					go func() {
+						errCh <- p.Process(ctx)
+					}()
+
+					// Give the processor time to run the initial scan
+					time.Sleep(200 * time.Millisecond)
+
+					// ListQueued must NOT be called — queue is blocked before the loop
+					Expect(mockManager.ListQueuedCallCount()).To(Equal(0))
+					// Executor must NOT be called
+					Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+
+					cancel()
+					<-errCh
+				},
+			)
+		})
+
+		Context("hasPendingVerification false, queue proceeds normally", func() {
+			It("calls ListQueued when no pending_verification prompt exists", func() {
+				mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+				p := processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					filepath.Join(promptsDir, "log"),
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					config.WorkflowDirect,
+					mockBrancher,
+					mockPRCreator,
+					mockWorktree,
+					mockPRMerger,
+					false,
+					false,
+					false,
+					mockAutoCompleter,
+					mockSpecLister,
+					"",
+					true, // gate enabled but no pending file
+				)
+
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- p.Process(ctx)
+				}()
+
+				// ListQueued should be called (no pending file to block)
+				Eventually(func() int {
+					return mockManager.ListQueuedCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+				cancel()
+				<-errCh
+			})
 		})
 	})
 
@@ -4468,6 +4766,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockAutoCompleter,
 				realLister,
 				"",
+				false,
 			)
 
 			errCh := make(chan error, 1)

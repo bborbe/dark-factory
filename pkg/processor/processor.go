@@ -56,6 +56,7 @@ type processor struct {
 	autoCompleter     spec.AutoCompleter
 	specLister        spec.Lister
 	validationCommand string
+	verificationGate  bool
 	skippedPrompts    map[string]time.Time // filename → mod time when skipped
 }
 
@@ -81,6 +82,7 @@ func NewProcessor(
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
 	validationCommand string,
+	verificationGate bool,
 ) Processor {
 	return &processor{
 		queueDir:          queueDir,
@@ -103,6 +105,7 @@ func NewProcessor(
 		autoCompleter:     autoCompleter,
 		specLister:        specLister,
 		validationCommand: validationCommand,
+		verificationGate:  verificationGate,
 		skippedPrompts:    make(map[string]time.Time),
 	}
 }
@@ -156,6 +159,12 @@ func (p *processor) Process(ctx context.Context) error {
 
 // processExistingQueued scans for and processes any existing queued prompts.
 func (p *processor) processExistingQueued(ctx context.Context) error {
+	// Block if any prompt is pending human verification
+	if p.hasPendingVerification(ctx) {
+		slog.Info("queue blocked: prompt pending verification")
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -258,7 +267,8 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 	case prompt.ApprovedPromptStatus,
 		prompt.ExecutingPromptStatus,
 		prompt.CompletedPromptStatus,
-		prompt.FailedPromptStatus:
+		prompt.FailedPromptStatus,
+		prompt.PendingVerificationPromptStatus:
 		// Already in a valid processing state — don't override
 		return nil
 	}
@@ -435,6 +445,11 @@ func (p *processor) handlePostExecution(
 	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
 	gitCtx := context.WithoutCancel(ctx)
 
+	// Verification gate: pause before git operations if enabled
+	if p.verificationGate {
+		return p.enterPendingVerification(ctx, pf, promptPath)
+	}
+
 	// In autoReview mode (autoReview+!autoMerge+PR/worktree), prompt stays in queueDir.
 	// Skip move-to-completed and commit of completed file until review approves.
 	isAutoReviewPR := p.autoReview && !p.autoMerge &&
@@ -582,6 +597,55 @@ func (p *processor) setupWorktreeWorkflowState(
 		return nil, err
 	}
 	return state, nil
+}
+
+// hasPendingVerification returns true if any prompt in queueDir has pending_verification status.
+func (p *processor) hasPendingVerification(ctx context.Context) bool {
+	entries, err := os.ReadDir(p.queueDir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		pf, err := p.promptManager.Load(ctx, filepath.Join(p.queueDir, entry.Name()))
+		if err != nil {
+			continue
+		}
+		if pf.Frontmatter.Status == string(prompt.PendingVerificationPromptStatus) {
+			return true
+		}
+	}
+	return false
+}
+
+// enterPendingVerification transitions a prompt to pending_verification state and logs the verification hint.
+func (p *processor) enterPendingVerification(
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	promptPath string,
+) error {
+	pf.MarkPendingVerification()
+	if err := pf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "save pending verification status")
+	}
+	hint := pf.VerificationSection()
+	if hint != "" {
+		slog.Info(
+			"prompt pending verification — run the following checks, then: dark-factory prompt verify <file>",
+			"file",
+			filepath.Base(promptPath),
+			"verification",
+			hint,
+		)
+	} else {
+		slog.Info("prompt pending verification",
+			"file", filepath.Base(promptPath),
+			"hint", "run: dark-factory prompt verify <file> when ready",
+		)
+	}
+	return nil
 }
 
 // handleEmptyPrompt handles empty prompts by moving them to completed without execution.

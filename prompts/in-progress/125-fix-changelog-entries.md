@@ -1,3 +1,8 @@
+---
+status: queued
+created: "2026-03-07T16:19:54Z"
+queued: "2026-03-07T16:19:54Z"
+---
 <summary>
 - Stops dark-factory from writing prompt filenames as changelog entries
 - YOLO container now writes descriptive changelog entries under `## Unreleased`

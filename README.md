@@ -7,12 +7,12 @@ One factory per project, sequential prompt processing, zero human intervention b
 ## How It Works
 
 ```
-You (fast)                              Factory (slow, unattended)
-├── write prompt    ──→  prompts/       (inbox, passive)
-├── ready to go     ──→  prompts/queue/ ┌─ watcher renames, processor executes
-├── write prompt 2  ──→  prompts/       │  YOLO → commit → tag → push
-├── move to queue   ──→  prompts/queue/ │  YOLO → commit → tag → push
-└── go AFK                              └─ idle, watching prompts/queue/
+You (fast)                                    Factory (slow, unattended)
+├── write prompt    ──→  prompts/              (inbox, passive)
+├── ready to go     ──→  prompts/in-progress/  ┌─ watcher renames, processor executes
+├── write prompt 2  ──→  prompts/              │  YOLO → commit → tag → push
+├── move to queue   ──→  prompts/in-progress/  │  YOLO → commit → tag → push
+└── go AFK                                     └─ idle, watching prompts/in-progress/
                                                     ↓
 You come back                       ←── changes committed and pushed
 ```
@@ -65,7 +65,7 @@ make install   # installs to $GOPATH/bin
 ```bash
 # 1. Set up your project
 cd ~/Documents/workspaces/your-project
-mkdir -p prompts/queue prompts/completed
+mkdir -p prompts/in-progress prompts/completed
 
 # 2. Write a prompt
 cat > prompts/my-feature.md << 'EOF'
@@ -81,8 +81,8 @@ Add a `/health` endpoint that returns 200 OK.
 - Do NOT commit, tag, or push
 EOF
 
-# 3. Queue it for execution
-mv prompts/my-feature.md prompts/queue/
+# 3. Move to in-progress for execution
+mv prompts/my-feature.md prompts/in-progress/
 
 # 4. Start dark-factory
 dark-factory
@@ -96,15 +96,15 @@ dark-factory
 
 ```
 your-project/
-├── .dark-factory.yaml      # optional config
-├── CHANGELOG.md            # optional — enables auto-versioning with tags
-├── prompts/                # inbox (passive, drop prompts here)
-│   ├── my-new-feature.md   # draft, nothing happens
-│   ├── queue/              # watcher watches here, processor executes
-│   │   └── 001-my-task.md  # will be picked up and executed
-│   ├── completed/          # done prompts archived here
+├── .dark-factory.yaml        # optional config
+├── CHANGELOG.md              # optional — enables auto-versioning with tags
+├── prompts/                  # inbox (passive, drop prompts here)
+│   ├── my-new-feature.md     # draft, nothing happens
+│   ├── in-progress/          # watcher watches here, processor executes
+│   │   └── 001-my-task.md    # will be picked up and executed
+│   ├── completed/            # done prompts archived here
 │   │   └── 001-my-task.md
-│   └── log/                # execution logs
+│   └── log/                  # execution logs
 │       └── 001-my-task.log
 └── ...
 ```
@@ -112,7 +112,7 @@ your-project/
 ## Workflow
 
 1. Write a prompt in `prompts/` (inbox — nothing happens automatically)
-2. When ready, move it to `prompts/queue/`
+2. When ready, move it to `prompts/in-progress/`
 3. Watcher detects the file, renames to `NNN-name.md`, sets `status: queued` in frontmatter
 4. Processor picks the lowest-numbered queued prompt
 5. Validates: correct number prefix, status is queued, all previous prompts completed
@@ -126,7 +126,7 @@ When a prompt fails (`status: failed`):
 
 1. Check the log: `prompts/log/NNN-name.log`
 2. Fix the prompt (clarify instructions, reduce scope, fix constraints)
-3. Reset status to `queued` in the frontmatter and move back to `prompts/queue/`
+3. Reset status to `queued` in the frontmatter and move back to `prompts/in-progress/`
 4. Dark-factory will retry it
 
 ### Versioning
@@ -212,7 +212,7 @@ dark-factory status -json # JSON output
 
 ## REST API
 
-Runs on port 8080 (configurable via `serverPort`):
+Disabled by default (`serverPort: 0`). Set a port to enable:
 
 | Endpoint | Description |
 |----------|-------------|
@@ -226,17 +226,26 @@ Runs on port 8080 (configurable via `serverPort`):
 Optional `.dark-factory.yaml` in project root. Without it, dark-factory uses defaults.
 
 ```yaml
+projectName: my-project                              # optional project identifier
 github:
-  token: ${DARK_FACTORY_GITHUB_TOKEN}                      # default — reads from env var
-workflow: direct                                    # "direct" (default), "pr", or "worktree"
-autoMerge: false                                    # wait for PR approval and merge (requires workflow: pr or worktree)
-autoRelease: false                                  # create release after merge (requires autoMerge: true)
-inboxDir: prompts                                   # passive drop zone (default: prompts)
-queueDir: prompts/queue                             # watcher + processor dir (default: prompts/queue)
-completedDir: prompts/completed                     # archive dir (default: prompts/completed)
-containerImage: docker.io/bborbe/claude-yolo:v0.2.5 # YOLO Docker image
-debounceMs: 500                                     # watcher debounce in ms
-serverPort: 8080                                    # REST API port
+  token: ${DARK_FACTORY_GITHUB_TOKEN}                # default — reads from env var
+workflow: direct                                     # "direct" (default), "pr", or "worktree"
+autoMerge: false                                     # wait for PR approval and merge (requires workflow: pr or worktree)
+autoRelease: false                                   # create release after merge (requires autoMerge: true)
+prompts:
+  inboxDir: prompts                                  # passive drop zone (default: prompts)
+  inProgressDir: prompts/in-progress                 # watcher + processor dir (default: prompts/in-progress)
+  completedDir: prompts/completed                    # archive dir (default: prompts/completed)
+  logDir: prompts/log                                # execution logs (default: prompts/log)
+specs:
+  inboxDir: specs                                    # spec inbox (default: specs)
+  inProgressDir: specs/in-progress                   # spec processing dir (default: specs/in-progress)
+  completedDir: specs/completed                      # completed specs (default: specs/completed)
+  logDir: specs/log                                  # spec logs (default: specs/log)
+containerImage: docker.io/bborbe/claude-yolo:v0.2.5  # YOLO Docker image
+model: claude-sonnet-4-6                             # Claude model (default: claude-sonnet-4-6)
+debounceMs: 500                                      # watcher debounce in ms
+serverPort: 0                                        # REST API port (0 = disabled)
 ```
 
 ### GitHub Token
@@ -249,7 +258,7 @@ The optional `github.token` field allows dark-factory to use a specific GitHub i
 - Token must never be committed — use environment variable reference only
 - For security, ensure `.dark-factory.yaml` is not world-readable: `chmod 600 .dark-factory.yaml`
 
-The inbox/queue/completed separation works out of the box with these defaults. You can customize any of these paths via `.dark-factory.yaml`. See `example/` for a complete setup.
+The inbox/in-progress/completed separation works out of the box with these defaults. You can customize any of these paths via `.dark-factory.yaml`. See `example/` for a complete setup.
 
 ## YOLO Container Configuration
 

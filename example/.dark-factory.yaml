@@ -1,51 +1,30 @@
-# dark-factory configuration
+# dark-factory configuration — all defaults
 #
-# All fields are optional. Missing fields use defaults shown below.
+# Copy to your project root as .dark-factory.yaml
+# All fields are optional. Missing fields use these defaults.
 
-# GitHub API authentication
-# Default: ${DARK_FACTORY_GITHUB_TOKEN} — reads from env var automatically
-# Set the env var to use a bot account for PR creation
-# If env var is unset, falls back to default gh auth silently
-# github:
-#   token: ${DARK_FACTORY_GITHUB_TOKEN}
-
-# Git workflow after prompt execution
-# "direct" = commit + tag + push to current branch (default)
-# "pr" = create feature branch + PR
-# "worktree" = create worktree + feature branch + PR
+projectName: ""
+github:
+  token: ${DARK_FACTORY_GITHUB_TOKEN}
 workflow: direct
-
-# Auto-merge PRs after they pass checks (requires workflow: pr or worktree)
-# When enabled, dark-factory waits for PR to be mergeable and merges it
-# Default: false
-# autoMerge: false
-
-# Auto-release after PR merge (requires autoMerge: true)
-# When enabled and CHANGELOG.md exists, creates a release after merge
-# Default: false
-# autoRelease: false
-
-# Watch PRs for reviews and generate fix prompts (requires workflow: pr or worktree, autoMerge: true)
-# autoReview: false        # watch PRs for reviews and generate fix prompts
-# maxReviewRetries: 3      # max fix iterations before marking failed
-# allowedReviewers: []     # trusted GitHub usernames (or use useCollaborators)
-# useCollaborators: false  # trust repo collaborators as reviewers
-# pollIntervalSec: 60      # how often to poll in_review prompts (seconds)
-
-# Passive drop zone for new prompts (no automation)
-inboxDir: prompts
-
-# Watcher monitors this directory, processor executes from here
-queueDir: prompts/queue
-
-# Completed prompts are archived here
-completedDir: prompts/completed
-
-# Docker image for YOLO execution
+autoMerge: false
+autoRelease: false
+autoReview: false
+maxReviewRetries: 3
+allowedReviewers: []
+useCollaborators: false
+pollIntervalSec: 60
+prompts:
+  inboxDir: prompts
+  inProgressDir: prompts/in-progress
+  completedDir: prompts/completed
+  logDir: prompts/log
+specs:
+  inboxDir: specs
+  inProgressDir: specs/in-progress
+  completedDir: specs/completed
+  logDir: specs/log
 containerImage: docker.io/bborbe/claude-yolo:v0.2.5
-
-# Watcher debounce in milliseconds
+model: claude-sonnet-4-6
 debounceMs: 500
-
-# REST API server port
-serverPort: 8080
+serverPort: 0

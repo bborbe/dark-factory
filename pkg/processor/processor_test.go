@@ -77,7 +77,7 @@ var _ = Describe("Processor", func() {
 			Path: path,
 			Body: []byte(body),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}
 	}
@@ -136,7 +136,7 @@ var _ = Describe("Processor", func() {
 	It("should process existing queued prompt on startup", func() {
 		promptPath := filepath.Join(promptsDir, "001-test.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		// First call returns prompt, second call returns empty (processed)
@@ -203,7 +203,7 @@ var _ = Describe("Processor", func() {
 	It("should process prompts when ready signal received", func() {
 		promptPath := filepath.Join(promptsDir, "001-signal.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		// Initially no prompts
@@ -265,7 +265,7 @@ var _ = Describe("Processor", func() {
 	It("should skip empty prompts", func() {
 		promptPath := filepath.Join(promptsDir, "001-empty.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -275,7 +275,7 @@ var _ = Describe("Processor", func() {
 			Path: promptPath,
 			Body: []byte(""),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}, nil)
 		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
@@ -322,7 +322,7 @@ var _ = Describe("Processor", func() {
 	It("should handle executor errors and mark prompt as failed", func() {
 		promptPath := filepath.Join(promptsDir, "001-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		// Return queued once, then empty (so loop exits after failure)
@@ -373,7 +373,7 @@ var _ = Describe("Processor", func() {
 	It("should call CommitOnly when no changelog", func() {
 		promptPath := filepath.Join(promptsDir, "001-no-changelog.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -430,7 +430,7 @@ var _ = Describe("Processor", func() {
 	It("should call CommitAndRelease with PatchBump when changelog exists", func() {
 		promptPath := filepath.Join(promptsDir, "001-with-changelog.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -510,7 +510,7 @@ var _ = Describe("Processor", func() {
 
 		promptPath := filepath.Join(promptsDir, "001-feature.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -520,7 +520,7 @@ var _ = Describe("Processor", func() {
 			Path: promptPath,
 			Body: []byte("# Add new feature\n\nImplement new feature."),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}, nil)
 		mockManager.ContentReturns("# Add new feature", nil)
@@ -580,11 +580,11 @@ var _ = Describe("Processor", func() {
 
 		// Return both prompts first, then just second, then none
 		mockManager.ListQueuedReturnsOnCall(0, []prompt.Prompt{
-			{Path: promptPath1, Status: prompt.StatusQueued},
-			{Path: promptPath2, Status: prompt.StatusQueued},
+			{Path: promptPath1, Status: prompt.ApprovedPromptStatus},
+			{Path: promptPath2, Status: prompt.ApprovedPromptStatus},
 		}, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{
-			{Path: promptPath2, Status: prompt.StatusQueued},
+			{Path: promptPath2, Status: prompt.ApprovedPromptStatus},
 		}, nil)
 		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 
@@ -637,7 +637,7 @@ var _ = Describe("Processor", func() {
 	It("should sanitize container name", func() {
 		promptPath := filepath.Join(promptsDir, "001-test@file#name.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -742,9 +742,9 @@ var _ = Describe("Processor", func() {
 			return mockManager.SetStatusCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
-		// Verify SetStatus was called with "queued"
+		// Verify SetStatus was called with "approved"
 		_, _, status := mockManager.SetStatusArgsForCall(0)
-		Expect(status).To(Equal("queued"))
+		Expect(status).To(Equal("approved"))
 
 		cancel()
 	})
@@ -752,7 +752,7 @@ var _ = Describe("Processor", func() {
 	It("should skip prompt with invalid status", func() {
 		promptPath := filepath.Join(promptsDir, "001-invalid-status.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusExecuting}, // Wrong status for execution
+			{Path: promptPath, Status: prompt.ExecutingPromptStatus}, // Wrong status for execution
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -797,7 +797,7 @@ var _ = Describe("Processor", func() {
 	It("should skip prompt when previous not completed", func() {
 		promptPath := filepath.Join(promptsDir, "003-third.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -842,7 +842,7 @@ var _ = Describe("Processor", func() {
 	It("should set version in frontmatter from version getter", func() {
 		promptPath := filepath.Join(promptsDir, "001-version-test.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -900,7 +900,7 @@ var _ = Describe("Processor", func() {
 	It("should append completion report suffix to content before executor call", func() {
 		promptPath := filepath.Join(promptsDir, "001-suffix-test.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -910,7 +910,7 @@ var _ = Describe("Processor", func() {
 			Path: promptPath,
 			Body: []byte("# Test prompt content\n\nContent for testing suffix."),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}, nil)
 		mockManager.ContentReturns("# Test prompt content", nil)
@@ -970,7 +970,7 @@ var _ = Describe("Processor", func() {
 		It("should create branch, commit, push, create PR, and switch back", func() {
 			promptPath := filepath.Join(promptsDir, "001-pr-test.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -980,7 +980,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Add new feature\n\nPR test content."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# PR test", nil)
@@ -1061,7 +1061,7 @@ var _ = Describe("Processor", func() {
 		It("should handle branch creation error", func() {
 			promptPath := filepath.Join(promptsDir, "001-branch-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			// Return queued once, then empty
@@ -1116,7 +1116,7 @@ var _ = Describe("Processor", func() {
 		It("should handle PR creation error after successful push", func() {
 			promptPath := filepath.Join(promptsDir, "001-pr-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			// Return queued once, then empty
@@ -1178,7 +1178,7 @@ var _ = Describe("Processor", func() {
 		It("should use existing branch when branch set in frontmatter", func() {
 			promptPath := filepath.Join(promptsDir, "001-existing-branch.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1187,7 +1187,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Continue feature\n\nMore work on existing branch."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 					Branch: "dark-factory/existing-feature",
 				},
 			}, nil)
@@ -1257,7 +1257,7 @@ var _ = Describe("Processor", func() {
 		It("should fail prompt when FetchAndVerifyBranch returns error", func() {
 			promptPath := filepath.Join(promptsDir, "001-bad-branch.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1266,7 +1266,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Bad branch\n\nContent."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 					Branch: "dark-factory/nonexistent-branch",
 				},
 			}, nil)
@@ -1318,7 +1318,7 @@ var _ = Describe("Processor", func() {
 			promptPath := filepath.Join(promptsDir, "001-pr-existing-url.md")
 			completedPath := filepath.Join(promptsDir, "completed", "001-pr-existing-url.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1330,7 +1330,7 @@ var _ = Describe("Processor", func() {
 						Path: path,
 						Body: []byte("# Continue feature\n\nContent."),
 						Frontmatter: prompt.Frontmatter{
-							Status: string(prompt.StatusCompleted),
+							Status: string(prompt.CompletedPromptStatus),
 							PRURL:  "https://github.com/user/repo/pull/99",
 						},
 					}, nil
@@ -1339,7 +1339,7 @@ var _ = Describe("Processor", func() {
 					Path: path,
 					Body: []byte("# Continue feature\n\nContent."),
 					Frontmatter: prompt.Frontmatter{
-						Status: string(prompt.StatusQueued),
+						Status: string(prompt.ApprovedPromptStatus),
 					},
 				}, nil
 			}
@@ -1394,7 +1394,7 @@ var _ = Describe("Processor", func() {
 		It("should add worktree, commit, push, create PR, and remove worktree", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-test.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1403,7 +1403,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Add new feature\n\nWorktree test content."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# Worktree test", nil)
@@ -1496,7 +1496,7 @@ var _ = Describe("Processor", func() {
 
 			promptPath := filepath.Join(promptsDir, "001-worktree-automerge.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1505,7 +1505,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Add feature\n\nWorktree auto-merge test."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# Worktree automerge test", nil)
@@ -1586,7 +1586,7 @@ var _ = Describe("Processor", func() {
 		It("should clean up worktree even on execution failure", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-fail.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1595,7 +1595,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Test\n\nFail test."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# Fail test", nil)
@@ -1656,7 +1656,7 @@ var _ = Describe("Processor", func() {
 		It("should log warning but not fail when worktree removal fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-remove-fail.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1665,7 +1665,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Test\n\nRemove fail test."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# Test", nil)
@@ -1736,7 +1736,7 @@ var _ = Describe("Processor", func() {
 
 			promptPath := filepath.Join(promptsDir, "001-worktree-merge-fail.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1745,7 +1745,7 @@ var _ = Describe("Processor", func() {
 				Path: promptPath,
 				Body: []byte("# Test\n\nWorktree merge fail test."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.ContentReturns("# Test", nil)
@@ -1813,7 +1813,7 @@ var _ = Describe("Processor", func() {
 		It("should handle worktree add error", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-add-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -1868,7 +1868,7 @@ var _ = Describe("Processor", func() {
 		It("should store summary in frontmatter when report has summary", func() {
 			promptPath := filepath.Join(promptsDir, "001-summary-test.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			completedDir := filepath.Join(promptsDir, "completed")
@@ -1888,7 +1888,7 @@ var _ = Describe("Processor", func() {
 					Path: path,
 					Body: []byte("# Summary test\n\nTest content"),
 					Frontmatter: prompt.Frontmatter{
-						Status: string(prompt.StatusQueued),
+						Status: string(prompt.ApprovedPromptStatus),
 					},
 				}
 				savedPromptFile = pf
@@ -1960,7 +1960,7 @@ DARK-FACTORY-REPORT -->
 		It("should continue to commit when report status is success", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-success.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2031,7 +2031,7 @@ DARK-FACTORY-REPORT -->
 		It("should mark failed and continue when report status is failed", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-failed.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2100,7 +2100,7 @@ DARK-FACTORY-REPORT -->
 		It("should mark failed and continue when report status is partial", func() {
 			promptPath := filepath.Join(promptsDir, "001-report-partial.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2169,7 +2169,7 @@ DARK-FACTORY-REPORT -->
 		It("should continue when no report found (backwards compatible)", func() {
 			promptPath := filepath.Join(promptsDir, "001-no-report.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2237,7 +2237,7 @@ more output
 		It("should override success to partial when verification exitCode is non-zero", func() {
 			promptPath := filepath.Join(promptsDir, "001-verification-override.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2306,7 +2306,7 @@ DARK-FACTORY-REPORT -->
 		It("should continue when report parsing fails (graceful degradation)", func() {
 			promptPath := filepath.Join(promptsDir, "001-malformed-report.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 			logDir := filepath.Join(tempDir, "log")
 			err := os.MkdirAll(logDir, 0750)
@@ -2379,7 +2379,7 @@ DARK-FACTORY-REPORT -->
 		It("should call Fetch and MergeOriginDefault before processing prompt", func() {
 			promptPath := filepath.Join(promptsDir, "001-sync-test.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2433,7 +2433,7 @@ DARK-FACTORY-REPORT -->
 		It("should fail prompt if Fetch fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-fetch-fail.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2487,7 +2487,7 @@ DARK-FACTORY-REPORT -->
 		It("should fail prompt if MergeOriginDefault fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2544,7 +2544,7 @@ DARK-FACTORY-REPORT -->
 		It("should stop before push when CommitOnly fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-commit-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2553,7 +2553,7 @@ DARK-FACTORY-REPORT -->
 				Path: promptPath,
 				Body: []byte("# Commit error test\n\nContent."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -2604,7 +2604,7 @@ DARK-FACTORY-REPORT -->
 		It("should stop before PR creation when push fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-push-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2613,7 +2613,7 @@ DARK-FACTORY-REPORT -->
 				Path: promptPath,
 				Body: []byte("# Push error test\n\nContent."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -2666,7 +2666,7 @@ DARK-FACTORY-REPORT -->
 		It("should continue when SetPRURL fails (non-fatal)", func() {
 			promptPath := filepath.Join(promptsDir, "001-setprurl-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2675,7 +2675,7 @@ DARK-FACTORY-REPORT -->
 				Path: promptPath,
 				Body: []byte("# SetPRURL error test\n\nContent."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -2731,7 +2731,7 @@ DARK-FACTORY-REPORT -->
 		It("should continue when AmendCommit fails (non-fatal)", func() {
 			promptPath := filepath.Join(promptsDir, "001-amend-error.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2740,7 +2740,7 @@ DARK-FACTORY-REPORT -->
 				Path: promptPath,
 				Body: []byte("# AmendCommit error test\n\nContent."),
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusQueued),
+					Status: string(prompt.ApprovedPromptStatus),
 				},
 			}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -2803,7 +2803,7 @@ DARK-FACTORY-REPORT -->
 			Expect(err).NotTo(HaveOccurred())
 
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusExecuting},
+				{Path: promptPath, Status: prompt.ExecutingPromptStatus},
 			}
 
 			// Call 0: first skip — validation fails → recorded in skippedPrompts
@@ -2856,8 +2856,8 @@ DARK-FACTORY-REPORT -->
 			err := os.WriteFile(promptPath, []byte("---\nstatus: executing\n---\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			firstQueued := []prompt.Prompt{{Path: promptPath, Status: prompt.StatusExecuting}}
-			secondQueued := []prompt.Prompt{{Path: promptPath, Status: prompt.StatusQueued}}
+			firstQueued := []prompt.Prompt{{Path: promptPath, Status: prompt.ExecutingPromptStatus}}
+			secondQueued := []prompt.Prompt{{Path: promptPath, Status: prompt.ApprovedPromptStatus}}
 
 			callCount := 0
 			mockManager.ListQueuedStub = func(_ context.Context) ([]prompt.Prompt, error) {
@@ -2874,7 +2874,7 @@ DARK-FACTORY-REPORT -->
 						[]byte("---\nstatus: queued\n---\n\n# Test\n\nContent."),
 						0600,
 					)
-					// Return StatusQueued → shouldSkipPrompt: T2 != T1 → re-validate → passes
+					// Return ApprovedPromptStatus → shouldSkipPrompt: T2 != T1 → re-validate → passes
 					return secondQueued, nil
 				default:
 					return []prompt.Prompt{}, nil
@@ -2921,7 +2921,7 @@ DARK-FACTORY-REPORT -->
 	It("should return error when CommitAndRelease fails in direct workflow", func() {
 		promptPath := filepath.Join(promptsDir, "001-commitrelease-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2975,7 +2975,7 @@ DARK-FACTORY-REPORT -->
 	It("should return error when MoveToCompleted fails for empty prompt", func() {
 		promptPath := filepath.Join(promptsDir, "001-empty-move-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2985,7 +2985,7 @@ DARK-FACTORY-REPORT -->
 			Path: promptPath,
 			Body: []byte(""),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}, nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -3035,7 +3035,7 @@ DARK-FACTORY-REPORT -->
 	It("should log warning but not fail when switch-back fails after merge error", func() {
 		promptPath := filepath.Join(promptsDir, "001-switchback-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3168,7 +3168,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when CommitCompletedFile fails", func() {
 		promptPath := filepath.Join(promptsDir, "001-commitfile-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3217,7 +3217,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when CurrentBranch fails in PR workflow setup", func() {
 		promptPath := filepath.Join(promptsDir, "001-currentbranch-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3264,7 +3264,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should continue when ForcePush fails in savePRURLToFrontmatter (non-fatal)", func() {
 		promptPath := filepath.Join(promptsDir, "001-forcepush-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3273,7 +3273,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Path: promptPath,
 			Body: []byte("# ForcePush error test\n\nContent."),
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			},
 		}, nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -3331,7 +3331,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when Switch to default branch fails in postMergeActions", func() {
 		promptPath := filepath.Join(promptsDir, "001-switch-default-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3402,7 +3402,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when Pull fails in postMergeActions", func() {
 		promptPath := filepath.Join(promptsDir, "001-pull-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3474,7 +3474,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when CommitOnly fails in direct workflow (no changelog)", func() {
 		promptPath := filepath.Join(promptsDir, "001-commitonly-nochangelog-error.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3527,7 +3527,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 	It("should return error when DefaultBranch fails after successful merge", func() {
 		promptPath := filepath.Join(promptsDir, "001-defaultbranch-fail.md")
 		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.StatusQueued},
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3604,7 +3604,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			promptPath := filepath.Join(promptsDir, "001-no-automerge.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3684,7 +3684,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				promptPath := filepath.Join(promptsDir, "001-automerge.md")
 				// completedPath not needed
 				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.StatusQueued},
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3770,7 +3770,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3849,7 +3849,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			promptPath := filepath.Join(promptsDir, "001-autorelease.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3923,7 +3923,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				promptPath := filepath.Join(promptsDir, "001-no-changelog.md")
 				// completedPath not needed
 				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.StatusQueued},
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3999,7 +3999,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			promptPath := filepath.Join(promptsDir, "001-no-autorelease.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -4077,7 +4077,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			func() {
 				promptPath := filepath.Join(promptsDir, "001-auto-review.md")
 				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.StatusQueued},
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -4144,7 +4144,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						mockManager.SetStatusCallCount() - 1,
 					)
 					return status
-				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.StatusInReview)))
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.InReviewPromptStatus)))
 
 				// MoveToCompleted should NOT be called
 				Consistently(func() int {
@@ -4163,7 +4163,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		It("should move to completed normally when autoReview=false (PR workflow)", func() {
 			promptPath := filepath.Join(promptsDir, "001-no-auto-review.md")
 			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.StatusQueued},
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -4231,7 +4231,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Consistently(func() bool {
 				for i := 0; i < mockManager.SetStatusCallCount(); i++ {
 					_, _, status := mockManager.SetStatusArgsForCall(i)
-					if status == string(prompt.StatusInReview) {
+					if status == string(prompt.InReviewPromptStatus) {
 						return true
 					}
 				}

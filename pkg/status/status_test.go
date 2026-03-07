@@ -85,8 +85,11 @@ var _ = Describe("StatusChecker", func() {
 		It("returns status with queued prompts", func() {
 			mockPromptMgr.HasExecutingReturns(false)
 			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{
-				{Path: filepath.Join(queueDir, "001-test.md"), Status: prompt.StatusQueued},
-				{Path: filepath.Join(queueDir, "002-another.md"), Status: prompt.StatusQueued},
+				{Path: filepath.Join(queueDir, "001-test.md"), Status: prompt.ApprovedPromptStatus},
+				{
+					Path:   filepath.Join(queueDir, "002-another.md"),
+					Status: prompt.ApprovedPromptStatus,
+				},
 			}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
@@ -265,8 +268,8 @@ status: executing
 			queuedPath2 := filepath.Join(queueDir, "002-another.md")
 
 			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{
-				{Path: queuedPath1, Status: prompt.StatusQueued},
-				{Path: queuedPath2, Status: prompt.StatusQueued},
+				{Path: queuedPath1, Status: prompt.ApprovedPromptStatus},
+				{Path: queuedPath2, Status: prompt.ApprovedPromptStatus},
 			}, nil)
 
 			mockPromptMgr.TitleReturnsOnCall(0, "Test Prompt", nil)

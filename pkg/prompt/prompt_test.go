@@ -45,40 +45,40 @@ var _ = Describe("Prompt", func() {
 	Describe("Status.Validate", func() {
 		Context("with valid statuses", func() {
 			It("accepts queued", func() {
-				err := prompt.StatusQueued.Validate(ctx)
+				err := prompt.ApprovedPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
 
 			It("accepts executing", func() {
-				err := prompt.StatusExecuting.Validate(ctx)
+				err := prompt.ExecutingPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
 
 			It("accepts completed", func() {
-				err := prompt.StatusCompleted.Validate(ctx)
+				err := prompt.CompletedPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
 
 			It("accepts failed", func() {
-				err := prompt.StatusFailed.Validate(ctx)
+				err := prompt.FailedPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
 
 			It("accepts in_review", func() {
-				err := prompt.StatusInReview.Validate(ctx)
+				err := prompt.InReviewPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())
 			})
 		})
 
 		Context("with invalid status", func() {
 			It("rejects unknown status", func() {
-				err := prompt.Status("invalid").Validate(ctx)
+				err := prompt.PromptStatus("invalid").Validate(ctx)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(ContainSubstring("status(invalid) is invalid"))
 			})
 
 			It("rejects empty status", func() {
-				err := prompt.Status("").Validate(ctx)
+				err := prompt.PromptStatus("").Validate(ctx)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(ContainSubstring("status() is invalid"))
 			})
@@ -90,7 +90,7 @@ var _ = Describe("Prompt", func() {
 			It("accepts valid prompt with numbered filename", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.Validate(ctx)
 				Expect(err).To(BeNil())
@@ -101,7 +101,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects empty path", func() {
 				p := prompt.Prompt{
 					Path:   "",
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.Validate(ctx)
 				Expect(err).NotTo(BeNil())
@@ -111,7 +111,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects invalid status", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.Status("invalid"),
+					Status: prompt.PromptStatus("invalid"),
 				}
 				err := p.Validate(ctx)
 				Expect(err).NotTo(BeNil())
@@ -121,7 +121,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects filename without number prefix", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.Validate(ctx)
 				Expect(err).NotTo(BeNil())
@@ -131,7 +131,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects filename with wrong format (single digit)", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "1-test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.Validate(ctx)
 				Expect(err).NotTo(BeNil())
@@ -141,7 +141,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects filename with wrong format (two digits)", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "42-test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.Validate(ctx)
 				Expect(err).NotTo(BeNil())
@@ -155,7 +155,7 @@ var _ = Describe("Prompt", func() {
 			It("accepts prompt ready for execution", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.ValidateForExecution(ctx)
 				Expect(err).To(BeNil())
@@ -166,31 +166,31 @@ var _ = Describe("Prompt", func() {
 			It("rejects executing prompt", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.StatusExecuting,
+					Status: prompt.ExecutingPromptStatus,
 				}
 				err := p.ValidateForExecution(ctx)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+				Expect(err.Error()).To(ContainSubstring("expected status approved"))
 			})
 
 			It("rejects completed prompt", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.StatusCompleted,
+					Status: prompt.CompletedPromptStatus,
 				}
 				err := p.ValidateForExecution(ctx)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+				Expect(err.Error()).To(ContainSubstring("expected status approved"))
 			})
 
 			It("rejects failed prompt", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "001-test.md"),
-					Status: prompt.StatusFailed,
+					Status: prompt.FailedPromptStatus,
 				}
 				err := p.ValidateForExecution(ctx)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("expected status queued"))
+				Expect(err.Error()).To(ContainSubstring("expected status approved"))
 			})
 		})
 
@@ -198,7 +198,7 @@ var _ = Describe("Prompt", func() {
 			It("rejects prompt without number prefix", func() {
 				p := prompt.Prompt{
 					Path:   filepath.Join(tempDir, "test.md"),
-					Status: prompt.StatusQueued,
+					Status: prompt.ApprovedPromptStatus,
 				}
 				err := p.ValidateForExecution(ctx)
 				Expect(err).NotTo(BeNil())
@@ -343,7 +343,7 @@ var _ = Describe("Prompt", func() {
 				Expect(err).To(BeNil())
 				// File in completed/ with status: failed (should still count as completed)
 				createPromptFile(completedDir, "001-wrong-status.md", "failed")
-				createPromptFile(completedDir, "002-another.md", "queued")
+				createPromptFile(completedDir, "002-another.md", "approved")
 			})
 
 			It("counts all files in completed/ as completed regardless of status field", func() {
@@ -386,10 +386,10 @@ var _ = Describe("Prompt", func() {
 	})
 
 	Describe("ListQueued", func() {
-		Context("with explicit status: queued", func() {
+		Context("with explicit status: approved", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-first.md", "queued")
-				createPromptFile(tempDir, "002-second.md", "queued")
+				createPromptFile(tempDir, "001-first.md", "approved")
+				createPromptFile(tempDir, "002-second.md", "approved")
 			})
 
 			It("returns prompts sorted alphabetically", func() {
@@ -451,7 +451,7 @@ var _ = Describe("Prompt", func() {
 
 		Context("with mixed files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-completed.md", "completed")
 				// Plain file with no frontmatter
 				content := "# Plain Prompt\n\nContent here.\n"
@@ -475,7 +475,7 @@ var _ = Describe("Prompt", func() {
 				// Create a non-markdown file
 				err := os.WriteFile(filepath.Join(tempDir, "readme.txt"), []byte("test"), 0600)
 				Expect(err).To(BeNil())
-				createPromptFile(tempDir, "001-first.md", "queued")
+				createPromptFile(tempDir, "001-first.md", "approved")
 			})
 
 			It("ignores non-markdown files", func() {
@@ -491,7 +491,7 @@ var _ = Describe("Prompt", func() {
 			var path string
 
 			BeforeEach(func() {
-				path = createPromptFile(tempDir, "001-test.md", "queued")
+				path = createPromptFile(tempDir, "001-test.md", "approved")
 			})
 
 			It("updates status field", func() {
@@ -534,7 +534,7 @@ var _ = Describe("Prompt", func() {
 			var path string
 
 			BeforeEach(func() {
-				path = createPromptFile(tempDir, "001-test.md", "queued")
+				path = createPromptFile(tempDir, "001-test.md", "approved")
 			})
 
 			It("adds container field", func() {
@@ -544,7 +544,7 @@ var _ = Describe("Prompt", func() {
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("dark-factory-001-test"))
-				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
 			})
 		})
 
@@ -574,7 +574,7 @@ var _ = Describe("Prompt", func() {
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 container: old-container
 ---
 
@@ -594,7 +594,7 @@ Content here.
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("new-container"))
-				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
 			})
 		})
 	})
@@ -604,7 +604,7 @@ Content here.
 			var path string
 
 			BeforeEach(func() {
-				path = createPromptFile(tempDir, "001-test.md", "queued")
+				path = createPromptFile(tempDir, "001-test.md", "approved")
 			})
 
 			It("adds version field", func() {
@@ -614,7 +614,7 @@ Content here.
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.37"))
-				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
 			})
 		})
 
@@ -644,7 +644,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 dark-factory-version: v0.1.0
 ---
 
@@ -664,7 +664,7 @@ Content here.
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.0"))
-				Expect(fm.Status).To(Equal("queued")) // Status should be preserved
+				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
 			})
 		})
 
@@ -672,7 +672,7 @@ Content here.
 			var path string
 
 			BeforeEach(func() {
-				path = createPromptFile(tempDir, "001-test.md", "queued")
+				path = createPromptFile(tempDir, "001-test.md", "approved")
 			})
 
 			It("preserves version when moved to completed", func() {
@@ -705,7 +705,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 # Implement Feature X
@@ -767,13 +767,13 @@ This is the content.
 			var path string
 
 			BeforeEach(func() {
-				path = createPromptFile(tempDir, "001-test.md", "queued")
+				path = createPromptFile(tempDir, "001-test.md", "approved")
 			})
 
 			It("returns content without frontmatter", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 			})
 		})
@@ -813,7 +813,7 @@ This is the content.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 
@@ -833,7 +833,7 @@ Prompt content here.
 			It("strips the empty frontmatter block from content", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
 				Expect(content).To(ContainSubstring("# Actual prompt title"))
 				Expect(content).To(ContainSubstring("Prompt content here."))
@@ -845,7 +845,7 @@ Prompt content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 ---
@@ -865,7 +865,7 @@ Content here.
 			It("strips the whitespace-only frontmatter block", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 			})
@@ -876,7 +876,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 ---
@@ -897,7 +897,7 @@ Content here.
 			It("strips all empty frontmatter blocks", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 			})
@@ -908,7 +908,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 ---
@@ -927,7 +927,7 @@ Content here.
 			It("preserves non-empty frontmatter in content", func() {
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("---"))
 				Expect(content).To(ContainSubstring("title: Some Title"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
@@ -939,7 +939,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 ---
@@ -962,7 +962,7 @@ status: queued
 		var path string
 
 		BeforeEach(func() {
-			path = createPromptFile(tempDir, "001-test.md", "queued")
+			path = createPromptFile(tempDir, "001-test.md", "approved")
 		})
 
 		It("moves file to completed subdirectory", func() {
@@ -996,7 +996,7 @@ status: queued
 	Describe("HasExecuting", func() {
 		Context("with executing prompt", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-executing.md", "executing")
 				createPromptFile(tempDir, "003-completed.md", "completed")
 			})
@@ -1021,7 +1021,7 @@ status: queued
 
 		Context("without executing prompt", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-completed.md", "completed")
 				createPromptFile(tempDir, "003-failed.md", "failed")
 			})
@@ -1041,7 +1041,7 @@ status: queued
 
 		Context("with non-markdown files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				// Create a non-markdown file
 				err := os.WriteFile(filepath.Join(tempDir, "readme.txt"), []byte("test"), 0600)
 				Expect(err).To(BeNil())
@@ -1055,7 +1055,7 @@ status: queued
 
 		Context("with invalid frontmatter", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				// Create file with invalid frontmatter
 				invalidContent := "---\ninvalid yaml content ][[\n---\n# Test\n"
 				err := os.WriteFile(
@@ -1083,7 +1083,7 @@ status: queued
 	Describe("ResetExecuting", func() {
 		Context("with mixed statuses", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-executing.md", "executing")
 				createPromptFile(tempDir, "003-completed.md", "completed")
 				createPromptFile(tempDir, "004-executing.md", "executing")
@@ -1097,16 +1097,16 @@ status: queued
 				// Check that executing prompts are now queued
 				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-executing.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
 				Expect(err).To(BeNil())
@@ -1120,7 +1120,7 @@ status: queued
 
 		Context("with no executing prompts", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-completed.md", "completed")
 			})
 
@@ -1131,7 +1131,7 @@ status: queued
 				// Verify statuses are unchanged
 				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
 				Expect(err).To(BeNil())
@@ -1150,7 +1150,7 @@ status: queued
 	Describe("ResetFailed", func() {
 		Context("with mixed statuses", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-executing.md", "executing")
 				createPromptFile(tempDir, "003-completed.md", "completed")
 				createPromptFile(tempDir, "004-failed.md", "failed")
@@ -1164,16 +1164,16 @@ status: queued
 				// Check that failed prompts are now queued
 				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-failed.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
 				Expect(err).To(BeNil())
@@ -1187,7 +1187,7 @@ status: queued
 
 		Context("with no failed prompts", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-queued.md", "queued")
+				createPromptFile(tempDir, "001-queued.md", "approved")
 				createPromptFile(tempDir, "002-completed.md", "completed")
 			})
 
@@ -1198,7 +1198,7 @@ status: queued
 				// Verify statuses are unchanged
 				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
 				Expect(err).To(BeNil())
@@ -1220,7 +1220,7 @@ status: queued
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---
 
 # Test Prompt
@@ -1237,13 +1237,13 @@ More content here.
 			It("correctly extracts frontmatter and content", func() {
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 				Expect(content).To(ContainSubstring("This content has --- inline"))
-				Expect(content).NotTo(ContainSubstring("status: queued"))
+				Expect(content).NotTo(ContainSubstring("status: approved"))
 			})
 		})
 
@@ -1252,7 +1252,7 @@ More content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 ---`
 				path = filepath.Join(tempDir, "002-eof.md")
 				err := os.WriteFile(path, []byte(content), 0600)
@@ -1262,7 +1262,7 @@ status: queued
 			It("correctly parses frontmatter", func() {
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal("queued"))
+				Expect(fm.Status).To(Equal("approved"))
 			})
 
 			It("returns empty content error", func() {
@@ -1290,7 +1290,7 @@ Content here.
 			It("parses in_review status from frontmatter", func() {
 				fm, err := prompt.ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
-				Expect(fm.Status).To(Equal(string(prompt.StatusInReview)))
+				Expect(fm.Status).To(Equal(string(prompt.InReviewPromptStatus)))
 			})
 		})
 
@@ -1299,7 +1299,7 @@ Content here.
 
 			BeforeEach(func() {
 				content := `---
-status: queued
+status: approved
 
 # This is not valid frontmatter
 Content here.
@@ -1317,7 +1317,7 @@ Content here.
 				content, err := prompt.Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("---"))
-				Expect(content).To(ContainSubstring("status: queued"))
+				Expect(content).To(ContainSubstring("status: approved"))
 			})
 		})
 	})
@@ -1330,7 +1330,7 @@ Content here.
 			Expect(err).To(BeNil())
 
 			// Simulate full lifecycle: created, queued, container, version, executing, completed
-			err = prompt.SetStatus(ctx, path, "queued")
+			err = prompt.SetStatus(ctx, path, "approved")
 			Expect(err).To(BeNil())
 			err = prompt.SetContainer(ctx, path, "test-container")
 			Expect(err).To(BeNil())
@@ -1349,7 +1349,7 @@ Content here.
 
 		It("body size stays constant across 20 setField cycles", func() {
 			path := filepath.Join(tempDir, "001-stable.md")
-			original := "---\nstatus: queued\n---\n# Prompt\n\nContent here.\n"
+			original := "---\nstatus: approved\n---\n# Prompt\n\nContent here.\n"
 			err := os.WriteFile(path, []byte(original), 0600)
 			Expect(err).To(BeNil())
 
@@ -1362,7 +1362,7 @@ Content here.
 			for i := 0; i < 20; i++ {
 				err = prompt.SetStatus(ctx, path, "executing")
 				Expect(err).To(BeNil())
-				err = prompt.SetStatus(ctx, path, "queued")
+				err = prompt.SetStatus(ctx, path, "approved")
 				Expect(err).To(BeNil())
 			}
 
@@ -1384,9 +1384,9 @@ Content here.
 	Describe("NormalizeFilenames", func() {
 		Context("with file missing numeric prefix", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-first.md", "queued")
-				createPromptFile(tempDir, "002-second.md", "queued")
-				createPromptFile(tempDir, "fix-something.md", "queued")
+				createPromptFile(tempDir, "001-first.md", "approved")
+				createPromptFile(tempDir, "002-second.md", "approved")
+				createPromptFile(tempDir, "fix-something.md", "approved")
 			})
 
 			It("assigns next available number", func() {
@@ -1413,8 +1413,8 @@ Content here.
 
 		Context("with duplicate number", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "009-foo.md", "queued")
-				createPromptFile(tempDir, "009-bar.md", "queued")
+				createPromptFile(tempDir, "009-foo.md", "approved")
+				createPromptFile(tempDir, "009-bar.md", "approved")
 			})
 
 			It("renames later file to next available number", func() {
@@ -1444,7 +1444,7 @@ Content here.
 
 		Context("with wrong format (single digit)", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "9-foo.md", "queued")
+				createPromptFile(tempDir, "9-foo.md", "approved")
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
@@ -1471,7 +1471,7 @@ Content here.
 
 		Context("with wrong format (two digits)", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "42-answer.md", "queued")
+				createPromptFile(tempDir, "42-answer.md", "approved")
 			})
 
 			It("normalizes to zero-padded 3-digit format", func() {
@@ -1492,9 +1492,9 @@ Content here.
 
 		Context("with already-valid files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-first.md", "queued")
-				createPromptFile(tempDir, "002-second.md", "queued")
-				createPromptFile(tempDir, "003-third.md", "queued")
+				createPromptFile(tempDir, "001-first.md", "approved")
+				createPromptFile(tempDir, "002-second.md", "approved")
+				createPromptFile(tempDir, "003-third.md", "approved")
 			})
 
 			It("does not rename any files", func() {
@@ -1521,9 +1521,9 @@ Content here.
 
 		Context("with mixed valid and invalid files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-valid.md", "queued")
-				createPromptFile(tempDir, "9-wrong-format.md", "queued")
-				createPromptFile(tempDir, "no-number.md", "queued")
+				createPromptFile(tempDir, "001-valid.md", "approved")
+				createPromptFile(tempDir, "9-wrong-format.md", "approved")
+				createPromptFile(tempDir, "no-number.md", "approved")
 			})
 
 			It("renames only invalid files", func() {
@@ -1558,7 +1558,7 @@ Content here.
 				Expect(err).To(BeNil())
 
 				// Add files to both root and completed
-				createPromptFile(tempDir, "001-valid.md", "queued")
+				createPromptFile(tempDir, "001-valid.md", "approved")
 				createPromptFile(completedDir, "wrong-name.md", "completed")
 			})
 
@@ -1592,7 +1592,7 @@ Content here.
 				createPromptFile(completedDir, "003-done.md", "completed")
 
 				// root has no numbered files, only an unnumbered one
-				createPromptFile(tempDir, "new-feature.md", "queued")
+				createPromptFile(tempDir, "new-feature.md", "approved")
 			})
 
 			It("assigns next number above completed/ maximum", func() {
@@ -1629,7 +1629,7 @@ Content here.
 				Expect(err).To(BeNil())
 
 				// root has unnumbered file
-				createPromptFile(tempDir, "new-task.md", "queued")
+				createPromptFile(tempDir, "new-task.md", "approved")
 			})
 
 			It("scans completed/ without errors and avoids used numbers", func() {
@@ -1651,7 +1651,7 @@ Content here.
 
 		Context("with non-markdown files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-valid.md", "queued")
+				createPromptFile(tempDir, "001-valid.md", "approved")
 				// Create non-markdown file without number
 				err := os.WriteFile(filepath.Join(tempDir, "readme.txt"), []byte("test"), 0600)
 				Expect(err).To(BeNil())
@@ -1692,10 +1692,10 @@ Content here.
 
 		Context("with gaps in numbering", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "001-first.md", "queued")
-				createPromptFile(tempDir, "005-fifth.md", "queued")
-				createPromptFile(tempDir, "010-tenth.md", "queued")
-				createPromptFile(tempDir, "new-file.md", "queued")
+				createPromptFile(tempDir, "001-first.md", "approved")
+				createPromptFile(tempDir, "005-fifth.md", "approved")
+				createPromptFile(tempDir, "010-tenth.md", "approved")
+				createPromptFile(tempDir, "new-file.md", "approved")
 			})
 
 			It("assigns smallest available number", func() {
@@ -1720,7 +1720,7 @@ Content here.
 				Expect(err).To(BeNil())
 
 				createPromptFile(completedDir, "001-core-pipeline.md", "completed")
-				createPromptFile(tempDir, "01-foo.md", "queued")
+				createPromptFile(tempDir, "01-foo.md", "approved")
 			})
 
 			It("renames to next available number instead of conflicting 001", func() {
@@ -1749,7 +1749,7 @@ Content here.
 					name := fmt.Sprintf("%03d-done.md", i)
 					createPromptFile(completedDir, name, "completed")
 				}
-				createPromptFile(tempDir, "01-foo.md", "queued")
+				createPromptFile(tempDir, "01-foo.md", "approved")
 			})
 
 			It("renames to first number above completed/ maximum", func() {
@@ -1770,7 +1770,7 @@ Content here.
 
 		Context("with wrong-format file and no completed files", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "01-foo.md", "queued")
+				createPromptFile(tempDir, "01-foo.md", "approved")
 			})
 
 			It("reformats to 3-digit prefix keeping same number", func() {
@@ -1791,7 +1791,7 @@ Content here.
 
 		Context("with already-correct 3-digit file in queue", func() {
 			BeforeEach(func() {
-				createPromptFile(tempDir, "095-foo.md", "queued")
+				createPromptFile(tempDir, "095-foo.md", "approved")
 			})
 
 			It("does not rename the file", func() {
@@ -1815,12 +1815,12 @@ Content here.
 				Expect(err).To(BeNil())
 
 				// inbox has 001-003
-				createPromptFile(inboxDir, "001-draft.md", "queued")
-				createPromptFile(inboxDir, "002-draft.md", "queued")
-				createPromptFile(inboxDir, "003-draft.md", "queued")
+				createPromptFile(inboxDir, "001-draft.md", "approved")
+				createPromptFile(inboxDir, "002-draft.md", "approved")
+				createPromptFile(inboxDir, "003-draft.md", "approved")
 
 				// in-progress has one unnumbered file
-				createPromptFile(tempDir, "new-feature.md", "queued")
+				createPromptFile(tempDir, "new-feature.md", "approved")
 
 				completedDir := filepath.Join(tempDir, "completed")
 				renames, err := prompt.NormalizeFilenames(
@@ -1848,15 +1848,15 @@ Content here.
 				Expect(err).To(BeNil())
 
 				// inbox has 001-002
-				createPromptFile(inboxDir, "001-draft.md", "queued")
-				createPromptFile(inboxDir, "002-draft.md", "queued")
+				createPromptFile(inboxDir, "001-draft.md", "approved")
+				createPromptFile(inboxDir, "002-draft.md", "approved")
 
 				// completed has 003-004
 				createPromptFile(completedDir, "003-done.md", "completed")
 				createPromptFile(completedDir, "004-done.md", "completed")
 
 				// in-progress has one unnumbered file
-				createPromptFile(tempDir, "another-feature.md", "queued")
+				createPromptFile(tempDir, "another-feature.md", "approved")
 
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
@@ -1994,7 +1994,7 @@ Content here.
 	Describe("PromptFile.SetBranch", func() {
 		It("sets the branch field in frontmatter", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			content := "---\nstatus: approved\n---\n\n# Test\n\nContent.\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2009,7 +2009,7 @@ Content here.
 	Describe("PromptFile.Branch", func() {
 		It("returns branch value when branch field is set in frontmatter", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\nbranch: dark-factory/042-add-feature\n---\n\n# Test\n\nContent.\n"
+			content := "---\nstatus: approved\nbranch: dark-factory/042-add-feature\n---\n\n# Test\n\nContent.\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2020,7 +2020,7 @@ Content here.
 
 		It("returns empty string when branch field is not set", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			content := "---\nstatus: approved\n---\n\n# Test\n\nContent.\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2033,7 +2033,7 @@ Content here.
 	Describe("SetBranch", func() {
 		It("writes the branch value into frontmatter", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\n---\n\n# Test\n\nContent.\n"
+			content := "---\nstatus: approved\n---\n\n# Test\n\nContent.\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2096,19 +2096,19 @@ var _ = Describe("Frontmatter spec field", func() {
 
 	It("loads spec field from frontmatter (scalar string)", func() {
 		path := filepath.Join(tempDir, "091-test.md")
-		content := "---\nstatus: queued\nspec: \"017\"\n---\n\n# Test\n"
+		content := "---\nstatus: approved\nspec: \"017\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(Equal([]string{"017"}))
 		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
-		Expect(pf.Frontmatter.Status).To(Equal("queued"))
+		Expect(pf.Frontmatter.Status).To(Equal("approved"))
 	})
 
 	It("loads spec field from frontmatter (array)", func() {
 		path := filepath.Join(tempDir, "091-array.md")
-		content := "---\nstatus: queued\nspec: [\"017\", \"019\"]\n---\n\n# Test\n"
+		content := "---\nstatus: approved\nspec: [\"017\", \"019\"]\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
@@ -2121,7 +2121,7 @@ var _ = Describe("Frontmatter spec field", func() {
 
 	It("saves and reloads spec field correctly", func() {
 		path := filepath.Join(tempDir, "091-test.md")
-		content := "---\nstatus: queued\nspec: \"019\"\n---\n\n# Test\n"
+		content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
@@ -2139,18 +2139,18 @@ var _ = Describe("Frontmatter spec field", func() {
 
 	It("works without spec field (backward compatible)", func() {
 		path := filepath.Join(tempDir, "001-no-spec.md")
-		content := "---\nstatus: queued\n---\n\n# No spec\n"
+		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(BeEmpty())
-		Expect(pf.Frontmatter.Status).To(Equal("queued"))
+		Expect(pf.Frontmatter.Status).To(Equal("approved"))
 	})
 
 	It("omits spec field when empty on save", func() {
 		path := filepath.Join(tempDir, "001-no-spec.md")
-		content := "---\nstatus: queued\n---\n\n# No spec\n"
+		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 		pf, err := prompt.Load(ctx, path)
@@ -2167,7 +2167,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			// Simulates spec_list.go passing sf.Name ("019-review-fix-loop")
 			// while the prompt stores spec: ["019"]
 			path := filepath.Join(tempDir, "100-test.md")
-			content := "---\nstatus: queued\nspec: \"019\"\n---\n\n# Test\n"
+			content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 			pf, err := prompt.Load(ctx, path)
@@ -2181,7 +2181,7 @@ var _ = Describe("Frontmatter spec field", func() {
 
 		It("non-numeric spec IDs still match by exact string", func() {
 			path := filepath.Join(tempDir, "100-test.md")
-			content := "---\nstatus: queued\nspec: \"notifications\"\n---\n\n# Test\n"
+			content := "---\nstatus: approved\nspec: \"notifications\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
 			pf, err := prompt.Load(ctx, path)
@@ -2194,7 +2194,7 @@ var _ = Describe("Frontmatter spec field", func() {
 	Describe("PromptFile.RetryCount", func() {
 		It("returns retryCount value when set in frontmatter", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\nretryCount: 2\n---\n\n# Test\n"
+			content := "---\nstatus: approved\nretryCount: 2\n---\n\n# Test\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2205,7 +2205,7 @@ var _ = Describe("Frontmatter spec field", func() {
 
 		It("returns 0 when retryCount is not set", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\n---\n\n# Test\n"
+			content := "---\nstatus: approved\n---\n\n# Test\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2218,7 +2218,7 @@ var _ = Describe("Frontmatter spec field", func() {
 	Describe("IncrementRetryCount", func() {
 		It("increments retryCount from 0 to 1", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\n---\n\n# Test\n"
+			content := "---\nstatus: approved\n---\n\n# Test\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
@@ -2232,7 +2232,7 @@ var _ = Describe("Frontmatter spec field", func() {
 
 		It("increments retryCount from 2 to 3", func() {
 			path := filepath.Join(tempDir, "001-test.md")
-			content := "---\nstatus: queued\nretryCount: 2\n---\n\n# Test\n"
+			content := "---\nstatus: approved\nretryCount: 2\n---\n\n# Test\n"
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 

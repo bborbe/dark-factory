@@ -58,7 +58,7 @@ var _ = Describe("ReviewPoller", func() {
 
 		// Default: ReadFrontmatter returns in_review status.
 		mockManager.ReadFrontmatterReturns(&prompt.Frontmatter{
-			Status: string(prompt.StatusInReview),
+			Status: string(prompt.InReviewPromptStatus),
 			PRURL:  prURL,
 		}, nil)
 
@@ -66,7 +66,7 @@ var _ = Describe("ReviewPoller", func() {
 		mockManager.LoadReturns(&prompt.PromptFile{
 			Path: promptPath,
 			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.StatusInReview),
+				Status: string(prompt.InReviewPromptStatus),
 				PRURL:  prURL,
 				Branch: "feature/test",
 			},
@@ -162,7 +162,7 @@ var _ = Describe("ReviewPoller", func() {
 			mockManager.LoadReturns(&prompt.PromptFile{
 				Path: promptPath,
 				Frontmatter: prompt.Frontmatter{
-					Status:     string(prompt.StatusInReview),
+					Status:     string(prompt.InReviewPromptStatus),
 					PRURL:      prURL,
 					Branch:     "feature/test",
 					RetryCount: 3, // equals maxRetries
@@ -185,7 +185,7 @@ var _ = Describe("ReviewPoller", func() {
 
 			Expect(mockGenerator.GenerateCallCount()).To(Equal(0))
 			_, _, status := mockManager.SetStatusArgsForCall(0)
-			Expect(status).To(Equal(string(prompt.StatusFailed)))
+			Expect(status).To(Equal(string(prompt.FailedPromptStatus)))
 		})
 
 		It("calls MoveToCompleted for MERGED PR without calling FetchLatestReview", func() {
@@ -218,7 +218,7 @@ var _ = Describe("ReviewPoller", func() {
 			runCancel()
 
 			_, _, status := mockManager.SetStatusArgsForCall(0)
-			Expect(status).To(Equal(string(prompt.StatusFailed)))
+			Expect(status).To(Equal(string(prompt.FailedPromptStatus)))
 			Expect(mockFetcher.FetchLatestReviewCallCount()).To(Equal(0))
 		})
 
@@ -262,7 +262,7 @@ var _ = Describe("ReviewPoller", func() {
 			mockManager.LoadReturns(&prompt.PromptFile{
 				Path: promptPath,
 				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.StatusInReview),
+					Status: string(prompt.InReviewPromptStatus),
 					PRURL:  "",
 				},
 			}, nil)
@@ -276,7 +276,7 @@ var _ = Describe("ReviewPoller", func() {
 
 		It("returns nil when context is cancelled", func() {
 			mockManager.ReadFrontmatterReturns(&prompt.Frontmatter{
-				Status: string(prompt.StatusQueued),
+				Status: string(prompt.ApprovedPromptStatus),
 			}, nil)
 
 			runCtx, runCancel := context.WithTimeout(context.Background(), 10*time.Millisecond)

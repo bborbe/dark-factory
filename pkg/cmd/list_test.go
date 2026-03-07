@@ -56,7 +56,7 @@ var _ = Describe("ListCommand", func() {
 
 			err = os.WriteFile(
 				filepath.Join(queueDir, "078-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -105,7 +105,7 @@ var _ = Describe("ListCommand", func() {
 
 			err = os.WriteFile(
 				filepath.Join(queueDir, "080-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -126,7 +126,7 @@ var _ = Describe("ListCommand", func() {
 
 			err = os.WriteFile(
 				filepath.Join(queueDir, "081-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -138,7 +138,7 @@ var _ = Describe("ListCommand", func() {
 		It("shows nothing when no failed prompts", func() {
 			err := os.WriteFile(
 				filepath.Join(queueDir, "081-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -152,7 +152,7 @@ var _ = Describe("ListCommand", func() {
 		It("outputs JSON format", func() {
 			err := os.WriteFile(
 				filepath.Join(queueDir, "080-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())

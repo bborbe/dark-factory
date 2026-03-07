@@ -128,7 +128,7 @@ func (c *combinedListCommand) collectPromptEntriesFromDir(
 		if st == "" {
 			st = "created"
 		}
-		if !showAll && st == string(prompt.StatusCompleted) {
+		if !showAll && st == string(prompt.CompletedPromptStatus) {
 			continue
 		}
 		entries = append(entries, PromptEntry{Status: st, File: entry.Name()})

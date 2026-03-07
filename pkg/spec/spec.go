@@ -353,7 +353,7 @@ func (a *autoCompleter) scanDirForSpec(
 		}
 
 		found = true
-		if pf.Frontmatter.Status != string(prompt.StatusCompleted) {
+		if pf.Frontmatter.Status != string(prompt.CompletedPromptStatus) {
 			return false, true, nil
 		}
 	}

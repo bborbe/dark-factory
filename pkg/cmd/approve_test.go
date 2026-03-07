@@ -69,7 +69,7 @@ var _ = Describe("ApproveCommand", func() {
 
 			content, err := os.ReadFile(queuedFile)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 
 			Expect(mockPromptManager.NormalizeFilenamesCallCount()).To(Equal(1))
 		})
@@ -102,7 +102,7 @@ var _ = Describe("ApproveCommand", func() {
 
 			content, err := os.ReadFile(queueFile)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 
 		It("searches inbox before queue", func() {
@@ -148,7 +148,7 @@ var _ = Describe("ApproveCommand", func() {
 
 			content, err := os.ReadFile(queueFile)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 	})
 })

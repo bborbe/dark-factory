@@ -51,7 +51,7 @@ var _ = Describe("RequeueCommand", func() {
 
 			content, err := os.ReadFile(testFile)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 
 		It("resets an executing file to queued status", func() {
@@ -68,7 +68,7 @@ var _ = Describe("RequeueCommand", func() {
 
 			content, err := os.ReadFile(testFile)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 
 		It("returns error for nonexistent file", func() {
@@ -94,7 +94,7 @@ var _ = Describe("RequeueCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			err = os.WriteFile(
 				filepath.Join(queueDir, "082-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -104,22 +104,22 @@ var _ = Describe("RequeueCommand", func() {
 
 			content, err := os.ReadFile(filepath.Join(queueDir, "080-failed.md"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 
 			content, err = os.ReadFile(filepath.Join(queueDir, "081-failed.md"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 
 			// Non-failed file should remain queued (unchanged)
 			content, err = os.ReadFile(filepath.Join(queueDir, "082-queued.md"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 
 		It("handles no failed prompts gracefully", func() {
 			err := os.WriteFile(
 				filepath.Join(queueDir, "080-queued.md"),
-				[]byte("---\nstatus: queued\n---\n# Queued"),
+				[]byte("---\nstatus: approved\n---\n# Queued"),
 				0600,
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -157,7 +157,7 @@ var _ = Describe("RequeueCommand", func() {
 
 			content, err := os.ReadFile(filepath.Join(queueDir, "080-failed.md"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: queued"))
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 	})
 })

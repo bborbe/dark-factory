@@ -109,7 +109,7 @@ func (p *reviewPoller) listInReview(ctx context.Context) ([]string, error) {
 			slog.Warn("failed to read frontmatter", "file", entry.Name(), "error", err)
 			continue
 		}
-		if prompt.Status(fm.Status) == prompt.StatusInReview {
+		if prompt.PromptStatus(fm.Status) == prompt.InReviewPromptStatus {
 			result = append(result, path)
 		}
 	}
@@ -150,7 +150,7 @@ func (p *reviewPoller) processPrompt(ctx context.Context, path string) {
 		}
 		return
 	case "CLOSED":
-		if err := p.promptManager.SetStatus(ctx, path, string(prompt.StatusFailed)); err != nil {
+		if err := p.promptManager.SetStatus(ctx, path, string(prompt.FailedPromptStatus)); err != nil {
 			slog.Warn(
 				"failed to set closed prompt to failed",
 				"file",
@@ -207,7 +207,7 @@ func (p *reviewPoller) handleChangesRequested(
 	retryCount := pf.RetryCount()
 	if retryCount >= p.maxRetries {
 		slog.Warn("retry limit reached", "file", filepath.Base(path), "retryCount", retryCount)
-		if err := p.promptManager.SetStatus(ctx, path, string(prompt.StatusFailed)); err != nil {
+		if err := p.promptManager.SetStatus(ctx, path, string(prompt.FailedPromptStatus)); err != nil {
 			slog.Warn("failed to set failed status", "file", filepath.Base(path), "error", err)
 		}
 		return

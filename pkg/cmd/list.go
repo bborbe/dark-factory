@@ -94,13 +94,13 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 	case queueOnly:
 		entries = filterPromptsByStatus(
 			entries,
-			string(prompt.StatusQueued),
-			string(prompt.StatusExecuting),
+			string(prompt.ApprovedPromptStatus),
+			string(prompt.ExecutingPromptStatus),
 		)
 	case failedOnly:
-		entries = filterPromptsByStatus(entries, string(prompt.StatusFailed))
+		entries = filterPromptsByStatus(entries, string(prompt.FailedPromptStatus))
 	case !showAll:
-		entries = excludePromptStatus(entries, string(prompt.StatusCompleted))
+		entries = excludePromptStatus(entries, string(prompt.CompletedPromptStatus))
 	}
 
 	if jsonOutput {

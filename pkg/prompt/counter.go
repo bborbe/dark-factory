@@ -72,7 +72,7 @@ func countInDir(ctx context.Context, dir, specID string) (int, int, error) {
 			continue
 		}
 		total++
-		if pf.Frontmatter.Status == string(StatusCompleted) {
+		if pf.Frontmatter.Status == string(CompletedPromptStatus) {
 			completed++
 		}
 	}

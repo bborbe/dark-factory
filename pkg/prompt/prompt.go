@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
+	"github.com/bborbe/collection"
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
@@ -36,25 +37,49 @@ var (
 	specNumericPrefixRegexp   = regexp.MustCompile(`^(\d+)`)
 )
 
-// Status represents the current state of a prompt.
-type Status string
+// PromptStatus represents the current state of a prompt.
+//
+//nolint:revive // PromptStatus is the intended name per go-enum-type-pattern
+type PromptStatus string
 
 const (
-	StatusQueued    Status = "queued"
-	StatusExecuting Status = "executing"
-	StatusCompleted Status = "completed"
-	StatusFailed    Status = "failed"
-	StatusInReview  Status = "in_review"
+	DraftPromptStatus     PromptStatus = "draft"
+	ApprovedPromptStatus  PromptStatus = "approved"
+	ExecutingPromptStatus PromptStatus = "executing"
+	CompletedPromptStatus PromptStatus = "completed"
+	FailedPromptStatus    PromptStatus = "failed"
+	InReviewPromptStatus  PromptStatus = "in_review"
 )
 
-// Validate validates the Status value.
-func (s Status) Validate(ctx context.Context) error {
-	for _, valid := range []Status{StatusQueued, StatusExecuting, StatusCompleted, StatusFailed, StatusInReview} {
-		if s == valid {
-			return nil
-		}
+// AvailablePromptStatuses is the collection of all valid PromptStatus values.
+var AvailablePromptStatuses = PromptStatuses{
+	DraftPromptStatus,
+	ApprovedPromptStatus,
+	ExecutingPromptStatus,
+	CompletedPromptStatus,
+	FailedPromptStatus,
+	InReviewPromptStatus,
+}
+
+// PromptStatuses is a slice of PromptStatus values.
+//
+//nolint:revive // PromptStatuses is the intended name per go-enum-type-pattern
+type PromptStatuses []PromptStatus
+
+// Contains returns true if the given status is in the collection.
+func (p PromptStatuses) Contains(status PromptStatus) bool {
+	return collection.Contains(p, status)
+}
+
+// String returns the string representation of the PromptStatus.
+func (s PromptStatus) String() string { return string(s) }
+
+// Validate validates the PromptStatus value.
+func (s PromptStatus) Validate(ctx context.Context) error {
+	if !AvailablePromptStatuses.Contains(s) {
+		return errors.Wrapf(ctx, validation.Error, "status(%s) is invalid", s)
 	}
-	return errors.Wrapf(ctx, validation.Error, "status(%s) is invalid", s)
+	return nil
 }
 
 // Rename represents a file rename operation.
@@ -66,7 +91,7 @@ type Rename struct {
 // Prompt represents a prompt file with YAML frontmatter.
 type Prompt struct {
 	Path   string
-	Status Status
+	Status PromptStatus
 }
 
 // Validate validates the Prompt struct.
@@ -88,8 +113,8 @@ func (p Prompt) ValidateForExecution(ctx context.Context) error {
 	return validation.All{
 		validation.Name("prompt", p),
 		validation.Name("status", validation.HasValidationFunc(func(ctx context.Context) error {
-			if p.Status != StatusQueued {
-				return errors.Errorf(ctx, "expected status queued, got %s", p.Status)
+			if p.Status != ApprovedPromptStatus {
+				return errors.Errorf(ctx, "expected status approved, got %s", p.Status)
 			}
 			return nil
 		})),
@@ -269,7 +294,7 @@ func (pf *PromptFile) now() time.Time {
 // This replaces separate SetContainer + SetVersion + SetStatus calls.
 func (pf *PromptFile) PrepareForExecution(container, version string) {
 	now := pf.now().UTC().Format(time.RFC3339)
-	pf.Frontmatter.Status = string(StatusExecuting)
+	pf.Frontmatter.Status = string(ExecutingPromptStatus)
 	pf.Frontmatter.Container = container
 	pf.Frontmatter.DarkFactoryVersion = version
 	pf.Frontmatter.Started = now
@@ -284,20 +309,20 @@ func (pf *PromptFile) PrepareForExecution(container, version string) {
 
 // MarkCompleted sets status to completed with timestamp.
 func (pf *PromptFile) MarkCompleted() {
-	pf.Frontmatter.Status = string(StatusCompleted)
+	pf.Frontmatter.Status = string(CompletedPromptStatus)
 	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 }
 
 // MarkFailed sets status to failed with timestamp.
 func (pf *PromptFile) MarkFailed() {
-	pf.Frontmatter.Status = string(StatusFailed)
+	pf.Frontmatter.Status = string(FailedPromptStatus)
 	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 }
 
-// MarkQueued sets status to queued and ensures created/queued timestamps exist.
-func (pf *PromptFile) MarkQueued() {
+// MarkApproved sets status to approved and ensures created/queued timestamps exist.
+func (pf *PromptFile) MarkApproved() {
 	now := pf.now().UTC().Format(time.RFC3339)
-	pf.Frontmatter.Status = string(StatusQueued)
+	pf.Frontmatter.Status = string(ApprovedPromptStatus)
 	if pf.Frontmatter.Created == "" {
 		pf.Frontmatter.Created = now
 	}
@@ -397,12 +422,12 @@ func NewManager(
 	}
 }
 
-// ResetExecuting resets any prompts with status "executing" back to "queued".
+// ResetExecuting resets any prompts with status "executing" back to "approved".
 func (pm *manager) ResetExecuting(ctx context.Context) error {
 	return ResetExecuting(ctx, pm.inProgressDir)
 }
 
-// ResetFailed resets any prompts with status "failed" back to "queued".
+// ResetFailed resets any prompts with status "failed" back to "approved".
 func (pm *manager) ResetFailed(ctx context.Context) error {
 	return ResetFailed(ctx, pm.inProgressDir)
 }
@@ -507,16 +532,18 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		}
 
 		// Skip files with explicit skip status
-		if fm.Status == string(StatusExecuting) || fm.Status == string(StatusCompleted) ||
-			fm.Status == string(StatusFailed) || fm.Status == string(StatusInReview) {
+		if fm.Status == string(ExecutingPromptStatus) ||
+			fm.Status == string(CompletedPromptStatus) ||
+			fm.Status == string(FailedPromptStatus) ||
+			fm.Status == string(InReviewPromptStatus) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)
 			continue
 		}
 
-		// Normalize status to "queued" for consistency
-		status := Status(fm.Status)
+		// Normalize status to "approved" for consistency
+		status := PromptStatus(fm.Status)
 		if fm.Status == "" {
-			status = StatusQueued
+			status = ApprovedPromptStatus
 		}
 		queued = append(queued, Prompt{
 			Path:   path,
@@ -532,7 +559,7 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 	return queued, nil
 }
 
-// ResetExecuting resets any prompts with status "executing" back to "queued".
+// ResetExecuting resets any prompts with status "executing" back to "approved".
 // This handles prompts that got stuck from a previous crash.
 func ResetExecuting(ctx context.Context, dir string) error {
 	entries, err := os.ReadDir(dir)
@@ -551,8 +578,8 @@ func ResetExecuting(ctx context.Context, dir string) error {
 			continue
 		}
 
-		if pf.Frontmatter.Status == string(StatusExecuting) {
-			pf.MarkQueued()
+		if pf.Frontmatter.Status == string(ExecutingPromptStatus) {
+			pf.MarkApproved()
 			if err := pf.Save(ctx); err != nil {
 				return errors.Wrap(ctx, err, "reset executing prompt")
 			}
@@ -562,7 +589,7 @@ func ResetExecuting(ctx context.Context, dir string) error {
 	return nil
 }
 
-// ResetFailed resets any prompts with status "failed" back to "queued".
+// ResetFailed resets any prompts with status "failed" back to "approved".
 // This allows the factory to retry failed prompts after a restart.
 func ResetFailed(ctx context.Context, dir string) error {
 	entries, err := os.ReadDir(dir)
@@ -581,12 +608,12 @@ func ResetFailed(ctx context.Context, dir string) error {
 			continue
 		}
 
-		if pf.Frontmatter.Status == string(StatusFailed) {
-			pf.MarkQueued()
+		if pf.Frontmatter.Status == string(FailedPromptStatus) {
+			pf.MarkApproved()
 			if err := pf.Save(ctx); err != nil {
 				return errors.Wrap(ctx, err, "reset failed prompt")
 			}
-			slog.Info("reset failed prompt to queued", "file", entry.Name())
+			slog.Info("reset failed prompt to approved", "file", entry.Name())
 		}
 	}
 
@@ -608,8 +635,8 @@ func SetStatus(ctx context.Context, path string, status string) error {
 	slog.Debug("status changed", "path", path, "oldStatus", oldStatus, "newStatus", status)
 
 	// Set timestamps based on status
-	switch Status(status) {
-	case StatusQueued:
+	switch PromptStatus(status) {
+	case ApprovedPromptStatus:
 		// Set queued timestamp only if empty (preserve original on retry)
 		if pf.Frontmatter.Queued == "" {
 			pf.Frontmatter.Queued = now
@@ -618,10 +645,10 @@ func SetStatus(ctx context.Context, path string, status string) error {
 		if pf.Frontmatter.Created == "" {
 			pf.Frontmatter.Created = now
 		}
-	case StatusExecuting:
+	case ExecutingPromptStatus:
 		// Always overwrite started time (retries get fresh start)
 		pf.Frontmatter.Started = now
-	case StatusCompleted, StatusFailed:
+	case CompletedPromptStatus, FailedPromptStatus:
 		// Always overwrite completed time
 		pf.Frontmatter.Completed = now
 	}
@@ -770,7 +797,7 @@ func HasExecuting(ctx context.Context, dir string) bool {
 		if err != nil {
 			continue
 		}
-		if fm.Status == string(StatusExecuting) {
+		if fm.Status == string(ExecutingPromptStatus) {
 			return true
 		}
 	}

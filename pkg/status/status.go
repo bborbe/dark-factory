@@ -289,7 +289,7 @@ func (s *checker) findExecutingPrompt(ctx context.Context) (*executingPrompt, er
 			continue
 		}
 
-		if fm.Status == string(prompt.StatusExecuting) {
+		if fm.Status == string(prompt.ExecutingPromptStatus) {
 			startedTime := time.Time{}
 			if fm.Started != "" {
 				// Parse the started timestamp from frontmatter

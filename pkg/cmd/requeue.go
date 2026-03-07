@@ -71,7 +71,7 @@ func (r *requeueCommand) requeueFile(ctx context.Context, id string) error {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	pf.MarkQueued()
+	pf.MarkApproved()
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}
@@ -99,8 +99,8 @@ func (r *requeueCommand) requeueFailed(ctx context.Context) error {
 			continue
 		}
 
-		if pf.Frontmatter.Status == string(prompt.StatusFailed) {
-			pf.MarkQueued()
+		if pf.Frontmatter.Status == string(prompt.FailedPromptStatus) {
+			pf.MarkApproved()
 			if err := pf.Save(ctx); err != nil {
 				return errors.Wrap(ctx, err, "save prompt")
 			}

@@ -65,7 +65,7 @@ func (a *approveCommand) approveByID(ctx context.Context, id string) error {
 	return errors.Errorf(ctx, "file not found: %s", id)
 }
 
-// approveFromInbox moves a file from inbox to queue and sets status to queued.
+// approveFromInbox moves a file from inbox to queue and sets status to approved.
 func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) error {
 	filename := filepath.Base(oldPath)
 	newPath := filepath.Join(a.queueDir, filename)
@@ -78,7 +78,7 @@ func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) e
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
-	pf.MarkQueued()
+	pf.MarkApproved()
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}
@@ -91,14 +91,14 @@ func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) e
 	return nil
 }
 
-// approveInQueue sets a prompt already in the queue to queued status.
+// approveInQueue sets a prompt already in the queue to approved status.
 func (a *approveCommand) approveInQueue(ctx context.Context, path string) error {
 	pf, err := prompt.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	pf.MarkQueued()
+	pf.MarkApproved()
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}

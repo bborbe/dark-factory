@@ -85,14 +85,14 @@ func moveToQueue(
 		return "", errors.Wrap(ctx, err, "move file to queue")
 	}
 
-	// Set status to queued using Load/Save
+	// Set status to approved using Load/Save
 	pf, err := prompt.Load(ctx, newPath)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "load prompt")
 	}
-	pf.MarkQueued()
+	pf.MarkApproved()
 	if err := pf.Save(ctx); err != nil {
-		return "", errors.Wrap(ctx, err, "set queued status")
+		return "", errors.Wrap(ctx, err, "set approved status")
 	}
 
 	// Normalize filenames in queue (this will add NNN- prefix if needed)

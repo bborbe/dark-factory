@@ -244,25 +244,28 @@ func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool
 // This makes the folder location the source of truth - if a file is in queue/, it should be queued.
 func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) error {
 	switch pr.Status {
-	case prompt.StatusQueued, prompt.StatusExecuting, prompt.StatusCompleted, prompt.StatusFailed:
+	case prompt.ApprovedPromptStatus,
+		prompt.ExecutingPromptStatus,
+		prompt.CompletedPromptStatus,
+		prompt.FailedPromptStatus:
 		// Already in a valid processing state — don't override
 		return nil
 	}
-	// Any other status (empty, "created", "approved", "draft", etc.) → auto-set to queued
+	// Any other status (empty, "created", "draft", etc.) → auto-set to approved
 	baseName := filepath.Base(pr.Path)
 	previousStatus := pr.Status
 	slog.Info(
-		"auto-setting status to queued",
+		"auto-setting status to approved",
 		"file",
 		baseName,
 		"previousStatus",
 		previousStatus,
 	)
-	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.StatusQueued)); err != nil {
-		return errors.Wrap(ctx, err, "set status to queued")
+	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.ApprovedPromptStatus)); err != nil {
+		return errors.Wrap(ctx, err, "set status to approved")
 	}
 	// Update local status so ValidateForExecution passes
-	pr.Status = prompt.StatusQueued
+	pr.Status = prompt.ApprovedPromptStatus
 	return nil
 }
 
@@ -605,7 +608,7 @@ func (p *processor) handlePRWorkflow(
 
 	// autoReview mode: set in_review status so poller can watch for approval
 	if p.autoReview {
-		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.StatusInReview)); err != nil {
+		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.InReviewPromptStatus)); err != nil {
 			return errors.Wrap(ctx, err, "set in_review status")
 		}
 		slog.Info("PR created, waiting for review", "url", prURL)
@@ -728,7 +731,7 @@ func (p *processor) handleWorktreeWorkflow(
 
 	// autoReview mode: set in_review status so poller can watch for approval
 	if p.autoReview {
-		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.StatusInReview)); err != nil {
+		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.InReviewPromptStatus)); err != nil {
 			return errors.Wrap(ctx, err, "set in_review status")
 		}
 		slog.Info("PR created, waiting for review", "url", prURL)

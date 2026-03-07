@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/bborbe/errors"
 )
@@ -89,21 +90,25 @@ func (e *dockerExecutor) Execute(
 	// Extract prompt basename from containerName (format: projectName-basename)
 	promptBaseName := extractPromptBaseName(containerName, e.projectName)
 
+	// Resolve Claude config dir (env var override or default ~/.claude)
+	claudeConfigDir := resolveClaudeConfigDir(home)
+
 	// Build and run docker command
 	cmd := e.buildDockerCommand(
 		ctx,
 		containerName,
 		promptFilePath,
 		projectRoot,
-		home,
+		claudeConfigDir,
 		promptBaseName,
+		home,
 	)
 
 	slog.Debug("docker command prepared",
 		"image", e.containerImage,
 		"containerName", containerName,
 		"workspaceMount", projectRoot+":/workspace",
-		"configMount", home+"/.claude-yolo:/home/node/.claude",
+		"configMount", claudeConfigDir+":/home/node/.claude",
 		"goPkgMount", home+"/go/pkg:/home/node/go/pkg")
 
 	// Pipe stdout/stderr to both terminal and log file
@@ -168,8 +173,9 @@ func (e *dockerExecutor) buildDockerCommand(
 	containerName string,
 	promptFilePath string,
 	projectRoot string,
-	home string,
+	claudeConfigDir string,
 	promptBaseName string,
+	home string,
 ) *exec.Cmd {
 	// Build docker run command
 	// Mount prompt as file to avoid shell escaping issues with -e flag
@@ -185,10 +191,29 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-e", "ANTHROPIC_MODEL="+e.model,
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
-		"-v", home+"/.claude-yolo:/home/node/.claude",
+		"-v", claudeConfigDir+":/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		e.containerImage,
 	)
+}
+
+// resolveClaudeConfigDir returns the Claude config directory to mount in the container.
+// It reads DARK_FACTORY_CLAUDE_CONFIG_DIR from the environment; if empty, defaults to ~/.claude.
+// Supports ~ prefix and $HOME/$variable expansion.
+func resolveClaudeConfigDir(home string) string {
+	dir := os.Getenv("DARK_FACTORY_CLAUDE_CONFIG_DIR")
+	if dir == "" {
+		return home + "/.claude"
+	}
+	// Expand leading ~ to home directory
+	if dir == "~" {
+		dir = home
+	} else if strings.HasPrefix(dir, "~/") {
+		dir = home + dir[1:]
+	}
+	// Expand $HOME and other environment variables
+	dir = os.ExpandEnv(dir)
+	return dir
 }
 
 // removeContainerIfExists removes a container by name if it exists, ignoring errors.

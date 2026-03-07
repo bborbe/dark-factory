@@ -232,8 +232,9 @@ var _ = Describe("Internal helper functions", func() {
 				"test-container",
 				"/tmp/prompt.md",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test-prompt",
+				"/home/user",
 			)
 
 			Expect(cmd).NotTo(BeNil())
@@ -250,13 +251,14 @@ var _ = Describe("Internal helper functions", func() {
 				"test",
 				"/tmp/test.md",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test",
+				"/home/user",
 			)
 
 			Expect(cmd.Args).To(ContainElement("/tmp/test.md:/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement("/workspace:/workspace"))
-			Expect(cmd.Args).To(ContainElement("/home/user/.claude-yolo:/home/node/.claude"))
+			Expect(cmd.Args).To(ContainElement("/home/user/.claude:/home/node/.claude"))
 			Expect(cmd.Args).To(ContainElement("/home/user/go/pkg:/home/node/go/pkg"))
 		})
 
@@ -266,8 +268,9 @@ var _ = Describe("Internal helper functions", func() {
 				"test",
 				"/tmp/test",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test",
+				"/home/user",
 			)
 
 			Expect(cmd.Args).To(ContainElement("--cap-add=NET_ADMIN"))
@@ -280,8 +283,9 @@ var _ = Describe("Internal helper functions", func() {
 				"test",
 				"/tmp/test",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test",
+				"/home/user",
 			)
 
 			Expect(cmd.Args).To(ContainElement("-e"))
@@ -297,8 +301,9 @@ var _ = Describe("Internal helper functions", func() {
 				"test",
 				"/tmp/test",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test",
+				"/home/user",
 			)
 
 			Expect(cmd).NotTo(BeNil())
@@ -312,8 +317,9 @@ var _ = Describe("Internal helper functions", func() {
 				"test",
 				"/tmp/test",
 				"/workspace",
-				"/home/user",
+				"/home/user/.claude",
 				"test",
+				"/home/user",
 			)
 
 			Expect(cmd.Args).To(ContainElement("custom-image:v1.2.3"))
@@ -430,6 +436,68 @@ This has frontmatter.`
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.runCalled).To(BeTrue())
 			})
+		})
+
+		Context("with DARK_FACTORY_CLAUDE_CONFIG_DIR set", func() {
+			It("uses env var as claude config dir in volume mount", func() {
+				GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "/custom/claude-config")
+
+				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(
+					fakeRunner.commands[1].Args,
+				).To(ContainElement("/custom/claude-config:/home/node/.claude"))
+			})
+		})
+
+		Context("with DARK_FACTORY_CLAUDE_CONFIG_DIR unset", func() {
+			It("uses default ~/.claude as claude config dir in volume mount", func() {
+				GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "")
+
+				home, err := os.UserHomeDir()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = exec.Execute(ctx, "test prompt", logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(
+					fakeRunner.commands[1].Args,
+				).To(ContainElement(home + "/.claude:/home/node/.claude"))
+			})
+		})
+	})
+
+	Describe("resolveClaudeConfigDir", func() {
+		It("returns home/.claude when env var is empty", func() {
+			GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "")
+			result := resolveClaudeConfigDir("/home/testuser")
+			Expect(result).To(Equal("/home/testuser/.claude"))
+		})
+
+		It("returns env var value when set to absolute path", func() {
+			GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "/custom/config")
+			result := resolveClaudeConfigDir("/home/testuser")
+			Expect(result).To(Equal("/custom/config"))
+		})
+
+		It("expands ~ prefix to home directory", func() {
+			GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "~/.my-claude")
+			result := resolveClaudeConfigDir("/home/testuser")
+			Expect(result).To(Equal("/home/testuser/.my-claude"))
+		})
+
+		It("expands standalone ~ to home directory", func() {
+			GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "~")
+			result := resolveClaudeConfigDir("/home/testuser")
+			Expect(result).To(Equal("/home/testuser"))
+		})
+
+		It("expands $HOME variable", func() {
+			GinkgoT().Setenv("DARK_FACTORY_CLAUDE_CONFIG_DIR", "$HOME/.my-claude")
+			result := resolveClaudeConfigDir("/home/testuser")
+			home, _ := os.UserHomeDir()
+			Expect(result).To(Equal(home + "/.my-claude"))
 		})
 	})
 })

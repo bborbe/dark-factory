@@ -2162,6 +2162,35 @@ var _ = Describe("Frontmatter spec field", func() {
 		Expect(string(saved)).NotTo(ContainSubstring("spec:"))
 	})
 
+	Describe("HasSpec integer-prefix matching", func() {
+		It("matches full spec name against padded number stored in frontmatter", func() {
+			// Simulates spec_list.go passing sf.Name ("019-review-fix-loop")
+			// while the prompt stores spec: ["019"]
+			path := filepath.Join(tempDir, "100-test.md")
+			content := "---\nstatus: queued\nspec: \"019\"\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.HasSpec("019-review-fix-loop")).To(BeTrue())
+			Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
+			Expect(pf.Frontmatter.HasSpec("19")).To(BeTrue())
+			Expect(pf.Frontmatter.HasSpec("0019")).To(BeTrue())
+			Expect(pf.Frontmatter.HasSpec("020-other")).To(BeFalse())
+		})
+
+		It("non-numeric spec IDs still match by exact string", func() {
+			path := filepath.Join(tempDir, "100-test.md")
+			content := "---\nstatus: queued\nspec: \"notifications\"\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.HasSpec("notifications")).To(BeTrue())
+			Expect(pf.Frontmatter.HasSpec("other")).To(BeFalse())
+		})
+	})
+
 	Describe("PromptFile.RetryCount", func() {
 		It("returns retryCount value when set in frontmatter", func() {
 			path := filepath.Join(tempDir, "001-test.md")

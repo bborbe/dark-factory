@@ -464,4 +464,36 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})
 	})
+
+	Context("with numeric spec IDs and descriptive file names", func() {
+		It("marks spec verifying when specID '019' matches file '019-review-fix-loop.md'", func() {
+			// Prompts store spec: ["019"] — the short numeric form
+			writePrompt(filepath.Join(completedDir, "100-first.md"), "completed", "019")
+			writePrompt(filepath.Join(completedDir, "101-second.md"), "completed", "019")
+
+			// Spec file has the full descriptive name
+			writeSpec(filepath.Join(specsDir, "019-review-fix-loop.md"), "queued")
+
+			err := ac.CheckAndComplete(ctx, "019")
+			Expect(err).NotTo(HaveOccurred())
+
+			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "019-review-fix-loop.md"))
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
+		})
+
+		It("does NOT mark spec verifying when some prompts are still queued", func() {
+			writePrompt(filepath.Join(completedDir, "100-done.md"), "completed", "019")
+			writePrompt(filepath.Join(queueDir, "101-pending.md"), "queued", "019")
+
+			writeSpec(filepath.Join(specsDir, "019-review-fix-loop.md"), "queued")
+
+			err := ac.CheckAndComplete(ctx, "019")
+			Expect(err).NotTo(HaveOccurred())
+
+			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "019-review-fix-loop.md"))
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("queued"))
+		})
+	})
 })

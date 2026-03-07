@@ -33,6 +33,7 @@ var (
 	numericPatternRegexp      = regexp.MustCompile(`^(\d+)-(.+)\.md$`)
 	hasNumberPrefixRegexp     = regexp.MustCompile(`^\d{3}-`)
 	extractNumberPrefixRegexp = regexp.MustCompile(`^(\d{3})-`)
+	specNumericPrefixRegexp   = regexp.MustCompile(`^(\d+)`)
 )
 
 // Status represents the current state of a prompt.
@@ -143,10 +144,19 @@ type Frontmatter struct {
 }
 
 // HasSpec returns true if the given spec ID is in the Specs list.
+// Comparison is by parsed integer prefix: "019" matches "19", "0019", and "019-review-fix-loop".
+// If either value has no numeric prefix, falls back to exact string match.
 func (f Frontmatter) HasSpec(id string) bool {
+	idNum := parseSpecNumber(id)
 	for _, s := range f.Specs {
-		if s == id {
-			return true
+		if idNum >= 0 {
+			if parseSpecNumber(s) == idNum {
+				return true
+			}
+		} else {
+			if s == id {
+				return true
+			}
 		}
 	}
 	return false
@@ -983,6 +993,22 @@ func hasNumberPrefix(filename string) bool {
 // Returns -1 if the filename has no numeric prefix.
 func extractNumberFromFilename(filename string) int {
 	matches := extractNumberPrefixRegexp.FindStringSubmatch(filename)
+	if matches == nil {
+		return -1
+	}
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return -1
+	}
+	return num
+}
+
+// parseSpecNumber extracts the leading numeric value from a spec ID string.
+// Handles bare numbers ("019" → 19), padded numbers ("0019" → 19),
+// and full spec names ("019-review-fix-loop" → 19).
+// Returns -1 if s has no numeric prefix.
+func parseSpecNumber(s string) int {
+	matches := specNumericPrefixRegexp.FindStringSubmatch(s)
 	if matches == nil {
 		return -1
 	}

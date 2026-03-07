@@ -111,4 +111,24 @@ var _ = Describe("PromptCounter", func() {
 		Expect(total).To(Equal(1))
 		Expect(completed).To(Equal(1))
 	})
+
+	It("counts prompts when specID is a full spec name (e.g. from sf.Name)", func() {
+		// Prompt stores spec: ["019"] but CountBySpec is called with "019-review-fix-loop"
+		writeLinkedPrompt(filepath.Join(dir1, "001-a.md"), "queued", "019")
+		writeLinkedPrompt(filepath.Join(dir1, "002-b.md"), "completed", "019")
+
+		completed, total, err := counter.CountBySpec(ctx, "019-review-fix-loop")
+		Expect(err).To(BeNil())
+		Expect(total).To(Equal(2))
+		Expect(completed).To(Equal(1))
+	})
+
+	It("counts prompts when specID uses different zero-padding", func() {
+		writeLinkedPrompt(filepath.Join(dir1, "001-a.md"), "completed", "019")
+
+		completed, total, err := counter.CountBySpec(ctx, "0019")
+		Expect(err).To(BeNil())
+		Expect(total).To(Equal(1))
+		Expect(completed).To(Equal(1))
+	})
 })

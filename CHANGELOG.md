@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.23.1
+
+- fix: Compare spec IDs by parsed integer prefix so "019" matches "019-review-fix-loop.md" in spec progress counting and auto-completion
+
 ## v0.23.0
 
 - fix: Stop dark-factory from writing prompt filenames as changelog entries; remove `insertVersionSection` dead code

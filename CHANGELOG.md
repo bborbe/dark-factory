@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.22.2
+
+- docs: Add spec for prompt verification gate (host-side verification after container execution)
+- docs: Add spec for prompt validation command (in-container validation via config)
+- docs: Add prompt to fix mechanical changelog entries (delegate to YOLO agent)
+
 ## v0.22.1
 
 - 124-fix-specwatcher-skip-non-approved

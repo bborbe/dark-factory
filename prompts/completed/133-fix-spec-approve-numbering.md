@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: spec approve now assigns sequential NNN- numeric prefixes to spec files using NormalizeSpecFilename, consistent with prompt numbering
 container: dark-factory-133-fix-spec-approve-numbering
 dark-factory-version: v0.25.1
 created: "2026-03-07T22:05:00Z"
 queued: "2026-03-07T21:25:51Z"
 started: "2026-03-07T21:25:54Z"
+completed: "2026-03-07T21:32:08Z"
 ---
 <summary>
 - Approving a spec now assigns it a sequential number, consistent with how prompts are numbered

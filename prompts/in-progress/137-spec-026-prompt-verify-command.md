@@ -1,16 +1,15 @@
 ---
+status: approved
 spec: ["026"]
-status: created
 created: "2026-03-07T22:30:00Z"
+queued: "2026-03-07T22:21:54Z"
 ---
 <summary>
-- Adds `dark-factory prompt verify <file>` CLI command
-- Command finds the prompt by ID in queueDir, validates it is in `pending_verification` state
-- On validation success: moves prompt to completed/, commits the file, then runs the workflow-specific git flow (direct: tag+push; PR/worktree: push branch + create PR)
-- Returns a clear error if status is not `pending_verification`
-- Wired into `pkg/factory/factory.go` as `CreatePromptVerifyCommand`
-- Wired into `main.go` `runPromptCommand` as `"verify"` case and added to `printHelp`
-- Fully tested with Ginkgo/counterfeiter mocks
+- Human can mark a pending-verification prompt as verified via `dark-factory prompt verify <file>`
+- Verification triggers the normal completion flow — commit, tag, push (or PR creation depending on workflow)
+- Running verify on a prompt that is not pending verification returns a clear error
+- The command appears in `dark-factory help` output
+- Fully tested with mocks covering direct workflow, PR workflow, and error cases
 </summary>
 
 <objective>

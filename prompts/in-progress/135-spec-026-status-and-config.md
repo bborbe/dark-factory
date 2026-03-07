@@ -1,15 +1,18 @@
 ---
+status: executing
 spec: ["026"]
-status: created
+container: dark-factory-135-spec-026-status-and-config
+dark-factory-version: v0.26.0
 created: "2026-03-07T22:30:00Z"
+queued: "2026-03-07T22:21:54Z"
+started: "2026-03-07T22:21:56Z"
 ---
 <summary>
-- Adds `pending_verification` as a new PromptStatus constant
-- Adds `MarkPendingVerification()` method on PromptFile
-- Adds `VerificationSection()` method on PromptFile to extract `<verification>` XML tag content from body
-- Adds `VerificationGate bool` to Config struct (yaml: `verificationGate`, default false)
-- Updates `AvailablePromptStatuses` and ensures `ListQueued` skips `pending_verification` like it skips `failed`
-- All new code is covered by tests
+- Prompts can now represent a "pending verification" state — a human gate between execution and completion
+- The queue recognizes pending-verification prompts and does not pick them up for execution
+- A prompt's verification instructions can be extracted programmatically (for logging to the human)
+- Projects can opt in to the verification gate via config (disabled by default — no behavior change)
+- All new capabilities are covered by tests
 </summary>
 
 <objective>

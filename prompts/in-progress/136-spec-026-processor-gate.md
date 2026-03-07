@@ -1,15 +1,16 @@
 ---
+status: approved
 spec: ["026"]
-status: created
 created: "2026-03-07T22:30:00Z"
+queued: "2026-03-07T22:21:54Z"
 ---
 <summary>
-- Adds `verificationGate bool` field to the processor struct and constructor
-- When gate is enabled and execution succeeds, enters `pending_verification` state instead of completing
-- Logs the prompt's `<verification>` section content when entering pending-verification (hint to human)
-- Queue blocks on `pending_verification` — adds a `HasPendingVerification` check that stops processing
-- Passes `cfg.VerificationGate` through `CreateProcessor` in factory and `CreateRunner` in factory
-- Processor tests cover both gate-off (existing behavior) and gate-on paths
+- When the verification gate is enabled, successfully executed prompts pause instead of completing immediately
+- Dark-factory logs the prompt's verification instructions as a hint to the human on what to check
+- The queue blocks while a prompt is pending verification — no new prompt starts until the human verifies
+- When the gate is disabled (default), behavior is unchanged — prompts complete as before
+- The status auto-correction logic leaves pending-verification prompts untouched
+- Tests cover both gate-on and gate-off paths
 </summary>
 
 <objective>
@@ -87,14 +88,14 @@ Read `/home/node/.claude/docs/go-testing.md` — Ginkgo/Gomega, counterfeiter mo
      ```
    - Return nil.
 
-7. In `handlePostExecution`, after `validateCompletionReport` succeeds (after storing the summary) and BEFORE the git operations, add the gate check:
+7. In `handlePostExecution`, after the summary is stored (`pf.SetSummary` + `pf.Save`, ~line 428-433) and BEFORE the `isAutoReviewPR` block (~line 438), add the gate check:
    ```go
    // Verification gate: pause before git operations if enabled
    if p.verificationGate {
        return p.enterPendingVerification(ctx, pf, promptPath)
    }
    ```
-   This must be placed AFTER the summary is stored (pf.SetSummary + pf.Save) but BEFORE `moveToCompletedAndCommit`.
+   This must be placed AFTER `context.WithoutCancel` (line 436) and BEFORE the `isAutoReviewPR` check — the gate short-circuits all git operations.
 
 8. In `pkg/factory/factory.go`:
    - Add `verificationGate bool` as the last parameter of `CreateProcessor`.

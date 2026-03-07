@@ -14,7 +14,7 @@
 /gha-creds-*.json
 /prompts/.dark-factory.lock
 /prompts/log/
-/prompts/queue/log/
+/specs/log/
 /vendor
 coverage.html
 coverage.out

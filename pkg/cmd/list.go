@@ -55,6 +55,7 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 	queueOnly := false
 	failedOnly := false
 	jsonOutput := false
+	showAll := false
 
 	for _, arg := range args {
 		switch arg {
@@ -64,6 +65,8 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 			failedOnly = true
 		case "--json":
 			jsonOutput = true
+		case "--all":
+			showAll = true
 		}
 	}
 
@@ -87,25 +90,17 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 	}
 	entries = append(entries, completedEntries...)
 
-	if queueOnly {
-		filtered := entries[:0]
-		for _, e := range entries {
-			if e.Status == string(prompt.StatusQueued) ||
-				e.Status == string(prompt.StatusExecuting) {
-				filtered = append(filtered, e)
-			}
-		}
-		entries = filtered
-	}
-
-	if failedOnly {
-		filtered := entries[:0]
-		for _, e := range entries {
-			if e.Status == string(prompt.StatusFailed) {
-				filtered = append(filtered, e)
-			}
-		}
-		entries = filtered
+	switch {
+	case queueOnly:
+		entries = filterPromptsByStatus(
+			entries,
+			string(prompt.StatusQueued),
+			string(prompt.StatusExecuting),
+		)
+	case failedOnly:
+		entries = filterPromptsByStatus(entries, string(prompt.StatusFailed))
+	case !showAll:
+		entries = excludePromptStatus(entries, string(prompt.StatusCompleted))
 	}
 
 	if jsonOutput {
@@ -166,4 +161,29 @@ func (l *listCommand) outputJSON(entries []PromptEntry) error {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(entries)
+}
+
+// filterPromptsByStatus returns only entries whose status matches one of the given values.
+func filterPromptsByStatus(entries []PromptEntry, statuses ...string) []PromptEntry {
+	filtered := entries[:0]
+	for _, e := range entries {
+		for _, s := range statuses {
+			if e.Status == s {
+				filtered = append(filtered, e)
+				break
+			}
+		}
+	}
+	return filtered
+}
+
+// excludePromptStatus returns entries that do not have the given status.
+func excludePromptStatus(entries []PromptEntry, status string) []PromptEntry {
+	filtered := entries[:0]
+	for _, e := range entries {
+		if e.Status != status {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
-	"github.com/bborbe/dark-factory/pkg/spec"
+	specpkg "github.com/bborbe/dark-factory/pkg/spec"
 )
 
 //counterfeiter:generate -o ../../mocks/spec-list-command.go --fake-name SpecListCommand . SpecListCommand
@@ -33,21 +33,25 @@ type SpecEntry struct {
 
 // specListCommand implements SpecListCommand.
 type specListCommand struct {
-	lister  spec.Lister
+	lister  specpkg.Lister
 	counter prompt.Counter
 }
 
 // NewSpecListCommand creates a new SpecListCommand.
-func NewSpecListCommand(lister spec.Lister, counter prompt.Counter) SpecListCommand {
+func NewSpecListCommand(lister specpkg.Lister, counter prompt.Counter) SpecListCommand {
 	return &specListCommand{lister: lister, counter: counter}
 }
 
 // Run executes the spec list command.
 func (s *specListCommand) Run(ctx context.Context, args []string) error {
 	jsonOutput := false
+	showAll := false
 	for _, arg := range args {
-		if arg == "--json" {
+		switch arg {
+		case "--json":
 			jsonOutput = true
+		case "--all":
+			showAll = true
 		}
 	}
 
@@ -58,6 +62,9 @@ func (s *specListCommand) Run(ctx context.Context, args []string) error {
 
 	entries := make([]SpecEntry, 0, len(specs))
 	for _, sf := range specs {
+		if !showAll && sf.Frontmatter.Status == string(specpkg.StatusCompleted) {
+			continue
+		}
 		completed, total, err := s.counter.CountBySpec(ctx, sf.Name)
 		if err != nil {
 			return errors.Wrap(ctx, err, "count prompts for spec")

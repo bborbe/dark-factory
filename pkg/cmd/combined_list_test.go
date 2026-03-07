@@ -47,7 +47,19 @@ var _ = Describe("CombinedListCommand", func() {
 			Expect(mockLister.ListCallCount()).To(Equal(1))
 		})
 
-		It("outputs spec entries with prompt counts", func() {
+		It("hides completed specs by default", func() {
+			mockLister.ListReturns([]*spec.SpecFile{
+				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
+				{Name: "002-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
+			}, nil)
+			mockCounter.CountBySpecReturnsOnCall(0, 1, 3, nil)
+
+			err := combinedListCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+		})
+
+		It("shows completed specs with --all flag", func() {
 			mockLister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 				{Name: "002-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
@@ -55,7 +67,7 @@ var _ = Describe("CombinedListCommand", func() {
 			mockCounter.CountBySpecReturnsOnCall(0, 1, 3, nil)
 			mockCounter.CountBySpecReturnsOnCall(1, 5, 5, nil)
 
-			err := combinedListCmd.Run(ctx, []string{})
+			err := combinedListCmd.Run(ctx, []string{"--all"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mockCounter.CountBySpecCallCount()).To(Equal(2))
 		})

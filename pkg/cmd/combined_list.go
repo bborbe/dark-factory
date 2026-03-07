@@ -60,18 +60,22 @@ func NewCombinedListCommand(
 // Run executes the combined list command.
 func (c *combinedListCommand) Run(ctx context.Context, args []string) error {
 	jsonOutput := false
+	showAll := false
 	for _, arg := range args {
-		if arg == "--json" {
+		switch arg {
+		case "--json":
 			jsonOutput = true
+		case "--all":
+			showAll = true
 		}
 	}
 
-	promptEntries, err := c.collectPromptEntries(ctx)
+	promptEntries, err := c.collectPromptEntries(ctx, showAll)
 	if err != nil {
 		return errors.Wrap(ctx, err, "collect prompt entries")
 	}
 
-	specEntries, err := c.collectSpecEntries(ctx)
+	specEntries, err := c.collectSpecEntries(ctx, showAll)
 	if err != nil {
 		return errors.Wrap(ctx, err, "collect spec entries")
 	}
@@ -82,39 +86,60 @@ func (c *combinedListCommand) Run(ctx context.Context, args []string) error {
 	return c.outputHuman(promptEntries, specEntries)
 }
 
-func (c *combinedListCommand) collectPromptEntries(ctx context.Context) ([]PromptEntry, error) {
-	var entries []PromptEntry
-	for _, dir := range []string{c.inboxDir, c.queueDir, c.completedDir} {
-		dirEntries, err := os.ReadDir(dir)
+func (c *combinedListCommand) collectPromptEntries(
+	ctx context.Context,
+	showAll bool,
+) ([]PromptEntry, error) {
+	dirs := []string{c.inboxDir, c.queueDir, c.completedDir}
+	entries := make([]PromptEntry, 0, len(dirs))
+	for _, dir := range dirs {
+		dirEntries, err := c.collectPromptEntriesFromDir(ctx, dir, showAll)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, errors.Wrap(ctx, err, "read directory")
+			return nil, err
 		}
-		for _, entry := range dirEntries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name())
-			pf, err := prompt.Load(ctx, path)
-			if err != nil {
-				continue
-			}
-			st := pf.Frontmatter.Status
-			if st == "" {
-				st = "created"
-			}
-			entries = append(entries, PromptEntry{
-				Status: st,
-				File:   entry.Name(),
-			})
-		}
+		entries = append(entries, dirEntries...)
 	}
 	return entries, nil
 }
 
-func (c *combinedListCommand) collectSpecEntries(ctx context.Context) ([]SpecEntry, error) {
+func (c *combinedListCommand) collectPromptEntriesFromDir(
+	ctx context.Context,
+	dir string,
+	showAll bool,
+) ([]PromptEntry, error) {
+	dirEntries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, "read directory")
+	}
+	entries := make([]PromptEntry, 0, len(dirEntries))
+	for _, entry := range dirEntries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		pf, err := prompt.Load(ctx, path)
+		if err != nil {
+			continue
+		}
+		st := pf.Frontmatter.Status
+		if st == "" {
+			st = "created"
+		}
+		if !showAll && st == string(prompt.StatusCompleted) {
+			continue
+		}
+		entries = append(entries, PromptEntry{Status: st, File: entry.Name()})
+	}
+	return entries, nil
+}
+
+func (c *combinedListCommand) collectSpecEntries(
+	ctx context.Context,
+	showAll bool,
+) ([]SpecEntry, error) {
 	specs, err := c.lister.List(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "list specs")
@@ -122,6 +147,9 @@ func (c *combinedListCommand) collectSpecEntries(ctx context.Context) ([]SpecEnt
 
 	entries := make([]SpecEntry, 0, len(specs))
 	for _, sf := range specs {
+		if !showAll && sf.Frontmatter.Status == string(spec.StatusCompleted) {
+			continue
+		}
 		completed, total, err := c.counter.CountBySpec(ctx, sf.Name)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, "count prompts for spec")

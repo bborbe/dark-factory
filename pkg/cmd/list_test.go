@@ -50,7 +50,7 @@ var _ = Describe("ListCommand", func() {
 	})
 
 	Describe("List all prompts", func() {
-		It("shows prompts from all directories", func() {
+		It("hides completed prompts by default", func() {
 			err := os.WriteFile(filepath.Join(inboxDir, "fix-something.md"), []byte("# Fix"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -69,6 +69,18 @@ var _ = Describe("ListCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			err = listCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("shows completed prompts with --all flag", func() {
+			err := os.WriteFile(
+				filepath.Join(completedDir, "077-done.md"),
+				[]byte("---\nstatus: completed\n---\n# Done"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = listCmd.Run(ctx, []string{"--all"})
 			Expect(err).NotTo(HaveOccurred())
 		})
 

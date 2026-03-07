@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["026"]
+summary: 'Wired verification gate into processor post-execution flow: added verificationGate field/param, hasPendingVerification and enterPendingVerification methods, queue blocking check, gate intercept in handlePostExecution, updated factory wiring, and added gate tests covering all four required scenarios'
+container: dark-factory-136-spec-026-processor-gate
+dark-factory-version: v0.26.0
 created: "2026-03-07T22:30:00Z"
 queued: "2026-03-07T22:21:54Z"
+started: "2026-03-07T22:29:47Z"
+completed: "2026-03-07T22:44:44Z"
 ---
 <summary>
 - When the verification gate is enabled, successfully executed prompts pause instead of completing immediately

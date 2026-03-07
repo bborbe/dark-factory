@@ -26,13 +26,19 @@ type SpecApproveCommand interface {
 type specApproveCommand struct {
 	inboxDir      string
 	inProgressDir string
+	completedDir  string
 }
 
 // NewSpecApproveCommand creates a new SpecApproveCommand.
-func NewSpecApproveCommand(inboxDir string, inProgressDir string) SpecApproveCommand {
+func NewSpecApproveCommand(
+	inboxDir string,
+	inProgressDir string,
+	completedDir string,
+) SpecApproveCommand {
 	return &specApproveCommand{
 		inboxDir:      inboxDir,
 		inProgressDir: inProgressDir,
+		completedDir:  completedDir,
 	}
 }
 
@@ -67,8 +73,20 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "create in-progress dir")
 	}
 
+	// Assign a sequential numeric prefix if the file does not already have one
+	normalizedName, err := spec.NormalizeSpecFilename(
+		ctx,
+		filepath.Base(path),
+		s.inboxDir,
+		s.inProgressDir,
+		s.completedDir,
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, "normalize spec filename")
+	}
+
 	// Move file to inProgressDir — the file move is the signal to SpecWatcher
-	dest := filepath.Join(s.inProgressDir, filepath.Base(path))
+	dest := filepath.Join(s.inProgressDir, normalizedName)
 	if err := os.Rename(path, dest); err != nil {
 		return errors.Wrap(ctx, err, "move spec to in-progress")
 	}

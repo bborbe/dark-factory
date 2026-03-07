@@ -20,6 +20,7 @@ var _ = Describe("SpecApproveCommand", func() {
 		tempDir        string
 		specsDir       string
 		inProgressDir  string
+		completedDir   string
 		specApproveCmd cmd.SpecApproveCommand
 		ctx            context.Context
 	)
@@ -34,8 +35,9 @@ var _ = Describe("SpecApproveCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		inProgressDir = filepath.Join(tempDir, "specs", "in-progress")
+		completedDir = filepath.Join(tempDir, "specs", "completed")
 
-		specApproveCmd = cmd.NewSpecApproveCommand(specsDir, inProgressDir)
+		specApproveCmd = cmd.NewSpecApproveCommand(specsDir, inProgressDir, completedDir)
 		ctx = context.Background()
 	})
 
@@ -119,6 +121,7 @@ var _ = Describe("SpecApproveCommand", func() {
 			specApproveCmd = cmd.NewSpecApproveCommand(
 				"/nonexistent/specs",
 				"/nonexistent/specs/in-progress",
+				"/nonexistent/specs/completed",
 			)
 			err := specApproveCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())
@@ -134,6 +137,53 @@ var _ = Describe("SpecApproveCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			dest := filepath.Join(inProgressDir, "002-new-spec.md")
+			_, statErr := os.Stat(dest)
+			Expect(statErr).NotTo(HaveOccurred())
+		})
+
+		It("assigns a numeric prefix to unnumbered spec on approve", func() {
+			// Existing numbered specs in in-progress and completed
+			err := os.MkdirAll(inProgressDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.MkdirAll(completedDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(
+				filepath.Join(inProgressDir, "003-existing.md"),
+				[]byte("---\nstatus: approved\n---\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(
+				filepath.Join(completedDir, "005-done.md"),
+				[]byte("---\nstatus: completed\n---\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Unnumbered spec in inbox
+			specFile := filepath.Join(specsDir, "my-new-spec.md")
+			err = os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# My New Spec"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"my-new-spec.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Should be placed in in-progress with next number after 5
+			dest := filepath.Join(inProgressDir, "006-my-new-spec.md")
+			content, readErr := os.ReadFile(dest)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+
+		It("preserves existing numeric prefix when approving already-numbered spec", func() {
+			specFile := filepath.Join(specsDir, "010-numbered-spec.md")
+			err := os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# Numbered Spec"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"010-numbered-spec.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(inProgressDir, "010-numbered-spec.md")
 			_, statErr := os.Stat(dest)
 			Expect(statErr).NotTo(HaveOccurred())
 		})

@@ -408,7 +408,11 @@ func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
 
 // CreateSpecApproveCommand creates a SpecApproveCommand.
 func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
-	return cmd.NewSpecApproveCommand(cfg.Specs.InboxDir, cfg.Specs.InProgressDir)
+	return cmd.NewSpecApproveCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+	)
 }
 
 // CreateSpecCompleteCommand creates a SpecCompleteCommand.

@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["026"]
+summary: Added dark-factory prompt verify <file> command with direct and PR/worktree workflow support, counterfeiter mock, and full test coverage at 85.9%
+container: dark-factory-137-spec-026-prompt-verify-command
+dark-factory-version: v0.26.0
 created: "2026-03-07T22:30:00Z"
 queued: "2026-03-07T22:21:54Z"
+started: "2026-03-07T22:44:47Z"
+completed: "2026-03-07T22:54:09Z"
 ---
 <summary>
 - Human can mark a pending-verification prompt as verified via `dark-factory prompt verify <file>`

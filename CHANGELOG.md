@@ -22,7 +22,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.22.1
 
-- 124-fix-specwatcher-skip-non-approved
+- fix: SpecWatcher skips non-approved specs during prompt generation
 
 ## v0.22.0
 
@@ -31,7 +31,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.21.1
 
-- go mod update
+- chore: Update Go dependencies
 
 ## v0.21.0
 
@@ -39,15 +39,15 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.20.6
 
-- Confirm migration logic exists in runner
+- test: Confirm migration logic exists in runner
 
 ## v0.20.5
 
-- Confirm spec verify moves file
+- test: Confirm spec verify moves file to completed
 
 ## v0.20.4
 
-- Confirm SpecWatcher only triggers on Create
+- test: Confirm SpecWatcher only triggers on Create events
 
 ## v0.20.3
 
@@ -55,7 +55,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## v0.20.2
 
-- Confirm keyword list is gone
+- refactor: Remove keyword list from config
 
 ## v0.20.1
 

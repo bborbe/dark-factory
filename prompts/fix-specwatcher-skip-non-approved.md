@@ -1,7 +1,11 @@
 ---
-status: queued
+status: failed
+container: dark-factory-123-fix-specwatcher-skip-non-approved
+dark-factory-version: v0.20.6
 created: "2026-03-07T11:30:00Z"
 queued: "2026-03-07T10:39:39Z"
+started: "2026-03-07T11:14:31Z"
+completed: "2026-03-07T11:24:20Z"
 ---
 <summary>
 - SpecWatcher currently generates prompts for any file appearing in `specs/in-progress/` regardless of status

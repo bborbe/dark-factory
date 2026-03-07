@@ -1,5 +1,6 @@
 ---
-status: draft
+status: approved
+approved: "2026-03-07T21:37:13Z"
 ---
 
 ## Summary
@@ -36,11 +37,11 @@ After successful execution, prompts optionally pause in a `verifying` state befo
 1. The verification gate is opt-in and disabled by default — existing projects require no configuration change.
 2. When disabled (default): behavior unchanged — successful prompts go directly to `completed`.
 3. When enabled: successful prompts transition to a pending-verification state instead of `completed`. Dark-factory does NOT commit/tag/push yet.
-4. `dark-factory prompt list` shows `verifying` prompts — they require human attention.
-5. `dark-factory prompt verify <file>` transitions the prompt from `verifying` to `completed`, then dark-factory commits/tags/pushes (same post-completion flow as today).
-6. Running `prompt verify` on a prompt that is not `verifying` returns a clear error.
-7. Queue blocks on `verifying` — next prompt does not start until the current one is verified (same blocking behavior as `failed`).
-8. When a prompt enters `verifying`, dark-factory logs the prompt's `<verification>` section content as a hint to the human on what to check.
+4. `dark-factory prompt list` shows `pending_verification` prompts — they require human attention.
+5. `dark-factory prompt verify <file>` transitions the prompt from `pending_verification` to `completed`, then dark-factory commits/tags/pushes (same post-completion flow as today).
+6. Running `prompt verify` on a prompt that is not `pending_verification` returns a clear error.
+7. Queue blocks on `pending_verification` — next prompt does not start until the current one is verified (same blocking behavior as `failed`).
+8. When a prompt enters `pending_verification`, dark-factory logs the prompt's `<verification>` section content as a hint to the human on what to check.
 
 ## Constraints
 

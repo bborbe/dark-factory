@@ -1,7 +1,11 @@
 ---
+status: executing
 spec: ["025"]
-status: created
+container: dark-factory-134-spec-025-prompt-validation-command
+dark-factory-version: v0.26.0
 created: "2026-03-07T21:00:00Z"
+queued: "2026-03-07T21:35:07Z"
+started: "2026-03-07T21:35:58Z"
 ---
 <summary>
 - Projects can configure a single validation command that applies to all prompts (default: `make precommit`)
@@ -46,8 +50,8 @@ Read `pkg/processor/processor_test.go` — existing `NewProcessor` calls; update
    ```
 
 3. **`pkg/processor/processor.go`** — Wire in the field and injection:
-   - Add `validationCommand string` field to the `processor` struct (after `autoRelease bool`).
-   - Add `validationCommand string` parameter to `NewProcessor` (after `autoRelease bool`, before `autoReview bool` — or at the end if reordering would break many tests; choose the position that minimises test churn, likely at the end before `autoCompleter`).
+   - Add `validationCommand string` field to the `processor` struct (after `specLister spec.Lister`, before `skippedPrompts`).
+   - Add `validationCommand string` parameter to `NewProcessor` (after `specLister spec.Lister` — the current last parameter).
    - Wire the field in the constructor body: `validationCommand: validationCommand`.
    - In `processPrompt`, after the changelog suffix block (lines 349-351):
      ```go

@@ -36,26 +36,27 @@ type Processor interface {
 
 // processor implements Processor.
 type processor struct {
-	queueDir       string
-	completedDir   string
-	logDir         string
-	projectName    string
-	executor       executor.Executor
-	promptManager  prompt.Manager
-	releaser       git.Releaser
-	versionGetter  version.Getter
-	ready          <-chan struct{}
-	workflow       config.Workflow
-	brancher       git.Brancher
-	prCreator      git.PRCreator
-	worktree       git.Worktree
-	autoMerge      bool
-	autoRelease    bool
-	autoReview     bool
-	prMerger       git.PRMerger
-	autoCompleter  spec.AutoCompleter
-	specLister     spec.Lister
-	skippedPrompts map[string]time.Time // filename → mod time when skipped
+	queueDir          string
+	completedDir      string
+	logDir            string
+	projectName       string
+	executor          executor.Executor
+	promptManager     prompt.Manager
+	releaser          git.Releaser
+	versionGetter     version.Getter
+	ready             <-chan struct{}
+	workflow          config.Workflow
+	brancher          git.Brancher
+	prCreator         git.PRCreator
+	worktree          git.Worktree
+	autoMerge         bool
+	autoRelease       bool
+	autoReview        bool
+	prMerger          git.PRMerger
+	autoCompleter     spec.AutoCompleter
+	specLister        spec.Lister
+	validationCommand string
+	skippedPrompts    map[string]time.Time // filename → mod time when skipped
 }
 
 // NewProcessor creates a new Processor.
@@ -79,28 +80,30 @@ func NewProcessor(
 	autoReview bool,
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
+	validationCommand string,
 ) Processor {
 	return &processor{
-		queueDir:       queueDir,
-		completedDir:   completedDir,
-		logDir:         logDir,
-		projectName:    projectName,
-		executor:       exec,
-		promptManager:  promptManager,
-		releaser:       releaser,
-		versionGetter:  versionGetter,
-		ready:          ready,
-		workflow:       workflow,
-		brancher:       brancher,
-		prCreator:      prCreator,
-		worktree:       worktree,
-		autoMerge:      autoMerge,
-		autoRelease:    autoRelease,
-		autoReview:     autoReview,
-		prMerger:       prMerger,
-		autoCompleter:  autoCompleter,
-		specLister:     specLister,
-		skippedPrompts: make(map[string]time.Time),
+		queueDir:          queueDir,
+		completedDir:      completedDir,
+		logDir:            logDir,
+		projectName:       projectName,
+		executor:          exec,
+		promptManager:     promptManager,
+		releaser:          releaser,
+		versionGetter:     versionGetter,
+		ready:             ready,
+		workflow:          workflow,
+		brancher:          brancher,
+		prCreator:         prCreator,
+		worktree:          worktree,
+		autoMerge:         autoMerge,
+		autoRelease:       autoRelease,
+		autoReview:        autoReview,
+		prMerger:          prMerger,
+		autoCompleter:     autoCompleter,
+		specLister:        specLister,
+		validationCommand: validationCommand,
+		skippedPrompts:    make(map[string]time.Time),
 	}
 }
 
@@ -348,6 +351,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Append changelog instructions when the project has a CHANGELOG.md
 	if p.releaser.HasChangelog(ctx) {
 		content = content + report.ChangelogSuffix()
+	}
+	// Inject project-level validation command (overrides prompt-level <verification>)
+	if p.validationCommand != "" {
+		content = content + report.ValidationSuffix(p.validationCommand)
 	}
 
 	slog.Info("executing prompt", "title", title)

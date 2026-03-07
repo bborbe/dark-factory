@@ -59,6 +59,7 @@ var _ = Describe("Factory", func() {
 				false,
 				false,
 				false,
+				"make precommit",
 				"specs/inbox",
 				"specs/in-progress",
 				"specs/completed",

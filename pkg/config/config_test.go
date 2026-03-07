@@ -36,6 +36,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Specs.LogDir).To(Equal("specs/log"))
 			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.5"))
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
+			Expect(cfg.ValidationCommand).To(Equal("make precommit"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
 			Expect(cfg.AutoMerge).To(BeFalse())

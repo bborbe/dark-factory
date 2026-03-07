@@ -118,6 +118,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.AutoMerge,
 			cfg.AutoRelease,
 			cfg.AutoReview,
+			cfg.ValidationCommand,
 			cfg.Specs.InboxDir,
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
@@ -176,6 +177,7 @@ func CreateProcessor(
 	autoMerge bool,
 	autoRelease bool,
 	autoReview bool,
+	validationCommand string,
 	specsInboxDir string,
 	specsInProgressDir string,
 	specsCompletedDir string,
@@ -206,6 +208,7 @@ func CreateProcessor(
 			specsCompletedDir,
 		),
 		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
+		validationCommand,
 	)
 }
 

@@ -36,6 +36,13 @@ After writing this report, STOP. Do not output anything else — no summary, no 
 `
 }
 
+// ValidationSuffix returns the markdown text injected when a project-level validation command is configured.
+// It instructs the agent to treat the command's exit code as the authoritative success/failure signal,
+// overriding any <verification> section in the prompt.
+func ValidationSuffix(cmd string) string {
+	return "\n\n---\n\n## Project Validation Command (REQUIRED — overrides <verification> section)\n\nRun the following command as the authoritative validation step and use its exit code in the completion report:\n\n```\n" + cmd + "\n```\n\nThis overrides any `<verification>` section in this prompt. Report `\"status\":\"success\"` if and only if this command exits 0.\n"
+}
+
 // ChangelogSuffix returns instructions for the YOLO agent to write a descriptive changelog entry.
 // It is appended to the prompt only when the project has a CHANGELOG.md.
 func ChangelogSuffix() string {

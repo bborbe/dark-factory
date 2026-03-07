@@ -116,6 +116,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -179,6 +180,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -246,6 +248,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -309,6 +312,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -364,6 +368,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -419,6 +424,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -478,6 +484,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -567,6 +574,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -632,6 +640,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -687,6 +696,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -746,6 +756,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -794,6 +805,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -840,6 +852,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -896,6 +909,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -963,6 +977,7 @@ var _ = Describe("Processor", func() {
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -981,6 +996,65 @@ var _ = Describe("Processor", func() {
 		Expect(promptContent).To(ContainSubstring("DARK-FACTORY-REPORT"))
 		Expect(promptContent).To(ContainSubstring("Completion Report (MANDATORY)"))
 		Expect(promptContent).To(HaveSuffix(report.Suffix()))
+
+		cancel()
+	})
+
+	It("should append validation suffix when validationCommand is set", func() {
+		promptPath := filepath.Join(promptsDir, "001-validation-test.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		mockManager.LoadReturns(&prompt.PromptFile{
+			Path: promptPath,
+			Body: []byte("# Validation test\n\nContent for validation suffix test."),
+			Frontmatter: prompt.Frontmatter{
+				Status: string(prompt.ApprovedPromptStatus),
+			},
+		}, nil)
+		mockManager.MoveToCompletedReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
+		mockExecutor.ExecuteReturns(nil)
+		mockReleaser.CommitCompletedFileReturns(nil)
+		mockReleaser.HasChangelogReturns(false)
+		mockReleaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			mockVersionGet,
+			ready,
+			config.WorkflowDirect,
+			mockBrancher,
+			mockPRCreator,
+			mockWorktree,
+			mockPRMerger,
+			false,
+			false,
+			false,
+			mockAutoCompleter,
+			mockSpecLister,
+			"make precommit",
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return mockExecutor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		_, promptContent, _, _ := mockExecutor.ExecuteArgsForCall(0)
+		Expect(promptContent).To(ContainSubstring(report.ValidationSuffix("make precommit")))
 
 		cancel()
 	})
@@ -1038,6 +1112,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -1116,6 +1191,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor — marks failed and continues
@@ -1178,6 +1254,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor — marks failed and continues
@@ -1244,6 +1321,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -1319,6 +1397,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -1398,6 +1477,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -1471,6 +1551,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -1578,6 +1659,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -1660,6 +1742,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor
@@ -1735,6 +1818,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor
@@ -1817,6 +1901,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -1876,6 +1961,7 @@ var _ = Describe("Processor", func() {
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor
@@ -1971,6 +2057,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2043,6 +2130,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2112,6 +2200,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2182,6 +2271,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2252,6 +2342,7 @@ more output
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2321,6 +2412,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2394,6 +2486,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2451,6 +2544,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2500,6 +2594,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2556,6 +2651,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2625,6 +2721,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2687,6 +2784,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2753,6 +2851,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2820,6 +2919,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2879,6 +2979,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -2950,6 +3051,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -3001,6 +3103,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3059,6 +3162,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3133,6 +3237,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3180,6 +3285,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		err := p.Process(ctx)
@@ -3210,6 +3316,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		err := p.Process(ctx)
@@ -3250,6 +3357,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3298,6 +3406,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3364,6 +3473,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3436,6 +3546,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3509,6 +3620,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3563,6 +3675,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3634,6 +3747,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			mockAutoCompleter,
 			mockSpecLister,
+			"",
 		)
 
 		go func() {
@@ -3712,6 +3826,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -3797,6 +3912,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					mockAutoCompleter,
 					mockSpecLister,
+					"",
 				)
 
 				go func() {
@@ -3881,6 +3997,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -3966,6 +4083,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -4039,6 +4157,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					mockAutoCompleter,
 					mockSpecLister,
+					"",
 				)
 
 				go func() {
@@ -4116,6 +4235,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -4190,6 +4310,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					true, // autoReview enabled
 					mockAutoCompleter,
 					mockSpecLister,
+					"",
 				)
 
 				go func() {
@@ -4278,6 +4399,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false, // autoReview disabled
 				mockAutoCompleter,
 				mockSpecLister,
+				"",
 			)
 
 			go func() {
@@ -4345,6 +4467,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				mockAutoCompleter,
 				realLister,
+				"",
 			)
 
 			errCh := make(chan error, 1)

@@ -46,6 +46,24 @@ var _ = Describe("Suffix", func() {
 	})
 })
 
+var _ = Describe("ValidationSuffix", func() {
+	It("should contain the command string", func() {
+		suffix := report.ValidationSuffix("make precommit")
+		Expect(suffix).To(ContainSubstring("make precommit"))
+	})
+
+	It("should contain the override instruction", func() {
+		suffix := report.ValidationSuffix("make precommit")
+		Expect(suffix).To(ContainSubstring("overrides"))
+		Expect(suffix).To(ContainSubstring("verification"))
+	})
+
+	It("should contain the section header", func() {
+		suffix := report.ValidationSuffix("make precommit")
+		Expect(suffix).To(ContainSubstring("Project Validation Command"))
+	})
+})
+
 var _ = Describe("CompletionReport", func() {
 	It("should marshal to JSON with all fields", func() {
 		cr := report.CompletionReport{

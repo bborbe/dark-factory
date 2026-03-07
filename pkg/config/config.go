@@ -37,22 +37,23 @@ type SpecsConfig struct {
 
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName      string        `yaml:"projectName"`
-	Workflow         Workflow      `yaml:"workflow"`
-	Prompts          PromptsConfig `yaml:"prompts"`
-	Specs            SpecsConfig   `yaml:"specs"`
-	ContainerImage   string        `yaml:"containerImage"`
-	Model            string        `yaml:"model"`
-	DebounceMs       int           `yaml:"debounceMs"`
-	ServerPort       int           `yaml:"serverPort"`
-	AutoMerge        bool          `yaml:"autoMerge"`
-	AutoRelease      bool          `yaml:"autoRelease"`
-	AutoReview       bool          `yaml:"autoReview"`
-	MaxReviewRetries int           `yaml:"maxReviewRetries"`
-	AllowedReviewers []string      `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators bool          `yaml:"useCollaborators"`
-	PollIntervalSec  int           `yaml:"pollIntervalSec"`
-	GitHub           GitHubConfig  `yaml:"github"`
+	ProjectName       string        `yaml:"projectName"`
+	Workflow          Workflow      `yaml:"workflow"`
+	Prompts           PromptsConfig `yaml:"prompts"`
+	Specs             SpecsConfig   `yaml:"specs"`
+	ContainerImage    string        `yaml:"containerImage"`
+	Model             string        `yaml:"model"`
+	ValidationCommand string        `yaml:"validationCommand"`
+	DebounceMs        int           `yaml:"debounceMs"`
+	ServerPort        int           `yaml:"serverPort"`
+	AutoMerge         bool          `yaml:"autoMerge"`
+	AutoRelease       bool          `yaml:"autoRelease"`
+	AutoReview        bool          `yaml:"autoReview"`
+	MaxReviewRetries  int           `yaml:"maxReviewRetries"`
+	AllowedReviewers  []string      `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators  bool          `yaml:"useCollaborators"`
+	PollIntervalSec   int           `yaml:"pollIntervalSec"`
+	GitHub            GitHubConfig  `yaml:"github"`
 }
 
 // Defaults returns a Config with all default values.
@@ -71,16 +72,17 @@ func Defaults() Config {
 			CompletedDir:  "specs/completed",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.5",
-		Model:            "claude-sonnet-4-6",
-		DebounceMs:       500,
-		ServerPort:       0,
-		AutoMerge:        false,
-		AutoRelease:      false,
-		AutoReview:       false,
-		MaxReviewRetries: 3,
-		PollIntervalSec:  60,
-		UseCollaborators: false,
+		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.5",
+		Model:             "claude-sonnet-4-6",
+		ValidationCommand: "make precommit",
+		DebounceMs:        500,
+		ServerPort:        0,
+		AutoMerge:         false,
+		AutoRelease:       false,
+		AutoReview:        false,
+		MaxReviewRetries:  3,
+		PollIntervalSec:   60,
+		UseCollaborators:  false,
 		GitHub: GitHubConfig{
 			Token: "${DARK_FACTORY_GITHUB_TOKEN}",
 		}, // #nosec G101 -- env var reference, not a credential

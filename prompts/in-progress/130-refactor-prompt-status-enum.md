@@ -1,6 +1,7 @@
 ---
-status: ""
+status: queued
 created: "2026-03-07T19:34:00Z"
+queued: "2026-03-07T19:50:15Z"
 ---
 <summary>
 - Renames prompt status type from `Status` to `PromptStatus` following go-enum-type-pattern
@@ -48,9 +49,12 @@ Read `pkg/server/queue_helpers.go` — calls `MarkQueued()`, needs update.
 4. In `pkg/server/queue_helpers.go`: update `MarkQueued()` → `MarkApproved()` and comments.
 
 5. Remove any imports that become unused after these changes.
+
+6. **Data migration**: Update any existing prompt files in `prompts/in-progress/` that have `status: queued` in their frontmatter to `status: approved`. Use grep to find them, then update each file.
 </requirements>
 
 <constraints>
+- **Precondition**: The `remove-prompt-queue-command` prompt must be completed first — it removes `queue.go` which references the old `Status` type.
 - Do NOT rename the `Queued` timestamp field in `Frontmatter` — it records when the prompt was queued, which is historical
 - Do NOT touch spec status types — that will be a separate prompt
 - Do NOT modify command routing in `main.go` — only update status references within commands

@@ -1,6 +1,10 @@
 ---
-status: ""
+status: executing
+container: dark-factory-129-remove-prompt-queue-command
+dark-factory-version: v0.24.0
 created: "2026-03-07T19:34:00Z"
+queued: "2026-03-07T19:50:12Z"
+started: "2026-03-07T19:50:20Z"
 ---
 <summary>
 - Removes the `dark-factory prompt queue` command entirely

@@ -1,7 +1,7 @@
 ---
 status: completed
 spec: ["021"]
-summary: Added `dark-factory spec complete <file>` command that transitions a spec from `verifying` to `completed`, including shared findSpecFile helper, counterfeiter mock, factory wiring, and main.go routing
+summary: Added `dark-factory spec verify <file>` command that transitions a spec from `verifying` to `completed`, including shared findSpecFile helper, counterfeiter mock, factory wiring, and main.go routing
 container: dark-factory-113-spec-021-2-verify-command
 dark-factory-version: v0.18.2
 created: "2026-03-06T18:00:00Z"

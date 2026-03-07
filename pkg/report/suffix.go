@@ -32,6 +32,7 @@ Field values:
 - verification: Optional object with "command" and "exitCode" fields. If status is "success", exitCode must be 0.
 
 This report is MANDATORY. Do not skip it.
+After writing this report, STOP. Do not output anything else — no summary, no explanation, no "Type /exit".
 `
 }
 

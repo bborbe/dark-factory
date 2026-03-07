@@ -15,31 +15,31 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
-//counterfeiter:generate -o ../../mocks/spec-verify-command.go --fake-name SpecVerifyCommand . SpecVerifyCommand
+//counterfeiter:generate -o ../../mocks/spec-complete-command.go --fake-name SpecCompleteCommand . SpecCompleteCommand
 
-// SpecVerifyCommand executes the spec verify subcommand.
-type SpecVerifyCommand interface {
+// SpecCompleteCommand executes the spec complete subcommand.
+type SpecCompleteCommand interface {
 	Run(ctx context.Context, args []string) error
 }
 
-// specVerifyCommand implements SpecVerifyCommand.
-type specVerifyCommand struct {
+// specCompleteCommand implements SpecCompleteCommand.
+type specCompleteCommand struct {
 	inboxDir      string
 	inProgressDir string
 	completedDir  string
 }
 
-// NewSpecVerifyCommand creates a new SpecVerifyCommand.
-func NewSpecVerifyCommand(inboxDir, inProgressDir, completedDir string) SpecVerifyCommand {
-	return &specVerifyCommand{
+// NewSpecCompleteCommand creates a new SpecCompleteCommand.
+func NewSpecCompleteCommand(inboxDir, inProgressDir, completedDir string) SpecCompleteCommand {
+	return &specCompleteCommand{
 		inboxDir:      inboxDir,
 		inProgressDir: inProgressDir,
 		completedDir:  completedDir,
 	}
 }
 
-// Run executes the spec verify command.
-func (s *specVerifyCommand) Run(ctx context.Context, args []string) error {
+// Run executes the spec complete command.
+func (s *specCompleteCommand) Run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
 		return errors.Errorf(ctx, "spec identifier required")
 	}
@@ -81,6 +81,6 @@ func (s *specVerifyCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "move spec to completed")
 	}
 
-	fmt.Printf("verified: %s\n", filepath.Base(dest))
+	fmt.Printf("completed: %s\n", filepath.Base(dest))
 	return nil
 }

@@ -110,8 +110,8 @@ func runSpecCommand(
 		return factory.CreateSpecStatusCommand(cfg).Run(ctx, args)
 	case "approve":
 		return factory.CreateSpecApproveCommand(cfg).Run(ctx, args)
-	case "verify":
-		return factory.CreateSpecVerifyCommand(cfg).Run(ctx, args)
+	case "complete":
+		return factory.CreateSpecCompleteCommand(cfg).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown spec subcommand: %s", subcommand)
 	}
@@ -133,7 +133,7 @@ func printHelp() {
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+
 			"  spec approve <id>      Approve a spec\n"+
-			"  spec verify <id>       Mark a spec as verified (verifying → completed)\n\n"+
+			"  spec complete <id>     Mark a verified spec as completed\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+
 			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
 	)

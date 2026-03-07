@@ -421,9 +421,9 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 	return cmd.NewSpecApproveCommand(cfg.Specs.InboxDir, cfg.Specs.InProgressDir)
 }
 
-// CreateSpecVerifyCommand creates a SpecVerifyCommand.
-func CreateSpecVerifyCommand(cfg config.Config) cmd.SpecVerifyCommand {
-	return cmd.NewSpecVerifyCommand(
+// CreateSpecCompleteCommand creates a SpecCompleteCommand.
+func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
+	return cmd.NewSpecCompleteCommand(
 		cfg.Specs.InboxDir,
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,

@@ -15,19 +15,19 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cmd"
 )
 
-var _ = Describe("SpecVerifyCommand", func() {
+var _ = Describe("SpecCompleteCommand", func() {
 	var (
-		tempDir       string
-		inboxDir      string
-		inProgressDir string
-		completedDir  string
-		specVerifyCmd cmd.SpecVerifyCommand
-		ctx           context.Context
+		tempDir         string
+		inboxDir        string
+		inProgressDir   string
+		completedDir    string
+		specCompleteCmd cmd.SpecCompleteCommand
+		ctx             context.Context
 	)
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = os.MkdirTemp("", "spec-verify-test-*")
+		tempDir, err = os.MkdirTemp("", "spec-complete-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		inboxDir = filepath.Join(tempDir, "inbox")
@@ -40,7 +40,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 		// completedDir created on demand by the command
 
-		specVerifyCmd = cmd.NewSpecVerifyCommand(inboxDir, inProgressDir, completedDir)
+		specCompleteCmd = cmd.NewSpecCompleteCommand(inboxDir, inProgressDir, completedDir)
 		ctx = context.Background()
 	})
 
@@ -50,7 +50,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 
 	Describe("Run", func() {
 		It("returns error when no identifier given", func() {
-			err := specVerifyCmd.Run(ctx, []string{})
+			err := specCompleteCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec identifier required"))
 		})
@@ -60,7 +60,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"001-my-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			// File should now be in completedDir
@@ -75,7 +75,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"001-my-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			// File should no longer exist in inProgressDir
@@ -88,7 +88,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"001-my-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not in verifying state"))
 		})
@@ -98,7 +98,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: approved\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"001-my-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not in verifying state"))
 		})
@@ -108,24 +108,24 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: completed\n---\n# My Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"001-my-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not in verifying state"))
 		})
 
 		It("returns error when spec file not found", func() {
-			err := specVerifyCmd.Run(ctx, []string{"999-nonexistent.md"})
+			err := specCompleteCmd.Run(ctx, []string{"999-nonexistent.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec not found"))
 		})
 
 		It("returns error when all spec dirs do not exist", func() {
-			specVerifyCmd = cmd.NewSpecVerifyCommand(
+			specCompleteCmd = cmd.NewSpecCompleteCommand(
 				"/nonexistent/inbox",
 				"/nonexistent/in-progress",
 				"/nonexistent/completed",
 			)
-			err := specVerifyCmd.Run(ctx, []string{"001"})
+			err := specCompleteCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("spec not found"))
 		})
@@ -135,7 +135,7 @@ var _ = Describe("SpecVerifyCommand", func() {
 			err := os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# Inbox Spec"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = specVerifyCmd.Run(ctx, []string{"002-inbox-spec.md"})
+			err = specCompleteCmd.Run(ctx, []string{"002-inbox-spec.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			dest := filepath.Join(completedDir, "002-inbox-spec.md")

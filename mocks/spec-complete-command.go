@@ -8,7 +8,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cmd"
 )
 
-type SpecVerifyCommand struct {
+type SpecCompleteCommand struct {
 	RunStub        func(context.Context, []string) error
 	runMutex       sync.RWMutex
 	runArgsForCall []struct {
@@ -25,7 +25,7 @@ type SpecVerifyCommand struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SpecVerifyCommand) Run(arg1 context.Context, arg2 []string) error {
+func (fake *SpecCompleteCommand) Run(arg1 context.Context, arg2 []string) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -50,26 +50,26 @@ func (fake *SpecVerifyCommand) Run(arg1 context.Context, arg2 []string) error {
 	return fakeReturns.result1
 }
 
-func (fake *SpecVerifyCommand) RunCallCount() int {
+func (fake *SpecCompleteCommand) RunCallCount() int {
 	fake.runMutex.RLock()
 	defer fake.runMutex.RUnlock()
 	return len(fake.runArgsForCall)
 }
 
-func (fake *SpecVerifyCommand) RunCalls(stub func(context.Context, []string) error) {
+func (fake *SpecCompleteCommand) RunCalls(stub func(context.Context, []string) error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = stub
 }
 
-func (fake *SpecVerifyCommand) RunArgsForCall(i int) (context.Context, []string) {
+func (fake *SpecCompleteCommand) RunArgsForCall(i int) (context.Context, []string) {
 	fake.runMutex.RLock()
 	defer fake.runMutex.RUnlock()
 	argsForCall := fake.runArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *SpecVerifyCommand) RunReturns(result1 error) {
+func (fake *SpecCompleteCommand) RunReturns(result1 error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = nil
@@ -78,7 +78,7 @@ func (fake *SpecVerifyCommand) RunReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *SpecVerifyCommand) RunReturnsOnCall(i int, result1 error) {
+func (fake *SpecCompleteCommand) RunReturnsOnCall(i int, result1 error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = nil
@@ -92,7 +92,7 @@ func (fake *SpecVerifyCommand) RunReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *SpecVerifyCommand) Invocations() map[string][][]interface{} {
+func (fake *SpecCompleteCommand) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -102,7 +102,7 @@ func (fake *SpecVerifyCommand) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *SpecVerifyCommand) recordInvocation(key string, args []interface{}) {
+func (fake *SpecCompleteCommand) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -114,4 +114,4 @@ func (fake *SpecVerifyCommand) recordInvocation(key string, args []interface{}) 
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ cmd.SpecVerifyCommand = new(SpecVerifyCommand)
+var _ cmd.SpecCompleteCommand = new(SpecCompleteCommand)

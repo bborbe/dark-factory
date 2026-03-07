@@ -1,7 +1,11 @@
 ---
-status: queued
+status: completed
+container: dark-factory-125-fix-changelog-entries
+dark-factory-version: v0.22.2
 created: "2026-03-07T16:19:54Z"
 queued: "2026-03-07T16:19:54Z"
+started: "2026-03-07T16:22:59Z"
+completed: "2026-03-07T16:34:02Z"
 ---
 <summary>
 - Stops dark-factory from writing prompt filenames as changelog entries

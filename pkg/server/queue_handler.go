@@ -28,7 +28,7 @@ func NewQueueHandler(checker status.Checker) libhttp.WithError {
 
 			queued, err := checker.GetQueuedPrompts(ctx)
 			if err != nil {
-				return err
+				return errors.Wrap(ctx, err, "get queued prompts")
 			}
 
 			resp.Header().Set("Content-Type", "application/json")

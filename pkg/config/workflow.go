@@ -36,7 +36,7 @@ func (w Workflow) Validate(ctx context.Context) error {
 			"workflow 'worktree' removed — use 'pr' instead")
 	}
 	if !AvailableWorkflows.Contains(w) {
-		return errors.Wrapf(ctx, validation.Error, "unknown workflow '%s'", w)
+		return errors.Wrapf(ctx, validation.Error, "unknown workflow %q", w)
 	}
 	return nil
 }

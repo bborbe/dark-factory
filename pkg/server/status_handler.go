@@ -28,7 +28,7 @@ func NewStatusHandler(checker status.Checker) libhttp.WithError {
 
 			st, err := checker.GetStatus(ctx)
 			if err != nil {
-				return err
+				return errors.Wrap(ctx, err, "get status")
 			}
 
 			resp.Header().Set("Content-Type", "application/json")

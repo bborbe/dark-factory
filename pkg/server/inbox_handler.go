@@ -39,7 +39,7 @@ func NewInboxHandler(inboxDir string) libhttp.WithError {
 			// Read inbox directory
 			entries, err := os.ReadDir(inboxDir)
 			if err != nil {
-				return err
+				return errors.Wrap(ctx, err, "read inbox dir")
 			}
 
 			// Collect .md files

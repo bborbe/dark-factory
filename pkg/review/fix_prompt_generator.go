@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/bborbe/errors"
 )
 
 //counterfeiter:generate -o ../../mocks/fix_prompt_generator.go --fake-name FixPromptGenerator . FixPromptGenerator
@@ -69,7 +71,7 @@ func (g *fixPromptGenerator) Generate(ctx context.Context, opts GenerateOpts) er
 
 	// #nosec G306 -- prompt files are not sensitive
 	if err := os.WriteFile(destPath, []byte(content), 0600); err != nil {
-		return fmt.Errorf("write fix prompt: %w", err)
+		return errors.Wrap(ctx, err, "write fix prompt")
 	}
 
 	return nil

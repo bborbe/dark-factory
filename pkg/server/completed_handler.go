@@ -44,7 +44,7 @@ func NewCompletedHandler(checker status.Checker) libhttp.WithError {
 
 			completed, err := checker.GetCompletedPrompts(ctx, limit)
 			if err != nil {
-				return err
+				return errors.Wrap(ctx, err, "get completed prompts")
 			}
 
 			resp.Header().Set("Content-Type", "application/json")

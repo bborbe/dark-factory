@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bborbe/errors"
+
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -97,7 +99,7 @@ func (p *reviewPoller) pollOnce(ctx context.Context) {
 func (p *reviewPoller) listInReview(ctx context.Context) ([]string, error) {
 	entries, err := os.ReadDir(p.queueDir)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, "read queue dir")
 	}
 	var result []string
 	for _, entry := range entries {

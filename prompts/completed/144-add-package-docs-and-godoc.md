@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Created 19 doc.go files with package-level GoDoc comments and added GoDoc to Workflow.String/Validate/Ptr, MarkerStart/MarkerEnd constants, and all five spec status constants.
+container: dark-factory-144-add-package-docs-and-godoc
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:12:08Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:34:49Z"
+completed: "2026-03-08T23:40:00Z"
 ---
 
 <summary>

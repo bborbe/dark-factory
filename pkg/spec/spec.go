@@ -10,8 +10,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,25 +18,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/specnum"
 )
-
-var specNumericPrefixRegexp = regexp.MustCompile(`^(\d+)`)
-
-// parseSpecNumber extracts the leading numeric value from a spec ID string.
-// Handles bare numbers ("019" → 19), padded numbers ("0019" → 19),
-// and full spec names ("019-review-fix-loop" → 19).
-// Returns -1 if s has no numeric prefix.
-func parseSpecNumber(s string) int {
-	matches := specNumericPrefixRegexp.FindStringSubmatch(s)
-	if matches == nil {
-		return -1
-	}
-	num, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return -1
-	}
-	return num
-}
 
 // Status represents the lifecycle state of a spec.
 type Status string
@@ -92,7 +73,7 @@ func (s *SpecFile) SetNowFunc(f func() time.Time) {
 // SpecNumber returns the numeric prefix of the spec file name.
 // Returns -1 if the name has no numeric prefix.
 func (s *SpecFile) SpecNumber() int {
-	return parseSpecNumber(s.Name)
+	return specnum.Parse(s.Name)
 }
 
 // stampOnce sets *field to the current UTC RFC3339 timestamp only if *field is empty.
@@ -210,7 +191,7 @@ func NewAutoCompleter(
 // Matches by numeric prefix first ("019" finds "019-review-fix-loop.md"),
 // falling back to exact "specID.md" lookup for non-numeric IDs.
 func findSpecFile(dirs []string, specID string) string {
-	specNum := parseSpecNumber(specID)
+	specNum := specnum.Parse(specID)
 	for _, dir := range dirs {
 		if p := findSpecFileInDir(dir, specID, specNum); p != "" {
 			return p
@@ -243,7 +224,7 @@ func findByNumericPrefix(dir string, specNum int) string {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
-		if parseSpecNumber(strings.TrimSuffix(e.Name(), ".md")) == specNum {
+		if specnum.Parse(strings.TrimSuffix(e.Name(), ".md")) == specNum {
 			return filepath.Join(dir, e.Name())
 		}
 	}

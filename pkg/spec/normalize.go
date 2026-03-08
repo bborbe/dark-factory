@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/specnum"
 )
 
 // NormalizeSpecFilename assigns a sequential numeric prefix to name if it does not already have one.
@@ -18,7 +20,7 @@ import (
 // and returns fmt.Sprintf("%03d-%s", highest+1, name) for unnumbered names.
 // If name already has a valid numeric prefix, it is returned unchanged.
 func NormalizeSpecFilename(ctx context.Context, name string, dirs ...string) (string, error) {
-	if parseSpecNumber(name) >= 0 {
+	if specnum.Parse(name) >= 0 {
 		return name, nil
 	}
 
@@ -35,7 +37,7 @@ func NormalizeSpecFilename(ctx context.Context, name string, dirs ...string) (st
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 				continue
 			}
-			n := parseSpecNumber(strings.TrimSuffix(e.Name(), ".md"))
+			n := specnum.Parse(strings.TrimSuffix(e.Name(), ".md"))
 			if n > highest {
 				highest = n
 			}

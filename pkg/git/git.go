@@ -9,12 +9,9 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/bborbe/errors"
-	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // VersionBump specifies the type of version bump to perform.
@@ -181,58 +178,15 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 	return nil
 }
 
-// MoveFile moves a file using git-aware operations to preserve history.
+// MoveFile moves a file using git mv to preserve history.
 // Falls back to os.Rename if git operations fail or not in a git repo.
 func MoveFile(ctx context.Context, oldPath string, newPath string) error {
-	// Try git operations first
-	repo, err := gogit.PlainOpenWithOptions(
-		filepath.Dir(oldPath),
-		&gogit.PlainOpenOptions{DetectDotGit: true},
-	)
-	if err != nil {
-		// Not in a git repo - fallback to os.Rename
+	// #nosec G204 -- paths are controlled by the application, not user input
+	cmd := exec.CommandContext(ctx, "git", "mv", oldPath, newPath)
+	if err := cmd.Run(); err != nil {
+		// git mv failed (not a repo, file not tracked, etc.) — fallback to os.Rename
 		return fallbackRename(ctx, oldPath, newPath)
 	}
-
-	wt, err := repo.Worktree()
-	if err != nil {
-		return fallbackRename(ctx, oldPath, newPath)
-	}
-
-	// Get repository root for relative path calculation
-	repoRoot := wt.Filesystem.Root()
-
-	// Convert to relative paths from repo root if they're absolute
-	oldRelPath, err := filepath.Rel(repoRoot, oldPath)
-	if err != nil {
-		oldRelPath = oldPath
-	}
-
-	newRelPath, err := filepath.Rel(repoRoot, newPath)
-	if err != nil {
-		newRelPath = newPath
-	}
-
-	// Perform the rename using os.Rename
-	if err := os.Rename(oldPath, newPath); err != nil {
-		return errors.Wrap(ctx, err, "rename file")
-	}
-
-	// Stage the deletion of the old path
-	_, err = wt.Remove(oldRelPath)
-	if err != nil {
-		// If staging fails, the file is still moved, just not staged
-		// This is acceptable as a fallback
-		return nil
-	}
-
-	// Stage the addition of the new path
-	_, err = wt.Add(newRelPath)
-	if err != nil {
-		// If staging fails, the file is still moved, just not staged
-		return nil
-	}
-
 	return nil
 }
 
@@ -260,31 +214,26 @@ func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 
 // getNextVersion determines the next version based on the bump type
 func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
-	repo, err := gogit.PlainOpen(".")
+	// #nosec G204 -- arguments are static, not user input
+	cmd := exec.CommandContext(ctx, "git", "tag", "--list", "v*")
+	out, err := cmd.Output()
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "open git repository")
-	}
-
-	// Get all tags
-	tags, err := repo.Tags()
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "get tags")
+		return "", errors.Wrap(ctx, err, "list git tags")
 	}
 
 	// Collect and parse all valid semver tags
-	var versions []SemanticVersionNumber
-	err = tags.ForEach(func(ref *plumbing.Reference) error {
-		tagName := ref.Name().Short()
-		version, parseErr := ParseSemanticVersionNumber(ctx, tagName)
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	versions := make([]SemanticVersionNumber, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		version, parseErr := ParseSemanticVersionNumber(ctx, line)
 		if parseErr != nil {
-			// Skip invalid semver tags
-			return nil
+			continue // Skip invalid semver tags
 		}
 		versions = append(versions, version)
-		return nil
-	})
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "iterate tags")
 	}
 
 	// If no valid semver tags exist, start with v0.1.0

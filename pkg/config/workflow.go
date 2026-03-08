@@ -24,10 +24,12 @@ var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR}
 // Workflow is a string-based enum for workflow types.
 type Workflow string
 
+// String returns the string representation of the Workflow.
 func (w Workflow) String() string {
 	return string(w)
 }
 
+// Validate checks that the Workflow is a known value.
 func (w Workflow) Validate(ctx context.Context) error {
 	if w == "worktree" {
 		return errors.Wrapf(ctx, validation.Error,
@@ -39,6 +41,7 @@ func (w Workflow) Validate(ctx context.Context) error {
 	return nil
 }
 
+// Ptr returns a pointer to the Workflow value.
 func (w Workflow) Ptr() *Workflow {
 	return &w
 }

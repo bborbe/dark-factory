@@ -5,8 +5,10 @@
 package report
 
 const (
+	// MarkerStart is the opening delimiter for completion report blocks.
 	MarkerStart = "<!-- DARK-FACTORY-REPORT"
-	MarkerEnd   = "DARK-FACTORY-REPORT -->"
+	// MarkerEnd is the closing delimiter for completion report blocks.
+	MarkerEnd = "DARK-FACTORY-REPORT -->"
 )
 
 // Suffix returns the markdown text that dark-factory appends to every prompt.

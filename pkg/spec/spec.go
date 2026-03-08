@@ -44,10 +44,15 @@ func parseSpecNumber(s string) int {
 type Status string
 
 const (
-	StatusDraft     Status = "draft"
-	StatusApproved  Status = "approved"
-	StatusPrompted  Status = "prompted"
+	// StatusDraft indicates the spec has been written but not yet reviewed.
+	StatusDraft Status = "draft"
+	// StatusApproved indicates the spec has been reviewed and approved.
+	StatusApproved Status = "approved"
+	// StatusPrompted indicates prompts have been generated from the spec.
+	StatusPrompted Status = "prompted"
+	// StatusVerifying indicates all prompts completed, awaiting human verification.
 	StatusVerifying Status = "verifying"
+	// StatusCompleted indicates human verified all acceptance criteria.
 	StatusCompleted Status = "completed"
 )
 

@@ -2,7 +2,7 @@ BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
 HOSTNAME ?= $(shell hostname -s)
 ROOTDIR ?= $(shell git rev-parse --show-toplevel)
 TEAMVAULT ?= ~/.teamvault.json
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+VERSION ?= $(shell git describe --tags --dirty --always 2>/dev/null || echo "dev")
 LDFLAGS := -X github.com/bborbe/dark-factory/pkg/version.Version=$(VERSION)
 
 .PHONY: default

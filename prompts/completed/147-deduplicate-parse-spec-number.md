@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Extracted shared parseSpecNumber logic into new pkg/specnum package with Parse function, updated pkg/spec and pkg/prompt to use specnum.Parse, added test suite with 85.7% coverage.
+container: dark-factory-147-deduplicate-parse-spec-number
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:12:08Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:51:08Z"
+completed: "2026-03-08T23:57:34Z"
 ---
 
 <summary>

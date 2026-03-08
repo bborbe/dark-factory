@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: 'Replaced git worktree with local git clone in PR workflow: renamed Worktree interface to Cloner with Clone/Remove methods, updated processor to use cloner field and /tmp/dark-factory/ clone path, updated factory.go, regenerated mocks, and deleted old worktree files.'
 container: dark-factory-141-replace-worktree-with-clone
 dark-factory-version: v0.30.3
 created: "2026-03-08T22:59:02Z"
 queued: "2026-03-08T22:59:02Z"
 started: "2026-03-08T23:14:06Z"
+completed: "2026-03-08T23:18:45Z"
 ---
 
 <summary>

@@ -3,8 +3,15 @@ status: created
 created: "2026-03-08T21:12:08Z"
 ---
 
+<summary>
+- GitHub collaborator resolution logic extracted from factory into dedicated type
+- Factory becomes pure wiring with zero business logic
+- New `CollaboratorFetcher` interface enables mocking in tests
+- `NewReviewPoller` signature unchanged — factory calls `fetcher.Fetch()` and passes result
+</summary>
+
 <objective>
-Extract `fetchCollaborators` from `pkg/factory/factory.go` into a proper type in `pkg/git/`. This function executes `gh` CLI commands to resolve GitHub collaborators — it's business/infrastructure logic that violates the zero-logic factory rule.
+Extract `fetchCollaborators` from the factory into a dedicated `CollaboratorFetcher` type in `pkg/git/`, eliminating business logic from the factory layer.
 </objective>
 
 <context>
@@ -66,21 +73,21 @@ Read `/home/node/.claude/docs/go-patterns.md` — interface + constructor patter
    }
    ```
 
-2. Update `pkg/review/poller.go`:
-   - Change `NewReviewPoller` to accept `CollaboratorFetcher` instead of a `[]string` for allowed reviewers (if currently accepting `[]string`)
-   - OR: keep `NewReviewPoller` accepting `[]string` and have the factory call `fetcher.Fetch(ctx)` — whichever requires fewer changes
-
-3. Update `pkg/factory/factory.go`:
+2. Update `pkg/factory/factory.go`:
    - Remove `fetchCollaborators` function entirely
-   - In `CreateReviewPoller`, create and use the new fetcher:
+   - In `CreateReviewPoller`, create the fetcher and call `Fetch` at startup:
      ```go
      fetcher := git.NewCollaboratorFetcher(ghToken, cfg.UseCollaborators, cfg.AllowedReviewers)
-     // Pass fetcher or fetcher.Fetch(ctx) depending on approach from step 2
+     allowedReviewers := fetcher.Fetch(context.Background())
      ```
+   - `NewReviewPoller` signature stays unchanged — it still receives `[]string`
+   - Add `"context"` import if missing
+
+3. Do NOT change `pkg/review/poller.go` — `NewReviewPoller` signature stays the same.
 
 4. Run `make generate` to create the counterfeiter mock.
 
-5. Add copyright header to the new file.
+5. Add copyright header to the new file (copy format from `pkg/git/git.go` L1-3).
 </requirements>
 
 <constraints>

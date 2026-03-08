@@ -3,8 +3,14 @@ status: created
 created: "2026-03-08T21:12:08Z"
 ---
 
+<summary>
+- Move 5 standalone format helper functions from status.go to formatter.go
+- Pure display functions with no struct dependency belong in the formatter file
+- Same package, so no import changes needed in callers or tests
+</summary>
+
 <objective>
-Move `formatDuration` and its helpers (`formatHMS`, `formatMS`, `formatS`) from `pkg/status/status.go` to the existing `pkg/status/formatter.go`. These are pure display functions with no struct dependency — they belong in the formatter file.
+Consolidate all standalone format helper functions into `formatter.go` so it is the single source of formatting logic in the status package.
 </objective>
 
 <context>
@@ -16,14 +22,15 @@ Read `pkg/status/format_test.go` — tests for the format functions (should not 
 
 <requirements>
 1. Identify all unexported format helper functions in `pkg/status/status.go`:
-   - `formatDuration`
-   - `formatHMS`
-   - `formatMS`
-   - `formatS`
-   - `formatTime`
-   - `formatBytes`
+   - `formatDuration` (~L333)
+   - `formatTime` (~L354)
+   - `formatHMS` (~L365)
+   - `formatMS` (~L380)
+   - `formatS` (~L389)
 
-2. Move all of them to `pkg/status/formatter.go`. Cut from `status.go`, paste into `formatter.go`.
+   Note: `formatBytes` is already in `formatter.go` — do NOT move it.
+
+2. Move all 5 functions to `pkg/status/formatter.go`. Cut from `status.go`, paste into `formatter.go`.
 
 3. Move any imports that are only used by these functions (e.g., `"fmt"` if only used for formatting).
 

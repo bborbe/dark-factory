@@ -6,11 +6,11 @@ created: "2026-03-08T21:00:00Z"
 
 <summary>
 - `workflow: pr` now always executes prompts in an isolated git worktree — identical to the old `workflow: worktree` path
-- Old in-place PR branching code (`setupPRWorkflowState`, `switchToExistingBranch`, `handlePRWorkflow`) is deleted
+- The old in-place PR branching code path is deleted
 - Force-push after PR creation is removed: `savePRURLToFrontmatter` no longer amends commits or force-pushes
 - `AmendCommit` removed from `Releaser` interface and implementation
 - `ForcePush` removed from `Brancher` interface and implementation
-- `WorkflowWorktree` references removed from `processor.go` (config now rejects it; processor code cleaned up)
+- All references to the removed worktree workflow are cleaned up from the processor
 - All processor tests updated: worktree tests now use `WorkflowPR`, in-place PR tests removed, amend/force-push test scaffolding removed
 - Mocks regenerated to reflect trimmed interfaces
 - Single unified PR implementation — no separate in-place vs worktree code paths remain
@@ -46,7 +46,7 @@ func (p *processor) setupWorkflow(ctx context.Context, baseName string, pf *prom
 ```
 Remove the old `WorkflowWorktree` branch and the now-dead `WorkflowPR` → `setupPRWorkflowState` branch.
 
-**b. `cleanupWorktreeOnError`** — update the guard:
+**b. Guard in `processPrompt`** — update the `if` condition (around line 379) in `processPrompt` that calls `defer p.cleanupWorktreeOnError(...)`. This guard is in `processPrompt`, NOT inside `cleanupWorktreeOnError` itself:
 ```go
 // Before:
 if p.workflow == config.WorkflowWorktree && workflowState.worktreePath != "" {
@@ -88,7 +88,7 @@ func (p *processor) savePRURLToFrontmatter(ctx context.Context, completedPath st
     }
 }
 ```
-Note: `branchName` parameter can be removed from the signature since it's no longer used.
+Remove `branchName string` from the function signature and update all call sites to match the new signature.
 
 ### 2. `pkg/git/git.go` — remove AmendCommit from Releaser
 
@@ -104,7 +104,12 @@ b. Remove the `ForcePush` method from the `brancher` struct (lines ~64–75).
 
 ### 4. `pkg/git/git_extra_test.go` — remove obsolete tests
 
-Remove the `Describe("Brancher ForcePush", ...)` block (lines ~19–80 approximately) and the `Describe("AmendCommit", ...)` block (lines ~82–120 approximately) since these methods no longer exist on the interfaces.
+Remove all three top-level describe blocks since the methods they test no longer exist:
+- `Describe("Brancher ForcePush", ...)` block (lines ~19–80)
+- `Describe("AmendCommit", ...)` block (lines ~82–95) — the package-level function test
+- `Describe("Releaser", ...)` block (lines ~97–113) — contains a nested `Describe("AmendCommit", ...)` test for `r.AmendCommit`
+
+After removal the file will be empty except for the package declaration and imports; delete it entirely if no other tests remain.
 
 ### 5. `pkg/processor/processor_test.go` — update processor tests
 
@@ -130,7 +135,8 @@ Run `make generate` after removing `AmendCommit` from `Releaser` and `ForcePush`
 ### 7. Remove `WorkflowWorktree` constant
 
 After removing all `WorkflowWorktree` references from `processor.go` (done above) and the constant is no longer used anywhere (check with grep), remove:
-- `WorkflowWorktree Workflow = "worktree"` from `pkg/config/workflow.go`
+- `WorkflowWorktree` from the `AvailableWorkflows` slice in `pkg/config/workflow.go` — prompt 1 (spec-027 prompt 1) already removes it from the slice, so verify it is gone before proceeding; do not re-add it
+- `WorkflowWorktree Workflow = "worktree"` constant from `pkg/config/workflow.go`
 - The `Workflow.Validate()` special-case for `WorkflowWorktree` can be simplified to:
   ```go
   func (w Workflow) Validate(ctx context.Context) error {

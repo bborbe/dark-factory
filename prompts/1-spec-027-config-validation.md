@@ -9,7 +9,7 @@ created: "2026-03-08T21:00:00Z"
 - `workflow: pr` becomes the only PR-based workflow value — `workflow: worktree` is a hard error
 - `autoMerge` validation no longer references `workflow: worktree` — only `workflow: pr` satisfies it
 - `autoReview` validation likewise simplified to require only `workflow: pr`
-- `WorkflowWorktree` constant is preserved solely to produce a helpful "removed — use 'pr'" error message
+- The removed workflow value is kept internally only to generate a helpful migration error message
 - All existing tests updated to reflect the new validation rules
 </summary>
 
@@ -47,13 +47,37 @@ Read these files before making changes:
    c. Keep the `WorkflowWorktree` constant — it is still referenced for the error message above and will be removed in a later prompt once the processor no longer uses it.
 
 2. In `pkg/config/config.go`, update the two validators that reference `WorkflowWorktree`:
-   a. `autoMerge` validator — simplify to only allow `WorkflowPR`:
+   a. `autoMerge` validator — simplify to only allow `WorkflowPR` (in `pkg/config/config.go` lines 131–136):
+
+      Before:
       ```go
-      if c.AutoMerge && c.Workflow != WorkflowPR {
-          return errors.Errorf(ctx, "autoMerge requires workflow 'pr'")
+      validation.Name("autoMerge", validation.HasValidationFunc(func(ctx context.Context) error {
+          if c.AutoMerge && c.Workflow != WorkflowPR && c.Workflow != WorkflowWorktree {
+              return errors.Errorf(ctx, "autoMerge requires workflow 'pr' or 'worktree'")
+          }
+          return nil
+      })),
+      ```
+
+      After:
+      ```go
+      validation.Name("autoMerge", validation.HasValidationFunc(func(ctx context.Context) error {
+          if c.AutoMerge && c.Workflow != WorkflowPR {
+              return errors.Errorf(ctx, "autoMerge requires workflow 'pr'")
+          }
+          return nil
+      })),
+      ```
+   b. `validateAutoReview` — simplify to only allow `WorkflowPR` (in `pkg/config/config.go` lines 155–157):
+
+      Before:
+      ```go
+      if c.Workflow != WorkflowPR && c.Workflow != WorkflowWorktree {
+          return errors.Errorf(ctx, "autoReview requires workflow 'pr' or 'worktree'")
       }
       ```
-   b. `validateAutoReview` — simplify to only allow `WorkflowPR`:
+
+      After:
       ```go
       if c.Workflow != WorkflowPR {
           return errors.Errorf(ctx, "autoReview requires workflow 'pr'")
@@ -61,12 +85,13 @@ Read these files before making changes:
       ```
 
 3. Update `pkg/config/config_test.go`:
-   - Remove or update tests that assert `WorkflowWorktree` passes validation
-     (lines ~576, ~591, ~609 — the "validates worktree workflow" tests)
-   - Add a test asserting `WorkflowWorktree` now returns a validation error containing "removed"
-   - Update the `autoMerge` test at line ~91 that uses `WorkflowWorktree` — change to `WorkflowPR`
-   - Update the `autoReview` test at line ~392 that uses `WorkflowWorktree` — change to `WorkflowPR`
-   - Add a test that `autoMerge` with `workflow: worktree` returns an error
+   - **Line 89–105** (`Config.Validate` / "succeeds for worktree workflow"): this test sets `Workflow: WorkflowWorktree` and expects no error — change it to assert that an error IS returned containing "removed". This is the most important test to fix.
+   - **Lines 390–407** (`autoMerge` / "succeeds for autoMerge true with workflow worktree"): sets `Workflow: WorkflowWorktree, AutoMerge: true` and expects no error — convert to an error assertion (the autoMerge validator no longer accepts worktree, and worktree itself will be rejected first by `Workflow.Validate`).
+   - **Lines 575–578** (`Workflow.Validate` / "succeeds for worktree workflow"): `WorkflowWorktree.Validate(ctx)` currently expects no error — change to assert error containing "removed".
+   - **Lines 606–610** (`Workflows.Contains` / "returns true for valid workflow"): currently asserts `AvailableWorkflows.Contains(WorkflowWorktree)` is `true` — change this assertion to `BeFalse()` or remove it (after removing `WorkflowWorktree` from `AvailableWorkflows`).
+   - **Lines 472–494** (`autoReview` / "fails for autoReview true with workflow direct"): the error string assertion at line 493 reads `ContainSubstring("autoReview requires workflow 'pr' or 'worktree'")` — update to `ContainSubstring("autoReview requires workflow 'pr'")`.
+   - Add a new test asserting `WorkflowWorktree.Validate(ctx)` returns an error containing `"removed"`.
+   - Add a new test asserting `autoMerge: true` with `workflow: worktree` returns a validation error.
 </requirements>
 
 <constraints>

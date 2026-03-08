@@ -48,7 +48,7 @@ type processor struct {
 	workflow          config.Workflow
 	brancher          git.Brancher
 	prCreator         git.PRCreator
-	worktree          git.Worktree
+	cloner            git.Cloner
 	autoMerge         bool
 	autoRelease       bool
 	autoReview        bool
@@ -74,7 +74,7 @@ func NewProcessor(
 	workflow config.Workflow,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
-	worktree git.Worktree,
+	cloner git.Cloner,
 	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
@@ -97,7 +97,7 @@ func NewProcessor(
 		workflow:          workflow,
 		brancher:          brancher,
 		prCreator:         prCreator,
-		worktree:          worktree,
+		cloner:            cloner,
 		autoMerge:         autoMerge,
 		autoRelease:       autoRelease,
 		autoReview:        autoReview,
@@ -369,15 +369,15 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	slog.Info("executing prompt", "title", title)
 
-	// Setup workflow (branch or worktree) before execution
+	// Setup workflow (branch or clone) before execution
 	workflowState, err := p.setupWorkflow(ctx, baseName, pf)
 	if err != nil {
 		return err
 	}
 
-	// Ensure worktree cleanup on error (success path cleanup is in handleWorktreeWorkflow)
-	if p.workflow == config.WorkflowPR && workflowState.worktreePath != "" {
-		defer p.cleanupWorktreeOnError(ctx, workflowState)
+	// Ensure clone cleanup on error (success path cleanup is in handleCloneWorkflow)
+	if p.workflow == config.WorkflowPR && workflowState.clonePath != "" {
+		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
 
 	// Derive log file path: {logDir}/{basename}.log
@@ -396,25 +396,25 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 // workflowState holds state needed for workflow cleanup and completion.
 type workflowState struct {
-	branchName   string
-	worktreePath string
-	originalDir  string
-	cleanedUp    bool
+	branchName  string
+	clonePath   string
+	originalDir string
+	cleanedUp   bool
 }
 
-// cleanupWorktreeOnError restores the original directory and removes the worktree
-// when processPrompt exits with an error (success path is handled by handleWorktreeWorkflow).
-func (p *processor) cleanupWorktreeOnError(ctx context.Context, state *workflowState) {
+// cleanupCloneOnError restores the original directory and removes the clone
+// when processPrompt exits with an error (success path is handled by handleCloneWorkflow).
+func (p *processor) cleanupCloneOnError(ctx context.Context, state *workflowState) {
 	if state.cleanedUp {
-		return // Already cleaned up by handleWorktreeWorkflow
+		return // Already cleaned up by handleCloneWorkflow
 	}
 	if state.originalDir != "" {
 		if err := os.Chdir(state.originalDir); err != nil {
 			slog.Warn("failed to chdir back to original directory on error", "error", err)
 		}
 	}
-	if err := p.worktree.Remove(ctx, state.worktreePath); err != nil {
-		slog.Warn("failed to remove worktree on error", "path", state.worktreePath, "error", err)
+	if err := p.cloner.Remove(ctx, state.clonePath); err != nil {
+		slog.Warn("failed to remove clone on error", "path", state.clonePath, "error", err)
 	}
 }
 
@@ -465,7 +465,7 @@ func (p *processor) handlePostExecution(
 	}
 
 	if p.workflow == config.WorkflowPR {
-		return p.handleWorktreeWorkflow(gitCtx, ctx, title, state, prTargetPath)
+		return p.handleCloneWorkflow(gitCtx, ctx, title, state, prTargetPath)
 	}
 
 	return p.handleDirectWorkflow(gitCtx, ctx, title)
@@ -508,13 +508,13 @@ func (p *processor) setupWorkflow(
 ) (*workflowState, error) {
 	state := &workflowState{}
 	if p.workflow == config.WorkflowPR {
-		return p.setupWorktreeWorkflowState(ctx, baseName, pf, state)
+		return p.setupCloneWorkflowState(ctx, baseName, pf, state)
 	}
 	return state, nil
 }
 
-// setupWorktreeWorkflowState configures state for the worktree workflow.
-func (p *processor) setupWorktreeWorkflowState(
+// setupCloneWorkflowState configures state for the clone workflow.
+func (p *processor) setupCloneWorkflowState(
 	ctx context.Context,
 	baseName string,
 	pf *prompt.PromptFile,
@@ -525,9 +525,9 @@ func (p *processor) setupWorktreeWorkflowState(
 	} else {
 		state.branchName = "dark-factory/" + baseName
 	}
-	state.worktreePath = filepath.Join("..", p.projectName+"-"+baseName)
+	state.clonePath = filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
 	var err error
-	state.originalDir, err = p.setupWorktreeForExecution(ctx, state.worktreePath, state.branchName)
+	state.originalDir, err = p.setupCloneForExecution(ctx, state.clonePath, state.branchName)
 	if err != nil {
 		return nil, err
 	}
@@ -639,8 +639,8 @@ func (p *processor) postMergeActions(
 	return nil
 }
 
-// handleWorktreeWorkflow handles the worktree-based workflow: commit, push, create PR, remove worktree.
-func (p *processor) handleWorktreeWorkflow(
+// handleCloneWorkflow handles the clone-based workflow: commit, push, create PR, remove clone.
+func (p *processor) handleCloneWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
@@ -648,9 +648,9 @@ func (p *processor) handleWorktreeWorkflow(
 	completedPath string,
 ) error {
 	branchName := state.branchName
-	worktreePath := state.worktreePath
+	clonePath := state.clonePath
 	originalDir := state.originalDir
-	// Commit changes (we're already in the worktree directory)
+	// Commit changes (we're already in the clone directory)
 	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit changes")
 	}
@@ -675,10 +675,10 @@ func (p *processor) handleWorktreeWorkflow(
 		return errors.Wrap(ctx, err, "chdir back to original directory")
 	}
 
-	// Remove worktree (best-effort cleanup)
-	if err := p.worktree.Remove(gitCtx, worktreePath); err != nil {
-		slog.Warn("failed to remove worktree", "path", worktreePath, "error", err)
-		// Non-fatal — worktree cleanup is best-effort
+	// Remove clone (best-effort cleanup)
+	if err := p.cloner.Remove(gitCtx, clonePath); err != nil {
+		slog.Warn("failed to remove clone", "path", clonePath, "error", err)
+		// Non-fatal — clone cleanup is best-effort
 	}
 	state.cleanedUp = true
 
@@ -701,11 +701,11 @@ func (p *processor) handleWorktreeWorkflow(
 	return nil
 }
 
-// setupWorktreeForExecution creates a worktree, switches to it, and sets up cleanup.
+// setupCloneForExecution creates a clone, switches to it, and sets up cleanup.
 // Returns the original directory path for later restoration.
-func (p *processor) setupWorktreeForExecution(
+func (p *processor) setupCloneForExecution(
 	ctx context.Context,
-	worktreePath string,
+	clonePath string,
 	branchName string,
 ) (string, error) {
 	originalDir, err := os.Getwd()
@@ -713,13 +713,13 @@ func (p *processor) setupWorktreeForExecution(
 		return "", errors.Wrap(ctx, err, "get current directory")
 	}
 
-	if err := p.worktree.Add(ctx, worktreePath, branchName); err != nil {
-		return "", errors.Wrap(ctx, err, "add worktree")
+	if err := p.cloner.Clone(ctx, originalDir, clonePath, branchName); err != nil {
+		return "", errors.Wrap(ctx, err, "clone repo")
 	}
 
-	// Switch to worktree directory
-	if err := os.Chdir(worktreePath); err != nil {
-		return "", errors.Wrap(ctx, err, "chdir to worktree")
+	// Switch to clone directory
+	if err := os.Chdir(clonePath); err != nil {
+		return "", errors.Wrap(ctx, err, "chdir to clone")
 	}
 
 	return originalDir, nil

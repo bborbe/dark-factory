@@ -197,7 +197,7 @@ func CreateProcessor(
 		workflow,
 		git.NewBrancher(),
 		git.NewPRCreator(ghToken),
-		git.NewWorktree(),
+		git.NewCloner(),
 		git.NewPRMerger(ghToken),
 		autoMerge,
 		autoRelease,

@@ -8,18 +8,19 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 )
 
-type Worktree struct {
-	AddStub        func(context.Context, string, string) error
-	addMutex       sync.RWMutex
-	addArgsForCall []struct {
+type Cloner struct {
+	CloneStub        func(context.Context, string, string, string) error
+	cloneMutex       sync.RWMutex
+	cloneArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
-	addReturns struct {
+	cloneReturns struct {
 		result1 error
 	}
-	addReturnsOnCall map[int]struct {
+	cloneReturnsOnCall map[int]struct {
 		result1 error
 	}
 	RemoveStub        func(context.Context, string) error
@@ -38,20 +39,21 @@ type Worktree struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Worktree) Add(arg1 context.Context, arg2 string, arg3 string) error {
-	fake.addMutex.Lock()
-	ret, specificReturn := fake.addReturnsOnCall[len(fake.addArgsForCall)]
-	fake.addArgsForCall = append(fake.addArgsForCall, struct {
+func (fake *Cloner) Clone(arg1 context.Context, arg2 string, arg3 string, arg4 string) error {
+	fake.cloneMutex.Lock()
+	ret, specificReturn := fake.cloneReturnsOnCall[len(fake.cloneArgsForCall)]
+	fake.cloneArgsForCall = append(fake.cloneArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
-	stub := fake.AddStub
-	fakeReturns := fake.addReturns
-	fake.recordInvocation("Add", []interface{}{arg1, arg2, arg3})
-	fake.addMutex.Unlock()
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
+	stub := fake.CloneStub
+	fakeReturns := fake.cloneReturns
+	fake.recordInvocation("Clone", []interface{}{arg1, arg2, arg3, arg4})
+	fake.cloneMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
@@ -59,49 +61,49 @@ func (fake *Worktree) Add(arg1 context.Context, arg2 string, arg3 string) error 
 	return fakeReturns.result1
 }
 
-func (fake *Worktree) AddCallCount() int {
-	fake.addMutex.RLock()
-	defer fake.addMutex.RUnlock()
-	return len(fake.addArgsForCall)
+func (fake *Cloner) CloneCallCount() int {
+	fake.cloneMutex.RLock()
+	defer fake.cloneMutex.RUnlock()
+	return len(fake.cloneArgsForCall)
 }
 
-func (fake *Worktree) AddCalls(stub func(context.Context, string, string) error) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
-	fake.AddStub = stub
+func (fake *Cloner) CloneCalls(stub func(context.Context, string, string, string) error) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = stub
 }
 
-func (fake *Worktree) AddArgsForCall(i int) (context.Context, string, string) {
-	fake.addMutex.RLock()
-	defer fake.addMutex.RUnlock()
-	argsForCall := fake.addArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+func (fake *Cloner) CloneArgsForCall(i int) (context.Context, string, string, string) {
+	fake.cloneMutex.RLock()
+	defer fake.cloneMutex.RUnlock()
+	argsForCall := fake.cloneArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *Worktree) AddReturns(result1 error) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
-	fake.AddStub = nil
-	fake.addReturns = struct {
+func (fake *Cloner) CloneReturns(result1 error) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = nil
+	fake.cloneReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *Worktree) AddReturnsOnCall(i int, result1 error) {
-	fake.addMutex.Lock()
-	defer fake.addMutex.Unlock()
-	fake.AddStub = nil
-	if fake.addReturnsOnCall == nil {
-		fake.addReturnsOnCall = make(map[int]struct {
+func (fake *Cloner) CloneReturnsOnCall(i int, result1 error) {
+	fake.cloneMutex.Lock()
+	defer fake.cloneMutex.Unlock()
+	fake.CloneStub = nil
+	if fake.cloneReturnsOnCall == nil {
+		fake.cloneReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.addReturnsOnCall[i] = struct {
+	fake.cloneReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *Worktree) Remove(arg1 context.Context, arg2 string) error {
+func (fake *Cloner) Remove(arg1 context.Context, arg2 string) error {
 	fake.removeMutex.Lock()
 	ret, specificReturn := fake.removeReturnsOnCall[len(fake.removeArgsForCall)]
 	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
@@ -121,26 +123,26 @@ func (fake *Worktree) Remove(arg1 context.Context, arg2 string) error {
 	return fakeReturns.result1
 }
 
-func (fake *Worktree) RemoveCallCount() int {
+func (fake *Cloner) RemoveCallCount() int {
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
 	return len(fake.removeArgsForCall)
 }
 
-func (fake *Worktree) RemoveCalls(stub func(context.Context, string) error) {
+func (fake *Cloner) RemoveCalls(stub func(context.Context, string) error) {
 	fake.removeMutex.Lock()
 	defer fake.removeMutex.Unlock()
 	fake.RemoveStub = stub
 }
 
-func (fake *Worktree) RemoveArgsForCall(i int) (context.Context, string) {
+func (fake *Cloner) RemoveArgsForCall(i int) (context.Context, string) {
 	fake.removeMutex.RLock()
 	defer fake.removeMutex.RUnlock()
 	argsForCall := fake.removeArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *Worktree) RemoveReturns(result1 error) {
+func (fake *Cloner) RemoveReturns(result1 error) {
 	fake.removeMutex.Lock()
 	defer fake.removeMutex.Unlock()
 	fake.RemoveStub = nil
@@ -149,7 +151,7 @@ func (fake *Worktree) RemoveReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Worktree) RemoveReturnsOnCall(i int, result1 error) {
+func (fake *Cloner) RemoveReturnsOnCall(i int, result1 error) {
 	fake.removeMutex.Lock()
 	defer fake.removeMutex.Unlock()
 	fake.RemoveStub = nil
@@ -163,7 +165,7 @@ func (fake *Worktree) RemoveReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Worktree) Invocations() map[string][][]interface{} {
+func (fake *Cloner) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -173,7 +175,7 @@ func (fake *Worktree) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *Worktree) recordInvocation(key string, args []interface{}) {
+func (fake *Cloner) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -185,4 +187,4 @@ func (fake *Worktree) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ git.Worktree = new(Worktree)
+var _ git.Cloner = new(Cloner)

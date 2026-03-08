@@ -36,7 +36,7 @@ var _ = Describe("Processor", func() {
 		mockVersionGet    *mocks.VersionGetter
 		mockBrancher      *mocks.Brancher
 		mockPRCreator     *mocks.PRCreator
-		mockWorktree      *mocks.Worktree
+		mockCloner        *mocks.Cloner
 		mockPRMerger      *mocks.PRMerger
 		mockAutoCompleter *mocks.AutoCompleter
 		mockSpecLister    *mocks.Lister
@@ -60,7 +60,7 @@ var _ = Describe("Processor", func() {
 		mockVersionGet = &mocks.VersionGetter{}
 		mockBrancher = &mocks.Brancher{}
 		mockPRCreator = &mocks.PRCreator{}
-		mockWorktree = &mocks.Worktree{}
+		mockCloner = &mocks.Cloner{}
 		mockPRMerger = &mocks.PRMerger{}
 		mockAutoCompleter = &mocks.AutoCompleter{}
 		mockSpecLister = &mocks.Lister{}
@@ -109,7 +109,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -174,7 +174,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -243,7 +243,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -308,7 +308,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -365,7 +365,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -422,7 +422,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -483,7 +483,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -574,7 +574,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -641,7 +641,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -698,7 +698,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -759,7 +759,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -809,7 +809,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -857,7 +857,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -915,7 +915,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -984,7 +984,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -1050,7 +1050,7 @@ var _ = Describe("Processor", func() {
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -1102,10 +1102,10 @@ var _ = Describe("Processor", func() {
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.CommitOnlyReturns(nil)
 			// Mock worktree.Add to create the actual directory
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockBrancher.PushReturns(nil)
@@ -1124,7 +1124,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1146,9 +1146,9 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree operations
-			Expect(mockWorktree.AddCallCount()).To(Equal(1))
-			_, worktreePath, branchName := mockWorktree.AddArgsForCall(0)
-			Expect(worktreePath).To(Equal("../test-project-001-worktree-test"))
+			Expect(mockCloner.CloneCallCount()).To(Equal(1))
+			_, _, worktreePath, branchName := mockCloner.CloneArgsForCall(0)
+			Expect(worktreePath).To(ContainSubstring("dark-factory/test-project-001-worktree-test"))
 			Expect(branchName).To(Equal("dark-factory/001-worktree-test"))
 
 			// Verify push was called
@@ -1162,9 +1162,9 @@ var _ = Describe("Processor", func() {
 			Expect(body).To(Equal("Automated by dark-factory"))
 
 			// Verify worktree was removed
-			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
-			_, removedPath := mockWorktree.RemoveArgsForCall(0)
-			Expect(removedPath).To(Equal("../test-project-001-worktree-test"))
+			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			_, removedPath := mockCloner.RemoveArgsForCall(0)
+			Expect(removedPath).To(ContainSubstring("dark-factory/test-project-001-worktree-test"))
 
 			// Verify CommitOnly was called, not CommitAndRelease
 			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
@@ -1206,10 +1206,10 @@ var _ = Describe("Processor", func() {
 			mockExecutor.ExecuteReturns(nil)
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.CommitOnlyReturns(nil)
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockBrancher.PushReturns(nil)
@@ -1233,7 +1233,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
@@ -1255,9 +1255,9 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree operations
-			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+			Expect(mockCloner.CloneCallCount()).To(Equal(1))
 			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
-			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Verify WaitAndMerge was called with correct PR URL
 			_, mergedURL := mockPRMerger.WaitAndMergeArgsForCall(0)
@@ -1296,10 +1296,10 @@ var _ = Describe("Processor", func() {
 			mockManager.SetStatusReturns(nil)
 			mockManager.AllPreviousCompletedReturns(true)
 			// Mock worktree.Add to create the actual directory
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
@@ -1317,7 +1317,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1335,14 +1335,14 @@ var _ = Describe("Processor", func() {
 
 			// Wait for worktree to be cleaned up (via defer)
 			Eventually(func() int {
-				return mockWorktree.RemoveCallCount()
+				return mockCloner.RemoveCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify worktree was added
-			Expect(mockWorktree.AddCallCount()).To(Equal(1))
+			Expect(mockCloner.CloneCallCount()).To(Equal(1))
 
 			// Verify worktree was removed despite failure
-			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			cancel()
 		})
@@ -1373,11 +1373,11 @@ var _ = Describe("Processor", func() {
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.CommitOnlyReturns(nil)
 			// Mock worktree.Add to create the actual directory
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
 			// Mock worktree.Remove to return an error but don't actually remove
-			mockWorktree.RemoveReturns(stderrors.New("worktree removal failed"))
+			mockCloner.RemoveReturns(stderrors.New("worktree removal failed"))
 			mockBrancher.PushReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
 
@@ -1394,7 +1394,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1416,7 +1416,7 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree removal was attempted
-			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Verify PR was created successfully despite cleanup failure
 			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
@@ -1455,10 +1455,10 @@ var _ = Describe("Processor", func() {
 			mockExecutor.ExecuteReturns(nil)
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.CommitOnlyReturns(nil)
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockBrancher.PushReturns(nil)
@@ -1478,7 +1478,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				true, // autoMerge enabled
 				false,
@@ -1499,8 +1499,8 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Worktree was added and removed before merge attempt
-			Expect(mockWorktree.AddCallCount()).To(Equal(1))
-			Expect(mockWorktree.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(mockCloner.CloneCallCount()).To(Equal(1))
+			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Load should be called to mark prompt as failed
 			Eventually(func() int {
@@ -1524,7 +1524,7 @@ var _ = Describe("Processor", func() {
 			mockManager.SetVersionReturns(nil)
 			mockManager.SetStatusReturns(nil)
 			mockManager.AllPreviousCompletedReturns(true)
-			mockWorktree.AddReturns(stderrors.New("worktree already exists"))
+			mockCloner.CloneReturns(stderrors.New("clone failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
@@ -1539,7 +1539,7 @@ var _ = Describe("Processor", func() {
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1636,7 +1636,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1710,7 +1710,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1781,7 +1781,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1853,7 +1853,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1925,7 +1925,7 @@ more output
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -1996,7 +1996,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2071,7 +2071,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2130,7 +2130,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2181,7 +2181,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2239,7 +2239,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2286,10 +2286,10 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2320,7 +2320,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2359,10 +2359,10 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2394,7 +2394,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2453,7 +2453,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2526,7 +2526,7 @@ DARK-FACTORY-REPORT -->
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,
@@ -2579,7 +2579,7 @@ DARK-FACTORY-REPORT -->
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -2639,7 +2639,7 @@ DARK-FACTORY-REPORT -->
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -2686,7 +2686,7 @@ DARK-FACTORY-REPORT -->
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -2718,7 +2718,7 @@ DARK-FACTORY-REPORT -->
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -2760,7 +2760,7 @@ DARK-FACTORY-REPORT -->
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -2798,10 +2798,10 @@ DARK-FACTORY-REPORT -->
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-			return os.MkdirAll(path, 0750)
+		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			return os.MkdirAll(destDir, 0750)
 		}
-		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+		mockCloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2840,7 +2840,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			config.WorkflowPR,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
@@ -2880,10 +2880,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-			return os.MkdirAll(path, 0750)
+		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			return os.MkdirAll(destDir, 0750)
 		}
-		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+		mockCloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -2923,7 +2923,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			config.WorkflowPR,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
@@ -2979,7 +2979,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			config.WorkflowDirect,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			false,
 			false,
@@ -3019,10 +3019,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-			return os.MkdirAll(path, 0750)
+		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			return os.MkdirAll(destDir, 0750)
 		}
-		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+		mockCloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3060,7 +3060,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			config.WorkflowPR,
 			mockBrancher,
 			mockPRCreator,
-			mockWorktree,
+			mockCloner,
 			mockPRMerger,
 			true, // autoMerge enabled
 			false,
@@ -3107,10 +3107,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3147,7 +3147,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false, // autoMerge disabled
 				false,
@@ -3174,7 +3174,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Worktree should be removed after PR creation
 			Eventually(func() int {
-				return mockWorktree.RemoveCallCount()
+				return mockCloner.RemoveCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
@@ -3195,10 +3195,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-					return os.MkdirAll(path, 0750)
+				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+					return os.MkdirAll(destDir, 0750)
 				}
-				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				mockCloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3240,7 +3240,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowPR,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					true, // autoMerge enabled
 					false,
@@ -3292,10 +3292,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3339,7 +3339,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				true, // autoMerge enabled
 				true, // autoRelease enabled
@@ -3377,10 +3377,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-					return os.MkdirAll(path, 0750)
+				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+					return os.MkdirAll(destDir, 0750)
 				}
-				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				mockCloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3422,7 +3422,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowPR,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					true, // autoMerge enabled
 					true, // autoRelease enabled
@@ -3464,10 +3464,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3509,7 +3509,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				true,  // autoMerge enabled
 				false, // autoRelease disabled
@@ -3553,10 +3553,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-					return os.MkdirAll(path, 0750)
+				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+					return os.MkdirAll(destDir, 0750)
 				}
-				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				mockCloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3592,7 +3592,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowPR,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					false, // autoMerge disabled
 					false,
@@ -3649,10 +3649,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
-				return os.MkdirAll(path, 0750)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
 			}
-			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
@@ -3689,7 +3689,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false, // autoMerge disabled
 				false,
@@ -3770,7 +3770,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowDirect,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					false,
 					false,
@@ -3833,7 +3833,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowDirect,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					false,
 					false,
@@ -3889,7 +3889,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						config.WorkflowDirect,
 						mockBrancher,
 						mockPRCreator,
-						mockWorktree,
+						mockCloner,
 						mockPRMerger,
 						false,
 						false,
@@ -3936,7 +3936,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					config.WorkflowDirect,
 					mockBrancher,
 					mockPRCreator,
-					mockWorktree,
+					mockCloner,
 					mockPRMerger,
 					false,
 					false,
@@ -3992,7 +3992,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				config.WorkflowDirect,
 				mockBrancher,
 				mockPRCreator,
-				mockWorktree,
+				mockCloner,
 				mockPRMerger,
 				false,
 				false,

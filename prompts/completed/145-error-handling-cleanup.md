@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Wrapped bare error returns in server handlers, review poller, fix prompt generator, runner with errors.Wrap/Wrapf, replaced fmt.Sprintf inside errors.Wrap with errors.Wrapf, and changed '%s' to %q in workflow validation
+container: dark-factory-145-error-handling-cleanup
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:06:35Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:40:04Z"
+completed: "2026-03-08T23:46:02Z"
 ---
 
 <summary>

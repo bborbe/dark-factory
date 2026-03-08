@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["027"]
+summary: 'Removed workflow: worktree as a valid config value — validation now returns a migration error directing users to use workflow: pr instead, with all related validators and tests updated.'
 container: dark-factory-139-spec-027-config-validation
 dark-factory-version: v0.26.0
 created: "2026-03-08T21:00:00Z"
 queued: "2026-03-08T21:06:34Z"
 started: "2026-03-08T21:06:37Z"
+completed: "2026-03-08T21:12:07Z"
 ---
 
 <summary>

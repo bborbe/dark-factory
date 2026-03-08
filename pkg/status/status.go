@@ -329,67 +329,6 @@ func (s *checker) countMarkdownFiles(dir string) (int, error) {
 	return count, nil
 }
 
-// formatDuration formats a duration in a human-readable format.
-func formatDuration(d time.Duration) string {
-	d = d.Round(time.Second)
-
-	hours := d / time.Hour
-	d -= hours * time.Hour
-
-	minutes := d / time.Minute
-	d -= minutes * time.Minute
-
-	seconds := d / time.Second
-
-	if hours > 0 {
-		return formatTime(int(hours), int(minutes), int(seconds))
-	}
-	if minutes > 0 {
-		return formatTime(0, int(minutes), int(seconds))
-	}
-	return formatTime(0, 0, int(seconds))
-}
-
-// formatTime formats hours, minutes, and seconds.
-func formatTime(h, m, s int) string {
-	if h > 0 {
-		return formatHMS(h, m, s)
-	}
-	if m > 0 {
-		return formatMS(m, s)
-	}
-	return formatS(s)
-}
-
-// formatHMS formats hours:minutes:seconds.
-func formatHMS(h, m, s int) string {
-	result := ""
-	if h > 0 {
-		result += strconv.Itoa(h) + "h"
-	}
-	if m > 0 {
-		result += strconv.Itoa(m) + "m"
-	}
-	if s > 0 {
-		result += strconv.Itoa(s) + "s"
-	}
-	return result
-}
-
-// formatMS formats minutes:seconds.
-func formatMS(m, s int) string {
-	result := strconv.Itoa(m) + "m"
-	if s > 0 {
-		result += strconv.Itoa(s) + "s"
-	}
-	return result
-}
-
-// formatS formats seconds only.
-func formatS(s int) string {
-	return strconv.Itoa(s) + "s"
-}
-
 // populateExecutingPrompt populates executing prompt info in the status.
 func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error {
 	if !s.promptMgr.HasExecuting(ctx) {

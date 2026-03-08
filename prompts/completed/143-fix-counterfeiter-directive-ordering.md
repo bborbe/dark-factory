@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Moved all counterfeiter directives above GoDoc comments with a blank line separator across 21 interfaces in 19 files
+container: dark-factory-143-fix-counterfeiter-directive-ordering
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:12:08Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:24:07Z"
+completed: "2026-03-08T23:34:46Z"
 ---
 
 <summary>

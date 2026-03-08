@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Moved 5 standalone format helper functions (formatDuration, formatTime, formatHMS, formatMS, formatS) from status.go to formatter.go, making formatter.go the single source of formatting logic in the status package.
+container: dark-factory-146-move-format-helpers-to-formatter
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:12:08Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:46:05Z"
+completed: "2026-03-08T23:51:05Z"
 ---
 
 <summary>

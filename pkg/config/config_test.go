@@ -86,7 +86,7 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("succeeds for worktree workflow", func() {
+		It("fails for worktree workflow with migration error", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowWorktree,
 				Prompts: config.PromptsConfig{
@@ -101,7 +101,8 @@ var _ = Describe("Config", func() {
 				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("removed"))
 		})
 
 		It("fails for invalid workflow", func() {
@@ -387,7 +388,7 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("succeeds for autoMerge true with workflow worktree", func() {
+		It("fails for autoMerge true with workflow worktree", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowWorktree,
 				Prompts: config.PromptsConfig{
@@ -403,7 +404,8 @@ var _ = Describe("Config", func() {
 				AutoMerge:      true,
 			}
 			err := cfg.Validate(ctx)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("removed"))
 		})
 
 		It("fails for autoMerge true with workflow direct", func() {
@@ -425,7 +427,7 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(
 				err.Error(),
-			).To(ContainSubstring("autoMerge requires workflow 'pr' or 'worktree'"))
+			).To(ContainSubstring("autoMerge requires workflow 'pr'"))
 		})
 
 		It("succeeds for autoRelease true with autoMerge true", func() {
@@ -490,7 +492,7 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(
 				err.Error(),
-			).To(ContainSubstring("autoReview requires workflow 'pr' or 'worktree'"))
+			).To(ContainSubstring("autoReview requires workflow 'pr'"))
 		})
 
 		It("fails for autoReview true with autoMerge false", func() {
@@ -572,9 +574,10 @@ var _ = Describe("Config", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("succeeds for worktree workflow", func() {
+			It("returns removed error for worktree workflow", func() {
 				err := config.WorkflowWorktree.Validate(ctx)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("removed"))
 			})
 
 			It("fails for unknown workflow", func() {
@@ -606,7 +609,7 @@ var _ = Describe("Config", func() {
 			It("returns true for valid workflow", func() {
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowDirect)).To(BeTrue())
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowPR)).To(BeTrue())
-				Expect(config.AvailableWorkflows.Contains(config.WorkflowWorktree)).To(BeTrue())
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowWorktree)).To(BeFalse())
 			})
 
 			It("returns false for invalid workflow", func() {

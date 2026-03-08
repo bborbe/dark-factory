@@ -20,7 +20,7 @@ const (
 )
 
 // AvailableWorkflows contains all valid workflow values.
-var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR, WorkflowWorktree}
+var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR}
 
 // Workflow is a string-based enum for workflow types.
 type Workflow string
@@ -30,6 +30,10 @@ func (w Workflow) String() string {
 }
 
 func (w Workflow) Validate(ctx context.Context) error {
+	if w == WorkflowWorktree {
+		return errors.Wrapf(ctx, validation.Error,
+			"workflow 'worktree' removed — use 'pr' instead")
+	}
 	if !AvailableWorkflows.Contains(w) {
 		return errors.Wrapf(ctx, validation.Error, "unknown workflow '%s'", w)
 	}

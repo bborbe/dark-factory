@@ -27,9 +27,9 @@ import (
 
 var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
-// Processor processes queued prompts.
-//
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
+
+// Processor processes queued prompts.
 type Processor interface {
 	Process(ctx context.Context) error
 }

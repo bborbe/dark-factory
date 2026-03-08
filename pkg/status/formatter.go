@@ -9,9 +9,9 @@ import (
 	"strings"
 )
 
-// Formatter formats status for display.
-//
 //counterfeiter:generate -o ../../mocks/status-formatter.go --fake-name Formatter . Formatter
+
+// Formatter formats status for display.
 type Formatter interface {
 	Format(st *Status) string
 }

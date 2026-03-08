@@ -13,9 +13,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Loader loads configuration from a file.
-//
 //counterfeiter:generate -o ../../mocks/config-loader.go --fake-name Loader . Loader
+
+// Loader loads configuration from a file.
 type Loader interface {
 	Load(ctx context.Context) (Config, error)
 }

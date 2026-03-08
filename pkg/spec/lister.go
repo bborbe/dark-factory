@@ -25,9 +25,9 @@ type Summary struct {
 	LinkedPromptsTotal     int `json:"linked_prompts_total,omitempty"`
 }
 
-// Lister lists spec files from a directory.
-//
 //counterfeiter:generate -o ../../mocks/spec-lister.go --fake-name Lister . Lister
+
+// Lister lists spec files from a directory.
 type Lister interface {
 	List(ctx context.Context) ([]*SpecFile, error)
 	Summary(ctx context.Context) (*Summary, error)

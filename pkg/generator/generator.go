@@ -18,9 +18,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
-// SpecGenerator generates prompt files from a spec file.
-//
 //counterfeiter:generate -o ../../mocks/spec-generator.go --fake-name SpecGenerator . SpecGenerator
+
+// SpecGenerator generates prompt files from a spec file.
 type SpecGenerator interface {
 	Generate(ctx context.Context, specPath string) error
 }

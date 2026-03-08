@@ -19,9 +19,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
-// Watcher watches the prompts directory and normalizes filenames.
-//
 //counterfeiter:generate -o ../../mocks/watcher.go --fake-name Watcher . Watcher
+
+// Watcher watches the prompts directory and normalizes filenames.
 type Watcher interface {
 	Watch(ctx context.Context) error
 }

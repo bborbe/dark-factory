@@ -14,9 +14,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// PRMerger watches a PR until mergeable and merges it.
-//
 //counterfeiter:generate -o ../../mocks/pr_merger.go --fake-name PRMerger . PRMerger
+
+// PRMerger watches a PR until mergeable and merges it.
 type PRMerger interface {
 	WaitAndMerge(ctx context.Context, prURL string) error
 }

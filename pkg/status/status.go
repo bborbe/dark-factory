@@ -48,9 +48,9 @@ type CompletedPrompt struct {
 	CompletedAt time.Time `json:"completed_at"`
 }
 
-// Checker checks the current status of the dark-factory daemon.
-//
 //counterfeiter:generate -o ../../mocks/status-checker.go --fake-name Checker . Checker
+
+// Checker checks the current status of the dark-factory daemon.
 type Checker interface {
 	GetStatus(ctx context.Context) (*Status, error)
 	GetQueuedPrompts(ctx context.Context) ([]QueuedPrompt, error)

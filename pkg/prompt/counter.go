@@ -14,9 +14,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// Counter counts prompts linked to specs.
-//
 //counterfeiter:generate -o ../../mocks/prompt-counter.go --fake-name PromptCounter . Counter
+
+// Counter counts prompts linked to specs.
 type Counter interface {
 	CountBySpec(ctx context.Context, specID string) (completed, total int, err error)
 }

@@ -13,9 +13,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// Brancher handles git branch operations.
-//
 //counterfeiter:generate -o ../../mocks/brancher.go --fake-name Brancher . Brancher
+
+// Brancher handles git branch operations.
 type Brancher interface {
 	CreateAndSwitch(ctx context.Context, name string) error
 	Push(ctx context.Context, name string) error

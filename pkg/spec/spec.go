@@ -172,9 +172,9 @@ func (s *SpecFile) MarkVerifying() {
 	s.SetStatus(string(StatusVerifying))
 }
 
-// AutoCompleter checks if all linked prompts are completed and marks the spec as completed.
-//
 //counterfeiter:generate -o ../../mocks/spec-auto-completer.go --fake-name AutoCompleter . AutoCompleter
+
+// AutoCompleter checks if all linked prompts are completed and marks the spec as completed.
 type AutoCompleter interface {
 	CheckAndComplete(ctx context.Context, specID string) error
 }

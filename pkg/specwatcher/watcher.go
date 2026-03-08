@@ -20,9 +20,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
-// SpecWatcher watches the specs in-progress directory and triggers generation when a spec appears there.
-//
 //counterfeiter:generate -o ../../mocks/spec-watcher.go --fake-name SpecWatcher . SpecWatcher
+
+// SpecWatcher watches the specs in-progress directory and triggers generation when a spec appears there.
 type SpecWatcher interface {
 	Watch(ctx context.Context) error
 }

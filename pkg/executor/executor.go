@@ -16,9 +16,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// Executor executes a prompt.
-//
 //counterfeiter:generate -o ../../mocks/executor.go --fake-name Executor . Executor
+
+// Executor executes a prompt.
 type Executor interface {
 	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
 }

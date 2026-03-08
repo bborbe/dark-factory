@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 )
 
-// FixPromptGenerator generates a fix prompt file in the inbox directory when a PR receives a request-changes review.
-//
 //counterfeiter:generate -o ../../mocks/fix_prompt_generator.go --fake-name FixPromptGenerator . FixPromptGenerator
+
+// FixPromptGenerator generates a fix prompt file in the inbox directory when a PR receives a request-changes review.
 type FixPromptGenerator interface {
 	Generate(ctx context.Context, opts GenerateOpts) error
 }

@@ -13,9 +13,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// PRCreator handles GitHub pull request creation.
-//
 //counterfeiter:generate -o ../../mocks/pr_creator.go --fake-name PRCreator . PRCreator
+
+// PRCreator handles GitHub pull request creation.
 type PRCreator interface {
 	Create(ctx context.Context, title string, body string) (string, error)
 }

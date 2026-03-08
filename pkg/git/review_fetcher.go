@@ -30,9 +30,9 @@ type ReviewResult struct {
 	Body    string // full review body text
 }
 
-// ReviewFetcher polls a GitHub PR for reviews from trusted reviewers.
-//
 //counterfeiter:generate -o ../../mocks/review_fetcher.go --fake-name ReviewFetcher . ReviewFetcher
+
+// ReviewFetcher polls a GitHub PR for reviews from trusted reviewers.
 type ReviewFetcher interface {
 	// FetchLatestReview returns the latest review from a trusted reviewer.
 	// Returns ReviewVerdictNone if no trusted review exists yet.

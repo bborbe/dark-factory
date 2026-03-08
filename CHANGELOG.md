@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.6
+
+- refactor: Move counterfeiter directives above GoDoc comments with blank line separator across all interfaces
+
 ## v0.30.5
 
 - chore: Update actions/checkout from v4 to v6 in all GitHub Actions workflows

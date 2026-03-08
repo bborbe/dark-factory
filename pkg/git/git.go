@@ -24,9 +24,9 @@ const (
 	MinorBump
 )
 
-// Releaser handles git commit, tag, and push operations.
-//
 //counterfeiter:generate -o ../../mocks/releaser.go --fake-name Releaser . Releaser
+
+// Releaser handles git commit, tag, and push operations.
 type Releaser interface {
 	GetNextVersion(ctx context.Context, bump VersionBump) (string, error)
 	CommitAndRelease(ctx context.Context, bump VersionBump) error

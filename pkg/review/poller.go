@@ -16,10 +16,11 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
+//counterfeiter:generate -o ../../mocks/review_poller.go --fake-name ReviewPoller . ReviewPoller
+
 // ReviewPoller watches all in_review prompts, fetches GitHub review state,
 // generates fix prompts on request-changes, and triggers merge on approval.
 //
-//counterfeiter:generate -o ../../mocks/review_poller.go --fake-name ReviewPoller . ReviewPoller
 //nolint:revive // ReviewPoller is the intended name per spec requirements
 type ReviewPoller interface {
 	Run(ctx context.Context) error

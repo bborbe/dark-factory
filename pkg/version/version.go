@@ -7,9 +7,9 @@ package version
 // Version is the dark-factory version, overridden at build time via ldflags.
 var Version = "dev"
 
-// Getter returns the current version.
-//
 //counterfeiter:generate -o ../../mocks/version-getter.go --fake-name VersionGetter . Getter
+
+// Getter returns the current version.
 type Getter interface {
 	Get() string
 }

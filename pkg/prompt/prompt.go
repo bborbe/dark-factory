@@ -394,16 +394,16 @@ func (pf *PromptFile) Specs() []string {
 	return []string(pf.Frontmatter.Specs)
 }
 
-// FileMover handles file move operations with git awareness.
-//
 //counterfeiter:generate -o ../../mocks/file-mover.go --fake-name FileMover . FileMover
+
+// FileMover handles file move operations with git awareness.
 type FileMover interface {
 	MoveFile(ctx context.Context, oldPath string, newPath string) error
 }
 
-// Manager manages prompt file operations.
-//
 //counterfeiter:generate -o ../../mocks/prompt-manager.go --fake-name Manager . Manager
+
+// Manager manages prompt file operations.
 type Manager interface {
 	ResetExecuting(ctx context.Context) error
 	ResetFailed(ctx context.Context) error

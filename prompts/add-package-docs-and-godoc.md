@@ -3,8 +3,16 @@ status: created
 created: "2026-03-08T21:12:08Z"
 ---
 
+<summary>
+- All 19 packages gain discoverable documentation visible in `go doc` and pkg.go.dev
+- Three undocumented exported methods on the Workflow type get GoDoc comments
+- Two report delimiter constants get GoDoc comments
+- Five spec lifecycle status constants get individual GoDoc comments
+- No logic changes — purely additive documentation
+</summary>
+
 <objective>
-Add `doc.go` files with package documentation to all 19 packages under `pkg/`. Add missing GoDoc comments to 5 exported items: `Workflow.String()`, `Workflow.Validate()`, `Workflow.Ptr()`, `MarkerStart`, `MarkerEnd`. Add GoDoc to individual spec status constants.
+All exported identifiers and packages in `pkg/` are fully documented, enabling `go doc` browsing and pkg.go.dev rendering without manual source inspection.
 </objective>
 
 <context>
@@ -89,6 +97,7 @@ Read `/home/node/.claude/docs/go-patterns.md` — GoDoc conventions.
 - GoDoc comments must start with the item name (e.g., "String returns..." not "Returns...")
 - Package comments must start with "Package <name>" per Go convention
 - Do NOT change any code — only add comments and doc.go files
+- Do NOT create doc.go in `pkg/test-project-001-worktree-remove-fail/` — it is an empty test fixture directory
 - Each doc.go must have the copyright header
 - Do NOT commit — dark-factory handles git
 - `make precommit` must pass

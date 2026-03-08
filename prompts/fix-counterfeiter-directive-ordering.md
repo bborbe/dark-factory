@@ -3,8 +3,16 @@ status: created
 created: "2026-03-08T21:12:08Z"
 ---
 
+<summary>
+- Standardise counterfeiter directive placement across all interfaces
+- Directive must be ABOVE GoDoc with a blank line separating them
+- Some interfaces already correct, others have directive below GoDoc
+- No directive or GoDoc content changes — position only
+- Generated mocks remain identical
+</summary>
+
 <objective>
-Fix counterfeiter directive placement on ~22 interfaces. The `//counterfeiter:generate` directive must be placed ABOVE the GoDoc comment with a blank line between them. Currently most interfaces have the directive BELOW the GoDoc (reversed order).
+All counterfeiter directives are positioned above their interface's GoDoc comment with a blank line separator, following the project's canonical pattern.
 </objective>
 
 <context>
@@ -90,12 +98,20 @@ For each interface listed above:
 4. If already correct (directive above, blank line, then GoDoc), skip.
 
 5. Handle special cases:
-   - `pkg/review/poller.go` — `ReviewPoller` has `//nolint` between directive and GoDoc. Keep `//nolint` with the GoDoc, not the directive:
+   - `pkg/review/poller.go` — `ReviewPoller` has `//nolint:revive` on its own line before `type`. Current state:
      ```go
-     //counterfeiter:generate ...
+     // ReviewPoller watches all in_review prompts...
+     //
+     //counterfeiter:generate -o ../../mocks/review_poller.go --fake-name ReviewPoller . ReviewPoller
+     //nolint:revive // ReviewPoller is the intended name per spec requirements
+     type ReviewPoller interface {
+     ```
+     Target state — move directive above, keep `//nolint` with the type:
+     ```go
+     //counterfeiter:generate -o ../../mocks/review_poller.go --fake-name ReviewPoller . ReviewPoller
 
-     //nolint:revive
-     // ReviewPoller ...
+     // ReviewPoller watches all in_review prompts...
+     //nolint:revive // ReviewPoller is the intended name per spec requirements
      type ReviewPoller interface {
      ```
 </requirements>
@@ -116,7 +132,7 @@ Run `make precommit` — must pass.
 Verify correct ordering (directive before GoDoc with blank line):
 ```bash
 # Check that no GoDoc immediately precedes a counterfeiter directive
-grep -B1 "counterfeiter:generate" pkg/**/*.go | grep "^.*// [A-Z]"
+grep -rn -B1 "counterfeiter:generate" pkg/ --include="*.go" | grep "// [A-Z]"
 # Expected: no output (GoDoc should not be directly before directive)
 ```
 

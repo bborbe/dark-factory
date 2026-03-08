@@ -16,14 +16,7 @@ Dark-factory has three workflow modes but only `direct` works reliably. `pr` (in
 
 ## Goal
 
-One `workflow: pr` mode that always:
-1. Creates a git worktree for isolated execution
-2. Creates a feature branch
-3. Executes the prompt in the worktree
-4. Commits, pushes, opens a PR
-5. Cleans up the worktree
-
-Master stays clean during execution. Failure cleanup is straightforward (remove worktree).
+After this work, `workflow: pr` always executes prompts in an isolated git worktree on a feature branch, leaving master clean throughout. Each prompt produces exactly one PR. No worktree remains on disk after completion (success or failure). The old in-place branching mode no longer exists — there are exactly two workflow modes: `direct` and `pr`.
 
 ## Non-goals
 
@@ -60,7 +53,7 @@ Master stays clean during execution. Failure cleanup is straightforward (remove 
 
 ## Security
 
-No new external input surfaces. Worktree paths are derived from project name and prompt base name (both controlled by project owner). No path traversal risk — same pattern as existing worktree implementation.
+No new external input surfaces. Worktree paths are derived from project name and prompt base name (both controlled by project owner). Both are validated to contain only alphanumeric characters, hyphens, and underscores — no path traversal risk.
 
 ## Failure Modes
 
@@ -82,8 +75,8 @@ No new external input surfaces. Worktree paths are derived from project name and
 - [ ] `workflow: worktree` config value produces clear error with migration hint
 - [ ] No force-push after PR creation (PR URL amendment removed)
 - [ ] `autoMerge` works with new `pr` workflow (poll, merge, pull default branch)
-- [ ] Old in-place `pr` code paths removed (no more `setupPRWorkflowState`)
-- [ ] Old `worktree` code paths consolidated into new `pr` implementation
+- [ ] No execution path for in-place (non-worktree) PR creation exists
+- [ ] Single unified PR implementation (no separate worktree vs in-place code paths)
 - [ ] Existing tests updated, new tests for error/cleanup paths
 - [ ] `make precommit` passes
 

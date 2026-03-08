@@ -1,8 +1,11 @@
 ---
-status: approved
+status: executing
 spec: ["027"]
+container: dark-factory-140-spec-027-processor-unification
+dark-factory-version: v0.26.0
 created: "2026-03-08T21:00:00Z"
 queued: "2026-03-08T21:06:35Z"
+started: "2026-03-08T21:12:11Z"
 ---
 
 <summary>

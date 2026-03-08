@@ -1,10 +1,10 @@
 ---
 status: executing
 container: dark-factory-141-replace-worktree-with-clone
-dark-factory-version: v0.26.0
+dark-factory-version: v0.30.3
 created: "2026-03-08T22:59:02Z"
 queued: "2026-03-08T22:59:02Z"
-started: "2026-03-08T22:59:04Z"
+started: "2026-03-08T23:14:06Z"
 ---
 
 <summary>

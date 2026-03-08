@@ -376,7 +376,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Ensure worktree cleanup on error (success path cleanup is in handleWorktreeWorkflow)
-	if p.workflow == config.WorkflowWorktree && workflowState.worktreePath != "" {
+	if p.workflow == config.WorkflowPR && workflowState.worktreePath != "" {
 		defer p.cleanupWorktreeOnError(ctx, workflowState)
 	}
 
@@ -396,11 +396,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 // workflowState holds state needed for workflow cleanup and completion.
 type workflowState struct {
-	branchName     string
-	originalBranch string
-	worktreePath   string
-	originalDir    string
-	cleanedUp      bool
+	branchName   string
+	worktreePath string
+	originalDir  string
+	cleanedUp    bool
 }
 
 // cleanupWorktreeOnError restores the original directory and removes the worktree
@@ -450,10 +449,9 @@ func (p *processor) handlePostExecution(
 		return p.enterPendingVerification(ctx, pf, promptPath)
 	}
 
-	// In autoReview mode (autoReview+!autoMerge+PR/worktree), prompt stays in queueDir.
+	// In autoReview mode (autoReview+!autoMerge+PR), prompt stays in queueDir.
 	// Skip move-to-completed and commit of completed file until review approves.
-	isAutoReviewPR := p.autoReview && !p.autoMerge &&
-		(p.workflow == config.WorkflowPR || p.workflow == config.WorkflowWorktree)
+	isAutoReviewPR := p.autoReview && !p.autoMerge && p.workflow == config.WorkflowPR
 
 	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
 	prTargetPath := completedPath // path used for PR URL frontmatter
@@ -466,26 +464,8 @@ func (p *processor) handlePostExecution(
 		}
 	}
 
-	// TODO: refactor to switch on p.workflow to make all cases explicit
 	if p.workflow == config.WorkflowPR {
-		return p.handlePRWorkflow(
-			gitCtx,
-			ctx,
-			title,
-			state.branchName,
-			state.originalBranch,
-			prTargetPath,
-		)
-	}
-
-	if p.workflow == config.WorkflowWorktree {
-		return p.handleWorktreeWorkflow(
-			gitCtx,
-			ctx,
-			title,
-			state,
-			prTargetPath,
-		)
+		return p.handleWorktreeWorkflow(gitCtx, ctx, title, state, prTargetPath)
 	}
 
 	return p.handleDirectWorkflow(gitCtx, ctx, title)
@@ -520,61 +500,16 @@ func (p *processor) moveToCompletedAndCommit(
 	return nil
 }
 
-// setupWorkflow sets up the appropriate workflow (PR or worktree) before execution.
+// setupWorkflow sets up the appropriate workflow before execution.
 func (p *processor) setupWorkflow(
 	ctx context.Context,
 	baseName string,
 	pf *prompt.PromptFile,
 ) (*workflowState, error) {
 	state := &workflowState{}
-
-	// TODO: refactor to switch on p.workflow to make all cases explicit
 	if p.workflow == config.WorkflowPR {
-		return p.setupPRWorkflowState(ctx, baseName, pf, state)
-	}
-
-	if p.workflow == config.WorkflowWorktree {
 		return p.setupWorktreeWorkflowState(ctx, baseName, pf, state)
 	}
-
-	return state, nil
-}
-
-// setupPRWorkflowState configures state for the PR workflow, using an existing branch or creating a new one.
-func (p *processor) setupPRWorkflowState(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-	state *workflowState,
-) (*workflowState, error) {
-	var err error
-	state.originalBranch, err = p.brancher.CurrentBranch(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "get current branch")
-	}
-	if branch := pf.Branch(); branch != "" {
-		return p.switchToExistingBranch(ctx, branch, state)
-	}
-	state.branchName = "dark-factory/" + baseName
-	if err := p.brancher.CreateAndSwitch(ctx, state.branchName); err != nil {
-		return nil, errors.Wrap(ctx, err, "create feature branch")
-	}
-	return state, nil
-}
-
-// switchToExistingBranch fetches, verifies, and switches to an existing branch.
-func (p *processor) switchToExistingBranch(
-	ctx context.Context,
-	branch string,
-	state *workflowState,
-) (*workflowState, error) {
-	if err := p.brancher.FetchAndVerifyBranch(ctx, branch); err != nil {
-		return nil, errors.Wrap(ctx, err, "fetch and verify branch")
-	}
-	if err := p.brancher.Switch(ctx, branch); err != nil {
-		return nil, errors.Wrap(ctx, err, "switch to existing branch")
-	}
-	state.branchName = branch
 	return state, nil
 }
 
@@ -672,80 +607,6 @@ func (p *processor) handleEmptyPrompt(
 	return errors.Wrap(ctx, contentErr, "get prompt content")
 }
 
-// handlePRWorkflow handles the PR-based workflow: commit, push, create PR, switch back.
-func (p *processor) handlePRWorkflow(
-	gitCtx context.Context,
-	ctx context.Context,
-	title string,
-	branchName string,
-	originalBranch string,
-	completedPath string,
-) error {
-	// Commit changes
-	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-		return errors.Wrap(ctx, err, "commit changes")
-	}
-
-	// Push branch
-	if err := p.brancher.Push(gitCtx, branchName); err != nil {
-		return errors.Wrap(ctx, err, "push branch")
-	}
-
-	// Create PR
-	prURL, err := p.prCreator.Create(gitCtx, title, "Automated by dark-factory")
-	if err != nil {
-		return errors.Wrap(ctx, err, "create pull request")
-	}
-	slog.Info("created PR", "url", prURL)
-
-	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
-	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL, branchName)
-
-	// Handle auto-merge if enabled
-	if p.autoMerge {
-		return p.handleAutoMerge(gitCtx, ctx, prURL, originalBranch, title)
-	}
-
-	// autoReview mode: set in_review status so poller can watch for approval
-	if p.autoReview {
-		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.InReviewPromptStatus)); err != nil {
-			return errors.Wrap(ctx, err, "set in_review status")
-		}
-		slog.Info("PR created, waiting for review", "url", prURL)
-	}
-
-	// Switch back to original branch for next prompt
-	if err := p.brancher.Switch(gitCtx, originalBranch); err != nil {
-		return errors.Wrap(ctx, err, "switch back to "+originalBranch)
-	}
-
-	return nil
-}
-
-// handleAutoMerge handles the auto-merge workflow for PR workflow (with fallback to original branch on error).
-func (p *processor) handleAutoMerge(
-	gitCtx context.Context,
-	ctx context.Context,
-	prURL string,
-	originalBranch string,
-	title string,
-) error {
-	// Wait for PR to be mergeable and merge it
-	if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
-		// On error, switch back to original branch before returning
-		if switchErr := p.brancher.Switch(gitCtx, originalBranch); switchErr != nil {
-			slog.Warn(
-				"failed to switch back to original branch after merge error",
-				"error",
-				switchErr,
-			)
-		}
-		return errors.Wrap(ctx, err, "wait and merge PR")
-	}
-
-	return p.postMergeActions(gitCtx, ctx, title)
-}
-
 // postMergeActions performs post-merge actions: switch to default branch, pull, and optionally release.
 func (p *processor) postMergeActions(
 	gitCtx context.Context,
@@ -807,7 +668,7 @@ func (p *processor) handleWorktreeWorkflow(
 	slog.Info("created PR", "url", prURL)
 
 	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
-	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL, branchName)
+	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
 
 	// Switch back to original directory
 	if err := os.Chdir(originalDir); err != nil {
@@ -970,37 +831,21 @@ func validateCompletionReport(ctx context.Context, logFile string) (string, erro
 	return completionReport.Summary, nil
 }
 
-// savePRURLToFrontmatter saves the PR URL to the prompt frontmatter and amends the commit.
+// savePRURLToFrontmatter saves the PR URL to the prompt frontmatter.
 // This is best-effort and non-fatal — all failures are logged as warnings.
 func (p *processor) savePRURLToFrontmatter(
 	ctx context.Context,
 	completedPath string,
 	prURL string,
-	branchName string,
 ) {
-	// Check if pr-url is already set — preserve it for follow-up prompts on existing branches
+	// Preserve existing pr-url for follow-up prompts
 	if existingPF, err := p.promptManager.Load(ctx, completedPath); err == nil &&
 		existingPF.PRURL() != "" {
 		slog.Debug("pr-url already set, preserving existing value")
 		return
 	}
-
-	// Save PR URL to frontmatter
 	if err := p.promptManager.SetPRURL(ctx, completedPath, prURL); err != nil {
 		slog.Warn("failed to save PR URL to frontmatter", "error", err)
-		return // Non-fatal — PR was already created
-	}
-
-	// Amend the previous commit to include the updated frontmatter
-	if err := p.releaser.AmendCommit(ctx, completedPath); err != nil {
-		slog.Warn("failed to amend commit with PR URL", "error", err)
-		return // Non-fatal — file was saved to disk
-	}
-
-	// Force-push the amended commit
-	if err := p.brancher.ForcePush(ctx, branchName); err != nil {
-		slog.Warn("failed to force-push amended commit", "error", err)
-		return // Non-fatal — local commit was amended
 	}
 }
 

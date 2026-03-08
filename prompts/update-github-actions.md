@@ -3,8 +3,13 @@ status: created
 created: "2026-03-08T21:06:35Z"
 ---
 
+<summary>
+- Update `actions/checkout` from v4 to v6 in all three GitHub Actions workflow files
+- Version-only change, no trigger or job modifications
+</summary>
+
 <objective>
-Update `actions/checkout` from `@v4` to `@v6` in CI workflows and align CI trigger pattern.
+Update `actions/checkout` to latest major version (v6) across all CI workflows for security patches and Node.js 20 runtime support.
 </objective>
 
 <context>
@@ -21,8 +26,7 @@ Read `.github/workflows/claude.yml` — reference for current patterns.
    - Replace `actions/checkout@v4` with `actions/checkout@v6`
 
 3. In `.github/workflows/claude.yml`:
-   - If it uses `actions/checkout@v4`, update to `@v6`
-   - If already `@v6`, no change needed
+   - Replace `actions/checkout@v4` with `actions/checkout@v6`
 </requirements>
 
 <constraints>

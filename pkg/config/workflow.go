@@ -14,9 +14,8 @@ import (
 
 // Workflow defines how prompts are processed.
 const (
-	WorkflowDirect   Workflow = "direct"
-	WorkflowPR       Workflow = "pr"
-	WorkflowWorktree Workflow = "worktree"
+	WorkflowDirect Workflow = "direct"
+	WorkflowPR     Workflow = "pr"
 )
 
 // AvailableWorkflows contains all valid workflow values.
@@ -30,7 +29,7 @@ func (w Workflow) String() string {
 }
 
 func (w Workflow) Validate(ctx context.Context) error {
-	if w == WorkflowWorktree {
+	if w == "worktree" {
 		return errors.Wrapf(ctx, validation.Error,
 			"workflow 'worktree' removed — use 'pr' instead")
 	}

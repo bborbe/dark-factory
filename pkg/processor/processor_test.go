@@ -1075,448 +1075,6 @@ var _ = Describe("Processor", func() {
 		cancel()
 	})
 
-	Describe("PR Workflow", func() {
-		It("should create branch, commit, push, create PR, and switch back", func() {
-			promptPath := filepath.Join(promptsDir, "001-pr-test.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			// Override Load to return PromptFile with title "Add new feature"
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Add new feature\n\nPR test content."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
-			mockManager.ContentReturns("# PR test", nil)
-			mockManager.TitleReturns("Add new feature", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			// Run processor in goroutine
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Wait for processing
-			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// Verify brancher calls
-			Expect(mockBrancher.CurrentBranchCallCount()).To(Equal(1))
-			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
-			_, branchName := mockBrancher.CreateAndSwitchArgsForCall(0)
-			Expect(branchName).To(Equal("dark-factory/001-pr-test"))
-
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-			_, pushedBranch := mockBrancher.PushArgsForCall(0)
-			Expect(pushedBranch).To(Equal("dark-factory/001-pr-test"))
-
-			Expect(mockBrancher.SwitchCallCount()).To(Equal(1))
-			_, switchedBranch := mockBrancher.SwitchArgsForCall(0)
-			Expect(switchedBranch).To(Equal("master"))
-
-			// Verify PR was created
-			_, title, body := mockPRCreator.CreateArgsForCall(0)
-			Expect(title).To(Equal("Add new feature"))
-			Expect(body).To(Equal("Automated by dark-factory"))
-
-			// Verify CommitOnly was called, not CommitAndRelease
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
-			// HasChangelog is called once for changelog suffix check during content assembly
-			Expect(mockReleaser.HasChangelogCallCount()).To(Equal(1))
-
-			cancel()
-		})
-
-		It("should handle branch creation error", func() {
-			promptPath := filepath.Join(promptsDir, "001-branch-error.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			// Return queued once, then empty
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Branch error test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(stderrors.New("branch already exists"))
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			// Run processor — marks failed and continues
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Wait for Load to be called (marks prompt as failed)
-			Eventually(func() int {
-				return mockManager.LoadCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-			// Verify executor was NOT called
-			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
-
-			cancel()
-		})
-
-		It("should handle PR creation error after successful push", func() {
-			promptPath := filepath.Join(promptsDir, "001-pr-error.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			// Return queued once, then empty
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# PR error test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("", stderrors.New("gh pr create failed"))
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			// Run processor — marks failed and continues
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Wait for Load to be called (marks prompt as failed)
-			Eventually(func() int {
-				return mockManager.LoadCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-			// Verify branch operations succeeded
-			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-
-			cancel()
-		})
-
-		It("should use existing branch when branch set in frontmatter", func() {
-			promptPath := filepath.Join(promptsDir, "001-existing-branch.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Continue feature\n\nMore work on existing branch."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-					Branch: "dark-factory/existing-feature",
-				},
-			}, nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.FetchAndVerifyBranchReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// FetchAndVerifyBranch called with existing branch
-			Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
-			_, verifiedBranch := mockBrancher.FetchAndVerifyBranchArgsForCall(0)
-			Expect(verifiedBranch).To(Equal("dark-factory/existing-feature"))
-
-			// Switch called twice: once to existing branch, once back to master
-			Expect(mockBrancher.SwitchCallCount()).To(Equal(2))
-			_, switchedTo := mockBrancher.SwitchArgsForCall(0)
-			Expect(switchedTo).To(Equal("dark-factory/existing-feature"))
-			_, switchedBack := mockBrancher.SwitchArgsForCall(1)
-			Expect(switchedBack).To(Equal("master"))
-
-			// CreateAndSwitch NOT called
-			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
-
-			// Pushed with existing branch name
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-			_, pushedBranch := mockBrancher.PushArgsForCall(0)
-			Expect(pushedBranch).To(Equal("dark-factory/existing-feature"))
-
-			cancel()
-		})
-
-		It("should fail prompt when FetchAndVerifyBranch returns error", func() {
-			promptPath := filepath.Join(promptsDir, "001-bad-branch.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Bad branch\n\nContent."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-					Branch: "dark-factory/nonexistent-branch",
-				},
-			}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.FetchAndVerifyBranchReturns(
-				stderrors.New("branch not found: dark-factory/nonexistent-branch"),
-			)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Wait for Load to be called (marks prompt as failed)
-			Eventually(func() int {
-				return mockManager.LoadCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-			// Executor was NOT called — failed before execution
-			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
-			// CreateAndSwitch was NOT called
-			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
-
-			cancel()
-		})
-
-		It("should not overwrite pr-url when already set in frontmatter", func() {
-			promptPath := filepath.Join(promptsDir, "001-pr-existing-url.md")
-			completedPath := filepath.Join(promptsDir, "completed", "001-pr-existing-url.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			// Return different PromptFiles based on path
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-				if path == completedPath {
-					return &prompt.PromptFile{
-						Path: path,
-						Body: []byte("# Continue feature\n\nContent."),
-						Frontmatter: prompt.Frontmatter{
-							Status: string(prompt.CompletedPromptStatus),
-							PRURL:  "https://github.com/user/repo/pull/99",
-						},
-					}, nil
-				}
-				return &prompt.PromptFile{
-					Path: path,
-					Body: []byte("# Continue feature\n\nContent."),
-					Frontmatter: prompt.Frontmatter{
-						Status: string(prompt.ApprovedPromptStatus),
-					},
-				}, nil
-			}
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/456", nil)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// SetPRURL was NOT called — existing URL preserved
-			Expect(mockManager.SetPRURLCallCount()).To(Equal(0))
-
-			cancel()
-		})
-	})
-
 	Describe("Worktree Workflow", func() {
 		It("should add worktree, commit, push, create PR, and remove worktree", func() {
 			promptPath := filepath.Join(promptsDir, "001-worktree-test.md")
@@ -1563,7 +1121,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -1672,7 +1230,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -1756,7 +1314,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -1833,7 +1391,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -1917,7 +1475,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -1978,7 +1536,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
-				config.WorkflowWorktree,
+				config.WorkflowPR,
 				mockBrancher,
 				mockPRCreator,
 				mockWorktree,
@@ -2717,11 +2275,23 @@ DARK-FACTORY-REPORT -->
 
 	Describe("PR workflow error paths", func() {
 		It("should stop before push when CommitOnly fails", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-commit-error.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.LoadReturns(&prompt.PromptFile{
@@ -2735,8 +2305,6 @@ DARK-FACTORY-REPORT -->
 			mockManager.MoveToCompletedReturns(nil)
 			mockExecutor.ExecuteReturns(nil)
 			mockReleaser.CommitCompletedFileReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockReleaser.CommitOnlyReturns(stderrors.New("commit failed"))
 
 			p := processor.NewProcessor(
@@ -2780,11 +2348,23 @@ DARK-FACTORY-REPORT -->
 		})
 
 		It("should stop before PR creation when push fails", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-push-error.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 			mockManager.LoadReturns(&prompt.PromptFile{
@@ -2799,8 +2379,6 @@ DARK-FACTORY-REPORT -->
 			mockExecutor.ExecuteReturns(nil)
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockBrancher.PushReturns(stderrors.New("push failed"))
 
 			p := processor.NewProcessor(
@@ -2838,145 +2416,6 @@ DARK-FACTORY-REPORT -->
 
 			// PR creation must NOT be called
 			Expect(mockPRCreator.CreateCallCount()).To(Equal(0))
-
-			cancel()
-		})
-	})
-
-	Describe("savePRURLToFrontmatter", func() {
-		It("should continue when SetPRURL fails (non-fatal)", func() {
-			promptPath := filepath.Join(promptsDir, "001-setprurl-error.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# SetPRURL error test\n\nContent."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(stderrors.New("setprurl failed"))
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Should switch back to original branch despite SetPRURL failure
-			Eventually(func() int {
-				return mockBrancher.SwitchCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// PR was created successfully
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
-			// AmendCommit NOT called (early return from savePRURLToFrontmatter)
-			Expect(mockReleaser.AmendCommitCallCount()).To(Equal(0))
-
-			cancel()
-		})
-
-		It("should continue when AmendCommit fails (non-fatal)", func() {
-			promptPath := filepath.Join(promptsDir, "001-amend-error.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# AmendCommit error test\n\nContent."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(stderrors.New("amend failed"))
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.CurrentBranchReturns("master", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				filepath.Join(promptsDir, "log"),
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				false,
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Should switch back to original branch despite AmendCommit failure
-			Eventually(func() int {
-				return mockBrancher.SwitchCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// SetPRURL was called
-			Expect(mockManager.SetPRURLCallCount()).To(Equal(1))
-			// ForcePush NOT called (early return from savePRURLToFrontmatter)
-			Expect(mockBrancher.ForcePushCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -3231,84 +2670,6 @@ DARK-FACTORY-REPORT -->
 		cancel()
 	})
 
-	It("should log warning but not fail when switch-back fails after merge error", func() {
-		promptPath := filepath.Join(promptsDir, "001-switchback-fail.md")
-		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-		}
-
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.CurrentBranchReturns("main", nil)
-		mockBrancher.CreateAndSwitchReturns(nil)
-		mockBrancher.PushReturns(nil)
-		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-		mockManager.SetPRURLReturns(nil)
-		mockReleaser.AmendCommitReturns(nil)
-		mockBrancher.ForcePushReturns(nil)
-		// WaitAndMerge fails AND switch-back also fails
-		mockPRMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
-		mockBrancher.SwitchReturns(stderrors.New("switch failed"))
-
-		// Create log file with success report
-		logDir := filepath.Join(promptsDir, "log")
-		_ = os.MkdirAll(logDir, 0750)
-		logPath := filepath.Join(logDir, "001-switchback-fail.log")
-		_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
-{"status":"success","summary":"test","blockers":[]}
-DARK-FACTORY-REPORT -->`), 0600)
-
-		p := processor.NewProcessor(
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			logDir,
-			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
-			ready,
-			config.WorkflowPR,
-			mockBrancher,
-			mockPRCreator,
-			mockWorktree,
-			mockPRMerger,
-			true, // autoMerge enabled
-			false,
-			false,
-			mockAutoCompleter,
-			mockSpecLister,
-			"",
-			false,
-		)
-
-		go func() {
-			_ = p.Process(ctx)
-		}()
-
-		// WaitAndMerge is called
-		Eventually(func() int {
-			return mockPRMerger.WaitAndMergeCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-		// Switch is attempted (but fails — logged as warning, non-fatal)
-		Eventually(func() int {
-			return mockBrancher.SwitchCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-		// Prompt is still marked as failed (WaitAndMerge error propagated)
-		Eventually(func() int {
-			return mockManager.LoadCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-		cancel()
-	})
-
 	It("should return error when Process fails to reset failed prompts", func() {
 		mockManager.ResetFailedReturns(stderrors.New("reset failed"))
 
@@ -3425,132 +2786,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 		cancel()
 	})
 
-	It("should return error when CurrentBranch fails in PR workflow setup", func() {
-		promptPath := filepath.Join(promptsDir, "001-currentbranch-error.md")
-		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-		}
-
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockBrancher.CurrentBranchReturns("", stderrors.New("cannot get current branch"))
-
-		p := processor.NewProcessor(
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			filepath.Join(promptsDir, "log"),
-			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
-			ready,
-			config.WorkflowPR,
-			mockBrancher,
-			mockPRCreator,
-			mockWorktree,
-			mockPRMerger,
-			false,
-			false,
-			false,
-			mockAutoCompleter,
-			mockSpecLister,
-			"",
-			false,
-		)
-
-		go func() {
-			_ = p.Process(ctx)
-		}()
-
-		// CurrentBranch is called and fails → prompt marked as failed
-		Eventually(func() int {
-			return mockBrancher.CurrentBranchCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-		// Executor NOT called (failed before execution)
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
-
-		cancel()
-	})
-
-	It("should continue when ForcePush fails in savePRURLToFrontmatter (non-fatal)", func() {
-		promptPath := filepath.Join(promptsDir, "001-forcepush-error.md")
-		queued := []prompt.Prompt{
-			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-		}
-
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte("# ForcePush error test\n\nContent."),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.SetPRURLReturns(nil)
-		mockReleaser.AmendCommitReturns(nil)
-		mockBrancher.ForcePushReturns(stderrors.New("force push failed"))
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.CurrentBranchReturns("master", nil)
-		mockBrancher.CreateAndSwitchReturns(nil)
-		mockBrancher.PushReturns(nil)
-		mockBrancher.SwitchReturns(nil)
-		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-
-		p := processor.NewProcessor(
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			filepath.Join(promptsDir, "log"),
-			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
-			ready,
-			config.WorkflowPR,
-			mockBrancher,
-			mockPRCreator,
-			mockWorktree,
-			mockPRMerger,
-			false,
-			false,
-			false,
-			mockAutoCompleter,
-			mockSpecLister,
-			"",
-			false,
-		)
-
-		go func() {
-			_ = p.Process(ctx)
-		}()
-
-		// Should switch back despite ForcePush failure (non-fatal)
-		Eventually(func() int {
-			return mockBrancher.SwitchCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-		// ForcePush was called and failed
-		Expect(mockBrancher.ForcePushCallCount()).To(Equal(1))
-		// AmendCommit was called before ForcePush
-		Expect(mockReleaser.AmendCommitCallCount()).To(Equal(1))
-
-		cancel()
-	})
-
 	It("should return error when Switch to default branch fails in postMergeActions", func() {
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			_ = os.Chdir(originalDir)
+		})
+
 		promptPath := filepath.Join(promptsDir, "001-switch-default-fail.md")
 		queued := []prompt.Prompt{
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
+		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+			return os.MkdirAll(path, 0750)
+		}
+		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			return os.RemoveAll(path)
+		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -3558,13 +2811,9 @@ DARK-FACTORY-REPORT -->`), 0600)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.CurrentBranchReturns("main", nil)
-		mockBrancher.CreateAndSwitchReturns(nil)
 		mockBrancher.PushReturns(nil)
 		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
 		mockManager.SetPRURLReturns(nil)
-		mockReleaser.AmendCommitReturns(nil)
-		mockBrancher.ForcePushReturns(nil)
 		mockPRMerger.WaitAndMergeReturns(nil)
 		mockBrancher.DefaultBranchReturns("main", nil)
 		// Switch fails after DefaultBranch succeeds
@@ -3620,11 +2869,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 	})
 
 	It("should return error when Pull fails in postMergeActions", func() {
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			_ = os.Chdir(originalDir)
+		})
+
 		promptPath := filepath.Join(promptsDir, "001-pull-fail.md")
 		queued := []prompt.Prompt{
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
+		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+			return os.MkdirAll(path, 0750)
+		}
+		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			return os.RemoveAll(path)
+		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -3632,13 +2893,9 @@ DARK-FACTORY-REPORT -->`), 0600)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.CurrentBranchReturns("main", nil)
-		mockBrancher.CreateAndSwitchReturns(nil)
 		mockBrancher.PushReturns(nil)
 		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
 		mockManager.SetPRURLReturns(nil)
-		mockReleaser.AmendCommitReturns(nil)
-		mockBrancher.ForcePushReturns(nil)
 		mockPRMerger.WaitAndMergeReturns(nil)
 		mockBrancher.DefaultBranchReturns("main", nil)
 		mockBrancher.SwitchReturns(nil)
@@ -3751,11 +3008,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 	})
 
 	It("should return error when DefaultBranch fails after successful merge", func() {
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			_ = os.Chdir(originalDir)
+		})
+
 		promptPath := filepath.Join(promptsDir, "001-defaultbranch-fail.md")
 		queued := []prompt.Prompt{
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
+		mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+			return os.MkdirAll(path, 0750)
+		}
+		mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+			return os.RemoveAll(path)
+		}
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -3763,13 +3032,9 @@ DARK-FACTORY-REPORT -->`), 0600)
 		mockExecutor.ExecuteReturns(nil)
 		mockReleaser.CommitCompletedFileReturns(nil)
 		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.CurrentBranchReturns("main", nil)
-		mockBrancher.CreateAndSwitchReturns(nil)
 		mockBrancher.PushReturns(nil)
 		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
 		mockManager.SetPRURLReturns(nil)
-		mockReleaser.AmendCommitReturns(nil)
-		mockBrancher.ForcePushReturns(nil)
 		mockPRMerger.WaitAndMergeReturns(nil)
 		// DefaultBranch fails after successful merge
 		mockBrancher.DefaultBranchReturns("", stderrors.New("cannot determine default branch"))
@@ -3830,12 +3095,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 	Context("Auto-merge", func() {
 		It("should not call WaitAndMerge when autoMerge is false (PR workflow)", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-no-automerge.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -3844,15 +3121,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser.CommitOnlyReturns(nil)
 			mockBrancher.FetchReturns(nil)
 			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.CurrentBranchReturns("main", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
 			mockManager.MoveToCompletedReturns(nil)
 			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(nil)
-			mockBrancher.ForcePushReturns(nil)
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")
@@ -3900,12 +3172,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				return mockPRMerger.WaitAndMergeCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
-			// Should switch back to original branch
+			// Worktree should be removed after PR creation
 			Eventually(func() int {
-				return mockBrancher.SwitchCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-			_, branch := mockBrancher.SwitchArgsForCall(0)
-			Expect(branch).To(Equal("main"))
+				return mockWorktree.RemoveCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
 		})
@@ -3913,12 +3183,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 		It(
 			"should call WaitAndMerge when autoMerge is true and merge succeeds (PR workflow)",
 			func() {
+				originalDir, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() {
+					_ = os.Chdir(originalDir)
+				})
+
 				promptPath := filepath.Join(promptsDir, "001-automerge.md")
 				// completedPath not needed
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
+				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+					return os.MkdirAll(path, 0750)
+				}
+				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+					return os.RemoveAll(path)
+				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				mockManager.AllPreviousCompletedReturns(true)
@@ -3927,18 +3209,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser.CommitOnlyReturns(nil)
 				mockBrancher.FetchReturns(nil)
 				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.CurrentBranchReturns("main", nil)
-				mockBrancher.CreateAndSwitchReturns(nil)
 				mockBrancher.PushReturns(nil)
-				mockBrancher.SwitchReturns(nil)
 				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.SwitchReturns(nil)
 				mockBrancher.PullReturns(nil)
 				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
 				mockPRMerger.WaitAndMergeReturns(nil)
 				mockManager.MoveToCompletedReturns(nil)
 				mockManager.SetPRURLReturns(nil)
-				mockReleaser.AmendCommitReturns(nil)
-				mockBrancher.ForcePushReturns(nil)
 				mockReleaser.HasChangelogReturns(false)
 
 				// Create log file with success report
@@ -4001,95 +3279,25 @@ DARK-FACTORY-REPORT -->`), 0600)
 			},
 		)
 
-		It("should switch back to original branch when WaitAndMerge fails (PR workflow)", func() {
-			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
-			// completedPath not needed
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.CurrentBranchReturns("main", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-			mockPRMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(nil)
-			mockBrancher.ForcePushReturns(nil)
-
-			// Create log file with success report
-			logDir := filepath.Join(promptsDir, "log")
-			_ = os.MkdirAll(logDir, 0750)
-			logPath := filepath.Join(logDir, "001-merge-fail.log")
-			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
-{"status":"success","summary":"Auto-merge test","blockers":[]}
-DARK-FACTORY-REPORT -->`), 0600)
-
-			p := processor.NewProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				logDir,
-				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
-				ready,
-				config.WorkflowPR,
-				mockBrancher,
-				mockPRCreator,
-				mockWorktree,
-				mockPRMerger,
-				true, // autoMerge enabled
-				false,
-				false,
-				mockAutoCompleter,
-				mockSpecLister,
-				"",
-				false,
-			)
-
-			go func() {
-				_ = p.Process(ctx)
-			}()
-
-			// Wait for WaitAndMerge to be called
-			Eventually(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-			// Should switch back to original branch on error
-			Eventually(func() int {
-				return mockBrancher.SwitchCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-			_, branch := mockBrancher.SwitchArgsForCall(0)
-			Expect(branch).To(Equal("main"))
-
-			// Load should be called to mark as failed
-			Eventually(func() int {
-				return mockManager.LoadCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-			cancel()
-		})
-
 		It("should call CommitAndRelease when autoRelease is true and changelog exists", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-autorelease.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -4098,18 +3306,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser.CommitOnlyReturns(nil)
 			mockBrancher.FetchReturns(nil)
 			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.CurrentBranchReturns("main", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
 			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.SwitchReturns(nil)
 			mockBrancher.PullReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
 			mockPRMerger.WaitAndMergeReturns(nil)
 			mockManager.MoveToCompletedReturns(nil)
 			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(nil)
-			mockBrancher.ForcePushReturns(nil)
 			mockReleaser.HasChangelogReturns(true)
 			mockReleaser.GetNextVersionReturns("v0.0.2", nil)
 			mockReleaser.CommitAndReleaseReturns(nil)
@@ -4161,12 +3365,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 		It(
 			"should not call CommitAndRelease when autoRelease is true but no changelog exists",
 			func() {
+				originalDir, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() {
+					_ = os.Chdir(originalDir)
+				})
+
 				promptPath := filepath.Join(promptsDir, "001-no-changelog.md")
 				// completedPath not needed
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
+				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+					return os.MkdirAll(path, 0750)
+				}
+				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+					return os.RemoveAll(path)
+				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				mockManager.AllPreviousCompletedReturns(true)
@@ -4175,18 +3391,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser.CommitOnlyReturns(nil)
 				mockBrancher.FetchReturns(nil)
 				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.CurrentBranchReturns("main", nil)
-				mockBrancher.CreateAndSwitchReturns(nil)
 				mockBrancher.PushReturns(nil)
-				mockBrancher.SwitchReturns(nil)
 				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.SwitchReturns(nil)
 				mockBrancher.PullReturns(nil)
 				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
 				mockPRMerger.WaitAndMergeReturns(nil)
 				mockManager.MoveToCompletedReturns(nil)
 				mockManager.SetPRURLReturns(nil)
-				mockReleaser.AmendCommitReturns(nil)
-				mockBrancher.ForcePushReturns(nil)
 				mockReleaser.HasChangelogReturns(false) // No changelog
 
 				// Create log file with success report
@@ -4240,12 +3452,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 		)
 
 		It("should not call CommitAndRelease when autoRelease is false", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-no-autorelease.md")
 			// completedPath not needed
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -4254,18 +3478,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser.CommitOnlyReturns(nil)
 			mockBrancher.FetchReturns(nil)
 			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.CurrentBranchReturns("main", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
 			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.SwitchReturns(nil)
 			mockBrancher.PullReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
 			mockPRMerger.WaitAndMergeReturns(nil)
 			mockManager.MoveToCompletedReturns(nil)
 			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(nil)
-			mockBrancher.ForcePushReturns(nil)
 			mockReleaser.HasChangelogReturns(true) // Changelog exists but autoRelease is false
 
 			// Create log file with success report
@@ -4322,11 +3542,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 		It(
 			"should set status to in_review and NOT move to completed when autoReview=true (PR workflow)",
 			func() {
+				originalDir, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() {
+					_ = os.Chdir(originalDir)
+				})
+
 				promptPath := filepath.Join(promptsDir, "001-auto-review.md")
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
+				mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+					return os.MkdirAll(path, 0750)
+				}
+				mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+					return os.RemoveAll(path)
+				}
 				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				mockManager.AllPreviousCompletedReturns(true)
@@ -4334,15 +3566,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser.CommitOnlyReturns(nil)
 				mockBrancher.FetchReturns(nil)
 				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.CurrentBranchReturns("main", nil)
-				mockBrancher.CreateAndSwitchReturns(nil)
 				mockBrancher.PushReturns(nil)
-				mockBrancher.SwitchReturns(nil)
 				mockPRCreator.CreateReturns("https://github.com/test/test/pull/42", nil)
 				mockManager.SetStatusReturns(nil)
 				mockManager.SetPRURLReturns(nil)
-				mockReleaser.AmendCommitReturns(nil)
-				mockBrancher.ForcePushReturns(nil)
 
 				// Create log file with success report
 				logDir := filepath.Join(promptsDir, "log")
@@ -4411,11 +3638,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 		)
 
 		It("should move to completed normally when autoReview=false (PR workflow)", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
 			promptPath := filepath.Join(promptsDir, "001-no-auto-review.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
+			mockWorktree.AddStub = func(_ context.Context, path string, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			mockWorktree.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
@@ -4424,15 +3663,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser.CommitOnlyReturns(nil)
 			mockBrancher.FetchReturns(nil)
 			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.CurrentBranchReturns("main", nil)
-			mockBrancher.CreateAndSwitchReturns(nil)
 			mockBrancher.PushReturns(nil)
-			mockBrancher.SwitchReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
 			mockManager.MoveToCompletedReturns(nil)
 			mockManager.SetPRURLReturns(nil)
-			mockReleaser.AmendCommitReturns(nil)
-			mockBrancher.ForcePushReturns(nil)
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")

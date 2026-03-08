@@ -9,18 +9,6 @@ import (
 )
 
 type Releaser struct {
-	AmendCommitStub        func(context.Context, string) error
-	amendCommitMutex       sync.RWMutex
-	amendCommitArgsForCall []struct {
-		arg1 context.Context
-		arg2 string
-	}
-	amendCommitReturns struct {
-		result1 error
-	}
-	amendCommitReturnsOnCall map[int]struct {
-		result1 error
-	}
 	CommitAndReleaseStub        func(context.Context, git.VersionBump) error
 	commitAndReleaseMutex       sync.RWMutex
 	commitAndReleaseArgsForCall []struct {
@@ -97,68 +85,6 @@ type Releaser struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *Releaser) AmendCommit(arg1 context.Context, arg2 string) error {
-	fake.amendCommitMutex.Lock()
-	ret, specificReturn := fake.amendCommitReturnsOnCall[len(fake.amendCommitArgsForCall)]
-	fake.amendCommitArgsForCall = append(fake.amendCommitArgsForCall, struct {
-		arg1 context.Context
-		arg2 string
-	}{arg1, arg2})
-	stub := fake.AmendCommitStub
-	fakeReturns := fake.amendCommitReturns
-	fake.recordInvocation("AmendCommit", []interface{}{arg1, arg2})
-	fake.amendCommitMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *Releaser) AmendCommitCallCount() int {
-	fake.amendCommitMutex.RLock()
-	defer fake.amendCommitMutex.RUnlock()
-	return len(fake.amendCommitArgsForCall)
-}
-
-func (fake *Releaser) AmendCommitCalls(stub func(context.Context, string) error) {
-	fake.amendCommitMutex.Lock()
-	defer fake.amendCommitMutex.Unlock()
-	fake.AmendCommitStub = stub
-}
-
-func (fake *Releaser) AmendCommitArgsForCall(i int) (context.Context, string) {
-	fake.amendCommitMutex.RLock()
-	defer fake.amendCommitMutex.RUnlock()
-	argsForCall := fake.amendCommitArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *Releaser) AmendCommitReturns(result1 error) {
-	fake.amendCommitMutex.Lock()
-	defer fake.amendCommitMutex.Unlock()
-	fake.AmendCommitStub = nil
-	fake.amendCommitReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Releaser) AmendCommitReturnsOnCall(i int, result1 error) {
-	fake.amendCommitMutex.Lock()
-	defer fake.amendCommitMutex.Unlock()
-	fake.AmendCommitStub = nil
-	if fake.amendCommitReturnsOnCall == nil {
-		fake.amendCommitReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.amendCommitReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *Releaser) CommitAndRelease(arg1 context.Context, arg2 git.VersionBump) error {

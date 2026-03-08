@@ -3,8 +3,14 @@ status: created
 created: "2026-03-08T21:06:35Z"
 ---
 
+<summary>
+- PR titles starting with a dash are rejected before reaching `gh pr create`, preventing argument injection
+- Docker NET_ADMIN/NET_RAW capabilities are off by default, opt-in via `netAdmin` config field
+- Filesystem watcher errors are logged and recovered instead of causing fatal shutdown
+</summary>
+
 <objective>
-Fix three security issues: validate PR titles don't start with `-` (argument injection), make Docker NET_ADMIN/NET_RAW capabilities configurable, and make fsnotify error handling resilient (log+continue instead of fatal return).
+Harden three security-sensitive areas: CLI argument injection via PR titles, Docker capability escalation defaults, and filesystem watcher resilience.
 </objective>
 
 <context>
@@ -43,31 +49,43 @@ Read `/home/node/.claude/docs/go-patterns.md`.
    }
    ```
 
-4. In `pkg/factory/factory.go`, pass `cfg.NetAdmin` to the executor constructor.
+4. In `pkg/factory/factory.go`, pass `cfg.NetAdmin` to the executor constructor in both call sites:
+   - `CreateProcessor` at line ~192 (`NewDockerExecutor` for prompt execution)
+   - `CreateSpecGenerator` at line ~136 (`NewDockerExecutor` for spec generation)
 
-5. In `pkg/watcher/watcher.go`, change the error handling in the Watch loop (lines ~85-91):
+5. In `pkg/watcher/watcher.go`, change the error handling in the Watch loop (lines ~85-90):
    ```go
    // Before:
    case err, ok := <-fsWatcher.Errors:
        if !ok {
-           return nil
+           return errors.Errorf(ctx, "watcher error channel closed")
        }
+       slog.Info("watcher error", "error", err)
        return errors.Wrap(ctx, err, "watcher error")
 
    // After:
    case err, ok := <-fsWatcher.Errors:
        if !ok {
-           return nil
+           return errors.Errorf(ctx, "watcher error channel closed")
        }
        slog.Warn("watcher error", "error", err)
        continue
    ```
 
-6. In `pkg/specwatcher/watcher.go`, apply the same change (lines ~79-85):
+6. In `pkg/specwatcher/watcher.go`, apply the same change (lines ~79-84):
    ```go
+   // Before:
    case err, ok := <-fsWatcher.Errors:
        if !ok {
-           return nil
+           return errors.Errorf(ctx, "watcher error channel closed")
+       }
+       slog.Info("spec watcher error", "error", err)
+       return errors.Wrap(ctx, err, "watcher error")
+
+   // After:
+   case err, ok := <-fsWatcher.Errors:
+       if !ok {
+           return errors.Errorf(ctx, "watcher error channel closed")
        }
        slog.Warn("spec watcher error", "error", err)
        continue

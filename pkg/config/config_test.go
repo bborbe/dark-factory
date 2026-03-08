@@ -88,7 +88,7 @@ var _ = Describe("Config", func() {
 
 		It("fails for worktree workflow with migration error", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowWorktree,
+				Workflow: config.Workflow("worktree"),
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -390,7 +390,7 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoMerge true with workflow worktree", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowWorktree,
+				Workflow: config.Workflow("worktree"),
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -575,7 +575,7 @@ var _ = Describe("Config", func() {
 			})
 
 			It("returns removed error for worktree workflow", func() {
-				err := config.WorkflowWorktree.Validate(ctx)
+				err := config.Workflow("worktree").Validate(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("removed"))
 			})
@@ -591,7 +591,7 @@ var _ = Describe("Config", func() {
 			It("returns string representation", func() {
 				Expect(config.WorkflowDirect.String()).To(Equal("direct"))
 				Expect(config.WorkflowPR.String()).To(Equal("pr"))
-				Expect(config.WorkflowWorktree.String()).To(Equal("worktree"))
+				Expect(config.Workflow("worktree").String()).To(Equal("worktree"))
 			})
 		})
 
@@ -609,7 +609,9 @@ var _ = Describe("Config", func() {
 			It("returns true for valid workflow", func() {
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowDirect)).To(BeTrue())
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowPR)).To(BeTrue())
-				Expect(config.AvailableWorkflows.Contains(config.WorkflowWorktree)).To(BeFalse())
+				Expect(
+					config.AvailableWorkflows.Contains(config.Workflow("worktree")),
+				).To(BeFalse())
 			})
 
 			It("returns false for invalid workflow", func() {

@@ -3,8 +3,14 @@ status: created
 created: "2026-03-08T21:06:35Z"
 ---
 
+<summary>
+- Standardise test suite setup so timezone and diff output behave consistently across all packages
+- Extract missing suite file for report package
+- Rename mock-prefixed test variables to match project convention (no prefix)
+</summary>
+
 <objective>
-Fix test infrastructure issues: extract missing `report_suite_test.go`, add `time.Local = time.UTC` and `format.TruncatedDiff = false` to 3 test suites, rename mock-prefixed variables in 2 test files.
+Ensure all test suites have consistent setup (`time.Local`, `format.TruncatedDiff`) and test variable naming follows project conventions (no `mock` prefix).
 </objective>
 
 <context>
@@ -42,7 +48,7 @@ Read `/home/node/.claude/docs/go-testing.md`.
    ```
    Then remove `TestReport()` and its imports from `pkg/report/report_test.go`.
 
-2. In `pkg/review/review_suite_test.go`, add `time.Local = time.UTC` before `RegisterFailHandler`. Add `"time"` import.
+2. In `pkg/review/review_suite_test.go`, add `time.Local = time.UTC` before `RegisterFailHandler`. Preserve the existing `format.TruncatedDiff = false` line. Add `"time"` import.
 
 3. In `pkg/project/project_suite_test.go`, add both:
    ```go

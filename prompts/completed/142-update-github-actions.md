@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Updated actions/checkout from v4 to v6 in all three GitHub Actions workflow files (ci.yml, claude-code-review.yml, claude.yml)
+container: dark-factory-142-update-github-actions
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:06:35Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:18:49Z"
+completed: "2026-03-08T23:24:03Z"
 ---
 
 <summary>

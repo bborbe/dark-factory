@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.12
+
+- refactor: Extract fetchCollaborators from factory into CollaboratorFetcher type in pkg/git
+
 ## v0.30.11
 
 - fix: Reject PR titles starting with a dash to prevent CLI argument injection in gh pr create

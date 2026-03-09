@@ -5,12 +5,9 @@
 package factory
 
 import (
+	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	libhttp "github.com/bborbe/http"
@@ -226,10 +223,8 @@ func CreateProcessor(
 func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
 	ghToken := cfg.ResolvedGitHubToken()
 
-	allowedReviewers := cfg.AllowedReviewers
-	if len(allowedReviewers) == 0 && cfg.UseCollaborators {
-		allowedReviewers = fetchCollaborators(ghToken)
-	}
+	fetcher := git.NewCollaboratorFetcher(ghToken, cfg.UseCollaborators, cfg.AllowedReviewers)
+	allowedReviewers := fetcher.Fetch(context.Background())
 
 	return review.NewReviewPoller(
 		cfg.Prompts.InProgressDir,
@@ -242,55 +237,6 @@ func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.
 		promptManager,
 		review.NewFixPromptGenerator(),
 	)
-}
-
-// fetchCollaborators retrieves repository collaborator logins via the gh CLI.
-// Returns nil on any error (non-fatal — caller falls back to no allowed reviewers).
-func fetchCollaborators(ghToken string) []string {
-	// Get the repo name with owner
-	nameCmd := exec.Command(
-		"gh",
-		"repo",
-		"view",
-		"--json",
-		"nameWithOwner",
-		"--jq",
-		".nameWithOwner",
-	) // #nosec G204 -- fixed args, no user input
-	if ghToken != "" {
-		nameCmd.Env = append(os.Environ(), "GH_TOKEN="+ghToken)
-	}
-	nameOut, err := nameCmd.Output()
-	if err != nil {
-		slog.Warn("failed to get repo name for collaborators", "error", err)
-		return nil
-	}
-	repoName := strings.TrimSpace(string(nameOut))
-
-	// Fetch collaborator logins
-	collabCmd := exec.Command(
-		"gh",
-		"api",
-		"repos/"+repoName+"/collaborators",
-		"--jq",
-		".[].login",
-	) // #nosec G204 -- repoName from gh CLI, not user input
-	if ghToken != "" {
-		collabCmd.Env = append(os.Environ(), "GH_TOKEN="+ghToken)
-	}
-	collabOut, err := collabCmd.Output()
-	if err != nil {
-		slog.Warn("failed to fetch collaborators", "error", err)
-		return nil
-	}
-
-	var result []string
-	for _, line := range strings.Split(strings.TrimSpace(string(collabOut)), "\n") {
-		if line = strings.TrimSpace(line); line != "" {
-			result = append(result, line)
-		}
-	}
-	return result
 }
 
 // CreateLocker creates a Locker for the specified directory.

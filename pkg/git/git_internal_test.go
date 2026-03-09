@@ -123,6 +123,98 @@ var _ = Describe("Internal git helpers", func() {
 		})
 	})
 
+	Describe("CommitAndRelease", func() {
+		It("returns error outside a git repo", func() {
+			ctx := context.Background()
+			tmpDir, err := os.MkdirTemp("", "commitandrelease-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Chdir(origDir) }()
+
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = CommitAndRelease(ctx, PatchBump)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("gitCommit", func() {
+		It("returns error outside a git repo", func() {
+			ctx := context.Background()
+			tmpDir, err := os.MkdirTemp("", "gitcommit-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Chdir(origDir) }()
+
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = gitCommit(ctx, "test commit")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("CommitCompletedFile", func() {
+		It("returns error outside a git repo", func() {
+			ctx := context.Background()
+			tmpDir, err := os.MkdirTemp("", "commitcompleted-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Chdir(origDir) }()
+
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = CommitCompletedFile(ctx, filepath.Join(tmpDir, "somefile.md"))
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("gitAddAll", func() {
+		It("returns error outside a git repo", func() {
+			ctx := context.Background()
+			tmpDir, err := os.MkdirTemp("", "gitaddall-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Chdir(origDir) }()
+
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = gitAddAll(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("gitTag", func() {
+		It("returns error for invalid tag format", func() {
+			ctx := context.Background()
+			err := gitTag(ctx, "not-a-semver")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("gitPushTag", func() {
+		It("returns error for invalid tag format", func() {
+			ctx := context.Background()
+			err := gitPushTag(ctx, "not-a-semver")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("MoveFile", func() {
 		var (
 			ctx     context.Context

@@ -67,6 +67,8 @@ func run() error {
 	case "list":
 		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
 	case "run":
+		return factory.CreateOneShotRunner(cfg, version.Version).Run(ctx)
+	case "daemon":
 		return factory.CreateRunner(cfg, version.Version).Run(ctx)
 	default:
 		return errors.Errorf(ctx, "unknown command: %s", command)
@@ -124,8 +126,9 @@ func runSpecCommand(
 func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory [options] [command [subcommand]]\n\nCommands:\n"+
-			"  run                    Watch for queued prompts and execute them (default)\n"+
+		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
+			"  run                    Process all queued prompts and exit\n"+
+			"  daemon                 Watch for queued prompts and execute them (long-running)\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n\n"+
 			"  prompt list            List prompts with their status\n"+
@@ -148,10 +151,10 @@ func printHelp() {
 // ParseArgs parses command line arguments (without program name) and returns
 // (debug, command, subcommand, args).
 // The -debug flag can appear anywhere and is extracted before parsing.
-// No args → command="run"
+// No args → command="unknown" (an explicit subcommand is required)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
-// Top-level: "status", "list", "run" → command=<cmd>, subcommand=""
+// Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
 func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 	debug := false
 	filtered := make([]string, 0, len(rawArgs))
@@ -164,7 +167,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 	}
 
 	if len(filtered) == 0 {
-		return debug, "run", "", []string{}
+		return debug, "unknown", "", []string{}
 	}
 
 	command := filtered[0]
@@ -175,7 +178,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 		return debug, "help", "", []string{}
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}
-	case "run", "status", "list":
+	case "run", "daemon", "status", "list":
 		return debug, command, "", rest
 	case "prompt", "spec":
 		if len(rest) == 0 {

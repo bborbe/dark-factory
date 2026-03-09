@@ -127,6 +127,55 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	)
 }
 
+// CreateOneShotRunner creates an OneShotRunner that drains the queue and exits.
+func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
+	inboxDir := cfg.Prompts.InboxDir
+	inProgressDir := cfg.Prompts.InProgressDir
+	completedDir := cfg.Prompts.CompletedDir
+	promptManager, releaser := createPromptManager(inboxDir, inProgressDir, completedDir)
+	versionGetter := version.NewGetter(ver)
+	projectName := project.Name(cfg.ProjectName)
+	ghToken := cfg.ResolvedGitHubToken()
+
+	// One-shot mode uses a nil ready channel — ProcessQueue never reads from it.
+	ready := make(chan struct{}, 10)
+
+	return runner.NewOneShotRunner(
+		inboxDir,
+		inProgressDir,
+		completedDir,
+		cfg.Prompts.LogDir,
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		cfg.Specs.LogDir,
+		promptManager,
+		CreateLocker("."),
+		CreateProcessor(
+			inProgressDir,
+			completedDir,
+			cfg.Prompts.LogDir,
+			projectName,
+			promptManager,
+			releaser,
+			versionGetter,
+			ready,
+			cfg.ContainerImage,
+			cfg.Model,
+			cfg.Workflow,
+			ghToken,
+			cfg.AutoMerge,
+			cfg.AutoRelease,
+			cfg.AutoReview,
+			cfg.ValidationCommand,
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+			cfg.VerificationGate,
+		),
+	)
+}
+
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
 func CreateSpecGenerator(cfg config.Config, containerImage string) generator.SpecGenerator {
 	return generator.NewSpecGenerator(

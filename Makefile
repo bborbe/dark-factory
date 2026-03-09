@@ -89,4 +89,8 @@ install:
 
 .PHONY: run
 run:
-	go run -ldflags "$(LDFLAGS)" main.go
+	go run -ldflags "$(LDFLAGS)" main.go run
+
+.PHONY: daemon
+daemon:
+	go run -ldflags "$(LDFLAGS)" main.go daemon

@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.31.0
+
+- feat: split `dark-factory run` into one-shot mode (drain queue and exit) and `dark-factory daemon` (long-running watcher, previous behavior)
+- feat: `run` exits cleanly after processing all queued prompts — suitable for CI and scripted scenarios
+- feat: `daemon` preserves all existing long-running watcher behavior
+- fix: bare `dark-factory` with no subcommand now returns an error instead of defaulting to `run`
+
 ## v0.30.17
 
 - fix: `getNextVersion` falls back to parsing CHANGELOG.md for the latest version when no git tags exist, so repos with changelog history but no tags get correct version increments

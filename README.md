@@ -84,8 +84,8 @@ EOF
 # 3. Move to in-progress for execution
 mv prompts/my-feature.md prompts/in-progress/
 
-# 4. Start dark-factory
-dark-factory
+# 4. Start dark-factory (long-running, watches for new prompts)
+dark-factory daemon
 
 # 5. Watch it work — watcher renames to 001-my-feature.md, processor executes
 # When done, prompt moves to prompts/completed/001-my-feature.md
@@ -204,8 +204,8 @@ Frontmatter is managed by dark-factory (you don't need to add it):
 ## Commands
 
 ```bash
-dark-factory              # run (default) — watch and process prompts
-dark-factory run          # same as above
+dark-factory run          # process all queued prompts and exit (one-shot)
+dark-factory daemon       # watch for prompts and process continuously (long-running)
 dark-factory status       # show queue, running prompt, completed count
 dark-factory status -json # JSON output
 ```

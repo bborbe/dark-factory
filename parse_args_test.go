@@ -40,10 +40,16 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 
 func TestParseArgsDefaults(t *testing.T) {
 	t.Parallel()
-	assertParseArgs(t, []string{}, parseArgsResult{false, "run", "", []string{}})
 	assertParseArgs(t, []string{"run"}, parseArgsResult{false, "run", "", []string{}})
+	assertParseArgs(t, []string{"daemon"}, parseArgsResult{false, "daemon", "", []string{}})
 	assertParseArgs(t, []string{"status"}, parseArgsResult{false, "status", "", []string{}})
 	assertParseArgs(t, []string{"list"}, parseArgsResult{false, "list", "", []string{}})
+}
+
+func TestParseArgsNoArgs(t *testing.T) {
+	t.Parallel()
+	// No args must return "unknown" — an explicit subcommand is required
+	assertParseArgs(t, []string{}, parseArgsResult{false, "unknown", "", []string{}})
 }
 
 func TestParseArgsPrompt(t *testing.T) {

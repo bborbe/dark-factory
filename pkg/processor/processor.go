@@ -32,6 +32,7 @@ var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 // Processor processes queued prompts.
 type Processor interface {
 	Process(ctx context.Context) error
+	ProcessQueue(ctx context.Context) error
 }
 
 // processor implements Processor.
@@ -155,6 +156,29 @@ func (p *processor) Process(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+// ProcessQueue runs the startup sequence and drains all queued prompts, then returns.
+// Unlike Process, it does not enter the event loop — suitable for one-shot / CI usage.
+func (p *processor) ProcessQueue(ctx context.Context) error {
+	slog.Info("processor started (one-shot)")
+
+	// Reset failed prompts to queued on startup
+	if err := p.promptManager.ResetFailed(ctx); err != nil {
+		return errors.Wrap(ctx, err, "reset failed prompts")
+	}
+
+	// Transition prompted specs with all prompts completed to verifying
+	if err := p.checkPromptedSpecs(ctx); err != nil {
+		return errors.Wrap(ctx, err, "check prompted specs on startup")
+	}
+
+	// Process all existing queued prompts and return
+	if err := p.processExistingQueued(ctx); err != nil {
+		return errors.Wrap(ctx, err, "process existing queued prompts")
+	}
+
+	return nil
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.

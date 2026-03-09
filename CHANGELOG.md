@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.13
+
+- test: Standardise test suite setup with time.Local and format.TruncatedDiff across report, review, project, and spec packages
+- test: Extract TestReport entry point into dedicated report_suite_test.go
+- test: Rename mock-prefixed test variables to follow project convention in poller_test.go and status_test.go
+
 ## v0.30.12
 
 - refactor: Extract fetchCollaborators from factory into CollaboratorFetcher type in pkg/git

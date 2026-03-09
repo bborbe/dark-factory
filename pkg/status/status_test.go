@@ -27,7 +27,7 @@ var _ = Describe("StatusChecker", func() {
 		completedDir  string
 		ideasDir      string
 		lockFilePath  string
-		mockPromptMgr *mocks.Manager
+		promptMgr     *mocks.Manager
 		statusChecker status.Checker
 	)
 
@@ -50,7 +50,7 @@ var _ = Describe("StatusChecker", func() {
 		err = os.MkdirAll(ideasDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		mockPromptMgr = &mocks.Manager{}
+		promptMgr = &mocks.Manager{}
 		statusChecker = status.NewChecker(
 			queueDir,
 			completedDir,
@@ -58,7 +58,7 @@ var _ = Describe("StatusChecker", func() {
 			"prompts/log",
 			lockFilePath,
 			8080,
-			mockPromptMgr,
+			promptMgr,
 		)
 	})
 
@@ -70,8 +70,8 @@ var _ = Describe("StatusChecker", func() {
 
 	Describe("GetStatus", func() {
 		It("returns status with no executing prompt", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -83,8 +83,8 @@ var _ = Describe("StatusChecker", func() {
 		})
 
 		It("returns status with queued prompts", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{
 				{Path: filepath.Join(queueDir, "001-test.md"), Status: prompt.ApprovedPromptStatus},
 				{
 					Path:   filepath.Join(queueDir, "002-another.md"),
@@ -99,8 +99,8 @@ var _ = Describe("StatusChecker", func() {
 		})
 
 		It("counts completed prompts", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Create completed prompt files
 			err := os.WriteFile(filepath.Join(completedDir, "001-done.md"), []byte("done"), 0600)
@@ -118,8 +118,8 @@ var _ = Describe("StatusChecker", func() {
 		})
 
 		It("counts ideas", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Create idea files
 			err := os.WriteFile(filepath.Join(ideasDir, "idea1.md"), []byte("idea"), 0600)
@@ -137,8 +137,8 @@ var _ = Describe("StatusChecker", func() {
 			err := os.RemoveAll(ideasDir)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -157,13 +157,13 @@ container: dark-factory-003-executing
 			err := os.WriteFile(execPath, []byte(execContent), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(true)
-			mockPromptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
+			promptMgr.HasExecutingReturns(true)
+			promptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
 				Status:    "executing",
 				Container: "dark-factory-003-executing",
 				Started:   time.Now().Add(-5 * time.Minute).UTC().Format(time.RFC3339),
 			}, nil)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -183,12 +183,12 @@ status: executing
 			err := os.WriteFile(execPath, []byte(execContent), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(true)
-			mockPromptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
+			promptMgr.HasExecutingReturns(true)
+			promptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
 				Status:    "executing",
 				Container: "",
 			}, nil)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -200,8 +200,8 @@ status: executing
 
 	Describe("Daemon detection", func() {
 		It("shows not running when lock file is missing", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -214,8 +214,8 @@ status: executing
 			err := os.WriteFile(lockFilePath, []byte("99999999\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -228,8 +228,8 @@ status: executing
 			err := os.WriteFile(lockFilePath, []byte(fmt.Sprintf("%d\n", pid)), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -241,8 +241,8 @@ status: executing
 			err := os.WriteFile(lockFilePath, []byte(""), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -253,8 +253,8 @@ status: executing
 			err := os.WriteFile(lockFilePath, []byte("not-a-pid\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -267,13 +267,13 @@ status: executing
 			queuedPath1 := filepath.Join(queueDir, "001-test.md")
 			queuedPath2 := filepath.Join(queueDir, "002-another.md")
 
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{
+			promptMgr.ListQueuedReturns([]prompt.Prompt{
 				{Path: queuedPath1, Status: prompt.ApprovedPromptStatus},
 				{Path: queuedPath2, Status: prompt.ApprovedPromptStatus},
 			}, nil)
 
-			mockPromptMgr.TitleReturnsOnCall(0, "Test Prompt", nil)
-			mockPromptMgr.TitleReturnsOnCall(1, "Another Prompt", nil)
+			promptMgr.TitleReturnsOnCall(0, "Test Prompt", nil)
+			promptMgr.TitleReturnsOnCall(1, "Another Prompt", nil)
 
 			// Create files to get size
 			err := os.WriteFile(queuedPath1, []byte("test content"), 0600)
@@ -292,8 +292,8 @@ status: executing
 
 	Describe("GetStatus with log files", func() {
 		It("includes latest log file information", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Create log directory and files
 			logDir := filepath.Join(tempDir, "prompts", "log")
@@ -318,7 +318,7 @@ status: executing
 				logDir,
 				lockFilePath,
 				8080,
-				mockPromptMgr,
+				promptMgr,
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -328,8 +328,8 @@ status: executing
 		})
 
 		It("handles missing log directory", func() {
-			mockPromptMgr.HasExecutingReturns(false)
-			mockPromptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Create checker with non-existent log directory
 			checkerWithLogs := status.NewChecker(
@@ -339,7 +339,7 @@ status: executing
 				"/nonexistent/log",
 				lockFilePath,
 				8080,
-				mockPromptMgr,
+				promptMgr,
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)

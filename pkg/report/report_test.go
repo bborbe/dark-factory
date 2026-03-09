@@ -6,18 +6,12 @@ package report_test
 
 import (
 	"encoding/json"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/report"
 )
-
-func TestReport(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Report Suite")
-}
 
 var _ = Describe("Suffix", func() {
 	It("should return suffix containing DARK-FACTORY-REPORT marker", func() {

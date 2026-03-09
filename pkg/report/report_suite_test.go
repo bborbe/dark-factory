@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
-
-package spec_test
+package report_test
 
 import (
 	"testing"
@@ -15,9 +13,9 @@ import (
 	"github.com/onsi/gomega/format"
 )
 
-func TestSpec(t *testing.T) {
+func TestReport(t *testing.T) {
 	time.Local = time.UTC
 	format.TruncatedDiff = false
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Spec Suite")
+	RunSpecs(t, "Report Suite")
 }

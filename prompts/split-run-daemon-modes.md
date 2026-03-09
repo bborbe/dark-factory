@@ -1,3 +1,7 @@
+---
+status: ""
+created: "2026-03-09T20:36:13Z"
+---
 <summary>
 - `dark-factory run` becomes one-shot: processes all queued prompts then exits cleanly
 - New `dark-factory daemon` command keeps the current long-running watcher behavior

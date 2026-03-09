@@ -5,10 +5,12 @@
 package git
 
 import (
+	"bufio"
 	"context"
 	"log/slog"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -229,9 +231,22 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 		versions = append(versions, version)
 	}
 
-	// If no valid semver tags exist, start with v0.1.0
+	// If no valid semver tags exist, fall back to CHANGELOG.md
 	if len(versions) == 0 {
-		return "v0.1.0", nil
+		changelogVersion, err := latestVersionFromChangelog(ctx)
+		if err != nil || changelogVersion == nil {
+			return "v0.1.0", nil
+		}
+		var nextVersion SemanticVersionNumber
+		switch bump {
+		case MinorBump:
+			nextVersion = changelogVersion.BumpMinor()
+		case PatchBump:
+			nextVersion = changelogVersion.BumpPatch()
+		default:
+			nextVersion = changelogVersion.BumpPatch()
+		}
+		return nextVersion.String(), nil
 	}
 
 	// Find the maximum version using proper semver comparison
@@ -254,6 +269,43 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 	}
 
 	return nextVersion.String(), nil
+}
+
+// latestVersionFromChangelog parses CHANGELOG.md in the current working directory
+// for lines matching "## vX.Y.Z" and returns the maximum version found.
+// Returns nil if no valid version entries are found or the file does not exist.
+func latestVersionFromChangelog(ctx context.Context) (*SemanticVersionNumber, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "get working directory")
+	}
+	changelogPath := cwd + "/CHANGELOG.md"
+
+	// #nosec G304 -- changelogPath is constructed from os.Getwd() + known filename, not user input
+	f, err := os.Open(changelogPath)
+	if err != nil {
+		return nil, nil //nolint:nilerr // file not found is expected
+	}
+	defer f.Close()
+
+	re := regexp.MustCompile(`^## (v\d+\.\d+\.\d+)`)
+	var maxVersion *SemanticVersionNumber
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		matches := re.FindStringSubmatch(scanner.Text())
+		if matches == nil {
+			continue
+		}
+		version, parseErr := ParseSemanticVersionNumber(ctx, matches[1])
+		if parseErr != nil {
+			continue
+		}
+		if maxVersion == nil || maxVersion.Less(version) {
+			v := version
+			maxVersion = &v
+		}
+	}
+	return maxVersion, nil
 }
 
 // updateChangelog renames ## Unreleased to version in CHANGELOG.md.

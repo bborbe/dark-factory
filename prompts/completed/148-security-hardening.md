@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Hardened security: PR title dash-prefix validation, Docker NET_ADMIN/NET_RAW opt-in via netAdmin config field, and fsnotify watcher errors logged-and-continued instead of fatal'
+container: dark-factory-148-security-hardening
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:06:35Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-08T23:57:37Z"
+completed: "2026-03-09T00:04:07Z"
 ---
 
 <summary>

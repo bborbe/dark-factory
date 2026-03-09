@@ -1,6 +1,10 @@
 ---
-status: created
+status: executing
+container: dark-factory-154-split-run-daemon-modes
+dark-factory-version: v0.30.17-dirty
 created: "2026-03-09T20:36:13Z"
+queued: "2026-03-09T20:51:18Z"
+started: "2026-03-09T20:51:25Z"
 ---
 <summary>
 - `dark-factory run` becomes one-shot: processes all queued prompts then exits cleanly

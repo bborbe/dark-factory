@@ -14,6 +14,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
+	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -50,6 +51,15 @@ func run() error {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 	slog.Info("dark-factory starting", "version", version.Version)
+
+	gitRoot, err := git.ResolveGitRoot(ctx)
+	if err != nil {
+		return err
+	}
+	slog.Debug("resolved git root", "root", gitRoot)
+	if err := os.Chdir(gitRoot); err != nil {
+		return errors.Wrap(ctx, err, "chdir to git root")
+	}
 
 	loader := config.NewLoader()
 	cfg, err := loader.Load(ctx)

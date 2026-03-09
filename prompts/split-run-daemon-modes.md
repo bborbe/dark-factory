@@ -1,5 +1,5 @@
 ---
-status: ""
+status: created
 created: "2026-03-09T20:36:13Z"
 ---
 <summary>
@@ -28,6 +28,7 @@ Read `pkg/factory/factory.go` — `CreateRunner` wires everything together.
    - Calls `promptManager.ResetFailed`, the private `checkPromptedSpecs`, and `processExistingQueued` (the existing startup sequence from `Process` lines 119-131)
    - Returns after processing all queued prompts (does NOT enter the `for/select` loop)
    - Add `ProcessQueue` to the `Processor` interface
+   - Run `go generate ./pkg/processor/...` to regenerate `mocks/processor.go` with the new method
 
 2. In `pkg/runner/runner.go`, add a `OneShotRunner` (interface → constructor → struct → method):
    - Acquire lock, reset executing, normalize filenames (same init as current `Run`)
@@ -41,15 +42,27 @@ Read `pkg/factory/factory.go` — `CreateRunner` wires everything together.
 
 5. Modify `case "run"` in `main.go` to call the new one-shot runner: `factory.CreateOneShotRunner(cfg, version.Version).Run(ctx)`.
 
-6. Update `ParseArgs` in `main.go` to recognize `"daemon"` as a valid command. Also update the default no-args behavior: when no command is given, `ParseArgs` currently returns `"run"` (line 167). Change the default to `"daemon"` so that running `dark-factory` with no arguments preserves the existing long-running behavior (avoids a silent breaking change).
+6. Update `ParseArgs` in `main.go` to recognize `"daemon"` as a valid command. Change the default no-args behavior: when no command is given, `ParseArgs` currently returns `"run"` (line 167). Change it to return an error (print usage and exit with error) — require an explicit subcommand.
 
-7. Update `printHelp` in `main.go` to document both commands:
-   - `run` — Process all queued prompts and exit
-   - `daemon` — Watch for prompts and process continuously (long-running, default)
+7. Update `printHelp` in `main.go` — the current help shows `run` with description "Watch for queued prompts and execute them (default)". Replace with two entries:
+   - `run                    Process all queued prompts and exit`
+   - `daemon                 Watch for queued prompts and execute them (long-running)`
+   - Remove the "(default)" marker since no-args now errors
 
-8. Add/update tests:
+8. Update `Makefile`: the existing `run` target uses `go run main.go` with no subcommand (which will now default to `daemon`). Update to:
+   - `run` target: `go run -ldflags "$(LDFLAGS)" main.go run` (one-shot)
+   - `daemon` target: `go run -ldflags "$(LDFLAGS)" main.go daemon` (long-running)
+
+9. Update `README.md` Commands section (around line 204-211): replace the current block with:
+   - `dark-factory run` — process all queued prompts and exit
+   - `dark-factory daemon` — watch for prompts and process continuously (long-running)
+   - `dark-factory status` — show queue, running prompt, completed count
+   - Remove the line showing bare `dark-factory` as default
+   - Update Quick Start step 4 (line 88) from `dark-factory` to `dark-factory daemon`
+
+10. Add/update tests:
    - Test that `ParseArgs` recognizes `"daemon"` command
-   - Test that `ParseArgs` with no args defaults to `"daemon"` (not `"run"`)
+   - Test that `ParseArgs` with no args returns error/unknown (not `"run"` or `"daemon"`)
    - Test that `OneShotRunner` processes queued prompts and returns (doesn't block)
    - Existing runner tests should still pass
 </requirements>

@@ -4,10 +4,13 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 
 ## Setup
 
+**Note:** PR workflow requires a real GitHub remote for `gh pr create`. This scenario pushes to the real sandbox repo — clean up the PR and branch after the run.
+
 ```bash
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
+echo "workflow: pr" > .dark-factory.yaml
 ```
 
 - [ ] Repo has `workflow: pr` in `.dark-factory.yaml`

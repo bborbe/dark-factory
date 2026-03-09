@@ -9,10 +9,14 @@ WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
 echo "workflow: direct" > .dark-factory.yaml
+# Redirect push to local bare repo (avoid polluting real remote)
+git init --bare "$WORK_DIR/remote.git"
+git remote set-url origin "$WORK_DIR/remote.git"
 ```
 
 - [ ] Repo has `workflow: direct` in `.dark-factory.yaml`
 - [ ] Repo has `CHANGELOG.md` with at least one version entry
+- [ ] Remote points to local bare repo (not GitHub)
 
 ## Action
 

@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Added validateClaudeAuth preflight check in pkg/executor/executor.go that fails fast with actionable error when Claude OAuth token is missing or expired, with tests covering all required scenarios and CHANGELOG updated.
 container: dark-factory-155-preflight-auth-check
 dark-factory-version: v0.30.17-dirty
 created: "2026-03-09T20:10:37Z"
 queued: "2026-03-09T21:01:10Z"
 started: "2026-03-09T21:01:12Z"
+completed: "2026-03-09T21:07:25Z"
 ---
 
 <summary>

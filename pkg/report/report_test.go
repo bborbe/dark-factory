@@ -58,6 +58,23 @@ var _ = Describe("ValidationSuffix", func() {
 	})
 })
 
+var _ = Describe("ChangelogSuffix", func() {
+	It("should contain CHANGELOG.md reference", func() {
+		suffix := report.ChangelogSuffix()
+		Expect(suffix).To(ContainSubstring("CHANGELOG.md"))
+	})
+
+	It("should contain unreleased section instruction", func() {
+		suffix := report.ChangelogSuffix()
+		Expect(suffix).To(ContainSubstring("## Unreleased"))
+	})
+
+	It("should reference changelog guide", func() {
+		suffix := report.ChangelogSuffix()
+		Expect(suffix).To(ContainSubstring("changelog-guide.md"))
+	})
+})
+
 var _ = Describe("CompletionReport", func() {
 	It("should marshal to JSON with all fields", func() {
 		cr := report.CompletionReport{

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.30.14
+
+- test: Add ChangelogSuffix test coverage in pkg/report
+
 Please choose versions by [Semantic Versioning](http://semver.org/).
 
 * MAJOR version when you make incompatible API changes,

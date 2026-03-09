@@ -64,6 +64,7 @@ var _ = Describe("Factory", func() {
 				"specs/in-progress",
 				"specs/completed",
 				false,
+				false,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

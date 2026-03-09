@@ -48,5 +48,27 @@ var _ = Describe("PRCreator", func() {
 			_, err := p.Create(ctx, "Test PR", "Test body")
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("returns error when title starts with a dash", func() {
+			p := git.NewPRCreator("")
+			_, err := p.Create(ctx, "--title-injection", "body")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid PR title"))
+		})
+
+		It("returns error when title starts with single dash", func() {
+			p := git.NewPRCreator("")
+			_, err := p.Create(ctx, "-bad-title", "body")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid PR title"))
+		})
+
+		It("allows title that does not start with a dash", func() {
+			p := git.NewPRCreator("")
+			// Will fail due to no git remote, but not due to title validation
+			_, err := p.Create(ctx, "Valid title", "body")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).NotTo(ContainSubstring("invalid PR title"))
+		})
 	})
 })

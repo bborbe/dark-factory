@@ -28,15 +28,22 @@ type dockerExecutor struct {
 	containerImage string
 	projectName    string
 	model          string
+	netAdmin       bool
 	commandRunner  commandRunner
 }
 
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
-func NewDockerExecutor(containerImage string, projectName string, model string) Executor {
+func NewDockerExecutor(
+	containerImage string,
+	projectName string,
+	model string,
+	netAdmin bool,
+) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
 		model:          model,
+		netAdmin:       netAdmin,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -177,16 +184,18 @@ func (e *dockerExecutor) buildDockerCommand(
 	promptBaseName string,
 	home string,
 ) *exec.Cmd {
-	// Build docker run command
+	// Build docker run command args
 	// Mount prompt as file to avoid shell escaping issues with -e flag
-	// #nosec G204 -- promptContent is user-provided by design
-	return exec.CommandContext(
-		ctx,
-		"docker", "run", "--rm",
+	args := []string{
+		"run", "--rm",
 		"--name", containerName,
-		"--label", "dark-factory.project="+e.projectName,
-		"--label", "dark-factory.prompt="+promptBaseName,
-		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
+		"--label", "dark-factory.project=" + e.projectName,
+		"--label", "dark-factory.prompt=" + promptBaseName,
+	}
+	if e.netAdmin {
+		args = append(args, "--cap-add=NET_ADMIN", "--cap-add=NET_RAW")
+	}
+	args = append(args,
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-e", "ANTHROPIC_MODEL="+e.model,
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
@@ -195,6 +204,8 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 		e.containerImage,
 	)
+	// #nosec G204 -- promptContent is user-provided by design
+	return exec.CommandContext(ctx, "docker", args...)
 }
 
 // resolveClaudeConfigDir returns the Claude config directory to mount in the container.

@@ -46,6 +46,7 @@ type Config struct {
 	ValidationCommand string        `yaml:"validationCommand"`
 	DebounceMs        int           `yaml:"debounceMs"`
 	ServerPort        int           `yaml:"serverPort"`
+	NetAdmin          bool          `yaml:"netAdmin"`
 	AutoMerge         bool          `yaml:"autoMerge"`
 	AutoRelease       bool          `yaml:"autoRelease"`
 	VerificationGate  bool          `yaml:"verificationGate"`

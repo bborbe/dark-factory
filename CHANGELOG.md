@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.11
+
+- fix: Reject PR titles starting with a dash to prevent CLI argument injection in gh pr create
+- fix: Make Docker NET_ADMIN/NET_RAW capabilities opt-in via netAdmin config field (default false)
+- fix: Log and continue on fsnotify watcher errors instead of terminating Watch loop
+
 ## v0.30.10
 
 - refactor: Extract shared parseSpecNumber logic into new pkg/specnum package, used by pkg/spec and pkg/prompt

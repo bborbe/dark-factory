@@ -34,6 +34,9 @@ func NewPRCreator(ghToken string) PRCreator {
 
 // Create creates a pull request and returns the PR URL.
 func (p *prCreator) Create(ctx context.Context, title string, body string) (string, error) {
+	if strings.HasPrefix(title, "-") {
+		return "", errors.Errorf(ctx, "invalid PR title: must not start with a dash")
+	}
 	// #nosec G204 -- title is from prompt frontmatter, body is static text
 	cmd := exec.CommandContext(ctx, "gh", "pr", "create", "--title", title, "--body", body)
 	if p.ghToken != "" {

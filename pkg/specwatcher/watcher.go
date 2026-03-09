@@ -80,8 +80,8 @@ func (w *specWatcher) Watch(ctx context.Context) error {
 			if !ok {
 				return errors.Errorf(ctx, "watcher error channel closed")
 			}
-			slog.Info("spec watcher error", "error", err)
-			return errors.Wrap(ctx, err, "watcher error")
+			slog.Warn("spec watcher error", "error", err)
+			continue
 
 		case event, ok := <-fsWatcher.Events:
 			if !ok {

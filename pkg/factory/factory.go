@@ -123,6 +123,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
+			cfg.NetAdmin,
 		),
 		srv,
 		reviewPoller,
@@ -133,7 +134,12 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
 func CreateSpecGenerator(cfg config.Config, containerImage string) generator.SpecGenerator {
 	return generator.NewSpecGenerator(
-		executor.NewDockerExecutor(containerImage, project.Name(cfg.ProjectName), cfg.Model),
+		executor.NewDockerExecutor(
+			containerImage,
+			project.Name(cfg.ProjectName),
+			cfg.Model,
+			cfg.NetAdmin,
+		),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,
@@ -183,13 +189,14 @@ func CreateProcessor(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	verificationGate bool,
+	netAdmin bool,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
 		completedDir,
 		logDir,
 		projectName,
-		executor.NewDockerExecutor(containerImage, projectName, model),
+		executor.NewDockerExecutor(containerImage, projectName, model, netAdmin),
 		promptManager,
 		releaser,
 		versionGetter,

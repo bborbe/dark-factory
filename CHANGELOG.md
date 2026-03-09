@@ -2,15 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## v0.30.14
-
-- test: Add ChangelogSuffix test coverage in pkg/report
-
 Please choose versions by [Semantic Versioning](http://semver.org/).
 
 * MAJOR version when you make incompatible API changes,
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
+
+## v0.30.14
+
+- test: Add ChangelogSuffix test coverage in pkg/report
 
 ## v0.30.13
 

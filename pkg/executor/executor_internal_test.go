@@ -344,6 +344,9 @@ var _ = Describe("Internal helper functions", func() {
 
 			logDir = filepath.Join(tempDir, "logs")
 			logFile = filepath.Join(logDir, "test.log")
+
+			// Skip OAuth check in Execute tests — auth is tested separately
+			GinkgoT().Setenv("ANTHROPIC_API_KEY", "test-key")
 		})
 
 		Context("with successful command execution", func() {
@@ -464,6 +467,73 @@ This has frontmatter.`
 				Expect(
 					fakeRunner.commands[1].Args,
 				).To(ContainElement(home + "/.claude:/home/node/.claude"))
+			})
+		})
+	})
+
+	Describe("validateClaudeAuth", func() {
+		BeforeEach(func() {
+			// Ensure ANTHROPIC_API_KEY is unset so auth check runs
+			GinkgoT().Setenv("ANTHROPIC_API_KEY", "")
+		})
+
+		Context("when ANTHROPIC_API_KEY is set", func() {
+			It("skips the check and returns no error", func() {
+				GinkgoT().Setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+				err := validateClaudeAuth(ctx, "/nonexistent/path")
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when config file does not exist", func() {
+			It("returns error with fix hint", func() {
+				err := validateClaudeAuth(ctx, "/nonexistent/path")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude config not found"))
+				Expect(err.Error()).To(ContainSubstring("/nonexistent/path/.claude.json"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("CLAUDE_CONFIG_DIR=/nonexistent/path claude"))
+			})
+		})
+
+		Context("when config file has no oauthAccount", func() {
+			It("returns error with fix hint", func() {
+				configFile := filepath.Join(tempDir, ".claude.json")
+				err := os.WriteFile(configFile, []byte(`{}`), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+				Expect(err.Error()).To(ContainSubstring("CLAUDE_CONFIG_DIR=" + tempDir + " claude"))
+			})
+		})
+
+		Context("when config file has oauthAccount with empty accessToken", func() {
+			It("returns error with fix hint", func() {
+				configFile := filepath.Join(tempDir, ".claude.json")
+				err := os.WriteFile(configFile, []byte(`{"oauthAccount":{"accessToken":""}}`), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+			})
+		})
+
+		Context("when config file has valid oauthAccount with accessToken", func() {
+			It("returns no error", func() {
+				configFile := filepath.Join(tempDir, ".claude.json")
+				err := os.WriteFile(
+					configFile,
+					[]byte(`{"oauthAccount":{"accessToken":"valid-token-abc"}}`),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})

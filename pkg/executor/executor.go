@@ -6,6 +6,8 @@ package executor
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -96,6 +98,11 @@ func (e *dockerExecutor) Execute(
 
 	// Resolve Claude config dir (env var override or default ~/.claude)
 	claudeConfigDir := resolveClaudeConfigDir(home)
+
+	// Validate Claude auth before starting Docker
+	if err := validateClaudeAuth(ctx, claudeConfigDir); err != nil {
+		return err
+	}
 
 	// Build and run docker command
 	cmd := e.buildDockerCommand(
@@ -201,6 +208,47 @@ func (e *dockerExecutor) buildDockerCommand(
 	)
 	// #nosec G204 -- promptContent is user-provided by design
 	return exec.CommandContext(ctx, "docker", args...)
+}
+
+// validateClaudeAuth checks that the Claude config directory contains a valid OAuth token.
+// If ANTHROPIC_API_KEY is set, the check is skipped (API key auth does not need OAuth).
+func validateClaudeAuth(ctx context.Context, configDir string) error {
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		return nil
+	}
+
+	configFile := filepath.Join(configDir, ".claude.json")
+	// #nosec G304 -- configFile is derived from resolved config dir, not user input
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf(
+				"Claude config not found: %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
+				configFile,
+				configDir,
+			)
+		}
+		return errors.Wrap(ctx, err, "read claude config")
+	}
+
+	var cfg struct {
+		OAuthAccount *struct {
+			AccessToken string `json:"accessToken"`
+		} `json:"oauthAccount"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return errors.Wrap(ctx, err, "parse claude config")
+	}
+
+	if cfg.OAuthAccount == nil || cfg.OAuthAccount.AccessToken == "" {
+		return fmt.Errorf(
+			"Claude OAuth token missing or expired in %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
+			configDir,
+			configDir,
+		)
+	}
+
+	return nil
 }
 
 // resolveClaudeConfigDir returns the Claude config directory to mount in the container.

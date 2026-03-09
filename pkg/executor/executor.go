@@ -212,43 +212,48 @@ func (e *dockerExecutor) buildDockerCommand(
 
 // validateClaudeAuth checks that the Claude config directory contains a valid OAuth token.
 // If ANTHROPIC_API_KEY is set, the check is skipped (API key auth does not need OAuth).
-func validateClaudeAuth(ctx context.Context, configDir string) error {
+// Supports both legacy (.claude.json oauthAccount.accessToken) and current
+// (.credentials.json claudeAiOauth.accessToken) token locations.
+func validateClaudeAuth(_ context.Context, configDir string) error {
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		return nil
 	}
 
+	// Check current location: .credentials.json (Claude Code v2.x+)
+	credentialsFile := filepath.Join(configDir, ".credentials.json")
+	// #nosec G304 -- credentialsFile is derived from resolved config dir, not user input
+	if data, err := os.ReadFile(credentialsFile); err == nil {
+		var creds struct {
+			ClaudeAiOauth *struct {
+				AccessToken string `json:"accessToken"`
+			} `json:"claudeAiOauth"`
+		}
+		if err := json.Unmarshal(data, &creds); err == nil &&
+			creds.ClaudeAiOauth != nil && creds.ClaudeAiOauth.AccessToken != "" {
+			return nil
+		}
+	}
+
+	// Fallback: check legacy location: .claude.json (Claude Code v1.x)
 	configFile := filepath.Join(configDir, ".claude.json")
 	// #nosec G304 -- configFile is derived from resolved config dir, not user input
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf(
-				"Claude config not found: %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
-				configFile,
-				configDir,
-			)
+	if data, err := os.ReadFile(configFile); err == nil {
+		var cfg struct {
+			OAuthAccount *struct {
+				AccessToken string `json:"accessToken"`
+			} `json:"oauthAccount"`
 		}
-		return errors.Wrap(ctx, err, "read claude config")
+		if err := json.Unmarshal(data, &cfg); err == nil &&
+			cfg.OAuthAccount != nil && cfg.OAuthAccount.AccessToken != "" {
+			return nil
+		}
 	}
 
-	var cfg struct {
-		OAuthAccount *struct {
-			AccessToken string `json:"accessToken"`
-		} `json:"oauthAccount"`
-	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return errors.Wrap(ctx, err, "parse claude config")
-	}
-
-	if cfg.OAuthAccount == nil || cfg.OAuthAccount.AccessToken == "" {
-		return fmt.Errorf(
-			"Claude OAuth token missing or expired in %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
-			configDir,
-			configDir,
-		)
-	}
-
-	return nil
+	return fmt.Errorf(
+		"Claude OAuth token missing or expired in %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
+		configDir,
+		configDir,
+	)
 }
 
 // resolveClaudeConfigDir returns the Claude config directory to mount in the container.

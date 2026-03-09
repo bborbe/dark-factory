@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -77,6 +78,10 @@ var _ = Describe("ResolveGitRoot", func() {
 		tmpDir, err := os.MkdirTemp("", "git-root-test-*")
 		Expect(err).NotTo(HaveOccurred())
 		defer func() { _ = os.RemoveAll(tmpDir) }()
+
+		// Resolve symlinks (macOS: /var -> /private/var)
+		tmpDir, err = filepath.EvalSymlinks(tmpDir)
+		Expect(err).NotTo(HaveOccurred())
 
 		// Initialize a git repo in the temp dir
 		cmd := exec.Command("git", "init")

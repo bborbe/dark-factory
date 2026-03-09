@@ -485,19 +485,64 @@ This has frontmatter.`
 			})
 		})
 
-		Context("when config file does not exist", func() {
+		Context("when no config files exist", func() {
 			It("returns error with fix hint", func() {
 				err := validateClaudeAuth(ctx, "/nonexistent/path")
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Claude config not found"))
-				Expect(err.Error()).To(ContainSubstring("/nonexistent/path/.claude.json"))
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 				Expect(
 					err.Error(),
 				).To(ContainSubstring("CLAUDE_CONFIG_DIR=/nonexistent/path claude"))
 			})
 		})
 
-		Context("when config file has no oauthAccount", func() {
+		Context("when .credentials.json has valid token (v2.x)", func() {
+			It("returns no error", func() {
+				credFile := filepath.Join(tempDir, ".credentials.json")
+				err := os.WriteFile(
+					credFile,
+					[]byte(`{"claudeAiOauth":{"accessToken":"valid-token"}}`),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when .credentials.json has empty token", func() {
+			It("falls back and returns error when no legacy token either", func() {
+				credFile := filepath.Join(tempDir, ".credentials.json")
+				err := os.WriteFile(
+					credFile,
+					[]byte(`{"claudeAiOauth":{"accessToken":""}}`),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+			})
+		})
+
+		Context("when only .claude.json has valid token (v1.x legacy)", func() {
+			It("returns no error", func() {
+				configFile := filepath.Join(tempDir, ".claude.json")
+				err := os.WriteFile(
+					configFile,
+					[]byte(`{"oauthAccount":{"accessToken":"valid-token-abc"}}`),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = validateClaudeAuth(ctx, tempDir)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when .claude.json has no oauthAccount and no .credentials.json", func() {
 			It("returns error with fix hint", func() {
 				configFile := filepath.Join(tempDir, ".claude.json")
 				err := os.WriteFile(configFile, []byte(`{}`), 0600)
@@ -510,8 +555,8 @@ This has frontmatter.`
 			})
 		})
 
-		Context("when config file has oauthAccount with empty accessToken", func() {
-			It("returns error with fix hint", func() {
+		Context("when .claude.json has oauthAccount with empty accessToken", func() {
+			It("returns error", func() {
 				configFile := filepath.Join(tempDir, ".claude.json")
 				err := os.WriteFile(configFile, []byte(`{"oauthAccount":{"accessToken":""}}`), 0600)
 				Expect(err).NotTo(HaveOccurred())
@@ -519,21 +564,6 @@ This has frontmatter.`
 				err = validateClaudeAuth(ctx, tempDir)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
-			})
-		})
-
-		Context("when config file has valid oauthAccount with accessToken", func() {
-			It("returns no error", func() {
-				configFile := filepath.Join(tempDir, ".claude.json")
-				err := os.WriteFile(
-					configFile,
-					[]byte(`{"oauthAccount":{"accessToken":"valid-token-abc"}}`),
-					0600,
-				)
-				Expect(err).NotTo(HaveOccurred())
-
-				err = validateClaudeAuth(ctx, tempDir)
-				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})

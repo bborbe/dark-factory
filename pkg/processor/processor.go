@@ -189,6 +189,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		return nil
 	}
 
+	first := true
 	for {
 		select {
 		case <-ctx.Done():
@@ -204,9 +205,13 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// No more queued prompts - done
 		if len(queued) == 0 {
+			if first {
+				slog.Info("no queued prompts, exiting")
+			}
 			slog.Debug("queue scan complete", "queuedCount", 0)
 			return nil
 		}
+		first = false
 
 		slog.Debug("queue scan complete", "queuedCount", len(queued))
 

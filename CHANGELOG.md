@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.15
+
+- refactor: Extract RepoNameFetcher and CollaboratorLister interfaces from CollaboratorFetcher to enable proper mocking
+- fix: Resolve data race in processor_test.go by using ExecuteArgsForCall instead of captured variable
+- refactor: Simplify PR workflow config by removing unused WorkflowWorktree variant
+- test: Add PR workflow processor tests for clone, branch, commit, push, and PR creation
+
 ## v0.30.14
 
 - test: Add ChangelogSuffix test coverage in pkg/report

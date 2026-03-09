@@ -120,7 +120,6 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
-			cfg.NetAdmin,
 		),
 		srv,
 		reviewPoller,
@@ -135,7 +134,6 @@ func CreateSpecGenerator(cfg config.Config, containerImage string) generator.Spe
 			containerImage,
 			project.Name(cfg.ProjectName),
 			cfg.Model,
-			cfg.NetAdmin,
 		),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
@@ -186,14 +184,13 @@ func CreateProcessor(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	verificationGate bool,
-	netAdmin bool,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
 		completedDir,
 		logDir,
 		projectName,
-		executor.NewDockerExecutor(containerImage, projectName, model, netAdmin),
+		executor.NewDockerExecutor(containerImage, projectName, model),
 		promptManager,
 		releaser,
 		versionGetter,
@@ -223,7 +220,14 @@ func CreateProcessor(
 func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
 	ghToken := cfg.ResolvedGitHubToken()
 
-	fetcher := git.NewCollaboratorFetcher(ghToken, cfg.UseCollaborators, cfg.AllowedReviewers)
+	repoNameFetcher := git.NewGHRepoNameFetcher(ghToken)
+	collaboratorLister := git.NewGHCollaboratorLister(ghToken)
+	fetcher := git.NewCollaboratorFetcher(
+		repoNameFetcher,
+		collaboratorLister,
+		cfg.UseCollaborators,
+		cfg.AllowedReviewers,
+	)
 	allowedReviewers := fetcher.Fetch(context.Background())
 
 	return review.NewReviewPoller(

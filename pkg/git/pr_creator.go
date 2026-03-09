@@ -42,9 +42,11 @@ func (p *prCreator) Create(ctx context.Context, title string, body string) (stri
 	if p.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
 	}
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "create pull request")
+		return "", errors.Errorf(ctx, "create pull request: %v: %s", err, stderr.String())
 	}
 	return strings.TrimSpace(string(output)), nil
 }

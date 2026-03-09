@@ -1175,6 +1175,95 @@ var _ = Describe("Processor", func() {
 			cancel()
 		})
 
+		It("should pass absolute log file path in original directory to executor", func() {
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() {
+				_ = os.Chdir(originalDir)
+			})
+
+			promptPath := filepath.Join(promptsDir, "001-logpath-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			logDir := filepath.Join(tempDir, "log")
+			err = os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Body: []byte("# Log path test\n\nVerify log path is absolute."),
+				Frontmatter: prompt.Frontmatter{
+					Status: string(prompt.ApprovedPromptStatus),
+				},
+			}, nil)
+			mockManager.ContentReturns("# Log path test", nil)
+			mockManager.TitleReturns("Log path test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
+			}
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/99", nil)
+
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				return nil
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowPR,
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Read captured args after Eventually confirms execution happened (safe - goroutine done writing)
+			_, _, capturedLogFile, _ := mockExecutor.ExecuteArgsForCall(0)
+
+			// Log file must be absolute and point to the original log dir, not the clone dir
+			Expect(filepath.IsAbs(capturedLogFile)).To(BeTrue(), "log file path should be absolute")
+			Expect(capturedLogFile).To(Equal(filepath.Join(logDir, "001-logpath-test.log")))
+			Expect(capturedLogFile).NotTo(ContainSubstring("dark-factory/test-project-"))
+
+			cancel()
+		})
+
 		It("should processes prompt, create PR and auto-merge via worktree", func() {
 			originalDir, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())

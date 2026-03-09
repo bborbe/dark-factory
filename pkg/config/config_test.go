@@ -34,7 +34,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Specs.InProgressDir).To(Equal("specs/in-progress"))
 			Expect(cfg.Specs.CompletedDir).To(Equal("specs/completed"))
 			Expect(cfg.Specs.LogDir).To(Equal("specs/log"))
-			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.5"))
+			Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.7"))
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 			Expect(cfg.ValidationCommand).To(Equal("make precommit"))
 			Expect(cfg.DebounceMs).To(Equal(500))
@@ -45,7 +45,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.MaxReviewRetries).To(Equal(3))
 			Expect(cfg.PollIntervalSec).To(Equal(60))
 			Expect(cfg.UseCollaborators).To(BeFalse())
-			Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
+			Expect(cfg.GitHub.Token).To(BeEmpty())
 		})
 	})
 
@@ -59,7 +59,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -77,7 +77,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -95,7 +95,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -114,7 +114,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -133,7 +133,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -152,7 +152,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -171,7 +171,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -190,7 +190,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -209,7 +209,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/in-progress",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -228,7 +228,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -266,7 +266,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     -1,
 				ServerPort:     8080,
@@ -285,7 +285,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     0,
 				ServerPort:     8080,
@@ -304,7 +304,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     0,
@@ -322,7 +322,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -340,7 +340,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     -1,
@@ -359,7 +359,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     65536,
@@ -378,7 +378,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -397,7 +397,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -417,7 +417,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -439,7 +439,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -459,7 +459,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -480,7 +480,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
 				ServerPort:       8080,
@@ -504,7 +504,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
 				ServerPort:       8080,
@@ -526,7 +526,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
@@ -549,7 +549,7 @@ var _ = Describe("Config", func() {
 					CompletedDir:  "prompts/completed",
 					LogDir:        "prompts/log",
 				},
-				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.5",
+				ContainerImage:   "docker.io/bborbe/claude-yolo:v0.2.7",
 				Model:            "claude-sonnet-4-6",
 				DebounceMs:       500,
 				ServerPort:       8080,
@@ -698,7 +698,7 @@ debounceMs: 1000
 				Expect(cfg.Prompts.InProgressDir).To(Equal("prompts/in-progress"))
 				Expect(cfg.Prompts.CompletedDir).To(Equal("prompts/completed"))
 				Expect(cfg.Prompts.LogDir).To(Equal("prompts/log"))
-				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.5"))
+				Expect(cfg.ContainerImage).To(Equal("docker.io/bborbe/claude-yolo:v0.2.7"))
 				Expect(cfg.DebounceMs).To(Equal(500))
 			})
 
@@ -720,7 +720,7 @@ invalid yaml: [unclosed
 
 			It("returns error for invalid workflow value", func() {
 				configContent := `workflow: invalid
-containerImage: docker.io/bborbe/claude-yolo:v0.2.5
+containerImage: docker.io/bborbe/claude-yolo:v0.2.7
 debounceMs: 500
 `
 				err := os.WriteFile(
@@ -737,7 +737,7 @@ debounceMs: 500
 
 			It("returns error for negative debounceMs", func() {
 				configContent := `workflow: direct
-containerImage: docker.io/bborbe/claude-yolo:v0.2.5
+containerImage: docker.io/bborbe/claude-yolo:v0.2.7
 debounceMs: -100
 `
 				err := os.WriteFile(
@@ -805,7 +805,7 @@ github:
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.GitHub.Token).To(Equal(config.DefaultGitHubTokenRef))
+				Expect(cfg.GitHub.Token).To(BeEmpty())
 			})
 
 			It("loads config with autoMerge and autoRelease", func() {

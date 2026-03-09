@@ -6,7 +6,6 @@ package git
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -19,8 +18,23 @@ type CollaboratorFetcher interface {
 	Fetch(ctx context.Context) []string
 }
 
+//counterfeiter:generate -o ../../mocks/repo-name-fetcher.go --fake-name RepoNameFetcher . RepoNameFetcher
+
+// RepoNameFetcher fetches the current GitHub repository name with owner.
+type RepoNameFetcher interface {
+	Fetch(ctx context.Context) (string, error)
+}
+
+//counterfeiter:generate -o ../../mocks/collaborator-lister.go --fake-name CollaboratorLister . CollaboratorLister
+
+// CollaboratorLister lists collaborator logins for a GitHub repository.
+type CollaboratorLister interface {
+	List(ctx context.Context, repoName string) ([]string, error)
+}
+
 type collaboratorFetcher struct {
-	ghToken          string
+	repoNameFetcher  RepoNameFetcher
+	collaboratorList CollaboratorLister
 	useCollaborators bool
 	allowedReviewers []string
 }
@@ -28,12 +42,14 @@ type collaboratorFetcher struct {
 // NewCollaboratorFetcher creates a CollaboratorFetcher.
 // If useCollaborators is false or allowedReviewers is non-empty, collaborators are not fetched from GitHub.
 func NewCollaboratorFetcher(
-	ghToken string,
+	repoNameFetcher RepoNameFetcher,
+	collaboratorLister CollaboratorLister,
 	useCollaborators bool,
 	allowedReviewers []string,
 ) CollaboratorFetcher {
 	return &collaboratorFetcher{
-		ghToken:          ghToken,
+		repoNameFetcher:  repoNameFetcher,
+		collaboratorList: collaboratorLister,
 		useCollaborators: useCollaborators,
 		allowedReviewers: allowedReviewers,
 	}
@@ -47,8 +63,30 @@ func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
 		return nil
 	}
 
-	// Get the repo name with owner
-	nameCmd := exec.CommandContext( //nolint:gosec
+	repoName, err := f.repoNameFetcher.Fetch(ctx)
+	if err != nil {
+		return nil
+	}
+
+	collaborators, err := f.collaboratorList.List(ctx, repoName)
+	if err != nil {
+		return nil
+	}
+	return collaborators
+}
+
+// ghRepoNameFetcher fetches repo name using gh CLI.
+type ghRepoNameFetcher struct {
+	ghToken string
+}
+
+// NewGHRepoNameFetcher creates a RepoNameFetcher that uses gh CLI.
+func NewGHRepoNameFetcher(ghToken string) RepoNameFetcher {
+	return &ghRepoNameFetcher{ghToken: ghToken}
+}
+
+func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext( //nolint:gosec
 		ctx,
 		"gh",
 		"repo",
@@ -59,17 +97,27 @@ func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
 		".nameWithOwner",
 	) // #nosec G204 -- fixed args, no user input
 	if f.ghToken != "" {
-		nameCmd.Env = append(os.Environ(), "GH_TOKEN="+f.ghToken)
+		cmd.Env = append(os.Environ(), "GH_TOKEN="+f.ghToken)
 	}
-	nameOut, err := nameCmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
-		slog.Warn("failed to get repo name for collaborators", "error", err)
-		return nil
+		return "", err
 	}
-	repoName := strings.TrimSpace(string(nameOut))
+	return strings.TrimSpace(string(out)), nil
+}
 
-	// Fetch collaborator logins
-	collabCmd := exec.CommandContext( //nolint:gosec
+// ghCollaboratorLister fetches collaborators using gh CLI.
+type ghCollaboratorLister struct {
+	ghToken string
+}
+
+// NewGHCollaboratorLister creates a CollaboratorLister that uses gh CLI.
+func NewGHCollaboratorLister(ghToken string) CollaboratorLister {
+	return &ghCollaboratorLister{ghToken: ghToken}
+}
+
+func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]string, error) {
+	cmd := exec.CommandContext( //nolint:gosec
 		ctx,
 		"gh",
 		"api",
@@ -77,20 +125,19 @@ func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
 		"--jq",
 		".[].login",
 	) // #nosec G204 -- repoName from gh CLI, not user input
-	if f.ghToken != "" {
-		collabCmd.Env = append(os.Environ(), "GH_TOKEN="+f.ghToken)
+	if l.ghToken != "" {
+		cmd.Env = append(os.Environ(), "GH_TOKEN="+l.ghToken)
 	}
-	collabOut, err := collabCmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
-		slog.Warn("failed to fetch collaborators", "error", err)
-		return nil
+		return nil, err
 	}
 
 	var result []string
-	for _, line := range strings.Split(strings.TrimSpace(string(collabOut)), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		if line = strings.TrimSpace(line); line != "" {
 			result = append(result, line)
 		}
 	}
-	return result
+	return result, nil
 }

@@ -46,7 +46,6 @@ type Config struct {
 	ValidationCommand string        `yaml:"validationCommand"`
 	DebounceMs        int           `yaml:"debounceMs"`
 	ServerPort        int           `yaml:"serverPort"`
-	NetAdmin          bool          `yaml:"netAdmin"`
 	AutoMerge         bool          `yaml:"autoMerge"`
 	AutoRelease       bool          `yaml:"autoRelease"`
 	VerificationGate  bool          `yaml:"verificationGate"`
@@ -74,7 +73,7 @@ func Defaults() Config {
 			CompletedDir:  "specs/completed",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.5",
+		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.7",
 		Model:             "claude-sonnet-4-6",
 		ValidationCommand: "make precommit",
 		DebounceMs:        500,
@@ -85,9 +84,7 @@ func Defaults() Config {
 		MaxReviewRetries:  3,
 		PollIntervalSec:   60,
 		UseCollaborators:  false,
-		GitHub: GitHubConfig{
-			Token: "${DARK_FACTORY_GITHUB_TOKEN}",
-		}, // #nosec G101 -- env var reference, not a credential
+		GitHub:            GitHubConfig{},
 	}
 }
 
@@ -178,14 +175,14 @@ func resolveEnvVar(value string) string {
 	return value
 }
 
-// DefaultGitHubTokenRef is the default env var reference for the GitHub token.
-const DefaultGitHubTokenRef = "${DARK_FACTORY_GITHUB_TOKEN}" // #nosec G101 -- env var reference, not a credential
-
 // ResolvedGitHubToken returns the GitHub token with environment variables resolved.
-// Logs a warning if a non-default token is configured but the env var is empty.
+// Returns empty string when not configured, letting gh use its own auth.
 func (c Config) ResolvedGitHubToken() string {
+	if c.GitHub.Token == "" {
+		return ""
+	}
 	token := resolveEnvVar(c.GitHub.Token)
-	if c.GitHub.Token != "" && c.GitHub.Token != DefaultGitHubTokenRef && token == "" {
+	if token == "" {
 		slog.Warn("github.token configured but env var is empty, using default gh auth")
 	}
 	return token

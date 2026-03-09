@@ -30,7 +30,6 @@ var _ = Describe("DockerExecutor", func() {
 			config.Defaults().ContainerImage,
 			"test-project",
 			config.Defaults().Model,
-			false,
 		)
 
 		var err error
@@ -151,7 +150,6 @@ More lines...`
 				"custom-image:latest",
 				"test-project",
 				"claude-sonnet-4-6",
-				false,
 			)
 			Expect(executor).NotTo(BeNil())
 		})

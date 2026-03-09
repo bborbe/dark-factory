@@ -262,24 +262,7 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(cmd.Args).To(ContainElement("/home/user/go/pkg:/home/node/go/pkg"))
 		})
 
-		It("does not include network capabilities when netAdmin is false", func() {
-			exec.netAdmin = false
-			cmd := exec.buildDockerCommand(
-				ctx,
-				"test",
-				"/tmp/test",
-				"/workspace",
-				"/home/user/.claude",
-				"test",
-				"/home/user",
-			)
-
-			Expect(cmd.Args).NotTo(ContainElement("--cap-add=NET_ADMIN"))
-			Expect(cmd.Args).NotTo(ContainElement("--cap-add=NET_RAW"))
-		})
-
-		It("includes network capabilities when netAdmin is true", func() {
-			exec.netAdmin = true
+		It("always includes network capabilities", func() {
 			cmd := exec.buildDockerCommand(
 				ctx,
 				"test",

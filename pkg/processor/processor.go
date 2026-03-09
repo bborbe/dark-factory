@@ -369,6 +369,12 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	slog.Info("executing prompt", "title", title)
 
+	// Derive log file path before setupWorkflow, which may os.Chdir to clone dir.
+	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
+	if err != nil {
+		return errors.Wrap(ctx, err, "resolve log file path")
+	}
+
 	// Setup workflow (branch or clone) before execution
 	workflowState, err := p.setupWorkflow(ctx, baseName, pf)
 	if err != nil {
@@ -379,9 +385,6 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if p.workflow == config.WorkflowPR && workflowState.clonePath != "" {
 		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
-
-	// Derive log file path: {logDir}/{basename}.log
-	logFile := filepath.Join(p.logDir, baseName+".log")
 
 	// Execute via executor
 	if err := p.executor.Execute(ctx, content, logFile, containerName); err != nil {

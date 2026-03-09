@@ -28,7 +28,6 @@ type dockerExecutor struct {
 	containerImage string
 	projectName    string
 	model          string
-	netAdmin       bool
 	commandRunner  commandRunner
 }
 
@@ -37,13 +36,11 @@ func NewDockerExecutor(
 	containerImage string,
 	projectName string,
 	model string,
-	netAdmin bool,
 ) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
 		model:          model,
-		netAdmin:       netAdmin,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -191,9 +188,7 @@ func (e *dockerExecutor) buildDockerCommand(
 		"--name", containerName,
 		"--label", "dark-factory.project=" + e.projectName,
 		"--label", "dark-factory.prompt=" + promptBaseName,
-	}
-	if e.netAdmin {
-		args = append(args, "--cap-add=NET_ADMIN", "--cap-add=NET_RAW")
+		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
 	}
 	args = append(args,
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",

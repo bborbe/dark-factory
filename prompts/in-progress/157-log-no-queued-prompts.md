@@ -1,6 +1,11 @@
 ---
-status: created
+status: executing
+container: dark-factory-157-log-no-queued-prompts
+dark-factory-version: v0.32.0-1-gadd4c6a-dirty
 created: "2026-03-09T23:35:00Z"
+queued: "2026-03-09T22:33:27Z"
+started: "2026-03-09T22:38:29Z"
+completed: "2026-03-09T22:33:33Z"
 ---
 
 <summary>

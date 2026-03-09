@@ -1,50 +1,51 @@
 ---
+spec: ["027"]
 status: created
 created: "2026-03-09T19:30:00Z"
 ---
 
 <summary>
-- PR workflow keeps prompt lifecycle in the original repo where dark-factory runs
-- PRs contain only code changes, no prompt file moves
-- Prompt is moved to completed/ in the original repo after PR creation succeeds
-- Stale clone directories from crashed runs are automatically cleaned up before cloning
-- Clone and branch operations include stderr in error messages for easier debugging
+- Prompts no longer get stuck at "executing" after PR creation
+- Dark-factory manages prompt status in the project repo, not in temporary clones
+- PRs contain only the code changes the agent made — no internal prompt bookkeeping
+- Crashed runs no longer block subsequent runs with stale temp directories
+- Errors during clone and branch operations show the actual git error message
 </summary>
 
 <objective>
-Fix the PR workflow so that prompt lifecycle (move to completed, status updates, PR URL saving) happens in the original repo, not in the clone. Currently, prompts get stuck at "executing" status because the move-to-completed happens inside the clone which is deleted after PR creation. The dark-factory process runs in the original repo and needs to manage prompt files there.
+Verify and finalize the PR workflow fix so that prompt lifecycle (move to completed, status updates, PR URL saving) happens in the original repo, not in the clone. The implementation is partially done in the working directory — verify it matches the requirements below, fix any gaps or inconsistencies, and ensure all tests pass.
 </objective>
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `pkg/processor/processor.go` — the `handlePostExecution` method (around line 424) and `handleCloneWorkflow` method (around line 638).
+Read `pkg/processor/processor.go` — focus on `handlePostExecution` and `handleCloneWorkflow` methods.
 Read `pkg/git/cloner.go` — the `Clone` method.
 Read `pkg/git/cloner_test.go` — existing tests for Clone and Remove.
 Read `/home/node/.claude/docs/go-testing.md`.
+
+Background: Spec 027 unified the PR workflow. The spec says "worktree" but the implementation uses `git clone` to a temp directory instead. Reason: worktrees share `.git` with the parent repo, which is not accessible inside the YOLO Docker container. A full clone gives a self-contained repo that works when mounted into Docker.
+
+NOTE: These changes are partially implemented in the working directory. For each requirement: read the current code, check if it already satisfies the requirement, and only make changes where gaps or inconsistencies exist. Do not duplicate or conflict with existing implementations.
 </context>
 
 <requirements>
-1. In `pkg/git/cloner.go`, method `Clone`: before running `git clone`, check if `destDir` already exists using `os.Stat`. If it exists, remove it with `os.RemoveAll` and log a warning with `slog.Warn`. This handles stale clones from previous crashed runs.
+1. **Stale clone cleanup** (`pkg/git/cloner.go`, method `Clone`): Before running `git clone`, the method must check if `destDir` already exists with `os.Stat`. If it exists, log with `slog.Warn` and remove with `os.RemoveAll`. Verify this is implemented and handles errors from `os.RemoveAll`.
 
-2. In `pkg/git/cloner.go`, method `Clone`: capture stderr from all `exec.Command` calls (`git clone`, `git checkout -b`) into a `strings.Builder` via `cmd.Stderr = &stderr`. Include the stderr content in error messages using `errors.Wrapf` with format parameters showing `srcDir`, `destDir`, and `branch` for debugging.
+2. **Better error messages** (`pkg/git/cloner.go`, method `Clone`): The `git clone` and `git checkout -b` commands must capture stderr via `strings.Builder` and include it in error messages using `errors.Wrapf` with `srcDir`, `destDir`, and `branch` context. Verify all git commands in `Clone` have stderr capture.
 
-3. In `pkg/git/cloner.go`, method `Clone`: change the first `slog.Debug` call to `slog.Info` so clone operations are visible in normal log output.
+3. **Visible clone logging** (`pkg/git/cloner.go`, method `Clone`): The initial clone log line must use `slog.Info` (not `slog.Debug`). Verify.
 
-4. In `pkg/git/cloner_test.go`: add a test case `"removes stale destDir before cloning"` that creates a non-empty `destDir` (with a file inside), calls `Clone`, and asserts the error does NOT contain "already exists". The clone will still fail (bare repo has no remote), but the error should be about the missing remote, not about the existing directory.
+4. **Test stale clone recovery** (`pkg/git/cloner_test.go`): A test named `"removes stale destDir before cloning"` must exist. It should create a non-empty `destDir`, call `Clone`, and assert the error does NOT contain "already exists". Verify the test exists and the assertion is correct.
 
-5. In `pkg/processor/processor.go`, method `handlePostExecution`: for the PR workflow path (`p.workflow == config.WorkflowPR`), call `handleCloneWorkflow` BEFORE `moveToCompletedAndCommit`. Pass `pf`, `promptPath`, and `completedPath` as additional parameters to `handleCloneWorkflow`. Remove the `isAutoReviewPR` logic that currently skips the move — that will be handled inside `handleCloneWorkflow`.
+5. **PR workflow: no prompt ops in clone** (`pkg/processor/processor.go`, method `handlePostExecution`): For the PR workflow path (`p.workflow == config.WorkflowPR`), `handleCloneWorkflow` must be called WITHOUT calling `moveToCompletedAndCommit` first. There must be no `isAutoReviewPR` variable. The direct workflow path must still call `moveToCompletedAndCommit` before `handleDirectWorkflow`. Verify this separation is correct.
 
-6. In `pkg/processor/processor.go`, update `handleCloneWorkflow` signature to accept additional parameters: `pf *prompt.PromptFile`, `promptPath string`, `completedPath string`. The method should:
-   a. Commit only code changes in the clone (existing `CommitOnly` call — unchanged)
-   b. Push branch (existing `Push` call — unchanged)
-   c. Create PR (existing `Create` call — unchanged)
-   d. Switch back to original directory (existing `os.Chdir` — unchanged)
-   e. Remove clone (existing `cloner.Remove` — unchanged)
-   f. After returning to original dir: if `autoMerge`, wait for merge then call `moveToCompletedAndCommit` in original repo
-   g. If `autoReview`, save PR URL to prompt frontmatter at `promptPath` (not completedPath) and set status to `in_review`
-   h. Default case: call `moveToCompletedAndCommit` in original repo, then save PR URL to `completedPath`
+6. **PR workflow: prompt lifecycle in original repo** (`pkg/processor/processor.go`, method `handleCloneWorkflow`): After clone removal and `os.Chdir` back to original dir, the method must handle prompt lifecycle in the original repo:
+   - `autoMerge` path: wait for merge, then `moveToCompletedAndCommit`, then `postMergeActions`
+   - `autoReview` path: save PR URL to frontmatter at `promptPath` (not completedPath), set status to `in_review`
+   - Default path: `moveToCompletedAndCommit`, then save PR URL to `completedPath`
+   Verify all three paths exist and operate on the correct paths (original repo, not clone).
 
-7. Remove the call to `moveToCompletedAndCommit` that currently happens before `handleCloneWorkflow` in `handlePostExecution` for the PR path. For the direct workflow path, keep `moveToCompletedAndCommit` before `handleDirectWorkflow` as-is.
+7. **No regressions**: Run the full test suite. All existing tests must pass. If any test fails due to the changes, fix the test or the implementation to be consistent.
 </requirements>
 
 <constraints>
@@ -55,8 +56,9 @@ Read `/home/node/.claude/docs/go-testing.md`.
 - The PR should contain only code changes — no prompt file operations
 - Use `errors.Wrapf` (not `errors.Wrap`) when format parameters are needed
 - Follow existing code style — Ginkgo/Gomega for tests, counterfeiter for mocks
+- Do not rewrite code that already satisfies a requirement — only fix gaps
 </constraints>
 
 <verification>
-Run `make precommit` -- must pass.
+Run `make precommit` -- must pass with exit code 0.
 </verification>

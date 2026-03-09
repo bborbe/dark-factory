@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Added ChangelogSuffix test block in pkg/report/report_test.go with 3 assertions covering CHANGELOG.md reference, ## Unreleased instruction, and changelog-guide.md reference'
+container: dark-factory-151-test-coverage-gaps
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:06:35Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-09T00:22:18Z"
+completed: "2026-03-09T00:26:58Z"
 ---
 
 <summary>

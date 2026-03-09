@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Split `dark-factory run` into one-shot mode (drain queue and exit) and `dark-factory daemon` (long-running watcher), adding ProcessQueue to Processor interface, OneShotRunner to runner package, CreateOneShotRunner to factory, updated CLI parsing and help, Makefile, README, and CHANGELOG
 container: dark-factory-154-split-run-daemon-modes
 dark-factory-version: v0.30.17-dirty
 created: "2026-03-09T20:36:13Z"
 queued: "2026-03-09T20:51:18Z"
 started: "2026-03-09T20:51:25Z"
+completed: "2026-03-09T20:59:44Z"
 ---
 <summary>
 - `dark-factory run` becomes one-shot: processes all queued prompts then exits cleanly

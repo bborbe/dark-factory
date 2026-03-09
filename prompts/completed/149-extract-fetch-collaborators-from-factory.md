@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Extracted fetchCollaborators from factory into a dedicated CollaboratorFetcher interface and implementation in pkg/git/collaborator_fetcher.go, with counterfeiter mock generated and factory updated to use zero-logic wiring
+container: dark-factory-149-extract-fetch-collaborators-from-factory
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:12:08Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-09T00:04:11Z"
+completed: "2026-03-09T00:14:45Z"
 ---
 
 <summary>

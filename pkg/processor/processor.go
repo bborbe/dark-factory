@@ -452,23 +452,16 @@ func (p *processor) handlePostExecution(
 		return p.enterPendingVerification(ctx, pf, promptPath)
 	}
 
-	// In autoReview mode (autoReview+!autoMerge+PR), prompt stays in queueDir.
-	// Skip move-to-completed and commit of completed file until review approves.
-	isAutoReviewPR := p.autoReview && !p.autoMerge && p.workflow == config.WorkflowPR
-
 	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
-	prTargetPath := completedPath // path used for PR URL frontmatter
-
-	if isAutoReviewPR {
-		prTargetPath = promptPath // prompt stays in queueDir
-	} else {
-		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-			return err
-		}
-	}
 
 	if p.workflow == config.WorkflowPR {
-		return p.handleCloneWorkflow(gitCtx, ctx, title, state, prTargetPath)
+		// PR workflow: commit only code changes in clone, then manage prompt in original repo.
+		return p.handleCloneWorkflow(gitCtx, ctx, pf, title, promptPath, completedPath, state)
+	}
+
+	// Direct workflow: move prompt to completed and commit in the same repo.
+	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+		return err
 	}
 
 	return p.handleDirectWorkflow(gitCtx, ctx, title)
@@ -642,18 +635,22 @@ func (p *processor) postMergeActions(
 	return nil
 }
 
-// handleCloneWorkflow handles the clone-based workflow: commit, push, create PR, remove clone.
+// handleCloneWorkflow handles the clone-based workflow: commit code in clone, push, create PR,
+// then manage prompt lifecycle in the original repo.
 func (p *processor) handleCloneWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
+	pf *prompt.PromptFile,
 	title string,
-	state *workflowState,
+	promptPath string,
 	completedPath string,
+	state *workflowState,
 ) error {
 	branchName := state.branchName
 	clonePath := state.clonePath
 	originalDir := state.originalDir
-	// Commit changes (we're already in the clone directory)
+
+	// Commit only code changes in the clone (no prompt files)
 	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit changes")
 	}
@@ -670,10 +667,7 @@ func (p *processor) handleCloneWorkflow(
 	}
 	slog.Info("created PR", "url", prURL)
 
-	// Save PR URL to frontmatter (best-effort — non-fatal if fails)
-	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
-
-	// Switch back to original directory
+	// Switch back to original directory before managing prompt
 	if err := os.Chdir(originalDir); err != nil {
 		return errors.Wrap(ctx, err, "chdir back to original directory")
 	}
@@ -681,25 +675,38 @@ func (p *processor) handleCloneWorkflow(
 	// Remove clone (best-effort cleanup)
 	if err := p.cloner.Remove(gitCtx, clonePath); err != nil {
 		slog.Warn("failed to remove clone", "path", clonePath, "error", err)
-		// Non-fatal — clone cleanup is best-effort
 	}
 	state.cleanedUp = true
 
-	// Handle auto-merge if enabled (no originalBranch fallback — already back in main repo)
+	// --- From here, we're back in the original repo ---
+
+	// Handle auto-merge if enabled
 	if p.autoMerge {
 		if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
 			return errors.Wrap(ctx, err, "wait and merge PR")
 		}
+		// After merge, move prompt to completed in original repo
+		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+			return err
+		}
 		return p.postMergeActions(gitCtx, ctx, title)
 	}
 
-	// autoReview mode: set in_review status so poller can watch for approval
+	// autoReview mode: keep prompt in queueDir with in_review status + PR URL
 	if p.autoReview {
-		if err := p.promptManager.SetStatus(ctx, completedPath, string(prompt.InReviewPromptStatus)); err != nil {
+		p.savePRURLToFrontmatter(gitCtx, promptPath, prURL)
+		if err := p.promptManager.SetStatus(ctx, promptPath, string(prompt.InReviewPromptStatus)); err != nil {
 			return errors.Wrap(ctx, err, "set in_review status")
 		}
 		slog.Info("PR created, waiting for review", "url", prURL)
+		return nil
 	}
+
+	// Default: move prompt to completed in original repo with PR URL
+	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+		return err
+	}
+	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
 
 	return nil
 }

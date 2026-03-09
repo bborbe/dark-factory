@@ -31,20 +31,47 @@ func NewCloner() Cloner {
 }
 
 // Clone creates a local clone of srcDir at destDir and checks out a new branch.
+// If destDir already exists (e.g. from a previous crashed run), it is removed first.
 func (c *cloner) Clone(ctx context.Context, srcDir string, destDir string, branch string) error {
-	slog.Debug("cloning repo", "src", srcDir, "dest", destDir, "branch", branch)
+	slog.Info("cloning repo", "src", srcDir, "dest", destDir, "branch", branch)
+
+	// Remove stale clone from previous failed run
+	if _, err := os.Stat(destDir); err == nil {
+		slog.Warn("removing stale clone directory", "path", destDir)
+		if err := os.RemoveAll(destDir); err != nil {
+			return errors.Wrapf(ctx, err, "remove stale clone at %s", destDir)
+		}
+	}
 
 	// #nosec G204 -- srcDir and destDir are derived from config and prompt filename
 	cmd := exec.CommandContext(ctx, "git", "clone", srcDir, destDir)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "clone repo")
+		return errors.Wrapf(
+			ctx,
+			err,
+			"clone repo (src=%s dest=%s): %s",
+			srcDir,
+			destDir,
+			stderr.String(),
+		)
 	}
 
 	// Create and switch to feature branch
 	// #nosec G204 -- destDir and branch are controlled by the application
 	checkoutCmd := exec.CommandContext(ctx, "git", "-C", destDir, "checkout", "-b", branch)
+	var checkoutStderr strings.Builder
+	checkoutCmd.Stderr = &checkoutStderr
 	if err := checkoutCmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "create branch")
+		return errors.Wrapf(
+			ctx,
+			err,
+			"create branch (dest=%s branch=%s): %s",
+			destDir,
+			branch,
+			checkoutStderr.String(),
+		)
 	}
 
 	// Get the original remote URL from the source repo

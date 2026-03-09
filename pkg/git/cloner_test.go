@@ -91,5 +91,21 @@ var _ = Describe("Cloner", func() {
 			err := cloner.Clone(ctx, "/nonexistent/source/path", destDir, "feature-branch")
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("removes stale destDir before cloning", func() {
+			cloner := git.NewCloner()
+
+			// Create a non-empty destDir to simulate stale clone
+			err := os.MkdirAll(destDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(destDir+"/stale-file.txt", []byte("stale"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Clone should remove the stale dir and proceed (will still fail at get-url, but not at clone)
+			err = cloner.Clone(ctx, srcDir, destDir, "feature-branch")
+			// Error expected because bare repo has no remote, but it should NOT be "already exists"
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).NotTo(ContainSubstring("already exists"))
+		})
 	})
 })

@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.30.16
+
+- fix: PR workflow prompt lifecycle (move to completed, status updates, PR URL) now happens in the original repo, not in the clone
+- fix: Stale clone directories from crashed runs are automatically removed before cloning
+- fix: Git clone and checkout errors now include stderr output for easier debugging
+- fix: Clone operation logs at Info level for visibility
+
 ## v0.30.15
 
 - refactor: Extract RepoNameFetcher and CollaboratorLister interfaces from CollaboratorFetcher to enable proper mocking

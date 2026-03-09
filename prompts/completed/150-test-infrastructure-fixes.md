@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Standardised test suite setup (time.Local, format.TruncatedDiff) across report, review, project, and spec packages; extracted TestReport into report_suite_test.go; renamed mock-prefixed variables in poller_test.go and status_test.go
+container: dark-factory-150-test-infrastructure-fixes
+dark-factory-version: v0.30.3
 created: "2026-03-08T21:06:35Z"
 queued: "2026-03-08T23:18:05Z"
+started: "2026-03-09T00:14:47Z"
+completed: "2026-03-09T00:22:15Z"
 ---
 
 <summary>

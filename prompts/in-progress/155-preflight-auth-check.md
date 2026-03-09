@@ -1,6 +1,10 @@
 ---
-status: created
+status: executing
+container: dark-factory-155-preflight-auth-check
+dark-factory-version: v0.30.17-dirty
 created: "2026-03-09T20:10:37Z"
+queued: "2026-03-09T21:01:10Z"
+started: "2026-03-09T21:01:12Z"
 ---
 
 <summary>

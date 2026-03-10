@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added `env` field to Config, partialConfig, mergePartial, dockerExecutor, NewDockerExecutor, buildDockerCommand, and all factory call sites, with validation rejecting empty/reserved keys and sorted -e flags in docker command
+container: dark-factory-161-optional-env-vars
+dark-factory-version: v0.34.0
 created: "2026-03-10T12:44:22Z"
 queued: "2026-03-10T12:44:22Z"
+started: "2026-03-10T12:53:43Z"
+completed: "2026-03-10T13:01:28Z"
 ---
 <summary>
 - Projects can pass extra environment variables to the YOLO container

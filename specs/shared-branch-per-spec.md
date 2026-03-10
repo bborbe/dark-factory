@@ -4,79 +4,94 @@ status: draft
 
 ## Summary
 
-When multiple prompts belong to the same spec, they currently each get an independent branch cloned from the default branch. This means prompt 2 cannot see prompt 1's changes unless prompt 1 was already merged. This spec makes all prompts from one spec share a single branch so each prompt builds on the previous one's work.
+- Config replaces `workflow: direct|pr` enum with two booleans: `pr` and `worktree`
+- Specs and prompts gain `branch` and `issue` metadata fields
+- Spec approval auto-assigns a branch name inherited by all generated prompts
+- Old `workflow:` config continues to work with a deprecation warning
 
 ## Problem
 
-In PR workflow, `setupCloneWorkflowState()` generates `dark-factory/<prompt-basename>` as the branch name and always clones from the default branch. When a spec produces prompts 1→2→3, prompt 2 starts fresh from master — it misses prompt 1's code changes. The prompts fail or duplicate work because they can't see prior changes.
-
-The `branch` frontmatter field already exists on prompts, but nothing sets it automatically for spec-linked prompts.
+The dark-factory config uses a `workflow: direct|pr` enum that is effectively a boolean — there are only two values and the old `worktree` value was already removed. Meanwhile, specs that produce multiple prompts have no way to assign a shared branch or link to an external issue tracker. Users must manually set the `branch` frontmatter on each prompt, which is tedious and error-prone.
 
 ## Goal
 
-After this work, all prompts linked to the same spec execute on a shared branch. Each prompt sees the cumulative code changes from all prior prompts in that spec. A single PR is created (or updated) for the spec's branch.
+After this work, the config uses `pr` and `worktree` booleans instead of a workflow enum. Specs carry `branch` and `issue` metadata that is automatically inherited by generated prompts. Existing configs continue to work during migration.
 
 ## Non-goals
 
-- Changing direct workflow behavior (only PR workflow is affected)
-- Parallel execution of spec prompts (they remain sequential)
-- Merging spec PRs automatically mid-sequence (merge happens after last prompt or via autoMerge)
-- Changing how standalone prompts (no spec field) work
+- Changing execution behavior based on these new fields (handled by a follow-up spec)
+- Parallel execution of spec prompts
+- Removing `workflow:` support (deferred to a future release)
 
 ## Desired Behavior
 
-1. **Branch naming**: When a prompt has a `spec` field, derive branch name as `dark-factory/spec-<specID>` (e.g., `dark-factory/spec-028`). When multiple specs are listed, use the first one. When no spec field, keep current behavior (`dark-factory/<prompt-basename>` or explicit `branch` field).
+1. **Config uses `pr` and `worktree` booleans**: The config accepts `pr` (bool, default false) and `worktree` (bool, default false) instead of `workflow`. When `pr` is true, prompts go through pull request review. When `worktree` is true, execution happens in an isolated clone rather than in-place.
 
-2. **Cloner handles existing branches**: `Clone()` must support checking out an existing remote branch instead of always creating a new one with `checkout -b`. Logic: try `checkout -b <branch>` first; if it fails (branch exists), fetch and `checkout <branch>` + `pull` instead.
+2. **Old config is accepted with deprecation warning**: Configs using `workflow: direct` map to `pr: false, worktree: false`. Configs using `workflow: pr` map to `pr: true, worktree: true` (preserving the current PR workflow's clone-based isolation). A deprecation warning is logged at startup. Both old and new fields must not be set simultaneously (error if both present).
 
-3. **Processor branch resolution**: In `setupCloneWorkflowState()`, resolve branch name with priority: explicit `branch` field > spec-derived branch > default `dark-factory/<basename>`.
+3. **Specs carry branch and issue metadata**: A spec can have an optional `branch` (git branch name) and `issue` (freeform string for any issue tracker — Jira ID, GitHub URL, etc.) in its frontmatter.
 
-4. **PR creation is idempotent**: When pushing to a branch that already has an open PR, skip PR creation. Use `gh pr list --head <branch> --state open` to check. If a PR exists, log its URL and continue. If no PR, create one.
+4. **Spec approval assigns a branch**: When a spec is approved, a branch name is auto-generated from the spec number (e.g., spec `028-my-feature.md` gets branch `dark-factory/spec-028`). The user can override via a flag. The branch is stored in the spec's frontmatter.
 
-5. **Auto-merge timing**: When autoMerge is enabled, only merge the PR after the last prompt of the spec completes. Detection: after completing a prompt, check if any remaining in-progress or queued prompts share the same spec. If none remain, proceed with merge. If more remain, skip merge for now.
+5. **Prompts carry issue metadata**: A prompt can have an optional `issue` field in its frontmatter. When set, dark-factory includes the issue reference in PR descriptions and execution logs, enabling automatic linking in Jira and GitHub.
 
-6. **Clone path for shared branches**: Use `dark-factory/<spec-id>` as clone dir name (not prompt basename) so consecutive prompts from the same spec don't conflict.
+6. **Generated prompts inherit from their spec**: When the generator creates prompts from a spec, it copies the spec's `branch` and `issue` values into each new prompt's frontmatter. Existing values on the prompt are not overwritten.
 
 ## Constraints
 
-- Standalone prompts (no spec field) must work exactly as before — zero behavior change
-- Prompts with explicit `branch` frontmatter override spec-derived branch
-- The shared branch is always based off the default branch initially (first prompt of spec)
-- Subsequent prompts fetch and check out the existing branch (with prior prompt's commits)
-- `make precommit` must pass
+- Configs with no `pr`, `worktree`, or `workflow` field default to `pr: false, worktree: false` (current direct behavior)
+- The `branch` and `issue` fields are optional — omitting them changes nothing
+- Existing prompts without `issue` continue to work unchanged
+- Existing specs without `branch` or `issue` continue to work unchanged
 - All existing tests must pass
+- `make precommit` must pass
 
 ## Failure Modes
 
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
-| First prompt of spec fails | Branch exists with partial work; next prompt retries on same branch | Manual cleanup or requeue |
-| Remote branch deleted between prompts | Clone falls back to creating new branch from default | Prior work is lost — same as current behavior |
-| `gh pr list` fails (no gh auth) | Log warning, create PR anyway (may get duplicate PR error) | User resolves manually |
-| Spec has prompts with mixed spec fields | Each group shares its own branch based on first spec ID | Works correctly — independent groups |
+| Both `workflow:` and `pr:` set in config | Validation error at startup with clear message | User removes one |
+| Unknown `workflow:` value (e.g., `worktree`) | Existing error preserved — migration maps known values only | User updates config |
+| Spec approved without a number prefix | Branch auto-generation falls back to spec filename | Works, just longer branch name |
+| Generator finds prompt already has `branch` set | Does not overwrite — explicit values take priority | Works as expected |
+| `spec approve` on spec that already has `branch` | Existing branch is preserved, not overwritten | User can re-run safely |
 
 ## Acceptance Criteria
 
-- [ ] Prompts with `spec: ["028"]` use branch `dark-factory/spec-028`
-- [ ] Second prompt in a spec sees first prompt's code changes
-- [ ] Cloner can check out existing remote branches (not just create new)
-- [ ] PR is created once per spec branch, not per prompt
-- [ ] autoMerge waits until last spec prompt before merging
-- [ ] Standalone prompts (no spec) behave identically to before
-- [ ] Prompts with explicit `branch` field override spec-derived branch
+- [ ] Config accepts `pr` and `worktree` booleans
+- [ ] Old `workflow: direct` and `workflow: pr` map correctly with deprecation warning
+- [ ] Error when both `workflow:` and `pr:` are present
+- [ ] Spec frontmatter supports `branch` and `issue`
+- [ ] Prompt with `issue: BRO-19476` loads without error and value is preserved through save
+- [ ] `spec approve` auto-generates and stores branch name
+- [ ] Generated prompts inherit `branch` and `issue` from spec
+- [ ] Inheritance does not overwrite existing prompt values
+- [ ] Omitting all new fields preserves current behavior exactly
 - [ ] All existing tests pass
 - [ ] `make precommit` passes
+
+## Security
+
+- The `branch` field is user-supplied text passed to `git checkout` and `git push`. Branch names must be validated against git's allowed ref format — reject names containing `..`, leading `-`, spaces, or shell metacharacters. Use `git check-ref-format` or equivalent validation.
+- The `issue` field is freeform text included in PR descriptions and logs. It must be treated as untrusted — no shell interpolation, no command substitution. Pass as a literal string argument, never through shell expansion.
+- Auto-generated branch names from spec numbers are safe (numeric prefix + sanitized filename).
 
 ## Verification
 
 ```bash
-# Unit tests pass
 make precommit
-
-# Integration check: create two prompts with same spec, verify same branch
-# (manual or via test)
 ```
+
+Manual verification steps:
+
+1. **Old config migration**: Create `.dark-factory.yaml` with `workflow: direct`. Run `dark-factory status`. Expected: startup logs deprecation warning, behaves as `pr: false, worktree: false`. Repeat with `workflow: pr` — maps to `pr: true, worktree: true`.
+2. **Conflict detection**: Set both `workflow: direct` and `pr: true`. Run `dark-factory status`. Expected: validation error at startup.
+3. **Spec approve**: Run `dark-factory spec approve 028-my-feature`. Expected: spec frontmatter contains `branch: dark-factory/spec-028`.
+4. **Re-approve safety**: Run `dark-factory spec approve 028-my-feature` again. Expected: existing branch preserved, not overwritten.
+5. **Generator inheritance**: Generate prompts from a spec with `branch` and `issue` set. Expected: each new prompt has both fields in frontmatter.
+6. **No overwrite**: Generate prompts where one already has `branch` set. Expected: existing value preserved.
+7. **Branch validation**: Set `branch: "../../etc"` on a spec. Expected: validation error.
 
 ## Do-Nothing Option
 
-Keep current behavior. Spec prompts that build on each other must be merged one-by-one before the next runs, or users must manually set the `branch` field on each prompt. This works but is slow and error-prone for multi-prompt specs.
+Keep the workflow enum — it works but adds unnecessary complexity for a two-value choice. Keep manual `branch` setting on prompts — works but tedious for multi-prompt specs and easy to forget. No issue linking — users track this mentally or in external docs.

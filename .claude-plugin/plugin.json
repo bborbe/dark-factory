@@ -1,0 +1,11 @@
+{
+  "name": "dark-factory",
+  "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
+  "version": "1.0.0",
+  "author": {
+    "name": "Benjamin Borbe"
+  },
+  "homepage": "https://github.com/bborbe/dark-factory",
+  "repository": "https://github.com/bborbe/dark-factory",
+  "license": "BSD-2-Clause"
+}

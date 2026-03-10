@@ -28,12 +28,32 @@ type Brancher interface {
 	MergeOriginDefault(ctx context.Context) error
 }
 
+// BrancherOption is a functional option for configuring a brancher.
+type BrancherOption func(*brancher)
+
+// WithDefaultBranch sets a configured default branch on the brancher.
+// When set, DefaultBranch() returns this value directly without calling gh.
+// Passing an empty string is a no-op (gh CLI fallback is used).
+func WithDefaultBranch(branch string) BrancherOption {
+	return func(b *brancher) {
+		if branch != "" {
+			b.configuredDefaultBranch = branch
+		}
+	}
+}
+
 // brancher implements Brancher.
-type brancher struct{}
+type brancher struct {
+	configuredDefaultBranch string
+}
 
 // NewBrancher creates a new Brancher.
-func NewBrancher() Brancher {
-	return &brancher{}
+func NewBrancher(opts ...BrancherOption) Brancher {
+	b := &brancher{}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
 
 // CreateAndSwitch creates a new branch and switches to it.
@@ -113,8 +133,14 @@ func (b *brancher) FetchAndVerifyBranch(ctx context.Context, branch string) erro
 	return nil
 }
 
-// DefaultBranch returns the repository's default branch name via gh CLI.
+// DefaultBranch returns the repository's default branch name.
+// If a default branch was configured via WithDefaultBranch, it is returned directly.
+// Otherwise, gh CLI is used to query the remote repository.
 func (b *brancher) DefaultBranch(ctx context.Context) (string, error) {
+	if b.configuredDefaultBranch != "" {
+		slog.Debug("default branch from config", "branch", b.configuredDefaultBranch)
+		return b.configuredDefaultBranch, nil
+	}
 	// #nosec G204 -- static command with no user input
 	cmd := exec.CommandContext(
 		ctx,

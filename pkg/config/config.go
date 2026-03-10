@@ -39,6 +39,7 @@ type SpecsConfig struct {
 type Config struct {
 	ProjectName       string        `yaml:"projectName"`
 	Workflow          Workflow      `yaml:"workflow"`
+	DefaultBranch     string        `yaml:"defaultBranch"`
 	Prompts           PromptsConfig `yaml:"prompts"`
 	Specs             SpecsConfig   `yaml:"specs"`
 	ContainerImage    string        `yaml:"containerImage"`

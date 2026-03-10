@@ -560,6 +560,43 @@ var _ = Describe("Config", func() {
 			err := cfg.Validate(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("succeeds with DefaultBranch set to master", func() {
+			cfg := config.Config{
+				Workflow:      config.WorkflowDirect,
+				DefaultBranch: "master",
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds without DefaultBranch set (optional field)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.7",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Describe("Workflow", func() {

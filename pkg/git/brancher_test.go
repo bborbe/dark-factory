@@ -88,6 +88,16 @@ var _ = Describe("Brancher", func() {
 			brancher := git.NewBrancher()
 			Expect(brancher).NotTo(BeNil())
 		})
+
+		It("creates Brancher with WithDefaultBranch option", func() {
+			brancher := git.NewBrancher(git.WithDefaultBranch("main"))
+			Expect(brancher).NotTo(BeNil())
+		})
+
+		It("WithDefaultBranch empty string is a no-op", func() {
+			brancher := git.NewBrancher(git.WithDefaultBranch(""))
+			Expect(brancher).NotTo(BeNil())
+		})
 	})
 
 	Describe("CurrentBranch", func() {
@@ -235,6 +245,20 @@ var _ = Describe("Brancher", func() {
 			_, err := b.DefaultBranch(ctx)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("returns configured branch without calling gh", func() {
+			configured := git.NewBrancher(git.WithDefaultBranch("main"))
+			branch, err := configured.DefaultBranch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(branch).To(Equal("main"))
+		})
+
+		It("returns configured branch master without calling gh", func() {
+			configured := git.NewBrancher(git.WithDefaultBranch("master"))
+			branch, err := configured.DefaultBranch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(branch).To(Equal("master"))
+		})
 	})
 
 	Describe("Pull", func() {
@@ -250,6 +274,15 @@ var _ = Describe("Brancher", func() {
 			// MergeOriginDefault requires DefaultBranch which needs gh CLI
 			err := b.MergeOriginDefault(ctx)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("with configured default branch skips gh CLI and attempts git merge", func() {
+			configured := git.NewBrancher(git.WithDefaultBranch("main"))
+			// No remote configured, so git merge will fail — but the error comes from
+			// git merge, not from gh CLI, proving the configured branch path is used.
+			err := configured.MergeOriginDefault(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("merge origin/main"))
 		})
 	})
 })

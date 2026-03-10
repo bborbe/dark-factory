@@ -3883,11 +3883,15 @@ DARK-FACTORY-REPORT -->`), 0600)
 				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
 
 				// File status must be pending_verification
-				pf, loadErr := prompt.Load(ctx, promptPath)
-				Expect(loadErr).NotTo(HaveOccurred())
-				Expect(
-					pf.Frontmatter.Status,
-				).To(Equal(string(prompt.PendingVerificationPromptStatus)))
+				// Use Eventually to avoid a race: enterPendingVerification runs
+				// asynchronously after Execute returns in the processor goroutine.
+				Eventually(func() string {
+					pf, loadErr := prompt.Load(ctx, promptPath)
+					if loadErr != nil {
+						return ""
+					}
+					return pf.Frontmatter.Status
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.PendingVerificationPromptStatus)))
 
 				cancel()
 				<-errCh

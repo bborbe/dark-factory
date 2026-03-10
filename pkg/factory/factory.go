@@ -120,6 +120,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
+			cfg.DefaultBranch,
 		),
 		srv,
 		reviewPoller,
@@ -172,6 +173,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
+			cfg.DefaultBranch,
 		),
 	)
 }
@@ -233,6 +235,7 @@ func CreateProcessor(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	verificationGate bool,
+	defaultBranch string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -245,7 +248,7 @@ func CreateProcessor(
 		versionGetter,
 		ready,
 		workflow,
-		git.NewBrancher(),
+		git.NewBrancher(git.WithDefaultBranch(defaultBranch)),
 		git.NewPRCreator(ghToken),
 		git.NewCloner(),
 		git.NewPRMerger(ghToken),
@@ -395,7 +398,7 @@ func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
 		promptManager,
 		releaser,
 		cfg.Workflow,
-		git.NewBrancher(),
+		git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
 		git.NewPRCreator(ghToken),
 	)
 }

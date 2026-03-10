@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["028"]
+summary: Added Issue field to prompt.Frontmatter, SetIssue/SetIssueIfEmpty/SetBranchIfEmpty methods to PromptFile, and refactored generator to use listMDFiles/diffFiles/inheritFromSpec for spec metadata inheritance into generated prompts.
+container: dark-factory-167-spec-028-prompt-inheritance
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T19:39:55Z"
 queued: "2026-03-10T20:15:53Z"
+started: "2026-03-10T20:35:16Z"
+completed: "2026-03-10T20:42:22Z"
 ---
 <summary>
 - Prompt frontmatter gains an optional `issue` field (freeform issue tracker reference such as a Jira ID or GitHub URL)

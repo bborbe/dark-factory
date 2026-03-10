@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["028"]
+summary: Replaced workflow string enum with PR and Worktree boolean flags in Config, added deprecation mapping in loader, updated processor/factory/cmd to use pr bool, and updated all tests accordingly.
 container: dark-factory-165-spec-028-config-booleans
 dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T19:39:55Z"
 queued: "2026-03-10T20:15:53Z"
 started: "2026-03-10T20:15:56Z"
+completed: "2026-03-10T20:29:32Z"
 ---
 <summary>
 - Dark-factory config supports two new boolean settings for controlling pull-request creation and worktree isolation, replacing the older workflow string

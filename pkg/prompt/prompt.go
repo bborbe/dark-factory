@@ -22,6 +22,7 @@ import (
 	"github.com/adrg/frontmatter"
 	"github.com/bborbe/collection"
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
 
@@ -194,15 +195,35 @@ func (f Frontmatter) HasSpec(id string) bool {
 //
 //nolint:revive // PromptFile is the intended name per requirements
 type PromptFile struct {
-	Path        string
-	Frontmatter Frontmatter
-	Body        []byte // immutable after Load — never modified
-	nowFunc     func() time.Time
+	Path                  string
+	Frontmatter           Frontmatter
+	Body                  []byte // immutable after Load — never modified
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+}
+
+// NewPromptFile creates a PromptFile with the given fields and currentDateTimeGetter.
+// This is intended for use in tests where a PromptFile must be constructed without reading from disk.
+func NewPromptFile(
+	path string,
+	fm Frontmatter,
+	body []byte,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) *PromptFile {
+	return &PromptFile{
+		Path:                  path,
+		Frontmatter:           fm,
+		Body:                  body,
+		currentDateTimeGetter: currentDateTimeGetter,
+	}
 }
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
 // Body is stored as-is and never modified by Save.
-func Load(ctx context.Context, path string) (*PromptFile, error) {
+func Load(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (*PromptFile, error) {
 	// #nosec G304 -- path is from ListQueued which scans prompts directory
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -215,19 +236,19 @@ func Load(ctx context.Context, path string) (*PromptFile, error) {
 	if err != nil {
 		// No frontmatter — entire file is body
 		pf := &PromptFile{
-			Path:    path,
-			Body:    content,
-			nowFunc: time.Now,
+			Path:                  path,
+			Body:                  content,
+			currentDateTimeGetter: currentDateTimeGetter,
 		}
 		slog.Debug("file loaded", "path", path, "bodySize", len(content), "hasStatus", false)
 		return pf, nil
 	}
 
 	pf := &PromptFile{
-		Path:        path,
-		Frontmatter: fm,
-		Body:        body,
-		nowFunc:     time.Now,
+		Path:                  path,
+		Frontmatter:           fm,
+		Body:                  body,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 	slog.Debug("file loaded", "path", path, "bodySize", len(body), "hasStatus", fm.Status != "")
 	return pf, nil
@@ -285,12 +306,9 @@ func (pf *PromptFile) Title() string {
 	return ""
 }
 
-// now returns the current time, handling nil nowFunc gracefully.
+// now returns the current time from the injected getter.
 func (pf *PromptFile) now() time.Time {
-	if pf.nowFunc == nil {
-		return time.Now()
-	}
-	return pf.nowFunc()
+	return time.Time(pf.currentDateTimeGetter.Now())
 }
 
 // PrepareForExecution sets all fields needed before container launch.
@@ -427,10 +445,11 @@ type Manager interface {
 
 // manager implements Manager.
 type manager struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
-	mover         FileMover
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	mover                 FileMover
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewManager creates a new Manager.
@@ -439,23 +458,25 @@ func NewManager(
 	inProgressDir string,
 	completedDir string,
 	mover FileMover,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) Manager {
 	return &manager{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
-		mover:         mover,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		mover:                 mover,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "approved".
 func (pm *manager) ResetExecuting(ctx context.Context) error {
-	return ResetExecuting(ctx, pm.inProgressDir)
+	return ResetExecuting(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // ResetFailed resets any prompts with status "failed" back to "approved".
 func (pm *manager) ResetFailed(ctx context.Context) error {
-	return ResetFailed(ctx, pm.inProgressDir)
+	return ResetFailed(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
@@ -470,57 +491,57 @@ func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
 func (pm *manager) Load(ctx context.Context, path string) (*PromptFile, error) {
-	return Load(ctx, path)
+	return Load(ctx, path, pm.currentDateTimeGetter)
 }
 
 // ReadFrontmatter reads frontmatter from a file.
 func (pm *manager) ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
-	return ReadFrontmatter(ctx, path)
+	return ReadFrontmatter(ctx, path, pm.currentDateTimeGetter)
 }
 
 // SetStatus updates the status field in a prompt file's frontmatter.
 func (pm *manager) SetStatus(ctx context.Context, path string, status string) error {
-	return SetStatus(ctx, path, status)
+	return SetStatus(ctx, path, status, pm.currentDateTimeGetter)
 }
 
 // SetContainer updates the container field in a prompt file's frontmatter.
 func (pm *manager) SetContainer(ctx context.Context, path string, name string) error {
-	return SetContainer(ctx, path, name)
+	return SetContainer(ctx, path, name, pm.currentDateTimeGetter)
 }
 
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
 func (pm *manager) SetVersion(ctx context.Context, path string, version string) error {
-	return SetVersion(ctx, path, version)
+	return SetVersion(ctx, path, version, pm.currentDateTimeGetter)
 }
 
 // SetPRURL updates the pr-url field in a prompt file's frontmatter.
 func (pm *manager) SetPRURL(ctx context.Context, path string, url string) error {
-	return SetPRURL(ctx, path, url)
+	return SetPRURL(ctx, path, url, pm.currentDateTimeGetter)
 }
 
 // SetBranch updates the branch field in a prompt file's frontmatter.
 func (pm *manager) SetBranch(ctx context.Context, path string, branch string) error {
-	return SetBranch(ctx, path, branch)
+	return SetBranch(ctx, path, branch, pm.currentDateTimeGetter)
 }
 
 // IncrementRetryCount increments the retryCount field in a prompt file's frontmatter.
 func (pm *manager) IncrementRetryCount(ctx context.Context, path string) error {
-	return IncrementRetryCount(ctx, path)
+	return IncrementRetryCount(ctx, path, pm.currentDateTimeGetter)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
 func (pm *manager) Content(ctx context.Context, path string) (string, error) {
-	return Content(ctx, path)
+	return Content(ctx, path, pm.currentDateTimeGetter)
 }
 
 // Title extracts the first # heading from a prompt file.
 func (pm *manager) Title(ctx context.Context, path string) (string, error) {
-	return Title(ctx, path)
+	return Title(ctx, path, pm.currentDateTimeGetter)
 }
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
 func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
-	return MoveToCompleted(ctx, path, pm.completedDir, pm.mover)
+	return MoveToCompleted(ctx, path, pm.completedDir, pm.mover, pm.currentDateTimeGetter)
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
@@ -538,6 +559,7 @@ func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 // Sorted alphabetically by filename.
 func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
@@ -550,7 +572,7 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		fm, err := readFrontmatter(ctx, path)
+		fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			// Skip files with read errors
 			slog.Warn("skipping prompt", "file", entry.Name(), "error", err)
@@ -588,7 +610,11 @@ func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
 
 // ResetExecuting resets any prompts with status "executing" back to "approved".
 // This handles prompts that got stuck from a previous crash.
-func ResetExecuting(ctx context.Context, dir string) error {
+func ResetExecuting(
+	ctx context.Context,
+	dir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "read directory")
@@ -600,7 +626,7 @@ func ResetExecuting(ctx context.Context, dir string) error {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		pf, err := Load(ctx, path)
+		pf, err := Load(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			continue
 		}
@@ -618,7 +644,11 @@ func ResetExecuting(ctx context.Context, dir string) error {
 
 // ResetFailed resets any prompts with status "failed" back to "approved".
 // This allows the factory to retry failed prompts after a restart.
-func ResetFailed(ctx context.Context, dir string) error {
+func ResetFailed(
+	ctx context.Context,
+	dir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "read directory")
@@ -630,7 +660,7 @@ func ResetFailed(ctx context.Context, dir string) error {
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		pf, err := Load(ctx, path)
+		pf, err := Load(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			continue
 		}
@@ -650,8 +680,13 @@ func ResetFailed(ctx context.Context, dir string) error {
 // SetStatus updates the status field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the status field.
 // Also sets appropriate timestamp fields based on status.
-func SetStatus(ctx context.Context, path string, status string) error {
-	pf, err := Load(ctx, path)
+func SetStatus(
+	ctx context.Context,
+	path string,
+	status string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -685,8 +720,13 @@ func SetStatus(ctx context.Context, path string, status string) error {
 
 // SetContainer updates the container field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the container field.
-func SetContainer(ctx context.Context, path string, container string) error {
-	pf, err := Load(ctx, path)
+func SetContainer(
+	ctx context.Context,
+	path string,
+	container string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -697,8 +737,13 @@ func SetContainer(ctx context.Context, path string, container string) error {
 
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the version field.
-func SetVersion(ctx context.Context, path string, version string) error {
-	pf, err := Load(ctx, path)
+func SetVersion(
+	ctx context.Context,
+	path string,
+	version string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -709,8 +754,13 @@ func SetVersion(ctx context.Context, path string, version string) error {
 
 // SetPRURL updates the pr-url field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the pr-url field.
-func SetPRURL(ctx context.Context, path string, url string) error {
-	pf, err := Load(ctx, path)
+func SetPRURL(
+	ctx context.Context,
+	path string,
+	url string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -721,8 +771,13 @@ func SetPRURL(ctx context.Context, path string, url string) error {
 
 // SetBranch updates the branch field in a prompt file's frontmatter.
 // If the file has no frontmatter, adds frontmatter with the branch field.
-func SetBranch(ctx context.Context, path string, branch string) error {
-	pf, err := Load(ctx, path)
+func SetBranch(
+	ctx context.Context,
+	path string,
+	branch string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -733,8 +788,12 @@ func SetBranch(ctx context.Context, path string, branch string) error {
 
 // IncrementRetryCount increments the retryCount field in a prompt file's frontmatter by 1.
 // If the file has no frontmatter, adds frontmatter with retryCount set to 1.
-func IncrementRetryCount(ctx context.Context, path string) error {
-	pf, err := Load(ctx, path)
+func IncrementRetryCount(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -746,8 +805,12 @@ func IncrementRetryCount(ctx context.Context, path string) error {
 // Title extracts the first # heading from a prompt file.
 // Handles files with or without frontmatter.
 // If no heading is found, returns the filename without extension.
-func Title(ctx context.Context, path string) (string, error) {
-	pf, err := Load(ctx, path)
+func Title(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (string, error) {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "load prompt")
 	}
@@ -764,8 +827,12 @@ func Title(ctx context.Context, path string) (string, error) {
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
 // Returns ErrEmptyPrompt if the file is empty or contains only whitespace.
-func Content(ctx context.Context, path string) (string, error) {
-	pf, err := Load(ctx, path)
+func Content(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (string, error) {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "load prompt")
 	}
@@ -775,9 +842,15 @@ func Content(ctx context.Context, path string) (string, error) {
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed directory.
 // This ensures files in completed/ always have the correct status.
-func MoveToCompleted(ctx context.Context, path string, completedDir string, mover FileMover) error {
+func MoveToCompleted(
+	ctx context.Context,
+	path string,
+	completedDir string,
+	mover FileMover,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	// Load, mark completed, and save before moving
-	pf, err := Load(ctx, path)
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -806,12 +879,17 @@ func MoveToCompleted(ctx context.Context, path string, completedDir string, move
 }
 
 // ReadFrontmatter reads frontmatter from a file.
-func ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
-	return readFrontmatter(ctx, path)
+func ReadFrontmatter(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (*Frontmatter, error) {
+	return readFrontmatter(ctx, path, currentDateTimeGetter)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
 func HasExecuting(ctx context.Context, dir string) bool {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false
@@ -820,7 +898,7 @@ func HasExecuting(ctx context.Context, dir string) bool {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		fm, err := readFrontmatter(ctx, filepath.Join(dir, entry.Name()))
+		fm, err := readFrontmatter(ctx, filepath.Join(dir, entry.Name()), currentDateTimeGetter)
 		if err != nil {
 			continue
 		}
@@ -1029,8 +1107,12 @@ func performRename(
 
 // readFrontmatter is a helper to read frontmatter from a file.
 // Returns empty Frontmatter if file has no frontmatter delimiters.
-func readFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
-	pf, err := Load(ctx, path)
+func readFrontmatter(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (*Frontmatter, error) {
+	pf, err := Load(ctx, path, currentDateTimeGetter)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "load prompt")
 	}

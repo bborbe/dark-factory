@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -37,7 +38,12 @@ var _ = Describe("SpecApproveCommand", func() {
 		inProgressDir = filepath.Join(tempDir, "specs", "in-progress")
 		completedDir = filepath.Join(tempDir, "specs", "completed")
 
-		specApproveCmd = cmd.NewSpecApproveCommand(specsDir, inProgressDir, completedDir)
+		specApproveCmd = cmd.NewSpecApproveCommand(
+			specsDir,
+			inProgressDir,
+			completedDir,
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 
@@ -122,6 +128,7 @@ var _ = Describe("SpecApproveCommand", func() {
 				"/nonexistent/specs",
 				"/nonexistent/specs/in-progress",
 				"/nonexistent/specs/completed",
+				libtime.NewCurrentDateTime(),
 			)
 			err := specApproveCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())

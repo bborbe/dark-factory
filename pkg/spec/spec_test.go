@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -53,7 +54,7 @@ var _ = Describe("Load", func() {
 			path := filepath.Join(dir, "019-native.md")
 			writeSpec(path, "approved")
 
-			sf, err := spec.Load(ctx, path)
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("approved"))
 			Expect(sf.Name).To(Equal("019-native"))
@@ -68,7 +69,7 @@ var _ = Describe("Load", func() {
 				os.WriteFile(path, []byte("# Just a title\n\nNo frontmatter here.\n"), 0600),
 			).To(Succeed())
 
-			sf, err := spec.Load(ctx, path)
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal(""))
 			Expect(sf.Name).To(Equal("no-fm"))
@@ -95,14 +96,14 @@ var _ = Describe("SetStatus and Save", func() {
 		path := filepath.Join(dir, "001-spec.md")
 		writeSpec(path, "draft")
 
-		sf, err := spec.Load(ctx, path)
+		sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sf.Frontmatter.Status).To(Equal("draft"))
 
 		sf.SetStatus("approved")
 		Expect(sf.Save(ctx)).To(Succeed())
 
-		sf2, err := spec.Load(ctx, path)
+		sf2, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sf2.Frontmatter.Status).To(Equal("approved"))
 	})
@@ -128,9 +129,10 @@ var _ = Describe("Timestamp fields", func() {
 	newSpecFile := func() *spec.SpecFile {
 		path := filepath.Join(dir, "001-spec.md")
 		writeSpec(path, "draft")
-		sf, err := spec.Load(ctx, path)
+		currentDateTime := libtime.NewCurrentDateTime()
+		currentDateTime.SetNow(libtime.DateTime(fixedTime))
+		sf, err := spec.Load(ctx, path, currentDateTime)
 		Expect(err).NotTo(HaveOccurred())
-		sf.SetNowFunc(func() time.Time { return fixedTime })
 		return sf
 	}
 
@@ -184,9 +186,10 @@ var _ = Describe("Timestamp fields", func() {
 		path := filepath.Join(dir, "002-spec.md")
 		writeSpec(path, "draft")
 
-		sf, err := spec.Load(ctx, path)
+		currentDateTime := libtime.NewCurrentDateTime()
+		currentDateTime.SetNow(libtime.DateTime(fixedTime))
+		sf, err := spec.Load(ctx, path, currentDateTime)
 		Expect(err).NotTo(HaveOccurred())
-		sf.SetNowFunc(func() time.Time { return fixedTime })
 
 		sf.Frontmatter.Approved = fixedStamp
 		sf.Frontmatter.Prompted = fixedStamp
@@ -195,7 +198,7 @@ var _ = Describe("Timestamp fields", func() {
 
 		Expect(sf.Save(ctx)).To(Succeed())
 
-		sf2, err := spec.Load(ctx, path)
+		sf2, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sf2.Frontmatter.Approved).To(Equal(fixedStamp))
 		Expect(sf2.Frontmatter.Prompted).To(Equal(fixedStamp))
@@ -324,7 +327,14 @@ var _ = Describe("AutoCompleter", func() {
 		specsDir, err = os.MkdirTemp("", "spec-test-specs-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		ac = spec.NewAutoCompleter(queueDir, completedDir, specsDir, specsDir, specsDir)
+		ac = spec.NewAutoCompleter(
+			queueDir,
+			completedDir,
+			specsDir,
+			specsDir,
+			specsDir,
+			libtime.NewCurrentDateTime(),
+		)
 	})
 
 	AfterEach(func() {
@@ -353,7 +363,11 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify spec file is now verifying
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-001.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-001.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
@@ -372,7 +386,11 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify spec file is still queued
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-002.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-002.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})
@@ -389,7 +407,11 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-003.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-003.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("completed"))
 		})
@@ -406,7 +428,11 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-009.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-009.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
@@ -421,7 +447,11 @@ var _ = Describe("AutoCompleter", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-004.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-004.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})
@@ -440,7 +470,11 @@ var _ = Describe("AutoCompleter", func() {
 			err := ac.CheckAndComplete(ctx, "spec-005")
 			Expect(err).NotTo(HaveOccurred())
 
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-005.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-005.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
@@ -459,7 +493,11 @@ var _ = Describe("AutoCompleter", func() {
 			err := ac.CheckAndComplete(ctx, "spec-007")
 			Expect(err).NotTo(HaveOccurred())
 
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "spec-007.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "spec-007.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})
@@ -477,7 +515,11 @@ var _ = Describe("AutoCompleter", func() {
 			err := ac.CheckAndComplete(ctx, "019")
 			Expect(err).NotTo(HaveOccurred())
 
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "019-review-fix-loop.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "019-review-fix-loop.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
 		})
@@ -491,7 +533,11 @@ var _ = Describe("AutoCompleter", func() {
 			err := ac.CheckAndComplete(ctx, "019")
 			Expect(err).NotTo(HaveOccurred())
 
-			sf, loadErr := spec.Load(ctx, filepath.Join(specsDir, "019-review-fix-loop.md"))
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "019-review-fix-loop.md"),
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("queued"))
 		})

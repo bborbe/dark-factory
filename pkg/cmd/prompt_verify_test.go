@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -64,6 +65,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			workflow,
 			mockBrancher,
 			mockPRCreator,
+			libtime.NewCurrentDateTime(),
 		)
 	}
 

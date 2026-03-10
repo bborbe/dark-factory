@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -80,13 +81,12 @@ var _ = Describe("Processor", func() {
 
 	// Helper function to create a PromptFile mock
 	createMockPromptFile := func(path string, body string) *prompt.PromptFile {
-		return &prompt.PromptFile{
-			Path: path,
-			Body: []byte(body),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}
+		return prompt.NewPromptFile(
+			path,
+			prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+			[]byte(body),
+			libtime.NewCurrentDateTime(),
+		)
 	}
 
 	// Set up default Load behavior to return a valid PromptFile
@@ -287,13 +287,15 @@ var _ = Describe("Processor", func() {
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return empty body
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte(""),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
+		mockManager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte(""),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
 		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
@@ -544,13 +546,15 @@ var _ = Describe("Processor", func() {
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return PromptFile with title "Add new feature"
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte("# Add new feature\n\nImplement new feature."),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
+		mockManager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Add new feature\n\nImplement new feature."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
 		mockManager.ContentReturns("# Add new feature", nil)
 		mockManager.TitleReturns("Add new feature", nil)
 		mockManager.SetContainerReturns(nil)
@@ -955,13 +959,15 @@ var _ = Describe("Processor", func() {
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return PromptFile with specific content
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte("# Test prompt content\n\nContent for testing suffix."),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
+		mockManager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Test prompt content\n\nContent for testing suffix."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
 		mockManager.ContentReturns("# Test prompt content", nil)
 		mockManager.TitleReturns("Suffix test", nil)
 		mockManager.SetContainerReturns(nil)
@@ -1026,13 +1032,15 @@ var _ = Describe("Processor", func() {
 
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte("# Validation test\n\nContent for validation suffix test."),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
+		mockManager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Validation test\n\nContent for validation suffix test."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
 		mockManager.MoveToCompletedReturns(nil)
 		mockManager.AllPreviousCompletedReturns(true)
 		mockExecutor.ExecuteReturns(nil)
@@ -1087,13 +1095,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Add new feature\n\nWorktree test content."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Add new feature\n\nWorktree test content."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Worktree test", nil)
 			mockManager.TitleReturns("Add new feature", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1195,13 +1205,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Log path test\n\nVerify log path is absolute."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Log path test\n\nVerify log path is absolute."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Log path test", nil)
 			mockManager.TitleReturns("Log path test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1281,13 +1293,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Add feature\n\nWorktree auto-merge test."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Add feature\n\nWorktree auto-merge test."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Worktree automerge test", nil)
 			mockManager.TitleReturns("Add feature", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1374,13 +1388,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Test\n\nFail test."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Test\n\nFail test."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Fail test", nil)
 			mockManager.TitleReturns("Test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1447,13 +1463,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Test\n\nRemove fail test."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Test\n\nRemove fail test."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Test", nil)
 			mockManager.TitleReturns("Test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1530,13 +1548,15 @@ var _ = Describe("Processor", func() {
 
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Test\n\nWorktree merge fail test."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Test\n\nWorktree merge fail test."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.ContentReturns("# Test", nil)
 			mockManager.TitleReturns("Test", nil)
 			mockManager.SetContainerReturns(nil)
@@ -1679,13 +1699,12 @@ var _ = Describe("Processor", func() {
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				// Create a real PromptFile with a temporary backing file
-				pf := &prompt.PromptFile{
-					Path: path,
-					Body: []byte("# Summary test\n\nTest content"),
-					Frontmatter: prompt.Frontmatter{
-						Status: string(prompt.ApprovedPromptStatus),
-					},
-				}
+				pf := prompt.NewPromptFile(
+					path,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Summary test\n\nTest content"),
+					libtime.NewCurrentDateTime(),
+				)
 				savedPromptFile = pf
 				return pf, nil
 			}
@@ -2386,13 +2405,15 @@ DARK-FACTORY-REPORT -->
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Commit error test\n\nContent."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Commit error test\n\nContent."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.AllPreviousCompletedReturns(true)
 			mockManager.MoveToCompletedReturns(nil)
 			mockExecutor.ExecuteReturns(nil)
@@ -2459,13 +2480,15 @@ DARK-FACTORY-REPORT -->
 			}
 			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(&prompt.PromptFile{
-				Path: promptPath,
-				Body: []byte("# Push error test\n\nContent."),
-				Frontmatter: prompt.Frontmatter{
-					Status: string(prompt.ApprovedPromptStatus),
-				},
-			}, nil)
+			mockManager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Push error test\n\nContent."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
 			mockManager.AllPreviousCompletedReturns(true)
 			mockManager.MoveToCompletedReturns(nil)
 			mockExecutor.ExecuteReturns(nil)
@@ -2708,13 +2731,15 @@ DARK-FACTORY-REPORT -->
 		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
 		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
 		// Empty body triggers ErrEmptyPrompt from pf.Content()
-		mockManager.LoadReturns(&prompt.PromptFile{
-			Path: promptPath,
-			Body: []byte(""),
-			Frontmatter: prompt.Frontmatter{
-				Status: string(prompt.ApprovedPromptStatus),
-			},
-		}, nil)
+		mockManager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte(""),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
 		mockManager.AllPreviousCompletedReturns(true)
 		mockManager.MoveToCompletedReturns(stderrors.New("move failed"))
 
@@ -3828,7 +3853,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			promptPath = filepath.Join(promptsDir, "001-gate-test.md")
 			// Override Load stub to use real file I/O so pf.Save works
 			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-				return prompt.Load(ctx, path)
+				return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			}
 		})
 
@@ -3889,7 +3914,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				// Use Eventually to avoid a race: enterPendingVerification runs
 				// asynchronously after Execute returns in the processor goroutine.
 				Eventually(func() string {
-					pf, loadErr := prompt.Load(ctx, promptPath)
+					pf, loadErr := prompt.Load(ctx, promptPath, libtime.NewCurrentDateTime())
 					if loadErr != nil {
 						return ""
 					}
@@ -3953,7 +3978,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
 
 				// Status must be failed — gate does not apply to failed executions
-				pf, loadErr := prompt.Load(ctx, promptPath)
+				pf, loadErr := prompt.Load(ctx, promptPath, libtime.NewCurrentDateTime())
 				Expect(loadErr).NotTo(HaveOccurred())
 				Expect(pf.Frontmatter.Status).To(Equal(string(prompt.FailedPromptStatus)))
 

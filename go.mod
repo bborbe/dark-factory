@@ -12,6 +12,7 @@ require (
 	github.com/bborbe/errors v1.5.3
 	github.com/bborbe/http v1.26.3
 	github.com/bborbe/run v1.9.4
+	github.com/bborbe/time v1.22.0
 	github.com/bborbe/validation v1.4.4
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/golangci/golangci-lint v1.64.8
@@ -84,7 +85,6 @@ require (
 	github.com/bborbe/math v1.3.1 // indirect
 	github.com/bborbe/parse v1.10.1 // indirect
 	github.com/bborbe/sentry v1.9.6 // indirect
-	github.com/bborbe/time v1.22.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bkielbasa/cyclop v1.2.3 // indirect
 	github.com/blizzy78/varnamelen v0.8.0 // indirect

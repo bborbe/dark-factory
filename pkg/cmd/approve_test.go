@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -43,7 +44,12 @@ var _ = Describe("ApproveCommand", func() {
 		mockPromptManager = &mocks.Manager{}
 		mockPromptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		approveCmd = cmd.NewApproveCommand(inboxDir, queueDir, mockPromptManager)
+		approveCmd = cmd.NewApproveCommand(
+			inboxDir,
+			queueDir,
+			mockPromptManager,
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 

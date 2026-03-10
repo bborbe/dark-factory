@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/bborbe/dark-factory/pkg/generator"
@@ -29,10 +30,11 @@ type SpecWatcher interface {
 
 // specWatcher implements SpecWatcher.
 type specWatcher struct {
-	inProgressDir string
-	generator     generator.SpecGenerator
-	debounce      time.Duration
-	mu            sync.Mutex
+	inProgressDir         string
+	generator             generator.SpecGenerator
+	debounce              time.Duration
+	mu                    sync.Mutex
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewSpecWatcher creates a new SpecWatcher.
@@ -40,11 +42,13 @@ func NewSpecWatcher(
 	inProgressDir string,
 	generator generator.SpecGenerator,
 	debounce time.Duration,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecWatcher {
 	return &specWatcher{
-		inProgressDir: inProgressDir,
-		generator:     generator,
-		debounce:      debounce,
+		inProgressDir:         inProgressDir,
+		generator:             generator,
+		debounce:              debounce,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -126,7 +130,7 @@ func (w *specWatcher) handleWatchEvent(
 
 // handleFileEvent triggers generation for a spec file in inProgressDir.
 func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
-	sf, err := spec.Load(ctx, specPath)
+	sf, err := spec.Load(ctx, specPath, w.currentDateTimeGetter)
 	if err != nil {
 		slog.Warn("failed to load spec", "path", specPath, "error", err)
 		return

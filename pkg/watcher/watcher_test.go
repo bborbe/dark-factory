@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -56,7 +57,14 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -87,7 +95,14 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -119,7 +134,14 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -150,7 +172,14 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -177,7 +206,14 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns(nil, os.ErrPermission)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		errCh := make(chan error, 1)
@@ -224,7 +260,14 @@ var _ = Describe("Watcher", func() {
 			},
 		}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -260,7 +303,14 @@ var _ = Describe("Watcher", func() {
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use the absolute path directly (tempDir is already absolute)
-		w := watcher.NewWatcher(queueDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			queueDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -291,7 +341,14 @@ var _ = Describe("Watcher", func() {
 		promptManager := &mocks.Manager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -329,7 +386,14 @@ var _ = Describe("Watcher", func() {
 		err := os.WriteFile(testFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -367,7 +431,14 @@ var _ = Describe("Watcher", func() {
 		err := os.WriteFile(testFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := watcher.NewWatcher(promptsDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			promptsDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {
@@ -418,7 +489,14 @@ var _ = Describe("Watcher", func() {
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use relative path
-		w := watcher.NewWatcher(relPromptDir, inboxDir, promptManager, ready, 500*time.Millisecond)
+		w := watcher.NewWatcher(
+			relPromptDir,
+			inboxDir,
+			promptManager,
+			ready,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Run watcher in goroutine
 		go func() {

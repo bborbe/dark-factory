@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -495,7 +496,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("updates status field", func() {
-				err := prompt.SetStatus(ctx, path, "executing")
+				err := prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				content, err := os.ReadFile(path)
@@ -516,7 +517,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds frontmatter with status", func() {
-				err := prompt.SetStatus(ctx, path, "executing")
+				err := prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				content, err := os.ReadFile(path)
@@ -538,10 +539,15 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds container field", func() {
-				err := prompt.SetContainer(ctx, path, "dark-factory-001-test")
+				err := prompt.SetContainer(
+					ctx,
+					path,
+					"dark-factory-001-test",
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("dark-factory-001-test"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -560,10 +566,15 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds frontmatter with container field", func() {
-				err := prompt.SetContainer(ctx, path, "dark-factory-001-plain")
+				err := prompt.SetContainer(
+					ctx,
+					path,
+					"dark-factory-001-plain",
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("dark-factory-001-plain"))
 			})
@@ -588,10 +599,10 @@ Content here.
 			})
 
 			It("updates container field", func() {
-				err := prompt.SetContainer(ctx, path, "new-container")
+				err := prompt.SetContainer(ctx, path, "new-container", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("new-container"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -608,10 +619,10 @@ Content here.
 			})
 
 			It("adds version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.2.37")
+				err := prompt.SetVersion(ctx, path, "v0.2.37", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.37"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -630,10 +641,10 @@ Content here.
 			})
 
 			It("adds frontmatter with version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.1.0")
+				err := prompt.SetVersion(ctx, path, "v0.1.0", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.1.0"))
 			})
@@ -658,10 +669,10 @@ Content here.
 			})
 
 			It("updates version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.2.0")
+				err := prompt.SetVersion(ctx, path, "v0.2.0", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.0"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -677,20 +688,31 @@ Content here.
 
 			It("preserves version when moved to completed", func() {
 				// Set container and version
-				err := prompt.SetContainer(ctx, path, "dark-factory-001-test")
+				err := prompt.SetContainer(
+					ctx,
+					path,
+					"dark-factory-001-test",
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 
-				err = prompt.SetVersion(ctx, path, "v0.5.0")
+				err = prompt.SetVersion(ctx, path, "v0.5.0", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				// Move to completed
 				completedDir := filepath.Join(tempDir, "completed")
-				err = prompt.MoveToCompleted(ctx, path, completedDir, mover)
+				err = prompt.MoveToCompleted(
+					ctx,
+					path,
+					completedDir,
+					mover,
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 
 				// Verify version is preserved in completed file
 				completedPath := filepath.Join(tempDir, "completed", "001-test.md")
-				fm, err := prompt.ReadFrontmatter(ctx, completedPath)
+				fm, err := prompt.ReadFrontmatter(ctx, completedPath, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 				Expect(fm.Container).To(Equal("dark-factory-001-test"))
@@ -718,7 +740,7 @@ This is the content.
 			})
 
 			It("extracts first heading", func() {
-				title, err := prompt.Title(ctx, path)
+				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("Implement Feature X"))
 			})
@@ -738,7 +760,7 @@ This is the content.
 			})
 
 			It("extracts first heading from start of file", func() {
-				title, err := prompt.Title(ctx, path)
+				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("Implement Feature Y"))
 			})
@@ -755,7 +777,7 @@ This is the content.
 			})
 
 			It("returns filename without extension", func() {
-				title, err := prompt.Title(ctx, path)
+				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("004-test"))
 			})
@@ -771,7 +793,7 @@ This is the content.
 			})
 
 			It("returns content without frontmatter", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
@@ -788,7 +810,7 @@ This is the content.
 			})
 
 			It("returns ErrEmptyPrompt", func() {
-				_, err := prompt.Content(ctx, path)
+				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -803,7 +825,7 @@ This is the content.
 			})
 
 			It("returns ErrEmptyPrompt", func() {
-				_, err := prompt.Content(ctx, path)
+				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -831,7 +853,7 @@ Prompt content here.
 			})
 
 			It("strips the empty frontmatter block from content", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -863,7 +885,7 @@ Content here.
 			})
 
 			It("strips the whitespace-only frontmatter block", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -895,7 +917,7 @@ Content here.
 			})
 
 			It("strips all empty frontmatter blocks", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -925,7 +947,7 @@ Content here.
 			})
 
 			It("preserves non-empty frontmatter in content", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("---"))
@@ -950,7 +972,7 @@ status: approved
 			})
 
 			It("returns body as-is (body is preserved exactly as loaded)", func() {
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				// Body contains the text after frontmatter, including the "---\n---"
 				Expect(content).To(ContainSubstring("---"))
@@ -967,7 +989,13 @@ status: approved
 
 		It("moves file to completed subdirectory", func() {
 			completedDir := filepath.Join(tempDir, "completed")
-			err := prompt.MoveToCompleted(ctx, path, completedDir, mover)
+			err := prompt.MoveToCompleted(
+				ctx,
+				path,
+				completedDir,
+				mover,
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
 			// Original file should not exist
@@ -982,12 +1010,18 @@ status: approved
 
 		It("sets status to completed before moving", func() {
 			completedDir := filepath.Join(tempDir, "completed")
-			err := prompt.MoveToCompleted(ctx, path, completedDir, mover)
+			err := prompt.MoveToCompleted(
+				ctx,
+				path,
+				completedDir,
+				mover,
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
 			// Read completed file and verify status
 			completedPath := filepath.Join(tempDir, "completed", "001-test.md")
-			fm, err := prompt.ReadFrontmatter(ctx, completedPath)
+			fm, err := prompt.ReadFrontmatter(ctx, completedPath, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(fm.Status).To(Equal("completed"))
 		})
@@ -1091,28 +1125,48 @@ status: approved
 			})
 
 			It("resets only executing prompts to queued", func() {
-				err := prompt.ResetExecuting(ctx, tempDir)
+				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				// Check that executing prompts are now queued
-				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
+				fm, err := prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "002-executing.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-executing.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "004-executing.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "001-queued.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "003-completed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "005-failed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("failed"))
 			})
@@ -1125,15 +1179,23 @@ status: approved
 			})
 
 			It("does nothing", func() {
-				err := prompt.ResetExecuting(ctx, tempDir)
+				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				// Verify statuses are unchanged
-				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				fm, err := prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "001-queued.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "002-completed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -1141,7 +1203,7 @@ status: approved
 
 		Context("with empty directory", func() {
 			It("does nothing", func() {
-				err := prompt.ResetExecuting(ctx, tempDir)
+				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 			})
 		})
@@ -1158,28 +1220,48 @@ status: approved
 			})
 
 			It("resets only failed prompts to queued", func() {
-				err := prompt.ResetFailed(ctx, tempDir)
+				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				// Check that failed prompts are now queued
-				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "004-failed.md"))
+				fm, err := prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "004-failed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "005-failed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "001-queued.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "002-executing.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("executing"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "003-completed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -1192,15 +1274,23 @@ status: approved
 			})
 
 			It("does nothing", func() {
-				err := prompt.ResetFailed(ctx, tempDir)
+				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 
 				// Verify statuses are unchanged
-				fm, err := prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
+				fm, err := prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "001-queued.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
+				fm, err = prompt.ReadFrontmatter(
+					ctx,
+					filepath.Join(tempDir, "002-completed.md"),
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -1208,7 +1298,7 @@ status: approved
 
 		Context("with empty directory", func() {
 			It("does nothing", func() {
-				err := prompt.ResetFailed(ctx, tempDir)
+				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 			})
 		})
@@ -1235,11 +1325,11 @@ More content here.
 			})
 
 			It("correctly extracts frontmatter and content", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 				Expect(content).To(ContainSubstring("This content has --- inline"))
@@ -1260,13 +1350,13 @@ status: approved
 			})
 
 			It("correctly parses frontmatter", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 			})
 
 			It("returns empty content error", func() {
-				_, err := prompt.Content(ctx, path)
+				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -1288,7 +1378,7 @@ Content here.
 			})
 
 			It("parses in_review status from frontmatter", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal(string(prompt.InReviewPromptStatus)))
 			})
@@ -1310,11 +1400,11 @@ Content here.
 			})
 
 			It("treats entire file as content (no frontmatter)", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path)
+				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("")) // No frontmatter parsed
 
-				content, err := prompt.Content(ctx, path)
+				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("---"))
 				Expect(content).To(ContainSubstring("status: approved"))
@@ -1330,19 +1420,19 @@ Content here.
 			Expect(err).To(BeNil())
 
 			// Simulate full lifecycle: created, queued, container, version, executing, completed
-			err = prompt.SetStatus(ctx, path, "approved")
+			err = prompt.SetStatus(ctx, path, "approved", libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
-			err = prompt.SetContainer(ctx, path, "test-container")
+			err = prompt.SetContainer(ctx, path, "test-container", libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
-			err = prompt.SetVersion(ctx, path, "v1.0.0")
+			err = prompt.SetVersion(ctx, path, "v1.0.0", libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
-			err = prompt.SetStatus(ctx, path, "executing")
+			err = prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
-			err = prompt.SetStatus(ctx, path, "completed")
+			err = prompt.SetStatus(ctx, path, "completed", libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
 			// Read content — should have no leading blank lines
-			content, err := prompt.Content(ctx, path)
+			content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(content).To(HavePrefix("# My Prompt"))
 		})
@@ -1360,9 +1450,9 @@ Content here.
 
 			// Run 20 setField cycles (simulates retries)
 			for i := 0; i < 20; i++ {
-				err = prompt.SetStatus(ctx, path, "executing")
+				err = prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
-				err = prompt.SetStatus(ctx, path, "approved")
+				err = prompt.SetStatus(ctx, path, "approved", libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 			}
 
@@ -1375,7 +1465,7 @@ Content here.
 			Expect(len(finalData)).To(BeNumerically("<", initialSize+200))
 
 			// Content should still start correctly
-			content, err := prompt.Content(ctx, path)
+			content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(content).To(HavePrefix("# Prompt"))
 		})
@@ -1881,7 +1971,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
 			pf.SetPRURL("https://github.com/user/repo/pull/42")
@@ -1895,14 +1985,14 @@ Content here.
 			Expect(err).To(BeNil())
 
 			// Load, set PR URL, and save
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			pf.SetPRURL("https://github.com/user/repo/pull/99")
 			err = pf.Save(ctx)
 			Expect(err).To(BeNil())
 
 			// Load again and verify
-			pf2, err := prompt.Load(ctx, path)
+			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf2.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/99"))
 		})
@@ -1913,7 +2003,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal(""))
 		})
@@ -1926,11 +2016,16 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetPRURL(ctx, path, "https://github.com/user/repo/pull/123")
+			err = prompt.SetPRURL(
+				ctx,
+				path,
+				"https://github.com/user/repo/pull/123",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
 			// Verify the file was updated
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/123"))
 		})
@@ -1941,11 +2036,16 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetPRURL(ctx, path, "https://github.com/user/repo/pull/1")
+			err = prompt.SetPRURL(
+				ctx,
+				path,
+				"https://github.com/user/repo/pull/1",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
 			// Verify frontmatter was added with pr-url
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/1"))
 		})
@@ -1958,7 +2058,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.PRURL()).To(Equal("https://github.com/user/repo/pull/42"))
 		})
@@ -1969,7 +2069,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.PRURL()).To(Equal(""))
 		})
@@ -1982,7 +2082,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
 			pf.MarkFailed()
@@ -1998,7 +2098,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
 			pf.SetBranch("dark-factory/042-add-feature")
@@ -2013,7 +2113,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})
@@ -2024,7 +2124,7 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal(""))
 		})
@@ -2037,10 +2137,15 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetBranch(ctx, path, "dark-factory/042-add-feature")
+			err = prompt.SetBranch(
+				ctx,
+				path,
+				"dark-factory/042-add-feature",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})
@@ -2051,10 +2156,15 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetBranch(ctx, path, "dark-factory/042-add-feature")
+			err = prompt.SetBranch(
+				ctx,
+				path,
+				"dark-factory/042-add-feature",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})
@@ -2099,7 +2209,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: \"017\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(Equal([]string{"017"}))
 		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
@@ -2111,7 +2221,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: [\"017\", \"019\"]\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(Equal([]string{"017", "019"}))
 		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
@@ -2124,14 +2234,14 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
 
 		pf.Frontmatter.Status = "completed"
 		Expect(pf.Save(ctx)).To(Succeed())
 
-		pf2, err := prompt.Load(ctx, path)
+		pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf2.Frontmatter.HasSpec("019")).To(BeTrue())
 		Expect(pf2.Frontmatter.Status).To(Equal("completed"))
@@ -2142,7 +2252,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(BeEmpty())
 		Expect(pf.Frontmatter.Status).To(Equal("approved"))
@@ -2153,7 +2263,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).To(BeNil())
 		Expect(pf.Save(ctx)).To(Succeed())
 
@@ -2170,7 +2280,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.HasSpec("019-review-fix-loop")).To(BeTrue())
 			Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
@@ -2184,7 +2294,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nspec: \"notifications\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.HasSpec("notifications")).To(BeTrue())
 			Expect(pf.Frontmatter.HasSpec("other")).To(BeFalse())
@@ -2198,7 +2308,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(2))
 		})
@@ -2209,7 +2319,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(0))
 		})
@@ -2222,10 +2332,10 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.IncrementRetryCount(ctx, path)
+			err = prompt.IncrementRetryCount(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(1))
 		})
@@ -2236,10 +2346,10 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.IncrementRetryCount(ctx, path)
+			err = prompt.IncrementRetryCount(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path)
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(3))
 		})

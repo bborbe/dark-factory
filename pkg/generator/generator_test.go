@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -47,7 +48,14 @@ var _ = Describe("SpecGenerator", func() {
 		logDir, err = os.MkdirTemp("", "generator-logs-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		sg = generator.NewSpecGenerator(mockExecutor, inboxDir, completedDir, specsDir, logDir)
+		sg = generator.NewSpecGenerator(
+			mockExecutor,
+			inboxDir,
+			completedDir,
+			specsDir,
+			logDir,
+			libtime.NewCurrentDateTime(),
+		)
 
 		// Write a spec file with status "approved"
 		specPath = filepath.Join(specsDir, "020-auto-prompt-generation.md")
@@ -91,7 +99,7 @@ var _ = Describe("SpecGenerator", func() {
 			It("sets spec status to prompted", func() {
 				Expect(sg.Generate(ctx, specPath)).To(Succeed())
 
-				sf, err := spec.Load(ctx, specPath)
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
 			})
@@ -112,7 +120,7 @@ var _ = Describe("SpecGenerator", func() {
 			It("does not change the spec status", func() {
 				_ = sg.Generate(ctx, specPath)
 
-				sf, err := spec.Load(ctx, specPath)
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal("approved"))
 			})
@@ -139,7 +147,7 @@ var _ = Describe("SpecGenerator", func() {
 			It("does not change the spec status", func() {
 				Expect(sg.Generate(ctx, specPath)).To(Succeed())
 
-				sf, err := spec.Load(ctx, specPath)
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal("approved"))
 			})
@@ -180,7 +188,7 @@ var _ = Describe("SpecGenerator", func() {
 			It("does not change the spec status", func() {
 				_ = sg.Generate(ctx, specPath)
 
-				sf, err := spec.Load(ctx, specPath)
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal("approved"))
 			})
@@ -205,7 +213,7 @@ var _ = Describe("SpecGenerator", func() {
 			It("succeeds and sets spec status to prompted", func() {
 				Expect(sg.Generate(ctx, specPath)).To(Succeed())
 
-				sf, err := spec.Load(ctx, specPath)
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
 			})

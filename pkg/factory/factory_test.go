@@ -5,6 +5,7 @@
 package factory_test
 
 import (
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -35,6 +36,7 @@ var _ = Describe("Factory", func() {
 				nil, // promptManager not needed for nil check
 				ready,
 				100,
+				libtime.NewCurrentDateTime(),
 			)
 			Expect(watcher).NotTo(BeNil())
 		})
@@ -68,6 +70,7 @@ var _ = Describe("Factory", func() {
 				false,
 				"",
 				nil,
+				libtime.NewCurrentDateTime(),
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -25,13 +26,18 @@ type RequeueCommand interface {
 
 // requeueCommand implements RequeueCommand.
 type requeueCommand struct {
-	queueDir string
+	queueDir              string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewRequeueCommand creates a new RequeueCommand.
-func NewRequeueCommand(queueDir string) RequeueCommand {
+func NewRequeueCommand(
+	queueDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) RequeueCommand {
 	return &requeueCommand{
-		queueDir: queueDir,
+		queueDir:              queueDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -66,7 +72,7 @@ func (r *requeueCommand) requeueFile(ctx context.Context, id string) error {
 		return errors.Errorf(ctx, "file not found: %s", id)
 	}
 
-	pf, err := prompt.Load(ctx, path)
+	pf, err := prompt.Load(ctx, path, r.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -94,7 +100,7 @@ func (r *requeueCommand) requeueFailed(ctx context.Context) error {
 		}
 
 		path := filepath.Join(r.queueDir, entry.Name())
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, r.currentDateTimeGetter)
 		if err != nil {
 			continue
 		}

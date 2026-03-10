@@ -7,6 +7,7 @@ package git_test
 import (
 	"context"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -19,7 +20,7 @@ var _ = Describe("PRMerger", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		merger = git.NewPRMerger("")
+		merger = git.NewPRMerger("", libtime.NewCurrentDateTime())
 	})
 
 	Describe("WaitAndMerge", func() {

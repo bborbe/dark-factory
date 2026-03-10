@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -41,7 +42,7 @@ var _ = Describe("ListCommand", func() {
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		listCmd = cmd.NewListCommand(inboxDir, queueDir, completedDir)
+		listCmd = cmd.NewListCommand(inboxDir, queueDir, completedDir, libtime.NewCurrentDateTime())
 		ctx = context.Background()
 	})
 
@@ -164,13 +165,23 @@ var _ = Describe("ListCommand", func() {
 
 	Describe("Missing directories", func() {
 		It("handles nonexistent inbox gracefully", func() {
-			listCmd = cmd.NewListCommand("/nonexistent/inbox", queueDir, completedDir)
+			listCmd = cmd.NewListCommand(
+				"/nonexistent/inbox",
+				queueDir,
+				completedDir,
+				libtime.NewCurrentDateTime(),
+			)
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("handles nonexistent completed dir gracefully", func() {
-			listCmd = cmd.NewListCommand(inboxDir, queueDir, "/nonexistent/completed")
+			listCmd = cmd.NewListCommand(
+				inboxDir,
+				queueDir,
+				"/nonexistent/completed",
+				libtime.NewCurrentDateTime(),
+			)
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
 		})

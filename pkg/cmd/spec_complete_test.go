@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -40,7 +41,12 @@ var _ = Describe("SpecCompleteCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 		// completedDir created on demand by the command
 
-		specCompleteCmd = cmd.NewSpecCompleteCommand(inboxDir, inProgressDir, completedDir)
+		specCompleteCmd = cmd.NewSpecCompleteCommand(
+			inboxDir,
+			inProgressDir,
+			completedDir,
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 
@@ -124,6 +130,7 @@ var _ = Describe("SpecCompleteCommand", func() {
 				"/nonexistent/inbox",
 				"/nonexistent/in-progress",
 				"/nonexistent/completed",
+				libtime.NewCurrentDateTime(),
 			)
 			err := specCompleteCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())

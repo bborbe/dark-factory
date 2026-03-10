@@ -15,6 +15,7 @@ import (
 
 	"github.com/adrg/frontmatter"
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -51,23 +52,15 @@ type Frontmatter struct {
 //
 //nolint:revive // SpecFile is the intended name per requirements
 type SpecFile struct {
-	Path        string
-	Frontmatter Frontmatter
-	Name        string // filename without extension
-	Body        []byte
-	nowFunc     func() time.Time
+	Path                  string
+	Frontmatter           Frontmatter
+	Name                  string // filename without extension
+	Body                  []byte
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 func (s *SpecFile) now() time.Time {
-	if s.nowFunc == nil {
-		return time.Now()
-	}
-	return s.nowFunc()
-}
-
-// SetNowFunc sets the time source for testability.
-func (s *SpecFile) SetNowFunc(f func() time.Time) {
-	s.nowFunc = f
+	return time.Time(s.currentDateTimeGetter.Now())
 }
 
 // SpecNumber returns the numeric prefix of the spec file name.
@@ -84,7 +77,11 @@ func (s *SpecFile) stampOnce(field *string) {
 }
 
 // Load reads a spec file from disk, parsing frontmatter and body.
-func Load(ctx context.Context, path string) (*SpecFile, error) {
+func Load(
+	ctx context.Context,
+	path string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (*SpecFile, error) {
 	// #nosec G304 -- path is from caller who controls the specs directory
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -97,19 +94,19 @@ func Load(ctx context.Context, path string) (*SpecFile, error) {
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
 	if err != nil {
 		return &SpecFile{
-			Path:    path,
-			Name:    name,
-			Body:    content,
-			nowFunc: time.Now,
+			Path:                  path,
+			Name:                  name,
+			Body:                  content,
+			currentDateTimeGetter: currentDateTimeGetter,
 		}, nil
 	}
 
 	return &SpecFile{
-		Path:        path,
-		Frontmatter: fm,
-		Name:        name,
-		Body:        body,
-		nowFunc:     time.Now,
+		Path:                  path,
+		Frontmatter:           fm,
+		Name:                  name,
+		Body:                  body,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}, nil
 }
 
@@ -167,23 +164,26 @@ type AutoCompleter interface {
 
 // autoCompleter implements AutoCompleter.
 type autoCompleter struct {
-	queueDir           string
-	completedDir       string
-	specsInboxDir      string
-	specsInProgressDir string
-	specsCompletedDir  string
+	queueDir              string
+	completedDir          string
+	specsInboxDir         string
+	specsInProgressDir    string
+	specsCompletedDir     string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewAutoCompleter creates a new AutoCompleter.
 func NewAutoCompleter(
 	queueDir, completedDir, specsInboxDir, specsInProgressDir, specsCompletedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) AutoCompleter {
 	return &autoCompleter{
-		queueDir:           queueDir,
-		completedDir:       completedDir,
-		specsInboxDir:      specsInboxDir,
-		specsInProgressDir: specsInProgressDir,
-		specsCompletedDir:  specsCompletedDir,
+		queueDir:              queueDir,
+		completedDir:          completedDir,
+		specsInboxDir:         specsInboxDir,
+		specsInProgressDir:    specsInProgressDir,
+		specsCompletedDir:     specsCompletedDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -262,7 +262,7 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 		return nil
 	}
 
-	sf, err := Load(ctx, specPath)
+	sf, err := Load(ctx, specPath, a.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec file")
 	}
@@ -328,7 +328,7 @@ func (a *autoCompleter) scanDirForSpec(
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, a.currentDateTimeGetter)
 		if err != nil {
 			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
 			continue

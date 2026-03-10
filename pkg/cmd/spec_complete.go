@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -24,17 +25,24 @@ type SpecCompleteCommand interface {
 
 // specCompleteCommand implements SpecCompleteCommand.
 type specCompleteCommand struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewSpecCompleteCommand creates a new SpecCompleteCommand.
-func NewSpecCompleteCommand(inboxDir, inProgressDir, completedDir string) SpecCompleteCommand {
+func NewSpecCompleteCommand(
+	inboxDir string,
+	inProgressDir string,
+	completedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) SpecCompleteCommand {
 	return &specCompleteCommand{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -52,7 +60,7 @@ func (s *specCompleteCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	sf, err := spec.Load(ctx, path)
+	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec")
 	}

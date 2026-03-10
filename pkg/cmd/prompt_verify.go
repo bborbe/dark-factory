@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -28,13 +29,14 @@ type PromptVerifyCommand interface {
 
 // promptVerifyCommand implements PromptVerifyCommand.
 type promptVerifyCommand struct {
-	queueDir      string
-	completedDir  string
-	promptManager prompt.Manager
-	releaser      git.Releaser
-	workflow      config.Workflow
-	brancher      git.Brancher
-	prCreator     git.PRCreator
+	queueDir              string
+	completedDir          string
+	promptManager         prompt.Manager
+	releaser              git.Releaser
+	workflow              config.Workflow
+	brancher              git.Brancher
+	prCreator             git.PRCreator
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewPromptVerifyCommand creates a new PromptVerifyCommand.
@@ -46,15 +48,17 @@ func NewPromptVerifyCommand(
 	workflow config.Workflow,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) PromptVerifyCommand {
 	return &promptVerifyCommand{
-		queueDir:      queueDir,
-		completedDir:  completedDir,
-		promptManager: promptManager,
-		releaser:      releaser,
-		workflow:      workflow,
-		brancher:      brancher,
-		prCreator:     prCreator,
+		queueDir:              queueDir,
+		completedDir:          completedDir,
+		promptManager:         promptManager,
+		releaser:              releaser,
+		workflow:              workflow,
+		brancher:              brancher,
+		prCreator:             prCreator,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -69,7 +73,7 @@ func (c *promptVerifyCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	pf, err := prompt.Load(ctx, path)
+	pf, err := prompt.Load(ctx, path, c.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 //counterfeiter:generate -o ../../mocks/pr_merger.go --fake-name PRMerger . PRMerger
@@ -23,17 +24,19 @@ type PRMerger interface {
 
 // prMerger implements PRMerger.
 type prMerger struct {
-	ghToken      string
-	pollInterval time.Duration
-	mergeTimeout time.Duration
+	ghToken               string
+	pollInterval          time.Duration
+	mergeTimeout          time.Duration
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewPRMerger creates a new PRMerger.
-func NewPRMerger(ghToken string) PRMerger {
+func NewPRMerger(ghToken string, currentDateTimeGetter libtime.CurrentDateTimeGetter) PRMerger {
 	return &prMerger{
-		ghToken:      ghToken,
-		pollInterval: 30 * time.Second,
-		mergeTimeout: 30 * time.Minute,
+		ghToken:               ghToken,
+		pollInterval:          30 * time.Second,
+		mergeTimeout:          30 * time.Minute,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -44,7 +47,7 @@ type prStatus struct {
 
 // WaitAndMerge polls the PR until it's mergeable, then merges it.
 func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
-	deadline := time.Now().Add(p.mergeTimeout)
+	deadline := time.Time(p.currentDateTimeGetter.Now()).Add(p.mergeTimeout)
 	ticker := time.NewTicker(p.pollInterval)
 	defer ticker.Stop()
 
@@ -53,7 +56,7 @@ func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
 		case <-ctx.Done():
 			return errors.Wrap(ctx, ctx.Err(), "context cancelled while waiting for PR")
 		case <-ticker.C:
-			if time.Now().After(deadline) {
+			if time.Time(p.currentDateTimeGetter.Now()).After(deadline) {
 				return errors.Errorf(ctx, "timeout waiting for PR to become mergeable")
 			}
 

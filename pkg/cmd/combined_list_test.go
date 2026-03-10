@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -35,6 +36,7 @@ var _ = Describe("CombinedListCommand", func() {
 			"/nonexistent/completed",
 			mockLister,
 			mockCounter,
+			libtime.NewCurrentDateTime(),
 		)
 	})
 

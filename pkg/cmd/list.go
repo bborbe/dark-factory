@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -32,9 +33,10 @@ type PromptEntry struct {
 
 // listCommand implements ListCommand.
 type listCommand struct {
-	inboxDir     string
-	queueDir     string
-	completedDir string
+	inboxDir              string
+	queueDir              string
+	completedDir          string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewListCommand creates a new ListCommand.
@@ -42,11 +44,13 @@ func NewListCommand(
 	inboxDir string,
 	queueDir string,
 	completedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ListCommand {
 	return &listCommand{
-		inboxDir:     inboxDir,
-		queueDir:     queueDir,
-		completedDir: completedDir,
+		inboxDir:              inboxDir,
+		queueDir:              queueDir,
+		completedDir:          completedDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -129,7 +133,7 @@ func (l *listCommand) scanDir(
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, l.currentDateTimeGetter)
 		if err != nil {
 			continue
 		}

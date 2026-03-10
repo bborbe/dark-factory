@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -44,7 +45,13 @@ var _ = Describe("SpecShowCommand", func() {
 		mockCounter = &mocks.PromptCounter{}
 		mockCounter.CountBySpecReturns(2, 5, nil)
 
-		specShowCmd = cmd.NewSpecShowCommand(inboxDir, inProgressDir, completedDir, mockCounter)
+		specShowCmd = cmd.NewSpecShowCommand(
+			inboxDir,
+			inProgressDir,
+			completedDir,
+			mockCounter,
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 

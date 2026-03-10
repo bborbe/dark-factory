@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -24,9 +25,10 @@ type SpecApproveCommand interface {
 
 // specApproveCommand implements SpecApproveCommand.
 type specApproveCommand struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewSpecApproveCommand creates a new SpecApproveCommand.
@@ -34,11 +36,13 @@ func NewSpecApproveCommand(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecApproveCommand {
 	return &specApproveCommand{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -54,7 +58,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	sf, err := spec.Load(ctx, path)
+	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec")
 	}

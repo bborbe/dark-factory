@@ -11,6 +11,7 @@ import (
 	"time"
 
 	libhttp "github.com/bborbe/http"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -38,32 +39,27 @@ func createPromptManager(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (prompt.Manager, git.Releaser) {
 	releaser := git.NewReleaser()
-	promptManager := prompt.NewManager(inboxDir, inProgressDir, completedDir, releaser)
+	promptManager := prompt.NewManager(
+		inboxDir,
+		inProgressDir,
+		completedDir,
+		releaser,
+		currentDateTimeGetter,
+	)
 	return promptManager, releaser
 }
 
-// CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
-func CreateRunner(cfg config.Config, ver string) runner.Runner {
-	inboxDir := cfg.Prompts.InboxDir
-	inProgressDir := cfg.Prompts.InProgressDir
-	completedDir := cfg.Prompts.CompletedDir
-	promptManager, releaser := createPromptManager(inboxDir, inProgressDir, completedDir)
-	versionGetter := version.NewGetter(ver)
-
-	// Resolve project name
-	projectName := project.Name(cfg.ProjectName)
-
-	// Resolve GitHub token (warns internally if env var is empty)
-	ghToken := cfg.ResolvedGitHubToken()
-
-	// Communication channel between watcher and processor
-	ready := make(chan struct{}, 10)
-
-	var srv server.Server
+// createOptionalServer creates a Server when port > 0, or returns nil.
+func createOptionalServer(
+	cfg config.Config,
+	inboxDir, inProgressDir, completedDir string,
+	promptManager prompt.Manager,
+) server.Server {
 	if cfg.ServerPort > 0 {
-		srv = CreateServer(
+		return CreateServer(
 			cfg.ServerPort,
 			inboxDir,
 			inProgressDir,
@@ -72,14 +68,37 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			promptManager,
 		)
 	}
+	return nil
+}
 
-	var reviewPoller review.ReviewPoller
+// createOptionalReviewPoller creates a ReviewPoller when AutoReview is enabled, or returns nil.
+func createOptionalReviewPoller(
+	cfg config.Config,
+	promptManager prompt.Manager,
+) review.ReviewPoller {
 	if cfg.AutoReview {
-		reviewPoller = CreateReviewPoller(cfg, promptManager)
+		return CreateReviewPoller(cfg, promptManager)
 	}
+	return nil
+}
 
-	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage)
-	specWatcher := CreateSpecWatcher(cfg, specGen)
+// CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
+func CreateRunner(cfg config.Config, ver string) runner.Runner {
+	inboxDir := cfg.Prompts.InboxDir
+	inProgressDir := cfg.Prompts.InProgressDir
+	completedDir := cfg.Prompts.CompletedDir
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, releaser := createPromptManager(
+		inboxDir,
+		inProgressDir,
+		completedDir,
+		currentDateTimeGetter,
+	)
+	versionGetter := version.NewGetter(ver)
+	projectName := project.Name(cfg.ProjectName)
+	ghToken := cfg.ResolvedGitHubToken()
+	ready := make(chan struct{}, 10)
+	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter)
 
 	return runner.NewRunner(
 		inboxDir,
@@ -98,36 +117,20 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			promptManager,
 			ready,
 			time.Duration(cfg.DebounceMs)*time.Millisecond,
+			currentDateTimeGetter,
 		),
 		CreateProcessor(
-			inProgressDir,
-			completedDir,
-			cfg.Prompts.LogDir,
-			projectName,
-			promptManager,
-			releaser,
-			versionGetter,
-			ready,
-			cfg.ContainerImage,
-			cfg.Model,
-			cfg.NetrcFile,
-			cfg.GitconfigFile,
-			cfg.Workflow,
-			ghToken,
-			cfg.AutoMerge,
-			cfg.AutoRelease,
-			cfg.AutoReview,
-			cfg.ValidationCommand,
-			cfg.Specs.InboxDir,
-			cfg.Specs.InProgressDir,
-			cfg.Specs.CompletedDir,
-			cfg.VerificationGate,
-			cfg.DefaultBranch,
-			cfg.Env,
+			inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
+			promptManager, releaser, versionGetter, ready,
+			cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
+			cfg.Workflow, ghToken, cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
+			cfg.ValidationCommand, cfg.Specs.InboxDir, cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir, cfg.VerificationGate, cfg.DefaultBranch,
+			cfg.Env, currentDateTimeGetter,
 		),
-		srv,
-		reviewPoller,
-		specWatcher,
+		createOptionalServer(cfg, inboxDir, inProgressDir, completedDir, promptManager),
+		createOptionalReviewPoller(cfg, promptManager),
+		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter),
 	)
 }
 
@@ -136,7 +139,13 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
-	promptManager, releaser := createPromptManager(inboxDir, inProgressDir, completedDir)
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, releaser := createPromptManager(
+		inboxDir,
+		inProgressDir,
+		completedDir,
+		currentDateTimeGetter,
+	)
 	versionGetter := version.NewGetter(ver)
 	projectName := project.Name(cfg.ProjectName)
 	ghToken := cfg.ResolvedGitHubToken()
@@ -180,12 +189,17 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.VerificationGate,
 			cfg.DefaultBranch,
 			cfg.Env,
+			currentDateTimeGetter,
 		),
 	)
 }
 
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
-func CreateSpecGenerator(cfg config.Config, containerImage string) generator.SpecGenerator {
+func CreateSpecGenerator(
+	cfg config.Config,
+	containerImage string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) generator.SpecGenerator {
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
 			containerImage,
@@ -199,15 +213,21 @@ func CreateSpecGenerator(cfg config.Config, containerImage string) generator.Spe
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,
 		cfg.Specs.LogDir,
+		currentDateTimeGetter,
 	)
 }
 
 // CreateSpecWatcher creates a SpecWatcher that triggers generation when a spec appears in inProgressDir.
-func CreateSpecWatcher(cfg config.Config, gen generator.SpecGenerator) specwatcher.SpecWatcher {
+func CreateSpecWatcher(
+	cfg config.Config,
+	gen generator.SpecGenerator,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) specwatcher.SpecWatcher {
 	return specwatcher.NewSpecWatcher(
 		cfg.Specs.InProgressDir,
 		gen,
 		time.Duration(cfg.DebounceMs)*time.Millisecond,
+		currentDateTimeGetter,
 	)
 }
 
@@ -218,8 +238,16 @@ func CreateWatcher(
 	promptManager prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) watcher.Watcher {
-	return watcher.NewWatcher(inProgressDir, inboxDir, promptManager, ready, debounce)
+	return watcher.NewWatcher(
+		inProgressDir,
+		inboxDir,
+		promptManager,
+		ready,
+		debounce,
+		currentDateTimeGetter,
+	)
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.
@@ -248,6 +276,7 @@ func CreateProcessor(
 	verificationGate bool,
 	defaultBranch string,
 	env map[string]string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -270,7 +299,7 @@ func CreateProcessor(
 		git.NewBrancher(git.WithDefaultBranch(defaultBranch)),
 		git.NewPRCreator(ghToken),
 		git.NewCloner(),
-		git.NewPRMerger(ghToken),
+		git.NewPRMerger(ghToken, currentDateTimeGetter),
 		autoMerge,
 		autoRelease,
 		autoReview,
@@ -280,6 +309,7 @@ func CreateProcessor(
 			specsInboxDir,
 			specsInProgressDir,
 			specsCompletedDir,
+			currentDateTimeGetter,
 		),
 		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
@@ -308,7 +338,7 @@ func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.
 		cfg.MaxReviewRetries,
 		time.Duration(cfg.PollIntervalSec)*time.Second,
 		git.NewReviewFetcher(ghToken),
-		git.NewPRMerger(ghToken),
+		git.NewPRMerger(ghToken, libtime.NewCurrentDateTime()),
 		promptManager,
 		review.NewFixPromptGenerator(),
 	)
@@ -373,6 +403,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		libtime.NewCurrentDateTime(),
 	)
 
 	statusChecker := status.NewChecker(
@@ -395,20 +426,23 @@ func CreateListCommand(cfg config.Config) cmd.ListCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		libtime.NewCurrentDateTime(),
 	)
 }
 
 // CreateRequeueCommand creates a RequeueCommand.
 func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
-	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir)
+	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
 }
 
 // CreatePromptVerifyCommand creates a PromptVerifyCommand.
 func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, releaser := createPromptManager(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
 	)
 	ghToken := cfg.ResolvedGitHubToken()
 	return cmd.NewPromptVerifyCommand(
@@ -419,18 +453,26 @@ func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
 		cfg.Workflow,
 		git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
 		git.NewPRCreator(ghToken),
+		currentDateTimeGetter,
 	)
 }
 
 // CreateApproveCommand creates an ApproveCommand.
 func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, _ := createPromptManager(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
 	)
 
-	return cmd.NewApproveCommand(cfg.Prompts.InboxDir, cfg.Prompts.InProgressDir, promptManager)
+	return cmd.NewApproveCommand(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		promptManager,
+		currentDateTimeGetter,
+	)
 }
 
 // CreateSpecListCommand creates a SpecListCommand.
@@ -465,6 +507,7 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 		cfg.Specs.InboxDir,
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
+		libtime.NewCurrentDateTime(),
 	)
 }
 
@@ -474,6 +517,7 @@ func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
 		cfg.Specs.InboxDir,
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
+		libtime.NewCurrentDateTime(),
 	)
 }
 
@@ -483,6 +527,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		libtime.NewCurrentDateTime(),
 	)
 
 	statusChecker := status.NewChecker(
@@ -521,6 +566,7 @@ func CreateSpecShowCommand(cfg config.Config) cmd.SpecShowCommand {
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
 		counter,
+		libtime.NewCurrentDateTime(),
 	)
 }
 
@@ -531,6 +577,7 @@ func CreatePromptShowCommand(cfg config.Config) cmd.PromptShowCommand {
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,
+		libtime.NewCurrentDateTime(),
 	)
 }
 
@@ -547,5 +594,6 @@ func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 		cfg.Prompts.CompletedDir,
 		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
 		counter,
+		libtime.NewCurrentDateTime(),
 	)
 }

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -26,22 +27,25 @@ type SpecShowCommand interface {
 
 // specShowCommand implements SpecShowCommand.
 type specShowCommand struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
-	counter       prompt.Counter
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	counter               prompt.Counter
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewSpecShowCommand creates a new SpecShowCommand.
 func NewSpecShowCommand(
 	inboxDir, inProgressDir, completedDir string,
 	counter prompt.Counter,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecShowCommand {
 	return &specShowCommand{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
-		counter:       counter,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		counter:               counter,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -78,7 +82,7 @@ func (s *specShowCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	sf, err := spec.Load(ctx, path)
+	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec")
 	}

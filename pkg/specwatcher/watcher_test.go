@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -87,7 +88,12 @@ var _ = Describe("SpecWatcher", func() {
 			err := os.WriteFile(specFile, []byte(content), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+			w := specwatcher.NewSpecWatcher(
+				inProgressDir,
+				gen,
+				200*time.Millisecond,
+				libtime.NewCurrentDateTime(),
+			)
 
 			go func() {
 				_ = w.Watch(ctx)
@@ -111,7 +117,12 @@ var _ = Describe("SpecWatcher", func() {
 		err := os.WriteFile(txtFile, []byte("hello"), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -127,7 +138,12 @@ var _ = Describe("SpecWatcher", func() {
 	It("should start and stop cleanly", func() {
 		gen := &mocks.SpecGenerator{}
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 500*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			500*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		errCh := make(chan error, 1)
 		go func() {
@@ -149,7 +165,12 @@ var _ = Describe("SpecWatcher", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -182,7 +203,12 @@ var _ = Describe("SpecWatcher", func() {
 		err := os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -211,7 +237,12 @@ var _ = Describe("SpecWatcher", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(os.ErrPermission)
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		errCh := make(chan error, 1)
 		go func() {
@@ -250,7 +281,12 @@ var _ = Describe("SpecWatcher", func() {
 	It("should ignore non-markdown files", func() {
 		gen := &mocks.SpecGenerator{}
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -281,7 +317,12 @@ var _ = Describe("SpecWatcher", func() {
 			return context.Canceled
 		}
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 50*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			50*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -316,7 +357,12 @@ var _ = Describe("SpecWatcher", func() {
 		err := os.WriteFile(specFile, []byte(content), 0600)
 		Expect(err).NotTo(HaveOccurred())
 
-		w := specwatcher.NewSpecWatcher(inProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)
@@ -346,7 +392,12 @@ var _ = Describe("SpecWatcher", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
-		w := specwatcher.NewSpecWatcher(relInProgressDir, gen, 200*time.Millisecond)
+		w := specwatcher.NewSpecWatcher(
+			relInProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+		)
 
 		go func() {
 			_ = w.Watch(ctx)

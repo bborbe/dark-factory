@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -32,7 +33,7 @@ var _ = Describe("RequeueCommand", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		requeueCmd = cmd.NewRequeueCommand(queueDir)
+		requeueCmd = cmd.NewRequeueCommand(queueDir, libtime.NewCurrentDateTime())
 		ctx = context.Background()
 	})
 

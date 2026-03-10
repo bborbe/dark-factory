@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -26,19 +27,24 @@ type PromptShowCommand interface {
 
 // promptShowCommand implements PromptShowCommand.
 type promptShowCommand struct {
-	inboxDir      string
-	inProgressDir string
-	completedDir  string
-	logDir        string
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	logDir                string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewPromptShowCommand creates a new PromptShowCommand.
-func NewPromptShowCommand(inboxDir, inProgressDir, completedDir, logDir string) PromptShowCommand {
+func NewPromptShowCommand(
+	inboxDir, inProgressDir, completedDir, logDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) PromptShowCommand {
 	return &promptShowCommand{
-		inboxDir:      inboxDir,
-		inProgressDir: inProgressDir,
-		completedDir:  completedDir,
-		logDir:        logDir,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		logDir:                logDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -83,7 +89,7 @@ func (p *promptShowCommand) Run(ctx context.Context, args []string) error {
 		return errors.Errorf(ctx, "prompt not found: %s", id)
 	}
 
-	pf, err := prompt.Load(ctx, path)
+	pf, err := prompt.Load(ctx, path, p.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

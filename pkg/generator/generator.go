@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -27,11 +28,12 @@ type SpecGenerator interface {
 
 // dockerSpecGenerator implements SpecGenerator using the Docker executor.
 type dockerSpecGenerator struct {
-	executor     executor.Executor
-	inboxDir     string
-	completedDir string
-	specsDir     string
-	logDir       string
+	executor              executor.Executor
+	inboxDir              string
+	completedDir          string
+	specsDir              string
+	logDir                string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewSpecGenerator creates a new SpecGenerator that runs the /generate-prompts-for-spec command.
@@ -41,13 +43,15 @@ func NewSpecGenerator(
 	completedDir string,
 	specsDir string,
 	logDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
-		executor:     executor,
-		inboxDir:     inboxDir,
-		completedDir: completedDir,
-		specsDir:     specsDir,
-		logDir:       logDir,
+		executor:              executor,
+		inboxDir:              inboxDir,
+		completedDir:          completedDir,
+		specsDir:              specsDir,
+		logDir:                logDir,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -101,7 +105,7 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 	}
 
 	// h. Load spec, set status to prompted, save
-	sf, err := spec.Load(ctx, specPath)
+	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec file")
 	}
@@ -133,7 +137,7 @@ func countCompletedPromptsForSpec(
 			continue
 		}
 		path := filepath.Join(completedDir, entry.Name())
-		pf, err := prompt.Load(ctx, path)
+		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 		if err != nil {
 			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
 			continue

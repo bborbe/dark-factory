@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 // Summary holds counts of specs grouped by status.
@@ -59,7 +60,7 @@ func (l *lister) List(ctx context.Context) ([]*SpecFile, error) {
 				continue
 			}
 			path := filepath.Join(dir, entry.Name())
-			sf, err := Load(ctx, path)
+			sf, err := Load(ctx, path, libtime.NewCurrentDateTime())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, "load spec file")
 			}

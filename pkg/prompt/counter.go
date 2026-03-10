@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 //counterfeiter:generate -o ../../mocks/prompt-counter.go --fake-name PromptCounter . Counter
@@ -63,7 +64,7 @@ func countInDir(ctx context.Context, dir, specID string) (int, int, error) {
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		pf, err := Load(ctx, path)
+		pf, err := Load(ctx, path, libtime.NewCurrentDateTime())
 		if err != nil {
 			slog.Warn("skipping prompt during count", "file", entry.Name(), "error", err)
 			continue

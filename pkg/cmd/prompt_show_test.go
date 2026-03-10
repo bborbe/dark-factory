@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -41,7 +42,13 @@ var _ = Describe("PromptShowCommand", func() {
 		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
 		Expect(os.MkdirAll(logDir, 0750)).To(Succeed())
 
-		promptShowCmd = cmd.NewPromptShowCommand(inboxDir, inProgressDir, completedDir, logDir)
+		promptShowCmd = cmd.NewPromptShowCommand(
+			inboxDir,
+			inProgressDir,
+			completedDir,
+			logDir,
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 

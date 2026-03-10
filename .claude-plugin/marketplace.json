@@ -1,17 +1,19 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "dark-factory",
-  "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
   "owner": {
     "name": "Benjamin Borbe"
+  },
+  "metadata": {
+    "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
+    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "dark-factory",
       "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
-      "source": ".",
-      "category": "development",
-      "homepage": "https://github.com/bborbe/dark-factory"
+      "source": "./",
+      "version": "1.0.0",
+      "strict": true
     }
   ]
 }

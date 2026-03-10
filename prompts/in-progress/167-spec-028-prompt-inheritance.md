@@ -1,7 +1,8 @@
 ---
+status: approved
 spec: ["028"]
-status: created
 created: "2026-03-10T19:39:55Z"
+queued: "2026-03-10T20:15:53Z"
 ---
 <summary>
 - Prompt frontmatter gains an optional `issue` field (freeform issue tracker reference such as a Jira ID or GitHub URL)
@@ -19,7 +20,7 @@ Add an `issue` field to prompt frontmatter and make the spec generator post-proc
 Read CLAUDE.md for project conventions.
 Read `pkg/prompt/prompt.go` — `Frontmatter` struct (~line 160): it already has `Branch string` (~line 171). We need to add `Issue string`. Also read `SetBranch()` (~line 404) and the `Manager` interface (~line 437) to understand how frontmatter mutations work.
 Read `pkg/generator/generator.go` — `Generate()` method (~line 60): after execution, it counts new `.md` files in inboxDir. After this spec work, it must also post-process new files to inherit branch/issue from the spec.
-Read `pkg/spec/spec.go` — `Frontmatter` struct (~line 42, modified by prompt 2 of this spec to add `Branch` and `Issue`): the generator reads the spec's frontmatter and copies those values to new prompts.
+Read `pkg/spec/spec.go` — `Frontmatter` struct (~line 42). **This is prompt 3 of spec 028 — prompt 2 has already added `Branch string` and `Issue string` fields to `spec.Frontmatter`.** Access them as `sf.Frontmatter.Branch` and `sf.Frontmatter.Issue`.
 Read `pkg/generator/generator_test.go` — existing tests.
 Read `pkg/prompt/prompt_test.go` — existing prompt tests.
 </context>
@@ -67,6 +68,7 @@ Read `pkg/prompt/prompt_test.go` — existing prompt tests.
        }
    }
    ```
+   Note: These `IfEmpty` methods are used internally by the generator's `inheritFromSpec` helper. They do NOT need to be added to the `Manager` interface — they are not called through the interface.
 
 4. **Add `inheritFromSpec` helper in `pkg/generator/generator.go`**: a function that, given a list of newly created prompt file paths and the loaded spec, copies `branch` and `issue` from the spec into each prompt's frontmatter (without overwriting existing values):
    ```go
@@ -104,15 +106,20 @@ Read `pkg/prompt/prompt_test.go` — existing prompt tests.
    ```
    Implement `listMDFiles(dir string) (map[string]struct{}, error)` (returns a set of filenames) and `diffFiles(before, after map[string]struct{}) []string` (returns full paths of files in `after` but not `before`).
 
-6. **Call `inheritFromSpec` in `Generate()`** after the new files are identified and before loading/saving the spec status:
+6. **Call `inheritFromSpec` in `Generate()`** after the new files are identified and before saving the spec status. Load the spec file once (reuse for both inheritance and status update):
    ```go
-   if len(newFiles) > 0 && (sf_branch != "" || sf_issue != "") {
-       if err := inheritFromSpec(ctx, newFiles, sf_branch, sf_issue, g.currentDateTimeGetter); err != nil {
+   sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
+   // ... error handling ...
+   specBranch := sf.Frontmatter.Branch
+   specIssue := sf.Frontmatter.Issue
+   if len(newFiles) > 0 && (specBranch != "" || specIssue != "") {
+       if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.currentDateTimeGetter); err != nil {
            return errors.Wrap(ctx, err, "inherit spec metadata to prompts")
        }
    }
+   sf.SetStatus(string(spec.StatusPrompted))
+   // ... sf.Save(ctx) ...
    ```
-   The spec must be loaded once to get its branch and issue before calling inheritFromSpec, then used again for `sf.SetStatus(prompted)` / `sf.Save()`. Load the spec file once and reuse it.
 
 7. **Refactor `Generate()`** to replace the existing `countMDFiles` approach with the new `listMDFiles`/`diffFiles` approach. The `after <= before` check becomes `len(newFiles) == 0`. Remove the `countMDFiles` function if it is no longer used (check `countCompletedPromptsForSpec` — it uses `prompt.Load` separately, not `countMDFiles`).
 

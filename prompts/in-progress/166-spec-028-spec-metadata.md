@@ -1,12 +1,13 @@
 ---
+status: approved
 spec: ["028"]
-status: created
 created: "2026-03-10T19:39:55Z"
+queued: "2026-03-10T20:15:53Z"
 ---
 <summary>
 - Spec frontmatter gains two optional fields: `branch` (git branch name) and `issue` (freeform issue tracker reference)
 - When a spec is approved, a branch name is auto-generated from the spec number (e.g., spec `028-my-feature.md` → `dark-factory/spec-028`) and stored in the spec frontmatter
-- If the spec's frontmatter already has a `branch` value, re-approving it preserves the existing value rather than overwriting it
+- If the spec's frontmatter already has a `branch` value before approval, the existing value is preserved rather than overwritten
 - Branch names are validated against git's allowed ref format — names with `..`, leading `-`, spaces, or shell metacharacters are rejected at approve time
 - The `issue` field is stored as a literal string — never shell-interpolated or expanded
 - Existing specs without these fields continue to work unchanged
@@ -87,13 +88,17 @@ Read `pkg/spec/spec_test.go` — existing spec tests.
    }
    ```
 
-5. **Update `specApproveCommand.Run()`** in `pkg/cmd/spec_approve.go`: after `sf.SetStatus(string(spec.StatusApproved))` and before `sf.Save(ctx)`, auto-generate and set the branch:
+5. **Update `specApproveCommand.Run()`** in `pkg/cmd/spec_approve.go`: insert branch logic between `sf.SetStatus(string(spec.StatusApproved))` (line 70) and `sf.Save(ctx)` (line 71) — these two calls are adjacent, so the new code goes between them:
    ```go
+   sf.SetStatus(string(spec.StatusApproved))
+   // --- insert here ---
    autoBranch := spec.AutoBranchName(sf.Name)
    sf.SetBranchIfEmpty(autoBranch)
+   // --- end insert ---
+   if err := sf.Save(ctx); err != nil {
    ```
-   No flag override is needed (the spec says "user can override via a flag" but also notes this is optional — for simplicity, skip the CLI flag for now and just auto-generate).
-   If the spec's `Frontmatter.Branch` was already set (re-approve case), `SetBranchIfEmpty` is a no-op.
+   No flag override is needed — auto-generate only.
+   If the spec's `Frontmatter.Branch` was already set (draft spec with pre-existing branch), `SetBranchIfEmpty` is a no-op.
 
 6. **Add branch validation in `specApproveCommand.Run()`** in `pkg/cmd/spec_approve.go`: after the auto-generation, validate the resulting branch name:
    ```go
@@ -118,7 +123,7 @@ Read `pkg/spec/spec_test.go` — existing spec tests.
 
 9. **Add tests for `spec approve` auto-branch** in `pkg/cmd/spec_approve_test.go`:
    - Approving a spec with no `branch` frontmatter sets `branch: dark-factory/spec-NNN`
-   - Approving a spec that already has `branch` set preserves the existing value (re-approve safety)
+   - Approving a draft spec that already has `branch` in frontmatter preserves the existing value (explicit branch takes priority)
    - A spec with `branch: "../../evil"` in its frontmatter fails approve with a validation error
 </requirements>
 

@@ -1,15 +1,18 @@
 ---
+status: executing
 spec: ["028"]
-status: created
+container: dark-factory-165-spec-028-config-booleans
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T19:39:55Z"
+queued: "2026-03-10T20:15:53Z"
+started: "2026-03-10T20:15:56Z"
 ---
 <summary>
-- Config gains two boolean fields (`pr` and `worktree`) as the modern replacement for the `workflow` string enum
-- Projects using the old `workflow: direct` or `workflow: pr` YAML key continue to work — the loader maps these values to the new booleans and logs a deprecation warning at startup
-- Setting both `workflow:` and `pr:`/`worktree:` in the same config file is a validation error with a clear message
-- All existing config validations that checked `c.Workflow == WorkflowPR` are updated to check `c.PR` instead
-- The processor and factory continue to receive a concrete boolean for "is this a PR workflow" — no caller changes beyond passing the new field
-- Existing projects with no `pr`, `worktree`, or `workflow` field see no behavior change
+- Dark-factory config supports two new boolean settings for controlling pull-request creation and worktree isolation, replacing the older workflow string
+- Projects using the older workflow setting continue to work — dark-factory maps the old values to the new booleans and logs a deprecation warning at startup
+- Setting both the old workflow and the new boolean settings in the same config file is a validation error with a clear message
+- All internal checks that previously asked "is this a PR workflow?" now use the new boolean instead
+- Existing projects with no explicit workflow setting see no behavior change
 </summary>
 
 <objective>
@@ -18,10 +21,10 @@ Replace the `workflow: direct|pr` string enum in `.dark-factory.yaml` with two e
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `pkg/config/config.go` — `Config` struct (~line 42), `Defaults()` (~line 68), `Validate()` (~line 99), `validateAutoMerge` (~line 136), `validateAutoReview` (~line 158).
+Read `pkg/config/config.go` — `Config` struct (~line 42), `Defaults()` (~line 68), `Validate()` (~line 99). Inside `Validate()`, find the `validation.Name("autoMerge", ...)` anonymous closure at ~line 136 that checks `c.Workflow != WorkflowPR`. Also find `validateAutoReview` method (~line 158).
 Read `pkg/config/loader.go` — `partialConfig` (~line 53), `mergePartial()` (~line 112).
 Read `pkg/config/workflow.go` — the `Workflow` type, `WorkflowDirect`, `WorkflowPR`, `AvailableWorkflows`.
-Read `pkg/factory/factory.go` — `CreateRunner()` (~line 95) and `CreateOneShotRunner()` (~line 138): both call `CreateProcessor()` passing `cfg.Workflow`.
+Read `pkg/factory/factory.go` — `CreateRunner()` (~line 95), `CreateOneShotRunner()` (~line 138), and `CreatePromptVerifyCommand()` (~line 441): all three pass `cfg.Workflow` and need updating.
 Read `pkg/processor/processor.go` — search for all `p.workflow == config.WorkflowPR` checks (~lines 420, 492, 541) and the `workflow config.Workflow` field in the struct.
 Read `pkg/config/config_test.go` and `pkg/config/loader_test.go` — existing tests for validation and loading.
 </context>
@@ -75,7 +78,7 @@ Read `pkg/config/config_test.go` and `pkg/config/loader_test.go` — existing te
    }
    ```
 
-7. **Update `validateAutoMerge`** in `pkg/config/config.go`: change `c.Workflow != WorkflowPR` to `!c.PR`:
+7. **Update the `autoMerge` validation closure** inside `Validate()` in `pkg/config/config.go` (the anonymous function at ~line 136 inside `validation.Name("autoMerge", ...)`): change `c.Workflow != WorkflowPR` to `!c.PR`:
    ```go
    if c.AutoMerge && !c.PR {
        return errors.Errorf(ctx, "autoMerge requires pr: true")
@@ -93,7 +96,7 @@ Read `pkg/config/config_test.go` and `pkg/config/loader_test.go` — existing te
    - Update `NewProcessor()` (or equivalent constructor) to accept `pr bool` instead of `workflow config.Workflow`
    - Replace all `p.workflow == config.WorkflowPR` with `p.pr`
 
-10. **Update `pkg/factory/factory.go`**: in both `CreateRunner()` and `CreateOneShotRunner()`, change `cfg.Workflow` argument in the `CreateProcessor()` call to `cfg.PR`.
+10. **Update `pkg/factory/factory.go`**: in `CreateRunner()` (~line 126), `CreateOneShotRunner()` (~line 180), and `CreatePromptVerifyCommand()` (~line 455), change `cfg.Workflow` argument to `cfg.PR`.
 
 11. **Update `CreateProcessor()` signature** in `pkg/factory/factory.go` to accept `pr bool` instead of `workflow config.Workflow`. Thread it through to `processor.NewProcessor()`.
 
@@ -125,7 +128,7 @@ Read `pkg/config/config_test.go` and `pkg/config/loader_test.go` — existing te
 ```bash
 # No WorkflowPR checks remaining in production code (excluding workflow.go and config.go's Workflow field/type)
 grep -rn "WorkflowPR" pkg/ --include="*.go" | grep -v "workflow\.go" | grep -v "_test.go"
-# Expected: only the deprecation mapping line in loader.go (WorkflowPR reference for the switch case)
+# Expected: only the deprecation mapping line in loader.go (WorkflowPR reference in the switch case)
 
 make precommit
 ```

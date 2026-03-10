@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -32,6 +33,7 @@ type dockerExecutor struct {
 	model          string
 	netrcFile      string
 	gitconfigFile  string
+	env            map[string]string
 	commandRunner  commandRunner
 }
 
@@ -42,6 +44,7 @@ func NewDockerExecutor(
 	model string,
 	netrcFile string,
 	gitconfigFile string,
+	env map[string]string,
 ) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
@@ -49,6 +52,7 @@ func NewDockerExecutor(
 		model:          model,
 		netrcFile:      netrcFile,
 		gitconfigFile:  gitconfigFile,
+		env:            env,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -206,6 +210,18 @@ func (e *dockerExecutor) buildDockerCommand(
 	args = append(args,
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-e", "ANTHROPIC_MODEL="+e.model,
+	)
+	if len(e.env) > 0 {
+		keys := make([]string, 0, len(e.env))
+		for k := range e.env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			args = append(args, "-e", k+"="+e.env[k])
+		}
+	}
+	args = append(args,
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
 		"-v", claudeConfigDir+":/home/node/.claude",

@@ -123,6 +123,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
 			cfg.DefaultBranch,
+			cfg.Env,
 		),
 		srv,
 		reviewPoller,
@@ -178,6 +179,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
 			cfg.DefaultBranch,
+			cfg.Env,
 		),
 	)
 }
@@ -191,6 +193,7 @@ func CreateSpecGenerator(cfg config.Config, containerImage string) generator.Spe
 			cfg.Model,
 			cfg.NetrcFile,
 			cfg.GitconfigFile,
+			cfg.Env,
 		),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
@@ -244,13 +247,21 @@ func CreateProcessor(
 	specsCompletedDir string,
 	verificationGate bool,
 	defaultBranch string,
+	env map[string]string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
 		completedDir,
 		logDir,
 		projectName,
-		executor.NewDockerExecutor(containerImage, projectName, model, netrcFile, gitconfigFile),
+		executor.NewDockerExecutor(
+			containerImage,
+			projectName,
+			model,
+			netrcFile,
+			gitconfigFile,
+			env,
+		),
 		promptManager,
 		releaser,
 		versionGetter,

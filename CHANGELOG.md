@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.36.0
+
+- feat: add `env` config field to `.dark-factory.yaml` — passes a map of key-value pairs as `-e KEY=VALUE` environment variables to the YOLO container, enabling project-specific settings like `GOPRIVATE` and `GONOSUMCHECK` without modifying the container image
+
 ## v0.35.0
 
 - feat: add `gitconfigFile` config field to `.dark-factory.yaml` — mounts the specified file as a writable `/home/node/.gitconfig` in the YOLO container, enabling per-project git URL rewrites for private Go module resolution over HTTPS

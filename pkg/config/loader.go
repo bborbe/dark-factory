@@ -64,6 +64,7 @@ type partialConfig struct {
 	AutoRelease      *bool                 `yaml:"autoRelease"`
 	VerificationGate *bool                 `yaml:"verificationGate"`
 	GitHub           *GitHubConfig         `yaml:"github"`
+	Env              map[string]string     `yaml:"env,omitempty"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -143,6 +144,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.GitHub != nil {
 		cfg.GitHub = *partial.GitHub
+	}
+	if partial.Env != nil {
+		cfg.Env = partial.Env
 	}
 }
 

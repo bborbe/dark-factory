@@ -725,6 +725,108 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("gitconfigFile"))
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
+
+		It("succeeds with valid env keys", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				Env: map[string]string{
+					"GOPRIVATE":    "bitbucket.example.com/*",
+					"GONOSUMCHECK": "bitbucket.example.com/*",
+				},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("fails when env has empty key", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				Env:            map[string]string{"": "value"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("env key must not be empty"))
+		})
+
+		It("fails when env has reserved key YOLO_PROMPT_FILE", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				Env:            map[string]string{"YOLO_PROMPT_FILE": "/custom/path"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("reserved"))
+			Expect(err.Error()).To(ContainSubstring("YOLO_PROMPT_FILE"))
+		})
+
+		It("fails when env has reserved key ANTHROPIC_MODEL", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				Env:            map[string]string{"ANTHROPIC_MODEL": "custom-model"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("reserved"))
+			Expect(err.Error()).To(ContainSubstring("ANTHROPIC_MODEL"))
+		})
+
+		It("succeeds with nil env (default, no env vars)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Describe("Workflow", func() {
@@ -1070,6 +1172,42 @@ github:
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.GitHub.Token).To(BeEmpty())
+			})
+
+			It("loads env map from config", func() {
+				configContent := `workflow: direct
+env:
+  GOPRIVATE: "bitbucket.example.com/*"
+  GONOSUMCHECK: "bitbucket.example.com/*"
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Env).To(Equal(map[string]string{
+					"GOPRIVATE":    "bitbucket.example.com/*",
+					"GONOSUMCHECK": "bitbucket.example.com/*",
+				}))
+			})
+
+			It("leaves env nil when not set in config", func() {
+				configContent := `workflow: direct
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Env).To(BeNil())
 			})
 
 			It("loads config with autoMerge and autoRelease", func() {

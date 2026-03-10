@@ -423,6 +423,61 @@ var _ = Describe("Internal helper functions", func() {
 				Expect(arg).NotTo(ContainSubstring(".gitconfig"))
 			}
 		})
+
+		It("includes sorted -e KEY=VALUE flags when env is set", func() {
+			exec.env = map[string]string{
+				"GOPRIVATE":    "bitbucket.example.com/*",
+				"GONOSUMCHECK": "bitbucket.example.com/*",
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			args := cmd.Args
+			Expect(args).To(ContainElement("GOPRIVATE=bitbucket.example.com/*"))
+			Expect(args).To(ContainElement("GONOSUMCHECK=bitbucket.example.com/*"))
+
+			// Verify sorted order: GONOSUMCHECK before GOPRIVATE
+			var gonosumIdx, goprivateIdx int
+			for i, a := range args {
+				if a == "GONOSUMCHECK=bitbucket.example.com/*" {
+					gonosumIdx = i
+				}
+				if a == "GOPRIVATE=bitbucket.example.com/*" {
+					goprivateIdx = i
+				}
+			}
+			Expect(gonosumIdx).To(BeNumerically("<", goprivateIdx))
+		})
+
+		It("does not include extra -e flags when env is nil", func() {
+			exec.env = nil
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			// Only YOLO_PROMPT_FILE and ANTHROPIC_MODEL should be present as -e values
+			var envValues []string
+			args := cmd.Args
+			for i, a := range args {
+				if a == "-e" && i+1 < len(args) {
+					envValues = append(envValues, args[i+1])
+				}
+			}
+			Expect(envValues).To(ConsistOf("YOLO_PROMPT_FILE=/tmp/prompt.md", "ANTHROPIC_MODEL="))
+		})
 	})
 
 	Describe("Execute", func() {

@@ -38,27 +38,28 @@ type SpecsConfig struct {
 
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName       string        `yaml:"projectName"`
-	Workflow          Workflow      `yaml:"workflow"`
-	DefaultBranch     string        `yaml:"defaultBranch"`
-	Prompts           PromptsConfig `yaml:"prompts"`
-	Specs             SpecsConfig   `yaml:"specs"`
-	ContainerImage    string        `yaml:"containerImage"`
-	NetrcFile         string        `yaml:"netrcFile"`
-	GitconfigFile     string        `yaml:"gitconfigFile"`
-	Model             string        `yaml:"model"`
-	ValidationCommand string        `yaml:"validationCommand"`
-	DebounceMs        int           `yaml:"debounceMs"`
-	ServerPort        int           `yaml:"serverPort"`
-	AutoMerge         bool          `yaml:"autoMerge"`
-	AutoRelease       bool          `yaml:"autoRelease"`
-	VerificationGate  bool          `yaml:"verificationGate"`
-	AutoReview        bool          `yaml:"autoReview"`
-	MaxReviewRetries  int           `yaml:"maxReviewRetries"`
-	AllowedReviewers  []string      `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators  bool          `yaml:"useCollaborators"`
-	PollIntervalSec   int           `yaml:"pollIntervalSec"`
-	GitHub            GitHubConfig  `yaml:"github"`
+	ProjectName       string            `yaml:"projectName"`
+	Workflow          Workflow          `yaml:"workflow"`
+	DefaultBranch     string            `yaml:"defaultBranch"`
+	Prompts           PromptsConfig     `yaml:"prompts"`
+	Specs             SpecsConfig       `yaml:"specs"`
+	ContainerImage    string            `yaml:"containerImage"`
+	NetrcFile         string            `yaml:"netrcFile"`
+	GitconfigFile     string            `yaml:"gitconfigFile"`
+	Model             string            `yaml:"model"`
+	ValidationCommand string            `yaml:"validationCommand"`
+	DebounceMs        int               `yaml:"debounceMs"`
+	ServerPort        int               `yaml:"serverPort"`
+	AutoMerge         bool              `yaml:"autoMerge"`
+	AutoRelease       bool              `yaml:"autoRelease"`
+	VerificationGate  bool              `yaml:"verificationGate"`
+	AutoReview        bool              `yaml:"autoReview"`
+	MaxReviewRetries  int               `yaml:"maxReviewRetries"`
+	AllowedReviewers  []string          `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators  bool              `yaml:"useCollaborators"`
+	PollIntervalSec   int               `yaml:"pollIntervalSec"`
+	GitHub            GitHubConfig      `yaml:"github"`
+	Env               map[string]string `yaml:"env,omitempty"`
 }
 
 // Defaults returns a Config with all default values.
@@ -148,6 +149,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
 		validation.Name("netrcFile", validation.HasValidationFunc(c.validateNetrcFile)),
 		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
+		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
 	}.Validate(ctx)
 }
 
@@ -188,6 +190,24 @@ func (c Config) validateGitconfigFile(ctx context.Context) error {
 	resolved := resolveFilePath(c.GitconfigFile)
 	if _, err := os.Stat(resolved); err != nil {
 		return errors.Errorf(ctx, "gitconfigFile %q does not exist: %v", resolved, err)
+	}
+	return nil
+}
+
+// reservedEnvKeys are env var names set internally by the executor and cannot be overridden.
+var reservedEnvKeys = []string{"YOLO_PROMPT_FILE", "ANTHROPIC_MODEL"}
+
+// validateEnv validates the env map keys.
+func (c Config) validateEnv(ctx context.Context) error {
+	for k := range c.Env {
+		if k == "" {
+			return errors.Errorf(ctx, "env key must not be empty")
+		}
+		for _, reserved := range reservedEnvKeys {
+			if k == reserved {
+				return errors.Errorf(ctx, "env key %q is reserved and cannot be overridden", k)
+			}
+		}
 	}
 	return nil
 }

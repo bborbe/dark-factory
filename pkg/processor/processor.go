@@ -131,6 +131,8 @@ func (p *processor) Process(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "process existing queued prompts")
 	}
 
+	slog.Info("waiting for changes")
+
 	// Listen for ready signals from watcher
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -178,6 +180,15 @@ func (p *processor) ProcessQueue(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "process existing queued prompts")
 	}
 
+	// Log once when the queue is empty (one-shot mode only)
+	queued, err := p.promptManager.ListQueued(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "list queued prompts")
+	}
+	if len(queued) == 0 {
+		slog.Info("no queued prompts")
+	}
+
 	return nil
 }
 
@@ -189,7 +200,6 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		return nil
 	}
 
-	first := true
 	for {
 		select {
 		case <-ctx.Done():
@@ -205,13 +215,9 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// No more queued prompts - done
 		if len(queued) == 0 {
-			if first {
-				slog.Info("no queued prompts, exiting")
-			}
 			slog.Debug("queue scan complete", "queuedCount", 0)
 			return nil
 		}
-		first = false
 
 		slog.Debug("queue scan complete", "queuedCount", len(queued))
 

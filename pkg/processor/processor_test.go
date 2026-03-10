@@ -5,10 +5,13 @@
 package processor_test
 
 import (
+	"bytes"
 	"context"
 	stderrors "errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -4110,6 +4113,127 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Expect(specID).To(Equal("001-my-spec"))
 
 			cancel()
+		})
+	})
+
+	Describe("ProcessQueue log output", func() {
+		var (
+			logBuf      bytes.Buffer
+			origDefault *slog.Logger
+		)
+
+		BeforeEach(func() {
+			logBuf.Reset()
+			origDefault = slog.Default()
+			slog.SetDefault(
+				slog.New(
+					slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}),
+				),
+			)
+		})
+
+		AfterEach(func() {
+			slog.SetDefault(origDefault)
+		})
+
+		newProc := func() processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				config.WorkflowDirect,
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+		}
+
+		It("ProcessQueue logs 'no queued prompts' once when queue is empty", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			p := newProc()
+			err := p.ProcessQueue(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			output := logBuf.String()
+			Expect(strings.Count(output, "no queued prompts")).To(Equal(1))
+		})
+
+		It("ProcessQueue does not log 'no queued prompts, exiting'", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			p := newProc()
+			err := p.ProcessQueue(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(logBuf.String()).NotTo(ContainSubstring("no queued prompts, exiting"))
+		})
+
+		It("daemon Process logs 'waiting for changes' once after startup scan", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			p := newProc()
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			time.Sleep(200 * time.Millisecond)
+			cancel()
+
+			select {
+			case err := <-errCh:
+				Expect(err).To(BeNil())
+			case <-time.After(2 * time.Second):
+				Fail("processor did not stop within timeout")
+			}
+
+			Expect(logBuf.String()).To(ContainSubstring("waiting for changes"))
+			Expect(strings.Count(logBuf.String(), "waiting for changes")).To(Equal(1))
+		})
+
+		It("daemon ticker scan does not log 'no queued prompts' at INFO level", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			// Use INFO-only handler to verify no INFO logs for empty queue scans
+			var infoBuf bytes.Buffer
+			slog.SetDefault(
+				slog.New(
+					slog.NewTextHandler(&infoBuf, &slog.HandlerOptions{Level: slog.LevelInfo}),
+				),
+			)
+
+			p := newProc()
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			time.Sleep(200 * time.Millisecond)
+			cancel()
+
+			select {
+			case err := <-errCh:
+				Expect(err).To(BeNil())
+			case <-time.After(2 * time.Second):
+				Fail("processor did not stop within timeout")
+			}
+
+			Expect(infoBuf.String()).NotTo(ContainSubstring("no queued prompts"))
 		})
 	})
 })

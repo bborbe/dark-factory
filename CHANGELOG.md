@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.39.0
+
+- feat: add optional `branch` and `issue` fields to spec frontmatter; `spec approve` auto-assigns `dark-factory/spec-NNN` branch from spec number, preserving any pre-existing branch value; validates branch name at approve time
+
 ## v0.38.0
 
 - feat: replace `workflow: direct|pr` string enum with `pr` and `worktree` boolean flags in `.dark-factory.yaml`; old `workflow` field is deprecated and mapped automatically with a warning; setting both is a validation error

@@ -68,6 +68,11 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	sf.SetStatus(string(spec.StatusApproved))
+	autoBranch := spec.AutoBranchName(sf.Name)
+	sf.SetBranchIfEmpty(autoBranch)
+	if err := spec.ValidateBranchName(ctx, sf.Frontmatter.Branch); err != nil {
+		return errors.Wrap(ctx, err, "invalid branch name")
+	}
 	if err := sf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save spec")
 	}

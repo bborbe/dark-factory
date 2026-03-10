@@ -194,5 +194,52 @@ var _ = Describe("SpecApproveCommand", func() {
 			_, statErr := os.Stat(dest)
 			Expect(statErr).NotTo(HaveOccurred())
 		})
+
+		It("auto-assigns branch from spec number when no branch in frontmatter", func() {
+			specFile := filepath.Join(specsDir, "028-my-feature.md")
+			err := os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# My Feature"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"028-my-feature.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(inProgressDir, "028-my-feature.md")
+			content, readErr := os.ReadFile(dest)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("branch: dark-factory/spec-028"))
+		})
+
+		It("preserves existing branch value in frontmatter on approve", func() {
+			specFile := filepath.Join(specsDir, "029-custom-branch.md")
+			err := os.WriteFile(
+				specFile,
+				[]byte("---\nstatus: draft\nbranch: my-custom-branch\n---\n# Custom Branch"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"029-custom-branch.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(inProgressDir, "029-custom-branch.md")
+			content, readErr := os.ReadFile(dest)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("branch: my-custom-branch"))
+			Expect(string(content)).NotTo(ContainSubstring("dark-factory/spec-029"))
+		})
+
+		It("returns error when spec has an invalid branch in frontmatter", func() {
+			specFile := filepath.Join(specsDir, "030-bad-branch.md")
+			err := os.WriteFile(
+				specFile,
+				[]byte("---\nstatus: draft\nbranch: ../../evil\n---\n# Bad Branch"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = specApproveCmd.Run(ctx, []string{"030-bad-branch.md"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid branch name"))
+		})
 	})
 })

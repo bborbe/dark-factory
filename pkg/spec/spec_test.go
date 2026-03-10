@@ -305,6 +305,43 @@ var _ = Describe("Lister", func() {
 	})
 })
 
+var _ = Describe("AutoBranchName", func() {
+	DescribeTable("generates canonical branch names",
+		func(input, expected string) {
+			Expect(spec.AutoBranchName(input)).To(Equal(expected))
+		},
+		Entry("spec with 3-digit prefix", "028-shared-branch-per-spec", "dark-factory/spec-028"),
+		Entry("spec with 001 prefix", "001-my-feature", "dark-factory/spec-001"),
+		Entry("spec with no number", "no-number", "dark-factory/no-number"),
+	)
+})
+
+var _ = Describe("ValidateBranchName", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	DescribeTable("validates branch names",
+		func(branch string, expectErr bool) {
+			err := spec.ValidateBranchName(ctx, branch)
+			if expectErr {
+				Expect(err).To(HaveOccurred())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		},
+		Entry("empty string is valid", "", false),
+		Entry("valid spec branch", "dark-factory/spec-028", false),
+		Entry("valid feature branch", "feature/my-thing", false),
+		Entry("contains double dot", "../../etc", true),
+		Entry("leading dash", "-bad-start", true),
+		Entry("contains space", "has space", true),
+		Entry("shell metachar dollar", "shell$var", true),
+	)
+})
+
 var _ = Describe("AutoCompleter", func() {
 	var (
 		ctx          context.Context

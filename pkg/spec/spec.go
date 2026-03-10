@@ -7,9 +7,11 @@ package spec
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -46,6 +48,8 @@ type Frontmatter struct {
 	Prompted  string   `yaml:"prompted,omitempty"`
 	Verifying string   `yaml:"verifying,omitempty"`
 	Completed string   `yaml:"completed,omitempty"`
+	Branch    string   `yaml:"branch,omitempty"`
+	Issue     string   `yaml:"issue,omitempty"`
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.
@@ -148,6 +152,41 @@ func (s *SpecFile) Save(ctx context.Context) error {
 // MarkCompleted sets the spec status to completed.
 func (s *SpecFile) MarkCompleted() {
 	s.SetStatus(string(StatusCompleted))
+}
+
+// SetBranchIfEmpty sets the branch in the frontmatter only if it is not already set.
+func (s *SpecFile) SetBranchIfEmpty(branch string) {
+	if s.Frontmatter.Branch == "" {
+		s.Frontmatter.Branch = branch
+	}
+}
+
+var unsafeBranchPattern = regexp.MustCompile(`\.\.|^-|[\s` + "`" + `$()|\&;<>!]`)
+
+// ValidateBranchName returns an error if branch contains characters unsafe for git checkout.
+// An empty branch is always valid (the field is optional).
+func ValidateBranchName(ctx context.Context, branch string) error {
+	if branch == "" {
+		return nil
+	}
+	if unsafeBranchPattern.MatchString(branch) {
+		return errors.Errorf(ctx, "branch name %q contains invalid characters", branch)
+	}
+	return nil
+}
+
+var safeBranchCharPattern = regexp.MustCompile(`[^a-zA-Z0-9\-_/]`)
+
+// AutoBranchName generates a canonical branch name from a spec file's basename (without .md extension).
+// If the name has a numeric prefix, it returns "dark-factory/spec-NNN".
+// Otherwise it returns "dark-factory/" + sanitized name.
+func AutoBranchName(name string) string {
+	num := specnum.Parse(name)
+	if num >= 0 {
+		return fmt.Sprintf("dark-factory/spec-%03d", num)
+	}
+	safe := safeBranchCharPattern.ReplaceAllString(name, "-")
+	return "dark-factory/" + safe
 }
 
 // MarkVerifying sets the spec status to verifying.

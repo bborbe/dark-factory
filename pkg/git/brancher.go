@@ -53,6 +53,7 @@ func NewBrancher(opts ...BrancherOption) Brancher {
 	for _, opt := range opts {
 		opt(b)
 	}
+
 	return b
 }
 

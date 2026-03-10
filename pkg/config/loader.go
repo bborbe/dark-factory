@@ -52,6 +52,7 @@ type partialSpecsConfig struct {
 // explicitly set zero values and missing fields.
 type partialConfig struct {
 	Workflow         *Workflow             `yaml:"workflow"`
+	DefaultBranch    *string               `yaml:"defaultBranch"`
 	Prompts          *partialPromptsConfig `yaml:"prompts"`
 	Specs            *partialSpecsConfig   `yaml:"specs"`
 	ContainerImage   *string               `yaml:"containerImage"`
@@ -108,6 +109,9 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 func mergePartial(cfg *Config, partial *partialConfig) {
 	if partial.Workflow != nil {
 		cfg.Workflow = *partial.Workflow
+	}
+	if partial.DefaultBranch != nil {
+		cfg.DefaultBranch = *partial.DefaultBranch
 	}
 	mergePartialPrompts(&cfg.Prompts, partial.Prompts)
 	mergePartialSpecs(&cfg.Specs, partial.Specs)

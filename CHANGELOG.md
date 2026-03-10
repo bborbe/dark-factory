@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+Please choose versions by [Semantic Versioning](http://semver.org/).
+
+* MAJOR version when you make incompatible API changes,
+* MINOR version when you add functionality in a backwards-compatible manner, and
+* PATCH version when you make backwards-compatible bug fixes.
+
+## v0.44.0
+
+- feat: add Claude Code marketplace plugin manifest (`.claude-plugin/marketplace.json`)
+- refactor: replace `workflow` config field with explicit `pr` and `worktree` booleans
+- fix: correct FindOpenPR test to expect success when no open PR exists
+- chore: reformat CHANGELOG preamble
+
 ## v0.43.0
 
 - feat: make PR creation idempotent per branch — `FindOpenPR` on `PRCreator` checks for an existing open PR before calling `Create`; auto-merge is deferred until the last prompt on a branch completes via `HasQueuedPromptsOnBranch`; PR body includes issue tracker reference when `Frontmatter.Issue` is set; add `Issue()` getter to `PromptFile`
@@ -37,12 +50,6 @@ All notable changes to this project will be documented in this file.
 ## v0.36.2
 
 - fix: silence idle daemon log noise — `processExistingQueued` no longer logs at INFO when the queue is empty; daemon prints "waiting for changes" once after startup; one-shot mode logs "no queued prompts" once when nothing is queued
-
-Please choose versions by [Semantic Versioning](http://semver.org/).
-
-* MAJOR version when you make incompatible API changes,
-* MINOR version when you add functionality in a backwards-compatible manner, and
-* PATCH version when you make backwards-compatible bug fixes.
 
 ## v0.36.1
 

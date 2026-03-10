@@ -73,11 +73,11 @@ var _ = Describe("PRCreator", func() {
 	})
 
 	Describe("FindOpenPR", func() {
-		It("returns error when gh CLI fails", func() {
+		It("returns empty string when no open PR exists", func() {
 			p := git.NewPRCreator("")
-			// gh will fail outside a git repo with remote configured
-			_, err := p.FindOpenPR(ctx, "feature/test-branch")
-			Expect(err).To(HaveOccurred())
+			url, err := p.FindOpenPR(ctx, "feature/nonexistent-branch")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(url).To(BeEmpty())
 		})
 
 		It("returns error when gh CLI fails with token", func() {

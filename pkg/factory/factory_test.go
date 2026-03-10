@@ -54,6 +54,7 @@ var _ = Describe("Factory", func() {
 				ready,
 				cfg.ContainerImage,
 				cfg.Model,
+				cfg.NetrcFile,
 				cfg.Workflow,
 				"test-token",
 				false,

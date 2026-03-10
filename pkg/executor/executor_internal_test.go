@@ -324,6 +324,38 @@ var _ = Describe("Internal helper functions", func() {
 
 			Expect(cmd.Args).To(ContainElement("custom-image:v1.2.3"))
 		})
+
+		It("includes netrc mount when netrcFile is set", func() {
+			exec.netrcFile = "/home/user/.netrc"
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement("/home/user/.netrc:/home/node/.netrc:ro"))
+		})
+
+		It("does not include netrc mount when netrcFile is empty", func() {
+			exec.netrcFile = ""
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			for _, arg := range cmd.Args {
+				Expect(arg).NotTo(ContainSubstring(".netrc"))
+			}
+		})
 	})
 
 	Describe("Execute", func() {

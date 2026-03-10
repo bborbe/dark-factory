@@ -43,6 +43,7 @@ type Config struct {
 	Prompts           PromptsConfig `yaml:"prompts"`
 	Specs             SpecsConfig   `yaml:"specs"`
 	ContainerImage    string        `yaml:"containerImage"`
+	NetrcFile         string        `yaml:"netrcFile"`
 	Model             string        `yaml:"model"`
 	ValidationCommand string        `yaml:"validationCommand"`
 	DebounceMs        int           `yaml:"debounceMs"`
@@ -74,7 +75,7 @@ func Defaults() Config {
 			CompletedDir:  "specs/completed",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.7",
+		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.8",
 		Model:             "claude-sonnet-4-6",
 		ValidationCommand: "make precommit",
 		DebounceMs:        500,
@@ -143,6 +144,16 @@ func (c Config) Validate(ctx context.Context) error {
 			}),
 		),
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
+		validation.Name("netrcFile", validation.HasValidationFunc(func(ctx context.Context) error {
+			if c.NetrcFile == "" {
+				return nil
+			}
+			resolved := resolveEnvVar(c.NetrcFile)
+			if _, err := os.Stat(resolved); err != nil {
+				return errors.Errorf(ctx, "netrcFile %q does not exist: %v", resolved, err)
+			}
+			return nil
+		})),
 	}.Validate(ctx)
 }
 

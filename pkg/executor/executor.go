@@ -30,6 +30,7 @@ type dockerExecutor struct {
 	containerImage string
 	projectName    string
 	model          string
+	netrcFile      string
 	commandRunner  commandRunner
 }
 
@@ -38,11 +39,13 @@ func NewDockerExecutor(
 	containerImage string,
 	projectName string,
 	model string,
+	netrcFile string,
 ) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
 		model:          model,
+		netrcFile:      netrcFile,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -204,8 +207,11 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", projectRoot+":/workspace",
 		"-v", claudeConfigDir+":/home/node/.claude",
 		"-v", home+"/go/pkg:/home/node/go/pkg",
-		e.containerImage,
 	)
+	if e.netrcFile != "" {
+		args = append(args, "-v", e.netrcFile+":/home/node/.netrc:ro")
+	}
+	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design
 	return exec.CommandContext(ctx, "docker", args...)
 }

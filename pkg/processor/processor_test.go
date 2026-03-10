@@ -109,6 +109,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -173,6 +174,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -243,6 +245,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -310,6 +313,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -367,6 +371,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -423,6 +428,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -484,6 +490,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -578,6 +585,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -645,6 +653,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -701,6 +710,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -763,6 +773,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -813,6 +824,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -860,6 +872,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -918,6 +931,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -990,6 +1004,7 @@ var _ = Describe("Processor", func() {
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -1057,6 +1072,7 @@ var _ = Describe("Processor", func() {
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -1133,6 +1149,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				true,
 				true,
 				mockBrancher,
 				mockPRCreator,
@@ -1246,6 +1263,7 @@ var _ = Describe("Processor", func() {
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1336,6 +1354,7 @@ var _ = Describe("Processor", func() {
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1422,6 +1441,7 @@ var _ = Describe("Processor", func() {
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1500,6 +1520,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				true,
 				true,
 				mockBrancher,
 				mockPRCreator,
@@ -1587,6 +1608,7 @@ var _ = Describe("Processor", func() {
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1647,6 +1669,7 @@ var _ = Describe("Processor", func() {
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				true,
 				true,
 				mockBrancher,
 				mockPRCreator,
@@ -1744,6 +1767,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1818,6 +1842,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -1888,6 +1913,7 @@ DARK-FACTORY-REPORT -->
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -1961,6 +1987,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2033,6 +2060,7 @@ more output
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2103,6 +2131,7 @@ DARK-FACTORY-REPORT -->
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -2179,6 +2208,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2238,6 +2268,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2288,6 +2319,7 @@ DARK-FACTORY-REPORT -->
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -2346,6 +2378,7 @@ DARK-FACTORY-REPORT -->
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -2430,6 +2463,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2506,6 +2540,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2564,6 +2599,7 @@ DARK-FACTORY-REPORT -->
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -2638,6 +2674,7 @@ DARK-FACTORY-REPORT -->
 				mockVersionGet,
 				ready,
 				false,
+				false,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -2690,6 +2727,7 @@ DARK-FACTORY-REPORT -->
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -2753,6 +2791,7 @@ DARK-FACTORY-REPORT -->
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -2800,6 +2839,7 @@ DARK-FACTORY-REPORT -->
 			mockVersionGet,
 			ready,
 			false,
+			false,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -2831,6 +2871,7 @@ DARK-FACTORY-REPORT -->
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -2873,6 +2914,7 @@ DARK-FACTORY-REPORT -->
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -2953,6 +2995,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			true,
 			true,
 			mockBrancher,
 			mockPRCreator,
@@ -3037,6 +3080,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockVersionGet,
 			ready,
 			true,
+			true,
 			mockBrancher,
 			mockPRCreator,
 			mockCloner,
@@ -3092,6 +3136,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			false,
 			false,
 			mockBrancher,
 			mockPRCreator,
@@ -3173,6 +3218,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockReleaser,
 			mockVersionGet,
 			ready,
+			true,
 			true,
 			mockBrancher,
 			mockPRCreator,
@@ -3260,6 +3306,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				true,
 				true,
 				mockBrancher,
 				mockPRCreator,
@@ -3353,6 +3400,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockReleaser,
 					mockVersionGet,
 					ready,
+					true,
 					true,
 					mockBrancher,
 					mockPRCreator,
@@ -3453,6 +3501,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -3535,6 +3584,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockReleaser,
 					mockVersionGet,
 					ready,
+					true,
 					true,
 					mockBrancher,
 					mockPRCreator,
@@ -3623,6 +3673,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -3705,6 +3756,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockReleaser,
 					mockVersionGet,
 					ready,
+					true,
 					true,
 					mockBrancher,
 					mockPRCreator,
@@ -3803,6 +3855,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockVersionGet,
 				ready,
 				true,
+				true,
 				mockBrancher,
 				mockPRCreator,
 				mockCloner,
@@ -3884,6 +3937,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockVersionGet,
 					ready,
 					false,
+					false,
 					mockBrancher,
 					mockPRCreator,
 					mockCloner,
@@ -3951,6 +4005,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockVersionGet,
 					ready,
 					false,
+					false,
 					mockBrancher,
 					mockPRCreator,
 					mockCloner,
@@ -4007,6 +4062,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						mockVersionGet,
 						ready,
 						false,
+						false,
 						mockBrancher,
 						mockPRCreator,
 						mockCloner,
@@ -4053,6 +4109,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockReleaser,
 					mockVersionGet,
 					ready,
+					false,
 					false,
 					mockBrancher,
 					mockPRCreator,
@@ -4109,6 +4166,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -4171,6 +4229,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockReleaser,
 				mockVersionGet,
 				ready,
+				false,
 				false,
 				mockBrancher,
 				mockPRCreator,
@@ -4258,6 +4317,286 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}
 
 			Expect(infoBuf.String()).NotTo(ContainSubstring("no queued prompts"))
+		})
+	})
+
+	Describe("In-place branch switching", func() {
+		createBranchPromptFile := func(path string, branch string) *prompt.PromptFile {
+			return prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus), Branch: branch},
+				[]byte("# Test\n\nDefault test content"),
+				libtime.NewCurrentDateTime(),
+			)
+		}
+
+		newProcWithWorktree := func(pr bool, worktree bool) processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				pr,
+				worktree,
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+		}
+
+		It("worktree=false, branch='': no branch switch called", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-branch.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			p := newProcWithWorktree(false, false)
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))
+			Expect(mockBrancher.SwitchCallCount()).To(Equal(0))
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It(
+			"worktree=false, branch set, clean, branch exists remotely: Switch called not CreateAndSwitch",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-branch-exists.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createBranchPromptFile(path, "dark-factory/test"), nil
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockManager.MoveToCompletedReturns(nil)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.HasChangelogReturns(false)
+				mockReleaser.CommitOnlyReturns(nil)
+
+				mockBrancher.IsCleanReturns(true, nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.FetchAndVerifyBranchReturns(nil) // branch exists remotely
+				mockBrancher.SwitchReturns(nil)
+
+				p := newProcWithWorktree(false, false)
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				Eventually(func() int {
+					return mockExecutor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				Expect(mockBrancher.IsCleanCallCount()).To(Equal(1))
+				Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
+				_, branchArg := mockBrancher.FetchAndVerifyBranchArgsForCall(0)
+				Expect(branchArg).To(Equal("dark-factory/test"))
+				// Switch called: once to switch to branch, once to restore default
+				Expect(mockBrancher.SwitchCallCount()).To(BeNumerically(">=", 1))
+				_, switchArg := mockBrancher.SwitchArgsForCall(0)
+				Expect(switchArg).To(Equal("dark-factory/test"))
+				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+
+				cancel()
+			},
+		)
+
+		It(
+			"worktree=false, branch set, clean, branch not on remote: CreateAndSwitch called",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-branch-new.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createBranchPromptFile(path, "dark-factory/test"), nil
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockManager.MoveToCompletedReturns(nil)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.HasChangelogReturns(false)
+				mockReleaser.CommitOnlyReturns(nil)
+
+				mockBrancher.IsCleanReturns(true, nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.FetchAndVerifyBranchReturns(
+					stderrors.New("branch not found"),
+				) // branch does not exist
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+
+				p := newProcWithWorktree(false, false)
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				Eventually(func() int {
+					return mockExecutor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				Expect(mockBrancher.IsCleanCallCount()).To(Equal(1))
+				Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
+				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
+				_, createArg := mockBrancher.CreateAndSwitchArgsForCall(0)
+				Expect(createArg).To(Equal("dark-factory/test"))
+
+				cancel()
+			},
+		)
+
+		It("worktree=false, branch set, dirty tree: returns error, no branch operation", func() {
+			promptPath := filepath.Join(promptsDir, "001-dirty.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "dark-factory/test"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+
+			mockBrancher.IsCleanReturns(false, nil) // dirty working tree
+
+			p := newProcWithWorktree(false, false)
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for the IsClean call to happen (prompt fails)
+			Eventually(func() int {
+				return mockBrancher.IsCleanCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+			Expect(mockBrancher.SwitchCallCount()).To(Equal(0))
+			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("worktree=true, branch set: uses clone workflow, not in-place", func() {
+			promptPath := filepath.Join(promptsDir, "001-clone-branch.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "dark-factory/test"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
+			}
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/456", nil)
+
+			p := newProcWithWorktree(true, true)
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return mockCloner.CloneCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// In-place branch switching should NOT have been called
+			Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("restores default branch after direct workflow with in-place branch", func() {
+			promptPath := filepath.Join(promptsDir, "001-restore.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "dark-factory/restore-test"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+
+			mockBrancher.IsCleanReturns(true, nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+
+			p := newProcWithWorktree(false, false)
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// Wait for execution to complete
+			Eventually(func() int {
+				return mockReleaser.CommitOnlyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Switch should be called: once to restore default branch
+			Expect(mockBrancher.SwitchCallCount()).To(BeNumerically(">=", 1))
+			// Find the restore call (last Switch call should be to "main")
+			lastIdx := mockBrancher.SwitchCallCount() - 1
+			_, lastSwitchArg := mockBrancher.SwitchArgsForCall(lastIdx)
+			Expect(lastSwitchArg).To(Equal("main"))
+
+			cancel()
 		})
 	})
 })

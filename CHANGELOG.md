@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.41.0
+
+- feat: split `worktree bool` from `pr bool` in processor — clone-based execution and PR creation are now independent flags; add in-place branch switching for non-worktree mode (switches/creates branch before execution, restores default branch after); add existing-remote-branch tracking in clone mode via `git checkout --track`; add `IsClean` to `Brancher` interface
+
 ## v0.40.0
 
 - feat: add `issue` field to prompt frontmatter; spec generator post-processes new prompt files to inherit `branch` and `issue` from the parent spec without overwriting explicit values

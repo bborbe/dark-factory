@@ -46,6 +46,7 @@ type processor struct {
 	versionGetter     version.Getter
 	ready             <-chan struct{}
 	pr                bool
+	worktree          bool
 	brancher          git.Brancher
 	prCreator         git.PRCreator
 	cloner            git.Cloner
@@ -72,6 +73,7 @@ func NewProcessor(
 	versionGetter version.Getter,
 	ready <-chan struct{},
 	pr bool,
+	worktree bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	cloner git.Cloner,
@@ -95,6 +97,7 @@ func NewProcessor(
 		versionGetter:     versionGetter,
 		ready:             ready,
 		pr:                pr,
+		worktree:          worktree,
 		brancher:          brancher,
 		prCreator:         prCreator,
 		cloner:            cloner,
@@ -416,7 +419,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Ensure clone cleanup on error (success path cleanup is in handleCloneWorkflow)
-	if p.pr && workflowState.clonePath != "" {
+	if p.worktree && workflowState.clonePath != "" {
 		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
 
@@ -433,10 +436,12 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 // workflowState holds state needed for workflow cleanup and completion.
 type workflowState struct {
-	branchName  string
-	clonePath   string
-	originalDir string
-	cleanedUp   bool
+	branchName           string
+	clonePath            string
+	originalDir          string
+	cleanedUp            bool
+	inPlaceBranch        string // non-empty when in-place branch was switched
+	inPlaceDefaultBranch string // branch to restore after in-place execution
 }
 
 // cleanupCloneOnError restores the original directory and removes the clone
@@ -488,17 +493,20 @@ func (p *processor) handlePostExecution(
 
 	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
 
-	if p.pr {
-		// PR workflow: commit only code changes in clone, then manage prompt in original repo.
+	if p.worktree {
+		// Clone workflow: commit only code changes in clone, then manage prompt in original repo.
 		return p.handleCloneWorkflow(gitCtx, ctx, pf, title, promptPath, completedPath, state)
 	}
 
 	// Direct workflow: move prompt to completed and commit in the same repo.
 	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+		p.restoreDefaultBranch(ctx, state)
 		return err
 	}
 
-	return p.handleDirectWorkflow(gitCtx, ctx, title)
+	err = p.handleDirectWorkflow(gitCtx, ctx, title)
+	p.restoreDefaultBranch(ctx, state)
+	return err
 }
 
 // moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits the file.
@@ -537,10 +545,76 @@ func (p *processor) setupWorkflow(
 	pf *prompt.PromptFile,
 ) (*workflowState, error) {
 	state := &workflowState{}
-	if p.pr {
+	if p.worktree {
 		return p.setupCloneWorkflowState(ctx, baseName, pf, state)
 	}
+	// In-place branch switching (when worktree is false and branch is set)
+	if branch := pf.Branch(); branch != "" {
+		return p.setupInPlaceBranchState(ctx, branch, state)
+	}
 	return state, nil
+}
+
+// setupInPlaceBranchState configures in-place branch switching for non-worktree execution.
+func (p *processor) setupInPlaceBranchState(
+	ctx context.Context,
+	branch string,
+	state *workflowState,
+) (*workflowState, error) {
+	// Check working tree is clean before switching
+	clean, err := p.brancher.IsClean(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "check working tree")
+	}
+	if !clean {
+		return nil, errors.Errorf(
+			ctx,
+			"working tree is not clean; cannot switch to branch %q",
+			branch,
+		)
+	}
+
+	// Record default branch for restoration
+	defaultBranch, err := p.brancher.DefaultBranch(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "get default branch")
+	}
+	state.inPlaceDefaultBranch = defaultBranch
+	state.inPlaceBranch = branch
+
+	// Check if branch exists remotely; if so switch, else create
+	if err := p.brancher.FetchAndVerifyBranch(ctx, branch); err == nil {
+		// Branch exists remotely — switch to it
+		if err := p.brancher.Switch(ctx, branch); err != nil {
+			return nil, errors.Wrap(ctx, err, "switch to existing branch")
+		}
+	} else {
+		// Branch does not exist — create from default
+		if err := p.brancher.CreateAndSwitch(ctx, branch); err != nil {
+			return nil, errors.Wrap(ctx, err, "create and switch to branch")
+		}
+	}
+	slog.Info("switched to branch for in-place execution", "branch", branch)
+	return state, nil
+}
+
+// restoreDefaultBranch switches back to the default branch after in-place execution.
+// It is a no-op when state.inPlaceDefaultBranch is empty.
+func (p *processor) restoreDefaultBranch(ctx context.Context, state *workflowState) {
+	if state.inPlaceDefaultBranch == "" {
+		return
+	}
+	if err := p.brancher.Switch(ctx, state.inPlaceDefaultBranch); err != nil {
+		slog.Warn(
+			"failed to restore default branch",
+			"branch",
+			state.inPlaceDefaultBranch,
+			"error",
+			err,
+		)
+	} else {
+		slog.Info("restored default branch", "branch", state.inPlaceDefaultBranch)
+	}
 }
 
 // setupCloneWorkflowState configures state for the clone workflow.

@@ -70,6 +70,19 @@ type Brancher struct {
 	fetchAndVerifyBranchReturnsOnCall map[int]struct {
 		result1 error
 	}
+	IsCleanStub        func(context.Context) (bool, error)
+	isCleanMutex       sync.RWMutex
+	isCleanArgsForCall []struct {
+		arg1 context.Context
+	}
+	isCleanReturns struct {
+		result1 bool
+		result2 error
+	}
+	isCleanReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	MergeOriginDefaultStub        func(context.Context) error
 	mergeOriginDefaultMutex       sync.RWMutex
 	mergeOriginDefaultArgsForCall []struct {
@@ -431,6 +444,70 @@ func (fake *Brancher) FetchAndVerifyBranchReturnsOnCall(i int, result1 error) {
 	fake.fetchAndVerifyBranchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *Brancher) IsClean(arg1 context.Context) (bool, error) {
+	fake.isCleanMutex.Lock()
+	ret, specificReturn := fake.isCleanReturnsOnCall[len(fake.isCleanArgsForCall)]
+	fake.isCleanArgsForCall = append(fake.isCleanArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.IsCleanStub
+	fakeReturns := fake.isCleanReturns
+	fake.recordInvocation("IsClean", []interface{}{arg1})
+	fake.isCleanMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Brancher) IsCleanCallCount() int {
+	fake.isCleanMutex.RLock()
+	defer fake.isCleanMutex.RUnlock()
+	return len(fake.isCleanArgsForCall)
+}
+
+func (fake *Brancher) IsCleanCalls(stub func(context.Context) (bool, error)) {
+	fake.isCleanMutex.Lock()
+	defer fake.isCleanMutex.Unlock()
+	fake.IsCleanStub = stub
+}
+
+func (fake *Brancher) IsCleanArgsForCall(i int) context.Context {
+	fake.isCleanMutex.RLock()
+	defer fake.isCleanMutex.RUnlock()
+	argsForCall := fake.isCleanArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Brancher) IsCleanReturns(result1 bool, result2 error) {
+	fake.isCleanMutex.Lock()
+	defer fake.isCleanMutex.Unlock()
+	fake.IsCleanStub = nil
+	fake.isCleanReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) IsCleanReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.isCleanMutex.Lock()
+	defer fake.isCleanMutex.Unlock()
+	fake.IsCleanStub = nil
+	if fake.isCleanReturnsOnCall == nil {
+		fake.isCleanReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.isCleanReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Brancher) MergeOriginDefault(arg1 context.Context) error {

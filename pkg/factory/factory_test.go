@@ -59,6 +59,7 @@ var _ = Describe("Factory", func() {
 				cfg.NetrcFile,
 				cfg.GitconfigFile,
 				cfg.PR,
+				cfg.Worktree,
 				"test-token",
 				false,
 				false,

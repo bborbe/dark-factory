@@ -269,6 +269,24 @@ var _ = Describe("Brancher", func() {
 		})
 	})
 
+	Describe("IsClean", func() {
+		It("returns true when working tree is clean", func() {
+			clean, err := b.IsClean(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clean).To(BeTrue())
+		})
+
+		It("returns false when working tree has uncommitted changes", func() {
+			// Create a new file that is untracked (makes tree dirty)
+			err := os.WriteFile(filepath.Join(tempDir, "dirty.txt"), []byte("dirty"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			clean, err := b.IsClean(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(clean).To(BeFalse())
+		})
+	})
+
 	Describe("MergeOriginDefault", func() {
 		It("returns error when not in a GitHub repository", func() {
 			// MergeOriginDefault requires DefaultBranch which needs gh CLI

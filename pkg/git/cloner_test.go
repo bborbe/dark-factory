@@ -8,6 +8,8 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -106,6 +108,142 @@ var _ = Describe("Cloner", func() {
 			// Error expected because bare repo has no remote, but it should NOT be "already exists"
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).NotTo(ContainSubstring("already exists"))
+		})
+
+		Context("with a fully configured source repo and remote", func() {
+			var (
+				remoteDir string
+				sourceDir string
+			)
+
+			// initSourceWithRemote sets up a source repo (non-bare) with a real remote.
+			initSourceWithRemote := func() {
+				var err error
+				remoteDir, err = os.MkdirTemp("", "cloner-remote-*")
+				Expect(err).NotTo(HaveOccurred())
+
+				sourceDir, err = os.MkdirTemp("", "cloner-source-*")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Initialize bare remote
+				cmd := exec.Command("git", "init", "--bare", remoteDir)
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Init source repo
+				cmd = exec.Command("git", "init", sourceDir)
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "config", "user.email", "test@example.com")
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "config", "user.name", "Test User")
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Add initial commit
+				err = os.WriteFile(filepath.Join(sourceDir, "README.md"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "add", ".")
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Set remote to bare repo
+				cmd = exec.Command("git", "remote", "add", "origin", remoteDir)
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				// Push to remote
+				cmd = exec.Command("git", "push", "origin", "HEAD")
+				cmd.Dir = sourceDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			AfterEach(func() {
+				_ = os.RemoveAll(remoteDir)
+				_ = os.RemoveAll(sourceDir)
+			})
+
+			It(
+				"creates fresh branch with checkout -b when branch does not exist on remote",
+				func() {
+					initSourceWithRemote()
+					cloner := git.NewCloner()
+					err := cloner.Clone(ctx, sourceDir, destDir, "new-feature-branch")
+					Expect(err).NotTo(HaveOccurred())
+
+					// Verify we're on the new branch
+					cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+					cmd.Dir = destDir
+					output, err := cmd.Output()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(strings.TrimSpace(string(output))).To(Equal("new-feature-branch"))
+				},
+			)
+
+			It(
+				"tracks existing remote branch with checkout --track when branch exists on remote",
+				func() {
+					initSourceWithRemote()
+
+					// Push a feature branch to the remote
+					cmd := exec.Command("git", "checkout", "-b", "existing-remote-branch")
+					cmd.Dir = sourceDir
+					err := cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+
+					cmd = exec.Command("git", "push", "origin", "existing-remote-branch")
+					cmd.Dir = sourceDir
+					err = cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+
+					// Switch back to default branch in source
+					cmd = exec.Command("git", "checkout", "-")
+					cmd.Dir = sourceDir
+					err = cmd.Run()
+					Expect(err).NotTo(HaveOccurred())
+
+					// Clone should track existing remote branch
+					cloner := git.NewCloner()
+					err = cloner.Clone(ctx, sourceDir, destDir, "existing-remote-branch")
+					Expect(err).NotTo(HaveOccurred())
+
+					// Verify we're on the tracked branch
+					cmd = exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+					cmd.Dir = destDir
+					output, err := cmd.Output()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(strings.TrimSpace(string(output))).To(Equal("existing-remote-branch"))
+
+					// Verify it's tracking the remote
+					cmd = exec.Command(
+						"git",
+						"rev-parse",
+						"--abbrev-ref",
+						"--symbolic-full-name",
+						"@{u}",
+					)
+					cmd.Dir = destDir
+					output, err = cmd.Output()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(
+						strings.TrimSpace(string(output)),
+					).To(Equal("origin/existing-remote-branch"))
+				},
+			)
 		})
 	})
 })

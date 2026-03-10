@@ -26,6 +26,7 @@ type Brancher interface {
 	DefaultBranch(ctx context.Context) (string, error)
 	Pull(ctx context.Context) error
 	MergeOriginDefault(ctx context.Context) error
+	IsClean(ctx context.Context) (bool, error)
 }
 
 // BrancherOption is a functional option for configuring a brancher.
@@ -174,6 +175,16 @@ func (b *brancher) Pull(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "pull current branch")
 	}
 	return nil
+}
+
+// IsClean returns true if the working tree has no uncommitted changes.
+func (b *brancher) IsClean(ctx context.Context) (bool, error) {
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "check working tree status")
+	}
+	return strings.TrimSpace(string(output)) == "", nil
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

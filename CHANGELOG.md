@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.37.0
+
+- feat: `dark-factory run` now generates prompts from approved specs before draining the queue, looping until no approved specs and no queued prompts remain
+
 ## v0.36.3
 
 - refactor: inject `libtime.CurrentDateTimeGetter` into all production code that previously called `time.Now()` directly — eliminates `nowFunc func() time.Time` patterns in `PromptFile`, `SpecFile`, `PRMerger`, `Watcher`, `SpecWatcher`, and all cmd/server/generator constructors; promotes `github.com/bborbe/time` to a direct dependency; adds `prompt.NewPromptFile` constructor for test use

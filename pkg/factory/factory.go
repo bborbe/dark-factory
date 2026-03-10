@@ -191,6 +191,8 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.Env,
 			currentDateTimeGetter,
 		),
+		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
+		currentDateTimeGetter,
 	)
 }
 

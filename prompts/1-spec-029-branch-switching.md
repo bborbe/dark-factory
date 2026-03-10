@@ -4,12 +4,12 @@ status: created
 created: "2026-03-10T20:15:00Z"
 ---
 <summary>
-- Processor gains a separate `worktree bool` field (distinct from `pr bool`) so clone-based execution and PR creation can be controlled independently
-- When `worktree` is false and a prompt declares a `branch`, execution runs in-place on that branch (created from default if new, checked out if existing)
+- Clone-based execution and PR creation can now be controlled independently — enabling prompts to run in a cloned worktree without creating a PR, or vice versa
+- When clone mode is off and a prompt declares a branch, execution runs in-place on that branch (created from default if new, checked out if existing)
 - The working tree is verified clean before any in-place branch switch — an unclean tree fails the prompt with a clear error before touching anything
 - After in-place execution completes (success or error), the repository is always restored to the default branch
-- When `worktree` is true and the prompt declares a `branch` that already exists on the remote, the clone checks out and tracks that remote branch rather than creating a new one — enabling the second prompt to see the first prompt's code changes
-- Backward-compatible: no `branch` field → identical behavior to before; `worktree=true, pr=true` → identical to old `workflow: pr`
+- When clone mode is on and the prompt's branch already exists on the remote, the clone checks out and tracks that remote branch — enabling the second prompt to see the first prompt's code changes
+- Backward-compatible: no branch field means identical behavior to before
 </summary>
 
 <objective>
@@ -59,9 +59,9 @@ Read these files before making any changes:
 
 4. Update all uses of `p.pr` that control CLONE (not PR creation) to use `p.worktree`:
    - `setupWorkflow`: `if p.pr {` → `if p.worktree {`
-   - `handlePostExecution`: `if p.workflow == config.WorkflowPR` (already changed to `p.pr` by spec 028) → change to `if p.worktree`
+   - `handlePostExecution` (~line 491): the `if p.pr {` check currently gates routing to `handleCloneWorkflow`. Change to `if p.worktree {` — this makes clone-path routing depend on `worktree`, not `pr`. Inside `handleCloneWorkflow` itself, PR creation is separately gated on `p.pr` (prompt 3 of this spec handles that). The key insight: `handleCloneWorkflow` does both clone cleanup AND PR creation, so the outer routing check becomes `p.worktree` while the inner PR creation remains `p.pr`.
    - `cleanupCloneOnError` defer: `if p.pr && workflowState.clonePath != ""` → `if p.worktree && workflowState.clonePath != ""`
-   Keep `p.pr` for PR creation logic (that comes in prompt 3 of this spec).
+   Keep `p.pr` for PR creation logic inside `handleCloneWorkflow` (that comes in prompt 3 of this spec).
 
 **Step 2: Add `IsClean` to `Brancher`**
 

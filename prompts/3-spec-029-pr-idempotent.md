@@ -8,8 +8,8 @@ created: "2026-03-10T20:15:00Z"
 - If a PR already exists, its URL is logged and reused — no duplicate PR is created
 - PR body includes the prompt's `issue` field as a reference line when the field is set
 - When `pr` is true and `autoMerge` is enabled, the PR is only merged after the last prompt on the branch completes — earlier prompts push to the branch and update the existing PR body but do not trigger merge
-- `PRCreator` gains a `FindOpenPR(ctx, branch) (string, error)` method used for duplicate detection
-- `PromptFile` gains an `Issue() string` getter (if not already added by spec 028 prompt 3) to expose the issue field for PR body construction
+- Duplicate PR creation on the same branch is prevented — an existing open PR is detected and reused
+- PR body includes an issue tracker reference when one is configured in the prompt
 </summary>
 
 <objective>
@@ -19,15 +19,18 @@ Make PR creation idempotent per branch and delay auto-merge until the last promp
 <context>
 Read CLAUDE.md for project conventions.
 
-Previous prompts of this spec will have already:
-- Added `worktree bool` + `inPlaceBranch`/`inPlaceDefaultBranch` to `workflowState` (prompt 1)
-- Added `HasQueuedPromptsOnBranch` to `prompt.Manager` (prompt 2)
-- Added `handleBranchCompletion` to processor (prompt 2, but only called when `!p.pr`)
+**Preconditions from earlier prompts** (must already exist in the codebase):
+- `worktree bool` + `inPlaceBranch`/`inPlaceDefaultBranch` on `workflowState` (from prompt 1 of this spec)
+- `HasQueuedPromptsOnBranch` on `prompt.Manager` (from prompt 2 of this spec)
+- `handleBranchCompletion` on processor (from prompt 2, only called when `!p.pr`)
+- `Frontmatter.Issue string` on `PromptFile` (from spec 028 prompt 3)
+
+If `Frontmatter.Issue` is missing, add it to the struct before proceeding (see spec 028 prompt 3 for the exact field definition).
 
 Read these files before making any changes:
 - `pkg/processor/processor.go` — `handleCloneWorkflow` (~line 673): this is where PR creation and auto-merge happen
 - `pkg/git/pr_creator.go` — `PRCreator` interface and `prCreator` implementation
-- `pkg/prompt/prompt.go` — `PromptFile`, `Frontmatter.Issue` (added by spec 028 prompt 3), look for `Issue()` getter
+- `pkg/prompt/prompt.go` — `PromptFile`, `Frontmatter.Issue` (added by spec 028 prompt 3 — must already exist as `Issue string` field). Look for `Issue()` getter; if missing, step 1 adds it.
 - `pkg/processor/processor_test.go` — existing test patterns
 - `mocks/pr_creator.go` — generated mock
 </context>
@@ -84,9 +87,9 @@ Read these files before making any changes:
    ```go
    func buildPRBody(issue string) string {
        if issue != "" {
-           return "Created by dark-factory\n\nIssue: " + issue
+           return "Automated by dark-factory\n\nIssue: " + issue
        }
-       return "Created by dark-factory"
+       return "Automated by dark-factory"
    }
    ```
 
@@ -114,7 +117,7 @@ Read these files before making any changes:
        slog.Info("created PR", "url", prURL)
    }
    ```
-   Replace the current hardcoded `"Created by dark-factory"` body with `buildPRBody(pf.Issue())`.
+   Replace the current hardcoded `"Automated by dark-factory"` body (at ~line 698) with `buildPRBody(pf.Issue())`.
 
 **Step 5: PR auto-merge only after last prompt on branch**
 
@@ -157,7 +160,7 @@ Read these files before making any changes:
     - `handleCloneWorkflow`, `FindOpenPR` returns existing URL: `Create` NOT called, existing URL used
     - `handleCloneWorkflow`, `FindOpenPR` returns empty: `Create` called with `buildPRBody` result
     - `handleCloneWorkflow`, `pf.Issue()` is non-empty: PR body contains `"Issue: <value>"`
-    - `handleCloneWorkflow`, `pf.Issue()` is empty: PR body is `"Created by dark-factory"` (no issue line)
+    - `handleCloneWorkflow`, `pf.Issue()` is empty: PR body is `"Automated by dark-factory"` (no issue line)
     - `handleCloneWorkflow`, `autoMerge=true`, `HasQueuedPromptsOnBranch` returns true: `WaitAndMerge` NOT called, prompt moved to completed with PR URL saved
     - `handleCloneWorkflow`, `autoMerge=true`, `HasQueuedPromptsOnBranch` returns false: `WaitAndMerge` called (existing auto-merge behavior)
     - `handleCloneWorkflow`, `autoMerge=false`: no change in behavior (PR created, no merge attempt)

@@ -1,8 +1,11 @@
 ---
-status: approved
+status: executing
 spec: ["028"]
+container: dark-factory-166-spec-028-spec-metadata
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T19:39:55Z"
 queued: "2026-03-10T20:15:53Z"
+started: "2026-03-10T20:29:36Z"
 ---
 <summary>
 - Spec frontmatter gains two optional fields: `branch` (git branch name) and `issue` (freeform issue tracker reference)

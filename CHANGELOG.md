@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.40.0
+
+- feat: add `issue` field to prompt frontmatter; spec generator post-processes new prompt files to inherit `branch` and `issue` from the parent spec without overwriting explicit values
+
 ## v0.39.0
 
 - feat: add optional `branch` and `issue` fields to spec frontmatter; `spec approve` auto-assigns `dark-factory/spec-NNN` branch from spec number, preserving any pre-existing branch value; validates branch name at approve time

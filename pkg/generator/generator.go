@@ -68,8 +68,8 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 	// c. Derive log file path
 	logFile := filepath.Join(g.logDir, "gen-"+specBasename+".log")
 
-	// e. Count .md files in inboxDir before execution
-	before, err := countMDFiles(g.inboxDir)
+	// e. Snapshot .md files in inboxDir before execution
+	beforeFiles, err := listMDFiles(g.inboxDir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "count inbox files before")
 	}
@@ -79,14 +79,17 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		return errors.Wrap(ctx, err, "execute spec generator")
 	}
 
-	// f. Count .md files in inboxDir after execution
-	after, err := countMDFiles(g.inboxDir)
+	// f. Snapshot .md files in inboxDir after execution
+	afterFiles, err := listMDFiles(g.inboxDir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "count inbox files after")
 	}
 
+	// g. Determine new files
+	newFiles := diffFiles(beforeFiles, afterFiles)
+
 	// g. Verify new files were created
-	if after <= before {
+	if len(newFiles) == 0 {
 		count, err := countCompletedPromptsForSpec(ctx, g.completedDir, specBasename)
 		if err != nil {
 			return errors.Wrap(ctx, err, "count completed prompts for spec")
@@ -104,10 +107,18 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		return errors.New(ctx, "generation produced no prompt files")
 	}
 
-	// h. Load spec, set status to prompted, save
+	// h. Load spec, inherit metadata to prompts, set status to prompted, save
 	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec file")
+	}
+
+	specBranch := sf.Frontmatter.Branch
+	specIssue := sf.Frontmatter.Issue
+	if specBranch != "" || specIssue != "" {
+		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.currentDateTimeGetter); err != nil {
+			return errors.Wrap(ctx, err, "inherit spec metadata to prompts")
+		}
 	}
 
 	sf.SetStatus(string(spec.StatusPrompted))
@@ -115,6 +126,29 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		return errors.Wrap(ctx, err, "save spec file")
 	}
 
+	return nil
+}
+
+// inheritFromSpec copies branch and issue from the spec into each newly created prompt file,
+// without overwriting existing values.
+func inheritFromSpec(
+	ctx context.Context,
+	paths []string,
+	specBranch string,
+	specIssue string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	for _, p := range paths {
+		pf, err := prompt.Load(ctx, p, currentDateTimeGetter)
+		if err != nil {
+			return errors.Wrap(ctx, err, "load prompt for inheritance")
+		}
+		pf.SetBranchIfEmpty(specBranch)
+		pf.SetIssueIfEmpty(specIssue)
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "save prompt after inheritance")
+		}
+	}
 	return nil
 }
 
@@ -149,20 +183,32 @@ func countCompletedPromptsForSpec(
 	return count, nil
 }
 
-// countMDFiles counts the number of .md files in the given directory.
-func countMDFiles(dir string) (int, error) {
+// listMDFiles returns a set of full .md file paths in the given directory.
+// Returns an empty map (not error) when the directory does not exist.
+func listMDFiles(dir string) (map[string]struct{}, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, nil
+			return map[string]struct{}{}, nil
 		}
-		return 0, err
+		return nil, err
 	}
-	count := 0
+	files := make(map[string]struct{}, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
-			count++
+			files[filepath.Join(dir, entry.Name())] = struct{}{}
 		}
 	}
-	return count, nil
+	return files, nil
+}
+
+// diffFiles returns full paths of files present in after but not in before.
+func diffFiles(before, after map[string]struct{}) []string {
+	var newFiles []string
+	for path := range after {
+		if _, exists := before[path]; !exists {
+			newFiles = append(newFiles, path)
+		}
+	}
+	return newFiles
 }

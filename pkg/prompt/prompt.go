@@ -169,6 +169,7 @@ type Frontmatter struct {
 	Completed          string   `yaml:"completed,omitempty"`
 	PRURL              string   `yaml:"pr-url,omitempty"`
 	Branch             string   `yaml:"branch,omitempty"`
+	Issue              string   `yaml:"issue,omitempty"`
 	RetryCount         int      `yaml:"retryCount,omitempty"`
 }
 
@@ -403,6 +404,25 @@ func (pf *PromptFile) Branch() string {
 // SetBranch sets the branch field in frontmatter.
 func (pf *PromptFile) SetBranch(branch string) {
 	pf.Frontmatter.Branch = branch
+}
+
+// SetBranchIfEmpty sets the branch field only if it is currently empty.
+func (pf *PromptFile) SetBranchIfEmpty(branch string) {
+	if pf.Frontmatter.Branch == "" {
+		pf.Frontmatter.Branch = branch
+	}
+}
+
+// SetIssue sets the issue field in frontmatter.
+func (pf *PromptFile) SetIssue(issue string) {
+	pf.Frontmatter.Issue = issue
+}
+
+// SetIssueIfEmpty sets the issue field only if it is currently empty.
+func (pf *PromptFile) SetIssueIfEmpty(issue string) {
+	if pf.Frontmatter.Issue == "" {
+		pf.Frontmatter.Issue = issue
+	}
 }
 
 // Specs returns the specs slice from frontmatter. Returns an empty slice if nil.

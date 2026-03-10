@@ -2414,4 +2414,92 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(prompts).To(BeEmpty())
 		})
 	})
+
+	Describe("Issue field", func() {
+		var cdt libtime.CurrentDateTimeGetter
+
+		BeforeEach(func() {
+			cdt = libtime.NewCurrentDateTime()
+		})
+
+		It("loads prompt with issue field preserved", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: approved\nissue: BRO-19476\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path, cdt)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.Issue).To(Equal("BRO-19476"))
+		})
+
+		It("saves prompt with issue field in output YAML", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: approved\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path, cdt)
+			Expect(err).NotTo(HaveOccurred())
+			pf.SetIssue("BRO-99")
+			Expect(pf.Save(ctx)).To(Succeed())
+
+			saved, err := os.ReadFile(path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(saved)).To(ContainSubstring("issue: BRO-99"))
+		})
+
+		It("SetIssueIfEmpty does not overwrite an existing value", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "approved", Issue: "original"},
+				[]byte("# Test\n"),
+				cdt,
+			)
+			pf.SetIssueIfEmpty("new-value")
+			Expect(pf.Frontmatter.Issue).To(Equal("original"))
+		})
+
+		It("SetIssueIfEmpty sets value when field is empty", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "approved"},
+				[]byte("# Test\n"),
+				cdt,
+			)
+			pf.SetIssueIfEmpty("BRO-42")
+			Expect(pf.Frontmatter.Issue).To(Equal("BRO-42"))
+		})
+
+		It("SetBranchIfEmpty does not overwrite an existing value", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "approved", Branch: "my-branch"},
+				[]byte("# Test\n"),
+				cdt,
+			)
+			pf.SetBranchIfEmpty("other-branch")
+			Expect(pf.Frontmatter.Branch).To(Equal("my-branch"))
+		})
+
+		It("SetBranchIfEmpty sets value when field is empty", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "approved"},
+				[]byte("# Test\n"),
+				cdt,
+			)
+			pf.SetBranchIfEmpty("dark-factory/spec-028")
+			Expect(pf.Frontmatter.Branch).To(Equal("dark-factory/spec-028"))
+		})
+
+		It("existing prompt without issue loads and saves without error", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: approved\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path, cdt)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.Issue).To(Equal(""))
+			Expect(pf.Save(ctx)).To(Succeed())
+		})
+	})
 })

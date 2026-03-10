@@ -237,5 +237,82 @@ var _ = Describe("SpecGenerator", func() {
 				Expect(err.Error()).To(ContainSubstring("load spec file"))
 			})
 		})
+
+		Context("spec has branch and issue: new prompts inherit both", func() {
+			BeforeEach(func() {
+				// Rewrite spec with branch and issue
+				content := "---\nstatus: approved\nbranch: dark-factory/spec-028\nissue: BRO-123\n---\n# Spec\n"
+				Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
+
+				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "109-inherited-prompt.md"),
+						[]byte("---\nstatus: draft\n---\n# Inherited"),
+						0600,
+					)
+				}
+			})
+
+			It("copies branch and issue into the generated prompt", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				pf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+
+				data, err := os.ReadFile(filepath.Join(inboxDir, "109-inherited-prompt.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(data)).To(ContainSubstring("branch: dark-factory/spec-028"))
+				Expect(string(data)).To(ContainSubstring("issue: BRO-123"))
+			})
+		})
+
+		Context("generated prompt already has branch set: inherited branch not applied", func() {
+			BeforeEach(func() {
+				content := "---\nstatus: approved\nbranch: dark-factory/spec-028\nissue: BRO-123\n---\n# Spec\n"
+				Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
+
+				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "110-override-prompt.md"),
+						[]byte("---\nstatus: draft\nbranch: my-override\n---\n# Override"),
+						0600,
+					)
+				}
+			})
+
+			It("preserves the explicit branch on the generated prompt", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				data, err := os.ReadFile(filepath.Join(inboxDir, "110-override-prompt.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(data)).To(ContainSubstring("branch: my-override"))
+				Expect(string(data)).NotTo(ContainSubstring("dark-factory/spec-028"))
+				// Issue still inherited since prompt had none
+				Expect(string(data)).To(ContainSubstring("issue: BRO-123"))
+			})
+		})
+
+		Context("spec has no branch or issue: prompts left unmodified", func() {
+			BeforeEach(func() {
+				// specPath already has no branch/issue (just status: approved)
+				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "111-no-inherit.md"),
+						[]byte("---\nstatus: draft\n---\n# No inherit"),
+						0600,
+					)
+				}
+			})
+
+			It("generates prompts without adding branch or issue", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				data, err := os.ReadFile(filepath.Join(inboxDir, "111-no-inherit.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(data)).NotTo(ContainSubstring("branch:"))
+				Expect(string(data)).NotTo(ContainSubstring("issue:"))
+			})
+		})
 	})
 })

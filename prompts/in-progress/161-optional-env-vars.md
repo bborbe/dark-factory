@@ -1,3 +1,8 @@
+---
+status: approved
+created: "2026-03-10T12:44:22Z"
+queued: "2026-03-10T12:44:22Z"
+---
 <summary>
 - Projects can pass extra environment variables to the YOLO container
 - Useful for configuring Go private module settings, proxy overrides, or build flags

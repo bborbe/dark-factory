@@ -57,6 +57,7 @@ type partialConfig struct {
 	Specs            *partialSpecsConfig   `yaml:"specs"`
 	ContainerImage   *string               `yaml:"containerImage"`
 	NetrcFile        *string               `yaml:"netrcFile"`
+	GitconfigFile    *string               `yaml:"gitconfigFile"`
 	DebounceMs       *int                  `yaml:"debounceMs"`
 	ServerPort       *int                  `yaml:"serverPort"`
 	AutoMerge        *bool                 `yaml:"autoMerge"`
@@ -121,6 +122,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.NetrcFile != nil {
 		cfg.NetrcFile = *partial.NetrcFile
+	}
+	if partial.GitconfigFile != nil {
+		cfg.GitconfigFile = *partial.GitconfigFile
 	}
 	if partial.DebounceMs != nil {
 		cfg.DebounceMs = *partial.DebounceMs

@@ -31,6 +31,7 @@ type dockerExecutor struct {
 	projectName    string
 	model          string
 	netrcFile      string
+	gitconfigFile  string
 	commandRunner  commandRunner
 }
 
@@ -40,12 +41,14 @@ func NewDockerExecutor(
 	projectName string,
 	model string,
 	netrcFile string,
+	gitconfigFile string,
 ) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
 		projectName:    projectName,
 		model:          model,
 		netrcFile:      netrcFile,
+		gitconfigFile:  gitconfigFile,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -209,7 +212,18 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", home+"/go/pkg:/home/node/go/pkg",
 	)
 	if e.netrcFile != "" {
-		args = append(args, "-v", e.netrcFile+":/home/node/.netrc:ro")
+		resolved := e.netrcFile
+		if strings.HasPrefix(resolved, "~/") {
+			resolved = home + resolved[1:]
+		}
+		args = append(args, "-v", resolved+":/home/node/.netrc:ro")
+	}
+	if e.gitconfigFile != "" {
+		resolved := e.gitconfigFile
+		if strings.HasPrefix(resolved, "~/") {
+			resolved = home + resolved[1:]
+		}
+		args = append(args, "-v", resolved+":/home/node/.gitconfig")
 	}
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design

@@ -661,6 +661,70 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("netrcFile"))
 			Expect(err.Error()).To(ContainSubstring("does not exist"))
 		})
+
+		It("succeeds when gitconfigFile is empty (no mount)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				GitconfigFile:  "",
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when gitconfigFile points to an existing file", func() {
+			tmpFile, err := os.CreateTemp("", "test-gitconfig-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.Remove(tmpFile.Name()) }()
+			_ = tmpFile.Close()
+
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				GitconfigFile:  tmpFile.Name(),
+			}
+			err = cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("fails when gitconfigFile points to a nonexistent file", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: "docker.io/bborbe/claude-yolo:v0.2.8",
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				GitconfigFile:  "/nonexistent/path/.gitconfig",
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("gitconfigFile"))
+			Expect(err.Error()).To(ContainSubstring("does not exist"))
+		})
 	})
 
 	Describe("Workflow", func() {
@@ -866,6 +930,40 @@ defaultBranch: master
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.NetrcFile).To(BeEmpty())
+			})
+
+			It("loads gitconfigFile from config when file exists", func() {
+				gitconfigFile, err := os.CreateTemp("", "test-gitconfig-*")
+				Expect(err).NotTo(HaveOccurred())
+				defer func() { _ = os.Remove(gitconfigFile.Name()) }()
+				_ = gitconfigFile.Close()
+
+				configContent := "workflow: direct\ngitconfigFile: " + gitconfigFile.Name() + "\n"
+				err = os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.GitconfigFile).To(Equal(gitconfigFile.Name()))
+			})
+
+			It("leaves gitconfigFile empty when not set in config", func() {
+				configContent := `workflow: direct
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.GitconfigFile).To(BeEmpty())
 			})
 
 			It("returns error for invalid YAML", func() {

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
@@ -44,6 +45,7 @@ type Config struct {
 	Specs             SpecsConfig   `yaml:"specs"`
 	ContainerImage    string        `yaml:"containerImage"`
 	NetrcFile         string        `yaml:"netrcFile"`
+	GitconfigFile     string        `yaml:"gitconfigFile"`
 	Model             string        `yaml:"model"`
 	ValidationCommand string        `yaml:"validationCommand"`
 	DebounceMs        int           `yaml:"debounceMs"`
@@ -144,16 +146,8 @@ func (c Config) Validate(ctx context.Context) error {
 			}),
 		),
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
-		validation.Name("netrcFile", validation.HasValidationFunc(func(ctx context.Context) error {
-			if c.NetrcFile == "" {
-				return nil
-			}
-			resolved := resolveEnvVar(c.NetrcFile)
-			if _, err := os.Stat(resolved); err != nil {
-				return errors.Errorf(ctx, "netrcFile %q does not exist: %v", resolved, err)
-			}
-			return nil
-		})),
+		validation.Name("netrcFile", validation.HasValidationFunc(c.validateNetrcFile)),
+		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
 	}.Validate(ctx)
 }
 
@@ -174,6 +168,30 @@ func (c Config) validateAutoReview(ctx context.Context) error {
 	return nil
 }
 
+// validateNetrcFile validates the netrcFile configuration.
+func (c Config) validateNetrcFile(ctx context.Context) error {
+	if c.NetrcFile == "" {
+		return nil
+	}
+	resolved := resolveFilePath(c.NetrcFile)
+	if _, err := os.Stat(resolved); err != nil {
+		return errors.Errorf(ctx, "netrcFile %q does not exist: %v", resolved, err)
+	}
+	return nil
+}
+
+// validateGitconfigFile validates the gitconfigFile configuration.
+func (c Config) validateGitconfigFile(ctx context.Context) error {
+	if c.GitconfigFile == "" {
+		return nil
+	}
+	resolved := resolveFilePath(c.GitconfigFile)
+	if _, err := os.Stat(resolved); err != nil {
+		return errors.Errorf(ctx, "gitconfigFile %q does not exist: %v", resolved, err)
+	}
+	return nil
+}
+
 var envVarPattern = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
 
 // resolveEnvVar resolves environment variable references in the form ${VAR_NAME}.
@@ -183,6 +201,17 @@ func resolveEnvVar(value string) string {
 	matches := envVarPattern.FindStringSubmatch(value)
 	if len(matches) == 2 {
 		return os.Getenv(matches[1])
+	}
+	return value
+}
+
+// resolveFilePath resolves a file path by expanding ${VAR} env vars and leading ~/ to home dir.
+func resolveFilePath(value string) string {
+	value = resolveEnvVar(value)
+	if strings.HasPrefix(value, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			value = home + value[1:]
+		}
 	}
 	return value
 }

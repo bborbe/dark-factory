@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["029"]
+summary: Added HasQueuedPromptsOnBranch to prompt.Manager, MergeToDefault to git.Brancher, and updated handleDirectWorkflow to guard releases on feature branches; handleBranchCompletion merges the feature branch and releases when the last prompt on the branch completes
+container: dark-factory-169-spec-029-release-guard
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T20:15:00Z"
 queued: "2026-03-10T20:31:52Z"
+started: "2026-03-10T21:05:17Z"
+completed: "2026-03-10T21:21:32Z"
 ---
 <summary>
 - Feature-branch prompts (those with a `branch` field) never trigger a version bump or git tag — they only commit changes and add changelog entries to `## Unreleased`

@@ -739,6 +739,37 @@ debounceMs: 1000
 				Expect(cfg.DebounceMs).To(Equal(500))
 			})
 
+			It("loads defaultBranch from config", func() {
+				configContent := `workflow: direct
+defaultBranch: master
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.DefaultBranch).To(Equal("master"))
+			})
+
+			It("leaves defaultBranch empty when not set in config", func() {
+				configContent := `workflow: direct
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.DefaultBranch).To(BeEmpty())
+			})
+
 			It("returns error for invalid YAML", func() {
 				configContent := `workflow: pr
 invalid yaml: [unclosed

@@ -287,10 +287,9 @@ Dark-factory includes a Claude Code plugin with commands for writing and auditin
 ### Install
 
 ```bash
-claude plugin add bborbe/dark-factory
+claude plugin marketplace add bborbe/dark-factory
+claude plugin install dark-factory
 ```
-
-Or manually: clone the repo and the marketplace picks up `commands/` and `agents/` automatically.
 
 ### Commands
 

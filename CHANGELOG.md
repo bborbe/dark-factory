@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.42.0
+
+- feat: guard releases on feature branches — `handleDirectWorkflow` commits without releasing when `featureBranch` is set; after the last prompt on a branch completes, `handleBranchCompletion` merges to default and triggers a full release; add `HasQueuedPromptsOnBranch` to `prompt.Manager` and `MergeToDefault` to `git.Brancher`
+
 ## v0.41.0
 
 - feat: split `worktree bool` from `pr bool` in processor — clone-based execution and PR creation are now independent flags; add in-place branch switching for non-worktree mode (switches/creates branch before execution, restores default branch after); add existing-remote-branch tracking in clone mode via `git checkout --track`; add `IsClean` to `Brancher` interface

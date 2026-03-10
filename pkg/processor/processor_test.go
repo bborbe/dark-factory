@@ -4568,6 +4568,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			mockManager.AllPreviousCompletedReturns(true)
 			mockManager.MoveToCompletedReturns(nil)
+			// Simulate more prompts on branch so merge/release is skipped
+			mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
 			mockExecutor.ExecuteReturns(nil)
 			mockReleaser.CommitCompletedFileReturns(nil)
 			mockReleaser.HasChangelogReturns(false)
@@ -4595,6 +4597,303 @@ DARK-FACTORY-REPORT -->`), 0600)
 			lastIdx := mockBrancher.SwitchCallCount() - 1
 			_, lastSwitchArg := mockBrancher.SwitchArgsForCall(lastIdx)
 			Expect(lastSwitchArg).To(Equal("main"))
+
+			cancel()
+		})
+	})
+
+	Describe("Release guard on feature branches", func() {
+		createBranchPromptFile := func(path string, branch string) *prompt.PromptFile {
+			return prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus), Branch: branch},
+				[]byte("# Test\n\nDefault test content"),
+				libtime.NewCurrentDateTime(),
+			)
+		}
+
+		var newProcDirect func() processor.Processor
+		BeforeEach(func() {
+			newProcDirect = func() processor.Processor {
+				return processor.NewProcessor(
+					promptsDir,
+					filepath.Join(promptsDir, "completed"),
+					filepath.Join(promptsDir, "log"),
+					"test-project",
+					mockExecutor,
+					mockManager,
+					mockReleaser,
+					mockVersionGet,
+					ready,
+					false, // pr=false
+					false, // worktree=false
+					mockBrancher,
+					mockPRCreator,
+					mockCloner,
+					mockPRMerger,
+					false,
+					false,
+					false,
+					mockAutoCompleter,
+					mockSpecLister,
+					"",
+					false,
+				)
+			}
+		})
+
+		It(
+			"feature branch: calls CommitOnly (not CommitAndRelease) even when changelog exists",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-fb-commit.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createBranchPromptFile(path, "feature/my-branch"), nil
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockManager.MoveToCompletedReturns(nil)
+				// More prompts on branch — skip merge
+				mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.HasChangelogReturns(true) // changelog exists but should NOT release
+				mockReleaser.CommitOnlyReturns(nil)
+
+				mockBrancher.IsCleanReturns(true, nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+
+				p := newProcDirect()
+				go func() { _ = p.Process(ctx) }()
+
+				Eventually(func() int {
+					return mockReleaser.CommitOnlyCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// CommitAndRelease must NOT be called
+				Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+
+				cancel()
+			},
+		)
+
+		It("default branch with changelog: CommitAndRelease called (unchanged behavior)", func() {
+			promptPath := filepath.Join(promptsDir, "001-default-changelog.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(true)
+			mockReleaser.GetNextVersionReturns("v0.1.1", nil)
+			mockReleaser.CommitAndReleaseReturns(nil)
+
+			p := newProcDirect()
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockReleaser.CommitAndReleaseCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// CommitOnly must NOT be called
+			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("handleBranchCompletion: HasQueuedPromptsOnBranch=true skips MergeToDefault", func() {
+			promptPath := filepath.Join(promptsDir, "001-has-more.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "feature/shared"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			// More prompts on same branch
+			mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.IsCleanReturns(true, nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+
+			p := newProcDirect()
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockManager.HasQueuedPromptsOnBranchCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			// MergeToDefault must NOT be called
+			Expect(mockBrancher.MergeToDefaultCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It(
+			"handleBranchCompletion: HasQueuedPromptsOnBranch=false triggers MergeToDefault and CommitAndRelease",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-last-on-branch.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createBranchPromptFile(path, "feature/last"), nil
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				mockManager.AllPreviousCompletedReturns(true)
+				mockManager.MoveToCompletedReturns(nil)
+				// No more prompts on branch — trigger merge
+				mockManager.HasQueuedPromptsOnBranchReturns(false, nil)
+				mockExecutor.ExecuteReturns(nil)
+				mockReleaser.CommitCompletedFileReturns(nil)
+				mockReleaser.HasChangelogReturns(true)
+				mockReleaser.GetNextVersionReturns("v0.2.0", nil)
+				mockReleaser.CommitAndReleaseReturns(nil)
+				mockReleaser.CommitOnlyReturns(nil)
+				mockBrancher.IsCleanReturns(true, nil)
+				mockBrancher.DefaultBranchReturns("main", nil)
+				mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+				mockBrancher.CreateAndSwitchReturns(nil)
+				mockBrancher.SwitchReturns(nil)
+				mockBrancher.MergeToDefaultReturns(nil)
+
+				p := newProcDirect()
+				go func() { _ = p.Process(ctx) }()
+
+				Eventually(func() int {
+					return mockBrancher.MergeToDefaultCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				Eventually(func() int {
+					return mockReleaser.CommitAndReleaseCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				cancel()
+			},
+		)
+
+		It("handleBranchCompletion: MergeToDefault error stops release", func() {
+			promptPath := filepath.Join(promptsDir, "001-merge-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "feature/conflict"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockManager.HasQueuedPromptsOnBranchReturns(false, nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.HasChangelogReturns(true)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockBrancher.IsCleanReturns(true, nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+			mockBrancher.CreateAndSwitchReturns(nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.MergeToDefaultReturns(stderrors.New("merge conflict"))
+
+			p := newProcDirect()
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockBrancher.MergeToDefaultCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Release must NOT be called after merge failure
+			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("pr=true: handleBranchCompletion NOT called even when feature branch completes", func() {
+			promptPath := filepath.Join(promptsDir, "001-pr-branch.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			// pr=true with worktree=true uses clone workflow
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createBranchPromptFile(path, "feature/pr-mode"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
+			}
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/789", nil)
+
+			// pr=true, worktree=true
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				true, // pr=true
+				true, // worktree=true
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// handleBranchCompletion must NOT be called (pr=true uses clone workflow)
+			Expect(mockManager.HasQueuedPromptsOnBranchCallCount()).To(Equal(0))
+			Expect(mockBrancher.MergeToDefaultCallCount()).To(Equal(0))
 
 			cancel()
 		})

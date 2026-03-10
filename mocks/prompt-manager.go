@@ -46,6 +46,21 @@ type Manager struct {
 	hasExecutingReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	HasQueuedPromptsOnBranchStub        func(context.Context, string, string) (bool, error)
+	hasQueuedPromptsOnBranchMutex       sync.RWMutex
+	hasQueuedPromptsOnBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	hasQueuedPromptsOnBranchReturns struct {
+		result1 bool
+		result2 error
+	}
+	hasQueuedPromptsOnBranchReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	IncrementRetryCountStub        func(context.Context, string) error
 	incrementRetryCountMutex       sync.RWMutex
 	incrementRetryCountArgsForCall []struct {
@@ -416,6 +431,72 @@ func (fake *Manager) HasExecutingReturnsOnCall(i int, result1 bool) {
 	fake.hasExecutingReturnsOnCall[i] = struct {
 		result1 bool
 	}{result1}
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranch(arg1 context.Context, arg2 string, arg3 string) (bool, error) {
+	fake.hasQueuedPromptsOnBranchMutex.Lock()
+	ret, specificReturn := fake.hasQueuedPromptsOnBranchReturnsOnCall[len(fake.hasQueuedPromptsOnBranchArgsForCall)]
+	fake.hasQueuedPromptsOnBranchArgsForCall = append(fake.hasQueuedPromptsOnBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.HasQueuedPromptsOnBranchStub
+	fakeReturns := fake.hasQueuedPromptsOnBranchReturns
+	fake.recordInvocation("HasQueuedPromptsOnBranch", []interface{}{arg1, arg2, arg3})
+	fake.hasQueuedPromptsOnBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranchCallCount() int {
+	fake.hasQueuedPromptsOnBranchMutex.RLock()
+	defer fake.hasQueuedPromptsOnBranchMutex.RUnlock()
+	return len(fake.hasQueuedPromptsOnBranchArgsForCall)
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranchCalls(stub func(context.Context, string, string) (bool, error)) {
+	fake.hasQueuedPromptsOnBranchMutex.Lock()
+	defer fake.hasQueuedPromptsOnBranchMutex.Unlock()
+	fake.HasQueuedPromptsOnBranchStub = stub
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranchArgsForCall(i int) (context.Context, string, string) {
+	fake.hasQueuedPromptsOnBranchMutex.RLock()
+	defer fake.hasQueuedPromptsOnBranchMutex.RUnlock()
+	argsForCall := fake.hasQueuedPromptsOnBranchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranchReturns(result1 bool, result2 error) {
+	fake.hasQueuedPromptsOnBranchMutex.Lock()
+	defer fake.hasQueuedPromptsOnBranchMutex.Unlock()
+	fake.HasQueuedPromptsOnBranchStub = nil
+	fake.hasQueuedPromptsOnBranchReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Manager) HasQueuedPromptsOnBranchReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.hasQueuedPromptsOnBranchMutex.Lock()
+	defer fake.hasQueuedPromptsOnBranchMutex.Unlock()
+	fake.HasQueuedPromptsOnBranchStub = nil
+	if fake.hasQueuedPromptsOnBranchReturnsOnCall == nil {
+		fake.hasQueuedPromptsOnBranchReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.hasQueuedPromptsOnBranchReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Manager) IncrementRetryCount(arg1 context.Context, arg2 string) error {

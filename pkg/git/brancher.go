@@ -27,6 +27,7 @@ type Brancher interface {
 	Pull(ctx context.Context) error
 	MergeOriginDefault(ctx context.Context) error
 	IsClean(ctx context.Context) (bool, error)
+	MergeToDefault(ctx context.Context, branch string) error
 }
 
 // BrancherOption is a functional option for configuring a brancher.
@@ -201,5 +202,29 @@ func (b *brancher) MergeOriginDefault(ctx context.Context) error {
 	if err := cmd.Run(); err != nil {
 		return errors.Wrap(ctx, err, "merge origin/"+defaultBranch)
 	}
+	return nil
+}
+
+// MergeToDefault merges the given feature branch into the default branch.
+// It ensures the repo is on the default branch before merging.
+func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
+	defaultBranch, err := b.DefaultBranch(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "get default branch")
+	}
+	// Ensure we're on the default branch
+	// #nosec G204 -- defaultBranch comes from gh CLI, branch comes from validated frontmatter
+	if err := exec.CommandContext(ctx, "git", "checkout", defaultBranch).Run(); err != nil {
+		return errors.Wrap(ctx, err, "switch to default branch before merge")
+	}
+	// Merge feature branch into default (no fast-forward to preserve branch history)
+	// #nosec G204 -- branch name comes from validated frontmatter
+	cmd := exec.CommandContext(ctx, "git", "merge", "--no-ff", branch)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(ctx, err, "merge branch %q to default: %s", branch, stderr.String())
+	}
+	slog.Info("merged feature branch to default", "branch", branch, "default", defaultBranch)
 	return nil
 }

@@ -2502,4 +2502,66 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(pf.Save(ctx)).To(Succeed())
 		})
 	})
+
+	Describe("Manager.HasQueuedPromptsOnBranch", func() {
+		var (
+			inProgressDir string
+			completedDir  string
+			mgr           prompt.Manager
+		)
+
+		BeforeEach(func() {
+			inProgressDir = filepath.Join(tempDir, "in-progress")
+			completedDir = filepath.Join(tempDir, "completed")
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+			localMover := &simpleMover{}
+			mgr = prompt.NewManager(
+				filepath.Join(tempDir, "inbox"),
+				inProgressDir,
+				completedDir,
+				localMover,
+				libtime.NewCurrentDateTime(),
+			)
+		})
+
+		writeQueuedPromptWithBranch := func(filename, branch string) string {
+			path := filepath.Join(inProgressDir, filename)
+			content := fmt.Sprintf("---\nstatus: approved\nbranch: %s\n---\n\n# Test\n", branch)
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+			return path
+		}
+
+		It("returns true when another queued prompt shares the same branch", func() {
+			path1 := writeQueuedPromptWithBranch("001-a.md", "feature/shared")
+			_ = writeQueuedPromptWithBranch("002-b.md", "feature/shared")
+
+			has, err := mgr.HasQueuedPromptsOnBranch(ctx, "feature/shared", path1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(has).To(BeTrue())
+		})
+
+		It("returns false when the only matching prompt is excluded", func() {
+			path1 := writeQueuedPromptWithBranch("001-only.md", "feature/solo")
+
+			has, err := mgr.HasQueuedPromptsOnBranch(ctx, "feature/solo", path1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(has).To(BeFalse())
+		})
+
+		It("returns false when prompts have different branches", func() {
+			path1 := writeQueuedPromptWithBranch("001-x.md", "feature/branch-a")
+			_ = writeQueuedPromptWithBranch("002-y.md", "feature/branch-b")
+
+			has, err := mgr.HasQueuedPromptsOnBranch(ctx, "feature/branch-a", path1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(has).To(BeFalse())
+		})
+
+		It("returns false when queue is empty", func() {
+			has, err := mgr.HasQueuedPromptsOnBranch(ctx, "feature/anything", "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(has).To(BeFalse())
+		})
+	})
 })

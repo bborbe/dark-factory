@@ -461,6 +461,9 @@ type Manager interface {
 	MoveToCompleted(ctx context.Context, path string) error
 	NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error)
 	AllPreviousCompleted(ctx context.Context, n int) bool
+	// HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
+	// has the given branch value in its frontmatter.
+	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
 }
 
 // manager implements Manager.
@@ -573,6 +576,33 @@ func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
 func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
 	return AllPreviousCompleted(ctx, pm.completedDir, n)
+}
+
+// HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
+// has the given branch value in its frontmatter.
+func (pm *manager) HasQueuedPromptsOnBranch(
+	ctx context.Context,
+	branch string,
+	excludePath string,
+) (bool, error) {
+	queued, err := pm.ListQueued(ctx)
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "list queued prompts")
+	}
+	for _, p := range queued {
+		if p.Path == excludePath {
+			continue
+		}
+		pf, err := pm.Load(ctx, p.Path)
+		if err != nil {
+			slog.Warn("failed to load prompt for branch check", "path", p.Path, "error", err)
+			continue
+		}
+		if pf.Branch() == branch {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // ListQueued scans a directory for .md files that should be picked up.

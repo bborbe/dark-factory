@@ -499,14 +499,25 @@ func (p *processor) handlePostExecution(
 	}
 
 	// Direct workflow: move prompt to completed and commit in the same repo.
+	featureBranch := state.inPlaceBranch
 	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
 		p.restoreDefaultBranch(ctx, state)
 		return err
 	}
 
-	err = p.handleDirectWorkflow(gitCtx, ctx, title)
+	if err := p.handleDirectWorkflow(gitCtx, ctx, title, featureBranch); err != nil {
+		p.restoreDefaultBranch(ctx, state)
+		return err
+	}
 	p.restoreDefaultBranch(ctx, state)
-	return err
+
+	// After restoring to default, check if this is the last prompt on the branch and merge+release.
+	if featureBranch != "" && !p.pr {
+		if err := p.handleBranchCompletion(gitCtx, ctx, promptPath, title, featureBranch); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits the file.
@@ -735,7 +746,7 @@ func (p *processor) postMergeActions(
 
 	// If autoRelease enabled and has changelog, create release
 	if p.autoRelease && p.releaser.HasChangelog(gitCtx) {
-		if err := p.handleDirectWorkflow(gitCtx, ctx, title); err != nil {
+		if err := p.handleDirectWorkflow(gitCtx, ctx, title, ""); err != nil {
 			return errors.Wrap(ctx, err, "auto-release after merge")
 		}
 	}
@@ -844,11 +855,22 @@ func (p *processor) setupCloneForExecution(
 }
 
 // handleDirectWorkflow handles the direct commit workflow: commit, tag, push.
+// When featureBranch is non-empty, only commits (no release) — release happens after the branch merges.
 func (p *processor) handleDirectWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	title string,
+	featureBranch string,
 ) error {
+	// On a feature branch: commit only, never release
+	if featureBranch != "" {
+		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
+			return errors.Wrap(ctx, err, "commit on feature branch")
+		}
+		slog.Info("committed changes on feature branch (no release)", "branch", featureBranch)
+		return nil
+	}
+
 	// Without CHANGELOG: simple commit only (no tag, no push)
 	if !p.releaser.HasChangelog(gitCtx) {
 		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
@@ -870,6 +892,47 @@ func (p *processor) handleDirectWorkflow(
 	}
 
 	slog.Info("committed and tagged", "version", nextVersion)
+
+	return nil
+}
+
+// handleBranchCompletion checks if this was the last prompt on a feature branch.
+// If so, merges the branch to default and triggers a release.
+func (p *processor) handleBranchCompletion(
+	gitCtx context.Context,
+	ctx context.Context,
+	promptPath string,
+	title string,
+	featureBranch string,
+) error {
+	// Check if any other queued prompts share the same branch
+	hasMore, err := p.promptManager.HasQueuedPromptsOnBranch(ctx, featureBranch, promptPath)
+	if err != nil {
+		slog.Warn(
+			"failed to check remaining prompts on branch",
+			"branch",
+			featureBranch,
+			"error",
+			err,
+		)
+		return nil // non-fatal: skip merge, let next run re-check
+	}
+	if hasMore {
+		slog.Info("more prompts queued on branch — skipping merge", "branch", featureBranch)
+		return nil
+	}
+
+	slog.Info("last prompt on branch — merging to default and releasing", "branch", featureBranch)
+
+	// Merge feature branch to default (we're already on default after restoreDefaultBranch)
+	if err := p.brancher.MergeToDefault(gitCtx, featureBranch); err != nil {
+		return errors.Wrap(ctx, err, "merge feature branch to default")
+	}
+
+	// Release on default branch (pass empty featureBranch so release logic runs)
+	if err := p.handleDirectWorkflow(gitCtx, ctx, title, ""); err != nil {
+		return errors.Wrap(ctx, err, "release after branch merge")
+	}
 
 	return nil
 }

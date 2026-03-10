@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Eliminated all direct time.Now() calls from production code by injecting libtime.CurrentDateTimeGetter via constructors across PromptFile, SpecFile, PRMerger, Watcher, SpecWatcher, and all cmd/server/generator constructors; removed nowFunc and SetNowFunc patterns; promoted github.com/bborbe/time to a direct dependency.
+container: dark-factory-163-inject-current-datetime-getter
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T17:53:05Z"
 queued: "2026-03-10T17:53:05Z"
+started: "2026-03-10T17:53:18Z"
+completed: "2026-03-10T18:36:39Z"
 ---
 <summary>
 - All time-dependent code becomes deterministically testable without patching

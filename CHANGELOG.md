@@ -8,13 +8,19 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.36.1
+
+- fix: mount `gitconfigFile` as read-only at `/home/node/.gitconfig-extra` instead of writable at `/home/node/.gitconfig` — Docker bind-mounted files cannot be atomically replaced by `git config --global`, causing "Device or resource busy" errors; the claude-yolo entrypoint (v0.2.9+) copies the staged file before appending proxy settings
+- chore: bump default container image from `v0.2.8` to `v0.2.9`
+- refactor: extract `DefaultContainerImage` const to `pkg/const.go` — single source of truth for container image version
+
 ## v0.36.0
 
 - feat: add `env` config field to `.dark-factory.yaml` — passes a map of key-value pairs as `-e KEY=VALUE` environment variables to the YOLO container, enabling project-specific settings like `GOPRIVATE` and `GONOSUMCHECK` without modifying the container image
 
 ## v0.35.0
 
-- feat: add `gitconfigFile` config field to `.dark-factory.yaml` — mounts the specified file as a writable `/home/node/.gitconfig` in the YOLO container, enabling per-project git URL rewrites for private Go module resolution over HTTPS
+- feat: add `gitconfigFile` config field to `.dark-factory.yaml` — mounts the specified file at `/home/node/.gitconfig-extra:ro` in the YOLO container, enabling per-project git URL rewrites for private Go module resolution over HTTPS
 - fix: `netrcFile` and `gitconfigFile` config paths now expand leading `~/` to the home directory before validation and docker mount, matching actual Go/Docker path resolution behaviour
 
 ## v0.34.0

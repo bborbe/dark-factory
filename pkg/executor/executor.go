@@ -239,7 +239,7 @@ func (e *dockerExecutor) buildDockerCommand(
 		if strings.HasPrefix(resolved, "~/") {
 			resolved = home + resolved[1:]
 		}
-		args = append(args, "-v", resolved+":/home/node/.gitconfig")
+		args = append(args, "-v", resolved+":/home/node/.gitconfig-extra:ro")
 	}
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design

@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -370,10 +369,12 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement("/home/user/.gitconfig:/home/node/.gitconfig"))
+			Expect(
+				cmd.Args,
+			).To(ContainElement("/home/user/.gitconfig:/home/node/.gitconfig-extra:ro"))
 		})
 
-		It("does not include :ro on gitconfig mount", func() {
+		It("mounts gitconfig as read-only at staging path", func() {
 			exec.gitconfigFile = "/home/user/.gitconfig"
 			cmd := exec.buildDockerCommand(
 				ctx,
@@ -385,11 +386,9 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			for _, arg := range cmd.Args {
-				if strings.Contains(arg, ".gitconfig") {
-					Expect(arg).NotTo(ContainSubstring(":ro"))
-				}
-			}
+			Expect(
+				cmd.Args,
+			).To(ContainElement("/home/user/.gitconfig:/home/node/.gitconfig-extra:ro"))
 		})
 
 		It("expands tilde in gitconfigFile mount", func() {
@@ -404,7 +403,9 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement("/home/user/.gitconfig:/home/node/.gitconfig"))
+			Expect(
+				cmd.Args,
+			).To(ContainElement("/home/user/.gitconfig:/home/node/.gitconfig-extra:ro"))
 		})
 
 		It("does not include gitconfig mount when gitconfigFile is empty", func() {

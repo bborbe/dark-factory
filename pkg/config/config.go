@@ -13,6 +13,8 @@ import (
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
+
+	"github.com/bborbe/dark-factory/pkg"
 )
 
 // GitHubConfig holds GitHub-specific configuration.
@@ -78,7 +80,7 @@ func Defaults() Config {
 			CompletedDir:  "specs/completed",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:    "docker.io/bborbe/claude-yolo:v0.2.8",
+		ContainerImage:    pkg.DefaultContainerImage,
 		Model:             "claude-sonnet-4-6",
 		ValidationCommand: "make precommit",
 		DebounceMs:        500,

@@ -15,7 +15,6 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -33,7 +32,7 @@ type promptVerifyCommand struct {
 	completedDir          string
 	promptManager         prompt.Manager
 	releaser              git.Releaser
-	workflow              config.Workflow
+	pr                    bool
 	brancher              git.Brancher
 	prCreator             git.PRCreator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
@@ -45,7 +44,7 @@ func NewPromptVerifyCommand(
 	completedDir string,
 	promptManager prompt.Manager,
 	releaser git.Releaser,
-	workflow config.Workflow,
+	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -55,7 +54,7 @@ func NewPromptVerifyCommand(
 		completedDir:          completedDir,
 		promptManager:         promptManager,
 		releaser:              releaser,
-		workflow:              workflow,
+		pr:                    pr,
 		brancher:              brancher,
 		prCreator:             prCreator,
 		currentDateTimeGetter: currentDateTimeGetter,
@@ -103,12 +102,11 @@ func (c *promptVerifyCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
-	switch c.workflow {
-	case config.WorkflowDirect:
+	if !c.pr {
 		if err := c.completeDirectWorkflow(gitCtx, ctx, title); err != nil {
 			return err
 		}
-	default:
+	} else {
 		if err := c.completePRWorkflow(gitCtx, ctx, pf, title, completedPath); err != nil {
 			return err
 		}

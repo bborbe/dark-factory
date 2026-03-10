@@ -15,7 +15,6 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
 )
 
@@ -56,13 +55,13 @@ var _ = Describe("PromptVerifyCommand", func() {
 		_ = os.RemoveAll(tempDir)
 	})
 
-	makeCmd := func(workflow config.Workflow) cmd.PromptVerifyCommand {
+	makeCmd := func(pr bool) cmd.PromptVerifyCommand {
 		return cmd.NewPromptVerifyCommand(
 			queueDir,
 			completedDir,
 			mockPromptManager,
 			mockReleaser,
-			workflow,
+			pr,
 			mockBrancher,
 			mockPRCreator,
 			libtime.NewCurrentDateTime(),
@@ -71,7 +70,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 
 	Context("no args", func() {
 		It("returns usage error", func() {
-			err := makeCmd(config.WorkflowDirect).Run(ctx, []string{})
+			err := makeCmd(false).Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("usage: dark-factory prompt verify"))
 		})
@@ -79,7 +78,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 
 	Context("prompt not found", func() {
 		It("returns error", func() {
-			err := makeCmd(config.WorkflowDirect).Run(ctx, []string{"999-nonexistent"})
+			err := makeCmd(false).Run(ctx, []string{"999-nonexistent"})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -90,7 +89,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			err := os.WriteFile(testFile, []byte("---\nstatus: approved\n---\n# Test\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = makeCmd(config.WorkflowDirect).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not in pending verification state"))
 			Expect(err.Error()).To(ContainSubstring("approved"))
@@ -103,7 +102,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			err := os.WriteFile(testFile, []byte("---\nstatus: failed\n---\n# Test\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = makeCmd(config.WorkflowDirect).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not in pending verification state"))
 			Expect(err.Error()).To(ContainSubstring("failed"))
@@ -125,7 +124,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			mockReleaser.HasChangelogReturns(false)
 			mockReleaser.CommitOnlyReturns(nil)
 
-			err = makeCmd(config.WorkflowDirect).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(mockPromptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -164,7 +163,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			mockReleaser.HasChangelogReturns(true)
 			mockReleaser.CommitAndReleaseReturns(nil)
 
-			err = makeCmd(config.WorkflowDirect).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(1))
@@ -192,7 +191,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			mockBrancher.PushReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/owner/repo/pull/1", nil)
 
-			err = makeCmd(config.WorkflowPR).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(true).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(mockPromptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -219,7 +218,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 			mockBrancher.PushReturns(nil)
 			mockPRCreator.CreateReturns("https://github.com/owner/repo/pull/2", nil)
 
-			err = makeCmd(config.WorkflowPR).Run(ctx, []string{"080-my-feature.md"})
+			err = makeCmd(true).Run(ctx, []string{"080-my-feature.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(mockBrancher.PushCallCount()).To(Equal(1))

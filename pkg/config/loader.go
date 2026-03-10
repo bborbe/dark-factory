@@ -52,6 +52,8 @@ type partialSpecsConfig struct {
 // explicitly set zero values and missing fields.
 type partialConfig struct {
 	Workflow         *Workflow             `yaml:"workflow"`
+	PR               *bool                 `yaml:"pr"`
+	Worktree         *bool                 `yaml:"worktree"`
 	DefaultBranch    *string               `yaml:"defaultBranch"`
 	Prompts          *partialPromptsConfig `yaml:"prompts"`
 	Specs            *partialSpecsConfig   `yaml:"specs"`
@@ -97,8 +99,33 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 		return Config{}, errors.Wrap(ctx, err, "parse config file")
 	}
 
+	// Conflict detection: cannot set both old workflow and new boolean flags
+	if partial.Workflow != nil && (partial.PR != nil || partial.Worktree != nil) {
+		return Config{}, errors.Errorf(
+			ctx,
+			"config cannot set both 'workflow' and 'pr'/'worktree'; remove 'workflow' and use 'pr' and 'worktree' booleans instead",
+		)
+	}
+
 	// Merge non-nil values onto defaults
 	mergePartial(&cfg, &partial)
+
+	// Deprecation mapping: if old workflow field is set, map to new booleans and warn
+	if partial.Workflow != nil {
+		slog.Warn(
+			"'workflow' is deprecated in .dark-factory.yaml; replace with 'pr' and 'worktree' booleans",
+			"workflow",
+			cfg.Workflow,
+		)
+		switch cfg.Workflow {
+		case WorkflowDirect:
+			cfg.PR = false
+			cfg.Worktree = false
+		case WorkflowPR:
+			cfg.PR = true
+			cfg.Worktree = true
+		}
+	}
 
 	// Validate merged config
 	if err := cfg.Validate(ctx); err != nil {
@@ -112,6 +139,12 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 func mergePartial(cfg *Config, partial *partialConfig) {
 	if partial.Workflow != nil {
 		cfg.Workflow = *partial.Workflow
+	}
+	if partial.PR != nil {
+		cfg.PR = *partial.PR
+	}
+	if partial.Worktree != nil {
+		cfg.Worktree = *partial.Worktree
 	}
 	if partial.DefaultBranch != nil {
 		cfg.DefaultBranch = *partial.DefaultBranch

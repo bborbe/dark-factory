@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.38.0
+
+- feat: replace `workflow: direct|pr` string enum with `pr` and `worktree` boolean flags in `.dark-factory.yaml`; old `workflow` field is deprecated and mapped automatically with a warning; setting both is a validation error
+
 ## v0.37.0
 
 - feat: `dark-factory run` now generates prompts from approved specs before draining the queue, looping until no approved specs and no queued prompts remain

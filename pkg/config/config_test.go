@@ -373,6 +373,27 @@ var _ = Describe("Config", func() {
 		It("succeeds for autoMerge true with workflow pr", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds for autoMerge true with pr: true (no workflow field)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -428,12 +449,34 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(
 				err.Error(),
-			).To(ContainSubstring("autoMerge requires workflow 'pr'"))
+			).To(ContainSubstring("autoMerge requires pr: true"))
+		})
+
+		It("fails for autoMerge true with pr: false (no workflow field)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				PR:       false,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				ServerPort:     8080,
+				AutoMerge:      true,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoMerge requires pr: true"))
 		})
 
 		It("succeeds for autoRelease true with autoMerge true", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -454,6 +497,7 @@ var _ = Describe("Config", func() {
 		It("fails for autoRelease true with autoMerge false", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -493,12 +537,35 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(
 				err.Error(),
-			).To(ContainSubstring("autoReview requires workflow 'pr'"))
+			).To(ContainSubstring("autoReview requires pr: true"))
+		})
+
+		It("fails for autoReview true with pr: false (no workflow field)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				PR:       false,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage:   pkg.DefaultContainerImage,
+				Model:            "claude-sonnet-4-6",
+				DebounceMs:       500,
+				ServerPort:       8080,
+				AutoReview:       true,
+				AllowedReviewers: []string{"bborbe"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoReview requires pr: true"))
 		})
 
 		It("fails for autoReview true with autoMerge false", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -521,6 +588,7 @@ var _ = Describe("Config", func() {
 		It("fails for autoReview true with no reviewer source", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -544,6 +612,7 @@ var _ = Describe("Config", func() {
 		It("succeeds for autoReview true with all required fields", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowPR,
+				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -1229,6 +1298,110 @@ autoRelease: true
 				Expect(cfg.AutoMerge).To(BeTrue())
 				Expect(cfg.AutoRelease).To(BeTrue())
 			})
+
+			It("maps workflow: pr to PR: true and Worktree: true via deprecation", func() {
+				configContent := `workflow: pr
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.PR).To(BeTrue())
+				Expect(cfg.Worktree).To(BeTrue())
+			})
+
+			It("maps workflow: direct to PR: false and Worktree: false via deprecation", func() {
+				configContent := `workflow: direct
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.PR).To(BeFalse())
+				Expect(cfg.Worktree).To(BeFalse())
+			})
+
+			It("loads pr: true and worktree: true without deprecation warning", func() {
+				configContent := `pr: true
+worktree: true
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.PR).To(BeTrue())
+				Expect(cfg.Worktree).To(BeTrue())
+			})
+
+			It("returns error when both workflow and pr are set", func() {
+				configContent := `workflow: direct
+pr: true
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = loader.Load(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("cannot set both 'workflow' and 'pr'/'worktree'"))
+			})
+
+			It("returns error when both workflow and worktree are set", func() {
+				configContent := `workflow: direct
+worktree: false
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, err = loader.Load(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("cannot set both 'workflow' and 'pr'/'worktree'"))
+			})
+
+			It(
+				"loads with PR: false and Worktree: false when neither workflow nor booleans set",
+				func() {
+					configContent := `containerImage: docker.io/bborbe/claude-yolo:latest
+`
+					err := os.WriteFile(
+						filepath.Join(tmpDir, ".dark-factory.yaml"),
+						[]byte(configContent),
+						0600,
+					)
+					Expect(err).NotTo(HaveOccurred())
+
+					cfg, err := loader.Load(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(cfg.PR).To(BeFalse())
+					Expect(cfg.Worktree).To(BeFalse())
+				},
+			)
 		})
 	})
 

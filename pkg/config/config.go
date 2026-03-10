@@ -42,6 +42,8 @@ type SpecsConfig struct {
 type Config struct {
 	ProjectName       string            `yaml:"projectName"`
 	Workflow          Workflow          `yaml:"workflow"`
+	PR                bool              `yaml:"pr,omitempty"`
+	Worktree          bool              `yaml:"worktree,omitempty"`
 	DefaultBranch     string            `yaml:"defaultBranch"`
 	Prompts           PromptsConfig     `yaml:"prompts"`
 	Specs             SpecsConfig       `yaml:"specs"`
@@ -68,6 +70,8 @@ type Config struct {
 func Defaults() Config {
 	return Config{
 		Workflow: WorkflowDirect,
+		PR:       false,
+		Worktree: false,
 		Prompts: PromptsConfig{
 			InboxDir:      "prompts",
 			InProgressDir: "prompts/in-progress",
@@ -134,8 +138,8 @@ func (c Config) Validate(ctx context.Context) error {
 			}),
 		),
 		validation.Name("autoMerge", validation.HasValidationFunc(func(ctx context.Context) error {
-			if c.AutoMerge && c.Workflow != WorkflowPR {
-				return errors.Errorf(ctx, "autoMerge requires workflow 'pr'")
+			if c.AutoMerge && !c.PR {
+				return errors.Errorf(ctx, "autoMerge requires pr: true")
 			}
 			return nil
 		})),
@@ -160,8 +164,8 @@ func (c Config) validateAutoReview(ctx context.Context) error {
 	if !c.AutoReview {
 		return nil
 	}
-	if c.Workflow != WorkflowPR {
-		return errors.Errorf(ctx, "autoReview requires workflow 'pr'")
+	if !c.PR {
+		return errors.Errorf(ctx, "autoReview requires pr: true")
 	}
 	if !c.AutoMerge {
 		return errors.Errorf(ctx, "autoReview requires autoMerge")

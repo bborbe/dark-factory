@@ -16,7 +16,6 @@ import (
 
 	"github.com/bborbe/errors"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -46,7 +45,7 @@ type processor struct {
 	releaser          git.Releaser
 	versionGetter     version.Getter
 	ready             <-chan struct{}
-	workflow          config.Workflow
+	pr                bool
 	brancher          git.Brancher
 	prCreator         git.PRCreator
 	cloner            git.Cloner
@@ -72,7 +71,7 @@ func NewProcessor(
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	ready <-chan struct{},
-	workflow config.Workflow,
+	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	cloner git.Cloner,
@@ -95,7 +94,7 @@ func NewProcessor(
 		releaser:          releaser,
 		versionGetter:     versionGetter,
 		ready:             ready,
-		workflow:          workflow,
+		pr:                pr,
 		brancher:          brancher,
 		prCreator:         prCreator,
 		cloner:            cloner,
@@ -417,7 +416,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Ensure clone cleanup on error (success path cleanup is in handleCloneWorkflow)
-	if p.workflow == config.WorkflowPR && workflowState.clonePath != "" {
+	if p.pr && workflowState.clonePath != "" {
 		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
 
@@ -489,7 +488,7 @@ func (p *processor) handlePostExecution(
 
 	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
 
-	if p.workflow == config.WorkflowPR {
+	if p.pr {
 		// PR workflow: commit only code changes in clone, then manage prompt in original repo.
 		return p.handleCloneWorkflow(gitCtx, ctx, pf, title, promptPath, completedPath, state)
 	}
@@ -538,7 +537,7 @@ func (p *processor) setupWorkflow(
 	pf *prompt.PromptFile,
 ) (*workflowState, error) {
 	state := &workflowState{}
-	if p.workflow == config.WorkflowPR {
+	if p.pr {
 		return p.setupCloneWorkflowState(ctx, baseName, pf, state)
 	}
 	return state, nil

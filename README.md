@@ -280,6 +280,38 @@ Set up `~/.claude-yolo/` before first use:
 
 The docs teach YOLO conventions like custom library patterns, naming rules, and linter limits. See `~/.claude-yolo/docs/README.md` for details on writing effective guides.
 
+## Claude Code Plugin
+
+Dark-factory includes a Claude Code plugin with commands for writing and auditing specs and prompts. Works in any project — your Obsidian vault, a Go service, wherever you run Claude Code.
+
+### Install
+
+```bash
+claude plugin add bborbe/dark-factory
+```
+
+Or manually: clone the repo and the marketplace picks up `commands/` and `agents/` automatically.
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/audit-prompt <file>` | Audit prompt against Prompt Definition of Done |
+| `/audit-spec <file>` | Audit spec against preflight checklist and quality criteria |
+| `/create-prompt <spec-or-description>` | Create prompt files from a spec or task description |
+| `/create-spec <description>` | Create a spec file for a feature or change |
+
+### Agents
+
+| Agent | Purpose |
+|-------|---------|
+| `prompt-auditor` | Validates prompt structure, code references, quality scoring |
+| `spec-auditor` | Validates spec sections, behavioral level, preflight checklist |
+| `prompt-creator` | Decomposes specs into 2-6 executable prompts |
+| `spec-creator` | Interactive spec creation with template and scope validation |
+
+All agents are self-contained — no external file dependencies. Knowledge (Prompt DoD, spec template, preflight checklist) is inlined.
+
 ## Design Principles
 
 - **YOLO has NO git access** — all git ops happen on the host

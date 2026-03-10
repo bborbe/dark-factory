@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Added netrcFile config field with read-only container mount, bumped default image to v0.2.8, and updated all related tests
 container: dark-factory-159-optional-netrc-mount
 dark-factory-version: v0.33.1
 created: "2026-03-10T12:02:40Z"
 queued: "2026-03-10T12:02:40Z"
 started: "2026-03-10T12:02:48Z"
+completed: "2026-03-10T12:13:14Z"
 ---
 
 <summary>

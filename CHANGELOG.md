@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix: mock gh CLI in PRCreator tests to avoid CI failure when GH_TOKEN is not set
+
 ## v0.44.0
 
 - feat: add Claude Code marketplace plugin manifest (`.claude-plugin/marketplace.json`)

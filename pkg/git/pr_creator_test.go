@@ -6,6 +6,8 @@ package git_test
 
 import (
 	"context"
+	"fmt"
+	"os/exec"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -33,20 +35,21 @@ var _ = Describe("PRCreator", func() {
 	})
 
 	Describe("Create", func() {
-		It("returns error when gh CLI fails (no token)", func() {
-			p := git.NewPRCreator("")
-			// This test will fail when not in a git repo with remote configured
-			// We're testing that the error is propagated correctly
+		It("returns error when command fails", func() {
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				return nil, fmt.Errorf("command failed")
+			})
 			_, err := p.Create(ctx, "Test PR", "Test body")
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("returns error when gh CLI fails (with token)", func() {
-			p := git.NewPRCreator("test-token")
-			// This test will fail when not in a git repo with remote configured
-			// We're testing that the error is propagated correctly
-			_, err := p.Create(ctx, "Test PR", "Test body")
-			Expect(err).To(HaveOccurred())
+		It("returns PR URL on success", func() {
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				return []byte("https://github.com/owner/repo/pull/1\n"), nil
+			})
+			url, err := p.Create(ctx, "Test PR", "Test body")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(url).To(Equal("https://github.com/owner/repo/pull/1"))
 		})
 
 		It("returns error when title starts with a dash", func() {
@@ -64,26 +67,64 @@ var _ = Describe("PRCreator", func() {
 		})
 
 		It("allows title that does not start with a dash", func() {
-			p := git.NewPRCreator("")
-			// Will fail due to no git remote, but not due to title validation
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				return []byte("https://github.com/owner/repo/pull/1\n"), nil
+			})
 			_, err := p.Create(ctx, "Valid title", "body")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).NotTo(ContainSubstring("invalid PR title"))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("sets GH_TOKEN env when token provided", func() {
+			var capturedEnv []string
+			p := git.NewPRCreatorWithCommandOutput("my-token", func(cmd *exec.Cmd) ([]byte, error) {
+				capturedEnv = cmd.Env
+				return []byte("https://github.com/owner/repo/pull/1\n"), nil
+			})
+			_, err := p.Create(ctx, "Test PR", "body")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedEnv).To(ContainElement("GH_TOKEN=my-token"))
 		})
 	})
 
 	Describe("FindOpenPR", func() {
 		It("returns empty string when no open PR exists", func() {
-			p := git.NewPRCreator("")
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				return []byte(""), nil
+			})
 			url, err := p.FindOpenPR(ctx, "feature/nonexistent-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(BeEmpty())
 		})
 
-		It("returns error when gh CLI fails with token", func() {
-			p := git.NewPRCreator("test-token")
+		It("returns PR URL when open PR exists", func() {
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				return []byte("https://github.com/owner/repo/pull/42\n"), nil
+			})
+			url, err := p.FindOpenPR(ctx, "feature/my-branch")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(url).To(Equal("https://github.com/owner/repo/pull/42"))
+		})
+
+		It("returns error when command fails", func() {
+			p := git.NewPRCreatorWithCommandOutput(
+				"test-token",
+				func(cmd *exec.Cmd) ([]byte, error) {
+					return nil, fmt.Errorf("gh auth required")
+				},
+			)
 			_, err := p.FindOpenPR(ctx, "feature/test-branch")
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("sets GH_TOKEN env when token provided", func() {
+			var capturedEnv []string
+			p := git.NewPRCreatorWithCommandOutput("my-token", func(cmd *exec.Cmd) ([]byte, error) {
+				capturedEnv = cmd.Env
+				return []byte(""), nil
+			})
+			_, err := p.FindOpenPR(ctx, "feature/branch")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedEnv).To(ContainElement("GH_TOKEN=my-token"))
 		})
 	})
 })

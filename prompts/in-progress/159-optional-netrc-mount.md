@@ -1,5 +1,10 @@
 ---
-status: created
+status: executing
+container: dark-factory-159-optional-netrc-mount
+dark-factory-version: v0.33.1
+created: "2026-03-10T12:02:40Z"
+queued: "2026-03-10T12:02:40Z"
+started: "2026-03-10T12:02:48Z"
 ---
 
 <summary>

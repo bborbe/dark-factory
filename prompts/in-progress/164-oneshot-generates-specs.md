@@ -1,5 +1,10 @@
 ---
-status: created
+status: executing
+container: dark-factory-164-oneshot-generates-specs
+dark-factory-version: v0.36.0-dirty
+created: "2026-03-10T19:44:22Z"
+queued: "2026-03-10T19:44:22Z"
+started: "2026-03-10T19:44:23Z"
 ---
 <summary>
 - `dark-factory run` (one-shot) now generates prompts from approved specs before draining the queue

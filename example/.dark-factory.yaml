@@ -6,7 +6,8 @@
 projectName: ""
 github:
   token: ${DARK_FACTORY_GITHUB_TOKEN}
-workflow: direct
+pr: false
+worktree: false
 autoMerge: false
 autoRelease: false
 autoReview: false

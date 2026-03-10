@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["029"]
+summary: Made PR creation idempotent per branch and deferred auto-merge until the last prompt on the branch completes, with PR body including issue reference when set.
+container: dark-factory-170-spec-029-pr-idempotent
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T20:15:00Z"
 queued: "2026-03-10T20:31:52Z"
+started: "2026-03-10T21:21:36Z"
+completed: "2026-03-10T21:37:50Z"
 ---
 <summary>
 - When `pr` is true and a prompt on a feature branch runs, the processor checks whether an open PR already exists for that branch before creating a new one

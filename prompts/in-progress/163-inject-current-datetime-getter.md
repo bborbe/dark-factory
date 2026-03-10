@@ -1,5 +1,7 @@
 ---
-status: created
+status: approved
+created: "2026-03-10T17:53:05Z"
+queued: "2026-03-10T17:53:05Z"
 ---
 <summary>
 - All time-dependent code becomes deterministically testable without patching

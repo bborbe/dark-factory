@@ -1,5 +1,6 @@
 ---
-status: draft
+status: approved
+approved: "2026-03-10T19:36:56Z"
 ---
 
 ## Summary

@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["029"]
+summary: Split processor pr bool into worktree bool + pr bool flags, added in-place branch switching for non-worktree mode, existing-remote-branch tracking in clone mode, and IsClean to Brancher interface
+container: dark-factory-168-spec-029-branch-switching
+dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T20:15:00Z"
 queued: "2026-03-10T20:31:52Z"
+started: "2026-03-10T20:42:26Z"
+completed: "2026-03-10T21:05:13Z"
 ---
 <summary>
 - Clone-based execution and PR creation can now be controlled independently — enabling prompts to run in a cloned worktree without creating a PR, or vice versa

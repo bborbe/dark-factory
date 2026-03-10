@@ -22,15 +22,33 @@ type PRCreator interface {
 	FindOpenPR(ctx context.Context, branch string) (string, error)
 }
 
+// CommandOutputFn executes a command and returns its output.
+type CommandOutputFn func(cmd *exec.Cmd) ([]byte, error)
+
+// defaultCommandOutput runs the command and returns its output.
+func defaultCommandOutput(cmd *exec.Cmd) ([]byte, error) {
+	return cmd.Output()
+}
+
 // prCreator implements PRCreator.
 type prCreator struct {
-	ghToken string
+	ghToken         string
+	commandOutputFn CommandOutputFn
 }
 
 // NewPRCreator creates a new PRCreator.
 func NewPRCreator(ghToken string) PRCreator {
 	return &prCreator{
-		ghToken: ghToken,
+		ghToken:         ghToken,
+		commandOutputFn: defaultCommandOutput,
+	}
+}
+
+// NewPRCreatorWithCommandOutput creates a new PRCreator with a custom command output function.
+func NewPRCreatorWithCommandOutput(ghToken string, fn CommandOutputFn) PRCreator {
+	return &prCreator{
+		ghToken:         ghToken,
+		commandOutputFn: fn,
 	}
 }
 
@@ -48,7 +66,7 @@ func (p *prCreator) FindOpenPR(ctx context.Context, branch string) (string, erro
 	if p.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
 	}
-	output, err := cmd.Output()
+	output, err := p.commandOutputFn(cmd)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "list open PRs")
 	}
@@ -67,7 +85,7 @@ func (p *prCreator) Create(ctx context.Context, title string, body string) (stri
 	}
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
-	output, err := cmd.Output()
+	output, err := p.commandOutputFn(cmd)
 	if err != nil {
 		return "", errors.Errorf(ctx, "create pull request: %v: %s", err, stderr.String())
 	}

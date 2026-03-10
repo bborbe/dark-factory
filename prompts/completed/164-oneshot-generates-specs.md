@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: OneShotRunner now loops to generate prompts from approved specs before draining the queue, terminating when no prompts are generated and no prompts are queued
 container: dark-factory-164-oneshot-generates-specs
 dark-factory-version: v0.36.0-dirty
 created: "2026-03-10T19:44:22Z"
 queued: "2026-03-10T19:44:22Z"
 started: "2026-03-10T19:44:23Z"
+completed: "2026-03-10T20:05:46Z"
 ---
 <summary>
 - `dark-factory run` (one-shot) now generates prompts from approved specs before draining the queue

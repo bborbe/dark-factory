@@ -1,7 +1,8 @@
 ---
+status: approved
 spec: ["029"]
-status: created
 created: "2026-03-10T20:15:00Z"
+queued: "2026-03-10T20:31:52Z"
 ---
 <summary>
 - Clone-based execution and PR creation can now be controlled independently — enabling prompts to run in a cloned worktree without creating a PR, or vice versa

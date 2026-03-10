@@ -1,7 +1,8 @@
 ---
+status: approved
 spec: ["029"]
-status: created
 created: "2026-03-10T20:15:00Z"
+queued: "2026-03-10T20:31:52Z"
 ---
 <summary>
 - Feature-branch prompts (those with a `branch` field) never trigger a version bump or git tag — they only commit changes and add changelog entries to `## Unreleased`

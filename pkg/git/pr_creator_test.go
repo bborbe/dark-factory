@@ -71,4 +71,19 @@ var _ = Describe("PRCreator", func() {
 			Expect(err.Error()).NotTo(ContainSubstring("invalid PR title"))
 		})
 	})
+
+	Describe("FindOpenPR", func() {
+		It("returns error when gh CLI fails", func() {
+			p := git.NewPRCreator("")
+			// gh will fail outside a git repo with remote configured
+			_, err := p.FindOpenPR(ctx, "feature/test-branch")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns error when gh CLI fails with token", func() {
+			p := git.NewPRCreator("test-token")
+			_, err := p.FindOpenPR(ctx, "feature/test-branch")
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })

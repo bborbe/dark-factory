@@ -18,6 +18,8 @@ import (
 // PRCreator handles GitHub pull request creation.
 type PRCreator interface {
 	Create(ctx context.Context, title string, body string) (string, error)
+	// FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
+	FindOpenPR(ctx context.Context, branch string) (string, error)
 }
 
 // prCreator implements PRCreator.
@@ -30,6 +32,27 @@ func NewPRCreator(ghToken string) PRCreator {
 	return &prCreator{
 		ghToken: ghToken,
 	}
+}
+
+// FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
+func (p *prCreator) FindOpenPR(ctx context.Context, branch string) (string, error) {
+	// #nosec G204 -- branch name comes from validated frontmatter
+	cmd := exec.CommandContext(
+		ctx,
+		"gh", "pr", "list",
+		"--head", branch,
+		"--state", "open",
+		"--json", "url",
+		"--jq", ".[0].url",
+	)
+	if p.ghToken != "" {
+		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
+	}
+	output, err := cmd.Output()
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "list open PRs")
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 // Create creates a pull request and returns the PR URL.

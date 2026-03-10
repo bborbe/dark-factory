@@ -754,6 +754,81 @@ func (p *processor) postMergeActions(
 	return nil
 }
 
+// buildPRBody constructs the PR body, appending an issue reference when one is set.
+func buildPRBody(issue string) string {
+	if issue != "" {
+		return "Automated by dark-factory\n\nIssue: " + issue
+	}
+	return "Automated by dark-factory"
+}
+
+// findOrCreatePR checks for an existing open PR on the branch and creates one if absent.
+// Returns the PR URL (existing or newly created).
+func (p *processor) findOrCreatePR(
+	gitCtx context.Context,
+	ctx context.Context,
+	branchName string,
+	title string,
+	issue string,
+) (string, error) {
+	prURL, err := p.prCreator.FindOpenPR(gitCtx, branchName)
+	if err != nil {
+		slog.Warn("failed to check for existing PR", "branch", branchName, "error", err)
+		// Fall through to create attempt — may result in duplicate, user can resolve
+	}
+	if prURL != "" {
+		slog.Info(
+			"open PR already exists for branch — skipping creation",
+			"branch",
+			branchName,
+			"url",
+			prURL,
+		)
+		return prURL, nil
+	}
+	prURL, err = p.prCreator.Create(gitCtx, title, buildPRBody(issue))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, "create pull request")
+	}
+	slog.Info("created PR", "url", prURL)
+	return prURL, nil
+}
+
+// handleAutoMergeForClone handles the auto-merge decision after clone workflow:
+// defers merge when more prompts remain on branch, otherwise merges immediately.
+func (p *processor) handleAutoMergeForClone(
+	gitCtx context.Context,
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	branchName string,
+	promptPath string,
+	completedPath string,
+	prURL string,
+	title string,
+) error {
+	hasMore, err := p.promptManager.HasQueuedPromptsOnBranch(ctx, branchName, promptPath)
+	if err != nil {
+		slog.Warn("failed to check remaining prompts on branch", "branch", branchName, "error", err)
+		// Fall through: merge anyway (safe default, avoids blocking forever)
+	}
+	if hasMore {
+		slog.Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
+		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+			return err
+		}
+		p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
+		return nil
+	}
+	// Last prompt on branch — proceed with merge
+	if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
+		return errors.Wrap(ctx, err, "wait and merge PR")
+	}
+	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
+		return err
+	}
+	return p.postMergeActions(gitCtx, ctx, title)
+}
+
 // handleCloneWorkflow handles the clone-based workflow: commit code in clone, push, create PR,
 // then manage prompt lifecycle in the original repo.
 func (p *processor) handleCloneWorkflow(
@@ -779,12 +854,11 @@ func (p *processor) handleCloneWorkflow(
 		return errors.Wrap(ctx, err, "push branch")
 	}
 
-	// Create PR
-	prURL, err := p.prCreator.Create(gitCtx, title, "Automated by dark-factory")
+	// Find or create PR (idempotent)
+	prURL, err := p.findOrCreatePR(gitCtx, ctx, branchName, title, pf.Issue())
 	if err != nil {
-		return errors.Wrap(ctx, err, "create pull request")
+		return err
 	}
-	slog.Info("created PR", "url", prURL)
 
 	// Switch back to original directory before managing prompt
 	if err := os.Chdir(originalDir); err != nil {
@@ -799,16 +873,10 @@ func (p *processor) handleCloneWorkflow(
 
 	// --- From here, we're back in the original repo ---
 
-	// Handle auto-merge if enabled
 	if p.autoMerge {
-		if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
-			return errors.Wrap(ctx, err, "wait and merge PR")
-		}
-		// After merge, move prompt to completed in original repo
-		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-			return err
-		}
-		return p.postMergeActions(gitCtx, ctx, title)
+		return p.handleAutoMergeForClone(
+			gitCtx, ctx, pf, branchName, promptPath, completedPath, prURL, title,
+		)
 	}
 
 	// autoReview mode: keep prompt in queueDir with in_review status + PR URL

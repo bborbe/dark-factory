@@ -4898,4 +4898,263 @@ DARK-FACTORY-REPORT -->`), 0600)
 			cancel()
 		})
 	})
+
+	Describe("Idempotent PR creation and deferred auto-merge", func() {
+		createIssuePromptFile := func(path string, branch string, issue string) *prompt.PromptFile {
+			return prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{
+					Status: string(prompt.ApprovedPromptStatus),
+					Branch: branch,
+					Issue:  issue,
+				},
+				[]byte("# Test\n\nDefault test content"),
+				libtime.NewCurrentDateTime(),
+			)
+		}
+
+		setupCloneMocks := func() {
+			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				return os.MkdirAll(destDir, 0750)
+			}
+			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				return os.RemoveAll(path)
+			}
+			mockBrancher.PushReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockManager.MoveToCompletedReturns(nil)
+			mockExecutor.ExecuteReturns(nil)
+			mockReleaser.CommitCompletedFileReturns(nil)
+			mockReleaser.CommitOnlyReturns(nil)
+		}
+
+		newProcWorktree := func(autoMerge bool) processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				true, // pr=true
+				true, // worktree=true
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				autoMerge,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+		}
+
+		It("FindOpenPR returns existing URL: Create NOT called, existing URL used", func() {
+			promptPath := filepath.Join(promptsDir, "001-idempotent.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/idempotent", ""), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			// Existing PR found
+			mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/42", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.FindOpenPRCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Create must NOT be called when PR already exists
+			Expect(mockPRCreator.CreateCallCount()).To(Equal(0))
+
+			cancel()
+		})
+
+		It("FindOpenPR returns empty: Create called with buildPRBody result", func() {
+			promptPath := filepath.Join(promptsDir, "001-create-pr.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/new-pr", ""), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			// No existing PR
+			mockPRCreator.FindOpenPRReturns("", nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/99", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Verify body is the default (no issue)
+			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			Expect(body).To(Equal("Automated by dark-factory"))
+
+			cancel()
+		})
+
+		It("pf.Issue() non-empty: PR body contains issue reference", func() {
+			promptPath := filepath.Join(promptsDir, "001-with-issue.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/issue-ref", "BRO-42"), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			mockPRCreator.FindOpenPRReturns("", nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/100", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			Expect(body).To(ContainSubstring("Issue: BRO-42"))
+			Expect(body).To(Equal("Automated by dark-factory\n\nIssue: BRO-42"))
+
+			cancel()
+		})
+
+		It("pf.Issue() empty: PR body is default without issue line", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-issue.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/no-issue", ""), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			mockPRCreator.FindOpenPRReturns("", nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/101", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			Expect(body).To(Equal("Automated by dark-factory"))
+			Expect(body).NotTo(ContainSubstring("Issue:"))
+
+			cancel()
+		})
+
+		It(
+			"autoMerge=true, HasQueuedPromptsOnBranch=true: WaitAndMerge NOT called, moved to completed",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-defer-merge.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createIssuePromptFile(path, "feature/multi", ""), nil
+				}
+				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				setupCloneMocks()
+				mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/50", nil)
+				// More prompts on branch — defer merge
+				mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
+
+				p := newProcWorktree(true) // autoMerge=true
+				go func() { _ = p.Process(ctx) }()
+
+				Eventually(func() int {
+					return mockManager.HasQueuedPromptsOnBranchCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+				// WaitAndMerge must NOT be called
+				Expect(mockPRMerger.WaitAndMergeCallCount()).To(Equal(0))
+				// Prompt must be moved to completed
+				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+
+				cancel()
+			},
+		)
+
+		It("autoMerge=true, HasQueuedPromptsOnBranch=false: WaitAndMerge called", func() {
+			promptPath := filepath.Join(promptsDir, "001-last-prompt.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/last", ""), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/51", nil)
+			// Last prompt on branch — trigger merge
+			mockManager.HasQueuedPromptsOnBranchReturns(false, nil)
+			mockPRMerger.WaitAndMergeReturns(nil)
+			mockBrancher.DefaultBranchReturns("main", nil)
+			mockBrancher.SwitchReturns(nil)
+			mockBrancher.PullReturns(nil)
+			mockReleaser.HasChangelogReturns(false)
+
+			p := newProcWorktree(true) // autoMerge=true
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRMerger.WaitAndMergeCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			cancel()
+		})
+
+		It("autoMerge=false: PR created but WaitAndMerge NOT called", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-merge.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createIssuePromptFile(path, "feature/no-automerge", ""), nil
+			}
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			mockPRCreator.FindOpenPRReturns("", nil)
+			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/102", nil)
+
+			p := newProcWorktree(false) // autoMerge=false
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return mockPRCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// WaitAndMerge must NOT be called
+			Expect(mockPRMerger.WaitAndMergeCallCount()).To(Equal(0))
+
+			cancel()
+		})
+	})
 })

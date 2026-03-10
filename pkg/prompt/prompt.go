@@ -425,6 +425,11 @@ func (pf *PromptFile) SetIssueIfEmpty(issue string) {
 	}
 }
 
+// Issue returns the issue tracker reference from the prompt frontmatter (empty string if unset).
+func (pf *PromptFile) Issue() string {
+	return pf.Frontmatter.Issue
+}
+
 // Specs returns the specs slice from frontmatter. Returns an empty slice if nil.
 func (pf *PromptFile) Specs() []string {
 	if pf.Frontmatter.Specs == nil {

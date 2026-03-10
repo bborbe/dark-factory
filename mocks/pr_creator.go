@@ -24,6 +24,20 @@ type PRCreator struct {
 		result1 string
 		result2 error
 	}
+	FindOpenPRStub        func(context.Context, string) (string, error)
+	findOpenPRMutex       sync.RWMutex
+	findOpenPRArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	findOpenPRReturns struct {
+		result1 string
+		result2 error
+	}
+	findOpenPRReturnsOnCall map[int]struct {
+		result1 string
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -89,6 +103,71 @@ func (fake *PRCreator) CreateReturnsOnCall(i int, result1 string, result2 error)
 		})
 	}
 	fake.createReturnsOnCall[i] = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PRCreator) FindOpenPR(arg1 context.Context, arg2 string) (string, error) {
+	fake.findOpenPRMutex.Lock()
+	ret, specificReturn := fake.findOpenPRReturnsOnCall[len(fake.findOpenPRArgsForCall)]
+	fake.findOpenPRArgsForCall = append(fake.findOpenPRArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.FindOpenPRStub
+	fakeReturns := fake.findOpenPRReturns
+	fake.recordInvocation("FindOpenPR", []interface{}{arg1, arg2})
+	fake.findOpenPRMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PRCreator) FindOpenPRCallCount() int {
+	fake.findOpenPRMutex.RLock()
+	defer fake.findOpenPRMutex.RUnlock()
+	return len(fake.findOpenPRArgsForCall)
+}
+
+func (fake *PRCreator) FindOpenPRCalls(stub func(context.Context, string) (string, error)) {
+	fake.findOpenPRMutex.Lock()
+	defer fake.findOpenPRMutex.Unlock()
+	fake.FindOpenPRStub = stub
+}
+
+func (fake *PRCreator) FindOpenPRArgsForCall(i int) (context.Context, string) {
+	fake.findOpenPRMutex.RLock()
+	defer fake.findOpenPRMutex.RUnlock()
+	argsForCall := fake.findOpenPRArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *PRCreator) FindOpenPRReturns(result1 string, result2 error) {
+	fake.findOpenPRMutex.Lock()
+	defer fake.findOpenPRMutex.Unlock()
+	fake.FindOpenPRStub = nil
+	fake.findOpenPRReturns = struct {
+		result1 string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PRCreator) FindOpenPRReturnsOnCall(i int, result1 string, result2 error) {
+	fake.findOpenPRMutex.Lock()
+	defer fake.findOpenPRMutex.Unlock()
+	fake.FindOpenPRStub = nil
+	if fake.findOpenPRReturnsOnCall == nil {
+		fake.findOpenPRReturnsOnCall = make(map[int]struct {
+			result1 string
+			result2 error
+		})
+	}
+	fake.findOpenPRReturnsOnCall[i] = struct {
 		result1 string
 		result2 error
 	}{result1, result2}

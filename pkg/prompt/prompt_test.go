@@ -2501,6 +2501,26 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(pf.Frontmatter.Issue).To(Equal(""))
 			Expect(pf.Save(ctx)).To(Succeed())
 		})
+
+		It("Issue() returns frontmatter issue value", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: approved\nissue: BRO-42\n---\n\n# Test\n"
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+			pf, err := prompt.Load(ctx, path, cdt)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Issue()).To(Equal("BRO-42"))
+		})
+
+		It("Issue() returns empty string when issue field is not set", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "approved"},
+				[]byte("# Test\n"),
+				cdt,
+			)
+			Expect(pf.Issue()).To(Equal(""))
+		})
 	})
 
 	Describe("Manager.HasQueuedPromptsOnBranch", func() {

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Fixed setupWorkflow to guard in-place branch switching behind p.pr, so the branch frontmatter field is silently ignored when both pr and worktree are false; updated existing tests to use pr=true for in-place branch switching, removed three now-unreachable handleBranchCompletion integration tests, and added a regression test covering the fixed case.
+container: dark-factory-171-fix-ignore-branch-when-direct-mode
+dark-factory-version: v0.44.0
 created: "2026-03-11T09:45:00Z"
 queued: "2026-03-11T15:34:56Z"
+started: "2026-03-11T16:15:22Z"
+completed: "2026-03-11T16:45:24Z"
 ---
 <summary>
 - When both `pr: false` and `worktree: false`, the `branch` frontmatter field is silently ignored and execution continues on the current branch
@@ -121,6 +126,7 @@ Because `setupWorkflow` is not exported, test it through `ProcessQueue` with a m
 - `mockReleaser.HasChangelogReturns(false)`
 - `mockReleaser.CommitOnlyReturns(nil)` or `CommitCompletedFileReturns(nil)`
 - `mockManager.MoveToCompletedReturns(nil)`
+- `mockManager.AllPreviousCompletedReturns(true)`
 - `mockAutoCompleter.CheckAndCompleteReturns(nil)`
 - After calling `proc.ProcessQueue(ctx)`:
   - `Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))`

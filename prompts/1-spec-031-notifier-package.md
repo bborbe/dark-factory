@@ -2,7 +2,6 @@
 status: created
 spec: ["031"]
 created: "2026-03-11T22:30:00Z"
-branch: dark-factory/notifications
 ---
 <summary>
 - Two notification channels are supported: Telegram and Discord — both optional, both additive
@@ -12,7 +11,7 @@ branch: dark-factory/notifications
 - A new `pkg/notifier/` package provides a single `Notifier` interface for all callers
 - Telegram sends a message via HTTP POST to `api.telegram.org/bot<token>/sendMessage`
 - Discord sends a message via HTTP POST to the configured webhook URL
-- A multi-notifier fans out to all active channels concurrently and logs warnings on delivery failure
+- A multi-notifier fans out to all active channels sequentially and logs warnings on delivery failure
 - Failed delivery never propagates an error — processing continues unaffected
 - When no channels are configured (both env vars empty) the multi-notifier is a no-op with zero overhead
 </summary>
@@ -65,7 +64,7 @@ Read `/home/node/.claude/docs/go-security-linting.md` for gosec rules.
    func (c Config) ResolvedDiscordWebhook() string
    ```
 
-   Each helper: if the env var name is empty, return "". Otherwise call `os.Getenv(envVarName)`. Never log the resolved value.
+   Each helper: if the env var name is empty, return "". Otherwise call `os.Getenv(envVarName)`. Do not log a warning when the env var is empty (unlike `ResolvedBitbucketToken` — notifications are optional). Never log the resolved value.
 
 2. Add Discord webhook HTTPS validation to `Config.Validate()`:
    ```go
@@ -157,7 +156,7 @@ Read `/home/node/.claude/docs/go-security-linting.md` for gosec rules.
    - `discordNotifier.Notify` → makes HTTP POST with correct JSON body (use `httptest.NewServer`)
    - `discordNotifier.Notify` with non-2xx response → returns error
 
-8. Create `pkg/notifier/config_test.go` covering:
+8. Add tests to `pkg/config/config_test.go` (not `pkg/notifier/` — these test `Config` methods) covering:
    - `ResolvedDiscordWebhook` returns empty when `WebhookEnv` is empty
    - `Config.validateNotifications` returns error when webhook resolves to an HTTP URL
    - `Config.validateNotifications` returns nil when webhook is empty

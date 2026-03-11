@@ -2,7 +2,6 @@
 status: created
 spec: ["031"]
 created: "2026-03-11T22:30:00Z"
-branch: dark-factory/notifications
 ---
 <summary>
 - A `Notifier` is injected into the processor so prompt failures and partial completions fire notifications
@@ -21,8 +20,10 @@ Wire the `pkg/notifier.Notifier` (created in the previous prompt) into all five 
 </objective>
 
 <context>
+**Prerequisite**: Prompt 1 (`1-spec-031-notifier-package.md`) must be completed before executing this prompt. It creates `pkg/notifier/`, `pkg/config/NotificationsConfig`, and `mocks/notifier.go`.
+
 Read CLAUDE.md for project conventions.
-Read `pkg/notifier/notifier.go` — the Notifier interface and Event struct created in the previous prompt.
+Read `pkg/notifier/notifier.go` — the Notifier interface and Event struct (created by prompt 1). Key types: `Notifier` interface with `Notify(ctx, Event) error`, `Event` struct with fields `ProjectName`, `EventType`, `PromptName`, `PRURL` (all strings).
 Read `pkg/processor/processor.go` — add Notifier field; fire in `handlePromptFailure` and in `validateCompletionReport` (partial status).
 Read `pkg/spec/spec.go` — add Notifier to `autoCompleter`; fire after `sf.MarkVerifying()` in `CheckAndComplete`.
 Read `pkg/review/poller.go` — add Notifier to `reviewPoller`; fire in `handleChangesRequested` when `retryCount >= p.maxRetries`.
@@ -48,20 +49,8 @@ Read `/home/node/.claude/docs/go-testing.md` for Ginkgo/Gomega and counterfeiter
    ```
    (ignore the returned error — it is already handled inside the multi-notifier)
 
-   In `validateCompletionReport` (in processor_internal_test.go it is package-level — check the actual location), when `completionReport.Status` is `"partial"`, call:
-   ```go
-   // Note: validateCompletionReport is a package-level function, not a method.
-   // The notifier call for partial status must be added in handlePostExecution,
-   // after validateCompletionReport returns a non-nil error that is specifically a partial status.
-   ```
+   For partial completion: `validateCompletionReport` is a package-level function (not a method) that returns an error for any non-success status. Add a helper method on `processor` to check for partial status and notify:
 
-   Actually, looking more carefully at the code: `validateCompletionReport` returns an error for any non-success status (including "partial"). The partial notification should fire in `handlePostExecution` when the `validateCompletionReport` call fails AND the log says "partial":
-
-   The cleanest approach: change `validateCompletionReport` to also return the status string so the caller can distinguish. Or: add a helper that fires the right notification based on what status was parsed.
-
-   **Simplest correct approach**: in `handlePostExecution`, call `report.ParseFromLog` a second time is wasteful. Instead:
-
-   Create a new helper `notifyOnReportStatus` on `processor`:
    ```go
    func (p *processor) notifyFromReport(ctx context.Context, logFile string, promptPath string) {
        completionReport, err := report.ParseFromLog(ctx, logFile)
@@ -78,7 +67,7 @@ Read `/home/node/.claude/docs/go-testing.md` for Ginkgo/Gomega and counterfeiter
    }
    ```
 
-   Call `p.notifyFromReport(ctx, logFile, promptPath)` in `handlePostExecution` immediately after the `validateCompletionReport` call fails (when it returns an error). Add this call inside the existing error branch:
+   Call `p.notifyFromReport(ctx, logFile, promptPath)` in `handlePostExecution` immediately after `validateCompletionReport` returns an error:
    ```go
    summary, err := validateCompletionReport(ctx, logFile)
    if err != nil {
@@ -92,18 +81,7 @@ Read `/home/node/.claude/docs/go-testing.md` for Ginkgo/Gomega and counterfeiter
    Add `notifier notifier.Notifier` field to `autoCompleter` struct.
    Add `notifier notifier.Notifier` parameter to `NewAutoCompleter` (append to existing params).
 
-   In `CheckAndComplete`, after `sf.MarkVerifying()` and before `sf.Save()`:
-   ```go
-   a.notifier.Notify(ctx, notifier.Event{
-       ProjectName: specID,   // spec ID is the best available project context here
-       EventType:   "spec_verifying",
-       PromptName:  specID,
-   })
-   ```
-
-   Wait — the `autoCompleter` doesn't know the projectName. Pass `projectName string` as a new field and constructor param too, so the notification has correct context. Add `projectName string` field alongside `notifier`.
-
-   Updated `NewAutoCompleter` signature:
+   Add `projectName string` and `notifier notifier.Notifier` fields to `autoCompleter` struct and `NewAutoCompleter` params:
    ```go
    func NewAutoCompleter(
        queueDir, completedDir, specsInboxDir, specsInProgressDir, specsCompletedDir string,
@@ -113,7 +91,7 @@ Read `/home/node/.claude/docs/go-testing.md` for Ginkgo/Gomega and counterfeiter
    ) AutoCompleter
    ```
 
-   In `CheckAndComplete`, after `sf.MarkVerifying()` and `sf.Save()` succeeds:
+   In `CheckAndComplete`, **after** `sf.Save()` succeeds (not before — only notify if the state was persisted):
    ```go
    a.notifier.Notify(ctx, notifier.Event{
        ProjectName: a.projectName,
@@ -240,7 +218,7 @@ Read `/home/node/.claude/docs/go-testing.md` for Ginkgo/Gomega and counterfeiter
    - `pkg/processor/processor_internal_test.go` or `pkg/processor/processor_test.go` — verify `FakeNotifier.NotifyCallCount()` is 1 on prompt failure and on partial completion
    - `pkg/spec/spec_test.go` — verify `FakeNotifier.NotifyCallCount()` is 1 when `CheckAndComplete` transitions to verifying
    - `pkg/review/poller_test.go` — verify `FakeNotifier.NotifyCallCount()` is 1 when retry limit is exhausted
-   - `pkg/runner/` — verify `notifyStuckContainers` fires when a prompt has `executing` status
+   - `pkg/runner/runner_test.go` — verify `notifyStuckContainers` fires when a prompt has `executing` status
 
 7. Run `make generate` to regenerate mocks after any interface changes.
 </requirements>

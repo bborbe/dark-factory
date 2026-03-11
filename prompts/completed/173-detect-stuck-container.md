@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added watchForCompletionReport to detect stuck containers by polling log file for completion marker and calling docker stop after 2-minute grace period, using run.CancelOnFirstFinish to run container and watcher in parallel
+container: dark-factory-173-detect-stuck-container
+dark-factory-version: v0.45.0
 created: "2026-03-11T20:47:23Z"
 queued: "2026-03-11T20:47:23Z"
+started: "2026-03-11T21:34:47Z"
+completed: "2026-03-11T21:43:51Z"
 ---
 
 <summary>

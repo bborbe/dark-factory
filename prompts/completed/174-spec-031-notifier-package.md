@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["031"]
+summary: Created pkg/notifier package with Telegram, Discord, and multi-notifier implementations, plus NotificationsConfig structs and Discord HTTPS validation in pkg/config/config.go
 container: dark-factory-174-spec-031-notifier-package
 dark-factory-version: v0.46.1-3-g7588a45-dirty
 created: "2026-03-11T22:30:00Z"
 queued: "2026-03-11T22:04:59Z"
 started: "2026-03-11T22:13:16Z"
+completed: "2026-03-11T22:27:49Z"
 ---
 <summary>
 - Two notification channels are supported: Telegram and Discord — both optional, both additive

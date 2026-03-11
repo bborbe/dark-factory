@@ -1,7 +1,7 @@
 ---
+status: created
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
-queued: "2026-03-11T13:26:33Z"
 ---
 <summary>
 - `provider: github` (default) uses exactly the same `gh` CLI implementations as today — zero behavior change for existing users
@@ -311,15 +311,16 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 
 **Step 5: Update `CreateOneShotRunner`**
 
-In `CreateOneShotRunner`, replace the `ghToken` variable and provider-specific constructor calls with `createProviderDeps`:
+In `CreateOneShotRunner`, replace the `ghToken` variable and provider-specific constructor calls with `createProviderDeps`. **IMPORTANT**: `runner.NewOneShotRunner` takes 13 parameters — preserve them all. The current call (lines 156-197 of `factory.go`) passes: `inboxDir`, `inProgressDir`, `completedDir`, `cfg.Prompts.LogDir`, specs dirs (4), `promptManager`, `CreateLocker(".")`, processor, `CreateSpecGenerator(...)`, `currentDateTimeGetter`. Only the processor construction changes (to use `deps`).
 
 ```go
-func CreateOneShotRunner(cfg config.Config, ver string, promptFile string) runner.OneShotRunner {
+func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
+    inboxDir := cfg.Prompts.InboxDir
     inProgressDir := cfg.Prompts.InProgressDir
     completedDir := cfg.Prompts.CompletedDir
     currentDateTimeGetter := libtime.NewCurrentDateTime()
     promptManager, releaser := createPromptManager(
-        cfg.Prompts.InboxDir, inProgressDir, completedDir, currentDateTimeGetter,
+        inboxDir, inProgressDir, completedDir, currentDateTimeGetter,
     )
     versionGetter := version.NewGetter(ver)
     projectName := project.Name(cfg.ProjectName)
@@ -327,9 +328,16 @@ func CreateOneShotRunner(cfg config.Config, ver string, promptFile string) runne
     deps := createProviderDeps(cfg, currentDateTimeGetter)
 
     return runner.NewOneShotRunner(
-        inProgressDir, completedDir, cfg.Prompts.LogDir,
-        promptFile,
+        inboxDir,
+        inProgressDir,
+        completedDir,
+        cfg.Prompts.LogDir,
+        cfg.Specs.InboxDir,
+        cfg.Specs.InProgressDir,
+        cfg.Specs.CompletedDir,
+        cfg.Specs.LogDir,
         promptManager,
+        CreateLocker("."),
         CreateProcessor(
             inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
             promptManager, releaser, versionGetter, ready,
@@ -341,6 +349,8 @@ func CreateOneShotRunner(cfg config.Config, ver string, promptFile string) runne
             cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
             cfg.VerificationGate, cfg.Env, currentDateTimeGetter,
         ),
+        CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
+        currentDateTimeGetter,
     )
 }
 ```

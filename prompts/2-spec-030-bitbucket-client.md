@@ -1,7 +1,7 @@
 ---
+status: created
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
-queued: "2026-03-11T13:26:30Z"
 ---
 <summary>
 - A new Bitbucket Server HTTP client implements the same `PRCreator`, `PRMerger`, and `ReviewFetcher` interfaces the GitHub implementation uses — no interface changes required
@@ -9,7 +9,7 @@ queued: "2026-03-11T13:26:30Z"
 - Open PRs are detected by branch name via `GET .../pull-requests?state=OPEN&at=refs/heads/{branch}`, enabling idempotent PR creation
 - PRs are merged via `POST .../pull-requests/{id}/merge` with the required version field fetched from the PR detail endpoint
 - Review status (approved/changes-requested) and PR state (open/merged/declined) are read from the Bitbucket PR detail endpoint's `reviewers` array
-- Default reviewers are fetched from the Bitbucket default-reviewers plugin and set on new PRs; if the plugin is unavailable the PR is created without reviewers (graceful degradation)
+- Default reviewers are fetched from the Bitbucket default-reviewers plugin and set on new PRs; if the plugin is unavailable the PR is created without reviewers (graceful degradation, `Fetch` returns nil)
 - The bearer token never appears in log output or error messages — it is redacted before any logging
 - A 401 response from the API surfaces as a clear error (prompt marked failed, recoverable by refreshing token)
 </summary>
@@ -180,15 +180,6 @@ func NewBitbucketPRCreator(
 
 // Create creates a pull request on Bitbucket Server and returns the PR web URL.
 func (p *bitbucketPRCreator) Create(ctx context.Context, title string, body string) (string, error) {
-    type repoRef struct {
-        ID         string `json:"id"`
-        Repository struct {
-            Slug    string `json:"slug"`
-            Project struct {
-                Key string `json:"key"`
-            } `json:"project"`
-        } `json:"repository"`
-    }
     type reviewer struct {
         User struct {
             Slug string `json:"slug"`
@@ -548,7 +539,7 @@ func NewBitbucketCollaboratorFetcher(
 }
 
 // Fetch returns the list of default reviewer slugs from the Bitbucket default-reviewers plugin.
-// Returns empty list (not nil) on error or if the plugin is not installed — graceful degradation.
+// Returns nil on error or if the plugin is not installed — graceful degradation.
 func (f *bitbucketCollaboratorFetcher) Fetch(ctx context.Context) []string {
     // Step 1: Get repo ID (required for default-reviewers query)
     repoID, err := f.fetchRepoID(ctx)

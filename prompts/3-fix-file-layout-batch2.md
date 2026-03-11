@@ -6,7 +6,9 @@ created: "2026-03-11T16:45:24Z"
 <summary>
 - Private struct definitions now appear below their constructor functions in five more files
 - The canonical Go file layout is consistently enforced across the entire codebase
-- No behavioral changes — purely structural reordering
+- `generator.go`, `prompt.go`, `spec.go`, `cloner.go`, and `collaborator_fetcher.go` are reordered
+- In `collaborator_fetcher.go`, sub-types (`ghRepoNameFetcher`, `ghCollaboratorLister`) are also reordered below their constructors
+- No behavioral changes — purely structural reordering of type and function declarations
 </summary>
 
 <objective>

@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:24Z"
 - Long-running loops that execute Docker containers now respect context cancellation between iterations
 - Cancelling the process during spec generation or inbox approval stops promptly instead of continuing through all remaining files
 - Startup scan of existing specs also respects cancellation
+- Three loops are guarded: `generateFromApprovedSpecs`, `approveInboxPrompts` in `oneshot.go`, and `scanExistingInProgress` in `specwatcher/watcher.go`
+- The `select` on `ctx.Done()` is placed as the first statement inside each loop body
 </summary>
 
 <objective>

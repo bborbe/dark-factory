@@ -6,7 +6,9 @@ created: "2026-03-11T16:45:24Z"
 <summary>
 - Counterfeiter generation directives are placed consistently across the codebase
 - Directives no longer appear inside GoDoc comment blocks where they pollute generated documentation
-- Directives are on the line directly above their interface declaration
+- The directive in `cloner.go` is extracted from inside the doc comment to stand alone above it
+- The directive in `processor.go` is verified as already correct and left unchanged
+- The canonical pattern is: directive → blank line → doc comment → type interface
 </summary>
 
 <objective>
@@ -41,20 +43,7 @@ type Foo interface {
    type Cloner interface {
    ```
 
-2. In `pkg/processor/processor.go`, the directive is separated from the interface by a blank line and the doc comment:
-   ```go
-   //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
-
-   // Processor processes queued prompts.
-   type Processor interface {
-   ```
-   This is actually the correct pattern already. Verify it matches and leave it unchanged if correct. If there is a blank line between the directive and the doc comment that breaks the association, remove the extra blank line so the structure is:
-   ```
-   directive
-   (blank line)
-   doc comment
-   type interface
-   ```
+2. In `pkg/processor/processor.go`, verify the directive placement is already correct (directive → blank line → doc comment → type interface). If it matches, leave it unchanged — no edits needed.
 </requirements>
 
 <constraints>

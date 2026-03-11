@@ -8,6 +8,7 @@ created: "2026-03-11T16:45:24Z"
 - The decision about whether to create optional components is made inline in `CreateRunner`
 - Two private factory helpers (`createOptionalServer`, `createOptionalReviewPoller`) are removed
 - Factory functions are pure composition with zero business logic
+- `runner.NewRunner` already handles nil values for server and review poller — no changes needed there
 </summary>
 
 <objective>

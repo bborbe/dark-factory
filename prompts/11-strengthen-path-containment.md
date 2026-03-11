@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:24Z"
 - Path traversal protection is strengthened with an explicit containment check after path joining
 - The queue action handler verifies the resolved path stays within the expected directory
 - Symlink-based and non-Unix path traversal vectors are mitigated
+- The containment check uses `filepath.Clean` and `strings.HasPrefix` for reliable comparison
+- A test case verifies that crafted filenames attempting directory escape are rejected with HTTP 400
 </summary>
 
 <objective>
@@ -15,7 +17,8 @@ Add an explicit path containment check in the queue action handler after `filepa
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `pkg/server/queue_action_handler.go` — find the `queueSingleFile` function and the path handling around ~line 105-114 where `filepath.Base` is applied.
+Read `pkg/server/queue_action_handler.go` — find the path handling around ~line 105-114 where `filepath.Base` is applied to the filename.
+Read `pkg/server/queue_helpers.go` — the `queueSingleFile` function is defined here (~line 20), not in the handler file. The handler calls it.
 </context>
 
 <requirements>

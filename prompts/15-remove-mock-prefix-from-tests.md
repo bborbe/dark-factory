@@ -6,6 +6,8 @@ status: created
 - Test variable names follow the project convention — no `mock` prefix on Counterfeiter fakes
 - Variable names like `mockExecutor` become `executor`, `mockManager` becomes `manager`
 - Consistent naming across all 15+ test files
+- Both `var` declarations and all usages are renamed within each file
+- Import conflicts (e.g., `processor` variable vs `processor` package) are handled with disambiguated names
 </summary>
 
 <objective>

@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:24Z"
 - The duplicate handler registration for queue action routes is resolved
 - Each HTTP route maps to a distinct handler instance or the duplication is intentionally documented
 - No unnecessary object allocations in the factory
+- A single `QueueActionHandler` instance is shared between `/api/v1/queue/action` and `/api/v1/queue/action/all` if both use the same logic
+- A comment explains why two routes map to the same handler
 </summary>
 
 <objective>

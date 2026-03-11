@@ -8,6 +8,8 @@ created: "2026-03-11T16:45:24Z"
 - The review poller resolves collaborators lazily on its first polling iteration using the runtime context
 - Factory functions no longer execute I/O or use `context.Background()`
 - Startup is faster and more resilient to GitHub API failures
+- `NewReviewPoller` accepts a `CollaboratorFetcher` interface instead of `[]string`
+- A private `resolveReviewers` method caches the result after first call
 </summary>
 
 <objective>

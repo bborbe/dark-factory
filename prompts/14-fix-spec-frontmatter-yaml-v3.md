@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:29Z"
 - Spec file frontmatter parsing uses yaml.v3 consistently, matching the prompt file parser
 - Both spec and prompt parsers use the same YAML semantics (correct null handling, tag support)
 - No silent behavioral differences between spec and prompt frontmatter parsing
+- The `frontmatter.Parse` call in `spec.go` is updated to use an explicit `yamlV3Format`
+- The existing `gopkg.in/yaml.v3` import (already at ~line 21) is reused — no new imports needed
 </summary>
 
 <objective>
@@ -35,7 +37,7 @@ The `adrg/frontmatter` library: `frontmatter.NewFormat(start, end, unmarshalFunc
    body, err := frontmatter.Parse(bytes.NewReader(content), &fm, yamlV3Format)
    ```
 
-2. Add the import for `"gopkg.in/yaml.v3"` if not already present. The import alias should be `yaml` (check the existing imports — if `yaml` is already used with a different import, follow the existing convention).
+2. The import `"gopkg.in/yaml.v3"` is already present in `spec.go` (at ~line 21). Verify it exists and use the existing `yaml.Unmarshal` — no import changes needed.
 
 3. Verify existing spec tests still pass — the behavioral change is subtle (yaml.v2 vs v3 semantics) but should be backward-compatible for the frontmatter fields used by specs.
 </requirements>

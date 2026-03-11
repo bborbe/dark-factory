@@ -4,23 +4,26 @@ created: "2026-03-11T16:45:24Z"
 ---
 
 <summary>
-- The linter no longer reports false positives about unused error results
+- The `preparePromptForExecution` function no longer triggers a `result err is always nil` lint warning
+- The named return `err` in `preparePromptForExecution` is either removed or properly assigned
+- The shadowed `:=` assignment at ~line 1017 that prevented the named return from ever being non-nil is fixed
 - The test file compiles cleanly with no undefined function references
-- The precommit pipeline passes the golangci-lint step
+- The precommit pipeline passes the golangci-lint step without suppressions
 </summary>
 
 <objective>
-Fix two golangci-lint failures that block `make precommit`: a result `err` that is always nil in `sanitizeContainerName`'s caller, and an undefined test function reference in the processor test file.
+Fix two golangci-lint failures that block `make precommit`: a named return `err` that is always nil in `preparePromptForExecution` due to shadowing, and an undefined test function reference in the processor test file.
 </objective>
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `pkg/processor/processor.go` — find `sanitizeContainerName` (~line 1104) and the surrounding function. The linter reports `result err is always nil` at ~line 1108, meaning a named return `err` is declared but never assigned a non-nil value. Either remove the named return, or fix the logic.
+Read `pkg/processor/processor.go` — find `preparePromptForExecution` (~line 1005). It has a named return `err` but uses `:=` at ~line 1017, which creates a new local `err` variable that shadows the named return. The named return `err` is therefore always nil. The linter reports `result err is always nil`.
 Read `pkg/processor/processor_test.go` — find the test around ~line 1921 that references an undefined function. Fix or remove it.
+Note: `sanitizeContainerName` (~line 1104) returns only `string` with no error — it is NOT the lint target.
 </context>
 
 <requirements>
-1. In `pkg/processor/processor.go`, find the function near ~line 1108 where the linter reports `result err is always nil`. Either remove the named `err` return and use a bare return, or remove the error return entirely if the function cannot fail.
+1. In `pkg/processor/processor.go`, find `preparePromptForExecution` (~line 1005). The named return `err` is shadowed by `:=` at ~line 1017. Fix by either: (a) changing `:=` to `=` so the named return is properly assigned, or (b) removing the named return and using explicit `return nil` / `return err` statements.
 2. In `pkg/processor/processor_test.go`, find the undefined test function reference near ~line 1921. Either implement the missing test function or remove the dangling reference if the test was abandoned.
 3. Run `golangci-lint run --timeout 10m ./...` and confirm zero issues.
 </requirements>

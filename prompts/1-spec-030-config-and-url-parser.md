@@ -1,9 +1,7 @@
 ---
+status: created
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
-queued: "2026-03-11T13:26:27Z"
-started: "2026-03-11T15:19:00Z"
-completed: "2026-03-11T15:18:59Z"
 ---
 <summary>
 - A new `provider` config field selects the git provider — `github` (default) or `bitbucket-server`
@@ -139,7 +137,8 @@ func (p Providers) Contains(provider Provider) bool {
    ```go
    // ResolvedBitbucketToken reads the Bitbucket token from the env var named in TokenEnv.
    // Returns empty string when not configured or env var is empty.
-   // Uses os.Getenv directly (not resolveEnvVar) because resolveEnvVar is GitHub-specific.
+   // Uses os.Getenv directly (not resolveEnvVar) because tokenEnv holds the env var name
+   // (e.g. "BITBUCKET_TOKEN"), not a ${VAR} reference that resolveEnvVar expects.
    func (c Config) ResolvedBitbucketToken() string {
        if c.Bitbucket.TokenEnv == "" {
            return ""

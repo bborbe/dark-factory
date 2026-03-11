@@ -7,6 +7,8 @@ status: created
 - The removed "worktree" workflow value is tested to produce the correct migration error message
 - Unknown workflow values are tested to be rejected
 - Valid workflow values ("direct", "pr") are tested to pass validation
+- Empty string is tested to be rejected as unknown workflow
+- `Workflows.Contains` is tested for both known and unknown workflow values
 </summary>
 
 <objective>

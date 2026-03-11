@@ -4,9 +4,11 @@ created: "2026-03-11T16:45:24Z"
 ---
 
 <summary>
-- Prompt temp files are created in a restricted directory with 0700 permissions instead of the shared system temp directory
+- Prompt temp files are created in a restricted subdirectory instead of the shared system temp directory
+- The subdirectory is created with `os.MkdirTemp` which applies restrictive permissions by default
 - Prompt content (which may contain sensitive AI instructions) is protected from other local processes
-- The restricted temp directory is cleaned up after use
+- The restricted temp directory and all its contents are cleaned up via `os.RemoveAll` after use
+- The function signature and return type remain unchanged — callers are unaffected
 </summary>
 
 <objective>
@@ -37,8 +39,23 @@ Read `pkg/executor/executor.go` — find `createPromptTempFile` (~line 165). It 
            promptFile.Close()
            _ = os.RemoveAll(tmpDir)
        }
-       // ... rest of the function unchanged
+
+       if _, err := promptFile.WriteString(promptContent); err != nil {
+           cleanup()
+           return "", nil, errors.Wrap(ctx, err, "write prompt content")
+       }
+       if err := promptFile.Close(); err != nil {
+           _ = os.RemoveAll(tmpDir)
+           return nil, errors.Wrap(ctx, err, "close prompt file")
+       }
+       // Update cleanup to not double-close:
+       cleanup = func() {
+           _ = os.RemoveAll(tmpDir)
+       }
+       return promptFile.Name(), cleanup, nil
+   }
    ```
+   Read the existing function body to understand the exact write/close flow, and adapt the snippet above to match. The key change is: create `tmpDir` first, create the file inside it, and update `cleanup` to remove the entire directory.
 
 2. Update the cleanup function to remove the entire temp directory (`os.RemoveAll(tmpDir)`) instead of just the single file.
 

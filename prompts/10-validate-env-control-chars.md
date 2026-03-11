@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:24Z"
 - Environment variable values in the config are validated for dangerous control characters
 - Config loading rejects values containing null bytes, newlines, or carriage returns
 - Docker environment injection via malicious YAML config values is prevented
+- The validation is added to the `validateEnv` method (a method on `Config`, not a standalone function)
+- Tests verify rejection of newlines, null bytes, carriage returns, and acceptance of normal values
 </summary>
 
 <objective>
@@ -15,7 +17,7 @@ Add validation to reject environment variable values containing control characte
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `pkg/config/config.go` — find the `Validate` method and the existing `validateEnv` function. The current validation checks for empty keys and reserved key names but does not validate values.
+Read `pkg/config/config.go` — find the `Validate` method and the existing `validateEnv` method (it is a method on `Config`, not a standalone function). The current validation checks for empty keys and reserved key names but does not validate values.
 Read `pkg/executor/executor.go` — find `buildDockerCommand` where env values are passed as `-e KEY=VALUE` args to `docker run`.
 </context>
 

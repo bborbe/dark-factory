@@ -7,6 +7,8 @@ created: "2026-03-11T16:45:24Z"
 - All error returns in the processor and git packages now include contextual wrapping
 - Error messages from clone operations identify which step failed (remove stale, clone, set remote)
 - Error messages from collaborator fetching identify the GitHub CLI operation that failed
+- The `github.com/bborbe/errors` import is added to `collaborator_fetcher.go` where it was previously missing
+- Bare `return err` statements are eliminated from `processor.go`, `cloner.go`, and `collaborator_fetcher.go`
 </summary>
 
 <objective>
@@ -69,7 +71,7 @@ Read each file before editing. The project uses `github.com/bborbe/errors` for e
 <constraints>
 - Do NOT commit — dark-factory handles git.
 - Existing tests must still pass.
-- Use `github.com/bborbe/errors` — already imported in all three files.
+- Use `github.com/bborbe/errors` — already imported in `processor.go` and `cloner.go`. Add it to `collaborator_fetcher.go` (currently not imported there).
 - Do not change any logic — only add error wrapping.
 </constraints>
 

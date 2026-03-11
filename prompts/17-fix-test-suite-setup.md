@@ -6,6 +6,9 @@ status: created
 - All test suite files have consistent setup with `time.Local = time.UTC` and `format.TruncatedDiff = false`
 - Missing `//go:generate` directives are added to suite files for counterfeiter mock generation
 - Test infrastructure is uniform across all packages
+- `specnum_suite_test.go` gets both the setup lines and the `//go:generate` directive
+- `report_suite_test.go`, `project_suite_test.go`, and `main_test.go` get the `//go:generate` directive
+- Each file is read first to check what is already present before editing
 </summary>
 
 <objective>

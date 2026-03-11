@@ -6,7 +6,9 @@ created: "2026-03-11T16:45:24Z"
 <summary>
 - Private struct definitions now appear below their constructor functions, not above
 - The canonical Go file layout (Interface → Constructor → Struct → Methods) is enforced in six core files
-- No behavioral changes — purely structural reordering
+- `processor.go`, `runner.go`, `oneshot.go`, `watcher.go`, `specwatcher/watcher.go`, and `executor.go` are reordered
+- Doc comments remain attached to their respective declarations after reordering
+- No behavioral changes — purely structural reordering of type and function declarations
 </summary>
 
 <objective>

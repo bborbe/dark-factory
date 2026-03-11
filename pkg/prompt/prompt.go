@@ -37,7 +37,14 @@ var (
 	numericPatternRegexp      = regexp.MustCompile(`^(\d+)-(.+)\.md$`)
 	hasNumberPrefixRegexp     = regexp.MustCompile(`^\d{3}-`)
 	extractNumberPrefixRegexp = regexp.MustCompile(`^(\d{3})-`)
+	anyNumberPrefixRegexp     = regexp.MustCompile(`^\d+-`)
 )
+
+// StripNumberPrefix removes any leading numeric prefix (e.g. "200-foo.md" → "foo.md", "1-bar.md" → "bar.md").
+// Returns the original filename if no numeric prefix is found.
+func StripNumberPrefix(filename string) string {
+	return anyNumberPrefixRegexp.ReplaceAllString(filename, "")
+}
 
 // PromptStatus represents the current state of a prompt.
 //

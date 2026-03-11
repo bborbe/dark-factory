@@ -1517,4 +1517,56 @@ worktree: false
 			})
 		})
 	})
+
+	Describe("ResolvedDiscordWebhook", func() {
+		It("returns empty string when WebhookEnv is empty", func() {
+			cfg := config.Config{}
+			Expect(cfg.ResolvedDiscordWebhook()).To(Equal(""))
+		})
+
+		It("returns env var value when WebhookEnv is set", func() {
+			GinkgoT().Setenv("TEST_DISCORD_WEBHOOK", "https://discord.example.com/webhook")
+			cfg := config.Config{
+				Notifications: config.NotificationsConfig{
+					Discord: config.DiscordConfig{WebhookEnv: "TEST_DISCORD_WEBHOOK"},
+				},
+			}
+			Expect(cfg.ResolvedDiscordWebhook()).To(Equal("https://discord.example.com/webhook"))
+		})
+	})
+
+	Describe("ResolvedTelegramBotToken", func() {
+		It("returns empty string when BotTokenEnv is empty", func() {
+			cfg := config.Config{}
+			Expect(cfg.ResolvedTelegramBotToken()).To(Equal(""))
+		})
+	})
+
+	Describe("ResolvedTelegramChatID", func() {
+		It("returns empty string when ChatIDEnv is empty", func() {
+			cfg := config.Config{}
+			Expect(cfg.ResolvedTelegramChatID()).To(Equal(""))
+		})
+	})
+
+	Describe("validateNotifications", func() {
+		It("returns nil when no discord webhook configured", func() {
+			cfg := config.Defaults()
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("returns nil when discord webhook is HTTPS", func() {
+			GinkgoT().Setenv("TEST_DISCORD_WEBHOOK_HTTPS", "https://discord.example.com/webhook")
+			cfg := config.Defaults()
+			cfg.Notifications.Discord.WebhookEnv = "TEST_DISCORD_WEBHOOK_HTTPS"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("returns error when discord webhook is HTTP", func() {
+			GinkgoT().Setenv("TEST_DISCORD_WEBHOOK_HTTP", "http://discord.example.com/webhook")
+			cfg := config.Defaults()
+			cfg.Notifications.Discord.WebhookEnv = "TEST_DISCORD_WEBHOOK_HTTP"
+			Expect(cfg.Validate(ctx)).To(HaveOccurred())
+		})
+	})
 })

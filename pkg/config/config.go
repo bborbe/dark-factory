@@ -22,6 +22,23 @@ type GitHubConfig struct {
 	Token string `yaml:"token"`
 }
 
+// TelegramConfig holds Telegram notification configuration.
+type TelegramConfig struct {
+	BotTokenEnv string `yaml:"botTokenEnv"`
+	ChatIDEnv   string `yaml:"chatIDEnv"`
+}
+
+// DiscordConfig holds Discord notification configuration.
+type DiscordConfig struct {
+	WebhookEnv string `yaml:"webhookEnv"`
+}
+
+// NotificationsConfig holds notification channel configuration.
+type NotificationsConfig struct {
+	Telegram TelegramConfig `yaml:"telegram"`
+	Discord  DiscordConfig  `yaml:"discord"`
+}
+
 // BitbucketConfig holds Bitbucket Server-specific configuration.
 type BitbucketConfig struct {
 	BaseURL  string `yaml:"baseURL"`
@@ -46,32 +63,33 @@ type SpecsConfig struct {
 
 // Config holds the dark-factory configuration.
 type Config struct {
-	ProjectName       string            `yaml:"projectName"`
-	Workflow          Workflow          `yaml:"workflow"`
-	PR                bool              `yaml:"pr,omitempty"`
-	Worktree          bool              `yaml:"worktree,omitempty"`
-	DefaultBranch     string            `yaml:"defaultBranch"`
-	Prompts           PromptsConfig     `yaml:"prompts"`
-	Specs             SpecsConfig       `yaml:"specs"`
-	ContainerImage    string            `yaml:"containerImage"`
-	NetrcFile         string            `yaml:"netrcFile"`
-	GitconfigFile     string            `yaml:"gitconfigFile"`
-	Model             string            `yaml:"model"`
-	ValidationCommand string            `yaml:"validationCommand"`
-	DebounceMs        int               `yaml:"debounceMs"`
-	ServerPort        int               `yaml:"serverPort"`
-	AutoMerge         bool              `yaml:"autoMerge"`
-	AutoRelease       bool              `yaml:"autoRelease"`
-	VerificationGate  bool              `yaml:"verificationGate"`
-	AutoReview        bool              `yaml:"autoReview"`
-	MaxReviewRetries  int               `yaml:"maxReviewRetries"`
-	AllowedReviewers  []string          `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators  bool              `yaml:"useCollaborators"`
-	PollIntervalSec   int               `yaml:"pollIntervalSec"`
-	GitHub            GitHubConfig      `yaml:"github"`
-	Provider          Provider          `yaml:"provider"`
-	Bitbucket         BitbucketConfig   `yaml:"bitbucket"`
-	Env               map[string]string `yaml:"env,omitempty"`
+	ProjectName       string              `yaml:"projectName"`
+	Workflow          Workflow            `yaml:"workflow"`
+	PR                bool                `yaml:"pr,omitempty"`
+	Worktree          bool                `yaml:"worktree,omitempty"`
+	DefaultBranch     string              `yaml:"defaultBranch"`
+	Prompts           PromptsConfig       `yaml:"prompts"`
+	Specs             SpecsConfig         `yaml:"specs"`
+	ContainerImage    string              `yaml:"containerImage"`
+	NetrcFile         string              `yaml:"netrcFile"`
+	GitconfigFile     string              `yaml:"gitconfigFile"`
+	Model             string              `yaml:"model"`
+	ValidationCommand string              `yaml:"validationCommand"`
+	DebounceMs        int                 `yaml:"debounceMs"`
+	ServerPort        int                 `yaml:"serverPort"`
+	AutoMerge         bool                `yaml:"autoMerge"`
+	AutoRelease       bool                `yaml:"autoRelease"`
+	VerificationGate  bool                `yaml:"verificationGate"`
+	AutoReview        bool                `yaml:"autoReview"`
+	MaxReviewRetries  int                 `yaml:"maxReviewRetries"`
+	AllowedReviewers  []string            `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators  bool                `yaml:"useCollaborators"`
+	PollIntervalSec   int                 `yaml:"pollIntervalSec"`
+	GitHub            GitHubConfig        `yaml:"github"`
+	Provider          Provider            `yaml:"provider"`
+	Bitbucket         BitbucketConfig     `yaml:"bitbucket"`
+	Notifications     NotificationsConfig `yaml:"notifications"`
+	Env               map[string]string   `yaml:"env,omitempty"`
 }
 
 // Defaults returns a Config with all default values.
@@ -174,6 +192,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("netrcFile", validation.HasValidationFunc(c.validateNetrcFile)),
 		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
 		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
+		validation.Name("notifications", validation.HasValidationFunc(c.validateNotifications)),
 	}.Validate(ctx)
 }
 
@@ -301,4 +320,40 @@ func (c Config) ResolvedBitbucketToken() string {
 		slog.Warn("bitbucket.tokenEnv configured but env var is empty", "env", c.Bitbucket.TokenEnv)
 	}
 	return token
+}
+
+// ResolvedTelegramBotToken reads the Telegram bot token from the env var named in BotTokenEnv.
+// Returns empty string when not configured or env var is empty.
+func (c Config) ResolvedTelegramBotToken() string {
+	if c.Notifications.Telegram.BotTokenEnv == "" {
+		return ""
+	}
+	return os.Getenv(c.Notifications.Telegram.BotTokenEnv)
+}
+
+// ResolvedTelegramChatID reads the Telegram chat ID from the env var named in ChatIDEnv.
+// Returns empty string when not configured or env var is empty.
+func (c Config) ResolvedTelegramChatID() string {
+	if c.Notifications.Telegram.ChatIDEnv == "" {
+		return ""
+	}
+	return os.Getenv(c.Notifications.Telegram.ChatIDEnv)
+}
+
+// ResolvedDiscordWebhook reads the Discord webhook URL from the env var named in WebhookEnv.
+// Returns empty string when not configured or env var is empty.
+func (c Config) ResolvedDiscordWebhook() string {
+	if c.Notifications.Discord.WebhookEnv == "" {
+		return ""
+	}
+	return os.Getenv(c.Notifications.Discord.WebhookEnv)
+}
+
+// validateNotifications validates the notifications configuration.
+func (c Config) validateNotifications(ctx context.Context) error {
+	webhook := c.ResolvedDiscordWebhook()
+	if webhook != "" && !strings.HasPrefix(webhook, "https://") {
+		return errors.Errorf(ctx, "discord webhook URL must use HTTPS")
+	}
+	return nil
 }

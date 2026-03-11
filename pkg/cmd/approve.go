@@ -70,8 +70,9 @@ func (a *approveCommand) approveByID(ctx context.Context, id string) error {
 }
 
 // approveFromInbox moves a file from inbox to queue and sets status to approved.
+// Any numeric prefix is stripped so NormalizeFilenames assigns the correct number.
 func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) error {
-	filename := filepath.Base(oldPath)
+	filename := prompt.StripNumberPrefix(filepath.Base(oldPath))
 	newPath := filepath.Join(a.queueDir, filename)
 
 	if err := os.Rename(oldPath, newPath); err != nil {

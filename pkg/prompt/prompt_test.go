@@ -1471,6 +1471,19 @@ Content here.
 		})
 	})
 
+	Describe("StripNumberPrefix", func() {
+		DescribeTable("strips numeric prefixes",
+			func(input string, expected string) {
+				Expect(prompt.StripNumberPrefix(input)).To(Equal(expected))
+			},
+			Entry("3-digit prefix", "200-foo.md", "foo.md"),
+			Entry("1-digit prefix", "1-bar.md", "bar.md"),
+			Entry("no prefix", "foo.md", "foo.md"),
+			Entry("valid 3-digit prefix", "001-baz.md", "baz.md"),
+			Entry("large number", "9999-test.md", "test.md"),
+		)
+	})
+
 	Describe("NormalizeFilenames", func() {
 		Context("with file missing numeric prefix", func() {
 			BeforeEach(func() {

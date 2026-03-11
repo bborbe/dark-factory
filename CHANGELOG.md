@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.47.0
+
+- feat: add pkg/notifier package with Telegram, Discord, and multi-notifier implementations
+- feat: add NotificationsConfig to Config with ResolvedTelegramBotToken, ResolvedTelegramChatID, ResolvedDiscordWebhook helpers and HTTPS validation for Discord webhook URLs
+- fix: strip number prefix from inbox files on approve so NormalizeFilenames assigns correct numbers
+
 ## v0.46.2
 
 - fix: NormalizeFilenames no longer scans inbox dir for used numbers, preventing inbox drafts from polluting number assignment

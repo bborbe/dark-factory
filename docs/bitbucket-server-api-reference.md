@@ -10,7 +10,7 @@ https://bitbucket.example.com
 
 ## Authentication
 
-Bearer token in `Authorization` header.
+Bearer token in `Authorization` header. Token read from env var configured in `tokenEnv` (default: `BITBUCKET_TOKEN`).
 
 ```
 Authorization: Bearer <token>

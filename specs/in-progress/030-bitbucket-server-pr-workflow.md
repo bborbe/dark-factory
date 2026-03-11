@@ -40,7 +40,7 @@ After this work, `workflow: pr` creates PRs on Bitbucket Server via its REST API
 ## Desired Behavior
 
 1. Config accepts `provider: bitbucket-server` (default: `github`)
-2. Config accepts `bitbucket:` section with `baseURL` and `token` (env var reference like GitHub)
+2. Config accepts `bitbucket:` section with `baseURL` and `tokenEnv` (env var name, default: `BITBUCKET_TOKEN`) — config is git-safe, no secrets
 3. PRs can be created on Bitbucket Server during pr workflow
 4. PRs can be merged on Bitbucket Server when autoMerge is enabled
 5. Review status can be polled from Bitbucket Server when autoReview is enabled
@@ -64,7 +64,7 @@ Implementation guidance (not part of spec contract): see `docs/bitbucket-server-
 - **Token in logs**: bearer token must not appear in log output or error messages — redact before logging
 - **Token scope**: requires project-write permission (create PR, merge PR); read-only tokens will fail at PR creation with 403
 - **SSRF via `baseURL`**: user-supplied URL is trusted (config file is local, not user input) — no additional validation needed
-- **Token storage**: token resolved from env var or config file — never hardcoded, never committed
+- **Token storage**: config stores env var name (`tokenEnv`), not the token itself — config is safe to commit; token lives only in environment
 
 ## Failure Modes
 
@@ -108,7 +108,7 @@ provider: bitbucket-server
 defaultBranch: master
 bitbucket:
   baseURL: https://bitbucket.example.com
-  token: $BITBUCKET_TOKEN
+  tokenEnv: BITBUCKET_TOKEN
 ```
 
 ## Do-Nothing Option

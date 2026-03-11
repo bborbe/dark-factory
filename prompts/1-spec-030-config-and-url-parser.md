@@ -7,10 +7,10 @@ branch: dark-factory/bitbucket-server-pr-workflow
 <summary>
 - A new `provider` config field selects the git provider — `github` (default) or `bitbucket-server`
 - `provider: invalid` fails config validation at startup with a clear error message
-- A new `bitbucket:` config section holds `baseURL` and `token` for Bitbucket Server connection
+- A new `bitbucket:` config section holds `baseURL` and `tokenEnv` (env var name, default: `BITBUCKET_TOKEN`) for Bitbucket Server connection
 - When `provider: bitbucket-server`, the config requires `bitbucket.baseURL` — missing it fails validation
 - A utility parses Bitbucket Server git remote URLs (both SSH and HTTPS formats) and extracts the project key and repo slug
-- A `ResolvedBitbucketToken()` helper resolves the token from env var references (same pattern as `ResolvedGitHubToken()`)
+- A `ResolvedBitbucketToken()` helper reads the token from the env var named in `tokenEnv` (default: `BITBUCKET_TOKEN`)
 - All existing GitHub config and behavior is unchanged when `provider` is `github` or omitted
 </summary>
 
@@ -96,8 +96,8 @@ func (p Providers) Contains(provider Provider) bool {
    ```go
    // BitbucketConfig holds Bitbucket Server-specific configuration.
    type BitbucketConfig struct {
-       BaseURL string `yaml:"baseURL"`
-       Token   string `yaml:"token"`
+       BaseURL  string `yaml:"baseURL"`
+       TokenEnv string `yaml:"tokenEnv"`
    }
    ```
 
@@ -110,7 +110,7 @@ func (p Providers) Contains(provider Provider) bool {
 3. In `Defaults()`, set the default provider:
    ```go
    Provider:  ProviderGitHub,
-   Bitbucket: BitbucketConfig{},
+   Bitbucket: BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
    ```
    Add this after `GitHub: GitHubConfig{}`.
 
@@ -136,15 +136,15 @@ func (p Providers) Contains(provider Provider) bool {
 
 6. Add `ResolvedBitbucketToken()` method immediately after `ResolvedGitHubToken()`:
    ```go
-   // ResolvedBitbucketToken returns the Bitbucket token with environment variables resolved.
-   // Returns empty string when not configured.
+   // ResolvedBitbucketToken reads the Bitbucket token from the env var named in TokenEnv.
+   // Returns empty string when not configured or env var is empty.
    func (c Config) ResolvedBitbucketToken() string {
-       if c.Bitbucket.Token == "" {
+       if c.Bitbucket.TokenEnv == "" {
            return ""
        }
-       token := resolveEnvVar(c.Bitbucket.Token)
+       token := os.Getenv(c.Bitbucket.TokenEnv)
        if token == "" {
-           slog.Warn("bitbucket.token configured but env var is empty")
+           slog.Warn("bitbucket.tokenEnv configured but env var is empty", "env", c.Bitbucket.TokenEnv)
        }
        return token
    }
@@ -283,6 +283,7 @@ var _ = Describe("Config.Validate", func() {
             cfg := config.Defaults()
             cfg.Provider = config.ProviderBitbucketServer
             cfg.Bitbucket.BaseURL = "https://bitbucket.example.com"
+            cfg.Bitbucket.TokenEnv = "BITBUCKET_TOKEN"
             Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
         })
 

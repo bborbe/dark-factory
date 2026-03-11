@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.49.0
+
+- feat: add Bitbucket Server PR creator, merger, review fetcher, and collaborator fetcher implementations in pkg/git
+- refactor: replace ghToken/defaultBranch params in CreateProcessor with brancher/prCreator/prMerger interfaces; add createProviderDeps factory helper that selects GitHub or Bitbucket Server implementations based on cfg.Provider
+
 ## v0.48.0
 
 - feat: wire notifier into processor (prompt_failed, prompt_partial), spec auto-completer (spec_verifying), review poller (review_limit), and runner (stuck_container) trigger points

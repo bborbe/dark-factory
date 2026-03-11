@@ -7,7 +7,10 @@ package factory
 import (
 	"context"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	libhttp "github.com/bborbe/http"
@@ -51,6 +54,130 @@ func createPromptManager(
 		currentDateTimeGetter,
 	)
 	return promptManager, releaser
+}
+
+// providerDeps holds the provider-specific git operation implementations.
+type providerDeps struct {
+	prCreator           git.PRCreator
+	prMerger            git.PRMerger
+	reviewFetcher       git.ReviewFetcher
+	collaboratorFetcher git.CollaboratorFetcher
+	brancher            git.Brancher
+}
+
+// createProviderDeps returns the git provider implementations based on cfg.Provider.
+// For github (or empty): uses gh CLI implementations (existing behavior).
+// For bitbucket-server: uses Bitbucket Server REST API implementations.
+func createProviderDeps(
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) providerDeps {
+	if cfg.Provider == config.ProviderBitbucketServer {
+		return createBitbucketProviderDeps(cfg, currentDateTimeGetter)
+	}
+	return createGitHubProviderDeps(cfg, currentDateTimeGetter)
+}
+
+// createGitHubProviderDeps returns GitHub gh-CLI-backed implementations.
+func createGitHubProviderDeps(
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) providerDeps {
+	ghToken := cfg.ResolvedGitHubToken()
+	repoNameFetcher := git.NewGHRepoNameFetcher(ghToken)
+	collaboratorLister := git.NewGHCollaboratorLister(ghToken)
+	collaboratorFetcher := git.NewCollaboratorFetcher(
+		repoNameFetcher,
+		collaboratorLister,
+		cfg.UseCollaborators,
+		cfg.AllowedReviewers,
+	)
+	return providerDeps{
+		prCreator:           git.NewPRCreator(ghToken),
+		prMerger:            git.NewPRMerger(ghToken, currentDateTimeGetter),
+		reviewFetcher:       git.NewReviewFetcher(ghToken),
+		collaboratorFetcher: collaboratorFetcher,
+		brancher:            git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
+	}
+}
+
+// createBitbucketProviderDeps returns Bitbucket Server REST API-backed implementations.
+// Parses project and repo from the current git remote URL.
+// On error (e.g. unparseable remote URL), logs a warning and returns non-nil structs that
+// will fail at operation time with a clear error — startup is not blocked.
+func createBitbucketProviderDeps(
+	cfg config.Config,
+	_ libtime.CurrentDateTimeGetter,
+) providerDeps {
+	ctx := context.Background()
+	token := cfg.ResolvedBitbucketToken()
+	baseURL := cfg.Bitbucket.BaseURL
+
+	coords, err := git.ParseBitbucketRemoteFromGit(ctx, "origin")
+	if err != nil {
+		slog.Warn(
+			"bitbucket: failed to parse git remote URL; PR operations will fail",
+			"error",
+			err,
+		)
+		coords = &git.BitbucketRemoteCoords{Project: "", Repo: ""}
+	}
+
+	// Fetch current user (for excluding from reviewers) — best-effort
+	currentUser := fetchBitbucketCurrentUser(ctx, baseURL, token)
+
+	// Build collaborator fetcher (default reviewers plugin) with current user excluded
+	collaboratorFetcher := git.NewBitbucketCollaboratorFetcher(
+		baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, currentUser,
+	)
+
+	// Fetch reviewers now; explicit config overrides plugin
+	reviewers := collaboratorFetcher.Fetch(ctx)
+	if len(cfg.AllowedReviewers) > 0 {
+		reviewers = cfg.AllowedReviewers
+	}
+
+	return providerDeps{
+		prCreator: git.NewBitbucketPRCreator(
+			baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, reviewers,
+		),
+		prMerger: git.NewBitbucketPRMerger(baseURL, token, coords.Project, coords.Repo),
+		reviewFetcher: git.NewBitbucketReviewFetcher(
+			baseURL,
+			token,
+			coords.Project,
+			coords.Repo,
+		),
+		collaboratorFetcher: collaboratorFetcher,
+		brancher:            git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
+	}
+}
+
+// fetchBitbucketCurrentUser fetches the current Bitbucket Server username via the whoami endpoint.
+// Returns empty string on error (graceful degradation — reviewer exclusion will not apply).
+func fetchBitbucketCurrentUser(ctx context.Context, baseURL, token string) string {
+	req, err := http.NewRequestWithContext(
+		ctx, "GET",
+		strings.TrimRight(baseURL, "/")+"/plugins/servlet/applinks/whoami",
+		nil,
+	)
+	if err != nil {
+		slog.Warn("bitbucket: failed to create whoami request", "error", err)
+		return ""
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.Warn("bitbucket: whoami request failed", "error", err)
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("bitbucket: whoami returned non-200", "status", resp.StatusCode)
+		return ""
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return strings.TrimSpace(string(body))
 }
 
 // createOptionalServer creates a Server when port > 0, or returns nil.
@@ -99,9 +226,9 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	)
 	versionGetter := version.NewGetter(ver)
 	projectName := project.Name(cfg.ProjectName)
-	ghToken := cfg.ResolvedGitHubToken()
 	ready := make(chan struct{}, 10)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter)
+	deps := createProviderDeps(cfg, currentDateTimeGetter)
 
 	n := CreateNotifier(cfg)
 
@@ -128,9 +255,11 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
 			promptManager, releaser, versionGetter, ready,
 			cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
-			cfg.PR, cfg.Worktree, ghToken, cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
+			cfg.PR, cfg.Worktree,
+			deps.brancher, deps.prCreator, deps.prMerger,
+			cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
 			cfg.ValidationCommand, cfg.Specs.InboxDir, cfg.Specs.InProgressDir,
-			cfg.Specs.CompletedDir, cfg.VerificationGate, cfg.DefaultBranch,
+			cfg.Specs.CompletedDir, cfg.VerificationGate,
 			cfg.Env, currentDateTimeGetter, n,
 		),
 		createOptionalServer(cfg, inboxDir, inProgressDir, completedDir, promptManager),
@@ -155,7 +284,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 	)
 	versionGetter := version.NewGetter(ver)
 	projectName := project.Name(cfg.ProjectName)
-	ghToken := cfg.ResolvedGitHubToken()
+	deps := createProviderDeps(cfg, currentDateTimeGetter)
 
 	// One-shot mode uses a nil ready channel — ProcessQueue never reads from it.
 	ready := make(chan struct{}, 10)
@@ -188,7 +317,9 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.GitconfigFile,
 			cfg.PR,
 			cfg.Worktree,
-			ghToken,
+			deps.brancher,
+			deps.prCreator,
+			deps.prMerger,
 			cfg.AutoMerge,
 			cfg.AutoRelease,
 			cfg.AutoReview,
@@ -197,7 +328,6 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
 			cfg.VerificationGate,
-			cfg.DefaultBranch,
 			cfg.Env,
 			currentDateTimeGetter,
 			n,
@@ -279,7 +409,9 @@ func CreateProcessor(
 	gitconfigFile string,
 	pr bool,
 	worktree bool,
-	ghToken string,
+	brancher git.Brancher,
+	prCreator git.PRCreator,
+	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
 	autoReview bool,
@@ -288,7 +420,6 @@ func CreateProcessor(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	verificationGate bool,
-	defaultBranch string,
 	env map[string]string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	n notifier.Notifier,
@@ -312,10 +443,10 @@ func CreateProcessor(
 		ready,
 		pr,
 		worktree,
-		git.NewBrancher(git.WithDefaultBranch(defaultBranch)),
-		git.NewPRCreator(ghToken),
+		brancher,
+		prCreator,
 		git.NewCloner(),
-		git.NewPRMerger(ghToken, currentDateTimeGetter),
+		prMerger,
 		autoMerge,
 		autoRelease,
 		autoReview,
@@ -343,17 +474,9 @@ func CreateReviewPoller(
 	projectName string,
 	n notifier.Notifier,
 ) review.ReviewPoller {
-	ghToken := cfg.ResolvedGitHubToken()
-
-	repoNameFetcher := git.NewGHRepoNameFetcher(ghToken)
-	collaboratorLister := git.NewGHCollaboratorLister(ghToken)
-	fetcher := git.NewCollaboratorFetcher(
-		repoNameFetcher,
-		collaboratorLister,
-		cfg.UseCollaborators,
-		cfg.AllowedReviewers,
-	)
-	allowedReviewers := fetcher.Fetch(context.Background())
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	allowedReviewers := deps.collaboratorFetcher.Fetch(context.Background())
 
 	return review.NewReviewPoller(
 		cfg.Prompts.InProgressDir,
@@ -361,8 +484,8 @@ func CreateReviewPoller(
 		allowedReviewers,
 		cfg.MaxReviewRetries,
 		time.Duration(cfg.PollIntervalSec)*time.Second,
-		git.NewReviewFetcher(ghToken),
-		git.NewPRMerger(ghToken, libtime.NewCurrentDateTime()),
+		deps.reviewFetcher,
+		deps.prMerger,
 		promptManager,
 		review.NewFixPromptGenerator(),
 		projectName,
@@ -485,15 +608,15 @@ func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
 		cfg.Prompts.CompletedDir,
 		currentDateTimeGetter,
 	)
-	ghToken := cfg.ResolvedGitHubToken()
+	deps := createProviderDeps(cfg, currentDateTimeGetter)
 	return cmd.NewPromptVerifyCommand(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		promptManager,
 		releaser,
 		cfg.PR,
-		git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
-		git.NewPRCreator(ghToken),
+		deps.brancher,
+		deps.prCreator,
 		currentDateTimeGetter,
 	)
 }

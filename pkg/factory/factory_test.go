@@ -11,6 +11,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
+	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
 
@@ -61,7 +62,9 @@ var _ = Describe("Factory", func() {
 				cfg.GitconfigFile,
 				cfg.PR,
 				cfg.Worktree,
-				"test-token",
+				git.NewBrancher(),
+				git.NewPRCreator(""),
+				git.NewPRMerger("", libtime.NewCurrentDateTime()),
 				false,
 				false,
 				false,
@@ -70,7 +73,6 @@ var _ = Describe("Factory", func() {
 				"specs/in-progress",
 				"specs/completed",
 				false,
-				"",
 				nil,
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),

@@ -100,7 +100,7 @@ func (b *bitbucketPRCreator) Create(
 		targetBranch = "master"
 	}
 
-	var reviewers []bbReviewer
+	reviewers := make([]bbReviewer, 0, len(b.reviewers))
 	for _, r := range b.reviewers {
 		reviewers = append(reviewers, bbReviewer{User: bbUser{Name: r}})
 	}

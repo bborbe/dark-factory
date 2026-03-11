@@ -1,5 +1,8 @@
 ---
-status: approved
+status: prompted
+approved: "2026-03-11T21:55:09Z"
+prompted: "2026-03-11T21:57:50Z"
+branch: dark-factory/notifications
 ---
 
 ## Summary

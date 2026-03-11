@@ -1,8 +1,12 @@
 ---
-status: approved
+status: failed
 spec: ["030"]
+container: dark-factory-173-spec-030-config-and-url-parser
+dark-factory-version: v0.44.0
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T17:44:50Z"
+started: "2026-03-11T18:40:08Z"
+completed: "2026-03-11T18:46:53Z"
 ---
 <summary>
 - A new `provider` config field selects the git provider — `github` (default) or `bitbucket-server`

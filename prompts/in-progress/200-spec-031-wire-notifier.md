@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["031"]
 created: "2026-03-11T22:30:00Z"
+queued: "2026-03-11T22:05:03Z"
 ---
 <summary>
 - A `Notifier` is injected into the processor so prompt failures and partial completions fire notifications

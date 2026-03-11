@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["031"]
 created: "2026-03-11T22:30:00Z"
+queued: "2026-03-11T22:04:59Z"
 ---
 <summary>
 - Two notification channels are supported: Telegram and Discord — both optional, both additive

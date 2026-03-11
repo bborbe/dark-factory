@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
+queued: "2026-03-11T13:26:33Z"
 branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>
@@ -310,34 +311,45 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 }
 ```
 
-**Step 5: Update `CreateOneShotRunner`** using the same pattern as step 4 — replace `ghToken` with `deps := createProviderDeps(cfg, currentDateTimeGetter)` and pass `deps.brancher`, `deps.prCreator`, `deps.prMerger` to `CreateProcessor`.
+**Step 5: Update `CreateOneShotRunner`**
 
-**Step 6: Update `CreateReviewPoller`**
-
-Replace the existing GitHub-specific implementation with provider-aware logic:
+In `CreateOneShotRunner`, replace the `ghToken` variable and provider-specific constructor calls with `createProviderDeps`:
 
 ```go
-// CreateReviewPoller creates a ReviewPoller that watches in_review prompts.
-func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
+func CreateOneShotRunner(cfg config.Config, ver string, promptFile string) runner.OneShotRunner {
+    inProgressDir := cfg.Prompts.InProgressDir
+    completedDir := cfg.Prompts.CompletedDir
     currentDateTimeGetter := libtime.NewCurrentDateTime()
+    promptManager, releaser := createPromptManager(
+        cfg.Prompts.InboxDir, inProgressDir, completedDir, currentDateTimeGetter,
+    )
+    versionGetter := version.NewGetter(ver)
+    projectName := project.Name(cfg.ProjectName)
+    ready := make(chan struct{}, 10)
     deps := createProviderDeps(cfg, currentDateTimeGetter)
-    allowedReviewers := deps.collaboratorFetcher.Fetch(context.Background())
 
-    return review.NewReviewPoller(
-        cfg.Prompts.InProgressDir,
-        cfg.Prompts.InboxDir,
-        allowedReviewers,
-        cfg.MaxReviewRetries,
-        time.Duration(cfg.PollIntervalSec)*time.Second,
-        deps.reviewFetcher,
-        git.NewPRMerger(cfg.ResolvedGitHubToken(), currentDateTimeGetter), // merger reused from GitHub for review poller
+    return runner.NewOneShotRunner(
+        inProgressDir, completedDir, cfg.Prompts.LogDir,
+        promptFile,
         promptManager,
-        review.NewFixPromptGenerator(),
+        CreateProcessor(
+            inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
+            promptManager, releaser, versionGetter, ready,
+            cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
+            cfg.PR, cfg.Worktree,
+            deps.brancher, deps.prCreator, deps.prMerger,
+            cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
+            cfg.ValidationCommand,
+            cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
+            cfg.VerificationGate, cfg.Env, currentDateTimeGetter,
+        ),
     )
 }
 ```
 
-Wait — this is wrong. For Bitbucket, the review poller should also use `deps.prMerger`. Update to:
+**Step 6: Update `CreateReviewPoller`**
+
+Replace the existing GitHub-specific implementation with provider-aware logic:
 
 ```go
 func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
@@ -423,7 +435,7 @@ var _ = Describe("CreateProcessor", func() {
 
 Note: Since `createProviderDeps` is unexported and requires a real git repo for the Bitbucket path, keep factory tests minimal — focus on validating that the exported `CreateRunner` and `CreateOneShotRunner` accept GitHub provider without error. The Bitbucket provider is validated through config validation tests in prompt 1 and client tests in prompt 2.
 
-If `pkg/factory/factory_test.go` already exists, add the new test case to the existing `Describe` block.
+**IMPORTANT**: If `pkg/factory/factory_test.go` already exists and has tests that call `CreateProcessor` with the old signature (e.g., passing `ghToken string`), update those calls to use the new signature with `brancher`, `prCreator`, `prMerger` parameters instead. The `ghToken` and `defaultBranch` parameters are removed from `CreateProcessor` — callers must pass the interface implementations directly.
 </requirements>
 
 <constraints>

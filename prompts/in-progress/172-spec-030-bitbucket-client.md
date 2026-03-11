@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
+queued: "2026-03-11T13:26:30Z"
 branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>
@@ -146,6 +147,7 @@ import (
     "fmt"
     "log/slog"
     "net/url"
+    "os/exec"
     "strings"
 
     "github.com/bborbe/errors"
@@ -291,8 +293,6 @@ func (p *bitbucketPRCreator) FindOpenPR(ctx context.Context, branch string) (str
         p.client.baseURL, p.project, p.repo, pr.ID), nil
 }
 ```
-
-Note: add `"os/exec"` to imports in `pkg/git/bitbucket_pr_creator.go`.
 
 **Step 3: Bitbucket PR merger in `pkg/git/bitbucket_pr_merger.go`**
 
@@ -560,7 +560,10 @@ func (f *bitbucketCollaboratorFetcher) Fetch(ctx context.Context) []string {
     }
 
     // Step 2: Query default-reviewers plugin
-    sourceRef := url.QueryEscape("refs/heads/dark-factory/placeholder")
+    // Use defaultBranch as sourceRef too — we only need a valid ref to query the default-reviewers
+    // plugin for its configured reviewer rules. The actual source branch doesn't matter for
+    // reviewer resolution; Bitbucket uses the target branch's reviewer configuration.
+    sourceRef := url.QueryEscape("refs/heads/" + f.defaultBranch)
     targetRef := url.QueryEscape("refs/heads/" + f.defaultBranch)
     path := fmt.Sprintf(
         "/rest/default-reviewers/1.0/projects/%s/repos/%s/reviewers?sourceRepoId=%d&targetRepoId=%d&sourceRefId=%s&targetRefId=%s",
@@ -600,29 +603,6 @@ func (f *bitbucketCollaboratorFetcher) fetchRepoID(ctx context.Context) (int, er
 
 **Step 6: Tests**
 
-Create `pkg/git/bitbucket_remote_id_test.go` for `parseBitbucketPRID`:
-
-```go
-// Copyright (c) 2026 Benjamin Borbe All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package git_test
-
-import (
-    . "github.com/onsi/ginkgo/v2"
-    . "github.com/onsi/gomega"
-
-    "github.com/bborbe/dark-factory/pkg/git"
-)
-
-var _ = Describe("parseBitbucketPRID", func() {
-    // parseBitbucketPRID is unexported; test via exported types or make it exported.
-    // Since it's used internally, test it through a thin exported wrapper or
-    // use the internal test package. Add to pkg/git/git_internal_test.go instead:
-})
-```
-
 Since `parseBitbucketPRID` is unexported, add these tests to `pkg/git/git_internal_test.go` (existing internal test file):
 
 ```go
@@ -652,24 +632,7 @@ var _ = Describe("parseBitbucketPRID", func() {
 })
 ```
 
-Create `pkg/git/bitbucket_http_test.go` for `redactToken`:
-
-```go
-// Copyright (c) 2026 Benjamin Borbe All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package git_test
-
-import (
-    . "github.com/onsi/ginkgo/v2"
-    . "github.com/onsi/gomega"
-)
-
-// redactToken is unexported — test through git_internal_test.go
-```
-
-Add to `pkg/git/git_internal_test.go`:
+Since `redactToken` is also unexported, add to `pkg/git/git_internal_test.go`:
 
 ```go
 var _ = Describe("redactToken", func() {

@@ -1,7 +1,12 @@
 ---
-status: created
+status: failed
 spec: ["030"]
+container: dark-factory-171-spec-030-config-and-url-parser
+dark-factory-version: v0.44.0
 created: "2026-03-11T10:00:00Z"
+queued: "2026-03-11T13:26:27Z"
+started: "2026-03-11T13:26:29Z"
+completed: "2026-03-11T13:26:29Z"
 branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>
@@ -138,6 +143,7 @@ func (p Providers) Contains(provider Provider) bool {
    ```go
    // ResolvedBitbucketToken reads the Bitbucket token from the env var named in TokenEnv.
    // Returns empty string when not configured or env var is empty.
+   // Uses os.Getenv directly (not resolveEnvVar) because resolveEnvVar is GitHub-specific.
    func (c Config) ResolvedBitbucketToken() string {
        if c.Bitbucket.TokenEnv == "" {
            return ""
@@ -163,6 +169,7 @@ package git
 
 import (
     "context"
+    "os/exec"
     "regexp"
     "strings"
 
@@ -219,8 +226,6 @@ func ParseBitbucketRemoteFromGit(ctx context.Context, remoteName string) (*Bitbu
     return ParseBitbucketRemoteURL(ctx, remoteURL)
 }
 ```
-
-Note: add `"os/exec"` to the imports in `pkg/git/bitbucket_remote.go`.
 
 **Step 4: Tests for config validation**
 

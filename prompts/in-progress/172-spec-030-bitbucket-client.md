@@ -3,7 +3,6 @@ status: approved
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T13:26:30Z"
-branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>
 - A new Bitbucket Server HTTP client implements the same `PRCreator`, `PRMerger`, and `ReviewFetcher` interfaces the GitHub implementation uses — no interface changes required

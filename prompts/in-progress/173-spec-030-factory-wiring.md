@@ -3,7 +3,6 @@ status: approved
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T13:26:33Z"
-branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>
 - `provider: github` (default) uses exactly the same `gh` CLI implementations as today — zero behavior change for existing users

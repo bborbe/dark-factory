@@ -573,9 +573,9 @@ func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
-// It also checks the inbox and completed directories for used numbers.
+// It also checks the completed directory for used numbers.
 func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
-	return NormalizeFilenames(ctx, dir, pm.inboxDir, pm.completedDir, pm.mover)
+	return NormalizeFilenames(ctx, dir, pm.completedDir, pm.mover)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
@@ -980,7 +980,6 @@ type fileInfo struct {
 func NormalizeFilenames(
 	ctx context.Context,
 	dir string,
-	inboxDir string,
 	completedDir string,
 	mover FileMover,
 ) ([]Rename, error) {
@@ -990,16 +989,6 @@ func NormalizeFilenames(
 	}
 
 	files, usedNumbers := scanPromptFiles(entries)
-
-	// Also collect numbers used in inboxDir so we don't reuse numbers from draft prompts.
-	inboxEntries, err := os.ReadDir(inboxDir)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Wrap(ctx, err, "read inbox directory")
-	}
-	_, inboxNumbers := scanPromptFiles(inboxEntries)
-	for n := range inboxNumbers {
-		usedNumbers[n] = true
-	}
 
 	// Also collect numbers used in completed/ so we don't assign duplicates.
 	completedEntries, err := os.ReadDir(completedDir)

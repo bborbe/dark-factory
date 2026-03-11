@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.46.2
+
+- fix: NormalizeFilenames no longer scans inbox dir for used numbers, preventing inbox drafts from polluting number assignment
+- fix: notification prompts remove invalid branch field, fix test placement, resolve contradictions
+
 ## v0.46.1
 
 - docs: add notifications spec (Telegram + Discord) with tokenEnv pattern and security constraints

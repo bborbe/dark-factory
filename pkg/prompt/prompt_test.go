@@ -1484,7 +1484,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1512,7 +1511,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1542,7 +1540,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1569,7 +1566,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1592,7 +1588,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1621,7 +1616,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1657,7 +1651,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1690,7 +1683,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1727,7 +1719,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1752,7 +1743,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1771,7 +1761,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1793,7 +1782,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1818,7 +1806,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1847,7 +1834,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1868,7 +1854,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1889,7 +1874,6 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					filepath.Join(tempDir, "inbox"),
 					completedDir,
 					mover,
 				)
@@ -1898,13 +1882,13 @@ Content here.
 			})
 		})
 
-		Context("with numbers used in inboxDir", func() {
-			It("does not reuse numbers already taken by inbox files", func() {
+		Context("inbox files are ignored for numbering", func() {
+			It("does not reserve numbers from inbox files", func() {
 				inboxDir := filepath.Join(tempDir, "inbox")
 				err := os.MkdirAll(inboxDir, 0750)
 				Expect(err).To(BeNil())
 
-				// inbox has 001-003
+				// inbox has 001-003 — these should be ignored
 				createPromptFile(inboxDir, "001-draft.md", "approved")
 				createPromptFile(inboxDir, "002-draft.md", "approved")
 				createPromptFile(inboxDir, "003-draft.md", "approved")
@@ -1916,50 +1900,14 @@ Content here.
 				renames, err := prompt.NormalizeFilenames(
 					ctx,
 					tempDir,
-					inboxDir,
 					completedDir,
 					mover,
 				)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
-				// Should assign 004 (not 001-003 which are used in inbox)
-				Expect(filepath.Base(renames[0].NewPath)).To(Equal("004-new-feature.md"))
-			})
-		})
-
-		Context("with numbers used in both inboxDir and completedDir", func() {
-			It("does not reuse numbers from either directory", func() {
-				inboxDir := filepath.Join(tempDir, "inbox")
-				completedDir := filepath.Join(tempDir, "completed")
-				err := os.MkdirAll(inboxDir, 0750)
-				Expect(err).To(BeNil())
-				err = os.MkdirAll(completedDir, 0750)
-				Expect(err).To(BeNil())
-
-				// inbox has 001-002
-				createPromptFile(inboxDir, "001-draft.md", "approved")
-				createPromptFile(inboxDir, "002-draft.md", "approved")
-
-				// completed has 003-004
-				createPromptFile(completedDir, "003-done.md", "completed")
-				createPromptFile(completedDir, "004-done.md", "completed")
-
-				// in-progress has one unnumbered file
-				createPromptFile(tempDir, "another-feature.md", "approved")
-
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					inboxDir,
-					completedDir,
-					mover,
-				)
-				Expect(err).To(BeNil())
-				Expect(renames).To(HaveLen(1))
-				Expect(filepath.Base(renames[0].OldPath)).To(Equal("another-feature.md"))
-				// Should assign 005 (001-004 are all taken across inbox and completed)
-				Expect(filepath.Base(renames[0].NewPath)).To(Equal("005-another-feature.md"))
+				// Should assign 001 — inbox numbers are not reserved
+				Expect(filepath.Base(renames[0].NewPath)).To(Equal("001-new-feature.md"))
 			})
 		})
 	})

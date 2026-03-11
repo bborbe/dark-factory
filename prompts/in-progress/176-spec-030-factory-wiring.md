@@ -1,8 +1,11 @@
 ---
-status: draft
+status: executing
 spec: ["030"]
+container: dark-factory-176-spec-030-factory-wiring
+dark-factory-version: v0.48.0
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T17:44:56Z"
+started: "2026-03-11T22:50:04Z"
 ---
 <summary>
 - `provider: github` (default) uses exactly the same `gh` CLI implementations as today — zero behavior change for existing users

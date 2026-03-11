@@ -4,9 +4,8 @@ status: draft
 
 ## Summary
 
-- `workflow: pr` works with Bitbucket Server (and any git host) — not just GitHub
-- Replaces all `gh` CLI calls with a pluggable git provider interface
-- GitHub remains the default; Bitbucket Server added as second provider
+- Teams on Bitbucket Server can use `workflow: pr` with full PR creation, review polling, and auto-merge
+- GitHub remains the default provider — no changes for existing users
 - Provider selected via `provider` field in `.dark-factory.yaml`
 - `workflow: direct` already works (fixed in v0.33.1 via `defaultBranch` config)
 
@@ -39,10 +38,13 @@ After this work, `workflow: pr` creates PRs on Bitbucket Server via its REST API
 
 1. Config accepts `provider: bitbucket-server` (default: `github`)
 2. Config accepts `bitbucket:` section with `baseURL` and `token` (env var reference like GitHub)
-3. PR lifecycle operations (create, find, merge, review-poll, reviewer-fetch) work via Bitbucket Server REST API
-4. Project/repo are extracted from git remote URL — no user configuration needed
-5. Default branch comes from config `defaultBranch` (required for Bitbucket)
-6. All existing GitHub behavior unchanged when `provider` is `github` or omitted
+3. PRs can be created on Bitbucket Server during pr workflow
+4. PRs can be merged on Bitbucket Server when autoMerge is enabled
+5. Review status can be polled from Bitbucket Server when autoReview is enabled
+6. Default reviewers are assigned automatically (degrades gracefully if not available)
+7. Project/repo are extracted from git remote URL — no user configuration needed
+8. Default branch comes from config `defaultBranch` (required for Bitbucket)
+9. All existing GitHub behavior unchanged when `provider` is `github` or omitted
 
 API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 
@@ -51,7 +53,7 @@ API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 - Do NOT change existing git provider interfaces — implement new types behind them
 - Do NOT remove `gh` CLI support — it remains the GitHub implementation
 - Existing tests must pass unchanged
-- Bitbucket Server API v1.0 (REST) — no plugins or extensions required
+- Core PR operations use Bitbucket Server REST API v1.0 only; reviewer suggestions use the default-reviewers plugin (standard in 7.x+, degrades gracefully if absent)
 - Token auth only (no OAuth flow for Bitbucket Server)
 
 ## Security / Abuse

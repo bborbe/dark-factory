@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.46.1
+
+- docs: add notifications spec (Telegram + Discord) with tokenEnv pattern and security constraints
+
 ## v0.46.0
 
 - feat: detect stuck containers by polling log for `DARK-FACTORY-REPORT` marker and calling `docker stop` after 2-minute grace period via `run.CancelOnFirstFinish`

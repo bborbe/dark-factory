@@ -1,10 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Removed ResetFailed startup calls from Process and ProcessQueue, changed processExistingQueued to return error on prompt failure, daemon mode logs warning instead of stopping, one-shot mode propagates error, and added tests covering all new behaviors.
 container: dark-factory-172-fix-stop-on-failure
 dark-factory-version: v0.44.0
 created: "2026-03-11T09:50:00Z"
 queued: "2026-03-11T15:34:56Z"
-started: "2026-03-11T16:45:29Z"
+started: "2026-03-11T18:34:10Z"
+completed: "2026-03-11T18:40:05Z"
 ---
 <summary>
 - One-shot mode stops and exits with an error when a prompt fails, instead of resetting and retrying forever

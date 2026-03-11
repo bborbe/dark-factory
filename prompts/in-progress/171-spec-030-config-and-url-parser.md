@@ -1,12 +1,12 @@
 ---
-status: failed
+status: approved
 spec: ["030"]
 container: dark-factory-171-spec-030-config-and-url-parser
 dark-factory-version: v0.44.0
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T13:26:27Z"
-started: "2026-03-11T13:26:29Z"
-completed: "2026-03-11T13:26:29Z"
+started: "2026-03-11T15:10:46Z"
+completed: "2026-03-11T15:10:46Z"
 branch: dark-factory/bitbucket-server-pr-workflow
 ---
 <summary>

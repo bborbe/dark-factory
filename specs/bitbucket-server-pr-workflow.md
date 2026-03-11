@@ -14,7 +14,7 @@ status: draft
 
 `workflow: pr` is fully GitHub-dependent — 6+ operations use `gh` CLI: create PR, view PR, merge PR, fetch reviews, fetch collaborators, get repo name. Running dark-factory with `workflow: pr` on Bitbucket Server (or GitLab, Gitea, etc.) fails immediately.
 
-The Octopus team uses Bitbucket Server. Currently limited to `workflow: direct` which means no PR review loop, no auto-merge, no review polling.
+Teams using Bitbucket Server are currently limited to `workflow: direct` which means no PR review loop, no auto-merge, no review polling.
 
 ## Goal
 
@@ -32,12 +32,12 @@ After this work, `workflow: pr` creates PRs on Bitbucket Server via its REST API
 
 1. New config field `provider: bitbucket-server` (default: `github`) in `.dark-factory.yaml`
 2. New config section `bitbucket:` with `baseURL` and `token` (env var reference like GitHub)
-3. `PRCreator` creates Bitbucket Server PRs via REST API (`POST /rest/api/1.0/projects/{project}/repos/{repo}/pull-requests`)
-4. `PRMerger` merges PRs via REST API (`POST .../pull-requests/{id}/merge`)
-5. `ReviewFetcher` fetches PR reviews/approvals via REST API
-6. `CollaboratorFetcher` returns configured reviewers (Bitbucket Server has no direct collaborator API equivalent — use config list)
-7. `RepoNameFetcher` extracts project/repo from git remote URL (no API call needed)
-8. All existing GitHub behavior unchanged when `provider: github` (default)
+3. Bitbucket Server implementations of all git provider interfaces: `PRCreator`, `PRMerger`, `ReviewFetcher`, `CollaboratorFetcher`, `RepoNameFetcher`
+4. Factory selects GitHub or Bitbucket implementations based on `provider` config
+5. `Brancher.DefaultBranch` uses config `defaultBranch` (required for Bitbucket — no API equivalent to `gh repo view`)
+6. All existing GitHub behavior unchanged when `provider: github` (default)
+
+API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 
 ## Constraints
 
@@ -83,10 +83,10 @@ workflow: pr
 provider: bitbucket-server
 defaultBranch: master
 bitbucket:
-  baseURL: https://bitbucket.seibert.cloud
+  baseURL: https://bitbucket.example.com
   token: $BITBUCKET_TOKEN
 ```
 
 ## Do-Nothing Option
 
-Stay on `workflow: direct` for Bitbucket projects. Acceptable short-term — no PR review loop, but code still gets committed and pushed. The cost is losing the review-fix loop and auto-merge capabilities for Octopus projects.
+Stay on `workflow: direct` for Bitbucket projects. Acceptable short-term — no PR review loop, but code still gets committed and pushed. The cost is losing the review-fix loop and auto-merge capabilities for Bitbucket-hosted projects.

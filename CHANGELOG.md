@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.45.0
+
+- feat: add provider enum and Bitbucket Server config with URL parser for git remote detection
+- feat: add stuck container detection prompt with `run.CancelOnFirstFinish` pattern
+- chore: bump default container image to claude-yolo v0.3.0
+- chore: queue prompts 173-198 for execution
+
 ## v0.44.3
 
 - fix: stop infinite retry cycle — one-shot mode (`ProcessQueue`) exits non-zero on prompt failure; daemon mode (`Process`) logs a warning and stays alive; failed prompts require explicit `dark-factory prompt retry` to re-enter the queue

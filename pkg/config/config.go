@@ -22,6 +22,12 @@ type GitHubConfig struct {
 	Token string `yaml:"token"`
 }
 
+// BitbucketConfig holds Bitbucket Server-specific configuration.
+type BitbucketConfig struct {
+	BaseURL  string `yaml:"baseURL"`
+	TokenEnv string `yaml:"tokenEnv"`
+}
+
 // PromptsConfig holds directories for the prompt lifecycle.
 type PromptsConfig struct {
 	InboxDir      string `yaml:"inboxDir"`
@@ -63,6 +69,8 @@ type Config struct {
 	UseCollaborators  bool              `yaml:"useCollaborators"`
 	PollIntervalSec   int               `yaml:"pollIntervalSec"`
 	GitHub            GitHubConfig      `yaml:"github"`
+	Provider          Provider          `yaml:"provider"`
+	Bitbucket         BitbucketConfig   `yaml:"bitbucket"`
 	Env               map[string]string `yaml:"env,omitempty"`
 }
 
@@ -96,6 +104,8 @@ func Defaults() Config {
 		PollIntervalSec:   60,
 		UseCollaborators:  false,
 		GitHub:            GitHubConfig{},
+		Provider:          ProviderGitHub,
+		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
 	}
 }
 
@@ -153,6 +163,14 @@ func (c Config) Validate(ctx context.Context) error {
 			}),
 		),
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
+		validation.Name("provider", validation.HasValidationFunc(func(ctx context.Context) error {
+			provider := c.Provider
+			if provider == "" {
+				provider = ProviderGitHub
+			}
+			return provider.Validate(ctx)
+		})),
+		validation.Name("bitbucket", validation.HasValidationFunc(c.validateBitbucketConfig)),
 		validation.Name("netrcFile", validation.HasValidationFunc(c.validateNetrcFile)),
 		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
 		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
@@ -172,6 +190,21 @@ func (c Config) validateAutoReview(ctx context.Context) error {
 	}
 	if len(c.AllowedReviewers) == 0 && !c.UseCollaborators {
 		return errors.Errorf(ctx, "autoReview requires allowedReviewers or useCollaborators: true")
+	}
+	return nil
+}
+
+// validateBitbucketConfig validates the bitbucket configuration when provider is bitbucket-server.
+func (c Config) validateBitbucketConfig(ctx context.Context) error {
+	provider := c.Provider
+	if provider == "" {
+		provider = ProviderGitHub
+	}
+	if provider != ProviderBitbucketServer {
+		return nil
+	}
+	if c.Bitbucket.BaseURL == "" {
+		return errors.Errorf(ctx, "bitbucket.baseURL is required when provider is bitbucket-server")
 	}
 	return nil
 }
@@ -251,6 +284,21 @@ func (c Config) ResolvedGitHubToken() string {
 	token := resolveEnvVar(c.GitHub.Token)
 	if token == "" {
 		slog.Warn("github.token configured but env var is empty, using default gh auth")
+	}
+	return token
+}
+
+// ResolvedBitbucketToken reads the Bitbucket token from the env var named in TokenEnv.
+// Returns empty string when not configured or env var is empty.
+// Uses os.Getenv directly (not resolveEnvVar) because tokenEnv holds the env var name
+// (e.g. "BITBUCKET_TOKEN"), not a ${VAR} reference that resolveEnvVar expects.
+func (c Config) ResolvedBitbucketToken() string {
+	if c.Bitbucket.TokenEnv == "" {
+		return ""
+	}
+	token := os.Getenv(c.Bitbucket.TokenEnv)
+	if token == "" {
+		slog.Warn("bitbucket.tokenEnv configured but env var is empty", "env", c.Bitbucket.TokenEnv)
 	}
 	return token
 }

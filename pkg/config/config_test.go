@@ -1481,4 +1481,40 @@ worktree: false
 			Expect(cfg.ResolvedGitHubToken()).To(Equal("literal-token"))
 		})
 	})
+
+	Describe("Validate provider field", func() {
+		Context("provider field", func() {
+			It("accepts github provider", func() {
+				cfg := config.Defaults()
+				cfg.Provider = config.ProviderGitHub
+				Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+			})
+
+			It("accepts bitbucket-server provider with baseURL", func() {
+				cfg := config.Defaults()
+				cfg.Provider = config.ProviderBitbucketServer
+				cfg.Bitbucket.BaseURL = "https://bitbucket.example.com"
+				cfg.Bitbucket.TokenEnv = "BITBUCKET_TOKEN"
+				Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+			})
+
+			It("rejects bitbucket-server without baseURL", func() {
+				cfg := config.Defaults()
+				cfg.Provider = config.ProviderBitbucketServer
+				cfg.Bitbucket.BaseURL = ""
+				Expect(cfg.Validate(ctx)).To(HaveOccurred())
+			})
+
+			It("rejects invalid provider", func() {
+				cfg := config.Defaults()
+				cfg.Provider = config.Provider("invalid")
+				Expect(cfg.Validate(ctx)).To(HaveOccurred())
+			})
+
+			It("default provider is github", func() {
+				cfg := config.Defaults()
+				Expect(cfg.Provider).To(Equal(config.ProviderGitHub))
+			})
+		})
+	})
 })

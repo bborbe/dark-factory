@@ -6,7 +6,7 @@ Set up a new or existing project to use the dark-factory pipeline.
 
 - **dark-factory** installed (`go install github.com/bborbe/dark-factory@latest`)
 - **Docker** running
-- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.2.5`)
+- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.3.0`)
 - **~/.claude-yolo/** configured (see main README)
 
 ## Step 1: Choose Workflow
@@ -106,7 +106,7 @@ grep "Dark Factory" CLAUDE.md       # workflow section exists
 | `defaultBranch` | (auto-detected) | Required for non-GitHub repos |
 | `autoMerge` | `false` | Auto-merge PR after checks (requires `pr`) |
 | `autoRelease` | `false` | Create release after merge (requires `autoMerge`) |
-| `containerImage` | `docker.io/bborbe/claude-yolo:v0.2.5` | YOLO Docker image |
+| `containerImage` | `docker.io/bborbe/claude-yolo:v0.3.0` | YOLO Docker image |
 | `model` | `claude-sonnet-4-6` | Claude model |
 | `debounceMs` | `500` | Watcher debounce in ms |
 | `serverPort` | `0` | REST API port (0 = disabled) |

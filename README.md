@@ -21,7 +21,7 @@ You come back                       ←── changes committed and pushed
 
 - **Go 1.24+** — to build dark-factory
 - **Docker** — to run claude-yolo containers
-- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.2.5`
+- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.3.0`
 - **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Setup](docs/yolo-container-setup.md))
 - **DARK_FACTORY_CLAUDE_CONFIG_DIR** — set to `~/.claude-yolo` (otherwise defaults to `~/.claude`)
 
@@ -124,7 +124,7 @@ Optional `.dark-factory.yaml` in project root:
 workflow: direct                                     # "direct" (default) or "pr"
 autoMerge: false                                     # auto-merge PR (requires pr workflow)
 autoRelease: false                                   # create release after merge
-containerImage: docker.io/bborbe/claude-yolo:v0.2.5  # YOLO Docker image
+containerImage: docker.io/bborbe/claude-yolo:v0.3.0  # YOLO Docker image
 model: claude-sonnet-4-6                             # Claude model
 serverPort: 0                                        # REST API port (0 = disabled)
 ```

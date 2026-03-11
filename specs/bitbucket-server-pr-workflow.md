@@ -28,25 +28,38 @@ After this work, `workflow: pr` creates PRs on Bitbucket Server via its REST API
 - No changes to Docker executor or prompt processing
 - No migration of existing GitHub-specific config — GitHub remains default
 
+## Assumptions
+
+- Git remote URL follows standard Bitbucket Server formats: `ssh://host:port/project/repo.git` or `https://host/scm/project/repo.git`
+- `defaultBranch` config field already exists (added in v0.33.1) — required for Bitbucket (no API equivalent)
+- Bitbucket Server 7.x+ (REST API v1.0, default-reviewers plugin included by default)
+- Default-reviewers plugin is installed (standard in Bitbucket Server, not a third-party addon)
+
 ## Desired Behavior
 
-1. New config field `provider: bitbucket-server` (default: `github`) in `.dark-factory.yaml`
-2. New config section `bitbucket:` with `baseURL` and `token` (env var reference like GitHub)
-3. Bitbucket Server implementations of all git provider interfaces: `PRCreator`, `PRMerger`, `ReviewFetcher`, `CollaboratorFetcher`, `RepoNameFetcher`
-4. Factory selects GitHub or Bitbucket implementations based on `provider` config
-5. `Brancher.DefaultBranch` uses config `defaultBranch` (required for Bitbucket — no API equivalent to `gh repo view`)
-6. All existing GitHub behavior unchanged when `provider: github` (default)
+1. Config accepts `provider: bitbucket-server` (default: `github`)
+2. Config accepts `bitbucket:` section with `baseURL` and `token` (env var reference like GitHub)
+3. PR lifecycle operations (create, find, merge, review-poll, reviewer-fetch) work via Bitbucket Server REST API
+4. Project/repo are extracted from git remote URL — no user configuration needed
+5. Default branch comes from config `defaultBranch` (required for Bitbucket)
+6. All existing GitHub behavior unchanged when `provider` is `github` or omitted
 
 API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 
 ## Constraints
 
-- Do NOT change the `Brancher`, `PRCreator`, `PRMerger`, `ReviewFetcher` interfaces — implement new types behind them
-- Do NOT add new dependencies for HTTP client — use stdlib `net/http`
+- Do NOT change existing git provider interfaces — implement new types behind them
 - Do NOT remove `gh` CLI support — it remains the GitHub implementation
 - Existing tests must pass unchanged
 - Bitbucket Server API v1.0 (REST) — no plugins or extensions required
 - Token auth only (no OAuth flow for Bitbucket Server)
+
+## Security / Abuse
+
+- **Token in logs**: bearer token must not appear in log output or error messages — redact before logging
+- **Token scope**: requires project-write permission (create PR, merge PR); read-only tokens will fail at PR creation with 403
+- **SSRF via `baseURL`**: user-supplied URL is trusted (config file is local, not user input) — no additional validation needed
+- **Token storage**: token resolved from env var or config file — never hardcoded, never committed
 
 ## Failure Modes
 
@@ -55,8 +68,11 @@ API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 | Invalid `provider` value | Config validation error at startup | Fix config |
 | Bitbucket Server unreachable | PR creation fails, prompt marked failed | Retry after fixing network |
 | Token expired/invalid | 401 from API, prompt marked failed | Refresh token, retry |
+| Token lacks write permission | 403 from API, prompt marked failed | Use token with project-write scope |
 | PR merge conflict | Merge fails, prompt marked failed | Manual resolution |
 | Missing `bitbucket.baseURL` when provider=bitbucket-server | Config validation error | Add required field |
+| Default-reviewers plugin not installed | Reviewer fetch returns empty list, PR created without reviewers | Install plugin or configure `allowedReviewers` in config |
+| Unparseable git remote URL | Config validation error at startup | Fix remote URL format |
 
 ## Acceptance Criteria
 
@@ -68,7 +84,9 @@ API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 - [ ] Review status fetched from Bitbucket Server when autoReview enabled
 - [ ] `defaultBranch` config used (no `gh repo view` fallback attempted)
 - [ ] All existing tests pass
-- [ ] New tests cover Bitbucket provider creation, config validation, and API error paths
+- [ ] Config validation test: `provider=invalid` returns error
+- [ ] API error test: 401 response marks prompt failed
+- [ ] Token is not logged in any output
 
 ## Verification
 
@@ -76,8 +94,8 @@ API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 make precommit
 ```
 
-Integration test with real Bitbucket Server instance (manual, not automated):
-```
+Manual integration test with real Bitbucket Server instance:
+```yaml
 # .dark-factory.yaml
 workflow: pr
 provider: bitbucket-server
@@ -89,4 +107,4 @@ bitbucket:
 
 ## Do-Nothing Option
 
-Stay on `workflow: direct` for Bitbucket projects. Acceptable short-term — no PR review loop, but code still gets committed and pushed. The cost is losing the review-fix loop and auto-merge capabilities for Bitbucket-hosted projects.
+Stay on `workflow: direct` for Bitbucket projects. Acceptable short-term — no PR review loop, but code still gets committed and pushed. Over time, teams lose the review-fix loop and auto-merge, requiring manual branch management and PR creation for every prompt.

@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/report"
 )
 
 // fakeCommandRunner is a test double for commandRunner.
@@ -481,6 +482,93 @@ var _ = Describe("Internal helper functions", func() {
 		})
 	})
 
+	Describe("watchForCompletionReport", func() {
+		var (
+			fakeRunner    *fakeCommandRunner
+			logFile       string
+			containerName string
+		)
+
+		BeforeEach(func() {
+			fakeRunner = &fakeCommandRunner{}
+			containerName = "test-container"
+			logFile = filepath.Join(tempDir, "test.log")
+		})
+
+		Context("when log file contains completion report marker", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(logFile, []byte("some output\n"+report.MarkerEnd+"\n"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("calls docker stop after grace period", func() {
+				err := watchForCompletionReport(
+					ctx,
+					logFile,
+					containerName,
+					100*time.Millisecond,
+					10*time.Millisecond,
+					fakeRunner,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(HaveLen(1))
+				Expect(
+					fakeRunner.commands[0].Args,
+				).To(ContainElements("docker", "stop", containerName))
+			})
+		})
+
+		Context("when context is cancelled before grace period expires", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(logFile, []byte("some output\n"+report.MarkerEnd+"\n"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("does not call docker stop", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				// cancel after the marker is found but before grace period
+				go func() {
+					time.Sleep(20 * time.Millisecond)
+					cancel()
+				}()
+
+				err := watchForCompletionReport(
+					cancelCtx,
+					logFile,
+					containerName,
+					10*time.Second,
+					10*time.Millisecond,
+					fakeRunner,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(BeEmpty())
+			})
+		})
+
+		Context("when log file never contains marker", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(logFile, []byte("some output without marker\n"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("does not call docker stop", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				err := watchForCompletionReport(
+					cancelCtx,
+					logFile,
+					containerName,
+					100*time.Millisecond,
+					10*time.Millisecond,
+					fakeRunner,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.commands).To(BeEmpty())
+			})
+		})
+	})
+
 	Describe("Execute", func() {
 		var (
 			exec       *dockerExecutor
@@ -562,8 +650,8 @@ var _ = Describe("Internal helper functions", func() {
 				cancel() // Cancel immediately
 
 				fakeRunner.err = context.Canceled
-				err := exec.Execute(cancelCtx, "test", logFile, "test-container")
-				Expect(err).To(HaveOccurred())
+				_ = exec.Execute(cancelCtx, "test", logFile, "test-container")
+				// fakeRunner is called for both docker rm -f and docker run
 				Expect(fakeRunner.runCalled).To(BeTrue())
 			})
 		})

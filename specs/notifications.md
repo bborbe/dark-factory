@@ -19,19 +19,24 @@ Dark-factory detects human-attention events and pushes a notification to a confi
 - Review-fix loop hits retry limit — needs eyes on the PR
 - Spec auto-generation failed — still `approved` after timeout
 
-## Notification channels (candidates)
+## Notification channels
 
-- Slack webhook
-- ntfy.sh (simple HTTP push, works on phone)
-- Telegram bot
-- macOS notification (local only)
+- Telegram bot (first — best mobile experience, simple API)
+- Discord webhook (second — single HTTP POST, no bot needed)
 
 ## Config sketch
 
 ```yaml
 notify:
-  channel: slack
-  webhook: ${SLACK_WEBHOOK_URL}
+  channel: telegram
+  botToken: ${TELEGRAM_BOT_TOKEN}
+  chatID: ${TELEGRAM_CHAT_ID}
+```
+
+```yaml
+notify:
+  channel: discord
+  webhook: ${DISCORD_WEBHOOK_URL}
 ```
 
 ## Notes

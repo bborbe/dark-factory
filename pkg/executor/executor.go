@@ -15,8 +15,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
+	"github.com/bborbe/run"
+
+	"github.com/bborbe/dark-factory/pkg/report"
 )
 
 //counterfeiter:generate -o ../../mocks/executor.go --fake-name Executor . Executor
@@ -136,12 +140,65 @@ func (e *dockerExecutor) Execute(
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
 	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
 
-	// Run and wait for completion
-	if err := e.commandRunner.Run(ctx, cmd); err != nil {
+	// Run container and watcher in parallel; whichever finishes first cancels the other.
+	if err := run.CancelOnFirstFinish(ctx,
+		func(ctx context.Context) error {
+			return e.commandRunner.Run(ctx, cmd)
+		},
+		func(ctx context.Context) error {
+			return watchForCompletionReport(ctx, logFile, containerName, 2*time.Minute, 10*time.Second, e.commandRunner)
+		},
+	); err != nil {
 		return errors.Wrap(ctx, err, "docker run failed")
 	}
 
 	return nil
+}
+
+// watchForCompletionReport polls the log file for the completion report marker.
+// Once the marker is found, it waits for gracePeriod and then stops the container.
+// Returns nil if ctx is cancelled (normal container exit) or after stopping the container.
+func watchForCompletionReport(
+	ctx context.Context,
+	logFile string,
+	containerName string,
+	gracePeriod time.Duration,
+	pollInterval time.Duration,
+	runner commandRunner,
+) error {
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			// #nosec G304 -- logFile is derived from prompt filename, not user input
+			content, err := os.ReadFile(logFile)
+			if err != nil {
+				slog.Debug("watchForCompletionReport: failed to read log file", "error", err)
+				continue
+			}
+			if strings.Contains(string(content), report.MarkerEnd) {
+				slog.Info(
+					"stopping stuck container: completion report found but container still running",
+					"containerName",
+					containerName,
+				)
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(gracePeriod):
+				}
+				// #nosec G204 -- containerName is derived from prompt filename, not user input
+				stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
+				if err := runner.Run(ctx, stopCmd); err != nil {
+					slog.Debug("docker stop", "containerName", containerName, "error", err)
+				}
+				return nil
+			}
+		}
+	}
 }
 
 // prepareLogFile creates the log directory and opens the log file for writing.

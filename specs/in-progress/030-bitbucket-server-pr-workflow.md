@@ -48,7 +48,7 @@ After this work, `workflow: pr` creates PRs on Bitbucket Server via its REST API
 8. Default branch comes from config `defaultBranch` (required for Bitbucket)
 9. All existing GitHub behavior unchanged when `provider` is `github` or omitted
 
-API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
+Implementation guidance (not part of spec contract): see `docs/bitbucket-server-api-reference.md`
 
 ## Constraints
 
@@ -91,6 +91,7 @@ API details and interface mapping: see `docs/bitbucket-server-api-reference.md`
 - [ ] Config validation test: `provider=invalid` returns error
 - [ ] API error test: 401 response marks prompt failed
 - [ ] Token is not logged in any output
+- [ ] PR created successfully without reviewers when default-reviewers plugin unavailable
 
 ## Verification
 

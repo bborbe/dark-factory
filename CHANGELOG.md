@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.5
+
+- fix: wrap bare `return err` calls in processor, cloner, and collaborator_fetcher with `errors.Wrap` for error context
+
 ## v0.51.4
 
 - fix: add ctx.Done() cancellation guards to loops in generateFromApprovedSpecs, approveInboxPrompts, and scanExistingInProgress

@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/bborbe/errors"
 )
 
 //counterfeiter:generate -o ../../mocks/collaborator-fetcher.go --fake-name CollaboratorFetcher . CollaboratorFetcher
@@ -101,7 +103,7 @@ func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(ctx, err, "gh repo view")
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -130,7 +132,7 @@ func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]str
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, "gh api collaborators")
 	}
 
 	var result []string

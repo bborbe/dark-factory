@@ -37,13 +37,13 @@ func (c *cloner) Clone(ctx context.Context, srcDir string, destDir string, branc
 	slog.Info("cloning repo", "src", srcDir, "dest", destDir, "branch", branch)
 
 	if err := c.removeStale(ctx, destDir); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "remove stale clone")
 	}
 	if err := c.gitClone(ctx, srcDir, destDir); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "git clone")
 	}
 	if err := c.setRealRemote(ctx, srcDir, destDir); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "set real remote")
 	}
 	return c.checkoutBranch(ctx, destDir, branch)
 }

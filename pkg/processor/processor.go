@@ -225,7 +225,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Auto-set status to queued if empty or created (folder location is source of truth)
 		if err := p.autoSetQueuedStatus(ctx, &pr); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "auto-set queued status")
 		}
 
 		// Check if prompt should be skipped (validation or previously failed)

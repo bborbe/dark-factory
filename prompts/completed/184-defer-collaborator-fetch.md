@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Deferred collaborator fetch from factory init to first ReviewPoller iteration using lazy CollaboratorFetcher resolution
+container: dark-factory-184-defer-collaborator-fetch
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-11T23:54:09Z"
+completed: "2026-03-11T23:59:18Z"
 ---
 
 <summary>

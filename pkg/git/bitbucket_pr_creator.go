@@ -5,21 +5,17 @@
 package git
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
+	"log/slog"
+	"net/url"
 
 	"github.com/bborbe/errors"
 )
 
 // bitbucketPRCreator implements PRCreator for Bitbucket Server.
 type bitbucketPRCreator struct {
-	baseURL       string
-	token         string
+	client        *bitbucketClient
 	project       string
 	repo          string
 	defaultBranch string
@@ -36,8 +32,7 @@ func NewBitbucketPRCreator(
 	reviewers []string,
 ) PRCreator {
 	return &bitbucketPRCreator{
-		baseURL:       strings.TrimRight(baseURL, "/"),
-		token:         token,
+		client:        newBitbucketClient(baseURL, token),
 		project:       project,
 		repo:          repo,
 		defaultBranch: defaultBranch,
@@ -124,75 +119,37 @@ func (b *bitbucketPRCreator) Create(
 		Reviewers: reviewers,
 	}
 
-	data, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "marshal PR request")
-	}
-
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests",
-		b.baseURL, b.project, b.repo,
-	)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(data))
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "create PR request")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "execute create PR request")
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusCreated {
-		return "", errors.Errorf(ctx, "create PR returned status %d: %s", resp.StatusCode, respBody)
-	}
-
 	var prResp bbPRResponse
-	if err := json.Unmarshal(respBody, &prResp); err != nil {
-		return "", errors.Wrap(ctx, err, "parse create PR response")
+	path := fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests", b.project, b.repo)
+	if err := b.client.do(ctx, "POST", path, reqBody, &prResp); err != nil {
+		return "", errors.Wrap(ctx, err, "create pull request")
 	}
 
 	if len(prResp.Links.Self) > 0 {
+		slog.Info("created Bitbucket PR", "id", prResp.ID, "url", prResp.Links.Self[0].Href)
 		return prResp.Links.Self[0].Href, nil
 	}
-	return fmt.Sprintf(
+	prURL := fmt.Sprintf(
 		"%s/projects/%s/repos/%s/pull-requests/%d",
-		b.baseURL, b.project, b.repo, prResp.ID,
-	), nil
+		b.client.baseURL, b.project, b.repo, prResp.ID,
+	)
+	slog.Info("created Bitbucket PR", "id", prResp.ID, "url", prURL)
+	return prURL, nil
 }
 
 // FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
 func (b *bitbucketPRCreator) FindOpenPR(ctx context.Context, branch string) (string, error) {
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests?state=OPEN&at=refs/heads/%s",
-		b.baseURL, b.project, b.repo, branch,
+	branchRef := url.QueryEscape("refs/heads/" + branch)
+	path := fmt.Sprintf(
+		"/rest/api/1.0/projects/%s/repos/%s/pull-requests?state=OPEN&at=%s",
+		b.project, b.repo, branchRef,
 	)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "create find PR request")
-	}
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "execute find PR request")
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf(ctx, "find PR returned status %d: %s", resp.StatusCode, respBody)
-	}
 
 	var result struct {
 		Values []bbPRResponse `json:"values"`
 	}
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		return "", errors.Wrap(ctx, err, "parse find PR response")
+	if err := b.client.do(ctx, "GET", path, nil, &result); err != nil {
+		return "", errors.Wrap(ctx, err, "find open pull request")
 	}
 
 	if len(result.Values) == 0 {
@@ -205,7 +162,7 @@ func (b *bitbucketPRCreator) FindOpenPR(ctx context.Context, branch string) (str
 	}
 	return fmt.Sprintf(
 		"%s/projects/%s/repos/%s/pull-requests/%d",
-		b.baseURL, b.project, b.repo, pr.ID,
+		b.client.baseURL, b.project, b.repo, pr.ID,
 	), nil
 }
 

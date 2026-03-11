@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.0
+
+- feat: add shared bitbucketClient HTTP helper with redactToken for Bitbucket Server implementations in pkg/git
+- refactor: rename extractBitbucketPRID to parseBitbucketPRID with improved URL parsing that handles /overview suffix and non-numeric IDs
+- test: add unit tests for parseBitbucketPRID and redactToken
+
 ## v0.50.0
 
 - feat: add Provider enum (github, bitbucket-server) with validation to pkg/config

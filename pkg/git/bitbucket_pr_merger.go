@@ -6,10 +6,9 @@ package git
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,8 +17,7 @@ import (
 
 // bitbucketPRMerger implements PRMerger for Bitbucket Server.
 type bitbucketPRMerger struct {
-	baseURL      string
-	token        string
+	client       *bitbucketClient
 	project      string
 	repo         string
 	pollInterval time.Duration
@@ -34,8 +32,7 @@ func NewBitbucketPRMerger(
 	repo string,
 ) PRMerger {
 	return &bitbucketPRMerger{
-		baseURL:      strings.TrimRight(baseURL, "/"),
-		token:        token,
+		client:       newBitbucketClient(baseURL, token),
 		project:      project,
 		repo:         repo,
 		pollInterval: 30 * time.Second,
@@ -51,7 +48,7 @@ type bbPRDetail struct {
 
 // WaitAndMerge polls until the PR is open then merges it.
 func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) error {
-	prID, err := extractBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(prURL)
 	if err != nil {
 		return errors.Wrap(ctx, err, "extract PR ID from URL")
 	}
@@ -90,69 +87,40 @@ func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) erro
 }
 
 func (b *bitbucketPRMerger) fetchPR(ctx context.Context, prID int) (*bbPRDetail, error) {
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
-		b.baseURL, b.project, b.repo, prID,
-	)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "create fetch PR request")
-	}
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "execute fetch PR request")
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf(ctx, "fetch PR returned status %d: %s", resp.StatusCode, body)
-	}
-
 	var pr bbPRDetail
-	if err := json.Unmarshal(body, &pr); err != nil {
-		return nil, errors.Wrap(ctx, err, "parse PR response")
+	path := fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
+		b.project, b.repo, prID)
+	if err := b.client.do(ctx, "GET", path, nil, &pr); err != nil {
+		return nil, errors.Wrap(ctx, err, "fetch PR detail")
 	}
 	return &pr, nil
 }
 
 func (b *bitbucketPRMerger) mergePR(ctx context.Context, prID int, version int) error {
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/merge?version=%d",
-		b.baseURL, b.project, b.repo, prID, version,
+	path := fmt.Sprintf(
+		"/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/merge?version=%d",
+		b.project, b.repo, prID, version,
 	)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
-	if err != nil {
-		return errors.Wrap(ctx, err, "create merge PR request")
+	if err := b.client.do(ctx, "POST", path, nil, nil); err != nil {
+		return errors.Wrap(ctx, err, "merge pull request")
 	}
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return errors.Wrap(ctx, err, "execute merge PR request")
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf(ctx, "merge PR returned status %d: %s", resp.StatusCode, body)
-	}
+	slog.Info("merged Bitbucket PR", "id", prID)
 	return nil
 }
 
-// extractBitbucketPRID parses the PR ID from a Bitbucket Server PR URL.
-// Supports URLs like: https://bitbucket.example.com/projects/PRJ/repos/repo/pull-requests/42
-// Also supports bare numeric IDs passed as the URL.
-func extractBitbucketPRID(prURL string) (int, error) {
-	// Try to parse the last path segment as an int
+// parseBitbucketPRID extracts the numeric PR ID from a Bitbucket PR URL.
+// Expected format: .../pull-requests/{id} or .../pull-requests/{id}/overview
+func parseBitbucketPRID(prURL string) (int, error) {
 	parts := strings.Split(strings.TrimRight(prURL, "/"), "/")
-	if len(parts) > 0 {
-		var id int
-		if _, err := fmt.Sscanf(parts[len(parts)-1], "%d", &id); err == nil {
+	for i, part := range parts {
+		if part == "pull-requests" && i+1 < len(parts) {
+			idStr := parts[i+1]
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				return 0, fmt.Errorf("invalid PR ID %q in URL %q", idStr, prURL)
+			}
 			return id, nil
 		}
 	}
-	return 0, fmt.Errorf("cannot extract PR ID from URL %q", prURL)
+	return 0, fmt.Errorf("could not extract PR ID from URL %q", prURL)
 }

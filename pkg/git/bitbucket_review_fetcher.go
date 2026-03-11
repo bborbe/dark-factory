@@ -6,19 +6,14 @@ package git
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
 
 	"github.com/bborbe/errors"
 )
 
 // bitbucketReviewFetcher implements ReviewFetcher for Bitbucket Server.
 type bitbucketReviewFetcher struct {
-	baseURL string
-	token   string
+	client  *bitbucketClient
 	project string
 	repo    string
 }
@@ -31,8 +26,7 @@ func NewBitbucketReviewFetcher(
 	repo string,
 ) ReviewFetcher {
 	return &bitbucketReviewFetcher{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		token:   token,
+		client:  newBitbucketClient(baseURL, token),
 		project: project,
 		repo:    repo,
 	}
@@ -59,35 +53,16 @@ func (b *bitbucketReviewFetcher) FetchLatestReview(
 	prURL string,
 	allowedReviewers []string,
 ) (*ReviewResult, error) {
-	prID, err := extractBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(prURL)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "extract PR ID")
 	}
 
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/activities",
-		b.baseURL, b.project, b.repo, prID,
-	)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "create activities request")
-	}
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "execute activities request")
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf(ctx, "activities returned status %d: %s", resp.StatusCode, body)
-	}
-
 	var activities bbActivitiesResponse
-	if err := json.Unmarshal(body, &activities); err != nil {
-		return nil, errors.Wrap(ctx, err, "parse activities response")
+	path := fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/activities",
+		b.project, b.repo, prID)
+	if err := b.client.do(ctx, "GET", path, nil, &activities); err != nil {
+		return nil, errors.Wrap(ctx, err, "fetch PR activities")
 	}
 
 	allowed := make(map[string]bool, len(allowedReviewers))
@@ -118,44 +93,21 @@ func (b *bitbucketReviewFetcher) FetchLatestReview(
 	return last, nil
 }
 
-// FetchPRState returns the Bitbucket Server PR state: "OPEN", "MERGED", or "DECLINED".
+// FetchPRState returns the Bitbucket Server PR state: "OPEN", "MERGED", or "CLOSED".
+// Bitbucket's "DECLINED" is mapped to "CLOSED" for compatibility with the review poller.
 func (b *bitbucketReviewFetcher) FetchPRState(ctx context.Context, prURL string) (string, error) {
-	prID, err := extractBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(prURL)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "extract PR ID")
-	}
-
-	url := fmt.Sprintf(
-		"%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
-		b.baseURL, b.project, b.repo, prID,
-	)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "create PR state request")
-	}
-	req.Header.Set("Authorization", "Bearer "+b.token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "execute PR state request")
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf(
-			ctx,
-			"fetch PR state returned status %d: %s",
-			resp.StatusCode,
-			body,
-		)
 	}
 
 	var pr struct {
 		State string `json:"state"`
 	}
-	if err := json.Unmarshal(body, &pr); err != nil {
-		return "", errors.Wrap(ctx, err, "parse PR state response")
+	path := fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
+		b.project, b.repo, prID)
+	if err := b.client.do(ctx, "GET", path, nil, &pr); err != nil {
+		return "", errors.Wrap(ctx, err, "fetch PR state")
 	}
 
 	// Normalize DECLINED to CLOSED to match GitHub conventions expected by the review poller.

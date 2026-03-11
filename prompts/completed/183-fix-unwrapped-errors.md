@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Wrapped bare return err statements with errors.Wrap in processor.go, cloner.go, and collaborator_fetcher.go
+container: dark-factory-183-fix-unwrapped-errors
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-11T23:48:12Z"
+completed: "2026-03-11T23:54:05Z"
 ---
 
 <summary>

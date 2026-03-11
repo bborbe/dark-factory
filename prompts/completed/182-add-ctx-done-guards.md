@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added ctx.Done() cancellation guards to the top of three loops in generateFromApprovedSpecs, approveInboxPrompts, and scanExistingInProgress
+container: dark-factory-182-add-ctx-done-guards
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-11T23:43:23Z"
+completed: "2026-03-11T23:48:08Z"
 ---
 
 <summary>

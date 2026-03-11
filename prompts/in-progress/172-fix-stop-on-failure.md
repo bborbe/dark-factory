@@ -1,5 +1,5 @@
 ---
-status: executing
+status: approved
 container: dark-factory-172-fix-stop-on-failure
 dark-factory-version: v0.44.0
 created: "2026-03-11T09:50:00Z"

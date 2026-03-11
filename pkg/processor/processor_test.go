@@ -2825,40 +2825,9 @@ DARK-FACTORY-REPORT -->
 		cancel()
 	})
 
-	It("should return error when Process fails to reset failed prompts", func() {
-		mockManager.ResetFailedReturns(stderrors.New("reset failed"))
-
-		p := processor.NewProcessor(
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			filepath.Join(promptsDir, "log"),
-			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
-			ready,
-			false,
-			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
-			false,
-			false,
-			false,
-			mockAutoCompleter,
-			mockSpecLister,
-			"",
-			false,
-		)
-
-		err := p.Process(ctx)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("reset failed prompts"))
-	})
-
-	It("should return error when ListQueued fails during startup scan", func() {
+	It("should keep running when ListQueued fails during startup scan (daemon mode)", func() {
+		// Daemon mode swallows processExistingQueued errors — including ListQueued failures.
+		// Process must continue running until the context is cancelled.
 		mockManager.ListQueuedReturns(nil, stderrors.New("list queued failed"))
 
 		p := processor.NewProcessor(
@@ -2886,9 +2855,24 @@ DARK-FACTORY-REPORT -->
 			false,
 		)
 
-		err := p.Process(ctx)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("list queued prompts"))
+		errCh := make(chan error, 1)
+		go func() {
+			errCh <- p.Process(ctx)
+		}()
+
+		// Let it run the startup scan
+		time.Sleep(200 * time.Millisecond)
+
+		// Daemon must still be running — cancel and verify clean shutdown
+		cancel()
+		select {
+		case err := <-errCh:
+			Expect(err).NotTo(HaveOccurred())
+		case <-time.After(2 * time.Second):
+			Fail("processor did not stop within timeout")
+		}
+		// Executor was never called
+		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
 	})
 
 	It("should return error when CommitCompletedFile fails", func() {
@@ -5068,6 +5052,116 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Expect(mockPRMerger.WaitAndMergeCallCount()).To(Equal(0))
 
 			cancel()
+		})
+	})
+
+	Describe("stop-on-failure behavior", func() {
+		newProc := func() processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				false,
+				false,
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+			)
+		}
+
+		It("ProcessQueue returns non-nil error when a prompt fails", func() {
+			promptPath := filepath.Join(promptsDir, "001-fail.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+			p := newProc()
+			err := p.ProcessQueue(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("ProcessQueue does not call ResetFailed on startup", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			p := newProc()
+			err := p.ProcessQueue(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(mockManager.ResetFailedCallCount()).To(Equal(0))
+		})
+
+		It("Process does not call ResetFailed on startup", func() {
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			p := newProc()
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Let it run the startup scan
+			time.Sleep(200 * time.Millisecond)
+			cancel()
+
+			select {
+			case err := <-errCh:
+				Expect(err).NotTo(HaveOccurred())
+			case <-time.After(2 * time.Second):
+				Fail("processor did not stop within timeout")
+			}
+
+			Expect(mockManager.ResetFailedCallCount()).To(Equal(0))
+		})
+
+		It("Process continues running after prompt failure (daemon mode)", func() {
+			promptPath := filepath.Join(promptsDir, "001-fail-daemon.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			// First call returns the failing prompt; subsequent calls return empty
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			mockManager.AllPreviousCompletedReturns(true)
+			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+			p := newProc()
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- p.Process(ctx)
+			}()
+
+			// Wait for the executor to be called (prompt processed)
+			Eventually(func() int {
+				return mockExecutor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Daemon should still be running — cancel and verify clean nil return
+			cancel()
+			select {
+			case err := <-errCh:
+				Expect(err).To(BeNil())
+			case <-time.After(2 * time.Second):
+				Fail("processor did not stop within timeout")
+			}
 		})
 	})
 })

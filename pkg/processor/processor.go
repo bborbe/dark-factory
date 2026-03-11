@@ -118,11 +118,6 @@ func NewProcessor(
 func (p *processor) Process(ctx context.Context) error {
 	slog.Info("processor started")
 
-	// Reset failed prompts to queued on startup
-	if err := p.promptManager.ResetFailed(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reset failed prompts")
-	}
-
 	// Transition prompted specs with all prompts completed to verifying
 	if err := p.checkPromptedSpecs(ctx); err != nil {
 		return errors.Wrap(ctx, err, "check prompted specs on startup")
@@ -130,7 +125,8 @@ func (p *processor) Process(ctx context.Context) error {
 
 	// Process any existing queued prompts first
 	if err := p.processExistingQueued(ctx); err != nil {
-		return errors.Wrap(ctx, err, "process existing queued prompts")
+		slog.Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
+		// do NOT return — daemon continues running
 	}
 
 	slog.Info("waiting for changes")
@@ -150,13 +146,15 @@ func (p *processor) Process(ctx context.Context) error {
 			// Clear skipped prompts so all files get re-evaluated after fsnotify event
 			p.skippedPrompts = make(map[string]time.Time)
 			if err := p.processExistingQueued(ctx); err != nil {
-				return errors.Wrap(ctx, err, "process queued prompts")
+				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+				// do NOT return — daemon continues running
 			}
 
 		case <-ticker.C:
 			// Periodic scan for queued prompts (in case we missed a signal)
 			if err := p.processExistingQueued(ctx); err != nil {
-				return errors.Wrap(ctx, err, "periodic scan")
+				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+				// do NOT return — daemon continues running
 			}
 		}
 	}
@@ -166,11 +164,6 @@ func (p *processor) Process(ctx context.Context) error {
 // Unlike Process, it does not enter the event loop — suitable for one-shot / CI usage.
 func (p *processor) ProcessQueue(ctx context.Context) error {
 	slog.Info("processor started (one-shot)")
-
-	// Reset failed prompts to queued on startup
-	if err := p.promptManager.ResetFailed(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reset failed prompts")
-	}
 
 	// Transition prompted specs with all prompts completed to verifying
 	if err := p.checkPromptedSpecs(ctx); err != nil {
@@ -253,7 +246,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
 			p.handlePromptFailure(ctx, pr.Path, err)
-			return nil // failed — wait for watcher signal or periodic scan
+			return errors.Wrap(ctx, err, "prompt failed")
 		}
 
 		slog.Info("watching for queued prompts", "dir", p.queueDir)

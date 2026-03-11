@@ -559,9 +559,12 @@ func (p *processor) setupWorkflow(
 	if p.worktree {
 		return p.setupCloneWorkflowState(ctx, baseName, pf, state)
 	}
-	// In-place branch switching (when worktree is false and branch is set)
-	if branch := pf.Branch(); branch != "" {
-		return p.setupInPlaceBranchState(ctx, branch, state)
+	// In-place branch switching only applies when pr is enabled.
+	// When pr is false (and worktree is false) we work on the current branch and ignore the branch field.
+	if p.pr {
+		if branch := pf.Branch(); branch != "" {
+			return p.setupInPlaceBranchState(ctx, branch, state)
+		}
 	}
 	return state, nil
 }

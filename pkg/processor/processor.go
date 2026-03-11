@@ -1034,17 +1034,17 @@ func preparePromptForExecution(
 	promptPath string,
 	version string,
 	projectName string,
-) (baseName string, containerName string, title string, err error) {
-	baseName = strings.TrimSuffix(filepath.Base(promptPath), ".md")
+) (string, string, string, error) {
+	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
 	baseName = sanitizeContainerName(baseName)
-	containerName = projectName + "-" + baseName
+	containerName := projectName + "-" + baseName
 
 	pf.PrepareForExecution(containerName, version)
 	if err := pf.Save(ctx); err != nil {
 		return "", "", "", errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
-	title = pf.Title()
+	title := pf.Title()
 	if title == "" {
 		// Fallback to filename if no title found
 		title = strings.TrimSuffix(filepath.Base(promptPath), ".md")

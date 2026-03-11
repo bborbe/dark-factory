@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.1
+
+- fix: remove shadowed named return `err` in `preparePromptForExecution` to resolve golangci-lint `result err is always nil` warning
+
 ## v0.51.0
 
 - feat: add shared bitbucketClient HTTP helper with redactToken for Bitbucket Server implementations in pkg/git

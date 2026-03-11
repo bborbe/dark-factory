@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["030"]
+summary: Added shared bitbucketClient HTTP helper with redactToken, refactored all Bitbucket implementations to use it, renamed extractBitbucketPRID to parseBitbucketPRID, and added unit tests for parseBitbucketPRID and redactToken
+container: dark-factory-178-spec-030-bitbucket-client
+dark-factory-version: v0.48.0
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T17:44:53Z"
+started: "2026-03-11T23:10:56Z"
+completed: "2026-03-11T23:21:11Z"
 ---
 <summary>
 - A new Bitbucket Server HTTP client implements the same `PRCreator`, `PRMerger`, and `ReviewFetcher` interfaces the GitHub implementation uses — no interface changes required

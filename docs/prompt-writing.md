@@ -1,0 +1,200 @@
+# Prompt Writing Guide
+
+A prompt is a markdown file that tells the YOLO agent what to build. Each prompt produces one atomic, verifiable change.
+
+## When to Write Prompts Manually
+
+- **Simple standalone task** (1-2 prompts, no spec needed) — write directly
+- **Spec exists** — daemon auto-generates prompts from approved specs, but you can also write them manually for finer control
+
+## Creating a Prompt
+
+Use the Claude Code command:
+
+```
+/dark-factory:create-prompt
+```
+
+Or create manually in the `prompts/` inbox directory:
+
+```bash
+touch prompts/my-change.md
+```
+
+Use lowercase-kebab-case. Never number filenames — dark-factory assigns numbers on approve.
+
+## Prompt Structure
+
+### Frontmatter
+
+```yaml
+---
+status: created
+---
+```
+
+When linking to a spec:
+
+```yaml
+---
+spec: ["030"]
+status: created
+created: "2026-03-11T10:00:00Z"
+---
+```
+
+- `spec` must be a YAML array: `spec: ["030"]` not `spec: "030"`
+- Only use `spec`, `status`, `created`, `issue` — dark-factory adds the rest
+- `status: created` is the only valid inbox status
+
+### Body
+
+```xml
+<summary>
+5-10 bullet points describing WHAT this prompt achieves, not HOW.
+Written for human review — no file paths, no struct names.
+
+GOOD:
+- Projects can configure a validation command for all prompts
+- The command's exit code determines success or failure
+- Existing prompts continue to work unchanged
+
+BAD:
+- Adds `validationCommand` field to `Config` in `pkg/config/config.go`
+- Calls `exec.Command` in `pkg/executor/executor.go`
+</summary>
+
+<objective>
+What to build and why (1-3 sentences). State the end state, not the steps.
+</objective>
+
+<context>
+Read CLAUDE.md for project conventions.
+Read `pkg/config/config.go` — find the `Config` struct and `Validate` method.
+</context>
+
+<requirements>
+1. Specific, numbered, unambiguous steps
+2. Include exact file paths (repo-relative, not absolute)
+3. Include function/type names as anchors (not line numbers)
+4. Show old → new code patterns where helpful
+</requirements>
+
+<constraints>
+- Do NOT commit — dark-factory handles git
+- Existing tests must still pass
+- [Copy constraints from spec — agent has no memory between prompts]
+</constraints>
+
+<verification>
+Run `make precommit` -- must pass.
+</verification>
+```
+
+## Writing Rules
+
+### Specificity over brevity
+
+Longer, more specific prompts succeed more often. Include:
+- Exact file paths (repo-relative)
+- Function/type names as primary anchors
+- Line numbers only as optional hints (`~line 176`)
+- Old → new code patterns for find-and-replace
+- Library import paths
+
+### Anchor by name, not line number
+
+Line numbers go stale when prior prompts edit the same file:
+
+```
+BAD:  "At line 231, wrap the error"
+GOOD: "In ProcessQueue, after the autoSetQueuedStatus call, wrap the error"
+```
+
+### Copy constraints from spec
+
+The agent has no memory between prompts. Every prompt must repeat the relevant constraints from the spec.
+
+### One concern per prompt
+
+Smaller prompts succeed more often. Group coupled behaviors together, but don't mix unrelated changes.
+
+### Repo-relative paths only
+
+Dark-factory runs prompts in a Docker container. Never use absolute paths (`/Users/...`) or home-relative paths (`~/...`).
+
+## Decomposition
+
+When breaking a spec into multiple prompts:
+
+**The grouping test:** "Can these behaviors be verified independently?" If not, group them.
+
+**The verifiability test:** "Can I write a test that distinguishes before vs after?" If not, merge or sharpen.
+
+**Sequencing:** Most foundational prompt first. Each prompt's postconditions become the next prompt's preconditions.
+
+| Feature size | Typical prompts |
+|--------------|----------------|
+| Config change | 1 |
+| Single feature | 2-3 |
+| Major feature | 4-6 |
+| Full project bootstrap | 8-15 |
+
+## Prompt Definition of Done
+
+A prompt is ready for approval when ALL checks pass:
+
+**Structure:**
+- [ ] All sections present: `<summary>`, `<objective>`, `<context>`, `<requirements>`, `<constraints>`, `<verification>`
+- [ ] `<summary>` has 5-10 plain-language bullets (no file paths or jargon)
+- [ ] `<objective>` states end state in 1-3 sentences
+- [ ] `<requirements>` are numbered, specific, unambiguous
+- [ ] `<constraints>` copied from spec
+- [ ] `<verification>` has a runnable command
+
+**Accuracy:**
+- [ ] File paths exist and are correct
+- [ ] Function names and signatures match current code
+- [ ] No stale references to renamed/moved/deleted code
+- [ ] All paths are repo-relative
+
+**Quality:**
+- [ ] Independently verifiable
+- [ ] Libraries specified with import paths
+- [ ] No duplicates with completed prompts
+
+## Audit and Approve
+
+Always audit before approving:
+
+```
+/dark-factory:audit-prompt prompts/my-change.md
+```
+
+Then approve via CLI (never manually edit frontmatter):
+
+```bash
+dark-factory prompt approve my-change
+```
+
+This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a number, and sets `status: queued`.
+
+**Direct workflow:** Can approve multiple prompts at once — they execute sequentially on the same branch.
+
+**PR workflow:** Approve one at a time — each depends on the previous being merged.
+
+## Prompt Status Lifecycle
+
+| Status | Meaning | How it happens |
+|--------|---------|----------------|
+| `created` | In inbox, not yet queued | Human/AI creates file |
+| `queued` | Ready for execution | `dark-factory prompt approve` |
+| `executing` | YOLO container running | Auto (dark-factory) |
+| `completed` | Done, archived | Auto (dark-factory) |
+| `failed` | Needs fix or retry | Auto (dark-factory) |
+
+Completed prompts are immutable. If behavior changes later, create a new prompt.
+
+## Next Steps
+
+- Run the pipeline: [running.md](running.md)

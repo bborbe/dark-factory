@@ -16,13 +16,13 @@ Spec → Audit → Approve → [auto-generate prompts] → Audit → Approve →
 |------|-----|--------|-------------|
 | 1. Create spec | Human + Claude | Write behavioral spec for multi-prompt features | `/dark-factory:create-spec` |
 | 2. Audit spec | Claude | Validate spec against preflight checklist | `/dark-factory:audit-spec` |
-| 3. Approve spec | Human confirms, Claude executes | Move spec from inbox to queue | `dark-factory spec approve <name>` |
+| 3. Approve spec | **Human confirms first**, then Claude executes | Move spec from inbox to queue | `dark-factory spec approve <name>` |
 | 4. Generate prompts | dark-factory (automatic) | Spec watcher generates prompts from approved spec | Automatic — daemon watches `specs/in-progress/` |
 | 5. Create prompts (standalone) | Human + Claude | Write prompts for simple changes (no spec needed) | `/dark-factory:create-prompt` |
 | 6. Audit prompts | Claude | Validate prompt against Definition of Done | `/dark-factory:audit-prompt` |
-| 7. Approve prompts | Human confirms, Claude executes | Move prompts from inbox to queue | `dark-factory prompt approve <name>` |
+| 7. Approve prompts | **Human confirms first**, then Claude executes | Move prompts from inbox to queue | `dark-factory prompt approve <name>` |
 | 8. Execute prompts | dark-factory (automatic) | YOLO container runs each prompt sequentially | Automatic — daemon watches `prompts/in-progress/` |
-| 9. Start daemon | Human confirms, Claude executes | Start dark-factory to process queue | `dark-factory daemon` (background) |
+| 9. Start daemon | **Human confirms first**, then Claude executes | Start dark-factory to process queue | `dark-factory daemon` (background) |
 
 ### When to Use Specs vs Standalone Prompts
 
@@ -123,7 +123,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 - Never number filenames — dark-factory assigns numbers on approve
 - Never manually edit frontmatter status — use CLI commands above
 - Always audit before approving (`/dark-factory:audit-prompt`, `/dark-factory:audit-spec`)
-- **Never approve or run dark-factory without explicit user confirmation**
+- **BLOCKING: Never run `dark-factory prompt approve`, `dark-factory spec approve`, or `dark-factory daemon` without explicit user confirmation.** Write the prompt/spec, then STOP and ask the user to approve. Do not assume approval from prior context or task momentum.
 - **Start daemon in background** — use Bash tool with `run_in_background: true` (not foreground, not detached with `&`)
 ```
 

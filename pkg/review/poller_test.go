@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
 )
@@ -85,6 +86,8 @@ var _ = Describe("ReviewPoller", func() {
 			prMerger,
 			manager,
 			generator,
+			"",
+			notifier.NewMultiNotifier(),
 		)
 	})
 
@@ -186,6 +189,52 @@ var _ = Describe("ReviewPoller", func() {
 			Expect(generator.GenerateCallCount()).To(Equal(0))
 			_, _, status := manager.SetStatusArgsForCall(0)
 			Expect(status).To(Equal(string(prompt.FailedPromptStatus)))
+		})
+
+		It("fires review_limit notification when retry limit is reached", func() {
+			fakeNotifier := &mocks.Notifier{}
+
+			pollerWithNotifier := review.NewReviewPoller(
+				queueDir,
+				inboxDir,
+				allowedReviewers,
+				maxRetries,
+				1*time.Millisecond,
+				fetcher,
+				prMerger,
+				manager,
+				generator,
+				"test-project",
+				fakeNotifier,
+			)
+
+			manager.LoadReturns(&prompt.PromptFile{
+				Path: promptPath,
+				Frontmatter: prompt.Frontmatter{
+					Status:     string(prompt.InReviewPromptStatus),
+					PRURL:      prURL,
+					Branch:     "feature/test",
+					RetryCount: 3, // equals maxRetries
+				},
+			}, nil)
+			fetcher.FetchLatestReviewReturns(&git.ReviewResult{
+				Verdict: git.ReviewVerdictChangesRequested,
+				Body:    "Still broken",
+			}, nil)
+			manager.SetStatusReturns(nil)
+
+			runCtx, runCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer runCancel()
+			go func() { _ = pollerWithNotifier.Run(runCtx) }()
+
+			Eventually(func() int { return fakeNotifier.NotifyCallCount() }).
+				Should(BeNumerically(">=", 1))
+			runCancel()
+
+			_, event := fakeNotifier.NotifyArgsForCall(0)
+			Expect(event.EventType).To(Equal("review_limit"))
+			Expect(event.ProjectName).To(Equal("test-project"))
+			Expect(event.PRURL).To(Equal(prURL))
 		})
 
 		It("calls MoveToCompleted for MERGED PR without calling FetchLatestReview", func() {

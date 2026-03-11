@@ -1,7 +1,8 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-03-11T21:55:09Z"
 prompted: "2026-03-11T21:57:50Z"
+verifying: "2026-03-11T22:47:35Z"
 branch: dark-factory/notifications
 ---
 

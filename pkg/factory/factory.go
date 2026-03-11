@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/lock"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -75,9 +76,11 @@ func createOptionalServer(
 func createOptionalReviewPoller(
 	cfg config.Config,
 	promptManager prompt.Manager,
+	projectName string,
+	n notifier.Notifier,
 ) review.ReviewPoller {
 	if cfg.AutoReview {
-		return CreateReviewPoller(cfg, promptManager)
+		return CreateReviewPoller(cfg, promptManager, projectName, n)
 	}
 	return nil
 }
@@ -99,6 +102,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	ghToken := cfg.ResolvedGitHubToken()
 	ready := make(chan struct{}, 10)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter)
+
+	n := CreateNotifier(cfg)
 
 	return runner.NewRunner(
 		inboxDir,
@@ -126,11 +131,13 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.PR, cfg.Worktree, ghToken, cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
 			cfg.ValidationCommand, cfg.Specs.InboxDir, cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir, cfg.VerificationGate, cfg.DefaultBranch,
-			cfg.Env, currentDateTimeGetter,
+			cfg.Env, currentDateTimeGetter, n,
 		),
 		createOptionalServer(cfg, inboxDir, inProgressDir, completedDir, promptManager),
-		createOptionalReviewPoller(cfg, promptManager),
+		createOptionalReviewPoller(cfg, promptManager, projectName, n),
 		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter),
+		projectName,
+		n,
 	)
 }
 
@@ -152,6 +159,8 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 
 	// One-shot mode uses a nil ready channel — ProcessQueue never reads from it.
 	ready := make(chan struct{}, 10)
+
+	n := CreateNotifier(cfg)
 
 	return runner.NewOneShotRunner(
 		inboxDir,
@@ -191,6 +200,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.DefaultBranch,
 			cfg.Env,
 			currentDateTimeGetter,
+			n,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
 		currentDateTimeGetter,
@@ -281,6 +291,7 @@ func CreateProcessor(
 	defaultBranch string,
 	env map[string]string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	n notifier.Notifier,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -315,15 +326,23 @@ func CreateProcessor(
 			specsInProgressDir,
 			specsCompletedDir,
 			currentDateTimeGetter,
+			projectName,
+			n,
 		),
 		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
 		verificationGate,
+		n,
 	)
 }
 
 // CreateReviewPoller creates a ReviewPoller that watches in_review prompts and handles approvals/changes.
-func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.ReviewPoller {
+func CreateReviewPoller(
+	cfg config.Config,
+	promptManager prompt.Manager,
+	projectName string,
+	n notifier.Notifier,
+) review.ReviewPoller {
 	ghToken := cfg.ResolvedGitHubToken()
 
 	repoNameFetcher := git.NewGHRepoNameFetcher(ghToken)
@@ -346,7 +365,24 @@ func CreateReviewPoller(cfg config.Config, promptManager prompt.Manager) review.
 		git.NewPRMerger(ghToken, libtime.NewCurrentDateTime()),
 		promptManager,
 		review.NewFixPromptGenerator(),
+		projectName,
+		n,
 	)
+}
+
+// CreateNotifier creates a Notifier from config, or a no-op if no channels are configured.
+func CreateNotifier(cfg config.Config) notifier.Notifier {
+	var notifiers []notifier.Notifier
+	if token := cfg.ResolvedTelegramBotToken(); token != "" {
+		chatID := cfg.ResolvedTelegramChatID()
+		if chatID != "" {
+			notifiers = append(notifiers, notifier.NewTelegramNotifier(token, chatID))
+		}
+	}
+	if webhook := cfg.ResolvedDiscordWebhook(); webhook != "" {
+		notifiers = append(notifiers, notifier.NewDiscordNotifier(webhook))
+	}
+	return notifier.NewMultiNotifier(notifiers...)
 }
 
 // CreateLocker creates a Locker for the specified directory.

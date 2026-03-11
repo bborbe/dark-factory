@@ -10,12 +10,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
 
 	"github.com/bborbe/dark-factory/pkg/lock"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
@@ -46,6 +48,8 @@ type runner struct {
 	server             server.Server
 	reviewPoller       review.ReviewPoller
 	specWatcher        specwatcher.SpecWatcher
+	projectName        string
+	notifier           notifier.Notifier
 }
 
 // NewRunner creates a new Runner.
@@ -65,6 +69,8 @@ func NewRunner(
 	server server.Server,
 	reviewPoller review.ReviewPoller,
 	specWatcher specwatcher.SpecWatcher,
+	projectName string,
+	n notifier.Notifier,
 ) Runner {
 	return &runner{
 		inboxDir:           inboxDir,
@@ -82,6 +88,8 @@ func NewRunner(
 		server:             server,
 		reviewPoller:       reviewPoller,
 		specWatcher:        specWatcher,
+		projectName:        projectName,
+		notifier:           n,
 	}
 }
 
@@ -118,6 +126,9 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 
 	slog.Info("watching for queued prompts", "dir", r.inProgressDir)
+
+	// Notify about stuck containers before resetting them
+	r.notifyStuckContainers(ctx)
 
 	// Reset any stuck "executing" prompts from previous crash
 	if err := r.promptManager.ResetExecuting(ctx); err != nil {
@@ -181,6 +192,32 @@ func (r *runner) migrateQueueDir(ctx context.Context) error {
 	}
 	slog.Info("migrated queue dir to in-progress", "old", oldQueue, "new", r.inProgressDir)
 	return nil
+}
+
+// notifyStuckContainers scans inProgressDir for prompts with "executing" status
+// and fires a stuck_container notification for each one found before ResetExecuting clears them.
+func (r *runner) notifyStuckContainers(ctx context.Context) {
+	entries, err := os.ReadDir(r.inProgressDir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(r.inProgressDir, entry.Name())
+		fm, err := r.promptManager.ReadFrontmatter(ctx, path)
+		if err != nil || fm == nil {
+			continue
+		}
+		if prompt.PromptStatus(fm.Status) == prompt.ExecutingPromptStatus {
+			_ = r.notifier.Notify(ctx, notifier.Event{
+				ProjectName: r.projectName,
+				EventType:   "stuck_container",
+				PromptName:  entry.Name(),
+			})
+		}
+	}
 }
 
 // createDirectories creates all eight lifecycle directories if they don't exist.

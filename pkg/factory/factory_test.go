@@ -11,6 +11,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 )
 
 var _ = Describe("Factory", func() {
@@ -72,6 +73,7 @@ var _ = Describe("Factory", func() {
 				"",
 				nil,
 				libtime.NewCurrentDateTime(),
+				notifier.NewMultiNotifier(),
 			)
 			Expect(processor).NotTo(BeNil())
 		})

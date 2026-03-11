@@ -18,6 +18,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -59,6 +60,7 @@ type processor struct {
 	validationCommand string
 	verificationGate  bool
 	skippedPrompts    map[string]time.Time // filename → mod time when skipped
+	notifier          notifier.Notifier
 }
 
 // NewProcessor creates a new Processor.
@@ -85,6 +87,7 @@ func NewProcessor(
 	specLister spec.Lister,
 	validationCommand string,
 	verificationGate bool,
+	n notifier.Notifier,
 ) Processor {
 	return &processor{
 		queueDir:          queueDir,
@@ -110,6 +113,7 @@ func NewProcessor(
 		validationCommand: validationCommand,
 		verificationGate:  verificationGate,
 		skippedPrompts:    make(map[string]time.Time),
+		notifier:          n,
 	}
 }
 
@@ -330,6 +334,27 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 			slog.Error("failed to set failed status", "error", saveErr)
 		}
 	}
+	_ = p.notifier.Notify(ctx, notifier.Event{
+		ProjectName: p.projectName,
+		EventType:   "prompt_failed",
+		PromptName:  filepath.Base(path),
+	})
+}
+
+// notifyFromReport checks the completion report in logFile and fires a partial notification
+// if the report status is "partial".
+func (p *processor) notifyFromReport(ctx context.Context, logFile string, promptPath string) {
+	completionReport, err := report.ParseFromLog(ctx, logFile)
+	if err != nil || completionReport == nil {
+		return
+	}
+	if completionReport.Status == "partial" {
+		_ = p.notifier.Notify(ctx, notifier.Event{
+			ProjectName: p.projectName,
+			EventType:   "prompt_partial",
+			PromptName:  filepath.Base(promptPath),
+		})
+	}
 }
 
 // checkPromptedSpecs scans all specs and calls CheckAndComplete for any in "prompted" status.
@@ -465,6 +490,7 @@ func (p *processor) handlePostExecution(
 	// Validate completion report from log
 	summary, err := validateCompletionReport(ctx, logFile)
 	if err != nil {
+		p.notifyFromReport(ctx, logFile, promptPath)
 		return err
 	}
 

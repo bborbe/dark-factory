@@ -15,6 +15,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -371,6 +373,8 @@ var _ = Describe("AutoCompleter", func() {
 			specsDir,
 			specsDir,
 			libtime.NewCurrentDateTime(),
+			"",
+			notifier.NewMultiNotifier(),
 		)
 	})
 
@@ -407,6 +411,32 @@ var _ = Describe("AutoCompleter", func() {
 			)
 			Expect(loadErr).NotTo(HaveOccurred())
 			Expect(sf.Frontmatter.Status).To(Equal("verifying"))
+		})
+
+		It("fires spec_verifying notification when transitioning to verifying", func() {
+			fakeNotifier := &mocks.Notifier{}
+
+			acWithNotifier := spec.NewAutoCompleter(
+				queueDir,
+				completedDir,
+				specsDir,
+				specsDir,
+				specsDir,
+				libtime.NewCurrentDateTime(),
+				"test-project",
+				fakeNotifier,
+			)
+
+			writePrompt(filepath.Join(completedDir, "001-first.md"), "completed", "spec-notify")
+			writeSpec(filepath.Join(specsDir, "spec-notify.md"), "queued")
+
+			err := acWithNotifier.CheckAndComplete(ctx, "spec-notify")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
+			_, event := fakeNotifier.NotifyArgsForCall(0)
+			Expect(event.EventType).To(Equal("spec_verifying"))
+			Expect(event.ProjectName).To(Equal("test-project"))
 		})
 	})
 

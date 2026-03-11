@@ -20,6 +20,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/report"
@@ -121,6 +122,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -187,6 +189,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -257,6 +260,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -325,6 +329,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -383,6 +388,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -396,6 +402,65 @@ var _ = Describe("Processor", func() {
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
+	})
+
+	It("should fire prompt_failed notification when executor returns error", func() {
+		promptPath := filepath.Join(promptsDir, "001-fail-notify.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+		mockManager.ContentReturns("# Fail notify test", nil)
+		mockManager.TitleReturns("Fail notify test", nil)
+		mockManager.SetContainerReturns(nil)
+		mockManager.SetVersionReturns(nil)
+		mockManager.SetStatusReturns(nil)
+		mockManager.AllPreviousCompletedReturns(true)
+		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+
+		fakeNotifier := &mocks.Notifier{}
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			mockExecutor,
+			mockManager,
+			mockReleaser,
+			mockVersionGet,
+			ready,
+			false,
+			false,
+			mockBrancher,
+			mockPRCreator,
+			mockCloner,
+			mockPRMerger,
+			false,
+			false,
+			false,
+			mockAutoCompleter,
+			mockSpecLister,
+			"",
+			false,
+			fakeNotifier,
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return fakeNotifier.NotifyCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+		cancel()
+
+		_, event := fakeNotifier.NotifyArgsForCall(0)
+		Expect(event.EventType).To(Equal("prompt_failed"))
+		Expect(event.ProjectName).To(Equal("test-project"))
+		Expect(event.PromptName).To(Equal("001-fail-notify.md"))
 	})
 
 	It("should call CommitOnly when no changelog", func() {
@@ -441,6 +506,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -503,6 +569,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -597,6 +664,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -665,6 +733,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -723,6 +792,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -785,6 +855,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -836,6 +907,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -885,6 +957,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -944,6 +1017,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -1016,6 +1090,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		// Run processor in goroutine
@@ -1085,6 +1160,7 @@ var _ = Describe("Processor", func() {
 			mockSpecLister,
 			"make precommit",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -1162,6 +1238,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -1275,6 +1352,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -1366,6 +1444,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -1453,6 +1532,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor
@@ -1533,6 +1613,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor
@@ -1620,6 +1701,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -1682,6 +1764,7 @@ var _ = Describe("Processor", func() {
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor
@@ -1779,6 +1862,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -1854,6 +1938,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -1926,6 +2011,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -1999,6 +2085,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2016,6 +2103,78 @@ DARK-FACTORY-REPORT -->
 			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
 
 			cancel()
+		})
+
+		It("should fire prompt_partial notification when report status is partial", func() {
+			promptPath := filepath.Join(promptsDir, "001-report-partial-notify.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			logDir := filepath.Join(tempDir, "log-notify")
+			err := os.MkdirAll(logDir, 0750)
+			Expect(err).NotTo(HaveOccurred())
+
+			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
+			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+			mockManager.ContentReturns("# Report partial notify test", nil)
+			mockManager.TitleReturns("Report partial notify test", nil)
+			mockManager.SetContainerReturns(nil)
+			mockManager.SetVersionReturns(nil)
+			mockManager.SetStatusReturns(nil)
+			mockManager.AllPreviousCompletedReturns(true)
+
+			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+				logContent := `dark-factory: executing prompt
+some output
+
+<!-- DARK-FACTORY-REPORT
+{"status":"partial","summary":"Half done","blockers":["lint fails"]}
+DARK-FACTORY-REPORT -->
+`
+				return os.WriteFile(logFile, []byte(logContent), 0600)
+			}
+
+			fakeNotifier := &mocks.Notifier{}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				logDir,
+				"test-project",
+				mockExecutor,
+				mockManager,
+				mockReleaser,
+				mockVersionGet,
+				ready,
+				false,
+				false,
+				mockBrancher,
+				mockPRCreator,
+				mockCloner,
+				mockPRMerger,
+				false,
+				false,
+				false,
+				mockAutoCompleter,
+				mockSpecLister,
+				"",
+				false,
+				fakeNotifier,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return fakeNotifier.NotifyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+			cancel()
+
+			_, event := fakeNotifier.NotifyArgsForCall(0)
+			Expect(event.EventType).To(Equal("prompt_partial"))
+			Expect(event.ProjectName).To(Equal("test-project"))
+			Expect(event.PromptName).To(Equal("001-report-partial-notify.md"))
 		})
 
 		It("should continue when no report found (backwards compatible)", func() {
@@ -2072,6 +2231,7 @@ more output
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -2144,6 +2304,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2220,6 +2381,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			// Run processor in goroutine
@@ -2280,6 +2442,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2332,6 +2495,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2391,6 +2555,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2475,6 +2640,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2552,6 +2718,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2612,6 +2779,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2686,6 +2854,7 @@ DARK-FACTORY-REPORT -->
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -2740,6 +2909,7 @@ DARK-FACTORY-REPORT -->
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -2803,6 +2973,7 @@ DARK-FACTORY-REPORT -->
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -2853,6 +3024,7 @@ DARK-FACTORY-REPORT -->
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		errCh := make(chan error, 1)
@@ -2911,6 +3083,7 @@ DARK-FACTORY-REPORT -->
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -2992,6 +3165,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -3076,6 +3250,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -3133,6 +3308,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -3215,6 +3391,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			mockSpecLister,
 			"",
 			false,
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -3303,6 +3480,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -3397,6 +3575,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					false,
+					notifier.NewMultiNotifier(),
 				)
 
 				go func() {
@@ -3497,6 +3676,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -3581,6 +3761,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					false,
+					notifier.NewMultiNotifier(),
 				)
 
 				go func() {
@@ -3669,6 +3850,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -3753,6 +3935,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					false,
+					notifier.NewMultiNotifier(),
 				)
 
 				go func() {
@@ -3851,6 +4034,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			go func() {
@@ -3933,6 +4117,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					true, // verificationGate enabled
+					notifier.NewMultiNotifier(),
 				)
 
 				errCh := make(chan error, 1)
@@ -4001,6 +4186,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					true, // verificationGate enabled
+					notifier.NewMultiNotifier(),
 				)
 
 				errCh := make(chan error, 1)
@@ -4058,6 +4244,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						mockSpecLister,
 						"",
 						false,
+						notifier.NewMultiNotifier(),
 					)
 
 					errCh := make(chan error, 1)
@@ -4106,6 +4293,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					true, // gate enabled but no pending file
+					notifier.NewMultiNotifier(),
 				)
 
 				errCh := make(chan error, 1)
@@ -4163,6 +4351,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				realLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 
 			errCh := make(chan error, 1)
@@ -4226,6 +4415,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 		}
 
@@ -4338,6 +4528,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 		}
 
@@ -4656,6 +4847,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					mockSpecLister,
 					"",
 					false,
+					notifier.NewMultiNotifier(),
 				)
 			}
 		})
@@ -4781,6 +4973,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 			go func() { _ = p.Process(ctx) }()
 
@@ -4849,6 +5042,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 		}
 
@@ -5080,6 +5274,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				mockSpecLister,
 				"",
 				false,
+				notifier.NewMultiNotifier(),
 			)
 		}
 

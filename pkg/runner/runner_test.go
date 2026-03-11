@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
@@ -77,6 +78,8 @@ var _ = Describe("Runner", func() {
 			mockServer,
 			nil, // no reviewPoller
 			nil, // no specWatcher
+			"",
+			notifier.NewMultiNotifier(),
 		)
 	}
 
@@ -361,6 +364,8 @@ var _ = Describe("Runner", func() {
 			nil, // No server
 			nil, // no reviewPoller
 			nil, // no specWatcher
+			"",
+			notifier.NewMultiNotifier(),
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -413,6 +418,8 @@ var _ = Describe("Runner", func() {
 			nil, // No server
 			mockReviewPoller,
 			nil, // no specWatcher
+			"",
+			notifier.NewMultiNotifier(),
 		)
 
 		go func() {
@@ -455,6 +462,8 @@ var _ = Describe("Runner", func() {
 			nil, // No server
 			nil, // no reviewPoller
 			nil, // no specWatcher
+			"",
+			notifier.NewMultiNotifier(),
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -513,6 +522,8 @@ var _ = Describe("Runner", func() {
 				mockServer,
 				nil,
 				nil,
+				"",
+				notifier.NewMultiNotifier(),
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -678,6 +689,73 @@ var _ = Describe("Runner", func() {
 			// New in-progress dir should still have original file
 			_, err = os.Stat(filepath.Join(inProgressDir, "new-file.md"))
 			Expect(err).To(BeNil(), "in-progress dir should retain its files")
+		})
+	})
+
+	Describe("notifyStuckContainers", func() {
+		It("fires stuck_container notification for prompts with executing status", func() {
+			inProgressDir := filepath.Join(promptsDir, "in-progress")
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+
+			stuckPromptPath := filepath.Join(inProgressDir, "001-stuck.md")
+			Expect(
+				os.WriteFile(stuckPromptPath, []byte("---\nstatus: executing\n---\ncontent"), 0600),
+			).To(Succeed())
+
+			fakeNotifier := &mocks.Notifier{}
+
+			mockLocker.AcquireReturns(nil)
+			mockLocker.ReleaseReturns(nil)
+			mockManager.ResetExecutingReturns(nil)
+			mockManager.NormalizeFilenamesReturns(nil, nil)
+			mockManager.ReadFrontmatterReturns(&prompt.Frontmatter{
+				Status: string(prompt.ExecutingPromptStatus),
+			}, nil)
+
+			mockWatcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			mockProcessor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := runner.NewRunner(
+				filepath.Join(promptsDir, "inbox"),
+				inProgressDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				mockManager,
+				mockLocker,
+				mockWatcher,
+				mockProcessor,
+				nil,
+				nil,
+				nil,
+				"test-project",
+				fakeNotifier,
+			)
+
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
+			_, event := fakeNotifier.NotifyArgsForCall(0)
+			Expect(event.EventType).To(Equal("stuck_container"))
+			Expect(event.ProjectName).To(Equal("test-project"))
+			Expect(event.PromptName).To(Equal("001-stuck.md"))
 		})
 	})
 })

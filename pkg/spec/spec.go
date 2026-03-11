@@ -20,6 +20,7 @@ import (
 	libtime "github.com/bborbe/time"
 	"gopkg.in/yaml.v3"
 
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/specnum"
 )
@@ -209,12 +210,16 @@ type autoCompleter struct {
 	specsInProgressDir    string
 	specsCompletedDir     string
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	projectName           string
+	notifier              notifier.Notifier
 }
 
 // NewAutoCompleter creates a new AutoCompleter.
 func NewAutoCompleter(
 	queueDir, completedDir, specsInboxDir, specsInProgressDir, specsCompletedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
+	n notifier.Notifier,
 ) AutoCompleter {
 	return &autoCompleter{
 		queueDir:              queueDir,
@@ -223,6 +228,8 @@ func NewAutoCompleter(
 		specsInProgressDir:    specsInProgressDir,
 		specsCompletedDir:     specsCompletedDir,
 		currentDateTimeGetter: currentDateTimeGetter,
+		projectName:           projectName,
+		notifier:              n,
 	}
 }
 
@@ -316,6 +323,12 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 	if err := sf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save spec file")
 	}
+
+	_ = a.notifier.Notify(ctx, notifier.Event{
+		ProjectName: a.projectName,
+		EventType:   "spec_verifying",
+		PromptName:  sf.Name,
+	})
 
 	slog.Info("spec awaiting verification", "spec", specID)
 	return nil

@@ -86,6 +86,13 @@ Every prompt MUST have these XML sections:
 - Not duplicating completed prompts
 - In inbox (`prompts/`), not in `prompts/in-progress/`
 
+**Test Coverage:**
+- If requirements modify or create code, prompt MUST address testing
+- New code (new files/packages): require ≥80% statement coverage
+- Modified code (changes to existing files): require tests for all changed/added code paths
+- Existing untested code does NOT need retroactive coverage
+- Flag as warning if requirements change code but mention no tests
+
 **Anchoring:**
 - Anchor by method/function names, not line numbers (line numbers go stale)
 - Line numbers only as optional hints (e.g. "~line 176")

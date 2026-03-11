@@ -478,15 +478,6 @@ type Manager interface {
 	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
 }
 
-// manager implements Manager.
-type manager struct {
-	inboxDir              string
-	inProgressDir         string
-	completedDir          string
-	mover                 FileMover
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewManager creates a new Manager.
 func NewManager(
 	inboxDir string,
@@ -502,6 +493,15 @@ func NewManager(
 		mover:                 mover,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// manager implements Manager.
+type manager struct {
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	mover                 FileMover
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "approved".

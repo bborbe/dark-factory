@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.3
+
+- refactor: reorder declarations in generator, prompt manager, spec auto-completer, cloner, and collaborator fetcher to follow Interface → Constructor → Struct → Methods convention
+
 ## v0.51.2
 
 - refactor: reorder declarations in processor, runner, oneshot, watcher, specwatcher, and executor to follow Interface → Constructor → Struct → Methods convention

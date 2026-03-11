@@ -202,18 +202,6 @@ type AutoCompleter interface {
 	CheckAndComplete(ctx context.Context, specID string) error
 }
 
-// autoCompleter implements AutoCompleter.
-type autoCompleter struct {
-	queueDir              string
-	completedDir          string
-	specsInboxDir         string
-	specsInProgressDir    string
-	specsCompletedDir     string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	projectName           string
-	notifier              notifier.Notifier
-}
-
 // NewAutoCompleter creates a new AutoCompleter.
 func NewAutoCompleter(
 	queueDir, completedDir, specsInboxDir, specsInProgressDir, specsCompletedDir string,
@@ -231,6 +219,18 @@ func NewAutoCompleter(
 		projectName:           projectName,
 		notifier:              n,
 	}
+}
+
+// autoCompleter implements AutoCompleter.
+type autoCompleter struct {
+	queueDir              string
+	completedDir          string
+	specsInboxDir         string
+	specsInProgressDir    string
+	specsCompletedDir     string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	projectName           string
+	notifier              notifier.Notifier
 }
 
 // findSpecFile searches dirs for a spec file matching specID.

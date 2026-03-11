@@ -22,13 +22,13 @@ type Cloner interface {
 	Remove(ctx context.Context, path string) error
 }
 
-// cloner implements Cloner.
-type cloner struct{}
-
 // NewCloner creates a new Cloner.
 func NewCloner() Cloner {
 	return &cloner{}
 }
+
+// cloner implements Cloner.
+type cloner struct{}
 
 // Clone creates a local clone of srcDir at destDir and checks out the branch.
 // If the branch already exists on the remote, it is tracked; otherwise a new branch is created.

@@ -32,13 +32,6 @@ type CollaboratorLister interface {
 	List(ctx context.Context, repoName string) ([]string, error)
 }
 
-type collaboratorFetcher struct {
-	repoNameFetcher  RepoNameFetcher
-	collaboratorList CollaboratorLister
-	useCollaborators bool
-	allowedReviewers []string
-}
-
 // NewCollaboratorFetcher creates a CollaboratorFetcher.
 // If useCollaborators is false or allowedReviewers is non-empty, collaborators are not fetched from GitHub.
 func NewCollaboratorFetcher(
@@ -53,6 +46,13 @@ func NewCollaboratorFetcher(
 		useCollaborators: useCollaborators,
 		allowedReviewers: allowedReviewers,
 	}
+}
+
+type collaboratorFetcher struct {
+	repoNameFetcher  RepoNameFetcher
+	collaboratorList CollaboratorLister
+	useCollaborators bool
+	allowedReviewers []string
 }
 
 func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
@@ -75,14 +75,14 @@ func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
 	return collaborators
 }
 
-// ghRepoNameFetcher fetches repo name using gh CLI.
-type ghRepoNameFetcher struct {
-	ghToken string
-}
-
 // NewGHRepoNameFetcher creates a RepoNameFetcher that uses gh CLI.
 func NewGHRepoNameFetcher(ghToken string) RepoNameFetcher {
 	return &ghRepoNameFetcher{ghToken: ghToken}
+}
+
+// ghRepoNameFetcher fetches repo name using gh CLI.
+type ghRepoNameFetcher struct {
+	ghToken string
 }
 
 func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
@@ -106,14 +106,14 @@ func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// ghCollaboratorLister fetches collaborators using gh CLI.
-type ghCollaboratorLister struct {
-	ghToken string
-}
-
 // NewGHCollaboratorLister creates a CollaboratorLister that uses gh CLI.
 func NewGHCollaboratorLister(ghToken string) CollaboratorLister {
 	return &ghCollaboratorLister{ghToken: ghToken}
+}
+
+// ghCollaboratorLister fetches collaborators using gh CLI.
+type ghCollaboratorLister struct {
+	ghToken string
 }
 
 func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]string, error) {

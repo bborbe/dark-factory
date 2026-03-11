@@ -26,16 +26,6 @@ type SpecGenerator interface {
 	Generate(ctx context.Context, specPath string) error
 }
 
-// dockerSpecGenerator implements SpecGenerator using the Docker executor.
-type dockerSpecGenerator struct {
-	executor              executor.Executor
-	inboxDir              string
-	completedDir          string
-	specsDir              string
-	logDir                string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewSpecGenerator creates a new SpecGenerator that runs the /generate-prompts-for-spec command.
 func NewSpecGenerator(
 	executor executor.Executor,
@@ -53,6 +43,16 @@ func NewSpecGenerator(
 		logDir:                logDir,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// dockerSpecGenerator implements SpecGenerator using the Docker executor.
+type dockerSpecGenerator struct {
+	executor              executor.Executor
+	inboxDir              string
+	completedDir          string
+	specsDir              string
+	logDir                string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,

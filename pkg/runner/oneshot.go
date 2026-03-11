@@ -153,6 +153,11 @@ func (r *oneShotRunner) generateFromApprovedSpecs(ctx context.Context) (int, err
 
 	foundApproved := false
 	for _, entry := range entries {
+		select {
+		case <-ctx.Done():
+			return 0, errors.Wrap(ctx, ctx.Err(), "context cancelled during spec generation")
+		default:
+		}
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
@@ -197,6 +202,11 @@ func (r *oneShotRunner) approveInboxPrompts(ctx context.Context) (int, error) {
 
 	moved := 0
 	for _, entry := range entries {
+		select {
+		case <-ctx.Done():
+			return 0, errors.Wrap(ctx, ctx.Err(), "context cancelled during inbox approval")
+		default:
+		}
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}

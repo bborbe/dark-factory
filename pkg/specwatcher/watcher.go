@@ -175,6 +175,11 @@ func (w *specWatcher) scanExistingInProgress(ctx context.Context, inProgressDir 
 		return
 	}
 	for _, entry := range entries {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}

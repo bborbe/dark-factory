@@ -28,11 +28,11 @@ Read each file before editing.
 
 2. **`pkg/prompt/counter.go`**: Add `currentDateTimeGetter libtime.CurrentDateTimeGetter` field to the `promptCounter` struct. Accept it as a parameter in `NewCounter`. Use it in `countInDir` instead of `libtime.NewCurrentDateTime()`.
 
-3. **`pkg/prompt/prompt.go`**: The package-level functions `ListQueued`, `HasExecuting`, and similar functions that call `libtime.NewCurrentDateTime()` inline are wrapped by the `manager` methods. Since `manager` already has a `currentDateTimeGetter` field, thread it through: update the package-level functions to accept `currentDateTimeGetter libtime.CurrentDateTimeGetter` as a parameter, and have the `manager` methods pass `m.currentDateTimeGetter` when calling them.
+3. **`pkg/prompt/prompt.go`**: The standalone package-level functions `ListQueued` (~line 617) and `HasExecuting` (~line 947) call `libtime.NewCurrentDateTime()` inline. These are NOT called via `manager` methods — they are standalone functions called directly by other packages. Add `currentDateTimeGetter libtime.CurrentDateTimeGetter` as a parameter to each, and update all callers to pass the dependency.
 
 4. **`pkg/server/queue_helpers.go`**: The `queueSingleFile` and `queueAllFiles` functions call `libtime.NewCurrentDateTime()` inline. Add `currentDateTimeGetter libtime.CurrentDateTimeGetter` as a parameter to both functions. Update their callers in `pkg/server/queue_action_handler.go` to pass the injected dependency. Note: `NewQueueActionHandler` returns a closure via `libhttp.WithErrorFunc`, NOT a struct — capture `currentDateTimeGetter` in the closure scope by adding it as a parameter to `NewQueueActionHandler`.
 
-5. **`pkg/generator/generator.go`**: In `countCompletedPromptsForSpec`, replace inline `libtime.NewCurrentDateTime()` with `g.currentDateTimeGetter` (the `dockerSpecGenerator` struct already has this field).
+5. **`pkg/generator/generator.go`**: In `inheritFromSpec` (~line 174), replace inline `libtime.NewCurrentDateTime()` with `g.currentDateTimeGetter` (the `dockerSpecGenerator` struct already has this field).
 
 6. Update `pkg/factory/factory.go` to pass `currentDateTimeGetter` to the updated constructors (`NewLister`, `NewCounter`, and any handler constructors that now need it). Use the existing `currentDateTimeGetter` that is already created in `CreateRunner`/`CreateOneShotRunner`.
 

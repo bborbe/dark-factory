@@ -46,9 +46,9 @@ Read `pkg/executor/executor.go` — find `createPromptTempFile` (~line 165). It 
        }
        if err := promptFile.Close(); err != nil {
            _ = os.RemoveAll(tmpDir)
-           return nil, errors.Wrap(ctx, err, "close prompt file")
+           return "", nil, errors.Wrap(ctx, err, "close prompt file")
        }
-       // Update cleanup to not double-close:
+       // After successful close, update cleanup to only remove the dir (no double-close):
        cleanup = func() {
            _ = os.RemoveAll(tmpDir)
        }

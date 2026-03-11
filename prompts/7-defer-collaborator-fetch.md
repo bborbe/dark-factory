@@ -31,11 +31,15 @@ Read `pkg/git/collaborator_fetcher.go` — the `CollaboratorFetcher` interface w
 3. In `pkg/review/poller.go`, add a private method to resolve collaborators on first use:
    ```go
    func (p *reviewPoller) resolveReviewers(ctx context.Context) []string {
-       if p.allowedReviewers == nil {
+       if !p.reviewersResolved {
            p.allowedReviewers = p.collaboratorFetcher.Fetch(ctx)
+           p.reviewersResolved = true
        }
        return p.allowedReviewers
    }
+   ```
+   Add a `reviewersResolved bool` field to the struct. This avoids re-calling `Fetch` when it legitimately returns nil or an empty slice.
+   ```go
    ```
 
 4. Update all usages of `p.allowedReviewers` inside `poller.go` to call `p.resolveReviewers(ctx)` instead.

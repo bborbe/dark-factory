@@ -22,16 +22,17 @@ Read `pkg/server/queue_helpers.go` — the `queueSingleFile` function is defined
 </context>
 
 <requirements>
-1. In `pkg/server/queue_action_handler.go`, after the existing `filepath.Base` sanitization and before calling `queueSingleFile`, add a containment check:
+1. In `pkg/server/queue_action_handler.go`, after the existing `filepath.Base` sanitization and before calling `queueSingleFile`, add a containment check. Note: `safePath` is only used for the check — continue passing `filename` (not `safePath`) to `queueSingleFile`, since that function does its own `filepath.Join` internally:
    ```go
-   safePath := filepath.Join(inboxDir, filename)
+   checkPath := filepath.Join(inboxDir, filename)
    cleanInbox := filepath.Clean(inboxDir) + string(os.PathSeparator)
-   if !strings.HasPrefix(filepath.Clean(safePath)+string(os.PathSeparator), cleanInbox) {
+   if !strings.HasPrefix(filepath.Clean(checkPath)+string(os.PathSeparator), cleanInbox) {
        return libhttp.WrapWithStatusCode(
            errors.New(ctx, "path escapes inbox directory"),
            http.StatusBadRequest,
        )
    }
+   // Continue passing `filename` to queueSingleFile — NOT checkPath
    ```
 
 2. Add imports for `"strings"` and `"os"` if not already present.

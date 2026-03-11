@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Reordered declarations in six files (processor, runner, oneshot, watcher, specwatcher, executor) to follow Interface → Constructor → Struct → Methods convention
+container: dark-factory-180-fix-file-layout-batch1
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-11T23:28:59Z"
+completed: "2026-03-11T23:37:54Z"
 ---
 
 <summary>

@@ -23,17 +23,17 @@ import (
 
 var _ = Describe("ReviewPoller", func() {
 	var (
-		queueDir         string
-		inboxDir         string
-		fetcher          *mocks.ReviewFetcher
-		prMerger         *mocks.PRMerger
-		manager          *mocks.Manager
-		generator        *mocks.FixPromptGenerator
-		poller           review.ReviewPoller
-		allowedReviewers []string
-		maxRetries       int
-		promptPath       string
-		prURL            string
+		queueDir            string
+		inboxDir            string
+		fetcher             *mocks.ReviewFetcher
+		prMerger            *mocks.PRMerger
+		manager             *mocks.Manager
+		generator           *mocks.FixPromptGenerator
+		collaboratorFetcher *mocks.CollaboratorFetcher
+		poller              review.ReviewPoller
+		maxRetries          int
+		promptPath          string
+		prURL               string
 	)
 
 	BeforeEach(func() {
@@ -44,7 +44,6 @@ var _ = Describe("ReviewPoller", func() {
 		inboxDir, err = os.MkdirTemp("", "review-poller-inbox-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		allowedReviewers = []string{"trusted-reviewer"}
 		maxRetries = 3
 		prURL = "https://github.com/example/repo/pull/1"
 
@@ -52,6 +51,8 @@ var _ = Describe("ReviewPoller", func() {
 		prMerger = &mocks.PRMerger{}
 		manager = &mocks.Manager{}
 		generator = &mocks.FixPromptGenerator{}
+		collaboratorFetcher = &mocks.CollaboratorFetcher{}
+		collaboratorFetcher.FetchReturns([]string{"trusted-reviewer"})
 
 		// Create a real .md file in queueDir so os.ReadDir finds it.
 		promptPath = filepath.Join(queueDir, "001-test-prompt.md")
@@ -79,7 +80,7 @@ var _ = Describe("ReviewPoller", func() {
 		poller = review.NewReviewPoller(
 			queueDir,
 			inboxDir,
-			allowedReviewers,
+			collaboratorFetcher,
 			maxRetries,
 			1*time.Millisecond,
 			fetcher,
@@ -197,7 +198,7 @@ var _ = Describe("ReviewPoller", func() {
 			pollerWithNotifier := review.NewReviewPoller(
 				queueDir,
 				inboxDir,
-				allowedReviewers,
+				collaboratorFetcher,
 				maxRetries,
 				1*time.Millisecond,
 				fetcher,

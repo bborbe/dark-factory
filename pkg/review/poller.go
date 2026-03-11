@@ -33,7 +33,7 @@ type ReviewPoller interface {
 func NewReviewPoller(
 	queueDir string,
 	inboxDir string,
-	allowedReviewers []string,
+	collaboratorFetcher git.CollaboratorFetcher,
 	maxRetries int,
 	pollInterval time.Duration,
 	fetcher git.ReviewFetcher,
@@ -44,33 +44,44 @@ func NewReviewPoller(
 	n notifier.Notifier,
 ) ReviewPoller {
 	return &reviewPoller{
-		queueDir:         queueDir,
-		inboxDir:         inboxDir,
-		allowedReviewers: allowedReviewers,
-		maxRetries:       maxRetries,
-		pollInterval:     pollInterval,
-		fetcher:          fetcher,
-		prMerger:         prMerger,
-		promptManager:    promptManager,
-		generator:        generator,
-		projectName:      projectName,
-		notifier:         n,
+		queueDir:            queueDir,
+		inboxDir:            inboxDir,
+		collaboratorFetcher: collaboratorFetcher,
+		maxRetries:          maxRetries,
+		pollInterval:        pollInterval,
+		fetcher:             fetcher,
+		prMerger:            prMerger,
+		promptManager:       promptManager,
+		generator:           generator,
+		projectName:         projectName,
+		notifier:            n,
 	}
 }
 
 // reviewPoller implements ReviewPoller.
 type reviewPoller struct {
-	queueDir         string
-	inboxDir         string
-	allowedReviewers []string
-	maxRetries       int
-	pollInterval     time.Duration
-	fetcher          git.ReviewFetcher
-	prMerger         git.PRMerger
-	promptManager    prompt.Manager
-	generator        FixPromptGenerator
-	projectName      string
-	notifier         notifier.Notifier
+	queueDir            string
+	inboxDir            string
+	collaboratorFetcher git.CollaboratorFetcher
+	allowedReviewers    []string
+	reviewersResolved   bool
+	maxRetries          int
+	pollInterval        time.Duration
+	fetcher             git.ReviewFetcher
+	prMerger            git.PRMerger
+	promptManager       prompt.Manager
+	generator           FixPromptGenerator
+	projectName         string
+	notifier            notifier.Notifier
+}
+
+// resolveReviewers returns the allowed reviewers, fetching them lazily on the first call.
+func (p *reviewPoller) resolveReviewers(ctx context.Context) []string {
+	if !p.reviewersResolved {
+		p.allowedReviewers = p.collaboratorFetcher.Fetch(ctx)
+		p.reviewersResolved = true
+	}
+	return p.allowedReviewers
 }
 
 // Run loops until ctx is cancelled, polling in_review prompts on each iteration.
@@ -172,7 +183,7 @@ func (p *reviewPoller) processPrompt(ctx context.Context, path string) {
 		return
 	}
 
-	reviewResult, err := p.fetcher.FetchLatestReview(ctx, prURL, p.allowedReviewers)
+	reviewResult, err := p.fetcher.FetchLatestReview(ctx, prURL, p.resolveReviewers(ctx))
 	if err != nil {
 		slog.Warn("failed to fetch latest review", "file", filepath.Base(path), "error", err)
 		return

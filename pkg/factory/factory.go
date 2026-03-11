@@ -476,12 +476,11 @@ func CreateReviewPoller(
 ) review.ReviewPoller {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
-	allowedReviewers := deps.collaboratorFetcher.Fetch(context.Background())
 
 	return review.NewReviewPoller(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.InboxDir,
-		allowedReviewers,
+		deps.collaboratorFetcher,
 		cfg.MaxReviewRetries,
 		time.Duration(cfg.PollIntervalSec)*time.Second,
 		deps.reviewFetcher,

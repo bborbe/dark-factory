@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["030"]
+summary: Wired Bitbucket Server provider into factory layer via createProviderDeps helper; added bitbucket_pr_creator.go, bitbucket_pr_merger.go, bitbucket_review_fetcher.go, bitbucket_collaborator_fetcher.go; refactored CreateProcessor to accept brancher/prCreator/prMerger interfaces instead of ghToken/defaultBranch strings
 container: dark-factory-176-spec-030-factory-wiring
 dark-factory-version: v0.48.0
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T17:44:56Z"
 started: "2026-03-11T22:50:04Z"
+completed: "2026-03-11T23:01:36Z"
 ---
 <summary>
 - `provider: github` (default) uses exactly the same `gh` CLI implementations as today — zero behavior change for existing users

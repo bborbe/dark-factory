@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.50.0
+
+- feat: add Provider enum (github, bitbucket-server) with validation to pkg/config
+- feat: add BitbucketConfig struct, provider/bitbucket fields to Config, validateBitbucketConfig, and ResolvedBitbucketToken helper
+- feat: add ParseBitbucketRemoteURL and ParseBitbucketRemoteFromGit to pkg/git for extracting project key and repo slug from SSH and HTTPS Bitbucket Server remote URLs
+
 ## v0.49.0
 
 - feat: add Bitbucket Server PR creator, merger, review fetcher, and collaborator fetcher implementations in pkg/git

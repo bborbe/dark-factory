@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -21,15 +22,30 @@ import (
 
 // fakeCommandRunner is a test double for commandRunner.
 type fakeCommandRunner struct {
+	mu        sync.Mutex
 	err       error
 	runCalled bool
 	commands  []*exec.Cmd
 }
 
 func (f *fakeCommandRunner) Run(ctx context.Context, cmd *exec.Cmd) error {
+	f.mu.Lock()
 	f.runCalled = true
 	f.commands = append(f.commands, cmd)
+	f.mu.Unlock()
 	return f.err
+}
+
+func (f *fakeCommandRunner) RunCalled() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.runCalled
+}
+
+func (f *fakeCommandRunner) Commands() []*exec.Cmd {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.commands
 }
 
 var _ = Describe("Internal helper functions", func() {
@@ -511,9 +527,9 @@ var _ = Describe("Internal helper functions", func() {
 					fakeRunner,
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(HaveLen(1))
+				Expect(fakeRunner.Commands()).To(HaveLen(1))
 				Expect(
-					fakeRunner.commands[0].Args,
+					fakeRunner.Commands()[0].Args,
 				).To(ContainElements("docker", "stop", containerName))
 			})
 		})
@@ -541,7 +557,7 @@ var _ = Describe("Internal helper functions", func() {
 					fakeRunner,
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(BeEmpty())
+				Expect(fakeRunner.Commands()).To(BeEmpty())
 			})
 		})
 
@@ -564,7 +580,7 @@ var _ = Describe("Internal helper functions", func() {
 					fakeRunner,
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(BeEmpty())
+				Expect(fakeRunner.Commands()).To(BeEmpty())
 			})
 		})
 	})
@@ -598,7 +614,7 @@ var _ = Describe("Internal helper functions", func() {
 
 				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 
 				// Verify log file was created
 				_, err = os.Stat(logFile)
@@ -608,7 +624,7 @@ var _ = Describe("Internal helper functions", func() {
 			It("handles empty prompt content", func() {
 				err := exec.Execute(ctx, "", logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 			})
 
 			It("handles special characters in prompt", func() {
@@ -616,7 +632,7 @@ var _ = Describe("Internal helper functions", func() {
 
 				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 			})
 		})
 
@@ -627,7 +643,7 @@ var _ = Describe("Internal helper functions", func() {
 				err := exec.Execute(ctx, "test", invalidLogFile, "test-container")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("create log directory"))
-				Expect(fakeRunner.runCalled).To(BeFalse())
+				Expect(fakeRunner.RunCalled()).To(BeFalse())
 			})
 		})
 
@@ -640,7 +656,7 @@ var _ = Describe("Internal helper functions", func() {
 				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("docker run failed"))
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 			})
 		})
 
@@ -652,7 +668,7 @@ var _ = Describe("Internal helper functions", func() {
 				fakeRunner.err = context.Canceled
 				_ = exec.Execute(cancelCtx, "test", logFile, "test-container")
 				// fakeRunner is called for both docker rm -f and docker run
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 			})
 		})
 
@@ -660,11 +676,11 @@ var _ = Describe("Internal helper functions", func() {
 			It("calls docker rm -f before docker run", func() {
 				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(fakeRunner.Commands()).To(HaveLen(2))
 				Expect(
-					fakeRunner.commands[0].Args,
+					fakeRunner.Commands()[0].Args,
 				).To(ContainElements("docker", "rm", "-f", "test-container"))
-				Expect(fakeRunner.commands[1].Args).To(ContainElements("docker", "run"))
+				Expect(fakeRunner.Commands()[1].Args).To(ContainElements("docker", "run"))
 			})
 		})
 
@@ -680,7 +696,7 @@ This has frontmatter.`
 
 				err := exec.Execute(ctx, promptContent, logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.runCalled).To(BeTrue())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
 			})
 		})
 
@@ -690,9 +706,9 @@ This has frontmatter.`
 
 				err := exec.Execute(ctx, "test prompt", logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(fakeRunner.Commands()).To(HaveLen(2))
 				Expect(
-					fakeRunner.commands[1].Args,
+					fakeRunner.Commands()[1].Args,
 				).To(ContainElement("/custom/claude-config:/home/node/.claude"))
 			})
 		})
@@ -706,9 +722,9 @@ This has frontmatter.`
 
 				err = exec.Execute(ctx, "test prompt", logFile, "test-container")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(fakeRunner.commands).To(HaveLen(2))
+				Expect(fakeRunner.Commands()).To(HaveLen(2))
 				Expect(
-					fakeRunner.commands[1].Args,
+					fakeRunner.Commands()[1].Args,
 				).To(ContainElement(home + "/.claude:/home/node/.claude"))
 			})
 		})

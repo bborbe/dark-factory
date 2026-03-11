@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Removed named return `err` from `preparePromptForExecution` and converted variable assignments to `:=` declarations to fix the shadowed named return lint warning.
+container: dark-factory-179-fix-lint-failures
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:24:55Z"
+started: "2026-03-11T23:21:15Z"
+completed: "2026-03-11T23:28:55Z"
 ---
 
 <summary>

@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Reordered struct declarations to appear below their constructors in generator.go, prompt.go, spec.go, cloner.go, and collaborator_fetcher.go, enforcing the Interface → Constructor → Struct → Methods convention.
+container: dark-factory-181-fix-file-layout-batch2
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-11T23:37:57Z"
+completed: "2026-03-11T23:43:13Z"
 ---
 
 <summary>

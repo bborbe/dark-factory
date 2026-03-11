@@ -1,5 +1,5 @@
 ---
-status: approved
+status: draft
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
 queued: "2026-03-11T17:44:53Z"

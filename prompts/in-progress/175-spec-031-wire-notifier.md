@@ -1,8 +1,11 @@
 ---
-status: approved
+status: executing
 spec: ["031"]
+container: dark-factory-175-spec-031-wire-notifier
+dark-factory-version: v0.46.1-3-g7588a45-dirty
 created: "2026-03-11T22:30:00Z"
 queued: "2026-03-11T22:05:03Z"
+started: "2026-03-11T22:27:50Z"
 ---
 <summary>
 - A `Notifier` is injected into the processor so prompt failures and partial completions fire notifications

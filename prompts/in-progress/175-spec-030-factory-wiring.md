@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["030"]
 created: "2026-03-11T10:00:00Z"
+queued: "2026-03-11T17:44:56Z"
 ---
 <summary>
 - `provider: github` (default) uses exactly the same `gh` CLI implementations as today — zero behavior change for existing users

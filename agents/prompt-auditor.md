@@ -97,6 +97,13 @@ Every prompt MUST have these XML sections:
 - Anchor by method/function names, not line numbers (line numbers go stale)
 - Line numbers only as optional hints (e.g. "~line 176")
 - Show old → new code pattern for find-and-replace reliability
+
+**Path portability:**
+- Dark-factory executes prompts inside a container with the repo mounted — all paths in `<verification>`, `<requirements>`, and `<context>` MUST be relative to the repository root
+- Absolute paths (e.g. `/Users/...`, `/home/...`, `~/Documents/...`) are **critical issues** — they break inside the container and on other machines
+- Detect by scanning for patterns: paths starting with `/`, `~/`, or `$HOME/`
+- Correct form: `cd api && make test` or `make precommit` (repo-root-relative)
+- Wrong form: `cd /Users/bborbe/Documents/workspaces/foo/bar && make test` or `cd ~/Documents/workspaces/foo/bar && make test`
 </prompt_definition_of_done>
 
 <scoring>
@@ -123,6 +130,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] `<requirements>` numbered and specific
 - [x/!] `<constraints>` present
 - [x/!] `<verification>` present with runnable command
+- [x/!] All paths repo-relative (no absolute or `~/` paths)
 
 ## Code Reference Verification
 | Reference | File | Status |

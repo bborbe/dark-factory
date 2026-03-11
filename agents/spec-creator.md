@@ -7,7 +7,7 @@ tools:
   - Glob
   - Bash
   - AskUserQuestion
-model: sonnet
+model: opus
 ---
 
 <role>

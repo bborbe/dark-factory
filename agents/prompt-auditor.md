@@ -5,7 +5,7 @@ tools:
   - Read
   - Bash
   - Glob
-model: sonnet
+model: opus
 ---
 
 <role>

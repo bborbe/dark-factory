@@ -31,27 +31,6 @@ type Runner interface {
 	Run(ctx context.Context) error
 }
 
-// runner orchestrates the main processing loop.
-type runner struct {
-	inboxDir           string
-	inProgressDir      string
-	completedDir       string
-	logDir             string
-	specsInboxDir      string
-	specsInProgressDir string
-	specsCompletedDir  string
-	specsLogDir        string
-	promptManager      prompt.Manager
-	locker             lock.Locker
-	watcher            watcher.Watcher
-	processor          processor.Processor
-	server             server.Server
-	reviewPoller       review.ReviewPoller
-	specWatcher        specwatcher.SpecWatcher
-	projectName        string
-	notifier           notifier.Notifier
-}
-
 // NewRunner creates a new Runner.
 func NewRunner(
 	inboxDir string,
@@ -91,6 +70,27 @@ func NewRunner(
 		projectName:        projectName,
 		notifier:           n,
 	}
+}
+
+// runner orchestrates the main processing loop.
+type runner struct {
+	inboxDir           string
+	inProgressDir      string
+	completedDir       string
+	logDir             string
+	specsInboxDir      string
+	specsInProgressDir string
+	specsCompletedDir  string
+	specsLogDir        string
+	promptManager      prompt.Manager
+	locker             lock.Locker
+	watcher            watcher.Watcher
+	processor          processor.Processor
+	server             server.Server
+	reviewPoller       review.ReviewPoller
+	specWatcher        specwatcher.SpecWatcher
+	projectName        string
+	notifier           notifier.Notifier
 }
 
 // Run executes the main processing loop:

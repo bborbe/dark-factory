@@ -26,23 +26,6 @@ type OneShotRunner interface {
 	Run(ctx context.Context) error
 }
 
-// oneShotRunner processes all queued prompts and exits.
-type oneShotRunner struct {
-	inboxDir              string
-	inProgressDir         string
-	completedDir          string
-	logDir                string
-	specsInboxDir         string
-	specsInProgressDir    string
-	specsCompletedDir     string
-	specsLogDir           string
-	promptManager         prompt.Manager
-	locker                lock.Locker
-	processor             processor.Processor
-	specGenerator         generator.SpecGenerator
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewOneShotRunner creates a new OneShotRunner.
 func NewOneShotRunner(
 	inboxDir string,
@@ -74,6 +57,23 @@ func NewOneShotRunner(
 		specGenerator:         specGen,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// oneShotRunner processes all queued prompts and exits.
+type oneShotRunner struct {
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	logDir                string
+	specsInboxDir         string
+	specsInProgressDir    string
+	specsCompletedDir     string
+	specsLogDir           string
+	promptManager         prompt.Manager
+	locker                lock.Locker
+	processor             processor.Processor
+	specGenerator         generator.SpecGenerator
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // Run acquires the lock, initializes directories, then loops: generate prompts from approved

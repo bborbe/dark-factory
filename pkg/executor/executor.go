@@ -30,17 +30,6 @@ type Executor interface {
 	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
 }
 
-// dockerExecutor implements Executor using Docker.
-type dockerExecutor struct {
-	containerImage string
-	projectName    string
-	model          string
-	netrcFile      string
-	gitconfigFile  string
-	env            map[string]string
-	commandRunner  commandRunner
-}
-
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
 func NewDockerExecutor(
 	containerImage string,
@@ -59,6 +48,17 @@ func NewDockerExecutor(
 		env:            env,
 		commandRunner:  &defaultCommandRunner{},
 	}
+}
+
+// dockerExecutor implements Executor using Docker.
+type dockerExecutor struct {
+	containerImage string
+	projectName    string
+	model          string
+	netrcFile      string
+	gitconfigFile  string
+	env            map[string]string
+	commandRunner  commandRunner
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.

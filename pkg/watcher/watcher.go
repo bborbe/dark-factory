@@ -27,16 +27,6 @@ type Watcher interface {
 	Watch(ctx context.Context) error
 }
 
-// watcher implements Watcher.
-type watcher struct {
-	inProgressDir         string
-	inboxDir              string
-	promptManager         prompt.Manager
-	ready                 chan<- struct{}
-	debounce              time.Duration
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewWatcher creates a new Watcher with the specified debounce duration.
 func NewWatcher(
 	inProgressDir string,
@@ -54,6 +44,16 @@ func NewWatcher(
 		debounce:              debounce,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// watcher implements Watcher.
+type watcher struct {
+	inProgressDir         string
+	inboxDir              string
+	promptManager         prompt.Manager
+	ready                 chan<- struct{}
+	debounce              time.Duration
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // Watch starts watching the prompts directory for file changes.

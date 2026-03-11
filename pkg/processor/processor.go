@@ -35,34 +35,6 @@ type Processor interface {
 	ProcessQueue(ctx context.Context) error
 }
 
-// processor implements Processor.
-type processor struct {
-	queueDir          string
-	completedDir      string
-	logDir            string
-	projectName       string
-	executor          executor.Executor
-	promptManager     prompt.Manager
-	releaser          git.Releaser
-	versionGetter     version.Getter
-	ready             <-chan struct{}
-	pr                bool
-	worktree          bool
-	brancher          git.Brancher
-	prCreator         git.PRCreator
-	cloner            git.Cloner
-	autoMerge         bool
-	autoRelease       bool
-	autoReview        bool
-	prMerger          git.PRMerger
-	autoCompleter     spec.AutoCompleter
-	specLister        spec.Lister
-	validationCommand string
-	verificationGate  bool
-	skippedPrompts    map[string]time.Time // filename → mod time when skipped
-	notifier          notifier.Notifier
-}
-
 // NewProcessor creates a new Processor.
 func NewProcessor(
 	queueDir string,
@@ -115,6 +87,34 @@ func NewProcessor(
 		skippedPrompts:    make(map[string]time.Time),
 		notifier:          n,
 	}
+}
+
+// processor implements Processor.
+type processor struct {
+	queueDir          string
+	completedDir      string
+	logDir            string
+	projectName       string
+	executor          executor.Executor
+	promptManager     prompt.Manager
+	releaser          git.Releaser
+	versionGetter     version.Getter
+	ready             <-chan struct{}
+	pr                bool
+	worktree          bool
+	brancher          git.Brancher
+	prCreator         git.PRCreator
+	cloner            git.Cloner
+	autoMerge         bool
+	autoRelease       bool
+	autoReview        bool
+	prMerger          git.PRMerger
+	autoCompleter     spec.AutoCompleter
+	specLister        spec.Lister
+	validationCommand string
+	verificationGate  bool
+	skippedPrompts    map[string]time.Time // filename → mod time when skipped
+	notifier          notifier.Notifier
 }
 
 // Process starts processing queued prompts.

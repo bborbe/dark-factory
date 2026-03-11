@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.2
+
+- refactor: reorder declarations in processor, runner, oneshot, watcher, specwatcher, and executor to follow Interface → Constructor → Struct → Methods convention
+
 ## v0.51.1
 
 - fix: remove shadowed named return `err` in `preparePromptForExecution` to resolve golangci-lint `result err is always nil` warning

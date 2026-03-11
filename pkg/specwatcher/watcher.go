@@ -28,15 +28,6 @@ type SpecWatcher interface {
 	Watch(ctx context.Context) error
 }
 
-// specWatcher implements SpecWatcher.
-type specWatcher struct {
-	inProgressDir         string
-	generator             generator.SpecGenerator
-	debounce              time.Duration
-	mu                    sync.Mutex
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewSpecWatcher creates a new SpecWatcher.
 func NewSpecWatcher(
 	inProgressDir string,
@@ -50,6 +41,15 @@ func NewSpecWatcher(
 		debounce:              debounce,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// specWatcher implements SpecWatcher.
+type specWatcher struct {
+	inProgressDir         string
+	generator             generator.SpecGenerator
+	debounce              time.Duration
+	mu                    sync.Mutex
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // Watch starts watching the in-progress directory for new spec files.

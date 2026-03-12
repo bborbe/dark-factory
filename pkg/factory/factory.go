@@ -522,18 +522,13 @@ func CreateServer(
 	mux.Handle("/health", libhttp.NewErrorHandler(server.NewHealthHandler()))
 	mux.Handle("/api/v1/status", libhttp.NewErrorHandler(server.NewStatusHandler(statusChecker)))
 	mux.Handle("/api/v1/queue", libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker)))
-	mux.Handle(
-		"/api/v1/queue/action",
-		libhttp.NewErrorHandler(
-			server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
-		),
+	// Both routes share a single handler instance. The handler inspects the URL path
+	// suffix to distinguish single-file (/api/v1/queue/action) from all-files (/api/v1/queue/action/all) operations.
+	queueActionHandler := libhttp.NewErrorHandler(
+		server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
 	)
-	mux.Handle(
-		"/api/v1/queue/action/all",
-		libhttp.NewErrorHandler(
-			server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
-		),
-	)
+	mux.Handle("/api/v1/queue/action", queueActionHandler)
+	mux.Handle("/api/v1/queue/action/all", queueActionHandler)
 	mux.Handle("/api/v1/inbox", libhttp.NewErrorHandler(server.NewInboxHandler(inboxDir)))
 	mux.Handle(
 		"/api/v1/completed",

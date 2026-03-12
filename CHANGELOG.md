@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.8
+
+- refactor: share single `QueueActionHandler` instance between `/api/v1/queue/action` and `/api/v1/queue/action/all` routes in `CreateServer`
+
 Please choose versions by [Semantic Versioning](http://semver.org/).
 
 * MAJOR version when you make incompatible API changes,

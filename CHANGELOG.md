@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.52.4
+
+- docs: add CI, Go Reference, and Go Report Card badges to README
+- docs: update Go prerequisite from 1.24 to 1.26 to match go.mod
+
 ## v0.52.3
 
 - refactor: extract `DetermineBumpFromChangelog` into `pkg/git/changelog.go`, replacing duplicated logic in `pkg/processor` and `pkg/cmd`

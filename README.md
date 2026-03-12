@@ -1,5 +1,9 @@
 # Dark Factory
 
+[![CI](https://github.com/bborbe/dark-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/bborbe/dark-factory/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/bborbe/dark-factory.svg)](https://pkg.go.dev/github.com/bborbe/dark-factory)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bborbe/dark-factory)](https://goreportcard.com/report/github.com/bborbe/dark-factory)
+
 Autonomous coding pipeline — drop prompts in, get commits out.
 
 One factory per project, sequential prompt processing, zero human intervention between spec and commit.
@@ -19,7 +23,7 @@ You come back                       ←── changes committed and pushed
 
 ## Prerequisites
 
-- **Go 1.24+** — to build dark-factory
+- **Go 1.26+** — to build dark-factory
 - **Docker** — to run claude-yolo containers
 - **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.3.0`
 - **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Setup](docs/yolo-container-setup.md))

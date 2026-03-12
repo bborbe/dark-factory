@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Modified createPromptTempFile to create files inside a restricted os.MkdirTemp subdirectory and updated cleanup to use os.RemoveAll on the directory
+container: dark-factory-189-use-restricted-temp-dir
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T00:17:58Z"
+completed: "2026-03-12T00:22:01Z"
 ---
 
 <summary>

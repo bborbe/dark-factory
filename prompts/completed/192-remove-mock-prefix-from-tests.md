@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Removed mock prefix from Counterfeiter fake variable names in 15 test files, renaming e.g. mockExecutor→executor, mockManager→manager, mockProcessor→processor across all specified test files.
+container: dark-factory-192-remove-mock-prefix-from-tests
+dark-factory-version: v0.48.0
 created: "2026-03-11T17:44:51Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T01:26:15Z"
+completed: "2026-03-12T01:32:02Z"
 ---
 
 <summary>

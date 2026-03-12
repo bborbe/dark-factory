@@ -102,6 +102,16 @@ func handleQueueSingle(
 		)
 	}
 
+	// Explicit containment check: verify the raw input joined with inboxDir stays within inbox
+	checkPath := filepath.Join(inboxDir, queueReq.File)
+	cleanInbox := filepath.Clean(inboxDir) + string(os.PathSeparator)
+	if !strings.HasPrefix(filepath.Clean(checkPath)+string(os.PathSeparator), cleanInbox) {
+		return libhttp.WrapWithStatusCode(
+			errors.New(ctx, "path escapes inbox directory"),
+			http.StatusBadRequest,
+		)
+	}
+
 	// Fix path traversal: sanitize filename to prevent directory traversal
 	filename := filepath.Base(queueReq.File)
 	if filename == "." || filename == ".." {

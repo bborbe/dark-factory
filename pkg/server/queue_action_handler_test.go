@@ -146,6 +146,22 @@ var _ = Describe("QueueActionHandler", func() {
 			Expect(w.Code).To(Equal(405))
 		})
 
+		It("returns 400 for crafted filename attempting directory escape", func() {
+			reqBody := server.QueueRequest{File: "../escape.md"}
+			body, err := json.Marshal(reqBody)
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest("POST", "/api/v1/queue/action", bytes.NewReader(body))
+			w := httptest.NewRecorder()
+
+			handler := libhttp.NewErrorHandler(
+				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+			)
+			handler.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(400))
+		})
+
 		It("handles normalized filename", func() {
 			// Create test file in inbox
 			testFile := filepath.Join(inboxDir, "test.md")

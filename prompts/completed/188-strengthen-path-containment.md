@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added explicit path containment check in queue action handler using raw input before filepath.Base sanitization, with a test verifying directory escape attempts are rejected with HTTP 400
+container: dark-factory-188-strengthen-path-containment
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T00:12:26Z"
+completed: "2026-03-12T00:17:55Z"
 ---
 
 <summary>

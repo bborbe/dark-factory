@@ -96,7 +96,8 @@ func Load(
 	name := strings.TrimSuffix(filepath.Base(path), ".md")
 
 	var fm Frontmatter
-	body, err := frontmatter.Parse(bytes.NewReader(content), &fm)
+	yamlV3Format := frontmatter.NewFormat("---", "---", yaml.Unmarshal)
+	body, err := frontmatter.Parse(bytes.NewReader(content), &fm, yamlV3Format)
 	if err != nil {
 		return &SpecFile{
 			Path:                  path,

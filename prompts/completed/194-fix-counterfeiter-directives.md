@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Moved counterfeiter directive in pkg/git/cloner.go above the GoDoc comment to match canonical placement pattern; processor.go was already correct and left unchanged.
+container: dark-factory-194-fix-counterfeiter-directives
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T01:36:49Z"
+completed: "2026-03-12T01:42:03Z"
 ---
 
 <summary>

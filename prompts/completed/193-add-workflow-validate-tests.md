@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added empty string test case for Workflow.Validate in pkg/config/config_test.go to complete branch coverage alongside existing worktree, unknown, direct, and pr tests
+container: dark-factory-193-add-workflow-validate-tests
+dark-factory-version: v0.48.0
 created: "2026-03-11T17:44:51Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T01:32:06Z"
+completed: "2026-03-12T01:36:46Z"
 ---
 
 <summary>

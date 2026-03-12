@@ -946,6 +946,12 @@ var _ = Describe("Config", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("unknown workflow"))
 			})
+
+			It("fails for empty string", func() {
+				err := config.Workflow("").Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unknown workflow"))
+			})
 		})
 
 		Describe("String", func() {

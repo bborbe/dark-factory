@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.15
+
+- test: add `Workflow.Validate` coverage for empty string, worktree migration error, and unknown workflow in `pkg/config`
+
 ## v0.51.14
 
 - refactor: remove `mock` prefix from Counterfeiter fake variable names in test files to match project convention

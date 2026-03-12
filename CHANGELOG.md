@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.55.0
+
+- feat: add `/dark-factory:run`, `/dark-factory:daemon`, `/dark-factory:init-project`, `/dark-factory:read-guides` slash commands
+- fix: sync plugin version in `.claude-plugin/plugin.json` and `marketplace.json` with CHANGELOG
+- docs: add plugin version sync rule to CLAUDE.md
+
 ## v0.54.1
 
 - fix: data race in executor test fakeCommandRunner (protect err field with mutex)

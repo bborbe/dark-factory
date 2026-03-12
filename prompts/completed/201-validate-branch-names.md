@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added ValidateBranchName and ValidatePRTitle in pkg/git/validate.go; wired validation into all brancher methods and prCreator.Create to block argument injection from YAML frontmatter
+container: dark-factory-201-validate-branch-names
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T02:49:05Z"
+completed: "2026-03-12T02:56:19Z"
 ---
 
 <summary>

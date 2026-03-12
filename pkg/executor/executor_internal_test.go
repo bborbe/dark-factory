@@ -32,8 +32,9 @@ func (f *fakeCommandRunner) Run(ctx context.Context, cmd *exec.Cmd) error {
 	f.mu.Lock()
 	f.runCalled = true
 	f.commands = append(f.commands, cmd)
+	err := f.err
 	f.mu.Unlock()
-	return f.err
+	return err
 }
 
 func (f *fakeCommandRunner) RunCalled() bool {

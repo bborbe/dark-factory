@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.54.1
+
+- fix: data race in executor test fakeCommandRunner (protect err field with mutex)
+- add draft specs for container health check and resume-on-restart
+
 ## v0.54.0
 
 - feat: add `ValidateBranchName` and `ValidatePRTitle` in `pkg/git/validate.go` to reject argument-injection payloads from YAML frontmatter before they reach exec.CommandContext

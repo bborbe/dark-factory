@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Extracted normalizeFilenames, migrateQueueDir, and createDirectories into shared package-level functions in pkg/runner/lifecycle.go, replacing duplicated method bodies in runner and oneShotRunner with thin wrappers.
+container: dark-factory-197-extract-runner-shared-helpers
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T01:53:55Z"
+completed: "2026-03-12T01:59:14Z"
 ---
 
 <summary>

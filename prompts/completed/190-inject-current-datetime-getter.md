@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Replaced inline libtime.NewCurrentDateTime() construction with injected CurrentDateTimeGetter in spec.Lister, prompt.Counter, prompt.ListQueued, prompt.HasExecuting, server.NewQueueActionHandler, and generator.countCompletedPromptsForSpec
+container: dark-factory-190-inject-current-datetime-getter
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T00:22:08Z"
+completed: "2026-03-12T01:21:23Z"
 ---
 
 <summary>

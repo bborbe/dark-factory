@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Extracted duplicated bump-detection logic into `pkg/git/changelog.go` as `DetermineBumpFromChangelog`, updated both `pkg/processor` and `pkg/cmd` to use the shared function, and migrated all tests accordingly.
+container: dark-factory-198-extract-determine-bump
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T01:59:18Z"
+completed: "2026-03-12T02:10:21Z"
 ---
 
 <summary>

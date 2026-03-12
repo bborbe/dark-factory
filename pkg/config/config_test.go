@@ -1502,13 +1502,41 @@ worktree: false
 			Expect(cfg.ResolvedGitHubToken()).To(Equal(""))
 		})
 
-		It("returns literal value when token does not match pattern", func() {
+		It("resolves GITHUB_TOKEN env var reference", func() {
+			GinkgoT().Setenv("GITHUB_TOKEN", "resolved-via-github-token")
 			cfg := config.Config{
+				// #nosec G101 -- test value, not a real credential
 				GitHub: config.GitHubConfig{
-					Token: "literal-token",
+					Token: "${GITHUB_TOKEN}",
 				},
 			}
-			Expect(cfg.ResolvedGitHubToken()).To(Equal("literal-token"))
+			Expect(cfg.ResolvedGitHubToken()).To(Equal("resolved-via-github-token"))
+		})
+	})
+
+	Describe("validateGitHubToken", func() {
+		It("succeeds when github token is empty", func() {
+			cfg := config.Defaults()
+			cfg.GitHub.Token = ""
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when github token is an env var reference", func() {
+			cfg := config.Defaults()
+			// #nosec G101 -- test value, not a real credential
+			cfg.GitHub.Token = "${GITHUB_TOKEN}"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails when github token is a literal value", func() {
+			cfg := config.Defaults()
+			// #nosec G101 -- test value, not a real credential
+			cfg.GitHub.Token = "ghp_abc123"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("github.token must be an env var reference like ${GITHUB_TOKEN}, not a literal value"))
 		})
 	})
 

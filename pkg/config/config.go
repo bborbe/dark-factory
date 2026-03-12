@@ -193,6 +193,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
 		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
 		validation.Name("notifications", validation.HasValidationFunc(c.validateNotifications)),
+		validation.Name("github.token", validation.HasValidationFunc(c.validateGitHubToken)),
 	}.Validate(ctx)
 }
 
@@ -275,6 +276,8 @@ func (c Config) validateEnv(ctx context.Context) error {
 
 var envVarPattern = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
 
+var githubTokenEnvVarPattern = regexp.MustCompile(`^\$\{[A-Za-z_][A-Za-z0-9_]*\}$`)
+
 // resolveEnvVar resolves environment variable references in the form ${VAR_NAME}.
 // If the value matches the pattern, it returns the environment variable value.
 // Otherwise, it returns the value as-is.
@@ -284,6 +287,20 @@ func resolveEnvVar(value string) string {
 		return os.Getenv(matches[1])
 	}
 	return value
+}
+
+// validateGitHubToken validates that the GitHub token is either empty or an env var reference.
+func (c Config) validateGitHubToken(ctx context.Context) error {
+	if c.GitHub.Token == "" {
+		return nil
+	}
+	if githubTokenEnvVarPattern.MatchString(c.GitHub.Token) {
+		return nil
+	}
+	return errors.Errorf(
+		ctx,
+		"github.token must be an env var reference like ${GITHUB_TOKEN}, not a literal value",
+	)
 }
 
 // resolveFilePath resolves a file path by expanding ${VAR} env vars and leading ~/ to home dir.

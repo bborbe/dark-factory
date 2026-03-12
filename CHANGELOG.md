@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.52.0
+
+- feat: reject literal GitHub token values in `github.token` config field; only `${VAR_NAME}` env var references are accepted to prevent accidental credential leakage
+
 ## v0.51.16
 
 - refactor: move counterfeiter directive in `pkg/git/cloner.go` above the GoDoc comment to match canonical placement pattern

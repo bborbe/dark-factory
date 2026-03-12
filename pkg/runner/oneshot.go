@@ -237,37 +237,15 @@ func (r *oneShotRunner) approveInboxPrompts(ctx context.Context) (int, error) {
 }
 
 func (r *oneShotRunner) normalizeFilenames(ctx context.Context) error {
-	renames, err := r.promptManager.NormalizeFilenames(ctx, r.inProgressDir)
-	if err != nil {
-		return errors.Wrap(ctx, err, "normalize queue filenames")
-	}
-	for _, rename := range renames {
-		slog.Debug("renamed file",
-			"from", filepath.Base(rename.OldPath),
-			"to", filepath.Base(rename.NewPath))
-	}
-	return nil
+	return normalizeFilenames(ctx, r.promptManager, r.inProgressDir)
 }
 
 func (r *oneShotRunner) migrateQueueDir(ctx context.Context) error {
-	oldQueue := filepath.Join(filepath.Dir(r.inProgressDir), "queue")
-	if _, err := os.Stat(oldQueue); os.IsNotExist(err) {
-		return nil
-	}
-	if _, err := os.Stat(r.inProgressDir); err == nil {
-		slog.Info("skipping queue migration: in-progress dir already exists",
-			"old", oldQueue, "new", r.inProgressDir)
-		return nil
-	}
-	if err := os.Rename(oldQueue, r.inProgressDir); err != nil {
-		return errors.Wrap(ctx, err, "migrate queue dir to in-progress")
-	}
-	slog.Info("migrated queue dir to in-progress", "old", oldQueue, "new", r.inProgressDir)
-	return nil
+	return migrateQueueDir(ctx, r.inProgressDir)
 }
 
 func (r *oneShotRunner) createDirectories(ctx context.Context) error {
-	dirs := []string{
+	return createDirectories(ctx, []string{
 		r.inboxDir,
 		r.inProgressDir,
 		r.completedDir,
@@ -276,11 +254,5 @@ func (r *oneShotRunner) createDirectories(ctx context.Context) error {
 		r.specsInProgressDir,
 		r.specsCompletedDir,
 		r.specsLogDir,
-	}
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0750); err != nil {
-			return errors.Wrapf(ctx, err, "create directory %s", dir)
-		}
-	}
-	return nil
+	})
 }

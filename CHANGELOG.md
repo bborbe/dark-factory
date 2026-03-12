@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.52.2
+
+- refactor: extract `normalizeFilenames`, `migrateQueueDir`, and `createDirectories` into shared package-level functions in `pkg/runner/lifecycle.go`, eliminating verbatim duplication between `runner` and `oneShotRunner`
+
 ## v0.52.1
 
 - test: add `time.Local = time.UTC` and `format.TruncatedDiff = false` setup to `pkg/specnum` suite, and add `//go:generate` counterfeiter directive to `specnum`, `report`, `project`, and root test suites

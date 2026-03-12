@@ -161,37 +161,13 @@ func (r *runner) Run(ctx context.Context) error {
 // normalizeFilenames normalizes filenames in the in-progress directory only.
 // The inbox directory is not normalized as it contains draft files.
 func (r *runner) normalizeFilenames(ctx context.Context) error {
-	renames, err := r.promptManager.NormalizeFilenames(ctx, r.inProgressDir)
-	if err != nil {
-		return errors.Wrap(ctx, err, "normalize queue filenames")
-	}
-	for _, rename := range renames {
-		slog.Debug("renamed file",
-			"from", filepath.Base(rename.OldPath),
-			"to", filepath.Base(rename.NewPath))
-	}
-	return nil
+	return normalizeFilenames(ctx, r.promptManager, r.inProgressDir)
 }
 
 // migrateQueueDir renames prompts/queue/ → prompts/in-progress/ if the old path
 // exists and the new path does not. This is a one-time migration.
 func (r *runner) migrateQueueDir(ctx context.Context) error {
-	oldQueue := filepath.Join(filepath.Dir(r.inProgressDir), "queue")
-	// Only migrate if old dir exists
-	if _, err := os.Stat(oldQueue); os.IsNotExist(err) {
-		return nil
-	}
-	// Skip if new dir already exists (migration already done or manually created)
-	if _, err := os.Stat(r.inProgressDir); err == nil {
-		slog.Info("skipping queue migration: in-progress dir already exists",
-			"old", oldQueue, "new", r.inProgressDir)
-		return nil
-	}
-	if err := os.Rename(oldQueue, r.inProgressDir); err != nil {
-		return errors.Wrap(ctx, err, "migrate queue dir to in-progress")
-	}
-	slog.Info("migrated queue dir to in-progress", "old", oldQueue, "new", r.inProgressDir)
-	return nil
+	return migrateQueueDir(ctx, r.inProgressDir)
 }
 
 // notifyStuckContainers scans inProgressDir for prompts with "executing" status
@@ -222,7 +198,7 @@ func (r *runner) notifyStuckContainers(ctx context.Context) {
 
 // createDirectories creates all eight lifecycle directories if they don't exist.
 func (r *runner) createDirectories(ctx context.Context) error {
-	dirs := []string{
+	return createDirectories(ctx, []string{
 		r.inboxDir,
 		r.inProgressDir,
 		r.completedDir,
@@ -231,11 +207,5 @@ func (r *runner) createDirectories(ctx context.Context) error {
 		r.specsInProgressDir,
 		r.specsCompletedDir,
 		r.specsLogDir,
-	}
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0750); err != nil {
-			return errors.Wrapf(ctx, err, "create directory %s", dir)
-		}
-	}
-	return nil
+	})
 }

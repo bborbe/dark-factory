@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added time.Local/format.TruncatedDiff setup to specnum_suite_test.go and //go:generate directives to specnum, report, project, and main test suites
+container: dark-factory-196-fix-test-suite-setup
+dark-factory-version: v0.48.0
 created: "2026-03-11T17:44:51Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T01:47:48Z"
+completed: "2026-03-12T01:53:49Z"
 ---
 
 <summary>

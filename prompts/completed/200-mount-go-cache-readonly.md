@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Changed Go module cache Docker volume mount from read-write to read-only by appending :ro to the mount flag in buildDockerCommand and updated the corresponding test expectation.
+container: dark-factory-200-mount-go-cache-readonly
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T02:15:30Z"
+completed: "2026-03-12T02:49:02Z"
 ---
 
 <summary>

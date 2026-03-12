@@ -276,7 +276,7 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(cmd.Args).To(ContainElement("/tmp/test.md:/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement("/workspace:/workspace"))
 			Expect(cmd.Args).To(ContainElement("/home/user/.claude:/home/node/.claude"))
-			Expect(cmd.Args).To(ContainElement("/home/user/go/pkg:/home/node/go/pkg"))
+			Expect(cmd.Args).To(ContainElement("/home/user/go/pkg:/home/node/go/pkg:ro"))
 		})
 
 		It("always includes network capabilities", func() {

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.11
+
+- fix: create prompt temp files inside a restricted subdirectory (`os.MkdirTemp`) to prevent other local processes from reading prompt content
+
 ## v0.51.10
 
 - fix: add explicit path containment check in queue action handler to reject filenames that escape the inbox directory

@@ -221,15 +221,21 @@ func prepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
 
 // createPromptTempFile creates a temp file with the prompt content and returns the path and cleanup function.
 func createPromptTempFile(ctx context.Context, promptContent string) (string, func(), error) {
-	// Write prompt to temp file (avoids shell/docker escaping issues with -e flag)
-	promptFile, err := os.CreateTemp("", "dark-factory-prompt-*.md")
+	// Write prompt to a restricted temp directory to prevent other local processes from reading it
+	tmpDir, err := os.MkdirTemp("", "dark-factory-*")
 	if err != nil {
+		return "", nil, errors.Wrap(ctx, err, "create temp directory")
+	}
+
+	promptFile, err := os.CreateTemp(tmpDir, "prompt-*.md")
+	if err != nil {
+		_ = os.RemoveAll(tmpDir)
 		return "", nil, errors.Wrap(ctx, err, "create prompt temp file")
 	}
 
 	cleanup := func() {
 		promptFile.Close()
-		_ = os.Remove(promptFile.Name())
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	if _, err := promptFile.WriteString(promptContent); err != nil {
@@ -238,8 +244,12 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 	}
 
 	if err := promptFile.Close(); err != nil {
-		cleanup()
+		_ = os.RemoveAll(tmpDir)
 		return "", nil, errors.Wrap(ctx, err, "close prompt temp file")
+	}
+
+	cleanup = func() {
+		_ = os.RemoveAll(tmpDir)
 	}
 
 	return promptFile.Name(), cleanup, nil

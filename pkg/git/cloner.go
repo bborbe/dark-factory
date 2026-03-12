@@ -14,9 +14,9 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// Cloner handles local git clone operations.
-//
 //counterfeiter:generate -o ../../mocks/cloner.go --fake-name Cloner . Cloner
+
+// Cloner handles local git clone operations.
 type Cloner interface {
 	Clone(ctx context.Context, srcDir string, destDir string, branch string) error
 	Remove(ctx context.Context, path string) error

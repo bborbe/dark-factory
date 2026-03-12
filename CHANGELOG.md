@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.16
+
+- refactor: move counterfeiter directive in `pkg/git/cloner.go` above the GoDoc comment to match canonical placement pattern
+
 ## v0.51.15
 
 - test: add `Workflow.Validate` coverage for empty string, worktree migration error, and unknown workflow in `pkg/config`

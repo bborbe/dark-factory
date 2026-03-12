@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.9
+
+- fix: reject env variable values containing control characters (`\x00`, `\n`, `\r`) in config validation to prevent Docker environment injection
+
 ## v0.51.8
 
 - refactor: share single `QueueActionHandler` instance between `/api/v1/queue/action` and `/api/v1/queue/action/all` routes in `CreateServer`

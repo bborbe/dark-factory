@@ -880,6 +880,30 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("ANTHROPIC_MODEL"))
 		})
 
+		DescribeTable("fails when env value contains control characters",
+			func(value string) {
+				cfg := config.Config{
+					Workflow: config.WorkflowDirect,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+					Env:            map[string]string{"MY_VAR": value},
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("contains invalid characters"))
+			},
+			Entry("newline", "value\ninjected"),
+			Entry("null byte", "value\x00injected"),
+			Entry("carriage return", "value\rinjected"),
+		)
+
 		It("succeeds with nil env (default, no env vars)", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowDirect,

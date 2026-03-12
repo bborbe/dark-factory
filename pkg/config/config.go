@@ -255,9 +255,9 @@ func (c Config) validateGitconfigFile(ctx context.Context) error {
 // reservedEnvKeys are env var names set internally by the executor and cannot be overridden.
 var reservedEnvKeys = []string{"YOLO_PROMPT_FILE", "ANTHROPIC_MODEL"}
 
-// validateEnv validates the env map keys.
+// validateEnv validates the env map keys and values.
 func (c Config) validateEnv(ctx context.Context) error {
-	for k := range c.Env {
+	for k, v := range c.Env {
 		if k == "" {
 			return errors.Errorf(ctx, "env key must not be empty")
 		}
@@ -265,6 +265,9 @@ func (c Config) validateEnv(ctx context.Context) error {
 			if k == reserved {
 				return errors.Errorf(ctx, "env key %q is reserved and cannot be overridden", k)
 			}
+		}
+		if strings.ContainsAny(v, "\x00\n\r") {
+			return errors.Errorf(ctx, "env value for %q contains invalid characters", k)
 		}
 	}
 	return nil

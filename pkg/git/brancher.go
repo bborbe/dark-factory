@@ -61,6 +61,9 @@ func NewBrancher(opts ...BrancherOption) Brancher {
 
 // CreateAndSwitch creates a new branch and switches to it.
 func (b *brancher) CreateAndSwitch(ctx context.Context, name string) error {
+	if err := ValidateBranchName(name); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
 	slog.Debug("creating and switching to branch", "branch", name)
 
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
@@ -73,6 +76,9 @@ func (b *brancher) CreateAndSwitch(ctx context.Context, name string) error {
 
 // Push pushes a branch to the remote repository.
 func (b *brancher) Push(ctx context.Context, name string) error {
+	if err := ValidateBranchName(name); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
 	slog.Debug("pushing branch to remote", "branch", name)
 
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
@@ -85,6 +91,9 @@ func (b *brancher) Push(ctx context.Context, name string) error {
 
 // Switch switches to an existing branch.
 func (b *brancher) Switch(ctx context.Context, name string) error {
+	if err := ValidateBranchName(name); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
 	slog.Debug("switching to branch", "branch", name)
 
 	// #nosec G204 -- branch name is controlled by the application
@@ -120,6 +129,9 @@ func (b *brancher) Fetch(ctx context.Context) error {
 
 // FetchAndVerifyBranch fetches from origin and verifies the branch exists remotely.
 func (b *brancher) FetchAndVerifyBranch(ctx context.Context, branch string) error {
+	if err := ValidateBranchName(branch); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
 	slog.Debug("fetching from origin and verifying branch", "branch", branch)
 
 	// #nosec G204 -- branch name comes from validated frontmatter
@@ -208,6 +220,9 @@ func (b *brancher) MergeOriginDefault(ctx context.Context) error {
 // MergeToDefault merges the given feature branch into the default branch.
 // It ensures the repo is on the default branch before merging.
 func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
+	if err := ValidateBranchName(branch); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
 	defaultBranch, err := b.DefaultBranch(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get default branch")

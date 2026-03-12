@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.54.0
+
+- feat: add `ValidateBranchName` and `ValidatePRTitle` in `pkg/git/validate.go` to reject argument-injection payloads from YAML frontmatter before they reach exec.CommandContext
+
 ## v0.53.0
 
 - feat: mount Go module cache read-only in Docker containers to prevent prompt code from tampering with the shared module cache

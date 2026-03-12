@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added CI, Go Reference, and Go Report Card badges to README and updated Go prerequisite from 1.24 to 1.26 to match go.mod
+container: dark-factory-199-fix-readme-badges-version
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T02:10:25Z"
+completed: "2026-03-12T02:15:27Z"
 ---
 
 <summary>

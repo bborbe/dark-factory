@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.51.7
+
+- refactor: inline `createOptionalServer` and `createOptionalReviewPoller` into `CreateRunner` to eliminate conditional branching in factory helpers
+
 ## v0.51.6
 
 - refactor: defer collaborator fetch from factory initialization to first ReviewPoller polling iteration using lazy resolution via CollaboratorFetcher interface

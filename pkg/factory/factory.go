@@ -180,38 +180,6 @@ func fetchBitbucketCurrentUser(ctx context.Context, baseURL, token string) strin
 	return strings.TrimSpace(string(body))
 }
 
-// createOptionalServer creates a Server when port > 0, or returns nil.
-func createOptionalServer(
-	cfg config.Config,
-	inboxDir, inProgressDir, completedDir string,
-	promptManager prompt.Manager,
-) server.Server {
-	if cfg.ServerPort > 0 {
-		return CreateServer(
-			cfg.ServerPort,
-			inboxDir,
-			inProgressDir,
-			completedDir,
-			cfg.Prompts.LogDir,
-			promptManager,
-		)
-	}
-	return nil
-}
-
-// createOptionalReviewPoller creates a ReviewPoller when AutoReview is enabled, or returns nil.
-func createOptionalReviewPoller(
-	cfg config.Config,
-	promptManager prompt.Manager,
-	projectName string,
-	n notifier.Notifier,
-) review.ReviewPoller {
-	if cfg.AutoReview {
-		return CreateReviewPoller(cfg, promptManager, projectName, n)
-	}
-	return nil
-}
-
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	inboxDir := cfg.Prompts.InboxDir
@@ -231,6 +199,23 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
 
 	n := CreateNotifier(cfg)
+
+	var srv server.Server
+	if cfg.ServerPort > 0 {
+		srv = CreateServer(
+			cfg.ServerPort,
+			inboxDir,
+			inProgressDir,
+			completedDir,
+			cfg.Prompts.LogDir,
+			promptManager,
+		)
+	}
+
+	var poller review.ReviewPoller
+	if cfg.AutoReview {
+		poller = CreateReviewPoller(cfg, promptManager, projectName, n)
+	}
 
 	return runner.NewRunner(
 		inboxDir,
@@ -262,8 +247,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Specs.CompletedDir, cfg.VerificationGate,
 			cfg.Env, currentDateTimeGetter, n,
 		),
-		createOptionalServer(cfg, inboxDir, inProgressDir, completedDir, promptManager),
-		createOptionalReviewPoller(cfg, promptManager, projectName, n),
+		srv,
+		poller,
 		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter),
 		projectName,
 		n,

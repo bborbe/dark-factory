@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.14
+
+- refactor: remove `mock` prefix from Counterfeiter fake variable names in test files to match project convention
+
 ## v0.51.13
 
 - fix: use yaml.v3 format in `spec.Load` frontmatter parsing to match `prompt.Load` behavior

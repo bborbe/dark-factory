@@ -20,72 +20,72 @@ import (
 var _ = Describe("CombinedListCommand", func() {
 	var (
 		ctx             context.Context
-		mockLister      *mocks.Lister
-		mockCounter     *mocks.PromptCounter
+		lister          *mocks.Lister
+		counter         *mocks.PromptCounter
 		combinedListCmd cmd.CombinedListCommand
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		mockLister = &mocks.Lister{}
-		mockCounter = &mocks.PromptCounter{}
+		lister = &mocks.Lister{}
+		counter = &mocks.PromptCounter{}
 		// Use non-existent dirs so prompt scanning returns empty without error
 		combinedListCmd = cmd.NewCombinedListCommand(
 			"/nonexistent/inbox",
 			"/nonexistent/queue",
 			"/nonexistent/completed",
-			mockLister,
-			mockCounter,
+			lister,
+			counter,
 			libtime.NewCurrentDateTime(),
 		)
 	})
 
 	Describe("Run", func() {
 		It("outputs combined human-readable format with headers", func() {
-			mockLister.ListReturns([]*spec.SpecFile{}, nil)
+			lister.ListReturns([]*spec.SpecFile{}, nil)
 
 			err := combinedListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockLister.ListCallCount()).To(Equal(1))
+			Expect(lister.ListCallCount()).To(Equal(1))
 		})
 
 		It("hides completed specs by default", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 				{Name: "002-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
 			}, nil)
-			mockCounter.CountBySpecReturnsOnCall(0, 1, 3, nil)
+			counter.CountBySpecReturnsOnCall(0, 1, 3, nil)
 
 			err := combinedListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 
 		It("shows completed specs with --all flag", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 				{Name: "002-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
 			}, nil)
-			mockCounter.CountBySpecReturnsOnCall(0, 1, 3, nil)
-			mockCounter.CountBySpecReturnsOnCall(1, 5, 5, nil)
+			counter.CountBySpecReturnsOnCall(0, 1, 3, nil)
+			counter.CountBySpecReturnsOnCall(1, 5, 5, nil)
 
 			err := combinedListCmd.Run(ctx, []string{"--all"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(2))
+			Expect(counter.CountBySpecCallCount()).To(Equal(2))
 		})
 
 		It("outputs JSON with prompts and specs arrays when --json flag provided", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "draft"}},
 			}, nil)
-			mockCounter.CountBySpecReturns(0, 1, nil)
+			counter.CountBySpecReturns(0, 1, nil)
 
 			err := combinedListCmd.Run(ctx, []string{"--json"})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("returns error when lister fails", func() {
-			mockLister.ListReturns(nil, errors.New("lister error"))
+			lister.ListReturns(nil, errors.New("lister error"))
 
 			err := combinedListCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
@@ -93,10 +93,10 @@ var _ = Describe("CombinedListCommand", func() {
 		})
 
 		It("returns error when counter fails", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "draft"}},
 			}, nil)
-			mockCounter.CountBySpecReturns(0, 0, errors.New("counter error"))
+			counter.CountBySpecReturns(0, 0, errors.New("counter error"))
 
 			err := combinedListCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
@@ -104,7 +104,7 @@ var _ = Describe("CombinedListCommand", func() {
 		})
 
 		It("handles empty specs list", func() {
-			mockLister.ListReturns([]*spec.SpecFile{}, nil)
+			lister.ListReturns([]*spec.SpecFile{}, nil)
 
 			err := combinedListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())

@@ -20,12 +20,12 @@ import (
 
 var _ = Describe("ApproveCommand", func() {
 	var (
-		tempDir           string
-		inboxDir          string
-		queueDir          string
-		mockPromptManager *mocks.Manager
-		approveCmd        cmd.ApproveCommand
-		ctx               context.Context
+		tempDir       string
+		inboxDir      string
+		queueDir      string
+		promptManager *mocks.Manager
+		approveCmd    cmd.ApproveCommand
+		ctx           context.Context
 	)
 
 	BeforeEach(func() {
@@ -41,13 +41,13 @@ var _ = Describe("ApproveCommand", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		mockPromptManager = &mocks.Manager{}
-		mockPromptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+		promptManager = &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		approveCmd = cmd.NewApproveCommand(
 			inboxDir,
 			queueDir,
-			mockPromptManager,
+			promptManager,
 			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()
@@ -78,7 +78,7 @@ var _ = Describe("ApproveCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 
-			Expect(mockPromptManager.NormalizeFilenamesCallCount()).To(Equal(1))
+			Expect(promptManager.NormalizeFilenamesCallCount()).To(Equal(1))
 		})
 
 		It("moves unnumbered file from inbox to queue unchanged", func() {

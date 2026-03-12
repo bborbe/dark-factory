@@ -20,25 +20,25 @@ import (
 var _ = Describe("CombinedStatusCommand", func() {
 	var (
 		ctx               context.Context
-		mockChecker       *mocks.Checker
-		mockFormatter     *mocks.Formatter
-		mockLister        *mocks.Lister
-		mockCounter       *mocks.PromptCounter
+		checker           *mocks.Checker
+		formatter         *mocks.Formatter
+		lister            *mocks.Lister
+		counter           *mocks.PromptCounter
 		combinedStatusCmd cmd.CombinedStatusCommand
 		testStatus        *status.Status
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		mockChecker = &mocks.Checker{}
-		mockFormatter = &mocks.Formatter{}
-		mockLister = &mocks.Lister{}
-		mockCounter = &mocks.PromptCounter{}
+		checker = &mocks.Checker{}
+		formatter = &mocks.Formatter{}
+		lister = &mocks.Lister{}
+		counter = &mocks.PromptCounter{}
 		combinedStatusCmd = cmd.NewCombinedStatusCommand(
-			mockChecker,
-			mockFormatter,
-			mockLister,
-			mockCounter,
+			checker,
+			formatter,
+			lister,
+			counter,
 		)
 
 		testStatus = &status.Status{
@@ -51,45 +51,45 @@ var _ = Describe("CombinedStatusCommand", func() {
 
 	Describe("Run", func() {
 		It("outputs combined human-readable format", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockFormatter.FormatReturns("Daemon: not running\n")
-			mockLister.SummaryReturns(&spec.Summary{Total: 2, Draft: 1, Approved: 1}, nil)
-			mockLister.ListReturns([]*spec.SpecFile{}, nil)
+			checker.GetStatusReturns(testStatus, nil)
+			formatter.FormatReturns("Daemon: not running\n")
+			lister.SummaryReturns(&spec.Summary{Total: 2, Draft: 1, Approved: 1}, nil)
+			lister.ListReturns([]*spec.SpecFile{}, nil)
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockChecker.GetStatusCallCount()).To(Equal(1))
-			Expect(mockFormatter.FormatCallCount()).To(Equal(1))
-			Expect(mockLister.SummaryCallCount()).To(Equal(1))
+			Expect(checker.GetStatusCallCount()).To(Equal(1))
+			Expect(formatter.FormatCallCount()).To(Equal(1))
+			Expect(lister.SummaryCallCount()).To(Equal(1))
 		})
 
 		It("includes linked prompt counts", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockFormatter.FormatReturns("status\n")
-			mockLister.SummaryReturns(&spec.Summary{Total: 1}, nil)
-			mockLister.ListReturns([]*spec.SpecFile{
+			checker.GetStatusReturns(testStatus, nil)
+			formatter.FormatReturns("status\n")
+			lister.SummaryReturns(&spec.Summary{Total: 1}, nil)
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 			}, nil)
-			mockCounter.CountBySpecReturns(2, 5, nil)
+			counter.CountBySpecReturns(2, 5, nil)
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 
 		It("outputs JSON with prompts and specs keys when --json flag provided", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockLister.SummaryReturns(&spec.Summary{Total: 1, Draft: 1}, nil)
-			mockLister.ListReturns([]*spec.SpecFile{}, nil)
+			checker.GetStatusReturns(testStatus, nil)
+			lister.SummaryReturns(&spec.Summary{Total: 1, Draft: 1}, nil)
+			lister.ListReturns([]*spec.SpecFile{}, nil)
 
 			err := combinedStatusCmd.Run(ctx, []string{"--json"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockChecker.GetStatusCallCount()).To(Equal(1))
-			Expect(mockFormatter.FormatCallCount()).To(Equal(0))
+			Expect(checker.GetStatusCallCount()).To(Equal(1))
+			Expect(formatter.FormatCallCount()).To(Equal(0))
 		})
 
 		It("returns error when checker fails", func() {
-			mockChecker.GetStatusReturns(nil, errors.New("checker error"))
+			checker.GetStatusReturns(nil, errors.New("checker error"))
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
@@ -97,8 +97,8 @@ var _ = Describe("CombinedStatusCommand", func() {
 		})
 
 		It("returns error when lister summary fails", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockLister.SummaryReturns(nil, errors.New("summary error"))
+			checker.GetStatusReturns(testStatus, nil)
+			lister.SummaryReturns(nil, errors.New("summary error"))
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
@@ -106,9 +106,9 @@ var _ = Describe("CombinedStatusCommand", func() {
 		})
 
 		It("returns error when lister list fails", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockLister.SummaryReturns(&spec.Summary{}, nil)
-			mockLister.ListReturns(nil, errors.New("list error"))
+			checker.GetStatusReturns(testStatus, nil)
+			lister.SummaryReturns(&spec.Summary{}, nil)
+			lister.ListReturns(nil, errors.New("list error"))
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
@@ -116,12 +116,12 @@ var _ = Describe("CombinedStatusCommand", func() {
 		})
 
 		It("returns error when counter fails", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockLister.SummaryReturns(&spec.Summary{Total: 1}, nil)
-			mockLister.ListReturns([]*spec.SpecFile{
+			checker.GetStatusReturns(testStatus, nil)
+			lister.SummaryReturns(&spec.Summary{Total: 1}, nil)
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-spec", Frontmatter: spec.Frontmatter{Status: "draft"}},
 			}, nil)
-			mockCounter.CountBySpecReturns(0, 0, errors.New("counter error"))
+			counter.CountBySpecReturns(0, 0, errors.New("counter error"))
 
 			err := combinedStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())

@@ -24,7 +24,7 @@ var _ = Describe("SpecShowCommand", func() {
 		inboxDir      string
 		inProgressDir string
 		completedDir  string
-		mockCounter   *mocks.PromptCounter
+		counter       *mocks.PromptCounter
 		specShowCmd   cmd.SpecShowCommand
 		ctx           context.Context
 	)
@@ -42,14 +42,14 @@ var _ = Describe("SpecShowCommand", func() {
 		Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
 		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
 
-		mockCounter = &mocks.PromptCounter{}
-		mockCounter.CountBySpecReturns(2, 5, nil)
+		counter = &mocks.PromptCounter{}
+		counter.CountBySpecReturns(2, 5, nil)
 
 		specShowCmd = cmd.NewSpecShowCommand(
 			inboxDir,
 			inProgressDir,
 			completedDir,
-			mockCounter,
+			counter,
 			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()
@@ -80,7 +80,7 @@ var _ = Describe("SpecShowCommand", func() {
 
 			err := specShowCmd.Run(ctx, []string{"001-my-spec.md"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 
 		It("shows spec from inboxDir", func() {
@@ -113,7 +113,7 @@ var _ = Describe("SpecShowCommand", func() {
 				os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# My Spec"), 0600),
 			).To(Succeed())
 
-			mockCounter.CountBySpecReturns(0, 0, errors.New("counter failure"))
+			counter.CountBySpecReturns(0, 0, errors.New("counter failure"))
 			err := specShowCmd.Run(ctx, []string{"004"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("count prompts for spec"))

@@ -23,10 +23,10 @@ import (
 
 var _ = Describe("QueueActionHandler", func() {
 	var (
-		tempDir           string
-		inboxDir          string
-		queueDir          string
-		mockPromptManager *mocks.Manager
+		tempDir       string
+		inboxDir      string
+		queueDir      string
+		promptManager *mocks.Manager
 	)
 
 	BeforeEach(func() {
@@ -41,8 +41,8 @@ var _ = Describe("QueueActionHandler", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		mockPromptManager = &mocks.Manager{}
-		mockPromptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+		promptManager = &mocks.Manager{}
+		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 	})
 
 	AfterEach(func() {
@@ -67,7 +67,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -104,7 +104,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -125,7 +125,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -146,7 +146,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -163,7 +163,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -184,7 +184,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -200,7 +200,7 @@ var _ = Describe("QueueActionHandler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Mock normalization
-			mockPromptManager.NormalizeFilenamesReturns([]prompt.Rename{
+			promptManager.NormalizeFilenamesReturns([]prompt.Rename{
 				{
 					OldPath: filepath.Join(queueDir, "test.md"),
 					NewPath: filepath.Join(queueDir, "001-test.md"),
@@ -218,7 +218,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -252,7 +252,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -289,7 +289,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -316,7 +316,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)
@@ -338,7 +338,7 @@ var _ = Describe("QueueActionHandler", func() {
 				server.NewQueueActionHandler(
 					inboxDir,
 					queueDir,
-					mockPromptManager,
+					promptManager,
 					libtime.NewCurrentDateTime(),
 				),
 			)

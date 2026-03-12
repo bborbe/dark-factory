@@ -20,14 +20,14 @@ import (
 
 var _ = Describe("OneShotRunner", func() {
 	var (
-		tempDir       string
-		promptsDir    string
-		specsDir      string
-		mockManager   *mocks.Manager
-		mockLocker    *mocks.Locker
-		mockProcessor *mocks.Processor
-		ctx           context.Context
-		cancel        context.CancelFunc
+		tempDir    string
+		promptsDir string
+		specsDir   string
+		manager    *mocks.Manager
+		locker     *mocks.Locker
+		processor  *mocks.Processor
+		ctx        context.Context
+		cancel     context.CancelFunc
 	)
 
 	BeforeEach(func() {
@@ -41,9 +41,9 @@ var _ = Describe("OneShotRunner", func() {
 
 		specsDir = filepath.Join(tempDir, "specs")
 
-		mockManager = &mocks.Manager{}
-		mockLocker = &mocks.Locker{}
-		mockProcessor = &mocks.Processor{}
+		manager = &mocks.Manager{}
+		locker = &mocks.Locker{}
+		processor = &mocks.Processor{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})
@@ -65,20 +65,20 @@ var _ = Describe("OneShotRunner", func() {
 			filepath.Join(specsDir, "in-progress"),
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			nil,
 			libtime.NewCurrentDateTime(),
 		)
 	}
 
 	setupMocks := func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
-		mockProcessor.ProcessQueueReturns(nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
+		processor.ProcessQueueReturns(nil)
 	}
 
 	It("should acquire and release lock", func() {
@@ -88,8 +88,8 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		Expect(mockLocker.AcquireCallCount()).To(Equal(1))
-		Expect(mockLocker.ReleaseCallCount()).To(Equal(1))
+		Expect(locker.AcquireCallCount()).To(Equal(1))
+		Expect(locker.ReleaseCallCount()).To(Equal(1))
 	})
 
 	It("should call ProcessQueue and return without blocking", func() {
@@ -99,7 +99,7 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
 	It("should reset executing prompts on startup", func() {
@@ -109,7 +109,7 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		Expect(mockManager.ResetExecutingCallCount()).To(Equal(1))
+		Expect(manager.ResetExecutingCallCount()).To(Equal(1))
 	})
 
 	It("should return nil when queue is empty", func() {
@@ -127,8 +127,8 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		Expect(mockProcessor.ProcessCallCount()).To(Equal(0))
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+		Expect(processor.ProcessCallCount()).To(Equal(0))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
 	It("should skip spec generation when specGenerator is nil", func() {
@@ -149,7 +149,7 @@ var _ = Describe("OneShotRunner", func() {
 
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
 	It("should skip specs that are not approved", func() {
@@ -178,9 +178,9 @@ var _ = Describe("OneShotRunner", func() {
 			specInProgressDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
 		)
@@ -188,7 +188,7 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 		Expect(mockSpecGen.GenerateCallCount()).To(Equal(0))
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
 	It("should generate prompts from approved spec and loop until idle", func() {
@@ -235,9 +235,9 @@ var _ = Describe("OneShotRunner", func() {
 			specInProgressDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
 		)
@@ -248,7 +248,7 @@ var _ = Describe("OneShotRunner", func() {
 		// Generator called once for the approved spec
 		Expect(mockSpecGen.GenerateCallCount()).To(Equal(1))
 		// ProcessQueue called twice: once after generation (gen=1), once after idle check (gen=0, queued=0)
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(2))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(2))
 
 		// Verify prompt was moved from inbox to in-progress and approved
 		_, statErr := os.Stat(filepath.Join(inProgressDir, "001-gen-prompt.md"))
@@ -290,9 +290,9 @@ var _ = Describe("OneShotRunner", func() {
 			specInProgressDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
 		)
@@ -344,9 +344,9 @@ var _ = Describe("OneShotRunner", func() {
 			specInProgressDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
 		)
@@ -363,7 +363,7 @@ var _ = Describe("OneShotRunner", func() {
 
 	It("should return error when ListQueued fails in loop", func() {
 		setupMocks()
-		mockManager.ListQueuedReturns(nil, context.DeadlineExceeded)
+		manager.ListQueuedReturns(nil, context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 
@@ -374,7 +374,7 @@ var _ = Describe("OneShotRunner", func() {
 
 	It("should return error when ProcessQueue fails in loop", func() {
 		setupMocks()
-		mockProcessor.ProcessQueueReturns(context.DeadlineExceeded)
+		processor.ProcessQueueReturns(context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 
@@ -385,7 +385,7 @@ var _ = Describe("OneShotRunner", func() {
 
 	It("should log renamed files during normalization", func() {
 		setupMocks()
-		mockManager.NormalizeFilenamesStub = func(manCtx context.Context, dir string) ([]prompt.Rename, error) {
+		manager.NormalizeFilenamesStub = func(manCtx context.Context, dir string) ([]prompt.Rename, error) {
 			return []prompt.Rename{
 				{
 					OldPath: filepath.Join(promptsDir, "old.md"),
@@ -401,7 +401,7 @@ var _ = Describe("OneShotRunner", func() {
 	})
 
 	It("should return error when lock acquire fails", func() {
-		mockLocker.AcquireReturns(context.DeadlineExceeded)
+		locker.AcquireReturns(context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 		err := r.Run(ctx)
@@ -410,10 +410,10 @@ var _ = Describe("OneShotRunner", func() {
 	})
 
 	It("should return error when ResetExecuting fails", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
-		mockManager.ResetExecutingReturns(context.DeadlineExceeded)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
+		manager.ResetExecutingReturns(context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 		err := r.Run(ctx)
@@ -422,10 +422,10 @@ var _ = Describe("OneShotRunner", func() {
 	})
 
 	It("should return error when initial NormalizeFilenames fails", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 		err := r.Run(ctx)
@@ -447,9 +447,9 @@ var _ = Describe("OneShotRunner", func() {
 			nonExistentSpecDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			&mocks.SpecGenerator{},
 			libtime.NewCurrentDateTime(),
 		)
@@ -458,7 +458,7 @@ var _ = Describe("OneShotRunner", func() {
 		// still works gracefully with an empty dir)
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
-		Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
 	It(
@@ -505,9 +505,9 @@ var _ = Describe("OneShotRunner", func() {
 				specInProgressDir,
 				filepath.Join(specsDir, "completed"),
 				filepath.Join(specsDir, "logs"),
-				mockManager,
-				mockLocker,
-				mockProcessor,
+				manager,
+				locker,
+				processor,
 				mockSpecGen,
 				libtime.NewCurrentDateTime(),
 			)
@@ -517,7 +517,7 @@ var _ = Describe("OneShotRunner", func() {
 			// Both specs were attempted in first iteration; 0 inbox prompts moved → loop exits
 			Expect(mockSpecGen.GenerateCallCount()).To(Equal(2))
 			// ProcessQueue called once (generated=0 after no prompts moved, queued=0 → break)
-			Expect(mockProcessor.ProcessQueueCallCount()).To(Equal(1))
+			Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 		},
 	)
 
@@ -542,14 +542,14 @@ var _ = Describe("OneShotRunner", func() {
 			return os.WriteFile(path, []byte("---\nstatus: prompted\n---\n# My Spec\n"), 0600)
 		}
 
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockProcessor.ProcessQueueReturns(nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		processor.ProcessQueueReturns(nil)
 
 		// NormalizeFilenames fails (used both in initial normalize and in approveInboxPrompts)
 		callCount := 0
-		mockManager.NormalizeFilenamesStub = func(manCtx context.Context, dir string) ([]prompt.Rename, error) {
+		manager.NormalizeFilenamesStub = func(manCtx context.Context, dir string) ([]prompt.Rename, error) {
 			callCount++
 			if callCount >= 2 {
 				// Fail on second call (inside approveInboxPrompts)
@@ -567,9 +567,9 @@ var _ = Describe("OneShotRunner", func() {
 			specInProgressDir,
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockProcessor,
+			manager,
+			locker,
+			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
 		)
@@ -609,9 +609,9 @@ var _ = Describe("OneShotRunner", func() {
 				filepath.Join(specsDir, "in-progress"),
 				filepath.Join(specsDir, "completed"),
 				filepath.Join(specsDir, "logs"),
-				mockManager,
-				mockLocker,
-				mockProcessor,
+				manager,
+				locker,
+				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
 			)
@@ -649,9 +649,9 @@ var _ = Describe("OneShotRunner", func() {
 				filepath.Join(specsDir, "in-progress"),
 				filepath.Join(specsDir, "completed"),
 				filepath.Join(specsDir, "logs"),
-				mockManager,
-				mockLocker,
-				mockProcessor,
+				manager,
+				locker,
+				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
 			)

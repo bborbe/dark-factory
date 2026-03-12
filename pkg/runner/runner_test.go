@@ -21,16 +21,16 @@ import (
 
 var _ = Describe("Runner", func() {
 	var (
-		tempDir       string
-		promptsDir    string
-		specsDir      string
-		mockManager   *mocks.Manager
-		mockLocker    *mocks.Locker
-		mockWatcher   *mocks.Watcher
-		mockProcessor *mocks.Processor
-		mockServer    *mocks.Server
-		ctx           context.Context
-		cancel        context.CancelFunc
+		tempDir    string
+		promptsDir string
+		specsDir   string
+		manager    *mocks.Manager
+		locker     *mocks.Locker
+		watcher    *mocks.Watcher
+		processor  *mocks.Processor
+		server     *mocks.Server
+		ctx        context.Context
+		cancel     context.CancelFunc
 	)
 
 	BeforeEach(func() {
@@ -44,11 +44,11 @@ var _ = Describe("Runner", func() {
 
 		specsDir = filepath.Join(tempDir, "specs")
 
-		mockManager = &mocks.Manager{}
-		mockLocker = &mocks.Locker{}
-		mockWatcher = &mocks.Watcher{}
-		mockProcessor = &mocks.Processor{}
-		mockServer = &mocks.Server{}
+		manager = &mocks.Manager{}
+		locker = &mocks.Locker{}
+		watcher = &mocks.Watcher{}
+		processor = &mocks.Processor{}
+		server = &mocks.Server{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})
@@ -71,11 +71,11 @@ var _ = Describe("Runner", func() {
 			filepath.Join(specsDir, "in-progress"),
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockWatcher,
-			mockProcessor,
-			mockServer,
+			manager,
+			locker,
+			watcher,
+			processor,
+			server,
 			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
@@ -84,21 +84,21 @@ var _ = Describe("Runner", func() {
 	}
 
 	It("should acquire and release lock", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
 		// Make watcher, processor, and server return immediately
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -113,25 +113,25 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify lock was acquired and released
-		Expect(mockLocker.AcquireCallCount()).To(Equal(1))
-		Expect(mockLocker.ReleaseCallCount()).To(Equal(1))
+		Expect(locker.AcquireCallCount()).To(Equal(1))
+		Expect(locker.ReleaseCallCount()).To(Equal(1))
 	})
 
 	It("should reset executing prompts on startup", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -145,27 +145,27 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify ResetExecuting was called
-		Expect(mockManager.ResetExecutingCallCount()).To(Equal(1))
+		Expect(manager.ResetExecutingCallCount()).To(Equal(1))
 	})
 
 	It("should normalize filenames only in queue directory, not inbox", func() {
 		inboxDir := filepath.Join(promptsDir, "inbox")
 		queueDir := filepath.Join(promptsDir, "in-progress")
 
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -179,33 +179,33 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify NormalizeFilenames was called only once (for queue, not inbox)
-		Expect(mockManager.NormalizeFilenamesCallCount()).To(Equal(1))
+		Expect(manager.NormalizeFilenamesCallCount()).To(Equal(1))
 
 		// Verify it was called with the in-progress directory
-		_, dir := mockManager.NormalizeFilenamesArgsForCall(0)
+		_, dir := manager.NormalizeFilenamesArgsForCall(0)
 		Expect(dir).To(Equal(queueDir))
 	})
 
 	It("should run watcher and processor in parallel", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcherCalled := make(chan struct{})
 		processorCalled := make(chan struct{})
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			close(watcherCalled)
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			close(processorCalled)
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -224,20 +224,20 @@ var _ = Describe("Runner", func() {
 	})
 
 	It("should stop both goroutines on context cancel", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -269,10 +269,10 @@ var _ = Describe("Runner", func() {
 		inboxDir := filepath.Join(promptsDir, "inbox")
 		inProgressDir := filepath.Join(promptsDir, "in-progress")
 
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
 
 		r := newTestRunner(inboxDir, inProgressDir, filepath.Join(promptsDir, "completed"))
 
@@ -284,19 +284,19 @@ var _ = Describe("Runner", func() {
 		Expect(err.Error()).To(ContainSubstring("normalize queue filenames"))
 
 		// Verify lock was still released
-		Expect(mockLocker.ReleaseCallCount()).To(Equal(1))
+		Expect(locker.ReleaseCallCount()).To(Equal(1))
 	})
 
 	It("should log renamed files during normalization", func() {
 		inboxDir := filepath.Join(promptsDir, "inbox")
 		inProgressDir := filepath.Join(promptsDir, "in-progress")
 
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
 
 		// Simulate a rename during normalization
-		mockManager.NormalizeFilenamesStub = func(ctx context.Context, dir string) ([]prompt.Rename, error) {
+		manager.NormalizeFilenamesStub = func(ctx context.Context, dir string) ([]prompt.Rename, error) {
 			if dir == inProgressDir {
 				return []prompt.Rename{
 					{
@@ -308,15 +308,15 @@ var _ = Describe("Runner", func() {
 			return nil, nil
 		}
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockServer.ListenAndServeStub = func(ctx context.Context) error {
+		server.ListenAndServeStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -330,20 +330,20 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify normalization was called
-		Expect(mockManager.NormalizeFilenamesCallCount()).To(Equal(1))
+		Expect(manager.NormalizeFilenamesCallCount()).To(Equal(1))
 	})
 
 	It("should not start server when server is nil", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -357,10 +357,10 @@ var _ = Describe("Runner", func() {
 			filepath.Join(specsDir, "in-progress"),
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockWatcher,
-			mockProcessor,
+			manager,
+			locker,
+			watcher,
+			processor,
 			nil, // No server
 			nil, // no reviewPoller
 			nil, // no specWatcher
@@ -375,24 +375,24 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify watcher and processor were called
-		Expect(mockWatcher.WatchCallCount()).To(Equal(1))
-		Expect(mockProcessor.ProcessCallCount()).To(Equal(1))
+		Expect(watcher.WatchCallCount()).To(Equal(1))
+		Expect(processor.ProcessCallCount()).To(Equal(1))
 	})
 
 	It("should include reviewPoller in run loop when non-nil", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
 		mockReviewPoller := &mocks.ReviewPoller{}
 		pollerCalled := make(chan struct{})
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -411,10 +411,10 @@ var _ = Describe("Runner", func() {
 			filepath.Join(specsDir, "in-progress"),
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockWatcher,
-			mockProcessor,
+			manager,
+			locker,
+			watcher,
+			processor,
 			nil, // No server
 			mockReviewPoller,
 			nil, // no specWatcher
@@ -432,16 +432,16 @@ var _ = Describe("Runner", func() {
 	})
 
 	It("should not include reviewPoller in run loop when nil", func() {
-		mockLocker.AcquireReturns(nil)
-		mockLocker.ReleaseReturns(nil)
-		mockManager.ResetExecutingReturns(nil)
-		mockManager.NormalizeFilenamesReturns(nil, nil)
+		locker.AcquireReturns(nil)
+		locker.ReleaseReturns(nil)
+		manager.ResetExecutingReturns(nil)
+		manager.NormalizeFilenamesReturns(nil, nil)
 
-		mockWatcher.WatchStub = func(ctx context.Context) error {
+		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
-		mockProcessor.ProcessStub = func(ctx context.Context) error {
+		processor.ProcessStub = func(ctx context.Context) error {
 			<-ctx.Done()
 			return nil
 		}
@@ -455,10 +455,10 @@ var _ = Describe("Runner", func() {
 			filepath.Join(specsDir, "in-progress"),
 			filepath.Join(specsDir, "completed"),
 			filepath.Join(specsDir, "logs"),
-			mockManager,
-			mockLocker,
-			mockWatcher,
-			mockProcessor,
+			manager,
+			locker,
+			watcher,
+			processor,
 			nil, // No server
 			nil, // no reviewPoller
 			nil, // no specWatcher
@@ -473,8 +473,8 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Watcher and processor ran
-		Expect(mockWatcher.WatchCallCount()).To(Equal(1))
-		Expect(mockProcessor.ProcessCallCount()).To(Equal(1))
+		Expect(watcher.WatchCallCount()).To(Equal(1))
+		Expect(processor.ProcessCallCount()).To(Equal(1))
 	})
 
 	Describe("createDirectories", func() {
@@ -488,20 +488,20 @@ var _ = Describe("Runner", func() {
 			specsCompletedDir := filepath.Join(specsDir, "completed")
 			specsLogDir := filepath.Join(specsDir, "logs")
 
-			mockLocker.AcquireReturns(nil)
-			mockLocker.ReleaseReturns(nil)
-			mockManager.ResetExecutingReturns(nil)
-			mockManager.NormalizeFilenamesReturns(nil, nil)
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.ResetExecutingReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
 
-			mockWatcher.WatchStub = func(ctx context.Context) error {
+			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockProcessor.ProcessStub = func(ctx context.Context) error {
+			processor.ProcessStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			server.ListenAndServeStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
@@ -515,11 +515,11 @@ var _ = Describe("Runner", func() {
 				specsInProgressDir,
 				specsCompletedDir,
 				specsLogDir,
-				mockManager,
-				mockLocker,
-				mockWatcher,
-				mockProcessor,
-				mockServer,
+				manager,
+				locker,
+				watcher,
+				processor,
+				server,
 				nil,
 				nil,
 				"",
@@ -558,20 +558,20 @@ var _ = Describe("Runner", func() {
 				),
 			).To(Succeed())
 
-			mockLocker.AcquireReturns(nil)
-			mockLocker.ReleaseReturns(nil)
-			mockManager.ResetExecutingReturns(nil)
-			mockManager.NormalizeFilenamesReturns(nil, nil)
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.ResetExecutingReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
 
-			mockWatcher.WatchStub = func(ctx context.Context) error {
+			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockProcessor.ProcessStub = func(ctx context.Context) error {
+			processor.ProcessStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			server.ListenAndServeStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
@@ -603,20 +603,20 @@ var _ = Describe("Runner", func() {
 			inProgressDir := filepath.Join(promptsDir, "in-progress")
 			// Do NOT create the old queue dir
 
-			mockLocker.AcquireReturns(nil)
-			mockLocker.ReleaseReturns(nil)
-			mockManager.ResetExecutingReturns(nil)
-			mockManager.NormalizeFilenamesReturns(nil, nil)
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.ResetExecutingReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
 
-			mockWatcher.WatchStub = func(ctx context.Context) error {
+			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockProcessor.ProcessStub = func(ctx context.Context) error {
+			processor.ProcessStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			server.ListenAndServeStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
@@ -652,20 +652,20 @@ var _ = Describe("Runner", func() {
 				os.WriteFile(filepath.Join(inProgressDir, "new-file.md"), []byte("new"), 0600),
 			).To(Succeed())
 
-			mockLocker.AcquireReturns(nil)
-			mockLocker.ReleaseReturns(nil)
-			mockManager.ResetExecutingReturns(nil)
-			mockManager.NormalizeFilenamesReturns(nil, nil)
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.ResetExecutingReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
 
-			mockWatcher.WatchStub = func(ctx context.Context) error {
+			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockProcessor.ProcessStub = func(ctx context.Context) error {
+			processor.ProcessStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			server.ListenAndServeStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
@@ -704,23 +704,23 @@ var _ = Describe("Runner", func() {
 
 			fakeNotifier := &mocks.Notifier{}
 
-			mockLocker.AcquireReturns(nil)
-			mockLocker.ReleaseReturns(nil)
-			mockManager.ResetExecutingReturns(nil)
-			mockManager.NormalizeFilenamesReturns(nil, nil)
-			mockManager.ReadFrontmatterReturns(&prompt.Frontmatter{
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.ResetExecutingReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+			manager.ReadFrontmatterReturns(&prompt.Frontmatter{
 				Status: string(prompt.ExecutingPromptStatus),
 			}, nil)
 
-			mockWatcher.WatchStub = func(ctx context.Context) error {
+			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockProcessor.ProcessStub = func(ctx context.Context) error {
+			processor.ProcessStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
-			mockServer.ListenAndServeStub = func(ctx context.Context) error {
+			server.ListenAndServeStub = func(ctx context.Context) error {
 				<-ctx.Done()
 				return nil
 			}
@@ -734,10 +734,10 @@ var _ = Describe("Runner", func() {
 				filepath.Join(specsDir, "in-progress"),
 				filepath.Join(specsDir, "completed"),
 				filepath.Join(specsDir, "logs"),
-				mockManager,
-				mockLocker,
-				mockWatcher,
-				mockProcessor,
+				manager,
+				locker,
+				watcher,
+				processor,
 				nil,
 				nil,
 				nil,

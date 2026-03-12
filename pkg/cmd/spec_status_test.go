@@ -18,22 +18,22 @@ import (
 
 var _ = Describe("SpecStatusCommand", func() {
 	var (
-		mockLister    *mocks.Lister
-		mockCounter   *mocks.PromptCounter
+		lister        *mocks.Lister
+		counter       *mocks.PromptCounter
 		specStatusCmd cmd.SpecStatusCommand
 		ctx           context.Context
 	)
 
 	BeforeEach(func() {
-		mockLister = &mocks.Lister{}
-		mockCounter = &mocks.PromptCounter{}
-		specStatusCmd = cmd.NewSpecStatusCommand(mockLister, mockCounter)
+		lister = &mocks.Lister{}
+		counter = &mocks.PromptCounter{}
+		specStatusCmd = cmd.NewSpecStatusCommand(lister, counter)
 		ctx = context.Background()
 	})
 
 	Describe("Run", func() {
 		It("outputs human-readable summary", func() {
-			mockLister.SummaryReturns(&spec.Summary{
+			lister.SummaryReturns(&spec.Summary{
 				Total:     4,
 				Draft:     1,
 				Approved:  1,
@@ -43,18 +43,18 @@ var _ = Describe("SpecStatusCommand", func() {
 
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockLister.SummaryCallCount()).To(Equal(1))
+			Expect(lister.SummaryCallCount()).To(Equal(1))
 		})
 
 		It("outputs zero counts for empty specs dir", func() {
-			mockLister.SummaryReturns(&spec.Summary{}, nil)
+			lister.SummaryReturns(&spec.Summary{}, nil)
 
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("outputs JSON when --json flag is provided", func() {
-			mockLister.SummaryReturns(&spec.Summary{
+			lister.SummaryReturns(&spec.Summary{
 				Total:     2,
 				Draft:     2,
 				Approved:  0,
@@ -67,14 +67,14 @@ var _ = Describe("SpecStatusCommand", func() {
 		})
 
 		It("returns error when lister fails", func() {
-			mockLister.SummaryReturns(nil, errors.New("summary error"))
+			lister.SummaryReturns(nil, errors.New("summary error"))
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("get spec summary"))
 		})
 
 		It("includes verifying count in summary output", func() {
-			mockLister.SummaryReturns(&spec.Summary{
+			lister.SummaryReturns(&spec.Summary{
 				Total:     5,
 				Draft:     1,
 				Approved:  1,
@@ -85,19 +85,19 @@ var _ = Describe("SpecStatusCommand", func() {
 
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockLister.SummaryCallCount()).To(Equal(1))
+			Expect(lister.SummaryCallCount()).To(Equal(1))
 		})
 
 		It("includes linked prompt counts from counter", func() {
-			mockLister.SummaryReturns(&spec.Summary{Total: 1, Completed: 1}, nil)
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.SummaryReturns(&spec.Summary{Total: 1, Completed: 1}, nil)
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "001-my-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
 			}, nil)
-			mockCounter.CountBySpecReturns(3, 5, nil)
+			counter.CountBySpecReturns(3, 5, nil)
 
 			err := specStatusCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 	})
 })

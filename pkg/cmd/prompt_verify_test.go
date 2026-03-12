@@ -20,14 +20,14 @@ import (
 
 var _ = Describe("PromptVerifyCommand", func() {
 	var (
-		tempDir           string
-		queueDir          string
-		completedDir      string
-		mockPromptManager *mocks.Manager
-		mockReleaser      *mocks.Releaser
-		mockBrancher      *mocks.Brancher
-		mockPRCreator     *mocks.PRCreator
-		ctx               context.Context
+		tempDir       string
+		queueDir      string
+		completedDir  string
+		promptManager *mocks.Manager
+		releaser      *mocks.Releaser
+		brancher      *mocks.Brancher
+		prCreator     *mocks.PRCreator
+		ctx           context.Context
 	)
 
 	BeforeEach(func() {
@@ -43,10 +43,10 @@ var _ = Describe("PromptVerifyCommand", func() {
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		mockPromptManager = &mocks.Manager{}
-		mockReleaser = &mocks.Releaser{}
-		mockBrancher = &mocks.Brancher{}
-		mockPRCreator = &mocks.PRCreator{}
+		promptManager = &mocks.Manager{}
+		releaser = &mocks.Releaser{}
+		brancher = &mocks.Brancher{}
+		prCreator = &mocks.PRCreator{}
 
 		ctx = context.Background()
 	})
@@ -59,11 +59,11 @@ var _ = Describe("PromptVerifyCommand", func() {
 		return cmd.NewPromptVerifyCommand(
 			queueDir,
 			completedDir,
-			mockPromptManager,
-			mockReleaser,
+			promptManager,
+			releaser,
 			pr,
-			mockBrancher,
-			mockPRCreator,
+			brancher,
+			prCreator,
 			libtime.NewCurrentDateTime(),
 		)
 	}
@@ -119,18 +119,18 @@ var _ = Describe("PromptVerifyCommand", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptManager.MoveToCompletedReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockPromptManager.MoveToCompletedCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitCompletedFileCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
 		})
 	})
 
@@ -158,18 +158,18 @@ var _ = Describe("PromptVerifyCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { _ = os.Chdir(origDir) }()
 
-			mockPromptManager.MoveToCompletedReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(true)
-			mockReleaser.CommitAndReleaseReturns(nil)
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.CommitAndReleaseReturns(nil)
 
 			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(1))
-			_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(1))
+			_, bump := releaser.CommitAndReleaseArgsForCall(0)
 			Expect(bump).To(Equal(git.MinorBump))
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 		})
 	})
 
@@ -185,20 +185,20 @@ var _ = Describe("PromptVerifyCommand", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptManager.MoveToCompletedReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/owner/repo/pull/1", nil)
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/owner/repo/pull/1", nil)
 
 			err = makeCmd(true).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockPromptManager.MoveToCompletedCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitCompletedFileCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
+			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(brancher.PushCallCount()).To(Equal(1))
+			Expect(prCreator.CreateCallCount()).To(Equal(1))
 		})
 	})
 
@@ -212,17 +212,17 @@ var _ = Describe("PromptVerifyCommand", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockPromptManager.MoveToCompletedReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/owner/repo/pull/2", nil)
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/owner/repo/pull/2", nil)
 
 			err = makeCmd(true).Run(ctx, []string{"080-my-feature.md"})
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-			_, pushedBranch := mockBrancher.PushArgsForCall(0)
+			Expect(brancher.PushCallCount()).To(Equal(1))
+			_, pushedBranch := brancher.PushArgsForCall(0)
 			Expect(pushedBranch).To(Equal("dark-factory/080-my-feature"))
 		})
 	})

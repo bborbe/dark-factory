@@ -29,21 +29,21 @@ import (
 
 var _ = Describe("Processor", func() {
 	var (
-		tempDir           string
-		promptsDir        string
-		ready             chan struct{}
-		ctx               context.Context
-		cancel            context.CancelFunc
-		mockExecutor      *mocks.Executor
-		mockManager       *mocks.Manager
-		mockReleaser      *mocks.Releaser
-		mockVersionGet    *mocks.VersionGetter
-		mockBrancher      *mocks.Brancher
-		mockPRCreator     *mocks.PRCreator
-		mockCloner        *mocks.Cloner
-		mockPRMerger      *mocks.PRMerger
-		mockAutoCompleter *mocks.AutoCompleter
-		mockSpecLister    *mocks.Lister
+		tempDir       string
+		promptsDir    string
+		ready         chan struct{}
+		ctx           context.Context
+		cancel        context.CancelFunc
+		executor      *mocks.Executor
+		manager       *mocks.Manager
+		releaser      *mocks.Releaser
+		versionGet    *mocks.VersionGetter
+		brancher      *mocks.Brancher
+		prCreator     *mocks.PRCreator
+		cloner        *mocks.Cloner
+		prMerger      *mocks.PRMerger
+		autoCompleter *mocks.AutoCompleter
+		specLister    *mocks.Lister
 	)
 
 	BeforeEach(func() {
@@ -58,18 +58,18 @@ var _ = Describe("Processor", func() {
 		ready = make(chan struct{}, 10)
 		ctx, cancel = context.WithCancel(context.Background())
 
-		mockExecutor = &mocks.Executor{}
-		mockManager = &mocks.Manager{}
-		mockReleaser = &mocks.Releaser{}
-		mockVersionGet = &mocks.VersionGetter{}
-		mockBrancher = &mocks.Brancher{}
-		mockPRCreator = &mocks.PRCreator{}
-		mockCloner = &mocks.Cloner{}
-		mockPRMerger = &mocks.PRMerger{}
-		mockAutoCompleter = &mocks.AutoCompleter{}
-		mockSpecLister = &mocks.Lister{}
-		mockSpecLister.ListReturns(nil, nil)
-		mockVersionGet.GetReturns("v0.0.1-test")
+		executor = &mocks.Executor{}
+		manager = &mocks.Manager{}
+		releaser = &mocks.Releaser{}
+		versionGet = &mocks.VersionGetter{}
+		brancher = &mocks.Brancher{}
+		prCreator = &mocks.PRCreator{}
+		cloner = &mocks.Cloner{}
+		prMerger = &mocks.PRMerger{}
+		autoCompleter = &mocks.AutoCompleter{}
+		specLister = &mocks.Lister{}
+		specLister.ListReturns(nil, nil)
+		versionGet.GetReturns("v0.0.1-test")
 	})
 
 	AfterEach(func() {
@@ -91,35 +91,35 @@ var _ = Describe("Processor", func() {
 
 	// Set up default Load behavior to return a valid PromptFile
 	BeforeEach(func() {
-		mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+		manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 			return createMockPromptFile(path, "# Test\n\nDefault test content"), nil
 		}
 	})
 
 	It("should start and stop cleanly", func() {
-		mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+		manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -152,41 +152,41 @@ var _ = Describe("Processor", func() {
 		}
 
 		// First call returns prompt, second call returns empty (processed)
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# Test prompt", nil)
-		mockManager.TitleReturns("Test prompt", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ContentReturns("# Test prompt", nil)
+		manager.TitleReturns("Test prompt", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -200,19 +200,19 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify executor was called with correct log path
-		_, _, logFile, containerName := mockExecutor.ExecuteArgsForCall(0)
+		_, _, logFile, containerName := executor.ExecuteArgsForCall(0)
 		Expect(logFile).To(Equal(filepath.Join(promptsDir, "log", "001-test.log")))
 		Expect(containerName).To(Equal("test-project-001-test"))
 
 		// Verify Load was called (processor uses Load/Save pattern now)
-		Expect(mockManager.LoadCallCount()).To(BeNumerically(">=", 1))
+		Expect(manager.LoadCallCount()).To(BeNumerically(">=", 1))
 
 		// Verify moved to completed
-		Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+		Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
 
 		cancel()
 	})
@@ -224,40 +224,40 @@ var _ = Describe("Processor", func() {
 		}
 
 		// Initially no prompts
-		mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# Signal test", nil)
-		mockManager.TitleReturns("Signal test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturns([]prompt.Prompt{}, nil)
+		manager.ContentReturns("# Signal test", nil)
+		manager.TitleReturns("Signal test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -272,13 +272,13 @@ var _ = Describe("Processor", func() {
 		time.Sleep(200 * time.Millisecond)
 
 		// Now return a prompt and send ready signal
-		mockManager.ListQueuedReturnsOnCall(1, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
+		manager.ListQueuedReturnsOnCall(1, queued, nil)
+		manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 		ready <- struct{}{}
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		cancel()
@@ -290,10 +290,10 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return empty body
-		mockManager.LoadReturns(
+		manager.LoadReturns(
 			prompt.NewPromptFile(
 				promptPath,
 				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -302,31 +302,31 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		mockManager.ContentReturns("", prompt.ErrEmptyPrompt)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
+		manager.ContentReturns("", prompt.ErrEmptyPrompt)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -339,11 +339,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockManager.MoveToCompletedCallCount()
+			return manager.MoveToCompletedCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify executor was NOT called
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		cancel()
 	})
@@ -355,37 +355,37 @@ var _ = Describe("Processor", func() {
 		}
 
 		// Return queued once, then empty (so loop exits after failure)
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.ContentReturns("# Fail test", nil)
-		mockManager.TitleReturns("Fail test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.ContentReturns("# Fail test", nil)
+		manager.TitleReturns("Fail test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(stderrors.New("execution failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -398,7 +398,7 @@ var _ = Describe("Processor", func() {
 
 		// Wait for Load to be called (marks prompt as failed)
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -410,15 +410,15 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.ContentReturns("# Fail notify test", nil)
-		mockManager.TitleReturns("Fail notify test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.ContentReturns("# Fail notify test", nil)
+		manager.TitleReturns("Fail notify test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(stderrors.New("execution failed"))
 
 		fakeNotifier := &mocks.Notifier{}
 
@@ -427,22 +427,22 @@ var _ = Describe("Processor", func() {
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			fakeNotifier,
@@ -469,41 +469,41 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# No changelog test", nil)
-		mockManager.TitleReturns("No changelog test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ContentReturns("# No changelog test", nil)
+		manager.TitleReturns("No changelog test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -516,11 +516,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockReleaser.CommitOnlyCallCount()
+			return releaser.CommitOnlyCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify CommitAndRelease was NOT called
-		Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+		Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
 
 		cancel()
 	})
@@ -531,42 +531,42 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# Fix bug", nil)
-		mockManager.TitleReturns("Fix bug", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(true)
-		mockReleaser.GetNextVersionReturns("v0.1.1", nil)
-		mockReleaser.CommitAndReleaseReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ContentReturns("# Fix bug", nil)
+		manager.TitleReturns("Fix bug", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(true)
+		releaser.GetNextVersionReturns("v0.1.1", nil)
+		releaser.CommitAndReleaseReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -579,15 +579,15 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockReleaser.CommitAndReleaseCallCount()
+			return releaser.CommitAndReleaseCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify PatchBump was used
-		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump := releaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.PatchBump))
 
 		// Verify CommitOnly was NOT called
-		Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+		Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 
 		cancel()
 	})
@@ -616,10 +616,10 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return PromptFile with title "Add new feature"
-		mockManager.LoadReturns(
+		manager.LoadReturns(
 			prompt.NewPromptFile(
 				promptPath,
 				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -628,40 +628,40 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		mockManager.ContentReturns("# Add new feature", nil)
-		mockManager.TitleReturns("Add new feature", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(true)
-		mockReleaser.GetNextVersionReturns("v0.2.0", nil)
-		mockReleaser.CommitAndReleaseReturns(nil)
+		manager.ContentReturns("# Add new feature", nil)
+		manager.TitleReturns("Add new feature", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(true)
+		releaser.GetNextVersionReturns("v0.2.0", nil)
+		releaser.CommitAndReleaseReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -674,11 +674,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockReleaser.CommitAndReleaseCallCount()
+			return releaser.CommitAndReleaseCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify MinorBump was used
-		_, bump := mockReleaser.CommitAndReleaseArgsForCall(0)
+		_, bump := releaser.CommitAndReleaseArgsForCall(0)
 		Expect(bump).To(Equal(git.MinorBump))
 
 		cancel()
@@ -689,48 +689,48 @@ var _ = Describe("Processor", func() {
 		promptPath2 := filepath.Join(promptsDir, "002-second.md")
 
 		// Return both prompts first, then just second, then none
-		mockManager.ListQueuedReturnsOnCall(0, []prompt.Prompt{
+		manager.ListQueuedReturnsOnCall(0, []prompt.Prompt{
 			{Path: promptPath1, Status: prompt.ApprovedPromptStatus},
 			{Path: promptPath2, Status: prompt.ApprovedPromptStatus},
 		}, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{
 			{Path: promptPath2, Status: prompt.ApprovedPromptStatus},
 		}, nil)
-		mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
+		manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 
-		mockManager.ContentReturns("# Test", nil)
-		mockManager.TitleReturns("Test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ContentReturns("# Test", nil)
+		manager.TitleReturns("Test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -743,7 +743,7 @@ var _ = Describe("Processor", func() {
 
 		// Wait for both to be processed
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 3*time.Second, 50*time.Millisecond).Should(Equal(2))
 
 		cancel()
@@ -755,41 +755,41 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# Test", nil)
-		mockManager.TitleReturns("Test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ContentReturns("# Test", nil)
+		manager.TitleReturns("Test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -802,11 +802,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify container name was sanitized
-		_, _, _, containerName := mockExecutor.ExecuteArgsForCall(0)
+		_, _, _, containerName := executor.ExecuteArgsForCall(0)
 		Expect(containerName).To(Equal("test-project-001-test-file-name"))
 
 		cancel()
@@ -818,41 +818,41 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: ""}, // empty status triggers auto-set
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.ContentReturns("# Auto status test", nil)
-		mockManager.TitleReturns("Auto status test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.SetStatusReturns(nil)
+		manager.ContentReturns("# Auto status test", nil)
+		manager.TitleReturns("Auto status test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -864,11 +864,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for SetStatus to be called (auto-set to queued)
 		Eventually(func() int {
-			return mockManager.SetStatusCallCount()
+			return manager.SetStatusCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		// Verify SetStatus was called with "approved"
-		_, _, status := mockManager.SetStatusArgsForCall(0)
+		_, _, status := manager.SetStatusArgsForCall(0)
 		Expect(status).To(Equal("approved"))
 
 		cancel()
@@ -880,31 +880,31 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ExecutingPromptStatus}, // Wrong status for execution
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.AllPreviousCompletedReturns(true)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.AllPreviousCompletedReturns(true)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -919,7 +919,7 @@ var _ = Describe("Processor", func() {
 		time.Sleep(300 * time.Millisecond)
 
 		// Verify executor was NOT called
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		cancel()
 	})
@@ -930,31 +930,31 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.AllPreviousCompletedReturns(false) // Previous prompts not completed
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.AllPreviousCompletedReturns(false) // Previous prompts not completed
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -969,7 +969,7 @@ var _ = Describe("Processor", func() {
 		time.Sleep(300 * time.Millisecond)
 
 		// Verify executor was NOT called
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		cancel()
 	})
@@ -980,41 +980,41 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.ContentReturns("# Version test", nil)
-		mockManager.TitleReturns("Version test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ContentReturns("# Version test", nil)
+		manager.TitleReturns("Version test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -1027,11 +1027,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing (processor uses Load/PrepareForExecution now)
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		// Verify Load was called with correct path
-		_, path := mockManager.LoadArgsForCall(0)
+		_, path := manager.LoadArgsForCall(0)
 		Expect(path).To(Equal(promptPath))
 
 		cancel()
@@ -1043,10 +1043,10 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		// Override Load to return PromptFile with specific content
-		mockManager.LoadReturns(
+		manager.LoadReturns(
 			prompt.NewPromptFile(
 				promptPath,
 				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1055,39 +1055,39 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		mockManager.ContentReturns("# Test prompt content", nil)
-		mockManager.TitleReturns("Suffix test", nil)
-		mockManager.SetContainerReturns(nil)
-		mockManager.SetVersionReturns(nil)
-		mockManager.SetStatusReturns(nil)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.ContentReturns("# Test prompt content", nil)
+		manager.TitleReturns("Suffix test", nil)
+		manager.SetContainerReturns(nil)
+		manager.SetVersionReturns(nil)
+		manager.SetStatusReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -1100,11 +1100,11 @@ var _ = Describe("Processor", func() {
 
 		// Wait for processing
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Verify executor was called with content including suffix
-		_, promptContent, _, _ := mockExecutor.ExecuteArgsForCall(0)
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
 		Expect(promptContent).To(ContainSubstring("# Test prompt content"))
 		Expect(promptContent).To(ContainSubstring("DARK-FACTORY-REPORT"))
 		Expect(promptContent).To(ContainSubstring("Completion Report (MANDATORY)"))
@@ -1119,9 +1119,9 @@ var _ = Describe("Processor", func() {
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		mockManager.LoadReturns(
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.LoadReturns(
 			prompt.NewPromptFile(
 				promptPath,
 				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1130,34 +1130,34 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		mockManager.MoveToCompletedReturns(nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"make precommit",
 			false,
 			notifier.NewMultiNotifier(),
@@ -1168,10 +1168,10 @@ var _ = Describe("Processor", func() {
 		}()
 
 		Eventually(func() int {
-			return mockExecutor.ExecuteCallCount()
+			return executor.ExecuteCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-		_, promptContent, _, _ := mockExecutor.ExecuteArgsForCall(0)
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
 		Expect(promptContent).To(ContainSubstring(report.ValidationSuffix("make precommit")))
 
 		cancel()
@@ -1184,9 +1184,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1195,47 +1195,47 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Worktree test", nil)
-			mockManager.TitleReturns("Add new feature", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ContentReturns("# Worktree test", nil)
+			manager.TitleReturns("Add new feature", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
 			// Mock worktree.Add to create the actual directory
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1248,35 +1248,35 @@ var _ = Describe("Processor", func() {
 
 			// Wait for processing
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree operations
-			Expect(mockCloner.CloneCallCount()).To(Equal(1))
-			_, _, worktreePath, branchName := mockCloner.CloneArgsForCall(0)
+			Expect(cloner.CloneCallCount()).To(Equal(1))
+			_, _, worktreePath, branchName := cloner.CloneArgsForCall(0)
 			Expect(worktreePath).To(ContainSubstring("dark-factory/test-project-001-worktree-test"))
 			Expect(branchName).To(Equal("dark-factory/001-worktree-test"))
 
 			// Verify push was called
-			Expect(mockBrancher.PushCallCount()).To(Equal(1))
-			_, pushedBranch := mockBrancher.PushArgsForCall(0)
+			Expect(brancher.PushCallCount()).To(Equal(1))
+			_, pushedBranch := brancher.PushArgsForCall(0)
 			Expect(pushedBranch).To(Equal("dark-factory/001-worktree-test"))
 
 			// Verify PR was created
-			_, title, body := mockPRCreator.CreateArgsForCall(0)
+			_, title, body := prCreator.CreateArgsForCall(0)
 			Expect(title).To(Equal("Add new feature"))
 			Expect(body).To(Equal("Automated by dark-factory"))
 
 			// Verify worktree was removed
-			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
-			_, removedPath := mockCloner.RemoveArgsForCall(0)
+			Expect(cloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			_, removedPath := cloner.RemoveArgsForCall(0)
 			Expect(removedPath).To(ContainSubstring("dark-factory/test-project-001-worktree-test"))
 
 			// Verify CommitOnly was called, not CommitAndRelease
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(1))
-			Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
 			// HasChangelog is called once for changelog suffix check during content assembly
-			Expect(mockReleaser.HasChangelogCallCount()).To(Equal(1))
+			Expect(releaser.HasChangelogCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -1296,9 +1296,9 @@ var _ = Describe("Processor", func() {
 			err = os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1307,25 +1307,25 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Log path test", nil)
-			mockManager.TitleReturns("Log path test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			manager.ContentReturns("# Log path test", nil)
+			manager.TitleReturns("Log path test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/99", nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/repo/pull/99", nil)
 
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				return nil
 			}
 
@@ -1334,22 +1334,22 @@ var _ = Describe("Processor", func() {
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1360,11 +1360,11 @@ var _ = Describe("Processor", func() {
 			}()
 
 			Eventually(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Read captured args after Eventually confirms execution happened (safe - goroutine done writing)
-			_, _, capturedLogFile, _ := mockExecutor.ExecuteArgsForCall(0)
+			_, _, capturedLogFile, _ := executor.ExecuteArgsForCall(0)
 
 			// Log file must be absolute and point to the original log dir, not the clone dir
 			Expect(filepath.IsAbs(capturedLogFile)).To(BeTrue(), "log file path should be absolute")
@@ -1386,9 +1386,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1397,51 +1397,51 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Worktree automerge test", nil)
-			mockManager.TitleReturns("Add feature", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			manager.ContentReturns("# Worktree automerge test", nil)
+			manager.TitleReturns("Add feature", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/2", nil)
-			mockPRMerger.WaitAndMergeReturns(nil)
-			mockBrancher.DefaultBranchReturns("master", nil)
-			mockBrancher.SwitchReturns(nil)
-			mockBrancher.PullReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/repo/pull/2", nil)
+			prMerger.WaitAndMergeReturns(nil)
+			brancher.DefaultBranchReturns("master", nil)
+			brancher.SwitchReturns(nil)
+			brancher.PullReturns(nil)
+			releaser.HasChangelogReturns(false)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				true, // autoMerge enabled
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1454,24 +1454,24 @@ var _ = Describe("Processor", func() {
 
 			// Wait for WaitAndMerge to be called
 			Eventually(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
+				return prMerger.WaitAndMergeCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree operations
-			Expect(mockCloner.CloneCallCount()).To(Equal(1))
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
-			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(cloner.CloneCallCount()).To(Equal(1))
+			Expect(prCreator.CreateCallCount()).To(Equal(1))
+			Expect(cloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Verify WaitAndMerge was called with correct PR URL
-			_, mergedURL := mockPRMerger.WaitAndMergeArgsForCall(0)
+			_, mergedURL := prMerger.WaitAndMergeArgsForCall(0)
 			Expect(mergedURL).To(Equal("https://github.com/test/repo/pull/2"))
 
 			// Verify post-merge actions
 			Eventually(func() int {
-				return mockBrancher.DefaultBranchCallCount()
+				return brancher.DefaultBranchCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 			Eventually(func() int {
-				return mockBrancher.PullCallCount()
+				return brancher.PullCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			cancel()
@@ -1483,9 +1483,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1494,42 +1494,42 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Fail test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ContentReturns("# Fail test", nil)
+			manager.TitleReturns("Test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
 			// Mock worktree.Add to create the actual directory
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1542,14 +1542,14 @@ var _ = Describe("Processor", func() {
 
 			// Wait for worktree to be cleaned up (via defer)
 			Eventually(func() int {
-				return mockCloner.RemoveCallCount()
+				return cloner.RemoveCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify worktree was added
-			Expect(mockCloner.CloneCallCount()).To(Equal(1))
+			Expect(cloner.CloneCallCount()).To(Equal(1))
 
 			// Verify worktree was removed despite failure
-			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(cloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			cancel()
 		})
@@ -1560,9 +1560,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1571,46 +1571,46 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ContentReturns("# Test", nil)
+			manager.TitleReturns("Test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
 			// Mock worktree.Add to create the actual directory
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
 			// Mock worktree.Remove to return an error but don't actually remove
-			mockCloner.RemoveReturns(stderrors.New("worktree removal failed"))
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
+			cloner.RemoveReturns(stderrors.New("worktree removal failed"))
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1623,14 +1623,14 @@ var _ = Describe("Processor", func() {
 
 			// Wait for processing - should complete despite remove failure
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify worktree removal was attempted
-			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(cloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Verify PR was created successfully despite cleanup failure
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(1))
+			Expect(prCreator.CreateCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -1647,9 +1647,9 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -1658,47 +1658,47 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			mockManager.ContentReturns("# Test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			manager.ContentReturns("# Test", nil)
+			manager.TitleReturns("Test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/repo/pull/3", nil)
-			mockPRMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/repo/pull/3", nil)
+			prMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				true, // autoMerge enabled
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1710,16 +1710,16 @@ var _ = Describe("Processor", func() {
 
 			// Wait for WaitAndMerge to be called
 			Eventually(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
+				return prMerger.WaitAndMergeCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Worktree was added and removed before merge attempt
-			Expect(mockCloner.CloneCallCount()).To(Equal(1))
-			Expect(mockCloner.RemoveCallCount()).To(BeNumerically(">=", 1))
+			Expect(cloner.CloneCallCount()).To(Equal(1))
+			Expect(cloner.RemoveCallCount()).To(BeNumerically(">=", 1))
 
 			// Load should be called to mark prompt as failed
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
@@ -1731,37 +1731,37 @@ var _ = Describe("Processor", func() {
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Worktree add error test", nil)
-			mockManager.TitleReturns("Test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockCloner.CloneReturns(stderrors.New("clone failed"))
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.ContentReturns("# Worktree add error test", nil)
+			manager.TitleReturns("Test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			cloner.CloneReturns(stderrors.New("clone failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1774,11 +1774,11 @@ var _ = Describe("Processor", func() {
 
 			// Wait for Load to be called (marks prompt as failed)
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify executor was NOT called
-			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+			Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -1800,9 +1800,9 @@ var _ = Describe("Processor", func() {
 			// Track the PromptFile that gets loaded/saved
 			var savedPromptFile *prompt.PromptFile
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				// Create a real PromptFile with a temporary backing file
 				pf := prompt.NewPromptFile(
 					path,
@@ -1813,15 +1813,15 @@ var _ = Describe("Processor", func() {
 				savedPromptFile = pf
 				return pf, nil
 			}
-			mockManager.ContentReturns("# Summary test", nil)
-			mockManager.TitleReturns("Summary test", nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ContentReturns("# Summary test", nil)
+			manager.TitleReturns("Summary test", nil)
+			manager.AllPreviousCompletedReturns(true)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			// Mock executor writes log with success report containing summary
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -1833,7 +1833,7 @@ DARK-FACTORY-REPORT -->
 			}
 
 			// Mock MoveToCompleted to verify frontmatter has summary
-			mockManager.MoveToCompletedStub = func(ctx context.Context, path string) error {
+			manager.MoveToCompletedStub = func(ctx context.Context, path string) error {
 				// Verify summary was set before moving
 				Expect(savedPromptFile.Frontmatter.Summary).To(Equal("Added feature successfully"))
 				return nil
@@ -1844,22 +1844,22 @@ DARK-FACTORY-REPORT -->
 				completedDir,
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1872,7 +1872,7 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing
 			Eventually(func() int {
-				return mockManager.MoveToCompletedCallCount()
+				return manager.MoveToCompletedCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify summary was stored
@@ -1890,21 +1890,21 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.ContentReturns("# Report success test", nil)
-			mockManager.TitleReturns("Report success test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ContentReturns("# Report success test", nil)
+			manager.TitleReturns("Report success test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			// Mock executor writes log with success report
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -1920,22 +1920,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1948,11 +1948,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing
 			Eventually(func() int {
-				return mockReleaser.CommitOnlyCallCount()
+				return releaser.CommitOnlyCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify moved to completed
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -1967,17 +1967,17 @@ DARK-FACTORY-REPORT -->
 			Expect(err).NotTo(HaveOccurred())
 
 			// Return queued once, then empty (so loop exits)
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Report failed test", nil)
-			mockManager.TitleReturns("Report failed test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.ContentReturns("# Report failed test", nil)
+			manager.TitleReturns("Report failed test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
 
 			// Mock executor writes log with failed report
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -1993,22 +1993,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2022,11 +2022,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing to complete
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify moved to completed was NOT called
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2041,17 +2041,17 @@ DARK-FACTORY-REPORT -->
 			Expect(err).NotTo(HaveOccurred())
 
 			// Return queued once, then empty (so loop exits)
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Report partial test", nil)
-			mockManager.TitleReturns("Report partial test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.ContentReturns("# Report partial test", nil)
+			manager.TitleReturns("Report partial test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
 
 			// Mock executor writes log with partial report
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -2067,22 +2067,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2096,11 +2096,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing to complete
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify moved to completed was NOT called
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2114,16 +2114,16 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Report partial notify test", nil)
-			mockManager.TitleReturns("Report partial notify test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.ContentReturns("# Report partial notify test", nil)
+			manager.TitleReturns("Report partial notify test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
 
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -2141,22 +2141,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				fakeNotifier,
@@ -2186,21 +2186,21 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.ContentReturns("# No report test", nil)
-			mockManager.TitleReturns("No report test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ContentReturns("# No report test", nil)
+			manager.TitleReturns("No report test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			// Mock executor writes log WITHOUT report (old-style prompt)
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 more output
@@ -2213,22 +2213,22 @@ more output
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2241,11 +2241,11 @@ more output
 
 			// Wait for processing
 			Eventually(func() int {
-				return mockReleaser.CommitOnlyCallCount()
+				return releaser.CommitOnlyCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify moved to completed
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -2260,17 +2260,17 @@ more output
 			Expect(err).NotTo(HaveOccurred())
 
 			// Return queued once, then empty (so loop exits)
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.ContentReturns("# Verification override test", nil)
-			mockManager.TitleReturns("Verification override test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.ContentReturns("# Verification override test", nil)
+			manager.TitleReturns("Verification override test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
 
 			// Mock executor writes log with success report but non-zero verification exit code
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -2286,22 +2286,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2315,11 +2315,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing to complete
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Verify moved to completed was NOT called (status was overridden to partial)
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2333,21 +2333,21 @@ DARK-FACTORY-REPORT -->
 			err := os.MkdirAll(logDir, 0750)
 			Expect(err).NotTo(HaveOccurred())
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.ContentReturns("# Malformed report test", nil)
-			mockManager.TitleReturns("Malformed report test", nil)
-			mockManager.SetContainerReturns(nil)
-			mockManager.SetVersionReturns(nil)
-			mockManager.SetStatusReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ContentReturns("# Malformed report test", nil)
+			manager.TitleReturns("Malformed report test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			// Mock executor writes log with malformed JSON
-			mockExecutor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
+			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
 some output
 
@@ -2363,22 +2363,22 @@ DARK-FACTORY-REPORT -->
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2391,11 +2391,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing - should continue despite malformed JSON
 			Eventually(func() int {
-				return mockReleaser.CommitOnlyCallCount()
+				return releaser.CommitOnlyCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify moved to completed
-			Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -2408,38 +2408,38 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(nil)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2451,12 +2451,12 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for processing
 			Eventually(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify Fetch and MergeOriginDefault were called
-			Expect(mockBrancher.FetchCallCount()).To(Equal(1))
-			Expect(mockBrancher.MergeOriginDefaultCallCount()).To(Equal(1))
+			Expect(brancher.FetchCallCount()).To(Equal(1))
+			Expect(brancher.MergeOriginDefaultCallCount()).To(Equal(1))
 
 			cancel()
 		})
@@ -2467,32 +2467,32 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockBrancher.FetchReturns(stderrors.New("fetch failed"))
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			brancher.FetchReturns(stderrors.New("fetch failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2504,17 +2504,17 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for Fetch to be called
 			Eventually(func() int {
-				return mockBrancher.FetchCallCount()
+				return brancher.FetchCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Executor should NOT be called since Fetch failed
 			Consistently(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 			// Load should be called to mark as failed
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
@@ -2526,33 +2526,33 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(stderrors.New("merge conflict"))
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(stderrors.New("merge conflict"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2564,17 +2564,17 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for MergeOriginDefault to be called
 			Eventually(func() int {
-				return mockBrancher.MergeOriginDefaultCallCount()
+				return brancher.MergeOriginDefaultCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Executor should NOT be called since MergeOriginDefault failed
 			Consistently(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 			// Load should be called to mark as failed
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
@@ -2594,15 +2594,15 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -2611,33 +2611,33 @@ DARK-FACTORY-REPORT -->
 				),
 				nil,
 			)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(stderrors.New("commit failed"))
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(stderrors.New("commit failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2649,12 +2649,12 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for failure to be handled (Load called to mark as failed)
 			Eventually(func() int {
-				return mockManager.LoadCallCount()
+				return manager.LoadCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			// Push and PR creation must NOT be called
-			Expect(mockBrancher.PushCallCount()).To(Equal(0))
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(0))
+			Expect(brancher.PushCallCount()).To(Equal(0))
+			Expect(prCreator.CreateCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2671,15 +2671,15 @@ DARK-FACTORY-REPORT -->
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-			mockManager.LoadReturns(
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, nil, nil)
+			manager.LoadReturns(
 				prompt.NewPromptFile(
 					promptPath,
 					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -2688,34 +2688,34 @@ DARK-FACTORY-REPORT -->
 				),
 				nil,
 			)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.PushReturns(stderrors.New("push failed"))
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.PushReturns(stderrors.New("push failed"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2727,11 +2727,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for push to be attempted
 			Eventually(func() int {
-				return mockBrancher.PushCallCount()
+				return brancher.PushCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// PR creation must NOT be called
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(0))
+			Expect(prCreator.CreateCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2751,32 +2751,32 @@ DARK-FACTORY-REPORT -->
 			// Call 0: first skip — validation fails → recorded in skippedPrompts
 			// Call 1: second skip — same modtime → silently skipped
 			// Call 2: empty → exit loop
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, queued, nil)
+			manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2788,11 +2788,11 @@ DARK-FACTORY-REPORT -->
 
 			// Wait for at least 3 ListQueued calls (two skips + empty)
 			Eventually(func() int {
-				return mockManager.ListQueuedCallCount()
+				return manager.ListQueuedCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 3))
 
 			// Executor was never called — prompt was skipped both times
-			Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+			Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -2807,7 +2807,7 @@ DARK-FACTORY-REPORT -->
 			secondQueued := []prompt.Prompt{{Path: promptPath, Status: prompt.ApprovedPromptStatus}}
 
 			callCount := 0
-			mockManager.ListQueuedStub = func(_ context.Context) ([]prompt.Prompt, error) {
+			manager.ListQueuedStub = func(_ context.Context) ([]prompt.Prompt, error) {
 				callCount++
 				switch callCount {
 				case 1:
@@ -2827,31 +2827,31 @@ DARK-FACTORY-REPORT -->
 					return []prompt.Prompt{}, nil
 				}
 			}
-			mockManager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousCompletedReturns(true)
 			// Fail fast after shouldSkipPrompt passes to keep test simple
-			mockBrancher.FetchReturns(stderrors.New("fetch failed after retry"))
+			brancher.FetchReturns(stderrors.New("fetch failed after retry"))
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2863,7 +2863,7 @@ DARK-FACTORY-REPORT -->
 
 			// Fetch is called only when shouldSkipPrompt returns false (i.e., prompt was retried)
 			Eventually(func() int {
-				return mockBrancher.FetchCallCount()
+				return brancher.FetchCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			cancel()
@@ -2876,37 +2876,37 @@ DARK-FACTORY-REPORT -->
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(true)
-		mockReleaser.GetNextVersionReturns("v0.1.1", nil)
-		mockReleaser.CommitAndReleaseReturns(stderrors.New("commit and release failed"))
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(true)
+		releaser.GetNextVersionReturns("v0.1.1", nil)
+		releaser.CommitAndReleaseReturns(stderrors.New("commit and release failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -2918,12 +2918,12 @@ DARK-FACTORY-REPORT -->
 
 		// Wait for CommitAndRelease to be called
 		Eventually(func() int {
-			return mockReleaser.CommitAndReleaseCallCount()
+			return releaser.CommitAndReleaseCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Load should be called to mark prompt as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -2935,10 +2935,10 @@ DARK-FACTORY-REPORT -->
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		// Empty body triggers ErrEmptyPrompt from pf.Content()
-		mockManager.LoadReturns(
+		manager.LoadReturns(
 			prompt.NewPromptFile(
 				promptPath,
 				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
@@ -2947,30 +2947,30 @@ DARK-FACTORY-REPORT -->
 			),
 			nil,
 		)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(stderrors.New("move failed"))
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(stderrors.New("move failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -2982,15 +2982,15 @@ DARK-FACTORY-REPORT -->
 
 		// MoveToCompleted was attempted
 		Eventually(func() int {
-			return mockManager.MoveToCompletedCallCount()
+			return manager.MoveToCompletedCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Executor was NOT called (prompt was empty)
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 		// Load should be called to mark prompt as failed (MoveToCompleted returned error)
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -2999,29 +2999,29 @@ DARK-FACTORY-REPORT -->
 	It("should keep running when ListQueued fails during startup scan (daemon mode)", func() {
 		// Daemon mode swallows processExistingQueued errors — including ListQueued failures.
 		// Process must continue running until the context is cancelled.
-		mockManager.ListQueuedReturns(nil, stderrors.New("list queued failed"))
+		manager.ListQueuedReturns(nil, stderrors.New("list queued failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3044,7 +3044,7 @@ DARK-FACTORY-REPORT -->
 			Fail("processor did not stop within timeout")
 		}
 		// Executor was never called
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+		Expect(executor.ExecuteCallCount()).To(Equal(0))
 	})
 
 	It("should return error when CommitCompletedFile fails", func() {
@@ -3053,34 +3053,34 @@ DARK-FACTORY-REPORT -->
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(stderrors.New("commit completed file failed"))
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(stderrors.New("commit completed file failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3092,11 +3092,11 @@ DARK-FACTORY-REPORT -->
 
 		// Load called to mark as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		// Executor was called but CommitCompletedFile failed
-		Expect(mockExecutor.ExecuteCallCount()).To(Equal(1))
+		Expect(executor.ExecuteCallCount()).To(Equal(1))
 
 		cancel()
 	})
@@ -3113,26 +3113,26 @@ DARK-FACTORY-REPORT -->
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+		cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 			return os.MkdirAll(destDir, 0750)
 		}
-		mockCloner.RemoveStub = func(_ context.Context, path string) error {
+		cloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.PushReturns(nil)
-		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-		mockManager.SetPRURLReturns(nil)
-		mockPRMerger.WaitAndMergeReturns(nil)
-		mockBrancher.DefaultBranchReturns("main", nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.CommitOnlyReturns(nil)
+		brancher.PushReturns(nil)
+		prCreator.CreateReturns("https://github.com/test/pull/1", nil)
+		manager.SetPRURLReturns(nil)
+		prMerger.WaitAndMergeReturns(nil)
+		brancher.DefaultBranchReturns("main", nil)
 		// Switch fails after DefaultBranch succeeds
-		mockBrancher.SwitchReturns(stderrors.New("switch to default branch failed"))
+		brancher.SwitchReturns(stderrors.New("switch to default branch failed"))
 
 		// Create log file with success report
 		logDir := filepath.Join(promptsDir, "log")
@@ -3147,22 +3147,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 			filepath.Join(promptsDir, "completed"),
 			logDir,
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			true,
 			true,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			true, // autoMerge enabled
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3174,12 +3174,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 		// DefaultBranch and Switch are called
 		Eventually(func() int {
-			return mockBrancher.DefaultBranchCallCount()
+			return brancher.DefaultBranchCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Load called to mark as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -3197,27 +3197,27 @@ DARK-FACTORY-REPORT -->`), 0600)
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+		cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 			return os.MkdirAll(destDir, 0750)
 		}
-		mockCloner.RemoveStub = func(_ context.Context, path string) error {
+		cloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.PushReturns(nil)
-		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-		mockManager.SetPRURLReturns(nil)
-		mockPRMerger.WaitAndMergeReturns(nil)
-		mockBrancher.DefaultBranchReturns("main", nil)
-		mockBrancher.SwitchReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.CommitOnlyReturns(nil)
+		brancher.PushReturns(nil)
+		prCreator.CreateReturns("https://github.com/test/pull/1", nil)
+		manager.SetPRURLReturns(nil)
+		prMerger.WaitAndMergeReturns(nil)
+		brancher.DefaultBranchReturns("main", nil)
+		brancher.SwitchReturns(nil)
 		// Pull fails after Switch succeeds
-		mockBrancher.PullReturns(stderrors.New("pull failed"))
+		brancher.PullReturns(stderrors.New("pull failed"))
 
 		// Create log file with success report
 		logDir := filepath.Join(promptsDir, "log")
@@ -3232,22 +3232,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 			filepath.Join(promptsDir, "completed"),
 			logDir,
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			true,
 			true,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			true, // autoMerge enabled
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3259,12 +3259,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 		// Pull is called and fails
 		Eventually(func() int {
-			return mockBrancher.PullCallCount()
+			return brancher.PullCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Load called to mark as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -3276,36 +3276,36 @@ DARK-FACTORY-REPORT -->`), 0600)
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.HasChangelogReturns(false)
-		mockReleaser.CommitOnlyReturns(stderrors.New("commit only failed"))
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(stderrors.New("commit only failed"))
 
 		p := processor.NewProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			false,
 			false,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			false,
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3317,12 +3317,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 		// CommitOnly was called and failed
 		Eventually(func() int {
-			return mockReleaser.CommitOnlyCallCount()
+			return releaser.CommitOnlyCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Load called to mark as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -3340,25 +3340,25 @@ DARK-FACTORY-REPORT -->`), 0600)
 			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 		}
 
-		mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+		cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 			return os.MkdirAll(destDir, 0750)
 		}
-		mockCloner.RemoveStub = func(_ context.Context, path string) error {
+		cloner.RemoveStub = func(_ context.Context, path string) error {
 			return os.RemoveAll(path)
 		}
-		mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-		mockManager.ListQueuedReturnsOnCall(1, nil, nil)
-		mockManager.AllPreviousCompletedReturns(true)
-		mockManager.MoveToCompletedReturns(nil)
-		mockExecutor.ExecuteReturns(nil)
-		mockReleaser.CommitCompletedFileReturns(nil)
-		mockReleaser.CommitOnlyReturns(nil)
-		mockBrancher.PushReturns(nil)
-		mockPRCreator.CreateReturns("https://github.com/test/pull/1", nil)
-		mockManager.SetPRURLReturns(nil)
-		mockPRMerger.WaitAndMergeReturns(nil)
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, nil, nil)
+		manager.AllPreviousCompletedReturns(true)
+		manager.MoveToCompletedReturns(nil)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.CommitOnlyReturns(nil)
+		brancher.PushReturns(nil)
+		prCreator.CreateReturns("https://github.com/test/pull/1", nil)
+		manager.SetPRURLReturns(nil)
+		prMerger.WaitAndMergeReturns(nil)
 		// DefaultBranch fails after successful merge
-		mockBrancher.DefaultBranchReturns("", stderrors.New("cannot determine default branch"))
+		brancher.DefaultBranchReturns("", stderrors.New("cannot determine default branch"))
 
 		// Create log file with success report
 		logDir := filepath.Join(promptsDir, "log")
@@ -3373,22 +3373,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 			filepath.Join(promptsDir, "completed"),
 			logDir,
 			"test-project",
-			mockExecutor,
-			mockManager,
-			mockReleaser,
-			mockVersionGet,
+			executor,
+			manager,
+			releaser,
+			versionGet,
 			ready,
 			true,
 			true,
-			mockBrancher,
-			mockPRCreator,
-			mockCloner,
-			mockPRMerger,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
 			true, // autoMerge enabled
 			false,
 			false,
-			mockAutoCompleter,
-			mockSpecLister,
+			autoCompleter,
+			specLister,
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3400,17 +3400,17 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 		// WaitAndMerge is called
 		Eventually(func() int {
-			return mockPRMerger.WaitAndMergeCallCount()
+			return prMerger.WaitAndMergeCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// DefaultBranch is called and fails → prompt marked as failed
 		Eventually(func() int {
-			return mockBrancher.DefaultBranchCallCount()
+			return brancher.DefaultBranchCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		// Load called to mark as failed
 		Eventually(func() int {
-			return mockManager.LoadCallCount()
+			return manager.LoadCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 		cancel()
@@ -3430,24 +3430,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.SetPRURLReturns(nil)
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")
@@ -3462,22 +3462,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false, // autoMerge disabled
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -3489,17 +3489,17 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for PR to be created
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// WaitAndMerge should NOT be called
 			Consistently(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
+				return prMerger.WaitAndMergeCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 			// Worktree should be removed after PR creation
 			Eventually(func() int {
-				return mockCloner.RemoveCallCount()
+				return cloner.RemoveCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 			cancel()
@@ -3520,29 +3520,29 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 					return os.MkdirAll(destDir, 0750)
 				}
-				mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				cloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.CommitOnlyReturns(nil)
-				mockBrancher.FetchReturns(nil)
-				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.PushReturns(nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.SwitchReturns(nil)
-				mockBrancher.PullReturns(nil)
-				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-				mockPRMerger.WaitAndMergeReturns(nil)
-				mockManager.MoveToCompletedReturns(nil)
-				mockManager.SetPRURLReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.CommitOnlyReturns(nil)
+				brancher.FetchReturns(nil)
+				brancher.MergeOriginDefaultReturns(nil)
+				brancher.PushReturns(nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.SwitchReturns(nil)
+				brancher.PullReturns(nil)
+				prCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+				prMerger.WaitAndMergeReturns(nil)
+				manager.MoveToCompletedReturns(nil)
+				manager.SetPRURLReturns(nil)
+				releaser.HasChangelogReturns(false)
 
 				// Create log file with success report
 				logDir := filepath.Join(promptsDir, "log")
@@ -3557,22 +3557,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 					filepath.Join(promptsDir, "completed"),
 					logDir,
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					true,
 					true,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					true, // autoMerge enabled
 					false,
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -3584,22 +3584,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// Wait for WaitAndMerge to be called
 				Eventually(func() int {
-					return mockPRMerger.WaitAndMergeCallCount()
+					return prMerger.WaitAndMergeCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// Verify DefaultBranch was called
 				Eventually(func() int {
-					return mockBrancher.DefaultBranchCallCount()
+					return brancher.DefaultBranchCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// Verify Switch to default branch was called
 				Eventually(func() int {
-					return mockBrancher.SwitchCallCount()
+					return brancher.SwitchCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 				// Verify Pull was called
 				Eventually(func() int {
-					return mockBrancher.PullCallCount()
+					return brancher.PullCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				cancel()
@@ -3619,31 +3619,31 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.DefaultBranchReturns("main", nil)
-			mockBrancher.SwitchReturns(nil)
-			mockBrancher.PullReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-			mockPRMerger.WaitAndMergeReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
-			mockReleaser.HasChangelogReturns(true)
-			mockReleaser.GetNextVersionReturns("v0.0.2", nil)
-			mockReleaser.CommitAndReleaseReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(nil)
+			brancher.PushReturns(nil)
+			brancher.DefaultBranchReturns("main", nil)
+			brancher.SwitchReturns(nil)
+			brancher.PullReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			prMerger.WaitAndMergeReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.SetPRURLReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.GetNextVersionReturns("v0.0.2", nil)
+			releaser.CommitAndReleaseReturns(nil)
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")
@@ -3658,22 +3658,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				true, // autoMerge enabled
 				true, // autoRelease enabled
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -3685,7 +3685,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for CommitAndRelease to be called
 			Eventually(func() int {
-				return mockReleaser.CommitAndReleaseCallCount()
+				return releaser.CommitAndReleaseCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			cancel()
@@ -3706,29 +3706,29 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 					return os.MkdirAll(destDir, 0750)
 				}
-				mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				cloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.CommitOnlyReturns(nil)
-				mockBrancher.FetchReturns(nil)
-				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.PushReturns(nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.SwitchReturns(nil)
-				mockBrancher.PullReturns(nil)
-				mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-				mockPRMerger.WaitAndMergeReturns(nil)
-				mockManager.MoveToCompletedReturns(nil)
-				mockManager.SetPRURLReturns(nil)
-				mockReleaser.HasChangelogReturns(false) // No changelog
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.CommitOnlyReturns(nil)
+				brancher.FetchReturns(nil)
+				brancher.MergeOriginDefaultReturns(nil)
+				brancher.PushReturns(nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.SwitchReturns(nil)
+				brancher.PullReturns(nil)
+				prCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+				prMerger.WaitAndMergeReturns(nil)
+				manager.MoveToCompletedReturns(nil)
+				manager.SetPRURLReturns(nil)
+				releaser.HasChangelogReturns(false) // No changelog
 
 				// Create log file with success report
 				logDir := filepath.Join(promptsDir, "log")
@@ -3743,22 +3743,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 					filepath.Join(promptsDir, "completed"),
 					logDir,
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					true,
 					true,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					true, // autoMerge enabled
 					true, // autoRelease enabled
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -3770,12 +3770,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// Wait for WaitAndMerge to complete
 				Eventually(func() int {
-					return mockPRMerger.WaitAndMergeCallCount()
+					return prMerger.WaitAndMergeCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// CommitAndRelease should NOT be called
 				Consistently(func() int {
-					return mockReleaser.CommitAndReleaseCallCount()
+					return releaser.CommitAndReleaseCallCount()
 				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 				cancel()
@@ -3795,29 +3795,29 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockBrancher.DefaultBranchReturns("main", nil)
-			mockBrancher.SwitchReturns(nil)
-			mockBrancher.PullReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
-			mockPRMerger.WaitAndMergeReturns(nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
-			mockReleaser.HasChangelogReturns(true) // Changelog exists but autoRelease is false
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(nil)
+			brancher.PushReturns(nil)
+			brancher.DefaultBranchReturns("main", nil)
+			brancher.SwitchReturns(nil)
+			brancher.PullReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/test/pull/1", nil)
+			prMerger.WaitAndMergeReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.SetPRURLReturns(nil)
+			releaser.HasChangelogReturns(true) // Changelog exists but autoRelease is false
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")
@@ -3832,22 +3832,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				true,  // autoMerge enabled
 				false, // autoRelease disabled
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -3859,12 +3859,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for WaitAndMerge to complete
 			Eventually(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
+				return prMerger.WaitAndMergeCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// CommitAndRelease should NOT be called
 			Consistently(func() int {
-				return mockReleaser.CommitAndReleaseCallCount()
+				return releaser.CommitAndReleaseCallCount()
 			}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 			cancel()
@@ -3886,23 +3886,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+				cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 					return os.MkdirAll(destDir, 0750)
 				}
-				mockCloner.RemoveStub = func(_ context.Context, path string) error {
+				cloner.RemoveStub = func(_ context.Context, path string) error {
 					return os.RemoveAll(path)
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitOnlyReturns(nil)
-				mockBrancher.FetchReturns(nil)
-				mockBrancher.MergeOriginDefaultReturns(nil)
-				mockBrancher.PushReturns(nil)
-				mockPRCreator.CreateReturns("https://github.com/test/test/pull/42", nil)
-				mockManager.SetStatusReturns(nil)
-				mockManager.SetPRURLReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(nil)
+				releaser.CommitOnlyReturns(nil)
+				brancher.FetchReturns(nil)
+				brancher.MergeOriginDefaultReturns(nil)
+				brancher.PushReturns(nil)
+				prCreator.CreateReturns("https://github.com/test/test/pull/42", nil)
+				manager.SetStatusReturns(nil)
+				manager.SetPRURLReturns(nil)
 
 				// Create log file with success report
 				logDir := filepath.Join(promptsDir, "log")
@@ -3917,22 +3917,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 					filepath.Join(promptsDir, "completed"),
 					logDir,
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					true,
 					true,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					false, // autoMerge disabled
 					false,
 					true, // autoReview enabled
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -3944,28 +3944,28 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// Wait for PR to be created
 				Eventually(func() int {
-					return mockPRCreator.CreateCallCount()
+					return prCreator.CreateCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// SetStatus should be called with in_review
 				Eventually(func() string {
-					if mockManager.SetStatusCallCount() == 0 {
+					if manager.SetStatusCallCount() == 0 {
 						return ""
 					}
-					_, _, status := mockManager.SetStatusArgsForCall(
-						mockManager.SetStatusCallCount() - 1,
+					_, _, status := manager.SetStatusArgsForCall(
+						manager.SetStatusCallCount() - 1,
 					)
 					return status
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.InReviewPromptStatus)))
 
 				// MoveToCompleted should NOT be called
 				Consistently(func() int {
-					return mockManager.MoveToCompletedCallCount()
+					return manager.MoveToCompletedCallCount()
 				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 				// WaitAndMerge should NOT be called
 				Consistently(func() int {
-					return mockPRMerger.WaitAndMergeCallCount()
+					return prMerger.WaitAndMergeCallCount()
 				}, 200*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
 
 				cancel()
@@ -3984,24 +3984,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockBrancher.FetchReturns(nil)
-			mockBrancher.MergeOriginDefaultReturns(nil)
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
-			mockManager.MoveToCompletedReturns(nil)
-			mockManager.SetPRURLReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.MergeOriginDefaultReturns(nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.SetPRURLReturns(nil)
 
 			// Create log file with success report
 			logDir := filepath.Join(promptsDir, "log")
@@ -4016,22 +4016,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				logDir,
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true,
 				true,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false, // autoMerge disabled
 				false,
 				false, // autoReview disabled
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4043,18 +4043,18 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for PR to be created
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// MoveToCompleted should be called (normal flow)
 			Eventually(func() int {
-				return mockManager.MoveToCompletedCallCount()
+				return manager.MoveToCompletedCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// SetStatus should NOT be called with in_review
 			Consistently(func() bool {
-				for i := 0; i < mockManager.SetStatusCallCount(); i++ {
-					_, _, status := mockManager.SetStatusArgsForCall(i)
+				for i := 0; i < manager.SetStatusCallCount(); i++ {
+					_, _, status := manager.SetStatusArgsForCall(i)
 					if status == string(prompt.InReviewPromptStatus) {
 						return true
 					}
@@ -4072,7 +4072,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		BeforeEach(func() {
 			promptPath = filepath.Join(promptsDir, "001-gate-test.md")
 			// Override Load stub to use real file I/O so pf.Save works
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
 			}
 		})
@@ -4088,33 +4088,33 @@ DARK-FACTORY-REPORT -->`), 0600)
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(nil)
+				releaser.HasChangelogReturns(false)
 
 				p := processor.NewProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					false,
 					false,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					false,
 					false,
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
@@ -4126,11 +4126,11 @@ DARK-FACTORY-REPORT -->`), 0600)
 				}()
 
 				Eventually(func() int {
-					return mockExecutor.ExecuteCallCount()
+					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// MoveToCompleted must NOT be called — git ops are deferred
-				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+				Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 				// File status must be pending_verification
 				// Use Eventually to avoid a race: enterPendingVerification runs
@@ -4159,31 +4159,31 @@ DARK-FACTORY-REPORT -->`), 0600)
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(stderrors.New("execution failed"))
 
 				p := processor.NewProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					false,
 					false,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					false,
 					false,
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
@@ -4195,11 +4195,11 @@ DARK-FACTORY-REPORT -->`), 0600)
 				}()
 
 				Eventually(func() int {
-					return mockExecutor.ExecuteCallCount()
+					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// MoveToCompleted must NOT be called
-				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(0))
+				Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 				// Status must be failed — gate does not apply to failed executions
 				pf, loadErr := prompt.Load(ctx, promptPath, libtime.NewCurrentDateTime())
@@ -4226,22 +4226,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 						filepath.Join(promptsDir, "completed"),
 						filepath.Join(promptsDir, "log"),
 						"test-project",
-						mockExecutor,
-						mockManager,
-						mockReleaser,
-						mockVersionGet,
+						executor,
+						manager,
+						releaser,
+						versionGet,
 						ready,
 						false,
 						false,
-						mockBrancher,
-						mockPRCreator,
-						mockCloner,
-						mockPRMerger,
+						brancher,
+						prCreator,
+						cloner,
+						prMerger,
 						false,
 						false,
 						false,
-						mockAutoCompleter,
-						mockSpecLister,
+						autoCompleter,
+						specLister,
 						"",
 						false,
 						notifier.NewMultiNotifier(),
@@ -4256,9 +4256,9 @@ DARK-FACTORY-REPORT -->`), 0600)
 					time.Sleep(200 * time.Millisecond)
 
 					// ListQueued must NOT be called — queue is blocked before the loop
-					Expect(mockManager.ListQueuedCallCount()).To(Equal(0))
+					Expect(manager.ListQueuedCallCount()).To(Equal(0))
 					// Executor must NOT be called
-					Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
+					Expect(executor.ExecuteCallCount()).To(Equal(0))
 
 					cancel()
 					<-errCh
@@ -4268,29 +4268,29 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 		Context("hasPendingVerification false, queue proceeds normally", func() {
 			It("calls ListQueued when no pending_verification prompt exists", func() {
-				mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+				manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 				p := processor.NewProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					false,
 					false,
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					false,
 					false,
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					true, // gate enabled but no pending file
 					notifier.NewMultiNotifier(),
@@ -4303,7 +4303,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// ListQueued should be called (no pending file to block)
 				Eventually(func() int {
-					return mockManager.ListQueuedCallCount()
+					return manager.ListQueuedCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 				cancel()
@@ -4325,29 +4325,29 @@ DARK-FACTORY-REPORT -->`), 0600)
 			// Use a real lister pointing at the spec dir
 			realLister := spec.NewLister(libtime.NewCurrentDateTime(), specDir)
 
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
-			mockAutoCompleter.CheckAndCompleteReturns(nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			autoCompleter.CheckAndCompleteReturns(nil)
 
 			p := processor.NewProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
+				autoCompleter,
 				realLister,
 				"",
 				false,
@@ -4361,10 +4361,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for CheckAndComplete to be called with the spec name
 			Eventually(func() int {
-				return mockAutoCompleter.CheckAndCompleteCallCount()
+				return autoCompleter.CheckAndCompleteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			_, specID := mockAutoCompleter.CheckAndCompleteArgsForCall(0)
+			_, specID := autoCompleter.CheckAndCompleteArgsForCall(0)
 			Expect(specID).To(Equal("001-my-spec"))
 
 			cancel()
@@ -4397,22 +4397,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4420,7 +4420,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		}
 
 		It("ProcessQueue logs 'no queued prompts' once when queue is empty", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			p := newProc()
 			err := p.ProcessQueue(ctx)
@@ -4431,7 +4431,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 
 		It("ProcessQueue does not log 'no queued prompts, exiting'", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			p := newProc()
 			err := p.ProcessQueue(ctx)
@@ -4441,7 +4441,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 
 		It("daemon Process logs 'waiting for changes' once after startup scan", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			p := newProc()
 			errCh := make(chan error, 1)
@@ -4464,7 +4464,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 
 		It("daemon ticker scan does not log 'no queued prompts' at INFO level", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			// Use INFO-only handler to verify no INFO logs for empty queue scans
 			var infoBuf bytes.Buffer
@@ -4510,22 +4510,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				pr,
 				worktree,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4538,14 +4538,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
-			mockReleaser.CommitOnlyReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
 
 			p := newProcWithWorktree(false, false)
 			go func() {
@@ -4553,12 +4553,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}()
 
 			Eventually(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))
-			Expect(mockBrancher.SwitchCallCount()).To(Equal(0))
-			Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+			Expect(brancher.IsCleanCallCount()).To(Equal(0))
+			Expect(brancher.SwitchCallCount()).To(Equal(0))
+			Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -4570,26 +4570,26 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "some-feature-branch"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockManager.MoveToCompletedReturns(nil)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
-				mockReleaser.CommitOnlyReturns(nil)
-				mockAutoCompleter.CheckAndCompleteReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(false)
+				releaser.CommitOnlyReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(nil)
 
 				p := newProcWithWorktree(false, false)
 				err := p.ProcessQueue(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))
-				Expect(mockBrancher.SwitchCallCount()).To(Equal(0))
-				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+				Expect(brancher.IsCleanCallCount()).To(Equal(0))
+				Expect(brancher.SwitchCallCount()).To(Equal(0))
+				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 			})
 		})
 
@@ -4601,22 +4601,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "dark-factory/test"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockManager.MoveToCompletedReturns(nil)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
-				mockReleaser.CommitOnlyReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(false)
+				releaser.CommitOnlyReturns(nil)
 
-				mockBrancher.IsCleanReturns(true, nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.FetchAndVerifyBranchReturns(nil) // branch exists remotely
-				mockBrancher.SwitchReturns(nil)
+				brancher.IsCleanReturns(true, nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.FetchAndVerifyBranchReturns(nil) // branch exists remotely
+				brancher.SwitchReturns(nil)
 
 				p := newProcWithWorktree(true, false)
 				go func() {
@@ -4624,18 +4624,18 @@ DARK-FACTORY-REPORT -->`), 0600)
 				}()
 
 				Eventually(func() int {
-					return mockExecutor.ExecuteCallCount()
+					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(mockBrancher.IsCleanCallCount()).To(Equal(1))
-				Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
-				_, branchArg := mockBrancher.FetchAndVerifyBranchArgsForCall(0)
+				Expect(brancher.IsCleanCallCount()).To(Equal(1))
+				Expect(brancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
+				_, branchArg := brancher.FetchAndVerifyBranchArgsForCall(0)
 				Expect(branchArg).To(Equal("dark-factory/test"))
 				// Switch called: once to switch to branch, once to restore default
-				Expect(mockBrancher.SwitchCallCount()).To(BeNumerically(">=", 1))
-				_, switchArg := mockBrancher.SwitchArgsForCall(0)
+				Expect(brancher.SwitchCallCount()).To(BeNumerically(">=", 1))
+				_, switchArg := brancher.SwitchArgsForCall(0)
 				Expect(switchArg).To(Equal("dark-factory/test"))
-				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 
 				cancel()
 			},
@@ -4649,25 +4649,25 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "dark-factory/test"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockManager.MoveToCompletedReturns(nil)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
-				mockReleaser.CommitOnlyReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(false)
+				releaser.CommitOnlyReturns(nil)
 
-				mockBrancher.IsCleanReturns(true, nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.FetchAndVerifyBranchReturns(
+				brancher.IsCleanReturns(true, nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.FetchAndVerifyBranchReturns(
 					stderrors.New("branch not found"),
 				) // branch does not exist
-				mockBrancher.CreateAndSwitchReturns(nil)
-				mockBrancher.SwitchReturns(nil)
+				brancher.CreateAndSwitchReturns(nil)
+				brancher.SwitchReturns(nil)
 
 				p := newProcWithWorktree(true, false)
 				go func() {
@@ -4675,13 +4675,13 @@ DARK-FACTORY-REPORT -->`), 0600)
 				}()
 
 				Eventually(func() int {
-					return mockExecutor.ExecuteCallCount()
+					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(mockBrancher.IsCleanCallCount()).To(Equal(1))
-				Expect(mockBrancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
-				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(1))
-				_, createArg := mockBrancher.CreateAndSwitchArgsForCall(0)
+				Expect(brancher.IsCleanCallCount()).To(Equal(1))
+				Expect(brancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
+				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(1))
+				_, createArg := brancher.CreateAndSwitchArgsForCall(0)
 				Expect(createArg).To(Equal("dark-factory/test"))
 
 				cancel()
@@ -4696,14 +4696,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "dark-factory/test"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
 
-				mockBrancher.IsCleanReturns(false, nil) // dirty working tree
+				brancher.IsCleanReturns(false, nil) // dirty working tree
 
 				p := newProcWithWorktree(true, false)
 				go func() {
@@ -4712,12 +4712,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// Wait for the IsClean call to happen (prompt fails)
 				Eventually(func() int {
-					return mockBrancher.IsCleanCallCount()
+					return brancher.IsCleanCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(mockExecutor.ExecuteCallCount()).To(Equal(0))
-				Expect(mockBrancher.SwitchCallCount()).To(Equal(0))
-				Expect(mockBrancher.CreateAndSwitchCallCount()).To(Equal(0))
+				Expect(executor.ExecuteCallCount()).To(Equal(0))
+				Expect(brancher.SwitchCallCount()).To(Equal(0))
+				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 
 				cancel()
 			},
@@ -4729,24 +4729,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createBranchPromptFile(path, "dark-factory/test"), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/456", nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/456", nil)
 
 			p := newProcWithWorktree(true, true)
 			go func() {
@@ -4754,11 +4754,11 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}()
 
 			Eventually(func() int {
-				return mockCloner.CloneCallCount()
+				return cloner.CloneCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// In-place branch switching should NOT have been called
-			Expect(mockBrancher.IsCleanCallCount()).To(Equal(0))
+			Expect(brancher.IsCleanCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -4771,23 +4771,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "dark-factory/restore-test"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockManager.MoveToCompletedReturns(nil)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.HasChangelogReturns(false)
-				mockReleaser.CommitOnlyReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(false)
+				releaser.CommitOnlyReturns(nil)
 
-				mockBrancher.IsCleanReturns(true, nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
-				mockBrancher.CreateAndSwitchReturns(nil)
-				mockBrancher.SwitchReturns(nil)
+				brancher.IsCleanReturns(true, nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+				brancher.CreateAndSwitchReturns(nil)
+				brancher.SwitchReturns(nil)
 
 				p := newProcWithWorktree(true, false)
 				go func() {
@@ -4796,14 +4796,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 				// Wait for execution to complete
 				Eventually(func() int {
-					return mockReleaser.CommitOnlyCallCount()
+					return releaser.CommitOnlyCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// Switch should be called: once to restore default branch
-				Expect(mockBrancher.SwitchCallCount()).To(BeNumerically(">=", 1))
+				Expect(brancher.SwitchCallCount()).To(BeNumerically(">=", 1))
 				// Find the restore call (last Switch call should be to "main")
-				lastIdx := mockBrancher.SwitchCallCount() - 1
-				_, lastSwitchArg := mockBrancher.SwitchArgsForCall(lastIdx)
+				lastIdx := brancher.SwitchCallCount() - 1
+				_, lastSwitchArg := brancher.SwitchArgsForCall(lastIdx)
 				Expect(lastSwitchArg).To(Equal("main"))
 
 				cancel()
@@ -4829,22 +4829,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
 					"test-project",
-					mockExecutor,
-					mockManager,
-					mockReleaser,
-					mockVersionGet,
+					executor,
+					manager,
+					releaser,
+					versionGet,
 					ready,
 					true,  // pr=true enables in-place branch switching
 					false, // worktree=false
-					mockBrancher,
-					mockPRCreator,
-					mockCloner,
-					mockPRMerger,
+					brancher,
+					prCreator,
+					cloner,
+					prMerger,
 					false,
 					false,
 					false,
-					mockAutoCompleter,
-					mockSpecLister,
+					autoCompleter,
+					specLister,
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -4860,35 +4860,35 @@ DARK-FACTORY-REPORT -->`), 0600)
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
 
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createBranchPromptFile(path, "feature/my-branch"), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				mockManager.AllPreviousCompletedReturns(true)
-				mockManager.MoveToCompletedReturns(nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
 				// More prompts on branch — skip merge
-				mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
-				mockExecutor.ExecuteReturns(nil)
-				mockReleaser.CommitCompletedFileReturns(nil)
-				mockReleaser.HasChangelogReturns(true) // changelog exists but should NOT release
-				mockReleaser.CommitOnlyReturns(nil)
+				manager.HasQueuedPromptsOnBranchReturns(true, nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(true) // changelog exists but should NOT release
+				releaser.CommitOnlyReturns(nil)
 
-				mockBrancher.IsCleanReturns(true, nil)
-				mockBrancher.DefaultBranchReturns("main", nil)
-				mockBrancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
-				mockBrancher.CreateAndSwitchReturns(nil)
-				mockBrancher.SwitchReturns(nil)
+				brancher.IsCleanReturns(true, nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
+				brancher.CreateAndSwitchReturns(nil)
+				brancher.SwitchReturns(nil)
 
 				p := newProcDirect()
 				go func() { _ = p.Process(ctx) }()
 
 				Eventually(func() int {
-					return mockReleaser.CommitOnlyCallCount()
+					return releaser.CommitOnlyCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// CommitAndRelease must NOT be called
-				Expect(mockReleaser.CommitAndReleaseCallCount()).To(Equal(0))
+				Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
 
 				cancel()
 			},
@@ -4900,25 +4900,25 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.HasChangelogReturns(true)
-			mockReleaser.GetNextVersionReturns("v0.1.1", nil)
-			mockReleaser.CommitAndReleaseReturns(nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.GetNextVersionReturns("v0.1.1", nil)
+			releaser.CommitAndReleaseReturns(nil)
 
 			p := newProcDirect()
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockReleaser.CommitAndReleaseCallCount()
+				return releaser.CommitAndReleaseCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// CommitOnly must NOT be called
-			Expect(mockReleaser.CommitOnlyCallCount()).To(Equal(0))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -4930,24 +4930,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}
 
 			// pr=true with worktree=true uses clone workflow
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createBranchPromptFile(path, "feature/pr-mode"), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/789", nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/789", nil)
 
 			// pr=true, worktree=true
 			p := processor.NewProcessor(
@@ -4955,22 +4955,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true, // pr=true
 				true, // worktree=true
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4978,12 +4978,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// handleBranchCompletion must NOT be called (pr=true uses clone workflow)
-			Expect(mockManager.HasQueuedPromptsOnBranchCallCount()).To(Equal(0))
-			Expect(mockBrancher.MergeToDefaultCallCount()).To(Equal(0))
+			Expect(manager.HasQueuedPromptsOnBranchCallCount()).To(Equal(0))
+			Expect(brancher.MergeToDefaultCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -5004,18 +5004,18 @@ DARK-FACTORY-REPORT -->`), 0600)
 		}
 
 		setupCloneMocks := func() {
-			mockCloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
 			}
-			mockCloner.RemoveStub = func(_ context.Context, path string) error {
+			cloner.RemoveStub = func(_ context.Context, path string) error {
 				return os.RemoveAll(path)
 			}
-			mockBrancher.PushReturns(nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockManager.MoveToCompletedReturns(nil)
-			mockExecutor.ExecuteReturns(nil)
-			mockReleaser.CommitCompletedFileReturns(nil)
-			mockReleaser.CommitOnlyReturns(nil)
+			brancher.PushReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
 		}
 
 		newProcWorktree := func(autoMerge bool) processor.Processor {
@@ -5024,22 +5024,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				true, // pr=true
 				true, // worktree=true
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				autoMerge,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -5051,24 +5051,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/idempotent", ""), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
 			// Existing PR found
-			mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/42", nil)
+			prCreator.FindOpenPRReturns("https://github.com/user/repo/pull/42", nil)
 
 			p := newProcWorktree(false)
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.FindOpenPRCallCount()
+				return prCreator.FindOpenPRCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Create must NOT be called when PR already exists
-			Expect(mockPRCreator.CreateCallCount()).To(Equal(0))
+			Expect(prCreator.CreateCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -5078,25 +5078,25 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/new-pr", ""), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
 			// No existing PR
-			mockPRCreator.FindOpenPRReturns("", nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/99", nil)
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/99", nil)
 
 			p := newProcWorktree(false)
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify body is the default (no issue)
-			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			_, _, body := prCreator.CreateArgsForCall(0)
 			Expect(body).To(Equal("Automated by dark-factory"))
 
 			cancel()
@@ -5107,23 +5107,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/issue-ref", "BRO-42"), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
-			mockPRCreator.FindOpenPRReturns("", nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/100", nil)
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/100", nil)
 
 			p := newProcWorktree(false)
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			_, _, body := prCreator.CreateArgsForCall(0)
 			Expect(body).To(ContainSubstring("Issue: BRO-42"))
 			Expect(body).To(Equal("Automated by dark-factory\n\nIssue: BRO-42"))
 
@@ -5135,23 +5135,23 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/no-issue", ""), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
-			mockPRCreator.FindOpenPRReturns("", nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/101", nil)
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/101", nil)
 
 			p := newProcWorktree(false)
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			_, _, body := mockPRCreator.CreateArgsForCall(0)
+			_, _, body := prCreator.CreateArgsForCall(0)
 			Expect(body).To(Equal("Automated by dark-factory"))
 			Expect(body).NotTo(ContainSubstring("Issue:"))
 
@@ -5165,27 +5165,27 @@ DARK-FACTORY-REPORT -->`), 0600)
 				queued := []prompt.Prompt{
 					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 				}
-				mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 					return createIssuePromptFile(path, "feature/multi", ""), nil
 				}
-				mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-				mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				setupCloneMocks()
-				mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/50", nil)
+				prCreator.FindOpenPRReturns("https://github.com/user/repo/pull/50", nil)
 				// More prompts on branch — defer merge
-				mockManager.HasQueuedPromptsOnBranchReturns(true, nil)
+				manager.HasQueuedPromptsOnBranchReturns(true, nil)
 
 				p := newProcWorktree(true) // autoMerge=true
 				go func() { _ = p.Process(ctx) }()
 
 				Eventually(func() int {
-					return mockManager.HasQueuedPromptsOnBranchCallCount()
+					return manager.HasQueuedPromptsOnBranchCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 
 				// WaitAndMerge must NOT be called
-				Expect(mockPRMerger.WaitAndMergeCallCount()).To(Equal(0))
+				Expect(prMerger.WaitAndMergeCallCount()).To(Equal(0))
 				// Prompt must be moved to completed
-				Expect(mockManager.MoveToCompletedCallCount()).To(Equal(1))
+				Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
 
 				cancel()
 			},
@@ -5196,26 +5196,26 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/last", ""), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
-			mockPRCreator.FindOpenPRReturns("https://github.com/user/repo/pull/51", nil)
+			prCreator.FindOpenPRReturns("https://github.com/user/repo/pull/51", nil)
 			// Last prompt on branch — trigger merge
-			mockManager.HasQueuedPromptsOnBranchReturns(false, nil)
-			mockPRMerger.WaitAndMergeReturns(nil)
-			mockBrancher.DefaultBranchReturns("main", nil)
-			mockBrancher.SwitchReturns(nil)
-			mockBrancher.PullReturns(nil)
-			mockReleaser.HasChangelogReturns(false)
+			manager.HasQueuedPromptsOnBranchReturns(false, nil)
+			prMerger.WaitAndMergeReturns(nil)
+			brancher.DefaultBranchReturns("main", nil)
+			brancher.SwitchReturns(nil)
+			brancher.PullReturns(nil)
+			releaser.HasChangelogReturns(false)
 
 			p := newProcWorktree(true) // autoMerge=true
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRMerger.WaitAndMergeCallCount()
+				return prMerger.WaitAndMergeCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			cancel()
@@ -5226,24 +5226,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
-			mockManager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return createIssuePromptFile(path, "feature/no-automerge", ""), nil
 			}
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			setupCloneMocks()
-			mockPRCreator.FindOpenPRReturns("", nil)
-			mockPRCreator.CreateReturns("https://github.com/user/repo/pull/102", nil)
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/102", nil)
 
 			p := newProcWorktree(false) // autoMerge=false
 			go func() { _ = p.Process(ctx) }()
 
 			Eventually(func() int {
-				return mockPRCreator.CreateCallCount()
+				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// WaitAndMerge must NOT be called
-			Expect(mockPRMerger.WaitAndMergeCallCount()).To(Equal(0))
+			Expect(prMerger.WaitAndMergeCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -5256,22 +5256,22 @@ DARK-FACTORY-REPORT -->`), 0600)
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
 				"test-project",
-				mockExecutor,
-				mockManager,
-				mockReleaser,
-				mockVersionGet,
+				executor,
+				manager,
+				releaser,
+				versionGet,
 				ready,
 				false,
 				false,
-				mockBrancher,
-				mockPRCreator,
-				mockCloner,
-				mockPRMerger,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
 				false,
 				false,
 				false,
-				mockAutoCompleter,
-				mockSpecLister,
+				autoCompleter,
+				specLister,
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -5284,9 +5284,9 @@ DARK-FACTORY-REPORT -->`), 0600)
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProc()
 			err := p.ProcessQueue(ctx)
@@ -5294,17 +5294,17 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 
 		It("ProcessQueue does not call ResetFailed on startup", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			p := newProc()
 			err := p.ProcessQueue(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(mockManager.ResetFailedCallCount()).To(Equal(0))
+			Expect(manager.ResetFailedCallCount()).To(Equal(0))
 		})
 
 		It("Process does not call ResetFailed on startup", func() {
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			p := newProc()
 			errCh := make(chan error, 1)
@@ -5323,7 +5323,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				Fail("processor did not stop within timeout")
 			}
 
-			Expect(mockManager.ResetFailedCallCount()).To(Equal(0))
+			Expect(manager.ResetFailedCallCount()).To(Equal(0))
 		})
 
 		It("Process continues running after prompt failure (daemon mode)", func() {
@@ -5333,10 +5333,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}
 
 			// First call returns the failing prompt; subsequent calls return empty
-			mockManager.ListQueuedReturnsOnCall(0, queued, nil)
-			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
-			mockManager.AllPreviousCompletedReturns(true)
-			mockExecutor.ExecuteReturns(stderrors.New("execution failed"))
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProc()
 			errCh := make(chan error, 1)
@@ -5346,7 +5346,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			// Wait for the executor to be called (prompt processed)
 			Eventually(func() int {
-				return mockExecutor.ExecuteCallCount()
+				return executor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Daemon should still be running — cancel and verify clean nil return

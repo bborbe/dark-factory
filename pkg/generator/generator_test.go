@@ -22,7 +22,7 @@ import (
 var _ = Describe("SpecGenerator", func() {
 	var (
 		ctx          context.Context
-		mockExecutor *mocks.Executor
+		executor     *mocks.Executor
 		inboxDir     string
 		completedDir string
 		specsDir     string
@@ -33,7 +33,7 @@ var _ = Describe("SpecGenerator", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		mockExecutor = &mocks.Executor{}
+		executor = &mocks.Executor{}
 
 		var err error
 		inboxDir, err = os.MkdirTemp("", "generator-inbox-*")
@@ -49,7 +49,7 @@ var _ = Describe("SpecGenerator", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		sg = generator.NewSpecGenerator(
-			mockExecutor,
+			executor,
 			inboxDir,
 			completedDir,
 			specsDir,
@@ -74,7 +74,7 @@ var _ = Describe("SpecGenerator", func() {
 		Context("success path: executor called, new file appears in inbox", func() {
 			BeforeEach(func() {
 				// Executor succeeds and creates a new file in inboxDir
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					// Simulate generating a prompt file
 					return os.WriteFile(
 						filepath.Join(inboxDir, "106-generated-prompt.md"),
@@ -87,8 +87,8 @@ var _ = Describe("SpecGenerator", func() {
 			It("calls executor with correct arguments", func() {
 				Expect(sg.Generate(ctx, specPath)).To(Succeed())
 
-				Expect(mockExecutor.ExecuteCallCount()).To(Equal(1))
-				_, gotPrompt, gotLogFile, gotContainer := mockExecutor.ExecuteArgsForCall(0)
+				Expect(executor.ExecuteCallCount()).To(Equal(1))
+				_, gotPrompt, gotLogFile, gotContainer := executor.ExecuteArgsForCall(0)
 				Expect(gotPrompt).To(Equal("/generate-prompts-for-spec " + specPath))
 				Expect(gotContainer).To(Equal("dark-factory-gen-020-auto-prompt-generation"))
 				Expect(
@@ -107,8 +107,8 @@ var _ = Describe("SpecGenerator", func() {
 
 		Context("no files produced: executor succeeds but inbox unchanged", func() {
 			BeforeEach(func() {
-				mockExecutor.ExecuteStub = nil
-				mockExecutor.ExecuteReturns(nil)
+				executor.ExecuteStub = nil
+				executor.ExecuteReturns(nil)
 			})
 
 			It("returns an error about no prompt files", func() {
@@ -128,8 +128,8 @@ var _ = Describe("SpecGenerator", func() {
 
 		Context("no files produced but completed prompts exist for spec", func() {
 			BeforeEach(func() {
-				mockExecutor.ExecuteStub = nil
-				mockExecutor.ExecuteReturns(nil)
+				executor.ExecuteStub = nil
+				executor.ExecuteReturns(nil)
 
 				// Write a completed prompt linked to "020-auto-prompt-generation" in completedDir
 				content := "---\nstatus: completed\nspec: \"020-auto-prompt-generation\"\n---\n# Done\n"
@@ -155,8 +155,8 @@ var _ = Describe("SpecGenerator", func() {
 
 		Context("no files produced and no completed prompts for spec", func() {
 			BeforeEach(func() {
-				mockExecutor.ExecuteStub = nil
-				mockExecutor.ExecuteReturns(nil)
+				executor.ExecuteStub = nil
+				executor.ExecuteReturns(nil)
 
 				// Write a completed prompt linked to a different spec
 				content := "---\nstatus: completed\nspec: \"999-other-spec\"\n---\n# Other\n"
@@ -176,7 +176,7 @@ var _ = Describe("SpecGenerator", func() {
 
 		Context("executor error: executor returns an error", func() {
 			BeforeEach(func() {
-				mockExecutor.ExecuteReturns(errors.New("docker run failed"))
+				executor.ExecuteReturns(errors.New("docker run failed"))
 			})
 
 			It("returns the executor error", func() {
@@ -200,7 +200,7 @@ var _ = Describe("SpecGenerator", func() {
 				Expect(os.RemoveAll(inboxDir)).To(Succeed())
 
 				// Executor creates the inbox dir and a new file
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					Expect(os.MkdirAll(inboxDir, 0750)).To(Succeed())
 					return os.WriteFile(
 						filepath.Join(inboxDir, "107-new-prompt.md"),
@@ -222,7 +222,7 @@ var _ = Describe("SpecGenerator", func() {
 		Context("spec file does not exist", func() {
 			BeforeEach(func() {
 				// Executor creates a new file in inbox
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
 						filepath.Join(inboxDir, "108-new-prompt.md"),
 						[]byte("# New"),
@@ -244,7 +244,7 @@ var _ = Describe("SpecGenerator", func() {
 				content := "---\nstatus: approved\nbranch: dark-factory/spec-028\nissue: BRO-123\n---\n# Spec\n"
 				Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
 
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
 						filepath.Join(inboxDir, "109-inherited-prompt.md"),
 						[]byte("---\nstatus: draft\n---\n# Inherited"),
@@ -272,7 +272,7 @@ var _ = Describe("SpecGenerator", func() {
 				content := "---\nstatus: approved\nbranch: dark-factory/spec-028\nissue: BRO-123\n---\n# Spec\n"
 				Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
 
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
 						filepath.Join(inboxDir, "110-override-prompt.md"),
 						[]byte("---\nstatus: draft\nbranch: my-override\n---\n# Override"),
@@ -296,7 +296,7 @@ var _ = Describe("SpecGenerator", func() {
 		Context("spec has no branch or issue: prompts left unmodified", func() {
 			BeforeEach(func() {
 				// specPath already has no branch/issue (just status: approved)
-				mockExecutor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
 						filepath.Join(inboxDir, "111-no-inherit.md"),
 						[]byte("---\nstatus: draft\n---\n# No inherit"),

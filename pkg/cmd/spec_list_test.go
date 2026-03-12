@@ -18,29 +18,29 @@ import (
 
 var _ = Describe("SpecListCommand", func() {
 	var (
-		mockLister  *mocks.Lister
-		mockCounter *mocks.PromptCounter
+		lister      *mocks.Lister
+		counter     *mocks.PromptCounter
 		specListCmd cmd.SpecListCommand
 		ctx         context.Context
 	)
 
 	BeforeEach(func() {
-		mockLister = &mocks.Lister{}
-		mockCounter = &mocks.PromptCounter{}
-		specListCmd = cmd.NewSpecListCommand(mockLister, mockCounter)
+		lister = &mocks.Lister{}
+		counter = &mocks.PromptCounter{}
+		specListCmd = cmd.NewSpecListCommand(lister, counter)
 		ctx = context.Background()
 	})
 
 	Describe("Run", func() {
 		It("outputs table for empty list", func() {
-			mockLister.ListReturns([]*spec.SpecFile{}, nil)
+			lister.ListReturns([]*spec.SpecFile{}, nil)
 			err := specListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockLister.ListCallCount()).To(Equal(1))
+			Expect(lister.ListCallCount()).To(Equal(1))
 		})
 
 		It("outputs table with specs", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{
 					Name:        "001-my-spec",
 					Frontmatter: spec.Frontmatter{Status: "draft"},
@@ -56,7 +56,7 @@ var _ = Describe("SpecListCommand", func() {
 		})
 
 		It("outputs JSON when --json flag is provided", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{
 					Name:        "001-my-spec",
 					Frontmatter: spec.Frontmatter{Status: "draft"},
@@ -68,14 +68,14 @@ var _ = Describe("SpecListCommand", func() {
 		})
 
 		It("returns error when lister fails", func() {
-			mockLister.ListReturns(nil, errors.New("lister error"))
+			lister.ListReturns(nil, errors.New("lister error"))
 			err := specListCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("list specs"))
 		})
 
 		It("handles spec with empty status", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{
 					Name:        "001-no-status",
 					Frontmatter: spec.Frontmatter{},
@@ -87,7 +87,7 @@ var _ = Describe("SpecListCommand", func() {
 		})
 
 		It("renders verifying spec with ! prefix in STATUS column", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{
 					Name:        "021-verifying-spec",
 					Frontmatter: spec.Frontmatter{Status: "verifying"},
@@ -96,32 +96,32 @@ var _ = Describe("SpecListCommand", func() {
 
 			err := specListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 
 		It("hides completed specs by default", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "017-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 				{Name: "019-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
 			}, nil)
-			mockCounter.CountBySpecReturnsOnCall(0, 0, 3, nil)
+			counter.CountBySpecReturnsOnCall(0, 0, 3, nil)
 
 			err := specListCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(1))
+			Expect(counter.CountBySpecCallCount()).To(Equal(1))
 		})
 
 		It("shows completed specs with --all flag", func() {
-			mockLister.ListReturns([]*spec.SpecFile{
+			lister.ListReturns([]*spec.SpecFile{
 				{Name: "017-spec", Frontmatter: spec.Frontmatter{Status: "approved"}},
 				{Name: "019-spec", Frontmatter: spec.Frontmatter{Status: "completed"}},
 			}, nil)
-			mockCounter.CountBySpecReturnsOnCall(0, 0, 3, nil)
-			mockCounter.CountBySpecReturnsOnCall(1, 5, 5, nil)
+			counter.CountBySpecReturnsOnCall(0, 0, 3, nil)
+			counter.CountBySpecReturnsOnCall(1, 5, 5, nil)
 
 			err := specListCmd.Run(ctx, []string{"--all"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockCounter.CountBySpecCallCount()).To(Equal(2))
+			Expect(counter.CountBySpecCallCount()).To(Equal(2))
 		})
 	})
 })

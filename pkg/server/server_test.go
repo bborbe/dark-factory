@@ -22,11 +22,11 @@ import (
 
 var _ = Describe("Server", func() {
 	var (
-		mockStatusChecker *mocks.Checker
+		statusChecker *mocks.Checker
 	)
 
 	BeforeEach(func() {
-		mockStatusChecker = &mocks.Checker{}
+		statusChecker = &mocks.Checker{}
 	})
 
 	Describe("Server lifecycle", func() {
@@ -81,12 +81,12 @@ var _ = Describe("Server", func() {
 				CompletedCount: 10,
 				IdeasCount:     5,
 			}
-			mockStatusChecker.GetStatusReturns(expectedStatus, nil)
+			statusChecker.GetStatusReturns(expectedStatus, nil)
 
 			req := httptest.NewRequest("GET", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -102,7 +102,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -111,12 +111,12 @@ var _ = Describe("Server", func() {
 
 	Describe("Status endpoint error handling", func() {
 		It("returns 500 when StatusChecker fails", func() {
-			mockStatusChecker.GetStatusReturns(nil, context.DeadlineExceeded)
+			statusChecker.GetStatusReturns(nil, context.DeadlineExceeded)
 
 			req := httptest.NewRequest("GET", "/api/v1/status", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewStatusHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewStatusHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -129,12 +129,12 @@ var _ = Describe("Server", func() {
 				{Name: "test1.md", Title: "Test 1", Size: 1234},
 				{Name: "test2.md", Title: "Test 2", Size: 5678},
 			}
-			mockStatusChecker.GetQueuedPromptsReturns(expectedQueue, nil)
+			statusChecker.GetQueuedPromptsReturns(expectedQueue, nil)
 
 			req := httptest.NewRequest("GET", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -149,12 +149,12 @@ var _ = Describe("Server", func() {
 
 	Describe("Queue endpoint error handling", func() {
 		It("returns 500 when StatusChecker fails", func() {
-			mockStatusChecker.GetQueuedPromptsReturns(nil, context.DeadlineExceeded)
+			statusChecker.GetQueuedPromptsReturns(nil, context.DeadlineExceeded)
 
 			req := httptest.NewRequest("GET", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -164,7 +164,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/queue", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewQueueHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewQueueHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))
@@ -177,12 +177,12 @@ var _ = Describe("Server", func() {
 			expectedCompleted := []status.CompletedPrompt{
 				{Name: "test1.md", CompletedAt: completedTime},
 			}
-			mockStatusChecker.GetCompletedPromptsReturns(expectedCompleted, nil)
+			statusChecker.GetCompletedPromptsReturns(expectedCompleted, nil)
 
 			req := httptest.NewRequest("GET", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
@@ -193,52 +193,52 @@ var _ = Describe("Server", func() {
 			Expect(result).To(Equal(expectedCompleted))
 
 			// Verify default limit of 10 was used
-			Expect(mockStatusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
-			_, limit := mockStatusChecker.GetCompletedPromptsArgsForCall(0)
+			Expect(statusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
+			_, limit := statusChecker.GetCompletedPromptsArgsForCall(0)
 			Expect(limit).To(Equal(10))
 		})
 
 		It("respects limit query parameter", func() {
-			mockStatusChecker.GetCompletedPromptsReturns([]status.CompletedPrompt{}, nil)
+			statusChecker.GetCompletedPromptsReturns([]status.CompletedPrompt{}, nil)
 
 			req := httptest.NewRequest("GET", "/api/v1/completed?limit=5", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
 
 			// Verify limit of 5 was used
-			Expect(mockStatusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
-			_, limit := mockStatusChecker.GetCompletedPromptsArgsForCall(0)
+			Expect(statusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
+			_, limit := statusChecker.GetCompletedPromptsArgsForCall(0)
 			Expect(limit).To(Equal(5))
 		})
 
 		It("ignores invalid limit parameter", func() {
-			mockStatusChecker.GetCompletedPromptsReturns([]status.CompletedPrompt{}, nil)
+			statusChecker.GetCompletedPromptsReturns([]status.CompletedPrompt{}, nil)
 
 			req := httptest.NewRequest("GET", "/api/v1/completed?limit=invalid", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(200))
 
 			// Verify default limit was used
-			Expect(mockStatusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
-			_, limit := mockStatusChecker.GetCompletedPromptsArgsForCall(0)
+			Expect(statusChecker.GetCompletedPromptsCallCount()).To(Equal(1))
+			_, limit := statusChecker.GetCompletedPromptsArgsForCall(0)
 			Expect(limit).To(Equal(10))
 		})
 
 		It("returns 500 when StatusChecker fails", func() {
-			mockStatusChecker.GetCompletedPromptsReturns(nil, context.DeadlineExceeded)
+			statusChecker.GetCompletedPromptsReturns(nil, context.DeadlineExceeded)
 
 			req := httptest.NewRequest("GET", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(500))
@@ -248,7 +248,7 @@ var _ = Describe("Server", func() {
 			req := httptest.NewRequest("POST", "/api/v1/completed", nil)
 			w := httptest.NewRecorder()
 
-			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(mockStatusChecker))
+			handler := libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker))
 			handler.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(405))

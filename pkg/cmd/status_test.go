@@ -19,17 +19,17 @@ import (
 var _ = Describe("StatusCommand", func() {
 	var (
 		ctx           context.Context
-		mockChecker   *mocks.Checker
-		mockFormatter *mocks.Formatter
+		checker       *mocks.Checker
+		formatter     *mocks.Formatter
 		statusCommand cmd.StatusCommand
 		testStatus    *status.Status
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		mockChecker = &mocks.Checker{}
-		mockFormatter = &mocks.Formatter{}
-		statusCommand = cmd.NewStatusCommand(mockChecker, mockFormatter)
+		checker = &mocks.Checker{}
+		formatter = &mocks.Formatter{}
+		statusCommand = cmd.NewStatusCommand(checker, formatter)
 
 		testStatus = &status.Status{
 			Daemon:         "not running",
@@ -42,26 +42,26 @@ var _ = Describe("StatusCommand", func() {
 
 	Describe("Run", func() {
 		It("outputs human-readable format by default", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
-			mockFormatter.FormatReturns("formatted output\n")
+			checker.GetStatusReturns(testStatus, nil)
+			formatter.FormatReturns("formatted output\n")
 
 			err := statusCommand.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockChecker.GetStatusCallCount()).To(Equal(1))
-			Expect(mockFormatter.FormatCallCount()).To(Equal(1))
+			Expect(checker.GetStatusCallCount()).To(Equal(1))
+			Expect(formatter.FormatCallCount()).To(Equal(1))
 		})
 
 		It("outputs JSON format with --json flag", func() {
-			mockChecker.GetStatusReturns(testStatus, nil)
+			checker.GetStatusReturns(testStatus, nil)
 
 			err := statusCommand.Run(ctx, []string{"--json"})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mockChecker.GetStatusCallCount()).To(Equal(1))
-			Expect(mockFormatter.FormatCallCount()).To(Equal(0))
+			Expect(checker.GetStatusCallCount()).To(Equal(1))
+			Expect(formatter.FormatCallCount()).To(Equal(0))
 		})
 
 		It("returns error when checker fails", func() {
-			mockChecker.GetStatusReturns(nil, fmt.Errorf("checker error"))
+			checker.GetStatusReturns(nil, fmt.Errorf("checker error"))
 
 			err := statusCommand.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())

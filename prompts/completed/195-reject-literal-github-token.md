@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added validateGitHubToken method that rejects literal token values, accepting only empty strings or ${VAR_NAME} env var references, and updated tests accordingly.
+container: dark-factory-195-reject-literal-github-token
+dark-factory-version: v0.48.0
 created: "2026-03-11T20:22:56Z"
 queued: "2026-03-11T20:22:56Z"
+started: "2026-03-12T01:42:07Z"
+completed: "2026-03-12T01:47:45Z"
 ---
 
 <summary>

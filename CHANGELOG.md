@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.52.1
+
+- test: add `time.Local = time.UTC` and `format.TruncatedDiff = false` setup to `pkg/specnum` suite, and add `//go:generate` counterfeiter directive to `specnum`, `report`, `project`, and root test suites
+
 ## v0.52.0
 
 - feat: reject literal GitHub token values in `github.token` config field; only `${VAR_NAME}` env var references are accepted to prevent accidental credential leakage

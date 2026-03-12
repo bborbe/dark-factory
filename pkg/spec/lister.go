@@ -36,12 +36,13 @@ type Lister interface {
 
 // lister implements Lister.
 type lister struct {
-	dirs []string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	dirs                  []string
 }
 
 // NewLister creates a new Lister that scans the given directories.
-func NewLister(dirs ...string) Lister {
-	return &lister{dirs: dirs}
+func NewLister(currentDateTimeGetter libtime.CurrentDateTimeGetter, dirs ...string) Lister {
+	return &lister{currentDateTimeGetter: currentDateTimeGetter, dirs: dirs}
 }
 
 // List returns all spec files found across all configured directories.
@@ -60,7 +61,7 @@ func (l *lister) List(ctx context.Context) ([]*SpecFile, error) {
 				continue
 			}
 			path := filepath.Join(dir, entry.Name())
-			sf, err := Load(ctx, path, libtime.NewCurrentDateTime())
+			sf, err := Load(ctx, path, l.currentDateTimeGetter)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, "load spec file")
 			}

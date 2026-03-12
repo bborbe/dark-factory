@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	libhttp "github.com/bborbe/http"
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -63,7 +64,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -95,7 +101,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -111,7 +122,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -127,7 +143,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -139,7 +160,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -155,7 +181,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -184,7 +215,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -213,7 +249,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -245,7 +286,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -267,7 +313,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 
@@ -284,7 +335,12 @@ var _ = Describe("QueueActionHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler := libhttp.NewErrorHandler(
-				server.NewQueueActionHandler(inboxDir, queueDir, mockPromptManager),
+				server.NewQueueActionHandler(
+					inboxDir,
+					queueDir,
+					mockPromptManager,
+					libtime.NewCurrentDateTime(),
+				),
 			)
 			handler.ServeHTTP(w, req)
 

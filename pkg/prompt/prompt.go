@@ -516,12 +516,12 @@ func (pm *manager) ResetFailed(ctx context.Context) error {
 
 // HasExecuting returns true if any prompt in dir has status "executing".
 func (pm *manager) HasExecuting(ctx context.Context) bool {
-	return HasExecuting(ctx, pm.inProgressDir)
+	return HasExecuting(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
 func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
-	return ListQueued(ctx, pm.inProgressDir)
+	return ListQueued(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
@@ -620,8 +620,11 @@ func (pm *manager) HasQueuedPromptsOnBranch(
 // ListQueued scans a directory for .md files that should be picked up.
 // Files are picked up UNLESS they have an explicit skip status (executing, completed, failed).
 // Sorted alphabetically by filename.
-func ListQueued(ctx context.Context, dir string) ([]Prompt, error) {
-	currentDateTimeGetter := libtime.NewCurrentDateTime()
+func ListQueued(
+	ctx context.Context,
+	dir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) ([]Prompt, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read directory")
@@ -950,8 +953,11 @@ func ReadFrontmatter(
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
-func HasExecuting(ctx context.Context, dir string) bool {
-	currentDateTimeGetter := libtime.NewCurrentDateTime()
+func HasExecuting(
+	ctx context.Context,
+	dir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false

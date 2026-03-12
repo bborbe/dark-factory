@@ -394,7 +394,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns prompts sorted alphabetically", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(2))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-first.md"))
@@ -412,7 +412,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("picks up the file", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-plain.md"))
@@ -429,7 +429,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("picks up the file", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-no-status.md"))
@@ -444,7 +444,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("does not return files with skip status", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(0))
 			})
@@ -463,7 +463,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns queued and plain files only", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(2))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-queued.md"))
@@ -480,7 +480,7 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("ignores non-markdown files", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir)
+				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 			})
@@ -1036,7 +1036,7 @@ status: approved
 			})
 
 			It("returns true", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -1048,7 +1048,7 @@ status: approved
 			})
 
 			It("returns true", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -1061,14 +1061,14 @@ status: approved
 			})
 
 			It("returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeFalse())
 			})
 		})
 
 		Context("with empty directory", func() {
 			It("returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -1082,7 +1082,7 @@ status: approved
 			})
 
 			It("ignores non-markdown files and returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -1101,14 +1101,18 @@ status: approved
 			})
 
 			It("skips files with errors and returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir)
+				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
 				Expect(result).To(BeFalse())
 			})
 		})
 
 		Context("with nonexistent directory", func() {
 			It("returns false", func() {
-				result := prompt.HasExecuting(ctx, "/nonexistent/path")
+				result := prompt.HasExecuting(
+					ctx,
+					"/nonexistent/path",
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -2370,7 +2374,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			prompts, err := prompt.ListQueued(ctx, tempDir)
+			prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
 			Expect(err).To(BeNil())
 			Expect(prompts).To(BeEmpty())
 		})

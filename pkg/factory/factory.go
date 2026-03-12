@@ -209,6 +209,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			completedDir,
 			cfg.Prompts.LogDir,
 			promptManager,
+			currentDateTimeGetter,
 		)
 	}
 
@@ -445,7 +446,7 @@ func CreateProcessor(
 			projectName,
 			n,
 		),
-		spec.NewLister(specsInboxDir, specsInProgressDir, specsCompletedDir),
+		spec.NewLister(currentDateTimeGetter, specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
 		verificationGate,
 		n,
@@ -505,6 +506,7 @@ func CreateServer(
 	completedDir string,
 	logDir string,
 	promptManager prompt.Manager,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	statusChecker := status.NewChecker(
@@ -525,7 +527,7 @@ func CreateServer(
 	// Both routes share a single handler instance. The handler inspects the URL path
 	// suffix to distinguish single-file (/api/v1/queue/action) from all-files (/api/v1/queue/action/all) operations.
 	queueActionHandler := libhttp.NewErrorHandler(
-		server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
+		server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager, currentDateTimeGetter),
 	)
 	mux.Handle("/api/v1/queue/action", queueActionHandler)
 	mux.Handle("/api/v1/queue/action/all", queueActionHandler)
@@ -620,26 +622,40 @@ func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
 
 // CreateSpecListCommand creates a SpecListCommand.
 func CreateSpecListCommand(cfg config.Config) cmd.SpecListCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	counter := prompt.NewCounter(
+		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 	)
 	return cmd.NewSpecListCommand(
-		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		spec.NewLister(
+			currentDateTimeGetter,
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+		),
 		counter,
 	)
 }
 
 // CreateSpecStatusCommand creates a SpecStatusCommand.
 func CreateSpecStatusCommand(cfg config.Config) cmd.SpecStatusCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	counter := prompt.NewCounter(
+		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 	)
 	return cmd.NewSpecStatusCommand(
-		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		spec.NewLister(
+			currentDateTimeGetter,
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+		),
 		counter,
 	)
 }
@@ -666,11 +682,12 @@ func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
 
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
 func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, _ := createPromptManager(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		libtime.NewCurrentDateTime(),
+		currentDateTimeGetter,
 	)
 
 	statusChecker := status.NewChecker(
@@ -684,6 +701,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(
+		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
@@ -692,14 +710,21 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	return cmd.NewCombinedStatusCommand(
 		statusChecker,
 		formatter,
-		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		spec.NewLister(
+			currentDateTimeGetter,
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+		),
 		counter,
 	)
 }
 
 // CreateSpecShowCommand creates a SpecShowCommand.
 func CreateSpecShowCommand(cfg config.Config) cmd.SpecShowCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	counter := prompt.NewCounter(
+		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
@@ -709,7 +734,7 @@ func CreateSpecShowCommand(cfg config.Config) cmd.SpecShowCommand {
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
 		counter,
-		libtime.NewCurrentDateTime(),
+		currentDateTimeGetter,
 	)
 }
 
@@ -726,7 +751,9 @@ func CreatePromptShowCommand(cfg config.Config) cmd.PromptShowCommand {
 
 // CreateCombinedListCommand creates a CombinedListCommand.
 func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	counter := prompt.NewCounter(
+		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
@@ -735,8 +762,13 @@ func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		spec.NewLister(cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir),
+		spec.NewLister(
+			currentDateTimeGetter,
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+		),
 		counter,
-		libtime.NewCurrentDateTime(),
+		currentDateTimeGetter,
 	)
 }

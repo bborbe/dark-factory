@@ -219,7 +219,7 @@ var _ = Describe("Lister", func() {
 		var err error
 		dir, err = os.MkdirTemp("", "spec-lister-*")
 		Expect(err).NotTo(HaveOccurred())
-		lister = spec.NewLister(dir)
+		lister = spec.NewLister(libtime.NewCurrentDateTime(), dir)
 	})
 
 	AfterEach(func() {
@@ -252,7 +252,7 @@ var _ = Describe("Lister", func() {
 		})
 
 		It("returns empty summary for non-existent directory", func() {
-			l := spec.NewLister("/nonexistent/path")
+			l := spec.NewLister(libtime.NewCurrentDateTime(), "/nonexistent/path")
 			s, err := l.Summary(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(s.Total).To(Equal(0))
@@ -290,7 +290,7 @@ var _ = Describe("Lister", func() {
 			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
 			writeSpec(filepath.Join(dir2, "002-b.md"), "approved")
 
-			l := spec.NewLister(dir, dir2)
+			l := spec.NewLister(libtime.NewCurrentDateTime(), dir, dir2)
 			specs, err := l.List(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(specs).To(HaveLen(2))
@@ -299,7 +299,7 @@ var _ = Describe("Lister", func() {
 		It("skips missing dirs silently", func() {
 			writeSpec(filepath.Join(dir, "001-a.md"), "draft")
 
-			l := spec.NewLister("/nonexistent/path", dir)
+			l := spec.NewLister(libtime.NewCurrentDateTime(), "/nonexistent/path", dir)
 			specs, err := l.List(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(specs).To(HaveLen(1))

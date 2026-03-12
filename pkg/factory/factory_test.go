@@ -97,6 +97,7 @@ var _ = Describe("Factory", func() {
 				cfg.Prompts.CompletedDir,
 				cfg.Prompts.LogDir,
 				nil, // promptManager not needed for nil check
+				libtime.NewCurrentDateTime(),
 			)
 			Expect(server).NotTo(BeNil())
 		})

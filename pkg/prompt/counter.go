@@ -24,12 +24,13 @@ type Counter interface {
 
 // promptCounter implements Counter by scanning multiple directories.
 type promptCounter struct {
-	dirs []string
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	dirs                  []string
 }
 
 // NewCounter creates a Counter that scans the given directories.
-func NewCounter(dirs ...string) Counter {
-	return &promptCounter{dirs: dirs}
+func NewCounter(currentDateTimeGetter libtime.CurrentDateTimeGetter, dirs ...string) Counter {
+	return &promptCounter{currentDateTimeGetter: currentDateTimeGetter, dirs: dirs}
 }
 
 // CountBySpec counts prompts matching specID across all configured directories.
@@ -38,7 +39,7 @@ func (pc *promptCounter) CountBySpec(ctx context.Context, specID string) (int, i
 	completed := 0
 	total := 0
 	for _, dir := range pc.dirs {
-		c, t, err := countInDir(ctx, dir, specID)
+		c, t, err := countInDir(ctx, dir, specID, pc.currentDateTimeGetter)
 		if err != nil {
 			return 0, 0, errors.Wrap(ctx, err, "count in dir")
 		}
@@ -49,7 +50,11 @@ func (pc *promptCounter) CountBySpec(ctx context.Context, specID string) (int, i
 }
 
 // countInDir scans a single directory for prompts matching specID.
-func countInDir(ctx context.Context, dir, specID string) (int, int, error) {
+func countInDir(
+	ctx context.Context,
+	dir, specID string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (int, int, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -64,7 +69,7 @@ func countInDir(ctx context.Context, dir, specID string) (int, int, error) {
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		pf, err := Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := Load(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			slog.Warn("skipping prompt during count", "file", entry.Name(), "error", err)
 			continue

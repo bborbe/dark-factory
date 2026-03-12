@@ -90,7 +90,12 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	// g. Verify new files were created
 	if len(newFiles) == 0 {
-		count, err := countCompletedPromptsForSpec(ctx, g.completedDir, specBasename)
+		count, err := countCompletedPromptsForSpec(
+			ctx,
+			g.completedDir,
+			specBasename,
+			g.currentDateTimeGetter,
+		)
 		if err != nil {
 			return errors.Wrap(ctx, err, "count completed prompts for spec")
 		}
@@ -157,6 +162,7 @@ func countCompletedPromptsForSpec(
 	ctx context.Context,
 	completedDir string,
 	specID string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (int, error) {
 	entries, err := os.ReadDir(completedDir)
 	if err != nil {
@@ -171,7 +177,7 @@ func countCompletedPromptsForSpec(
 			continue
 		}
 		path := filepath.Join(completedDir, entry.Name())
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.Load(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
 			continue

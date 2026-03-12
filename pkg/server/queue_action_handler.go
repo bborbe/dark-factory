@@ -14,6 +14,7 @@ import (
 
 	"github.com/bborbe/errors"
 	libhttp "github.com/bborbe/http"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -39,6 +40,7 @@ func NewQueueActionHandler(
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) libhttp.WithError {
 	return libhttp.WithErrorFunc(
 		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
@@ -51,10 +53,25 @@ func NewQueueActionHandler(
 
 			// Check if this is /api/v1/queue/all
 			if strings.HasSuffix(req.URL.Path, "/all") {
-				return handleQueueAll(ctx, resp, inboxDir, queueDir, promptManager)
+				return handleQueueAll(
+					ctx,
+					resp,
+					inboxDir,
+					queueDir,
+					promptManager,
+					currentDateTimeGetter,
+				)
 			}
 
-			return handleQueueSingle(ctx, resp, req, inboxDir, queueDir, promptManager)
+			return handleQueueSingle(
+				ctx,
+				resp,
+				req,
+				inboxDir,
+				queueDir,
+				promptManager,
+				currentDateTimeGetter,
+			)
 		},
 	)
 }
@@ -66,8 +83,9 @@ func handleQueueAll(
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager)
+	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager, currentDateTimeGetter)
 	if err != nil {
 		return err
 	}
@@ -83,6 +101,7 @@ func handleQueueSingle(
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	// Limit request body size to 1MB
 	req.Body = http.MaxBytesReader(resp, req.Body, 1024*1024)
@@ -121,7 +140,14 @@ func handleQueueSingle(
 		)
 	}
 
-	queuedFile, err := queueSingleFile(ctx, inboxDir, queueDir, promptManager, filename)
+	queuedFile, err := queueSingleFile(
+		ctx,
+		inboxDir,
+		queueDir,
+		promptManager,
+		filename,
+		currentDateTimeGetter,
+	)
 	if err != nil {
 		return handleQueueError(err)
 	}

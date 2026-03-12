@@ -23,6 +23,7 @@ func queueSingleFile(
 	queueDir string,
 	promptManager prompt.Manager,
 	filename string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (QueuedFile, error) {
 	oldPath := filepath.Join(inboxDir, filename)
 
@@ -38,7 +39,7 @@ func queueSingleFile(
 		queueDir,
 		promptManager,
 		filename,
-		libtime.NewCurrentDateTime(),
+		currentDateTimeGetter,
 	)
 	if err != nil {
 		return QueuedFile{}, errors.Wrap(ctx, err, "move to queue")
@@ -53,13 +54,13 @@ func queueAllFiles(
 	inboxDir string,
 	queueDir string,
 	promptManager prompt.Manager,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ([]QueuedFile, error) {
 	entries, err := os.ReadDir(inboxDir)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "read inbox directory")
 	}
 
-	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	queued := make([]QueuedFile, 0, len(entries))
 	for _, entry := range entries {
 		// Skip directories and non-.md files

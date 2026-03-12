@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -40,7 +41,7 @@ var _ = Describe("PromptCounter", func() {
 		Expect(err).To(BeNil())
 		dir2, err = os.MkdirTemp("", "counter-test-2-*")
 		Expect(err).To(BeNil())
-		counter = prompt.NewCounter(dir1, dir2)
+		counter = prompt.NewCounter(libtime.NewCurrentDateTime(), dir1, dir2)
 	})
 
 	AfterEach(func() {
@@ -86,7 +87,7 @@ var _ = Describe("PromptCounter", func() {
 	})
 
 	It("returns 0/0 for non-existent directory", func() {
-		c := prompt.NewCounter("/nonexistent/path")
+		c := prompt.NewCounter(libtime.NewCurrentDateTime(), "/nonexistent/path")
 		completed, total, err := c.CountBySpec(ctx, "017")
 		Expect(err).To(BeNil())
 		Expect(completed).To(Equal(0))

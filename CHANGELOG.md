@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.51.12
+
+- refactor: inject `libtime.CurrentDateTimeGetter` into `spec.Lister`, `prompt.Counter`, `prompt.ListQueued`, `prompt.HasExecuting`, `server.NewQueueActionHandler`, and `generator.countCompletedPromptsForSpec` instead of constructing inline
+
 ## v0.51.11
 
 - fix: create prompt temp files inside a restricted subdirectory (`os.MkdirTemp`) to prevent other local processes from reading prompt content

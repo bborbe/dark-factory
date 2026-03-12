@@ -4323,7 +4323,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			).To(Succeed())
 
 			// Use a real lister pointing at the spec dir
-			realLister := spec.NewLister(specDir)
+			realLister := spec.NewLister(libtime.NewCurrentDateTime(), specDir)
 
 			mockManager.ListQueuedReturns([]prompt.Prompt{}, nil)
 			mockAutoCompleter.CheckAndCompleteReturns(nil)

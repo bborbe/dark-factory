@@ -971,7 +971,7 @@ func (p *processor) handleDirectWorkflow(
 	}
 
 	// With CHANGELOG: rename ## Unreleased to version, bump version, tag, push
-	bump := determineBump()
+	bump := git.DetermineBumpFromChangelog(ctx, ".")
 	nextVersion, err := p.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")
@@ -1124,48 +1124,4 @@ func (p *processor) savePRURLToFrontmatter(
 func sanitizeContainerName(name string) string {
 	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
 	return sanitizeContainerNameRegexp.ReplaceAllString(name, "-")
-}
-
-// determineBump determines the version bump type by analyzing CHANGELOG.md content.
-// Returns MinorBump if any ## Unreleased entry starts with "- feat:", PatchBump otherwise.
-func determineBump() git.VersionBump {
-	content, err := os.ReadFile("CHANGELOG.md")
-	if err != nil {
-		return git.PatchBump
-	}
-
-	unreleasedContent := extractUnreleasedSection(string(content))
-	if unreleasedContent == "" {
-		return git.PatchBump
-	}
-
-	for _, line := range strings.Split(unreleasedContent, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "- feat:") {
-			return git.MinorBump
-		}
-	}
-	return git.PatchBump
-}
-
-// extractUnreleasedSection extracts content between ## Unreleased and the next ## section
-func extractUnreleasedSection(content string) string {
-	lines := strings.Split(content, "\n")
-	inUnreleased := false
-	var unreleasedLines []string
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "## Unreleased") {
-			inUnreleased = true
-			continue
-		}
-		if inUnreleased && strings.HasPrefix(line, "##") {
-			// Hit next version section, stop
-			break
-		}
-		if inUnreleased {
-			unreleasedLines = append(unreleasedLines, line)
-		}
-	}
-
-	return strings.Join(unreleasedLines, "\n")
 }

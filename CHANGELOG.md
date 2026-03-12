@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.52.3
+
+- refactor: extract `DetermineBumpFromChangelog` into `pkg/git/changelog.go`, replacing duplicated logic in `pkg/processor` and `pkg/cmd`
+
 ## v0.52.2
 
 - refactor: extract `normalizeFilenames`, `migrateQueueDir`, and `createDirectories` into shared package-level functions in `pkg/runner/lifecycle.go`, eliminating verbatim duplication between `runner` and `oneShotRunner`

@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -129,7 +128,7 @@ func (c *promptVerifyCommand) completeDirectWorkflow(
 		return nil
 	}
 
-	bump := determineBumpFromChangelog()
+	bump := git.DetermineBumpFromChangelog(ctx, ".")
 	if err := c.releaser.CommitAndRelease(gitCtx, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
@@ -164,29 +163,4 @@ func (c *promptVerifyCommand) completePRWorkflow(
 	}
 	slog.Info("created PR", "url", prURL)
 	return nil
-}
-
-// determineBumpFromChangelog reads CHANGELOG.md and returns MinorBump if any feat: entry
-// is in the Unreleased section, PatchBump otherwise.
-func determineBumpFromChangelog() git.VersionBump {
-	content, err := os.ReadFile("CHANGELOG.md")
-	if err != nil {
-		return git.PatchBump
-	}
-
-	lines := strings.Split(string(content), "\n")
-	inUnreleased := false
-	for _, line := range lines {
-		if strings.HasPrefix(line, "## Unreleased") {
-			inUnreleased = true
-			continue
-		}
-		if inUnreleased && strings.HasPrefix(line, "##") {
-			break
-		}
-		if inUnreleased && strings.HasPrefix(strings.TrimSpace(line), "- feat:") {
-			return git.MinorBump
-		}
-	}
-	return git.PatchBump
 }

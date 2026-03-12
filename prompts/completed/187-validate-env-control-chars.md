@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Added control character validation to validateEnv method rejecting null bytes, newlines, and carriage returns in env values, with corresponding Ginkgo DescribeTable tests.
+container: dark-factory-187-validate-env-control-chars
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:24Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T00:07:48Z"
+completed: "2026-03-12T00:12:22Z"
 ---
 
 <summary>

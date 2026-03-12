@@ -1,7 +1,12 @@
 ---
-status: draft
+status: completed
+summary: Updated spec.Load to use yaml.v3 format in frontmatter.Parse, matching the behavior of prompt.Load.
+container: dark-factory-191-fix-spec-frontmatter-yaml-v3
+dark-factory-version: v0.48.0
 created: "2026-03-11T16:45:29Z"
 queued: "2026-03-11T18:25:03Z"
+started: "2026-03-12T01:21:29Z"
+completed: "2026-03-12T01:26:12Z"
 ---
 
 <summary>

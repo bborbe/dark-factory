@@ -124,6 +124,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 - Never manually edit frontmatter status — use CLI commands above
 - Always audit before approving (`/dark-factory:audit-prompt`, `/dark-factory:audit-spec`)
 - **BLOCKING: Never run `dark-factory prompt approve`, `dark-factory spec approve`, or `dark-factory daemon` without explicit user confirmation.** Write the prompt/spec, then STOP and ask the user to approve. Do not assume approval from prior context or task momentum.
+- **Before starting daemon** — run `dark-factory status` first to check if one is already running. Only start if not running.
 - **Start daemon in background** — use Bash tool with `run_in_background: true` (not foreground, not detached with `&`)
 ```
 
@@ -278,7 +279,7 @@ Never change `status: created` to `status: approved` by editing the file. The CL
 
 ### Starting daemon wrong
 
-The daemon is long-running. Don't run it in the foreground (blocks your session) or detached with `&` (loses lifecycle tracking). Use Bash tool with `run_in_background: true` so Claude Code tracks it properly.
+The daemon is long-running. Don't run it in the foreground (blocks your session) or detached with `&` (loses lifecycle tracking). Use Bash tool with `run_in_background: true` so Claude Code tracks it properly. Always run `dark-factory status` first — if a daemon is already running, don't start another one.
 
 ## Checklist
 

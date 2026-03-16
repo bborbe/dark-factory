@@ -1,5 +1,8 @@
 ---
-status: draft
+status: prompted
+approved: "2026-03-16T11:51:54Z"
+prompted: "2026-03-16T11:54:44Z"
+branch: dark-factory/validation-prompt
 ---
 
 ## Summary

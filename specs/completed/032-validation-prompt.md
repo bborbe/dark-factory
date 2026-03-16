@@ -1,8 +1,9 @@
 ---
-status: verifying
+status: completed
 approved: "2026-03-16T11:51:54Z"
 prompted: "2026-03-16T11:54:44Z"
 verifying: "2026-03-16T12:25:52Z"
+completed: "2026-03-16T12:37:54Z"
 branch: dark-factory/validation-prompt
 ---
 

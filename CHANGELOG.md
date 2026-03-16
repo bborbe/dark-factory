@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.1
+
+- Add Definition of Done (docs/dod.md) and enable validationPrompt in config
+- Complete specs 028-032 (shared-branch, branch-execution, bitbucket-server, notifications, validation-prompt)
+
 ## v0.57.0
 
 - feat: wire `validationPrompt` into prompt execution pipeline — resolves config value as file path or inline text, appends AI-judged criteria suffix after `validationCommand`, logs warning and skips on missing `.md` file

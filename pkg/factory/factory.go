@@ -218,41 +218,24 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		poller = CreateReviewPoller(cfg, promptManager, projectName, n)
 	}
 
+	proc := CreateProcessor(
+		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
+		promptManager, releaser, versionGetter, ready,
+		cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
+		cfg.PR, cfg.Worktree,
+		deps.brancher, deps.prCreator, deps.prMerger,
+		cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
+		cfg.ValidationCommand, cfg.ValidationPrompt,
+		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
+		cfg.VerificationGate, cfg.Env, currentDateTimeGetter, n,
+	)
+	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
+		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
 	return runner.NewRunner(
-		inboxDir,
-		inProgressDir,
-		completedDir,
-		cfg.Prompts.LogDir,
-		cfg.Specs.InboxDir,
-		cfg.Specs.InProgressDir,
-		cfg.Specs.CompletedDir,
-		cfg.Specs.LogDir,
-		promptManager,
-		CreateLocker("."),
-		CreateWatcher(
-			inProgressDir,
-			inboxDir,
-			promptManager,
-			ready,
-			time.Duration(cfg.DebounceMs)*time.Millisecond,
-			currentDateTimeGetter,
-		),
-		CreateProcessor(
-			inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
-			promptManager, releaser, versionGetter, ready,
-			cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
-			cfg.PR, cfg.Worktree,
-			deps.brancher, deps.prCreator, deps.prMerger,
-			cfg.AutoMerge, cfg.AutoRelease, cfg.AutoReview,
-			cfg.ValidationCommand, cfg.Specs.InboxDir, cfg.Specs.InProgressDir,
-			cfg.Specs.CompletedDir, cfg.VerificationGate,
-			cfg.Env, currentDateTimeGetter, n,
-		),
-		srv,
-		poller,
-		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter),
-		projectName,
-		n,
+		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
+		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
+		promptManager, CreateLocker("."), watcher, proc, srv, poller,
+		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName, n,
 	)
 }
 
@@ -310,6 +293,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 			cfg.AutoRelease,
 			cfg.AutoReview,
 			cfg.ValidationCommand,
+			cfg.ValidationPrompt,
 			cfg.Specs.InboxDir,
 			cfg.Specs.InProgressDir,
 			cfg.Specs.CompletedDir,
@@ -402,6 +386,7 @@ func CreateProcessor(
 	autoRelease bool,
 	autoReview bool,
 	validationCommand string,
+	validationPrompt string,
 	specsInboxDir string,
 	specsInProgressDir string,
 	specsCompletedDir string,
@@ -448,6 +433,7 @@ func CreateProcessor(
 		),
 		spec.NewLister(currentDateTimeGetter, specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
+		validationPrompt,
 		verificationGate,
 		n,
 	)

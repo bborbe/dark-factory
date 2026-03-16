@@ -45,6 +45,13 @@ func ValidationSuffix(cmd string) string {
 	return "\n\n---\n\n## Project Validation Command (REQUIRED — overrides <verification> section)\n\nRun the following command as the authoritative validation step and use its exit code in the completion report:\n\n```\n" + cmd + "\n```\n\nThis overrides any `<verification>` section in this prompt. Report `\"status\":\"success\"` if and only if this command exits 0.\n"
 }
 
+// ValidationPromptSuffix returns the markdown text injected when a project-level validation prompt is configured.
+// It instructs the agent to evaluate each criterion against its changes and report unmet criteria as blockers
+// with "partial" status. Evaluation runs only after validationCommand passes (if one is configured).
+func ValidationPromptSuffix(criteria string) string {
+	return "\n\n---\n\n## Project Quality Criteria (AI-Judged)\n\nAfter all code changes are complete and `make precommit` (or the configured validation command) has passed, evaluate each of the following criteria against your changes:\n\n" + criteria + "\n\nFor each criterion:\n- If met: note it as passing.\n- If NOT met: add it to the `blockers` array in the completion report.\n\nIf any criterion is not met, set `\"status\":\"partial\"` in the completion report and list each unmet criterion as a separate entry in `blockers`. If all criteria are met, this section has no effect on the status — `\"success\"` stays `\"success\"`.\n"
+}
+
 // ChangelogSuffix returns instructions for the YOLO agent to write a descriptive changelog entry.
 // It is appended to the prompt only when the project has a CHANGELOG.md.
 func ChangelogSuffix() string {

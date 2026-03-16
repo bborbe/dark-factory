@@ -58,6 +58,7 @@ func NewProcessor(
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
 	validationCommand string,
+	validationPrompt string,
 	verificationGate bool,
 	n notifier.Notifier,
 ) Processor {
@@ -83,6 +84,7 @@ func NewProcessor(
 		autoCompleter:     autoCompleter,
 		specLister:        specLister,
 		validationCommand: validationCommand,
+		validationPrompt:  validationPrompt,
 		verificationGate:  verificationGate,
 		skippedPrompts:    make(map[string]time.Time),
 		notifier:          n,
@@ -112,6 +114,7 @@ type processor struct {
 	autoCompleter     spec.AutoCompleter
 	specLister        spec.Lister
 	validationCommand string
+	validationPrompt  string
 	verificationGate  bool
 	skippedPrompts    map[string]time.Time // filename → mod time when skipped
 	notifier          notifier.Notifier
@@ -420,6 +423,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Inject project-level validation command (overrides prompt-level <verification>)
 	if p.validationCommand != "" {
 		content = content + report.ValidationSuffix(p.validationCommand)
+	}
+	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
+	if criteria, ok := resolveValidationPrompt(ctx, p.validationPrompt); ok {
+		content = content + report.ValidationPromptSuffix(criteria)
 	}
 
 	slog.Info("executing prompt", "title", title)
@@ -1124,4 +1131,46 @@ func (p *processor) savePRURLToFrontmatter(
 func sanitizeContainerName(name string) string {
 	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
 	return sanitizeContainerNameRegexp.ReplaceAllString(name, "-")
+}
+
+// resolveValidationPrompt resolves the validationPrompt config value.
+// If value is a relative path to an existing file, the file contents are returned.
+// If value is non-empty but the file does not exist, ("", false) is returned (caller logs warning).
+// If value is empty, ("", false) is returned silently.
+// The resolved result is the criteria text to inject, or empty string to skip injection.
+func resolveValidationPrompt(ctx context.Context, value string) (string, bool) {
+	if value == "" {
+		return "", false
+	}
+	// Check if value is a path to an existing file
+	if _, err := os.Stat(value); err == nil {
+		data, readErr := os.ReadFile(
+			value,
+		) // #nosec G304 -- path is validated by config (no absolute path, no .. traversal)
+		if readErr != nil {
+			slog.WarnContext(
+				ctx,
+				"failed to read validationPrompt file",
+				"path",
+				value,
+				"error",
+				readErr,
+			)
+			return "", false
+		}
+		return string(data), true
+	}
+	// Check if value looks like a file path (contains path separator or .md extension)
+	// and the file doesn't exist — log a warning
+	if strings.Contains(value, string(filepath.Separator)) || strings.HasSuffix(value, ".md") {
+		slog.WarnContext(
+			ctx,
+			"validationPrompt file not found, skipping criteria evaluation",
+			"path",
+			value,
+		)
+		return "", false
+	}
+	// Value is inline criteria text
+	return value, true
 }

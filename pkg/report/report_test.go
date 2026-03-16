@@ -58,6 +58,23 @@ var _ = Describe("ValidationSuffix", func() {
 	})
 })
 
+var _ = Describe("ValidationPromptSuffix", func() {
+	It("should contain the criteria string", func() {
+		suffix := report.ValidationPromptSuffix("readme.md is updated")
+		Expect(suffix).To(ContainSubstring("readme.md is updated"))
+	})
+
+	It("should contain partial status instruction", func() {
+		suffix := report.ValidationPromptSuffix("readme.md is updated")
+		Expect(suffix).To(ContainSubstring("partial"))
+	})
+
+	It("should contain blockers reference", func() {
+		suffix := report.ValidationPromptSuffix("readme.md is updated")
+		Expect(suffix).To(ContainSubstring("blockers"))
+	})
+})
+
 var _ = Describe("ChangelogSuffix", func() {
 	It("should contain CHANGELOG.md reference", func() {
 		suffix := report.ChangelogSuffix()

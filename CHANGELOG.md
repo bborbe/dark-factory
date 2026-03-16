@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.0
+
+- feat: wire `validationPrompt` into prompt execution pipeline — resolves config value as file path or inline text, appends AI-judged criteria suffix after `validationCommand`, logs warning and skips on missing `.md` file
+
 ## v0.56.0
 
 - feat: add `validationPrompt` config field with path-safety validation (rejects absolute paths and `..` traversal)

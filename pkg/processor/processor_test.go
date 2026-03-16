@@ -121,6 +121,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -187,6 +188,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -259,6 +261,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -328,6 +331,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -387,6 +391,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -443,6 +448,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			fakeNotifier,
@@ -504,6 +510,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -567,6 +574,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -663,6 +671,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -732,6 +741,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -790,6 +800,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -854,6 +865,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -906,6 +918,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -955,6 +968,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -1015,6 +1029,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -1089,6 +1104,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -1159,6 +1175,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter,
 			specLister,
 			"make precommit",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -1176,6 +1193,139 @@ var _ = Describe("Processor", func() {
 
 		cancel()
 	})
+
+	It("should append validation prompt suffix when validationPrompt is inline text", func() {
+		promptPath := filepath.Join(promptsDir, "001-validation-prompt-test.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Validation prompt test\n\nContent for validation prompt test."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			executor,
+			manager,
+			releaser,
+			versionGet,
+			ready,
+			false,
+			false,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
+			false,
+			false,
+			false,
+			autoCompleter,
+			specLister,
+			"",
+			"readme.md is updated",
+			false,
+			notifier.NewMultiNotifier(),
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return executor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+		Expect(promptContent).To(ContainSubstring("readme.md is updated"))
+
+		cancel()
+	})
+
+	It(
+		"should not append validation prompt suffix when validationPrompt is missing .md file",
+		func() {
+			promptPath := filepath.Join(promptsDir, "001-validation-prompt-missing-test.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# Validation prompt missing test\n\nContent."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"nonexistent-file.md",
+				false,
+				notifier.NewMultiNotifier(),
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return executor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+			Expect(promptContent).NotTo(ContainSubstring("Project Quality Criteria"))
+
+			cancel()
+		},
+	)
 
 	Describe("Worktree Workflow", func() {
 		It("should add worktree, commit, push, create PR, and remove worktree", func() {
@@ -1236,6 +1386,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1351,6 +1502,7 @@ var _ = Describe("Processor", func() {
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -1443,6 +1595,7 @@ var _ = Describe("Processor", func() {
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -1531,6 +1684,7 @@ var _ = Describe("Processor", func() {
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -1611,6 +1765,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1700,6 +1855,7 @@ var _ = Describe("Processor", func() {
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -1762,6 +1918,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -1861,6 +2018,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -1937,6 +2095,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2009,6 +2168,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2084,6 +2244,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2158,6 +2319,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				fakeNotifier,
 			)
@@ -2229,6 +2391,7 @@ more output
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2302,6 +2465,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2380,6 +2544,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2441,6 +2606,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2493,6 +2659,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2553,6 +2720,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2639,6 +2807,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2717,6 +2886,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2777,6 +2947,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -2853,6 +3024,7 @@ DARK-FACTORY-REPORT -->
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -2907,6 +3079,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -2972,6 +3145,7 @@ DARK-FACTORY-REPORT -->
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -3022,6 +3196,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3081,6 +3256,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3163,6 +3339,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3249,6 +3426,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			autoCompleter,
 			specLister,
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 		)
@@ -3306,6 +3484,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3389,6 +3568,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			false,
 			notifier.NewMultiNotifier(),
@@ -3478,6 +3658,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -3573,6 +3754,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -3675,6 +3857,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -3759,6 +3942,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -3849,6 +4033,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -3933,6 +4118,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					true, // autoReview enabled
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					false,
 					notifier.NewMultiNotifier(),
@@ -4033,6 +4219,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -4116,6 +4303,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					autoCompleter,
 					specLister,
 					"",
+					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
 				)
@@ -4185,6 +4373,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					autoCompleter,
 					specLister,
 					"",
+					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
 				)
@@ -4243,6 +4432,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						autoCompleter,
 						specLister,
 						"",
+						"",
 						false,
 						notifier.NewMultiNotifier(),
 					)
@@ -4291,6 +4481,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					true, // gate enabled but no pending file
 					notifier.NewMultiNotifier(),
@@ -4349,6 +4540,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				realLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4413,6 +4605,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4526,6 +4719,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -4846,6 +5040,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					autoCompleter,
 					specLister,
 					"",
+					"",
 					false,
 					notifier.NewMultiNotifier(),
 				)
@@ -4972,6 +5167,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				autoCompleter,
 				specLister,
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 			)
@@ -5040,6 +5236,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),
@@ -5272,6 +5469,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				false,
 				notifier.NewMultiNotifier(),

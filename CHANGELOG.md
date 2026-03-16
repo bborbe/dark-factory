@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.56.0
+
+- feat: add `validationPrompt` config field with path-safety validation (rejects absolute paths and `..` traversal)
+
 ## v0.55.2
 
 - docs: add validation-prompt spec (AI-judged quality criteria, inline text or file path, partial status on failure)

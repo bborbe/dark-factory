@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -75,6 +76,7 @@ type Config struct {
 	GitconfigFile     string              `yaml:"gitconfigFile"`
 	Model             string              `yaml:"model"`
 	ValidationCommand string              `yaml:"validationCommand"`
+	ValidationPrompt  string              `yaml:"validationPrompt"`
 	DebounceMs        int                 `yaml:"debounceMs"`
 	ServerPort        int                 `yaml:"serverPort"`
 	AutoMerge         bool                `yaml:"autoMerge"`
@@ -194,6 +196,10 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
 		validation.Name("notifications", validation.HasValidationFunc(c.validateNotifications)),
 		validation.Name("github.token", validation.HasValidationFunc(c.validateGitHubToken)),
+		validation.Name(
+			"validationPrompt",
+			validation.HasValidationFunc(c.validateValidationPrompt),
+		),
 	}.Validate(ctx)
 }
 
@@ -367,6 +373,31 @@ func (c Config) ResolvedDiscordWebhook() string {
 		return ""
 	}
 	return os.Getenv(c.Notifications.Discord.WebhookEnv)
+}
+
+// validateValidationPrompt rejects absolute paths and paths that traverse outside the project root.
+func (c Config) validateValidationPrompt(ctx context.Context) error {
+	v := c.ValidationPrompt
+	if v == "" {
+		return nil
+	}
+	if filepath.IsAbs(v) {
+		return errors.Errorf(
+			ctx,
+			"validationPrompt must be a relative path or inline text, got absolute path: %q",
+			v,
+		)
+	}
+	// Reject paths with .. that would escape the project root
+	cleaned := filepath.Clean(v)
+	if strings.HasPrefix(cleaned, "..") {
+		return errors.Errorf(
+			ctx,
+			"validationPrompt path must not traverse outside the project root: %q",
+			v,
+		)
+	}
+	return nil
 }
 
 // validateNotifications validates the notifications configuration.

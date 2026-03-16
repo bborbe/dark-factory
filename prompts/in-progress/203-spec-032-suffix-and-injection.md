@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["032"]
 created: "2026-03-16T12:00:00Z"
+queued: "2026-03-16T12:04:12Z"
 ---
 <summary>
 - AI-judged quality criteria are injected into every prompt at execution time when configured

@@ -38,6 +38,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.ContainerImage).To(Equal(pkg.DefaultContainerImage))
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 			Expect(cfg.ValidationCommand).To(Equal("make precommit"))
+			Expect(cfg.ValidationPrompt).To(Equal(""))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
 			Expect(cfg.AutoMerge).To(BeFalse())
@@ -1625,6 +1626,54 @@ worktree: false
 			cfg := config.Defaults()
 			cfg.Notifications.Discord.WebhookEnv = "TEST_DISCORD_WEBHOOK_HTTP"
 			Expect(cfg.Validate(ctx)).To(HaveOccurred())
+		})
+	})
+
+	Describe("ValidationPrompt", func() {
+		It("defaults to empty string", func() {
+			Expect(config.Defaults().ValidationPrompt).To(Equal(""))
+		})
+
+		It("accepts empty string", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = ""
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("accepts inline text with spaces", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = "readme.md is updated"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("accepts relative path", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = "docs/dod.md"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("rejects absolute path", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = "/etc/passwd"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("absolute path"))
+		})
+
+		It("rejects path traversal with ..", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = "../outside.md"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("outside the project root"))
+		})
+
+		It("rejects deep path traversal", func() {
+			cfg := config.Defaults()
+			cfg.ValidationPrompt = "../../etc/passwd"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("outside the project root"))
 		})
 	})
 })

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.4
+
+- Add prompt to mount Go module cache read-write in YOLO container
+
 ## v0.57.3
 
 - Add architecture and execution flow guide (docs/architecture-flow.md)

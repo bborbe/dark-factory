@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.3
+
+- Add architecture and execution flow guide (docs/architecture-flow.md)
+- Update README.md with new docs, current config format, and validationPrompt example
+- Replace deprecated workflow config in Quick Start and examples
+
 ## v0.57.2
 
 - Add comprehensive configuration guide (docs/configuration.md) covering all config fields

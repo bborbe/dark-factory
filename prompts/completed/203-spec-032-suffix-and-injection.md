@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["032"]
+summary: 'Wired validationPrompt into prompt execution pipeline: added ValidationPromptSuffix to report package, resolveValidationPrompt helper to processor, validationPrompt field/param threading through processor and factory, and tests for all new behavior'
+container: dark-factory-203-spec-032-suffix-and-injection
+dark-factory-version: v0.54.0
 created: "2026-03-16T12:00:00Z"
 queued: "2026-03-16T12:04:12Z"
+started: "2026-03-16T12:11:10Z"
+completed: "2026-03-16T12:25:52Z"
 ---
 <summary>
 - AI-judged quality criteria are injected into every prompt at execution time when configured

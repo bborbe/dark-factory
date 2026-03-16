@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.5
+
+- fix: Change Go module cache mount from read-only to read-write so YOLO containers can download uncached dependencies
+
 ## v0.57.4
 
 - Add prompt to mount Go module cache read-write in YOLO container

@@ -98,23 +98,8 @@ grep prompts/log .gitignore         # logs ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```
 
-## Config Reference
-
-| Field | Default | Purpose |
-|-------|---------|---------|
-| `workflow` | `direct` | `direct` or `pr` |
-| `defaultBranch` | (auto-detected) | Required for non-GitHub repos |
-| `autoMerge` | `false` | Auto-merge PR after checks (requires `pr`) |
-| `autoRelease` | `false` | Create release after merge (requires `autoMerge`) |
-| `containerImage` | `docker.io/bborbe/claude-yolo:v0.3.0` | YOLO Docker image |
-| `model` | `claude-sonnet-4-6` | Claude model |
-| `debounceMs` | `500` | Watcher debounce in ms |
-| `serverPort` | `0` | REST API port (0 = disabled) |
-| `gitconfigFile` | (empty) | .gitconfig mounted into container |
-| `netrcFile` | (empty) | .netrc mounted into container |
-| `env` | (empty) | Env vars passed to container |
-
 ## Next Steps
 
+- Configure your project: [configuration.md](configuration.md) — all config fields, validation, notifications, providers
 - Write a spec: [spec-writing.md](spec-writing.md)
 - Write a prompt: [prompt-writing.md](prompt-writing.md)

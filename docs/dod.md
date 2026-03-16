@@ -1,5 +1,7 @@
 # Definition of Done
 
+After completing your implementation, review your own changes against each criterion below. These are quality checks you perform by inspecting your work — not commands to run (linting and tests already ran via `validationCommand`). Report any unmet criterion as a blocker.
+
 ## Code Quality
 
 - Exported types, functions, and interfaces have doc comments

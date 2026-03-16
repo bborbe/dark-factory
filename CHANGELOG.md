@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.57.2
+
+- Add comprehensive configuration guide (docs/configuration.md) covering all config fields
+- Improve validationPrompt documentation to clarify it's AI self-evaluation, not a command
+- Add context header to DoD file explaining its purpose to the executing agent
+
 ## v0.57.1
 
 - Add Definition of Done (docs/dod.md) and enable validationPrompt in config

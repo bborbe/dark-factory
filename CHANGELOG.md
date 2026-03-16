@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.55.1
+
+- fix: spec-creator agent wrote specs to `specs/in-progress/` with numbered filenames — must go to `specs/` inbox without numbers (dark-factory assigns numbers on approve)
+
 ## v0.55.0
 
 - feat: add `/dark-factory:run`, `/dark-factory:daemon`, `/dark-factory:init-project`, `/dark-factory:read-guides` slash commands

@@ -35,13 +35,12 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
    - What must NOT change?
    - What can go wrong?
 
-3. **Determine spec number**
-   - Read existing `specs/` to find highest number
-   - New spec = next sequential number (zero-padded 3 digits)
-   - Ideas (rough concepts): no number, just `name.md`, status: idea
-   - Drafts (full spec): `NNN-name.md`, status: draft
+3. **Write spec file** to `specs/<name>.md` (the inbox directory)
+   - NEVER number the filename — dark-factory assigns numbers on approve
+   - NEVER write to `specs/in-progress/` or `specs/completed/` — only the inbox `specs/`
+   - Filename: `<descriptive-name>.md` (e.g. `decision-list-ack.md`)
 
-4. **Write spec file** following template below
+4. **Write spec content** following template below
 
 5. **Validate** against preflight checklist
 

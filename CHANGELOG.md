@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.55.2
+
+- docs: add validation-prompt spec (AI-judged quality criteria, inline text or file path, partial status on failure)
+- docs: add container-health-check and resume-executing-on-restart draft specs
+
 ## v0.55.1
 
 - fix: spec-creator agent wrote specs to `specs/in-progress/` with numbered filenames — must go to `specs/` inbox without numbers (dark-factory assigns numbers on approve)

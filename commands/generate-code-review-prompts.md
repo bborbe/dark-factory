@@ -49,10 +49,9 @@ Read once (shared across all prompts):
 
 For each service path, derive a slug (replace `/` with `-`, e.g., `core/worker` → `core-worker`).
 
-Scan the service files:
-```
-Glob: <service-path>/**/*.go
-```
+Scan the service files using the Glob tool with pattern `**/*.go` and path set to the service directory. Also try `*.go` at the service root (files may not be in subdirectories).
+
+List the discovered `.go` files for use in the prompt's context section. If no `.go` files found, skip this service with a warning.
 
 Write a prompt file to `$INBOX_DIR/code-review-<slug>.md` using the template below.
 

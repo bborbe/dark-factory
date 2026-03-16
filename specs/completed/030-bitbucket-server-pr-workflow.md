@@ -1,8 +1,9 @@
 ---
-status: verifying
+status: completed
 approved: "2026-03-11T09:44:40Z"
 prompted: "2026-03-11T10:19:18Z"
 verifying: "2026-03-11T23:21:11Z"
+completed: "2026-03-16T13:06:30Z"
 branch: dark-factory/bitbucket-server-pr-workflow
 ---
 

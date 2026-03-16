@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.58.0
+
+- Add `generate-code-review-prompts` command — reviews a service against project coding guidelines and generates fix prompts for Critical and Important findings
+
 ## v0.57.5
 
 - fix: Change Go module cache mount from read-only to read-write so YOLO containers can download uncached dependencies

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.0
+
+- Add watch skill with standalone bash script for monitoring daemon execution with sound alerts
+
 ## v0.58.1
 
 - Clarify run command documentation: dark-factory run generates prompts from approved specs then executes all queued prompts

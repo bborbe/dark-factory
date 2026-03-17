@@ -11,7 +11,7 @@ description: Watch dark-factory progress with sound alerts for completion, failu
 
 1. Run via Bash tool with `run_in_background: true` and `timeout: 600000`:
 ```bash
-bash skills/watch/watch.sh
+bash scripts/watch.sh
 ```
 
 2. Show sound legend:

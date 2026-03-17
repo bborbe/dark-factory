@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.1
+
+- Restructure watch skill: command invokes skill via Skill tool, script in scripts/ subdirectory
+
 ## v0.59.0
 
 - Add watch skill with standalone bash script for monitoring daemon execution with sound alerts

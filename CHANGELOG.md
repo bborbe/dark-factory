@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.58.1
+
+- Clarify run command documentation: dark-factory run generates prompts from approved specs then executes all queued prompts
+- Fix generate-code-review-prompts Glob instruction clarity
+
 ## v0.58.0
 
 - Add `generate-code-review-prompts` command — reviews a service against project coding guidelines and generates fix prompts for Critical and Important findings

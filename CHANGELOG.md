@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.2
+
+- Watch skill auto-detects project directory via lock file when not in project root
+
 ## v0.59.1
 
 - Restructure watch skill: command invokes skill via Skill tool, script in scripts/ subdirectory

@@ -9,9 +9,34 @@ set -euo pipefail
 #   Basso     = stuck >15min — may need intervention
 #   Glass     = all prompts complete
 
+# Auto-detect project directory
+if [ -n "${1:-}" ]; then
+  PROJECT_DIR="$1"
+elif [ -f ".dark-factory.yaml" ]; then
+  PROJECT_DIR="."
+else
+  # Search for running daemon via lock files
+  PROJECT_DIR=""
+  for lock in $(find ~/Documents/workspaces -name ".dark-factory.lock" -type f 2>/dev/null); do
+    dir=$(dirname "$lock")
+    pid=$(cat "$lock" 2>/dev/null)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+      PROJECT_DIR="$dir"
+      break
+    fi
+  done
+  if [ -z "$PROJECT_DIR" ]; then
+    echo "ERROR: No dark-factory project found. Pass project dir as argument or cd to project root."
+    exit 1
+  fi
+fi
+
+cd "$PROJECT_DIR"
+echo "Watching: $(pwd)"
+
 # Verify .dark-factory.yaml exists
 if [ ! -f ".dark-factory.yaml" ]; then
-  echo "ERROR: .dark-factory.yaml not found. cd to the project root or run /dark-factory:init-project"
+  echo "ERROR: .dark-factory.yaml not found in $PROJECT_DIR"
   exit 1
 fi
 

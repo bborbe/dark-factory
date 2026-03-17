@@ -4,15 +4,17 @@ description: Watch dark-factory progress with sound alerts for completion, failu
 ---
 
 ## Prerequisites
-- `.dark-factory.yaml` must exist in current directory
 - Daemon must be running (`/dark-factory:daemon`)
 
 ## Steps
 
 1. Run via Bash tool with `run_in_background: true` and `timeout: 600000`:
 ```bash
-bash scripts/watch.sh
+bash scripts/watch.sh [project-dir]
 ```
+   - If project dir given, uses it
+   - If cwd has `.dark-factory.yaml`, uses cwd
+   - Otherwise, finds running daemon via `.dark-factory.lock` in `~/Documents/workspaces/`
 
 2. Show sound legend:
    - 3x Sosumi = prompt failed — check log, fix, retry

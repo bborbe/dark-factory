@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.4
+
+- Add init smoke-test prompt template (docs/init-prompt-fix-tests-and-dod.md)
+- Update init-project guide with current config format (pr/worktree instead of legacy workflow)
+- Add Step 7 smoke-test prompt to init-project guide
+
 ## v0.59.3
 
 - Document watch skill in README and docs/running.md

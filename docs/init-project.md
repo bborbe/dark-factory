@@ -11,10 +11,10 @@ Set up a new or existing project to use the dark-factory pipeline.
 
 ## Step 1: Choose Workflow
 
-| Workflow | When to use | Git behavior |
-|----------|-------------|-------------|
-| `direct` | Small projects, no branch protection | Commits to current branch |
-| `pr` | PR-based projects, libraries | Feature branch + PR |
+| `pr` | `worktree` | When to use | Git behavior |
+|------|-----------|-------------|-------------|
+| `false` | `false` | Small projects, no branch protection | Commits to current branch |
+| `true` | `true` | PR-based projects, libraries | Clone repo, feature branch + PR |
 
 ## Step 2: Create Config
 
@@ -23,20 +23,26 @@ Create `.dark-factory.yaml` in the project root. Only add non-default values.
 **Direct workflow (default):**
 
 ```yaml
-workflow: direct
+pr: false
+worktree: false
+validationPrompt: docs/dod.md
 ```
 
 **PR workflow:**
 
 ```yaml
-workflow: pr
+pr: true
+worktree: true
 autoMerge: true
+validationPrompt: docs/dod.md
 ```
 
 **With private Go modules:**
 
 ```yaml
-workflow: direct
+pr: false
+worktree: false
+validationPrompt: docs/dod.md
 defaultBranch: master
 gitconfigFile: ~/.claude-yolo/.gitconfig
 netrcFile: ~/.claude-yolo/.netrc
@@ -44,6 +50,8 @@ env:
   GOPRIVATE: "your.private.host/*"
   GONOSUMCHECK: "your.private.host/*"
 ```
+
+See [configuration.md](configuration.md) for all config fields.
 
 ## Step 3: Create Directories
 
@@ -97,6 +105,16 @@ grep dark-factory.lock .gitignore   # lock ignored
 grep prompts/log .gitignore         # logs ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```
+
+## Step 7: Smoke-Test Prompt
+
+Copy the initial prompt template to validate the setup works end-to-end:
+
+```bash
+cp <dark-factory-docs>/init-prompt-fix-tests-and-dod.md prompts/fix-tests-and-dod.md
+```
+
+See [init-prompt-fix-tests-and-dod.md](init-prompt-fix-tests-and-dod.md) for the template. This prompt runs `make precommit`, fixes any failures, and checks the Definition of Done — confirming the pipeline works before you write real prompts.
 
 ## Next Steps
 

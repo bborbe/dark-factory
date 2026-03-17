@@ -120,6 +120,12 @@ claude plugin install dark-factory
 | `/dark-factory:create-prompt` | Create a prompt from spec or description |
 | `/dark-factory:audit-spec` | Audit spec against quality criteria |
 | `/dark-factory:audit-prompt` | Audit prompt against Definition of Done |
+| `/dark-factory:daemon` | Start daemon in background |
+| `/dark-factory:watch` | Monitor daemon with sound alerts (auto-detects project) |
+| `/dark-factory:run` | One-shot: generate prompts from specs, execute queue |
+| `/dark-factory:init-project` | Initialize project for dark-factory |
+| `/dark-factory:read-guides` | Load all dark-factory guides into context |
+| `/dark-factory:generate-code-review-prompts` | Review service against guidelines, generate fix prompts |
 
 ## Configuration
 

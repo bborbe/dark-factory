@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.3
+
+- Document watch skill in README and docs/running.md
+- Add all plugin commands to README table
+
 ## v0.59.2
 
 - Watch skill auto-detects project directory via lock file when not in project root

@@ -26,6 +26,19 @@ Don't run in the foreground (blocks your session) or detached with `&` (loses li
 
 ## Monitoring
 
+### Watch with sound alerts
+
+```bash
+/dark-factory:watch
+```
+
+Auto-detects the project directory (via `.dark-factory.lock`), polls every 60s, and plays macOS sounds:
+- 3x Sosumi = prompt failed — check log, fix, retry
+- Basso = stuck >15min — may need intervention
+- Glass = all prompts complete
+
+Works from any directory — no need to `cd` to the project root first.
+
 ### Check status
 
 ```bash

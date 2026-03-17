@@ -110,8 +110,13 @@ dark-factory daemon
 Dark-factory includes a Claude Code plugin for writing and auditing specs and prompts.
 
 ```bash
+# Install
 claude plugin marketplace add bborbe/dark-factory
 claude plugin install dark-factory
+
+# Update
+claude plugin marketplace update dark-factory
+claude plugin update dark-factory@dark-factory
 ```
 
 | Command | Description |

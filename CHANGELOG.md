@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.5
+
+- Update claude-yolo container image from v0.3.0 to v0.3.1
+
 ## v0.59.4
 
 - Add init smoke-test prompt template (docs/init-prompt-fix-tests-and-dod.md)

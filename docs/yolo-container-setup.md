@@ -126,7 +126,7 @@ export DARK_FACTORY_CLAUDE_CONFIG_DIR=~/.claude-yolo
 ## Pulling the Container Image
 
 ```bash
-docker pull docker.io/bborbe/claude-yolo:v0.3.0
+docker pull docker.io/bborbe/claude-yolo:v0.3.1
 ```
 
 Or build from source:

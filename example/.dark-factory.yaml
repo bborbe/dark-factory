@@ -25,7 +25,7 @@ specs:
   inProgressDir: specs/in-progress
   completedDir: specs/completed
   logDir: specs/log
-containerImage: docker.io/bborbe/claude-yolo:v0.3.0
+containerImage: docker.io/bborbe/claude-yolo:v0.3.1
 model: claude-sonnet-4-6
 debounceMs: 500
 serverPort: 0

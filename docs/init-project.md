@@ -2,11 +2,13 @@
 
 Set up a new or existing project to use the dark-factory pipeline.
 
+**Follow every step in order. Do not skip any step — including the smoke test.**
+
 ## Prerequisites
 
 - **dark-factory** installed (`go install github.com/bborbe/dark-factory@latest`)
 - **Docker** running
-- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.3.0`)
+- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.3.1`)
 - **~/.claude-yolo/** configured (see main README)
 
 ## Step 1: Choose Workflow
@@ -95,7 +97,9 @@ git add .dark-factory.yaml .gitignore prompts/ specs/ CLAUDE.md
 git commit -m "setup dark-factory config and directories"
 ```
 
-## Verification
+## Step 7: Verify Setup
+
+Run all checks — every line must succeed:
 
 ```bash
 cat .dark-factory.yaml              # config exists
@@ -106,15 +110,28 @@ grep prompts/log .gitignore         # logs ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```
 
-## Step 7: Smoke-Test Prompt
+**Do not proceed to step 8 until all checks pass.**
 
-Copy the initial prompt template to validate the setup works end-to-end:
+## Step 8: Smoke-Test Prompt (REQUIRED)
+
+**This step is mandatory.** Run the smoke test before writing any real prompts. It confirms the pipeline works end-to-end (Docker, CLAUDE.md, build commands, YOLO container).
+
+Copy the initial prompt template:
 
 ```bash
 cp <dark-factory-docs>/init-prompt-fix-tests-and-dod.md prompts/fix-tests-and-dod.md
 ```
 
-See [init-prompt-fix-tests-and-dod.md](init-prompt-fix-tests-and-dod.md) for the template. This prompt runs `make precommit`, fixes any failures, and checks the Definition of Done — confirming the pipeline works before you write real prompts.
+See [init-prompt-fix-tests-and-dod.md](init-prompt-fix-tests-and-dod.md) for the template. This prompt runs `make precommit`, fixes any failures, and checks the Definition of Done.
+
+Approve and run it:
+
+```bash
+dark-factory prompt approve fix-tests-and-dod
+dark-factory daemon
+```
+
+**Only write real prompts after the smoke test completes successfully.**
 
 ## Next Steps
 

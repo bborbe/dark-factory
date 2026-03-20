@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.59.6
+
+- chore: upgrade github.com/modelcontextprotocol/go-sdk to v1.4.1 and google.golang.org/grpc to v1.79.3 to resolve CVEs GHSA-89xv-2j6f-qhc8, GHSA-q382-vc8q-7jhj, and GHSA-p77j-4mvh-x3m3
+
 ## v0.59.5
 
 - Update claude-yolo container image from v0.3.0 to v0.3.1

@@ -41,6 +41,7 @@ func NewOneShotRunner(
 	proc processor.Processor,
 	specGen generator.SpecGenerator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	autoApprove bool,
 ) OneShotRunner {
 	return &oneShotRunner{
 		inboxDir:              inboxDir,
@@ -56,6 +57,7 @@ func NewOneShotRunner(
 		processor:             proc,
 		specGenerator:         specGen,
 		currentDateTimeGetter: currentDateTimeGetter,
+		autoApprove:           autoApprove,
 	}
 }
 
@@ -74,6 +76,7 @@ type oneShotRunner struct {
 	processor             processor.Processor
 	specGenerator         generator.SpecGenerator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	autoApprove           bool
 }
 
 // Run acquires the lock, initializes directories, then loops: generate prompts from approved
@@ -143,19 +146,42 @@ func (r *oneShotRunner) generateFromApprovedSpecs(ctx context.Context) (int, err
 		return 0, nil
 	}
 
+	foundApproved, err := r.generateSpecPrompts(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if !foundApproved {
+		return 0, nil
+	}
+
+	if r.autoApprove {
+		moved, err := r.approveInboxPrompts(ctx)
+		if err != nil {
+			return 0, errors.Wrap(ctx, err, "approve inbox prompts")
+		}
+		return moved, nil
+	}
+
+	r.logInboxPrompts()
+	return 0, nil
+}
+
+// generateSpecPrompts iterates approved specs and runs the generator for each.
+// Returns true if at least one approved spec was found.
+func (r *oneShotRunner) generateSpecPrompts(ctx context.Context) (bool, error) {
 	entries, err := os.ReadDir(r.specsInProgressDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, nil
+			return false, nil
 		}
-		return 0, errors.Wrap(ctx, err, "read specs in-progress dir")
+		return false, errors.Wrap(ctx, err, "read specs in-progress dir")
 	}
 
 	foundApproved := false
 	for _, entry := range entries {
 		select {
 		case <-ctx.Done():
-			return 0, errors.Wrap(ctx, ctx.Err(), "context cancelled during spec generation")
+			return false, errors.Wrap(ctx, ctx.Err(), "context cancelled during spec generation")
 		default:
 		}
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
@@ -176,16 +202,19 @@ func (r *oneShotRunner) generateFromApprovedSpecs(ctx context.Context) (int, err
 			slog.Warn("spec generation failed", "spec", entry.Name(), "error", err)
 		}
 	}
+	return foundApproved, nil
+}
 
-	if !foundApproved {
-		return 0, nil
+// logInboxPrompts logs each .md file in inboxDir and a hint for manual approval.
+func (r *oneShotRunner) logInboxPrompts() {
+	if inboxEntries, err := os.ReadDir(r.inboxDir); err == nil {
+		for _, e := range inboxEntries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				slog.Info("generated prompt awaiting review", "file", e.Name())
+			}
+		}
 	}
-
-	moved, err := r.approveInboxPrompts(ctx)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, "approve inbox prompts")
-	}
-	return moved, nil
+	slog.Info("generated prompts left in inbox — approve with: dark-factory prompt approve <name>")
 }
 
 // approveInboxPrompts moves all .md files from inboxDir to inProgressDir, marks them

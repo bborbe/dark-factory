@@ -9,15 +9,16 @@ import (
 )
 
 type parseArgsResult struct {
-	debug      bool
-	command    string
-	subcommand string
-	args       []string
+	debug       bool
+	command     string
+	subcommand  string
+	args        []string
+	autoApprove bool
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args := ParseArgs(input)
+	debug, command, subcommand, args, autoApprove := ParseArgs(input)
 	if debug != want.debug {
 		t.Errorf("debug: got %v, want %v", debug, want.debug)
 	}
@@ -36,20 +37,23 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 			t.Errorf("args[%d]: got %q, want %q", i, args[i], want.args[i])
 		}
 	}
+	if autoApprove != want.autoApprove {
+		t.Errorf("autoApprove: got %v, want %v", autoApprove, want.autoApprove)
+	}
 }
 
 func TestParseArgsDefaults(t *testing.T) {
 	t.Parallel()
-	assertParseArgs(t, []string{"run"}, parseArgsResult{false, "run", "", []string{}})
-	assertParseArgs(t, []string{"daemon"}, parseArgsResult{false, "daemon", "", []string{}})
-	assertParseArgs(t, []string{"status"}, parseArgsResult{false, "status", "", []string{}})
-	assertParseArgs(t, []string{"list"}, parseArgsResult{false, "list", "", []string{}})
+	assertParseArgs(t, []string{"run"}, parseArgsResult{command: "run", args: []string{}})
+	assertParseArgs(t, []string{"daemon"}, parseArgsResult{command: "daemon", args: []string{}})
+	assertParseArgs(t, []string{"status"}, parseArgsResult{command: "status", args: []string{}})
+	assertParseArgs(t, []string{"list"}, parseArgsResult{command: "list", args: []string{}})
 }
 
 func TestParseArgsNoArgs(t *testing.T) {
 	t.Parallel()
 	// No args must return "unknown" — an explicit subcommand is required
-	assertParseArgs(t, []string{}, parseArgsResult{false, "unknown", "", []string{}})
+	assertParseArgs(t, []string{}, parseArgsResult{command: "unknown", args: []string{}})
 }
 
 func TestParseArgsPrompt(t *testing.T) {
@@ -57,22 +61,22 @@ func TestParseArgsPrompt(t *testing.T) {
 	assertParseArgs(
 		t,
 		[]string{"prompt", "list"},
-		parseArgsResult{false, "prompt", "list", []string{}},
+		parseArgsResult{command: "prompt", subcommand: "list", args: []string{}},
 	)
 	assertParseArgs(
 		t,
 		[]string{"prompt", "status"},
-		parseArgsResult{false, "prompt", "status", []string{}},
+		parseArgsResult{command: "prompt", subcommand: "status", args: []string{}},
 	)
 	assertParseArgs(
 		t,
 		[]string{"prompt", "retry"},
-		parseArgsResult{false, "prompt", "retry", []string{}},
+		parseArgsResult{command: "prompt", subcommand: "retry", args: []string{}},
 	)
 	assertParseArgs(
 		t,
 		[]string{"prompt", "approve", "042"},
-		parseArgsResult{false, "prompt", "approve", []string{"042"}},
+		parseArgsResult{command: "prompt", subcommand: "approve", args: []string{"042"}},
 	)
 }
 
@@ -81,9 +85,13 @@ func TestParseArgsSpec(t *testing.T) {
 	assertParseArgs(
 		t,
 		[]string{"spec", "approve", "017"},
-		parseArgsResult{false, "spec", "approve", []string{"017"}},
+		parseArgsResult{command: "spec", subcommand: "approve", args: []string{"017"}},
 	)
-	assertParseArgs(t, []string{"spec", "list"}, parseArgsResult{false, "spec", "list", []string{}})
+	assertParseArgs(
+		t,
+		[]string{"spec", "list"},
+		parseArgsResult{command: "spec", subcommand: "list", args: []string{}},
+	)
 }
 
 func TestParseArgsUnknown(t *testing.T) {
@@ -91,12 +99,12 @@ func TestParseArgsUnknown(t *testing.T) {
 	assertParseArgs(
 		t,
 		[]string{"prompts"},
-		parseArgsResult{false, "unknown", "", []string{"prompts"}},
+		parseArgsResult{command: "unknown", args: []string{"prompts"}},
 	)
 	assertParseArgs(
 		t,
 		[]string{"foo"},
-		parseArgsResult{false, "unknown", "", []string{"foo"}},
+		parseArgsResult{command: "unknown", args: []string{"foo"}},
 	)
 }
 
@@ -105,7 +113,39 @@ func TestParseArgsDebug(t *testing.T) {
 	assertParseArgs(
 		t,
 		[]string{"-debug", "prompt", "list"},
-		parseArgsResult{true, "prompt", "list", []string{}},
+		parseArgsResult{debug: true, command: "prompt", subcommand: "list", args: []string{}},
 	)
-	assertParseArgs(t, []string{"-debug", "run"}, parseArgsResult{true, "run", "", []string{}})
+	assertParseArgs(
+		t,
+		[]string{"-debug", "run"},
+		parseArgsResult{debug: true, command: "run", args: []string{}},
+	)
+}
+
+func TestParseArgsAutoApprove(t *testing.T) {
+	t.Parallel()
+	// --auto-approve present sets autoApprove=true
+	assertParseArgs(
+		t,
+		[]string{"run", "--auto-approve"},
+		parseArgsResult{command: "run", args: []string{}, autoApprove: true},
+	)
+	// without --auto-approve, autoApprove defaults to false
+	assertParseArgs(
+		t,
+		[]string{"run"},
+		parseArgsResult{command: "run", args: []string{}, autoApprove: false},
+	)
+	// --auto-approve before "run" is also extracted
+	assertParseArgs(
+		t,
+		[]string{"--auto-approve", "run"},
+		parseArgsResult{command: "run", args: []string{}, autoApprove: true},
+	)
+	// --auto-approve combined with -debug
+	assertParseArgs(
+		t,
+		[]string{"-debug", "run", "--auto-approve"},
+		parseArgsResult{debug: true, command: "run", args: []string{}, autoApprove: true},
+	)
 }

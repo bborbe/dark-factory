@@ -27,7 +27,7 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-	debug, command, subcommand, args := ParseArgs(os.Args[1:])
+	debug, command, subcommand, args, autoApprove := ParseArgs(os.Args[1:])
 
 	switch command {
 	case "help":
@@ -77,7 +77,7 @@ func run() error {
 	case "list":
 		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
 	case "run":
-		return factory.CreateOneShotRunner(cfg, version.Version).Run(ctx)
+		return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
 	case "daemon":
 		return factory.CreateRunner(cfg, version.Version).Run(ctx)
 	default:
@@ -159,25 +159,29 @@ func printHelp() {
 }
 
 // ParseArgs parses command line arguments (without program name) and returns
-// (debug, command, subcommand, args).
+// (debug, command, subcommand, args, autoApprove).
 // The -debug flag can appear anywhere and is extracted before parsing.
+// The --auto-approve flag is extracted for the "run" command.
 // No args → command="unknown" (an explicit subcommand is required)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
-func ParseArgs(rawArgs []string) (bool, string, string, []string) {
+func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 	debug := false
+	autoApprove := false
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
 		if arg == "-debug" {
 			debug = true
+		} else if arg == "--auto-approve" {
+			autoApprove = true
 		} else {
 			filtered = append(filtered, arg)
 		}
 	}
 
 	if len(filtered) == 0 {
-		return debug, "unknown", "", []string{}
+		return debug, "unknown", "", []string{}, autoApprove
 	}
 
 	command := filtered[0]
@@ -185,17 +189,17 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string) {
 
 	switch command {
 	case "--help", "-help", "-h":
-		return debug, "help", "", []string{}
+		return debug, "help", "", []string{}, autoApprove
 	case "--version", "-version", "-v":
-		return debug, "version", "", []string{}
+		return debug, "version", "", []string{}, autoApprove
 	case "run", "daemon", "status", "list":
-		return debug, command, "", rest
+		return debug, command, "", rest, autoApprove
 	case "prompt", "spec":
 		if len(rest) == 0 {
-			return debug, command, "", []string{}
+			return debug, command, "", []string{}, autoApprove
 		}
-		return debug, command, rest[0], rest[1:]
+		return debug, command, rest[0], rest[1:], autoApprove
 	}
 
-	return debug, "unknown", "", filtered
+	return debug, "unknown", "", filtered, autoApprove
 }

@@ -70,6 +70,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			nil,
 			libtime.NewCurrentDateTime(),
+			false,
 		)
 	}
 
@@ -183,6 +184,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			false,
 		)
 
 		err := r.Run(ctx)
@@ -240,6 +242,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			true,
 		)
 
 		err := r.Run(ctx)
@@ -295,6 +298,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			false,
 		)
 
 		err := r.Run(ctx)
@@ -349,6 +353,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			true,
 		)
 
 		err := r.Run(ctx)
@@ -452,6 +457,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			&mocks.SpecGenerator{},
 			libtime.NewCurrentDateTime(),
+			false,
 		)
 
 		// Should succeed (createDirectories creates the dir, but generateFromApprovedSpecs
@@ -510,6 +516,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				mockSpecGen,
 				libtime.NewCurrentDateTime(),
+				false,
 			)
 
 			err := r.Run(ctx)
@@ -572,6 +579,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			true,
 		)
 
 		err := r.Run(ctx)
@@ -614,6 +622,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
+				false,
 			)
 
 			err := r.Run(ctx)
@@ -654,6 +663,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
+				false,
 			)
 
 			err := r.Run(ctx)
@@ -663,5 +673,118 @@ var _ = Describe("OneShotRunner", func() {
 			_, err = os.Stat(oldQueueDir)
 			Expect(err).To(BeNil())
 		})
+	})
+
+	Describe("autoApprove flag", func() {
+		buildSpecDirs := func() (string, string) {
+			inboxDir := filepath.Join(tempDir, "inbox")
+			inProgressDir := filepath.Join(tempDir, "in-progress")
+			completedDir := filepath.Join(tempDir, "completed")
+			logsDir := filepath.Join(tempDir, "logs")
+			specInProgressDir := filepath.Join(specsDir, "in-progress")
+			for _, d := range []string{inboxDir, inProgressDir, completedDir, logsDir, specInProgressDir} {
+				Expect(os.MkdirAll(d, 0750)).To(Succeed())
+			}
+			specContent := "---\nstatus: approved\n---\n# My Spec\n"
+			specFile := filepath.Join(specInProgressDir, "001-my-spec.md")
+			Expect(os.WriteFile(specFile, []byte(specContent), 0600)).To(Succeed())
+			return inboxDir, specInProgressDir
+		}
+
+		buildMockGen := func(inboxDir string, specInProgressDir string) *mocks.SpecGenerator {
+			mockSpecGen := &mocks.SpecGenerator{}
+			mockSpecGen.GenerateStub = func(genCtx context.Context, path string) error {
+				Expect(
+					os.WriteFile(path, []byte("---\nstatus: prompted\n---\n# My Spec\n"), 0600),
+				).To(Succeed())
+				promptContent := "---\ntitle: generated prompt\nstatus: approved\n---\n# Body\n"
+				return os.WriteFile(
+					filepath.Join(inboxDir, "001-gen-prompt.md"),
+					[]byte(promptContent),
+					0600,
+				)
+			}
+			return mockSpecGen
+		}
+
+		It("autoApprove=true: generated prompts are moved to in-progress and executed", func() {
+			inboxDir, specInProgressDir := buildSpecDirs()
+			inProgressDir := filepath.Join(tempDir, "in-progress")
+			completedDir := filepath.Join(tempDir, "completed")
+			logsDir := filepath.Join(tempDir, "logs")
+
+			mockSpecGen := buildMockGen(inboxDir, specInProgressDir)
+			setupMocks()
+
+			r := runner.NewOneShotRunner(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				logsDir,
+				filepath.Join(specsDir, "inbox"),
+				specInProgressDir,
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				processor,
+				mockSpecGen,
+				libtime.NewCurrentDateTime(),
+				true,
+			)
+
+			err := r.Run(ctx)
+			Expect(err).To(BeNil())
+			Expect(mockSpecGen.GenerateCallCount()).To(Equal(1))
+
+			// Prompt must be moved from inbox to in-progress
+			_, statErr := os.Stat(filepath.Join(inProgressDir, "001-gen-prompt.md"))
+			Expect(statErr).To(BeNil())
+			_, statErr = os.Stat(filepath.Join(inboxDir, "001-gen-prompt.md"))
+			Expect(os.IsNotExist(statErr)).To(BeTrue())
+		})
+
+		It(
+			"autoApprove=false: generated prompts remain in inbox, only pre-queued prompts execute",
+			func() {
+				inboxDir, specInProgressDir := buildSpecDirs()
+				inProgressDir := filepath.Join(tempDir, "in-progress")
+				completedDir := filepath.Join(tempDir, "completed")
+				logsDir := filepath.Join(tempDir, "logs")
+
+				mockSpecGen := buildMockGen(inboxDir, specInProgressDir)
+				setupMocks()
+
+				r := runner.NewOneShotRunner(
+					inboxDir,
+					inProgressDir,
+					completedDir,
+					logsDir,
+					filepath.Join(specsDir, "inbox"),
+					specInProgressDir,
+					filepath.Join(specsDir, "completed"),
+					filepath.Join(specsDir, "logs"),
+					manager,
+					locker,
+					processor,
+					mockSpecGen,
+					libtime.NewCurrentDateTime(),
+					false,
+				)
+
+				err := r.Run(ctx)
+				Expect(err).To(BeNil())
+				Expect(mockSpecGen.GenerateCallCount()).To(Equal(1))
+
+				// Prompt must remain in inbox (not moved to in-progress)
+				_, statErr := os.Stat(filepath.Join(inboxDir, "001-gen-prompt.md"))
+				Expect(statErr).To(BeNil())
+				_, statErr = os.Stat(filepath.Join(inProgressDir, "001-gen-prompt.md"))
+				Expect(os.IsNotExist(statErr)).To(BeTrue())
+
+				// ProcessQueue still called (pre-queued prompts execute)
+				Expect(processor.ProcessQueueCallCount()).To(BeNumerically(">=", 1))
+			},
+		)
 	})
 })

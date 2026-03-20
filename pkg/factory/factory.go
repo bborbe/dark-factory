@@ -240,7 +240,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 }
 
 // CreateOneShotRunner creates an OneShotRunner that drains the queue and exits.
-func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
+func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner.OneShotRunner {
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
@@ -304,6 +304,7 @@ func CreateOneShotRunner(cfg config.Config, ver string) runner.OneShotRunner {
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
 		currentDateTimeGetter,
+		autoApprove,
 	)
 }
 

@@ -234,7 +234,7 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 	}
 
 	cleanup := func() {
-		promptFile.Close()
+		_ = promptFile.Close()
 		_ = os.RemoveAll(tmpDir)
 	}
 
@@ -352,7 +352,7 @@ func validateClaudeAuth(_ context.Context, configDir string) error {
 		}
 	}
 
-	return fmt.Errorf(
+	return fmt.Errorf( //nolint:staticcheck // ST1005: intentional capitalization for user-facing message
 		"Claude OAuth token missing or expired in %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
 		configDir,
 		configDir,

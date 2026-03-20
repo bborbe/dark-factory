@@ -14,7 +14,7 @@ precommit: ensure format generate test check addlicense
 
 .PHONY: ensure
 ensure:
-	go mod tidy
+	go mod tidy -e
 	go mod verify
 	rm -rf vendor
 
@@ -23,7 +23,7 @@ format:
 	find . -type f -name 'go.mod' -not -path './vendor/*' -exec go run -mod=mod github.com/shoenig/go-modtool -w fmt "{}" \;
 	find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w "{}" +
 	go run -mod=mod github.com/incu6us/goimports-reviser/v3 -project-name github.com/bborbe/dark-factory -format -excludes vendor ./...
-	find . -type d -name vendor -prune -o -type f -name '*.go' -print0 | xargs -0 -n 10 go run -mod=mod github.com/segmentio/golines --max-len=100 -w
+	find . -type d -name vendor -prune -o -type f -name '*.go' -print0 | xargs -0 -P 8 -n 50 go run -mod=mod github.com/segmentio/golines --max-len=100 -w
 
 .PHONY: generate
 generate:
@@ -41,7 +41,7 @@ check: lint vet errcheck vulncheck osv-scanner gosec trivy
 
 .PHONY: lint
 lint:
-	go run -mod=mod github.com/golangci/golangci-lint/cmd/golangci-lint run --config .golangci.yml ./...
+	go run -mod=mod github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --config .golangci.yml ./...
 
 .PHONY: vet
 vet:
@@ -67,7 +67,12 @@ osv-scanner:
 
 .PHONY: gosec
 gosec:
-	go run -mod=mod github.com/securego/gosec/v2/cmd/gosec -exclude=G104,G115 ./...
+	go run -mod=mod github.com/securego/gosec/v2/cmd/gosec \
+	-exclude=G104,G115 \
+	-quiet \
+	-fmt=summary \
+	-severity=medium \
+	./...
 
 .PHONY: trivy
 trivy:

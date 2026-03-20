@@ -171,11 +171,12 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 	autoApprove := false
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
-		if arg == "-debug" {
+		switch arg {
+		case "-debug":
 			debug = true
-		} else if arg == "--auto-approve" {
+		case "--auto-approve":
 			autoApprove = true
-		} else {
+		default:
 			filtered = append(filtered, arg)
 		}
 	}

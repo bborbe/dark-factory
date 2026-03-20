@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.60.1
+
+- upgrade golangci-lint from v1 to v2
+- update .golangci.yml to v2 format
+- standardize Makefile: go mod tidy -e, parallel golines, gosec flags
+- fix lint issues: use fmt.Fprintf, tagged switch, nolint for ST1005
+
 ## v0.60.0
 
 - feat: Add `--auto-approve` flag to `dark-factory run`; without it, generated prompts stay in inbox for manual review instead of being auto-approved and executed

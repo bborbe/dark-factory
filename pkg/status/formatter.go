@@ -34,9 +34,9 @@ func (f *formatter) Format(st *Status) string {
 
 	// Daemon status
 	if st.DaemonPID > 0 {
-		b.WriteString(fmt.Sprintf("  Daemon:     %s (pid %d)\n", st.Daemon, st.DaemonPID))
+		fmt.Fprintf(&b, "  Daemon:     %s (pid %d)\n", st.Daemon, st.DaemonPID)
 	} else {
-		b.WriteString(fmt.Sprintf("  Daemon:     %s\n", st.Daemon))
+		fmt.Fprintf(&b, "  Daemon:     %s\n", st.Daemon)
 	}
 
 	// Current prompt
@@ -48,20 +48,20 @@ func (f *formatter) Format(st *Status) string {
 
 	// Queue
 	if st.QueueCount > 0 {
-		b.WriteString(fmt.Sprintf("  Queue:      %d prompts\n", st.QueueCount))
+		fmt.Fprintf(&b, "  Queue:      %d prompts\n", st.QueueCount)
 		for _, p := range st.QueuedPrompts {
-			b.WriteString(fmt.Sprintf("    - %s\n", p))
+			fmt.Fprintf(&b, "    - %s\n", p)
 		}
 	} else {
 		b.WriteString("  Queue:      0 prompts\n")
 	}
 
 	// Completed
-	b.WriteString(fmt.Sprintf("  Completed:  %d prompts\n", st.CompletedCount))
+	fmt.Fprintf(&b, "  Completed:  %d prompts\n", st.CompletedCount)
 
 	// Ideas
 	if st.IdeasCount > 0 {
-		b.WriteString(fmt.Sprintf("  Ideas:      %d prompts\n", st.IdeasCount))
+		fmt.Fprintf(&b, "  Ideas:      %d prompts\n", st.IdeasCount)
 	}
 
 	// Last log
@@ -70,7 +70,7 @@ func (f *formatter) Format(st *Status) string {
 		if st.LastLogSize > 0 {
 			logInfo += fmt.Sprintf(" (%s)", formatBytes(st.LastLogSize))
 		}
-		b.WriteString(fmt.Sprintf("  Last log:   %s\n", logInfo))
+		fmt.Fprintf(&b, "  Last log:   %s\n", logInfo)
 	}
 
 	return b.String()
@@ -92,7 +92,7 @@ func (f *formatter) formatCurrentPrompt(b *strings.Builder, st *Status) {
 		} else {
 			containerStatus += " (not running)"
 		}
-		b.WriteString(fmt.Sprintf("  Container:  %s\n", containerStatus))
+		fmt.Fprintf(b, "  Container:  %s\n", containerStatus)
 	}
 }
 

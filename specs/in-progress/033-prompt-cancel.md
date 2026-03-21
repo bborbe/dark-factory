@@ -1,8 +1,11 @@
 ---
+status: prompted
 tags:
-  - dark-factory
-  - spec
-status: draft
+    - dark-factory
+    - spec
+approved: "2026-03-21T15:03:05Z"
+prompted: "2026-03-21T15:12:28Z"
+branch: dark-factory/prompt-cancel
 ---
 
 ## Summary

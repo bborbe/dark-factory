@@ -43,8 +43,14 @@ Every prompt MUST have these XML sections:
 ## Frontmatter (if present)
 
 - `spec` must be YAML array: `spec: ["020"]` not `spec: "020"`
-- `status` must be `created` for inbox files
-- Only `spec`, `status`, `created` fields in inbox
+- Valid inbox statuses: `idea` (rough concept) or `draft` (complete, ready for approval)
+- Only `spec`, `status`, `created`, `issue` fields in inbox — dark-factory adds the rest
+- Never number filenames — dark-factory assigns numbers on approve
+
+## Location
+
+- New prompts MUST be in `prompts/` inbox directory, NOT in `prompts/in-progress/`
+- `prompts/in-progress/` is managed by dark-factory (files move there on approve)
 
 ## Code Reference Accuracy
 
@@ -131,6 +137,9 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] `<constraints>` present
 - [x/!] `<verification>` present with runnable command
 - [x/!] All paths repo-relative (no absolute or `~/` paths)
+- [x/!] File in `prompts/` inbox (not `prompts/in-progress/`)
+- [x/!] Filename not numbered (dark-factory assigns numbers on approve)
+- [x/!] Status is `idea` or `draft` (not `created`, `queued`, or other)
 
 ## Code Reference Verification
 | Reference | File | Status |

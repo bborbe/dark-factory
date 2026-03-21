@@ -166,6 +166,27 @@ var _ = Describe("Formatter", func() {
 			Expect(output).To(ContainSubstring("Ideas:      5 prompts"))
 		})
 
+		It("formats generating spec status", func() {
+			st := &status.Status{
+				Daemon:              "running",
+				DaemonPID:           12345,
+				GeneratingSpec:      "034-resume-executing-on-restart.md",
+				GeneratingContainer: "dark-factory-gen-034-resume-executing-on-restart",
+				QueueCount:          0,
+				QueuedPrompts:       []string{},
+				CompletedCount:      3,
+			}
+
+			output := formatter.Format(st)
+			Expect(
+				output,
+			).To(ContainSubstring("Current:    generating spec 034-resume-executing-on-restart.md"))
+			Expect(
+				output,
+			).To(ContainSubstring("Container:  dark-factory-gen-034-resume-executing-on-restart (running)"))
+			Expect(output).NotTo(ContainSubstring("idle"))
+		})
+
 		It("does not show log line when no log file", func() {
 			st := &status.Status{
 				Daemon:         "not running",

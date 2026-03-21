@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.64.0
+
+- feat: show spec generation progress in `dark-factory status` — detects running `gen-*` containers and displays `generating spec <name>` instead of `idle`
+
 ## v0.63.2
 
 - Update bborbe/* dependencies (collection, errors, http, run, time, validation)

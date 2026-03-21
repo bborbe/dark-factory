@@ -40,10 +40,12 @@ func (f *formatter) Format(st *Status) string {
 	}
 
 	// Current prompt
-	if st.CurrentPrompt == "" {
-		b.WriteString("  Current:    idle\n")
-	} else {
+	if st.CurrentPrompt != "" {
 		f.formatCurrentPrompt(&b, st)
+	} else if st.GeneratingSpec != "" {
+		f.formatGeneratingSpec(&b, st)
+	} else {
+		b.WriteString("  Current:    idle\n")
 	}
 
 	// Queue
@@ -74,6 +76,12 @@ func (f *formatter) Format(st *Status) string {
 	}
 
 	return b.String()
+}
+
+// formatGeneratingSpec formats the spec generation section.
+func (f *formatter) formatGeneratingSpec(b *strings.Builder, st *Status) {
+	fmt.Fprintf(b, "  Current:    generating spec %s\n", st.GeneratingSpec)
+	fmt.Fprintf(b, "  Container:  %s (running)\n", st.GeneratingContainer)
 }
 
 // formatCurrentPrompt formats the current prompt section.

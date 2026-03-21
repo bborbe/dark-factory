@@ -348,6 +348,34 @@ status: executing
 		})
 	})
 
+	Describe("isContainerRunning via GetStatus", func() {
+		It("returns false for container running check when container does not exist", func() {
+			// Create an executing prompt with a nonexistent container name
+			execPath := filepath.Join(queueDir, "005-executing.md")
+			execContent := `---
+status: executing
+container: dark-factory-nonexistent-container-xyz
+---
+# Test
+`
+			err := os.WriteFile(execPath, []byte(execContent), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptMgr.HasExecutingReturns(true)
+			promptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
+				Status:    "executing",
+				Container: "dark-factory-nonexistent-container-xyz",
+			}, nil)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.CurrentPrompt).To(Equal("005-executing.md"))
+			// Container not running — docker ps returns empty or docker not available
+			Expect(st.ContainerRunning).To(BeFalse())
+		})
+	})
+
 	Describe("GetCompletedPrompts", func() {
 		It("returns completed prompts with limit", func() {
 			// Create completed files with different mod times

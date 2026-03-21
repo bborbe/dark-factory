@@ -46,8 +46,16 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 
 ## Frontmatter
 
-- `status` field required: `idea`, `draft`, `approved`, `prompted`, `completed`
+- `status` field required
+- Valid inbox statuses: `idea` (rough concept) or `draft` (all sections filled)
+- Full lifecycle: `idea` → `draft` → `approved` → `prompted` → `verifying` → `completed`
 - No H1 header (filename = title)
+- Never number filenames — dark-factory assigns numbers on approve
+
+## Location
+
+- New specs MUST be in `specs/` inbox directory, NOT in `specs/in-progress/`
+- `specs/in-progress/` is managed by dark-factory (files move there on approve)
 
 ## Preflight Checklist (all must be answerable)
 
@@ -129,6 +137,11 @@ Adjustments:
 **File**: `[path]`
 **Score**: X/10
 **Status**: [Excellent | Good | Needs Improvement | Significant Issues]
+
+## Location & Frontmatter
+- [x/!] File in `specs/` inbox (not `specs/in-progress/`)
+- [x/!] Filename not numbered (dark-factory assigns numbers on approve)
+- [x/!] Status is `idea` or `draft` (not other values)
 
 ## Preflight Checklist
 - [x/!] What problem are we solving?

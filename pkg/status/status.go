@@ -5,8 +5,11 @@
 package status
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -21,18 +24,20 @@ import (
 
 // Status represents the current daemon status.
 type Status struct {
-	Daemon           string   `json:"daemon"`
-	DaemonPID        int      `json:"daemon_pid,omitempty"`
-	CurrentPrompt    string   `json:"current_prompt,omitempty"`
-	ExecutingSince   string   `json:"executing_since,omitempty"`
-	Container        string   `json:"container,omitempty"`
-	ContainerRunning bool     `json:"container_running,omitempty"`
-	QueueCount       int      `json:"queue_count"`
-	QueuedPrompts    []string `json:"queued_prompts"`
-	CompletedCount   int      `json:"completed_count"`
-	IdeasCount       int      `json:"ideas_count"`
-	LastLogFile      string   `json:"last_log_file,omitempty"`
-	LastLogSize      int64    `json:"last_log_size,omitempty"`
+	Daemon              string   `json:"daemon"`
+	DaemonPID           int      `json:"daemon_pid,omitempty"`
+	CurrentPrompt       string   `json:"current_prompt,omitempty"`
+	ExecutingSince      string   `json:"executing_since,omitempty"`
+	Container           string   `json:"container,omitempty"`
+	ContainerRunning    bool     `json:"container_running,omitempty"`
+	GeneratingSpec      string   `json:"generating_spec,omitempty"`
+	GeneratingContainer string   `json:"generating_container,omitempty"`
+	QueueCount          int      `json:"queue_count"`
+	QueuedPrompts       []string `json:"queued_prompts"`
+	CompletedCount      int      `json:"completed_count"`
+	IdeasCount          int      `json:"ideas_count"`
+	LastLogFile         string   `json:"last_log_file,omitempty"`
+	LastLogSize         int64    `json:"last_log_size,omitempty"`
 }
 
 // QueuedPrompt represents a prompt in the queue with metadata.
@@ -102,6 +107,11 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	// Check for executing prompt
 	if err := s.populateExecutingPrompt(ctx, status); err != nil {
 		return nil, errors.Wrap(ctx, err, "populate executing prompt")
+	}
+
+	// Check for spec generation containers (only when no prompt is executing)
+	if status.CurrentPrompt == "" {
+		s.populateGeneratingSpec(ctx, status)
 	}
 
 	// Count queued prompts
@@ -432,12 +442,64 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 }
 
 // isContainerRunning checks if a Docker container is running.
-//
-//nolint:unparam // Will be implemented in future iteration
 func (s *checker) isContainerRunning(containerName string) bool {
 	if containerName == "" {
 		return false
 	}
-	// TODO: implement docker ps check
-	return false
+	ctx := context.Background()
+	// #nosec G204 -- containerName is derived from trusted frontmatter, not user input
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"ps",
+		"--filter",
+		"name="+containerName,
+		"--format",
+		"{{.Names}}",
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Debug("docker ps failed", "container", containerName, "err", err)
+		return false
+	}
+	return strings.Contains(string(out), containerName)
+}
+
+// populateGeneratingSpec checks for running spec generation containers and populates status.
+func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
+	const genPrefix = "dark-factory-gen-"
+	// #nosec G204 -- filter value is a hardcoded prefix, not user input
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"ps",
+		"--filter",
+		"name="+genPrefix,
+		"--format",
+		"{{.Names}}",
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Debug("docker ps for spec generation failed", "err", err)
+		return
+	}
+	output := strings.TrimSpace(string(out))
+	if output == "" {
+		return
+	}
+	// Take the first matching container line
+	var containerName string
+	for _, line := range bytes.Split([]byte(output), []byte("\n")) {
+		name := strings.TrimSpace(string(line))
+		if strings.HasPrefix(name, genPrefix) {
+			containerName = name
+			break
+		}
+	}
+	if containerName == "" {
+		return
+	}
+	specName := strings.TrimPrefix(containerName, genPrefix)
+	st.GeneratingSpec = specName
+	st.GeneratingContainer = containerName
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -265,5 +266,172 @@ var _ = Describe("autoSetQueuedStatus", func() {
 		err := p.autoSetQueuedStatus(ctx, pr)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pr.Status).To(Equal(prompt.ApprovedPromptStatus))
+	})
+})
+
+// stubManager is a minimal prompt.Manager stub for internal cancel-watcher tests.
+// It only implements Load; all other methods are no-ops.
+type stubManager struct {
+	loadFunc func(ctx context.Context, path string) (*prompt.PromptFile, error)
+}
+
+func (s *stubManager) Load(ctx context.Context, path string) (*prompt.PromptFile, error) {
+	if s.loadFunc != nil {
+		return s.loadFunc(ctx, path)
+	}
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubManager) ResetExecuting(_ context.Context) error { return nil }
+
+func (s *stubManager) ResetFailed(_ context.Context) error { return nil }
+
+func (s *stubManager) HasExecuting(_ context.Context) bool { return false }
+
+func (s *stubManager) ListQueued(
+	_ context.Context,
+) ([]prompt.Prompt, error) {
+	return nil, nil
+} //nolint:nilnil
+func (s *stubManager) ReadFrontmatter(_ context.Context, _ string) (*prompt.Frontmatter, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubManager) SetStatus(_ context.Context, _ string, _ string) error { return nil }
+
+func (s *stubManager) SetContainer(_ context.Context, _ string, _ string) error { return nil }
+
+func (s *stubManager) SetVersion(_ context.Context, _ string, _ string) error { return nil }
+
+func (s *stubManager) SetPRURL(_ context.Context, _ string, _ string) error { return nil }
+
+func (s *stubManager) SetBranch(_ context.Context, _ string, _ string) error { return nil }
+
+func (s *stubManager) IncrementRetryCount(_ context.Context, _ string) error { return nil }
+
+func (s *stubManager) Content(_ context.Context, _ string) (string, error) { return "", nil }
+
+func (s *stubManager) Title(_ context.Context, _ string) (string, error) { return "", nil }
+
+func (s *stubManager) MoveToCompleted(_ context.Context, _ string) error { return nil }
+
+func (s *stubManager) NormalizeFilenames(_ context.Context, _ string) ([]prompt.Rename, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubManager) AllPreviousCompleted(_ context.Context, _ int) bool { return false }
+
+func (s *stubManager) HasQueuedPromptsOnBranch(
+	_ context.Context,
+	_ string,
+	_ string,
+) (bool, error) {
+	return false, nil
+}
+
+// stubExecutor is a minimal executor.Executor stub for internal cancel-watcher tests.
+type stubExecutor struct {
+	stopAndRemoveFunc func(ctx context.Context, containerName string)
+	stopCallCount     int
+	stopContainerArg  string
+}
+
+func (s *stubExecutor) Execute(_ context.Context, _ string, _ string, _ string) error { return nil }
+
+func (s *stubExecutor) StopAndRemoveContainer(ctx context.Context, containerName string) {
+	s.stopCallCount++
+	s.stopContainerArg = containerName
+	if s.stopAndRemoveFunc != nil {
+		s.stopAndRemoveFunc(ctx, containerName)
+	}
+}
+
+var _ = Describe("watchForCancellation", func() {
+	var (
+		tempDir    string
+		promptPath string
+		mgr        *stubManager
+		exec       *stubExecutor
+		p          *processor
+	)
+
+	BeforeEach(func() {
+		var err error
+		tempDir, err = os.MkdirTemp("", "cancel-watcher-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		promptPath = filepath.Join(tempDir, "080-test-prompt.md")
+		err = os.WriteFile(promptPath, []byte("---\nstatus: executing\n---\n\n# Test\n"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		mgr = &stubManager{}
+		exec = &stubExecutor{}
+
+		p = &processor{
+			promptManager:  mgr,
+			executor:       exec,
+			skippedPrompts: make(map[string]time.Time),
+		}
+	})
+
+	AfterEach(func() {
+		if tempDir != "" {
+			_ = os.RemoveAll(tempDir)
+		}
+	})
+
+	It("exits immediately when context is already done", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel() // cancel immediately
+
+		execCancelCalled := false
+		execCancel := func() { execCancelCalled = true }
+		var cancelled bool
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			p.watchForCancellation(ctx, execCancel, promptPath, "test-container", &cancelled)
+		}()
+
+		Eventually(done, 2*time.Second).Should(BeClosed())
+		Expect(cancelled).To(BeFalse())
+		Expect(execCancelCalled).To(BeFalse())
+	})
+
+	It("sets cancelledByUser and calls execCancel when status changes to cancelled", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		execCancelCalled := false
+		execCancel := func() { execCancelCalled = true }
+		var cancelled bool
+
+		cancelledPF := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{Status: string(prompt.CancelledPromptStatus)},
+			[]byte("# Test\n"),
+			libtime.NewCurrentDateTime(),
+		)
+		mgr.loadFunc = func(_ context.Context, _ string) (*prompt.PromptFile, error) {
+			return cancelledPF, nil
+		}
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			p.watchForCancellation(ctx, execCancel, promptPath, "test-container", &cancelled)
+		}()
+
+		// Trigger a write event by updating the file
+		time.Sleep(100 * time.Millisecond)
+		err := os.WriteFile(promptPath, []byte("---\nstatus: cancelled\n---\n\n# Test\n"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(done, 2*time.Second).Should(BeClosed())
+		Expect(cancelled).To(BeTrue())
+		Expect(execCancelCalled).To(BeTrue())
+		Expect(exec.stopCallCount).To(Equal(1))
+		Expect(exec.stopContainerArg).To(Equal("test-container"))
 	})
 })

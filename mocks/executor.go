@@ -23,6 +23,12 @@ type Executor struct {
 	executeReturnsOnCall map[int]struct {
 		result1 error
 	}
+	StopAndRemoveContainerStub        func(context.Context, string)
+	stopAndRemoveContainerMutex       sync.RWMutex
+	stopAndRemoveContainerArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -89,6 +95,39 @@ func (fake *Executor) ExecuteReturnsOnCall(i int, result1 error) {
 	fake.executeReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
+}
+
+func (fake *Executor) StopAndRemoveContainer(arg1 context.Context, arg2 string) {
+	fake.stopAndRemoveContainerMutex.Lock()
+	fake.stopAndRemoveContainerArgsForCall = append(fake.stopAndRemoveContainerArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.StopAndRemoveContainerStub
+	fake.recordInvocation("StopAndRemoveContainer", []interface{}{arg1, arg2})
+	fake.stopAndRemoveContainerMutex.Unlock()
+	if stub != nil {
+		fake.StopAndRemoveContainerStub(arg1, arg2)
+	}
+}
+
+func (fake *Executor) StopAndRemoveContainerCallCount() int {
+	fake.stopAndRemoveContainerMutex.RLock()
+	defer fake.stopAndRemoveContainerMutex.RUnlock()
+	return len(fake.stopAndRemoveContainerArgsForCall)
+}
+
+func (fake *Executor) StopAndRemoveContainerCalls(stub func(context.Context, string)) {
+	fake.stopAndRemoveContainerMutex.Lock()
+	defer fake.stopAndRemoveContainerMutex.Unlock()
+	fake.StopAndRemoveContainerStub = stub
+}
+
+func (fake *Executor) StopAndRemoveContainerArgsForCall(i int) (context.Context, string) {
+	fake.stopAndRemoveContainerMutex.RLock()
+	defer fake.stopAndRemoveContainerMutex.RUnlock()
+	argsForCall := fake.stopAndRemoveContainerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Executor) Invocations() map[string][][]interface{} {

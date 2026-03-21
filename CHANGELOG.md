@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.63.0
+
+- feat: detect prompt cancellation during execution via fsnotify and gracefully stop/remove the Docker container
+
 ## v0.62.0
 
 - feat: add `cancelled` prompt status and `dark-factory prompt cancel <id>` CLI command to cancel approved or executing prompts

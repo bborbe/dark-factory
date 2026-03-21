@@ -28,6 +28,7 @@ import (
 // Executor executes a prompt.
 type Executor interface {
 	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
+	StopAndRemoveContainer(ctx context.Context, containerName string)
 }
 
 // NewDockerExecutor creates a new Executor using Docker with the specified container image.
@@ -376,6 +377,16 @@ func resolveClaudeConfigDir(home string) string {
 	// Expand $HOME and other environment variables
 	dir = os.ExpandEnv(dir)
 	return dir
+}
+
+// StopAndRemoveContainer gracefully stops a container (SIGTERM + 10s timeout) then removes it.
+func (e *dockerExecutor) StopAndRemoveContainer(ctx context.Context, containerName string) {
+	// #nosec G204 -- containerName is generated internally
+	stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
+	if err := e.commandRunner.Run(ctx, stopCmd); err != nil {
+		slog.Debug("docker stop", "container", containerName, "error", err)
+	}
+	e.removeContainerIfExists(ctx, containerName)
 }
 
 // removeContainerIfExists removes a container by name if it exists, ignoring errors.

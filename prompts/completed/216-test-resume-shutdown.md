@@ -2,10 +2,10 @@
 status: completed
 container: dark-factory-216-test-resume-shutdown
 dark-factory-version: v0.67.2
-created: "2026-03-21T20:57:29Z"
-queued: "2026-03-21T20:57:00Z"
-started: "2026-03-21T20:57:29Z"
-completed: "2026-03-21T21:01:18Z"
+created: "2026-03-21T21:29:00Z"
+queued: "2026-03-21T21:29:00Z"
+started: "2026-03-21T21:29:02Z"
+completed: "2026-03-21T21:29:26Z"
 ---
 
 <summary>

@@ -386,6 +386,14 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
+			if ctx.Err() != nil {
+				slog.Info(
+					"daemon shutting down, prompt stays executing",
+					"file",
+					filepath.Base(pr.Path),
+				)
+				return errors.Wrap(ctx, err, "prompt failed")
+			}
 			p.handlePromptFailure(ctx, pr.Path, err)
 			return errors.Wrap(ctx, err, "prompt failed")
 		}
@@ -597,6 +605,10 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	if execErr != nil {
+		if ctx.Err() != nil {
+			slog.Info("daemon shutting down, leaving container running")
+			return errors.Wrap(ctx, execErr, "execute prompt")
+		}
 		slog.Info("docker container exited with error", "error", execErr)
 		return errors.Wrap(ctx, execErr, "execute prompt")
 	}

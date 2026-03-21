@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.2
+
+- test: Verify resume-on-restart by sleeping 300s and creating test-resume-marker.txt
+- fix: Skip `handlePromptFailure` on daemon shutdown so prompt stays in `executing` state for resume-on-restart
+
 ## v0.67.1
 
 - test: Verify dark-factory resume-on-restart by sleeping 120s and creating test-resume-marker.txt

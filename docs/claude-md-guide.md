@@ -275,7 +275,7 @@ If your CLAUDE.md says the struct is at line 37 but you refactored last week, th
 
 ### Manually editing frontmatter
 
-Never change `status: created` to `status: approved` by editing the file. The CLI does more than change the status — it moves files, assigns numbers, and normalizes filenames. Always use `dark-factory prompt approve` or `dark-factory spec approve`.
+Never change `status: draft` to `status: approved` by editing the file. The CLI does more than change the status — it moves files, assigns numbers, and normalizes filenames. Always use `dark-factory prompt approve` or `dark-factory spec approve`.
 
 ### Starting daemon wrong
 

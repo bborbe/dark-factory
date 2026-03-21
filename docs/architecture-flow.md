@@ -144,7 +144,7 @@ project/
 ├── docs/
 │   └── dod.md                  # Definition of Done (validationPrompt target)
 ├── prompts/
-│   ├── my-change.md            # Inbox (status: created)
+│   ├── my-change.md            # Inbox (status: draft)
 │   ├── in-progress/
 │   │   └── 001-my-change.md    # Queue (status: approved/executing)
 │   ├── completed/

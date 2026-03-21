@@ -29,7 +29,7 @@ Use lowercase-kebab-case. Never number filenames — dark-factory assigns number
 
 ```yaml
 ---
-status: created
+status: draft
 ---
 ```
 
@@ -38,14 +38,14 @@ When linking to a spec:
 ```yaml
 ---
 spec: ["030"]
-status: created
+status: draft
 created: "2026-03-11T10:00:00Z"
 ---
 ```
 
 - `spec` must be a YAML array: `spec: ["030"]` not `spec: "030"`
 - Only use `spec`, `status`, `created`, `issue` — dark-factory adds the rest
-- `status: created` is the only valid inbox status
+- Valid inbox statuses: `idea` (rough concept, needs refinement) or `draft` (complete, ready for approval)
 
 ### Body
 
@@ -188,8 +188,8 @@ This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a numbe
 | Status | Meaning | How it happens |
 |--------|---------|----------------|
 | `idea` | Rough concept, needs refinement | Human creates file |
-| `created` | In inbox, not yet queued | Human/AI creates file |
-| `queued` | Ready for execution | `dark-factory prompt approve` |
+| `draft` | Complete, ready for review and approval | Human/AI creates file |
+| `approved` | Queued for execution | `dark-factory prompt approve` |
 | `executing` | YOLO container running | Auto (dark-factory) |
 | `completed` | Done, archived | Auto (dark-factory) |
 | `failed` | Needs fix or retry | Auto (dark-factory) |

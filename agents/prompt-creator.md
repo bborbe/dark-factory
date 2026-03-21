@@ -56,7 +56,7 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 ```yaml
 ---
 spec: ["NNN"]
-status: created
+status: draft
 created: "<UTC timestamp ISO8601>"
 ---
 ```

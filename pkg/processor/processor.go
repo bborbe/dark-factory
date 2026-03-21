@@ -34,6 +34,11 @@ var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 type Processor interface {
 	Process(ctx context.Context) error
 	ProcessQueue(ctx context.Context) error
+	// ResumeExecuting resumes any prompts still in "executing" state on startup.
+	// Called once by the runner before the normal event loop begins.
+	// For each executing prompt, it reattaches to the running container and drives
+	// the prompt to completion through the normal post-execution flow.
+	ResumeExecuting(ctx context.Context) error
 }
 
 // NewProcessor creates a new Processor.
@@ -193,6 +198,134 @@ func (p *processor) ProcessQueue(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ResumeExecuting resumes any prompts still in "executing" state on startup.
+// Called once by the runner before the normal event loop begins.
+func (p *processor) ResumeExecuting(ctx context.Context) error {
+	entries, err := os.ReadDir(p.queueDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(ctx, err, "read queue dir for resume")
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		promptPath := filepath.Join(p.queueDir, entry.Name())
+		if err := p.resumePrompt(ctx, promptPath); err != nil {
+			return errors.Wrap(ctx, err, "resume prompt")
+		}
+	}
+	return nil
+}
+
+// resumePrompt resumes a single prompt that is in "executing" state.
+func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
+	pf, err := p.promptManager.Load(ctx, promptPath)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt for resume")
+	}
+	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
+		return nil // not executing — skip
+	}
+
+	containerName := pf.Frontmatter.Container
+	if containerName == "" {
+		// No container name in frontmatter — cannot resume; reset to approved
+		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
+			"file", filepath.Base(promptPath))
+		pf.MarkApproved()
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "save prompt after failed resume")
+		}
+		return nil
+	}
+
+	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
+	baseName = sanitizeContainerName(baseName)
+
+	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
+	if err != nil {
+		return errors.Wrap(ctx, err, "resolve log file path for resume")
+	}
+
+	title := pf.Title()
+	if title == "" {
+		title = baseName
+	}
+
+	// Reconstruct workflowState from frontmatter and filesystem
+	ws, ok, err := p.reconstructWorkflowState(ctx, baseName, pf)
+	if err != nil {
+		return errors.Wrap(ctx, err, "reconstruct workflow state")
+	}
+	if !ok {
+		// Clone missing for PR workflow — reset to approved
+		slog.Info("resetting prompt: clone directory missing for PR workflow",
+			"file", filepath.Base(promptPath))
+		pf.MarkApproved()
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "save prompt after clone missing")
+		}
+		return nil
+	}
+
+	slog.Info(
+		"resuming executing prompt",
+		"file",
+		filepath.Base(promptPath),
+		"container",
+		containerName,
+	)
+
+	if err := p.executor.Reattach(ctx, logFile, containerName); err != nil {
+		return errors.Wrap(ctx, err, "reattach to container")
+	}
+
+	slog.Info("reattached container exited", "file", filepath.Base(promptPath))
+
+	// Reload prompt file (state may have changed)
+	pf, err = p.promptManager.Load(ctx, promptPath)
+	if err != nil {
+		return errors.Wrap(ctx, err, "reload prompt after reattach")
+	}
+
+	return p.handlePostExecution(ctx, pf, promptPath, title, logFile, ws)
+}
+
+// reconstructWorkflowState reconstructs the workflowState for a prompt being resumed.
+// Returns (state, true, nil) on success, (nil, false, nil) when the clone is missing (signals reset-to-approved).
+func (p *processor) reconstructWorkflowState(
+	ctx context.Context,
+	baseName string,
+	pf *prompt.PromptFile,
+) (*workflowState, bool, error) {
+	if !p.worktree {
+		// Direct or in-place workflow: no clone needed
+		return &workflowState{}, true, nil
+	}
+	// PR/clone workflow: check clone directory exists
+	clonePath := filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
+	if _, err := os.Stat(clonePath); err != nil {
+		// Clone missing — signal reset-to-approved
+		return nil, false, nil
+	}
+	branchName := pf.Branch()
+	if branchName == "" {
+		branchName = "dark-factory/" + baseName
+	}
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return nil, false, errors.Wrap(ctx, err, "get working directory for resume")
+	}
+	return &workflowState{
+		clonePath:   clonePath,
+		branchName:  branchName,
+		originalDir: originalDir,
+	}, true, nil
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.

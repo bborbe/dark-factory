@@ -28,6 +28,11 @@ import (
 // Executor executes a prompt.
 type Executor interface {
 	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
+	// Reattach connects to a running container's output stream and waits for it to exit.
+	// It does not create a new container. The log file is overwritten from the beginning
+	// of the container's output (docker logs replays all output from container start).
+	// Returns nil when the container exits successfully.
+	Reattach(ctx context.Context, logFile string, containerName string) error
 	StopAndRemoveContainer(ctx context.Context, containerName string)
 }
 
@@ -153,6 +158,37 @@ func (e *dockerExecutor) Execute(
 		return errors.Wrap(ctx, err, "docker run failed")
 	}
 
+	return nil
+}
+
+// Reattach connects to a running container's output stream and waits for it to exit.
+// It does not create a new container. The log file is overwritten from the beginning
+// of the container's output (docker logs replays all output from container start).
+func (e *dockerExecutor) Reattach(ctx context.Context, logFile string, containerName string) error {
+	logFileHandle, err := prepareLogFile(ctx, logFile)
+	if err != nil {
+		return errors.Wrap(ctx, err, "prepare log file for reattach")
+	}
+	defer logFileHandle.Close()
+
+	// docker logs --follow replays all output from container start and blocks until exit
+	// #nosec G204 -- containerName is generated internally from prompt filename
+	cmd := exec.CommandContext(ctx, "docker", "logs", "--follow", containerName)
+	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
+	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
+
+	slog.Info("reattaching to running container", "containerName", containerName)
+
+	if err := run.CancelOnFirstFinish(ctx,
+		func(ctx context.Context) error {
+			return e.commandRunner.Run(ctx, cmd)
+		},
+		func(ctx context.Context) error {
+			return watchForCompletionReport(ctx, logFile, containerName, 2*time.Minute, 10*time.Second, e.commandRunner)
+		},
+	); err != nil {
+		return errors.Wrap(ctx, err, "reattach failed")
+	}
 	return nil
 }
 

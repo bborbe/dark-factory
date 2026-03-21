@@ -731,6 +731,81 @@ This has frontmatter.`
 		})
 	})
 
+	Describe("Reattach", func() {
+		var (
+			execImpl   *dockerExecutor
+			fakeRunner *fakeCommandRunner
+			logFile    string
+			logDir     string
+		)
+
+		BeforeEach(func() {
+			fakeRunner = &fakeCommandRunner{}
+			execImpl = &dockerExecutor{
+				containerImage: config.Defaults().ContainerImage,
+				projectName:    "test-project",
+				commandRunner:  fakeRunner,
+			}
+
+			logDir = filepath.Join(tempDir, "logs")
+			logFile = filepath.Join(logDir, "reattach-test.log")
+		})
+
+		Context("when container exits normally", func() {
+			It("returns nil and creates log file", func() {
+				err := execImpl.Reattach(ctx, logFile, "test-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
+
+				_, err = os.Stat(logFile)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("uses docker logs --follow command", func() {
+				err := execImpl.Reattach(ctx, logFile, "my-container")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.Commands()).To(HaveLen(1))
+				Expect(
+					fakeRunner.Commands()[0].Args,
+				).To(ContainElements("docker", "logs", "--follow", "my-container"))
+			})
+		})
+
+		Context("when context is cancelled", func() {
+			It("passes context to command runner", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				fakeRunner.err = context.Canceled
+				_ = execImpl.Reattach(cancelCtx, logFile, "test-container")
+				Expect(fakeRunner.RunCalled()).To(BeTrue())
+			})
+		})
+
+		Context("when docker logs command fails", func() {
+			BeforeEach(func() {
+				fakeRunner.err = errors.New(ctx, "container not found")
+			})
+
+			It("returns an error wrapping reattach failed", func() {
+				err := execImpl.Reattach(ctx, logFile, "nonexistent-container")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("reattach failed"))
+			})
+		})
+
+		Context("when log dir creation fails", func() {
+			It("returns error without calling docker", func() {
+				invalidLogFile := "/invalid/path/that/does/not/exist/test.log"
+
+				err := execImpl.Reattach(ctx, invalidLogFile, "test-container")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("prepare log file for reattach"))
+				Expect(fakeRunner.RunCalled()).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("validateClaudeAuth", func() {
 		BeforeEach(func() {
 			// Ensure ANTHROPIC_API_KEY is unset so auth check runs

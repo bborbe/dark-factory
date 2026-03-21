@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.66.0
+
+- feat: Add `Reattach` to Executor and `ResumeExecuting` to Processor so executing prompts with still-running containers are reconnected to on daemon restart instead of being reset
+
 ## v0.65.0
 
 - feat: selective container liveness check on startup — executing prompts with a still-running container are left in executing state for re-attach; prompts without a container are reset to approved and fire `stuck_container` notification

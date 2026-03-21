@@ -23,6 +23,19 @@ type Executor struct {
 	executeReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ReattachStub        func(context.Context, string, string) error
+	reattachMutex       sync.RWMutex
+	reattachArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}
+	reattachReturns struct {
+		result1 error
+	}
+	reattachReturnsOnCall map[int]struct {
+		result1 error
+	}
 	StopAndRemoveContainerStub        func(context.Context, string)
 	stopAndRemoveContainerMutex       sync.RWMutex
 	stopAndRemoveContainerArgsForCall []struct {
@@ -93,6 +106,69 @@ func (fake *Executor) ExecuteReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.executeReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Executor) Reattach(arg1 context.Context, arg2 string, arg3 string) error {
+	fake.reattachMutex.Lock()
+	ret, specificReturn := fake.reattachReturnsOnCall[len(fake.reattachArgsForCall)]
+	fake.reattachArgsForCall = append(fake.reattachArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.ReattachStub
+	fakeReturns := fake.reattachReturns
+	fake.recordInvocation("Reattach", []interface{}{arg1, arg2, arg3})
+	fake.reattachMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Executor) ReattachCallCount() int {
+	fake.reattachMutex.RLock()
+	defer fake.reattachMutex.RUnlock()
+	return len(fake.reattachArgsForCall)
+}
+
+func (fake *Executor) ReattachCalls(stub func(context.Context, string, string) error) {
+	fake.reattachMutex.Lock()
+	defer fake.reattachMutex.Unlock()
+	fake.ReattachStub = stub
+}
+
+func (fake *Executor) ReattachArgsForCall(i int) (context.Context, string, string) {
+	fake.reattachMutex.RLock()
+	defer fake.reattachMutex.RUnlock()
+	argsForCall := fake.reattachArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Executor) ReattachReturns(result1 error) {
+	fake.reattachMutex.Lock()
+	defer fake.reattachMutex.Unlock()
+	fake.ReattachStub = nil
+	fake.reattachReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Executor) ReattachReturnsOnCall(i int, result1 error) {
+	fake.reattachMutex.Lock()
+	defer fake.reattachMutex.Unlock()
+	fake.ReattachStub = nil
+	if fake.reattachReturnsOnCall == nil {
+		fake.reattachReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.reattachReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

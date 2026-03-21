@@ -133,6 +133,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
+	// Resume any prompts still in executing state (container was still running on restart)
+	if err := r.processor.ResumeExecuting(ctx); err != nil {
+		return errors.Wrap(ctx, err, "resume executing prompts")
+	}
+
 	// Normalize filenames before processing
 	if err := r.normalizeFilenames(ctx); err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")

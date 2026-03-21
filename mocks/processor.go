@@ -31,6 +31,17 @@ type Processor struct {
 	processQueueReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ResumeExecutingStub        func(context.Context) error
+	resumeExecutingMutex       sync.RWMutex
+	resumeExecutingArgsForCall []struct {
+		arg1 context.Context
+	}
+	resumeExecutingReturns struct {
+		result1 error
+	}
+	resumeExecutingReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -153,6 +164,67 @@ func (fake *Processor) ProcessQueueReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.processQueueReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Processor) ResumeExecuting(arg1 context.Context) error {
+	fake.resumeExecutingMutex.Lock()
+	ret, specificReturn := fake.resumeExecutingReturnsOnCall[len(fake.resumeExecutingArgsForCall)]
+	fake.resumeExecutingArgsForCall = append(fake.resumeExecutingArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.ResumeExecutingStub
+	fakeReturns := fake.resumeExecutingReturns
+	fake.recordInvocation("ResumeExecuting", []interface{}{arg1})
+	fake.resumeExecutingMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Processor) ResumeExecutingCallCount() int {
+	fake.resumeExecutingMutex.RLock()
+	defer fake.resumeExecutingMutex.RUnlock()
+	return len(fake.resumeExecutingArgsForCall)
+}
+
+func (fake *Processor) ResumeExecutingCalls(stub func(context.Context) error) {
+	fake.resumeExecutingMutex.Lock()
+	defer fake.resumeExecutingMutex.Unlock()
+	fake.ResumeExecutingStub = stub
+}
+
+func (fake *Processor) ResumeExecutingArgsForCall(i int) context.Context {
+	fake.resumeExecutingMutex.RLock()
+	defer fake.resumeExecutingMutex.RUnlock()
+	argsForCall := fake.resumeExecutingArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Processor) ResumeExecutingReturns(result1 error) {
+	fake.resumeExecutingMutex.Lock()
+	defer fake.resumeExecutingMutex.Unlock()
+	fake.ResumeExecutingStub = nil
+	fake.resumeExecutingReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Processor) ResumeExecutingReturnsOnCall(i int, result1 error) {
+	fake.resumeExecutingMutex.Lock()
+	defer fake.resumeExecutingMutex.Unlock()
+	fake.ResumeExecutingStub = nil
+	if fake.resumeExecutingReturnsOnCall == nil {
+		fake.resumeExecutingReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.resumeExecutingReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

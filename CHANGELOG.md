@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.63.2
+
+- Update bborbe/* dependencies (collection, errors, http, run, time, validation)
+- Update golang.org/x/* packages (crypto, mod, net, sys, term, text, tools)
+- Update osv-scanner, gosec, go-modtool, and other tooling deps
+- Remove replace/exclude blocks and clean up go.mod
+
 ## v0.63.1
 
 - docs: add `prompt cancel` and `prompt requeue` to README command table; remove renamed `prompt retry` row

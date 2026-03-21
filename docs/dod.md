@@ -13,6 +13,11 @@ After completing your implementation, review your own changes against each crite
 - New code has good test coverage (target >= 80%)
 - Changes to existing code have tests covering at least the changed behavior
 
+## Install
+
+- `go install github.com/bborbe/dark-factory@latest` works
+- No `exclude` or `replace` directives in go.mod (break remote install)
+
 ## Documentation
 
 - README.md is updated if the change affects usage, configuration, or setup

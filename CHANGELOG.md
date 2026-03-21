@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.1
+
+- test: Verify dark-factory resume-on-restart by sleeping 120s and creating test-resume-marker.txt
+
 ## v0.67.0
 
 - feat: Extend re-attach mechanism to spec generation containers — SpecGenerator checks if a generation container is already running on restart and reattaches to it instead of launching a new one

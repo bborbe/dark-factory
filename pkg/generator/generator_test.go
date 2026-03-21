@@ -21,19 +21,22 @@ import (
 
 var _ = Describe("SpecGenerator", func() {
 	var (
-		ctx          context.Context
-		executor     *mocks.Executor
-		inboxDir     string
-		completedDir string
-		specsDir     string
-		logDir       string
-		sg           generator.SpecGenerator
-		specPath     string
+		ctx              context.Context
+		executor         *mocks.Executor
+		containerChecker *mocks.ContainerChecker
+		inboxDir         string
+		completedDir     string
+		specsDir         string
+		logDir           string
+		sg               generator.SpecGenerator
+		specPath         string
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		executor = &mocks.Executor{}
+		containerChecker = &mocks.ContainerChecker{}
+		containerChecker.IsRunningReturns(false, nil)
 
 		var err error
 		inboxDir, err = os.MkdirTemp("", "generator-inbox-*")
@@ -50,6 +53,7 @@ var _ = Describe("SpecGenerator", func() {
 
 		sg = generator.NewSpecGenerator(
 			executor,
+			containerChecker,
 			inboxDir,
 			completedDir,
 			specsDir,
@@ -314,5 +318,178 @@ var _ = Describe("SpecGenerator", func() {
 				Expect(string(data)).NotTo(ContainSubstring("issue:"))
 			})
 		})
+
+		Context(
+			"container is running: Reattach called, prompts found in inbox, spec set to prompted",
+			func() {
+				BeforeEach(func() {
+					containerChecker.IsRunningReturns(true, nil)
+
+					// Reattach creates a prompt file in inbox
+					executor.ReattachStub = func(ctx context.Context, logFile, containerName string) error {
+						return os.WriteFile(
+							filepath.Join(inboxDir, "112-reattached-prompt.md"),
+							[]byte(
+								"---\nstatus: draft\nspec: \"020-auto-prompt-generation\"\n---\n# Reattached",
+							),
+							0600,
+						)
+					}
+				})
+
+				It("calls Reattach and not Execute", func() {
+					Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+					Expect(executor.ReattachCallCount()).To(Equal(1))
+					Expect(executor.ExecuteCallCount()).To(Equal(0))
+				})
+
+				It("sets spec status to prompted", func() {
+					Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+					sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+				})
+			},
+		)
+
+		Context(
+			"container is running: Reattach called, no prompts found in inbox, returns nil",
+			func() {
+				BeforeEach(func() {
+					containerChecker.IsRunningReturns(true, nil)
+					executor.ReattachReturns(nil)
+					// No prompt files written to inbox
+				})
+
+				It("returns nil without error", func() {
+					Expect(sg.Generate(ctx, specPath)).To(Succeed())
+				})
+
+				It("does not change the spec status", func() {
+					Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+					sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sf.Frontmatter.Status).To(Equal("approved"))
+				})
+			},
+		)
+
+		Context("container check returns error: falls back to fresh Execute", func() {
+			BeforeEach(func() {
+				containerChecker.IsRunningReturns(false, errors.New("docker inspect failed"))
+
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "113-fallback-prompt.md"),
+						[]byte("# Fallback"),
+						0600,
+					)
+				}
+			})
+
+			It("calls Execute and not Reattach", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				Expect(executor.ExecuteCallCount()).To(Equal(1))
+				Expect(executor.ReattachCallCount()).To(Equal(0))
+			})
+
+			It("sets spec status to prompted", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+			})
+		})
+
+		Context("container is running: Reattach called, inbox dir does not exist", func() {
+			BeforeEach(func() {
+				containerChecker.IsRunningReturns(true, nil)
+				executor.ReattachReturns(nil)
+				// Remove inbox dir so non-existent path is hit in listPromptsForSpec
+				Expect(os.RemoveAll(inboxDir)).To(Succeed())
+			})
+
+			It("returns nil without error", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+			})
+		})
+
+		Context("container is running: Reattach returns error", func() {
+			BeforeEach(func() {
+				containerChecker.IsRunningReturns(true, nil)
+				executor.ReattachReturns(errors.New("reattach failed"))
+			})
+
+			It("returns the reattach error", func() {
+				err := sg.Generate(ctx, specPath)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("reattach to spec generation container"))
+			})
+		})
+
+		Context("container is running: inbox has unrelated prompt (spec mismatch)", func() {
+			BeforeEach(func() {
+				containerChecker.IsRunningReturns(true, nil)
+				executor.ReattachReturns(nil)
+				// Write a prompt linked to a different spec
+				Expect(os.WriteFile(
+					filepath.Join(inboxDir, "114-other-spec.md"),
+					[]byte("---\nstatus: draft\nspec: \"999-other-spec\"\n---\n# Other"),
+					0600,
+				)).To(Succeed())
+			})
+
+			It("returns nil when no prompts match the spec", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+			})
+
+			It("does not change spec status", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sf.Frontmatter.Status).To(Equal("approved"))
+			})
+		})
+
+		Context(
+			"container is running: inbox has spec with branch and issue, prompts inherit",
+			func() {
+				BeforeEach(func() {
+					// Rewrite spec with branch and issue
+					content := "---\nstatus: approved\nbranch: dark-factory/spec-020\nissue: BRO-999\n---\n# Spec\n"
+					Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
+
+					containerChecker.IsRunningReturns(true, nil)
+					executor.ReattachStub = func(ctx context.Context, logFile, containerName string) error {
+						return os.WriteFile(
+							filepath.Join(inboxDir, "115-reattach-inherit.md"),
+							[]byte(
+								"---\nstatus: draft\nspec: \"020-auto-prompt-generation\"\n---\n# Inherit",
+							),
+							0600,
+						)
+					}
+				})
+
+				It("inherits branch and issue into prompt and sets spec to prompted", func() {
+					Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+					data, err := os.ReadFile(filepath.Join(inboxDir, "115-reattach-inherit.md"))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(data)).To(ContainSubstring("branch: dark-factory/spec-020"))
+					Expect(string(data)).To(ContainSubstring("issue: BRO-999"))
+
+					sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+				})
+			},
+		)
 	})
 })

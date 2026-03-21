@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.0
+
+- feat: Extend re-attach mechanism to spec generation containers — SpecGenerator checks if a generation container is already running on restart and reattaches to it instead of launching a new one
+
 ## v0.66.0
 
 - feat: Add `Reattach` to Executor and `ResumeExecuting` to Processor so executing prompts with still-running containers are reconnected to on daemon restart instead of being reset

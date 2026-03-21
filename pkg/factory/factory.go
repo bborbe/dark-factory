@@ -323,6 +323,7 @@ func CreateSpecGenerator(
 			cfg.GitconfigFile,
 			cfg.Env,
 		),
+		executor.NewDockerContainerChecker(),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,

@@ -27,8 +27,10 @@ type SpecGenerator interface {
 }
 
 // NewSpecGenerator creates a new SpecGenerator that runs the /generate-prompts-for-spec command.
+// containerChecker is used to detect whether a generation container is already running on restart.
 func NewSpecGenerator(
 	executor executor.Executor,
+	containerChecker executor.ContainerChecker,
 	inboxDir string,
 	completedDir string,
 	specsDir string,
@@ -37,6 +39,7 @@ func NewSpecGenerator(
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:              executor,
+		containerChecker:      containerChecker,
 		inboxDir:              inboxDir,
 		completedDir:          completedDir,
 		specsDir:              specsDir,
@@ -48,6 +51,7 @@ func NewSpecGenerator(
 // dockerSpecGenerator implements SpecGenerator using the Docker executor.
 type dockerSpecGenerator struct {
 	executor              executor.Executor
+	containerChecker      executor.ContainerChecker
 	inboxDir              string
 	completedDir          string
 	specsDir              string
@@ -67,6 +71,17 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	// c. Derive log file path
 	logFile := filepath.Join(g.logDir, "gen-"+specBasename+".log")
+
+	// Check if the generation container is already running (dark-factory restarted mid-generation)
+	running, err := g.containerChecker.IsRunning(ctx, containerName)
+	if err != nil {
+		slog.Warn("failed to check container liveness, starting fresh generation",
+			"container", containerName, "error", err)
+		running = false
+	}
+	if running {
+		return g.reattachAndFinalize(ctx, specPath, specBasename, containerName, logFile)
+	}
 
 	// e. Snapshot .md files in inboxDir before execution
 	beforeFiles, err := listMDFiles(g.inboxDir)
@@ -203,6 +218,87 @@ func listMDFiles(dir string) (map[string]struct{}, error) {
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
 			files[filepath.Join(dir, entry.Name())] = struct{}{}
+		}
+	}
+	return files, nil
+}
+
+// reattachAndFinalize connects to a running spec generation container, waits for it to finish,
+// then scans the inbox for new prompt files and transitions the spec to prompted status.
+func (g *dockerSpecGenerator) reattachAndFinalize(
+	ctx context.Context,
+	specPath string,
+	specBasename string,
+	containerName string,
+	logFile string,
+) error {
+	slog.Info("reattaching to running spec generation container", "container", containerName)
+	if err := g.executor.Reattach(ctx, logFile, containerName); err != nil {
+		return errors.Wrap(ctx, err, "reattach to spec generation container")
+	}
+	slog.Info("spec generation container exited via reattach", "container", containerName)
+
+	newFiles, err := g.listPromptsForSpec(ctx, g.inboxDir, specBasename)
+	if err != nil {
+		return errors.Wrap(ctx, err, "list prompts for spec after reattach")
+	}
+	if len(newFiles) == 0 {
+		slog.Info("no prompt files found in inbox for spec after reattach", "spec", specBasename)
+		return nil
+	}
+
+	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load spec file after reattach")
+	}
+	specBranch := sf.Frontmatter.Branch
+	specIssue := sf.Frontmatter.Issue
+	if specBranch != "" || specIssue != "" {
+		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.currentDateTimeGetter); err != nil {
+			return errors.Wrap(ctx, err, "inherit spec metadata to prompts after reattach")
+		}
+	}
+	sf.SetStatus(string(spec.StatusPrompted))
+	if err := sf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "save spec file after reattach")
+	}
+	return nil
+}
+
+// listPromptsForSpec scans dir for .md files whose spec frontmatter matches specID.
+// Files whose frontmatter cannot be parsed are skipped silently.
+// Returns an empty slice (not an error) when the directory does not exist.
+func (g *dockerSpecGenerator) listPromptsForSpec(
+	ctx context.Context,
+	dir string,
+	specID string,
+) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var files []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		pf, err := prompt.Load(ctx, path, g.currentDateTimeGetter)
+		if err != nil {
+			slog.Debug(
+				"listPromptsForSpec: skipping unparseable file",
+				"file",
+				entry.Name(),
+				"error",
+				err,
+			)
+			continue
+		}
+		if pf.Frontmatter.HasSpec(specID) {
+			files = append(files, path)
 		}
 	}
 	return files, nil

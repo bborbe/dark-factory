@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## v0.67.3
 
-- test: Create test-resume-marker.txt after 300s sleep to verify resume-on-restart behavior
+- fix: Daemon shutdown leaves prompt in executing state so resume-on-restart can reattach
+- fix: Check ctx.Err() on both error and success paths after Execute to prevent post-execution on shutdown
+- refactor: Extract enrichPromptContent to fix funlen lint
 
 ## v0.67.2
 

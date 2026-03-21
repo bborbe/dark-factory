@@ -557,20 +557,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if err != nil {
 		return err
 	}
-	// Append completion report suffix to make output machine-parseable
-	content = content + report.Suffix()
-	// Append changelog instructions when the project has a CHANGELOG.md
-	if p.releaser.HasChangelog(ctx) {
-		content = content + report.ChangelogSuffix()
-	}
-	// Inject project-level validation command (overrides prompt-level <verification>)
-	if p.validationCommand != "" {
-		content = content + report.ValidationSuffix(p.validationCommand)
-	}
-	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
-	if criteria, ok := resolveValidationPrompt(ctx, p.validationPrompt); ok {
-		content = content + report.ValidationPromptSuffix(criteria)
-	}
+	content = p.enrichPromptContent(ctx, content)
 
 	slog.Info("executing prompt", "title", title)
 
@@ -613,9 +600,33 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, execErr, "execute prompt")
 	}
 
+	if ctx.Err() != nil {
+		slog.Info("daemon shutting down, leaving container running")
+		return errors.Wrap(ctx, ctx.Err(), "daemon shutdown during execution")
+	}
+
 	slog.Info("docker container exited", "exitCode", 0)
 
 	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
+}
+
+// enrichPromptContent appends machine-parseable suffixes and project-level validation to prompt content.
+func (p *processor) enrichPromptContent(ctx context.Context, content string) string {
+	// Append completion report suffix to make output machine-parseable
+	content = content + report.Suffix()
+	// Append changelog instructions when the project has a CHANGELOG.md
+	if p.releaser.HasChangelog(ctx) {
+		content = content + report.ChangelogSuffix()
+	}
+	// Inject project-level validation command (overrides prompt-level <verification>)
+	if p.validationCommand != "" {
+		content = content + report.ValidationSuffix(p.validationCommand)
+	}
+	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
+	if criteria, ok := resolveValidationPrompt(ctx, p.validationPrompt); ok {
+		content = content + report.ValidationPromptSuffix(criteria)
+	}
+	return content
 }
 
 // watchForCancellation watches the prompt file for changes using fsnotify.

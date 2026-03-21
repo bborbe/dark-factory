@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: ["034"]
+container: dark-factory-213-spec-034-reattach-resume-processor
+dark-factory-version: v0.63.0
 created: "2026-03-21T18:00:00Z"
 queued: "2026-03-21T19:11:50Z"
+started: "2026-03-21T19:36:12Z"
+completed: "2026-03-21T19:59:23Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 

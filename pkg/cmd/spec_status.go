@@ -69,8 +69,9 @@ func (s *specStatusCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	fmt.Printf(
-		"Specs: %d total (%d draft, %d approved, %d prompted, %d verifying, %d completed) | Linked prompts: %d/%d\n",
+		"Specs: %d total (%d idea, %d draft, %d approved, %d prompted, %d verifying, %d completed) | Linked prompts: %d/%d\n",
 		summary.Total,
+		summary.Idea,
 		summary.Draft,
 		summary.Approved,
 		summary.Prompted,

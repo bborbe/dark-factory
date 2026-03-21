@@ -187,6 +187,7 @@ This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a numbe
 
 | Status | Meaning | How it happens |
 |--------|---------|----------------|
+| `idea` | Rough concept, needs refinement | Human creates file |
 | `created` | In inbox, not yet queued | Human/AI creates file |
 | `queued` | Ready for execution | `dark-factory prompt approve` |
 | `executing` | YOLO container running | Auto (dark-factory) |

@@ -29,15 +29,17 @@ import (
 type Status string
 
 const (
-	// StatusDraft indicates the spec has been written but not yet reviewed.
+	// StatusIdea indicates a rough concept that needs refinement before it can be reviewed.
+	StatusIdea Status = "idea"
+	// StatusDraft indicates the spec is complete and ready for human review and approval.
 	StatusDraft Status = "draft"
-	// StatusApproved indicates the spec has been reviewed and approved.
+	// StatusApproved indicates the spec has been reviewed and approved for prompt generation.
 	StatusApproved Status = "approved"
 	// StatusPrompted indicates prompts have been generated from the spec.
 	StatusPrompted Status = "prompted"
-	// StatusVerifying indicates all prompts completed, awaiting human verification.
+	// StatusVerifying indicates all linked prompts completed, awaiting human verification of acceptance criteria.
 	StatusVerifying Status = "verifying"
-	// StatusCompleted indicates human verified all acceptance criteria.
+	// StatusCompleted indicates human verified all acceptance criteria are met.
 	StatusCompleted Status = "completed"
 )
 

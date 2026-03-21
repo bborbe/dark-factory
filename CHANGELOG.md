@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.61.0
+
+- feat: add `idea` status to both prompt and spec lifecycles, representing rough concepts needing refinement before draft
+
 ## v0.60.1
 
 - upgrade golangci-lint from v1 to v2

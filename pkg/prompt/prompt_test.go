@@ -45,6 +45,11 @@ var _ = Describe("Prompt", func() {
 
 	Describe("Status.Validate", func() {
 		Context("with valid statuses", func() {
+			It("accepts idea", func() {
+				err := prompt.IdeaPromptStatus.Validate(ctx)
+				Expect(err).To(BeNil())
+			})
+
 			It("accepts queued", func() {
 				err := prompt.ApprovedPromptStatus.Validate(ctx)
 				Expect(err).To(BeNil())

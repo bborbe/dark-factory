@@ -52,17 +52,27 @@ func StripNumberPrefix(filename string) string {
 type PromptStatus string
 
 const (
-	DraftPromptStatus               PromptStatus = "draft"
-	ApprovedPromptStatus            PromptStatus = "approved"
-	ExecutingPromptStatus           PromptStatus = "executing"
-	CompletedPromptStatus           PromptStatus = "completed"
-	FailedPromptStatus              PromptStatus = "failed"
-	InReviewPromptStatus            PromptStatus = "in_review"
+	// IdeaPromptStatus indicates a rough concept that needs refinement before it can be reviewed.
+	IdeaPromptStatus PromptStatus = "idea"
+	// DraftPromptStatus indicates the prompt is complete and ready for human review and approval.
+	DraftPromptStatus PromptStatus = "draft"
+	// ApprovedPromptStatus indicates the prompt has been approved and queued for execution.
+	ApprovedPromptStatus PromptStatus = "approved"
+	// ExecutingPromptStatus indicates the prompt is currently being executed in a YOLO container.
+	ExecutingPromptStatus PromptStatus = "executing"
+	// CompletedPromptStatus indicates the prompt has been executed successfully.
+	CompletedPromptStatus PromptStatus = "completed"
+	// FailedPromptStatus indicates the prompt execution failed and needs fix or retry.
+	FailedPromptStatus PromptStatus = "failed"
+	// InReviewPromptStatus indicates the prompt's PR is under review.
+	InReviewPromptStatus PromptStatus = "in_review"
+	// PendingVerificationPromptStatus indicates the prompt is awaiting verification after review.
 	PendingVerificationPromptStatus PromptStatus = "pending_verification"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
 var AvailablePromptStatuses = PromptStatuses{
+	IdeaPromptStatus,
 	DraftPromptStatus,
 	ApprovedPromptStatus,
 	ExecutingPromptStatus,

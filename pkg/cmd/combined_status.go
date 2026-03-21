@@ -105,8 +105,9 @@ func (c *combinedStatusCommand) outputHuman(st *status.Status, summary *spec.Sum
 	fmt.Print(c.formatter.Format(st))
 	fmt.Println()
 	fmt.Printf(
-		"Specs: %d total (%d draft, %d approved, %d prompted, %d completed) | Linked prompts: %d/%d\n",
+		"Specs: %d total (%d idea, %d draft, %d approved, %d prompted, %d completed) | Linked prompts: %d/%d\n",
 		summary.Total,
+		summary.Idea,
 		summary.Draft,
 		summary.Approved,
 		summary.Prompted,

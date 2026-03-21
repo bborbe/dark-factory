@@ -16,6 +16,7 @@ import (
 
 // Summary holds counts of specs grouped by status.
 type Summary struct {
+	Idea                   int
 	Draft                  int
 	Approved               int
 	Prompted               int
@@ -81,6 +82,8 @@ func (l *lister) Summary(ctx context.Context) (*Summary, error) {
 	s := &Summary{Total: len(specs)}
 	for _, sf := range specs {
 		switch Status(sf.Frontmatter.Status) {
+		case StatusIdea:
+			s.Idea++
 		case StatusDraft:
 			s.Draft++
 		case StatusApproved:

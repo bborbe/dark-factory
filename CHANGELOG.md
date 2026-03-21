@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.3
+
+- test: Create test-resume-marker.txt after 300s sleep to verify resume-on-restart behavior
+
 ## v0.67.2
 
 - test: Verify resume-on-restart by sleeping 300s and creating test-resume-marker.txt

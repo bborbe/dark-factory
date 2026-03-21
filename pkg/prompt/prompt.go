@@ -68,6 +68,8 @@ const (
 	InReviewPromptStatus PromptStatus = "in_review"
 	// PendingVerificationPromptStatus indicates the prompt is awaiting verification after review.
 	PendingVerificationPromptStatus PromptStatus = "pending_verification"
+	// CancelledPromptStatus indicates the prompt was cancelled before or during execution.
+	CancelledPromptStatus PromptStatus = "cancelled"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
@@ -80,6 +82,7 @@ var AvailablePromptStatuses = PromptStatuses{
 	FailedPromptStatus,
 	InReviewPromptStatus,
 	PendingVerificationPromptStatus,
+	CancelledPromptStatus,
 }
 
 // PromptStatuses is a slice of PromptStatus values.
@@ -361,6 +364,11 @@ func (pf *PromptFile) MarkFailed() {
 // MarkPendingVerification sets status to pending_verification.
 func (pf *PromptFile) MarkPendingVerification() {
 	pf.Frontmatter.Status = string(PendingVerificationPromptStatus)
+}
+
+// MarkCancelled sets status to cancelled.
+func (pf *PromptFile) MarkCancelled() {
+	pf.Frontmatter.Status = string(CancelledPromptStatus)
 }
 
 // MarkApproved sets status to approved and ensures created/queued timestamps exist.

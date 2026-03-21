@@ -567,6 +567,11 @@ func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
 	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
 }
 
+// CreateCancelCommand creates a CancelCommand.
+func CreateCancelCommand(cfg config.Config) cmd.CancelCommand {
+	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
+}
+
 // CreatePromptVerifyCommand creates a PromptVerifyCommand.
 func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()

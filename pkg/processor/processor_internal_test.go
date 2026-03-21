@@ -8,11 +8,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("DetermineBumpFromChangelog", func() {
@@ -229,5 +231,39 @@ var _ = Describe("sanitizeContainerName", func() {
 	It("handles multiple consecutive special characters", func() {
 		name := sanitizeContainerName("test@@##name")
 		Expect(name).To(Equal("test----name"))
+	})
+})
+
+var _ = Describe("autoSetQueuedStatus", func() {
+	var (
+		ctx context.Context
+		p   *processor
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		p = &processor{
+			skippedPrompts: make(map[string]time.Time),
+		}
+	})
+
+	It("does not change status for cancelled prompt (no auto-promote)", func() {
+		pr := &prompt.Prompt{
+			Path:   "/queue/080-some-prompt.md",
+			Status: prompt.CancelledPromptStatus,
+		}
+		err := p.autoSetQueuedStatus(ctx, pr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pr.Status).To(Equal(prompt.CancelledPromptStatus))
+	})
+
+	It("does not change status for approved prompt", func() {
+		pr := &prompt.Prompt{
+			Path:   "/queue/080-some-prompt.md",
+			Status: prompt.ApprovedPromptStatus,
+		}
+		err := p.autoSetQueuedStatus(ctx, pr)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(pr.Status).To(Equal(prompt.ApprovedPromptStatus))
 	})
 })

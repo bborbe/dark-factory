@@ -305,7 +305,8 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 		prompt.ExecutingPromptStatus,
 		prompt.CompletedPromptStatus,
 		prompt.FailedPromptStatus,
-		prompt.PendingVerificationPromptStatus:
+		prompt.PendingVerificationPromptStatus,
+		prompt.CancelledPromptStatus:
 		// Already in a valid processing state — don't override
 		return nil
 	}

@@ -25,7 +25,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 			}
 
 			output := formatter.Format(st)
@@ -47,7 +46,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:       2,
 				QueuedPrompts:    []string{"002-next.md", "003-after.md"},
 				CompletedCount:   5,
-				IdeasCount:       3,
 				LastLogFile:      "prompts/log/001-test.log",
 				LastLogSize:      1234,
 			}
@@ -60,7 +58,6 @@ var _ = Describe("Formatter", func() {
 			Expect(output).To(ContainSubstring("002-next.md"))
 			Expect(output).To(ContainSubstring("003-after.md"))
 			Expect(output).To(ContainSubstring("Completed:  5 prompts"))
-			Expect(output).To(ContainSubstring("Ideas:      3 prompts"))
 			Expect(output).To(ContainSubstring("Last log:   prompts/log/001-test.log"))
 		})
 
@@ -73,7 +70,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:       0,
 				QueuedPrompts:    []string{},
 				CompletedCount:   0,
-				IdeasCount:       0,
 			}
 
 			output := formatter.Format(st)
@@ -86,7 +82,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 				LastLogFile:    "test.log",
 				LastLogSize:    1536,
 			}
@@ -101,7 +96,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 				LastLogFile:    "test.log",
 				LastLogSize:    512,
 			}
@@ -116,7 +110,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 				LastLogFile:    "test.log",
 				LastLogSize:    2 * 1024 * 1024,
 			}
@@ -131,39 +124,12 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 				LastLogFile:    "test.log",
 				LastLogSize:    3 * 1024 * 1024 * 1024,
 			}
 
 			output := formatter.Format(st)
 			Expect(output).To(ContainSubstring("(3.0 GB)"))
-		})
-
-		It("does not show Ideas line when count is 0", func() {
-			st := &status.Status{
-				Daemon:         "not running",
-				QueueCount:     0,
-				QueuedPrompts:  []string{},
-				CompletedCount: 0,
-				IdeasCount:     0,
-			}
-
-			output := formatter.Format(st)
-			Expect(output).NotTo(ContainSubstring("Ideas:"))
-		})
-
-		It("shows Ideas line when count is greater than 0", func() {
-			st := &status.Status{
-				Daemon:         "not running",
-				QueueCount:     0,
-				QueuedPrompts:  []string{},
-				CompletedCount: 0,
-				IdeasCount:     5,
-			}
-
-			output := formatter.Format(st)
-			Expect(output).To(ContainSubstring("Ideas:      5 prompts"))
 		})
 
 		It("formats generating spec status", func() {
@@ -193,7 +159,6 @@ var _ = Describe("Formatter", func() {
 				QueueCount:     0,
 				QueuedPrompts:  []string{},
 				CompletedCount: 0,
-				IdeasCount:     0,
 			}
 
 			output := formatter.Format(st)

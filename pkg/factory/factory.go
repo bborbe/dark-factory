@@ -36,8 +36,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
-const defaultIdeasDir = "prompts/ideas"
-
 // createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
 func createPromptManager(
 	inboxDir string,
@@ -499,7 +497,6 @@ func CreateServer(
 	statusChecker := status.NewChecker(
 		inProgressDir,
 		completedDir,
-		defaultIdeasDir,
 		logDir,
 		lock.FilePath("."),
 		port,
@@ -541,7 +538,6 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	statusChecker := status.NewChecker(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		defaultIdeasDir,
 		cfg.Prompts.LogDir,
 		lock.FilePath("."),
 		cfg.ServerPort,
@@ -685,7 +681,6 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	statusChecker := status.NewChecker(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		defaultIdeasDir,
 		cfg.Prompts.LogDir,
 		lock.FilePath("."),
 		cfg.ServerPort,

@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["034"]
 created: "2026-03-21T18:00:00Z"
+queued: "2026-03-21T19:11:50Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 
@@ -55,17 +56,13 @@ Read `mocks/container-checker.go` — the counterfeiter mock for ContainerChecke
            return errors.Wrap(ctx, err, "reattach to spec generation container")
        }
        slog.Info("spec generation container exited via reattach", "container", containerName)
-       // After reattach: check if prompts were generated (generation may have completed before restart)
-       afterFiles, err := listMDFiles(g.inboxDir)
+       // After reattach: scan inbox for prompt files belonging to this spec
+       newFiles, err := g.listPromptsForSpec(ctx, g.inboxDir, specBasename)
        if err != nil {
-           return errors.Wrap(ctx, err, "count inbox files after reattach")
+           return errors.Wrap(ctx, err, "list prompts for spec after reattach")
        }
-       // Use empty beforeFiles to capture any files created during original run
-       newFiles := diffFiles(map[string]struct{}{}, afterFiles)
-       // Filter to only files that belong to this spec (match specBasename pattern)
-       newFiles = filterBySpec(newFiles, specBasename)
        if len(newFiles) == 0 {
-           slog.Info("no new prompt files found after reattach; spec generation may have completed earlier",
+           slog.Info("no prompt files found in inbox for spec after reattach",
                "spec", specBasename)
            return nil
        }
@@ -90,14 +87,11 @@ Read `mocks/container-checker.go` — the counterfeiter mock for ContainerChecke
    ```
    The rest of `Generate` (beforeFiles snapshot → Execute → afterFiles → diff → inherit → save) runs unchanged when `running == false`.
 
-3. **Add `filterBySpec(files []string, specBasename string) []string`** (package-level function in `pkg/generator/generator.go`):
-   Returns only files whose basename contains the spec number extracted from `specBasename`.
-   - Extract the numeric prefix from `specBasename` using the existing `specnum.Parse` (imported from `pkg/specnum`).
-   - If no numeric prefix, return `files` unchanged (cannot filter, be conservative).
-   - Otherwise, filter to files whose basename contains the spec number (e.g., `specnum.Parse("034-...")` → `34`, format as `%03d`).
-   - Actually, a simpler approach: since the generated prompts include the spec ID in their `spec:` frontmatter field, this filtering by filename may not be reliable. Instead, just return all files in `afterFiles` that were not there before (using empty `beforeFiles` is fine — we want any file that appeared since the original generation start, and since generation containers only create files for their spec, this is safe).
-   - Simplify: remove the `filterBySpec` approach entirely. Just use `diffFiles(map[string]struct{}{}, afterFiles)` to get all current inbox files. Accept that this may include pre-existing files if any existed before the original generation. To avoid this, use a `countCompletedPromptsForSpec` check (already exists) as a fallback if `newFiles` is empty.
-   - **Revised approach for reattach**: After reattach, scan inbox for files with `spec:` frontmatter matching this spec:
+3. **Add `listPromptsForSpec(ctx, dir, specID string) ([]string, error)`** (private method on `dockerSpecGenerator` in `pkg/generator/generator.go`):
+   - Scans `dir` for `.md` files and returns those whose `spec:` frontmatter matches `specID` (using `pf.Frontmatter.HasSpec(specID)`)
+   - If frontmatter cannot be parsed, skip the file silently
+   - If dir does not exist, return empty slice and nil error
+   - This method is called by the reattach block in requirement 2:
      ```go
      // After reattach: scan inbox for prompt files belonging to this spec
      newFiles, err := g.listPromptsForSpec(ctx, g.inboxDir, specBasename)
@@ -105,13 +99,11 @@ Read `mocks/container-checker.go` — the counterfeiter mock for ContainerChecke
          return errors.Wrap(ctx, err, "list prompts for spec after reattach")
      }
      if len(newFiles) == 0 {
-         // Generation may have completed and moved files before restart
          slog.Info("no prompt files found in inbox for spec after reattach",
              "spec", specBasename)
          return nil
      }
      ```
-   - Implement `listPromptsForSpec(ctx, dir, specID string) ([]string, error)` (private method on `dockerSpecGenerator`) that scans `dir` for `.md` files and returns those with `spec: ["NNN"]` frontmatter matching `specID` using `pf.Frontmatter.HasSpec(specID)`.
 
 4. **Update `CreateSpecGenerator` in `pkg/factory/factory.go`**:
    Pass `executor.NewDockerContainerChecker()` as the second argument to `generator.NewSpecGenerator` (after the `executor.NewDockerExecutor(...)` call, before `cfg.Prompts.InboxDir`).
@@ -138,7 +130,7 @@ Read `mocks/container-checker.go` — the counterfeiter mock for ContainerChecke
 - `listPromptsForSpec` is best-effort: if frontmatter cannot be parsed, skip the file silently
 - `filterBySpec` / `listPromptsForSpec` must handle an empty or non-existent inbox dir gracefully
 - `#nosec` comments are not needed here since we are not running shell commands directly in the generator
-- Follow existing error-wrapping style: `errors.Wrapf(ctx, err, ...)` — never `fmt.Errorf`
+- Follow existing error-wrapping style: `errors.Wrap(ctx, err, ...)` — never `fmt.Errorf`
 - The `containerChecker` field must use the `executor.ContainerChecker` interface type (not a concrete type)
 - Test coverage ≥80% for changed code in `pkg/generator/`
 </constraints>

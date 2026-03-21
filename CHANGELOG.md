@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.64.1
+
+- refactor: remove `prompts/ideas/` directory concept — ideas with `status: idea` live in the normal `prompts/` inbox; removed `IdeasCount` from status output
+
 ## v0.64.0
 
 - feat: show spec generation progress in `dark-factory status` — detects running `gen-*` containers and displays `generating spec <name>` instead of `idle`

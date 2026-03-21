@@ -61,11 +61,6 @@ func (f *formatter) Format(st *Status) string {
 	// Completed
 	fmt.Fprintf(&b, "  Completed:  %d prompts\n", st.CompletedCount)
 
-	// Ideas
-	if st.IdeasCount > 0 {
-		fmt.Fprintf(&b, "  Ideas:      %d prompts\n", st.IdeasCount)
-	}
-
 	// Last log
 	if st.LastLogFile != "" {
 		logInfo := st.LastLogFile

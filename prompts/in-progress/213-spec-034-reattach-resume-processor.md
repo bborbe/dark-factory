@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["034"]
 created: "2026-03-21T18:00:00Z"
+queued: "2026-03-21T19:11:50Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 
@@ -213,16 +214,14 @@ Read `pkg/report/suffix.go` — `MarkerEnd` constant used by `watchForCompletion
    }
    ```
 
-10. **Add `ResumeExecuting` to the `Processor` interface** in `pkg/processor/processor.go` — already done in step 4. No change needed in factory (interface is implemented by `processor` struct).
-
-11. **Tests in `pkg/executor/executor_test.go` or `executor_internal_test.go`**:
+10. **Tests in `pkg/executor/executor_test.go` or `executor_internal_test.go`**:
     Add tests for `Reattach`:
     - **Case: container outputs completion report, exits normally** → `Reattach` returns nil, log file contains output
     - **Case: context cancelled** → `Reattach` returns nil (not an error)
     - **Case: docker logs command returns non-zero (container not found)** → `Reattach` returns an error
     Use the existing `commandRunner` mock pattern (already used by `watchForCompletionReport` tests).
 
-12. **Tests in `pkg/processor/processor_internal_test.go`** or `pkg/processor/processor_test.go`:
+11. **Tests in `pkg/processor/processor_internal_test.go`** or `pkg/processor/processor_test.go`:
     Add tests for `ResumeExecuting`:
     - **Case: no executing prompts in queueDir** → returns nil, no executor calls
     - **Case: one executing prompt, container name in frontmatter** → `Reattach` called, `handlePostExecution` called
@@ -241,7 +240,7 @@ Read `pkg/report/suffix.go` — `MarkerEnd` constant used by `watchForCompletion
 - If `p.worktree` is false, assume the working directory is correct — no clone path check needed
 - Re-attach must not cause duplicate git operations: `handlePostExecution` is idempotent for already-completed prompts (it checks log file for report)
 - The `Reattach` method on the interface must appear after `Execute` and before `StopAndRemoveContainer`
-- Follow existing error-wrapping style: `errors.Wrapf(ctx, err, ...)` — never `fmt.Errorf`, never `context.Background()`
+- Follow existing error-wrapping style: `errors.Wrap(ctx, err, ...)` — never `fmt.Errorf`, never `context.Background()`
 - Test coverage ≥80% for changed packages
 </constraints>
 

@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["034"]
 created: "2026-03-21T18:00:00Z"
+queued: "2026-03-21T19:11:50Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 
@@ -25,7 +26,7 @@ Read all `/home/node/.claude/docs/go-*.md` docs before starting.
 Read `pkg/executor/executor.go` — Executor interface, container name format, existing `removeContainerIfExists`.
 Read `pkg/runner/runner.go` — `Run()`, `notifyStuckContainers()`, `ResetExecuting` call (line ~134).
 Read `pkg/prompt/prompt.go` — `Frontmatter.Container` field (line ~184), `ResetExecuting` function (line ~696), `ExecutingPromptStatus`.
-Read `pkg/factory/factory.go` — `CreateRunner` (line ~234) and `CreateSpecGenerator` (line ~312) to understand wiring.
+Read `pkg/factory/factory.go` — `CreateRunner` (line ~184) and `CreateSpecGenerator` (line ~312) to understand wiring.
 Read `mocks/executor.go` — the counterfeiter-generated mock, to understand the pattern.
 </context>
 
@@ -129,7 +130,7 @@ Read `mocks/executor.go` — the counterfeiter-generated mock, to understand the
 
 3. **Update `pkg/factory/factory.go`**:
    - In `CreateRunner`, pass `executor.NewDockerContainerChecker()` as the new `containerChecker` argument before `n` (the notifier). The signature of `runner.NewRunner` now has this extra parameter.
-   - In `CreateOneShotRunner`, do the same: pass `executor.NewDockerContainerChecker()` to `runner.NewOneShotRunner` if it also calls `resumeOrResetExecuting` — check `pkg/runner/oneshot.go` first; if `OneShotRunner` also calls `ResetExecuting`, apply the same change there.
+   - In `CreateOneShotRunner`, do the same: `OneShotRunner` also calls `ResetExecuting` (oneshot.go line ~108), so add `containerChecker executor.ContainerChecker` parameter to `NewOneShotRunner`, store it in the struct, and replace the `ResetExecuting` call with `resumeOrResetExecuting` (same method — embed it on the shared runner base or duplicate for oneshot).
 
 4. **Tests in `pkg/runner/runner_test.go`**:
    - Add a test for `resumeOrResetExecuting`:
@@ -156,7 +157,7 @@ Read `mocks/executor.go` — the counterfeiter-generated mock, to understand the
 - The `resumeOrResetExecuting` method must be a no-op (return nil) when `r.inProgressDir` does not exist
 - `#nosec G204` comment required on any `exec.Command` with a variable argument (containerName), with reason: "containerName is generated internally from prompt filename"
 - Do not change any behavior for non-executing prompts
-- Follow existing error-wrapping style: `errors.Wrapf(ctx, err, ...)` from `github.com/bborbe/errors`
+- Follow existing error-wrapping style: `errors.Wrap(ctx, err, ...)` from `github.com/bborbe/errors`
 </constraints>
 
 <verification>

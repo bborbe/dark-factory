@@ -79,7 +79,6 @@ var _ = Describe("Server", func() {
 				QueueCount:     3,
 				QueuedPrompts:  []string{"a.md", "b.md", "c.md"},
 				CompletedCount: 10,
-				IdeasCount:     5,
 			}
 			statusChecker.GetStatusReturns(expectedStatus, nil)
 

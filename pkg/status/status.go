@@ -35,7 +35,6 @@ type Status struct {
 	QueueCount          int      `json:"queue_count"`
 	QueuedPrompts       []string `json:"queued_prompts"`
 	CompletedCount      int      `json:"completed_count"`
-	IdeasCount          int      `json:"ideas_count"`
 	LastLogFile         string   `json:"last_log_file,omitempty"`
 	LastLogSize         int64    `json:"last_log_size,omitempty"`
 }
@@ -66,7 +65,6 @@ type Checker interface {
 type checker struct {
 	queueDir     string
 	completedDir string
-	ideasDir     string
 	logDir       string
 	lockFilePath string
 	serverPort   int
@@ -77,7 +75,6 @@ type checker struct {
 func NewChecker(
 	queueDir string,
 	completedDir string,
-	ideasDir string,
 	logDir string,
 	lockFilePath string,
 	serverPort int,
@@ -86,7 +83,6 @@ func NewChecker(
 	return &checker{
 		queueDir:     queueDir,
 		completedDir: completedDir,
-		ideasDir:     ideasDir,
 		logDir:       logDir,
 		lockFilePath: lockFilePath,
 		serverPort:   serverPort,
@@ -131,13 +127,6 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 		return nil, errors.Wrap(ctx, err, "count completed prompts")
 	}
 	status.CompletedCount = completedCount
-
-	// Count ideas (if ideas directory exists)
-	ideasCount, err := s.countMarkdownFiles(s.ideasDir)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Wrap(ctx, err, "count ideas")
-	}
-	status.IdeasCount = ideasCount
 
 	// Find latest log file
 	if err := s.populateLogInfo(ctx, status); err != nil {

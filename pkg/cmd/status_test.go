@@ -36,7 +36,6 @@ var _ = Describe("StatusCommand", func() {
 			QueueCount:     0,
 			QueuedPrompts:  []string{},
 			CompletedCount: 0,
-			IdeasCount:     0,
 		}
 	})
 

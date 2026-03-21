@@ -25,7 +25,6 @@ var _ = Describe("StatusChecker", func() {
 		tempDir       string
 		queueDir      string
 		completedDir  string
-		ideasDir      string
 		lockFilePath  string
 		promptMgr     *mocks.Manager
 		statusChecker status.Checker
@@ -40,21 +39,17 @@ var _ = Describe("StatusChecker", func() {
 
 		queueDir = filepath.Join(tempDir, "prompts")
 		completedDir = filepath.Join(tempDir, "prompts", "completed")
-		ideasDir = filepath.Join(tempDir, "prompts", "ideas")
 		lockFilePath = filepath.Join(tempDir, ".dark-factory.lock")
 
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
-		err = os.MkdirAll(ideasDir, 0750)
-		Expect(err).NotTo(HaveOccurred())
 
 		promptMgr = &mocks.Manager{}
 		statusChecker = status.NewChecker(
 			queueDir,
 			completedDir,
-			ideasDir,
 			"prompts/log",
 			lockFilePath,
 			8080,
@@ -79,7 +74,6 @@ var _ = Describe("StatusChecker", func() {
 			Expect(st.CurrentPrompt).To(BeEmpty())
 			Expect(st.QueueCount).To(Equal(0))
 			Expect(st.CompletedCount).To(Equal(0))
-			Expect(st.IdeasCount).To(Equal(0))
 		})
 
 		It("returns status with queued prompts", func() {
@@ -115,34 +109,6 @@ var _ = Describe("StatusChecker", func() {
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(st.CompletedCount).To(Equal(2))
-		})
-
-		It("counts ideas", func() {
-			promptMgr.HasExecutingReturns(false)
-			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
-
-			// Create idea files
-			err := os.WriteFile(filepath.Join(ideasDir, "idea1.md"), []byte("idea"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-			err = os.WriteFile(filepath.Join(ideasDir, "idea2.md"), []byte("idea"), 0600)
-			Expect(err).NotTo(HaveOccurred())
-
-			st, err := statusChecker.GetStatus(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(st.IdeasCount).To(Equal(2))
-		})
-
-		It("handles missing ideas directory", func() {
-			// Remove ideas directory
-			err := os.RemoveAll(ideasDir)
-			Expect(err).NotTo(HaveOccurred())
-
-			promptMgr.HasExecutingReturns(false)
-			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
-
-			st, err := statusChecker.GetStatus(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(st.IdeasCount).To(Equal(0))
 		})
 
 		It("includes executing prompt info", func() {
@@ -314,7 +280,6 @@ status: executing
 			checkerWithLogs := status.NewChecker(
 				queueDir,
 				completedDir,
-				ideasDir,
 				logDir,
 				lockFilePath,
 				8080,
@@ -335,7 +300,6 @@ status: executing
 			checkerWithLogs := status.NewChecker(
 				queueDir,
 				completedDir,
-				ideasDir,
 				"/nonexistent/log",
 				lockFilePath,
 				8080,

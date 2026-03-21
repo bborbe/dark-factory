@@ -1,11 +1,12 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
 approved: "2026-03-21T15:03:05Z"
 prompted: "2026-03-21T15:12:28Z"
 verifying: "2026-03-21T15:54:23Z"
+completed: "2026-03-21T16:09:55Z"
 branch: dark-factory/prompt-cancel
 ---
 

@@ -1,7 +1,11 @@
 ---
-status: created
+status: executing
 spec: ["033"]
+container: dark-factory-208-spec-033-cancel-status-and-cli
+dark-factory-version: v0.59.5-dirty
 created: "2026-03-21T00:00:00Z"
+queued: "2026-03-21T15:36:30Z"
+started: "2026-03-21T15:36:31Z"
 ---
 
 <summary>

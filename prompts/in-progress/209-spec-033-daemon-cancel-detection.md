@@ -1,7 +1,8 @@
 ---
-status: created
+status: approved
 spec: ["033"]
 created: "2026-03-21T00:00:00Z"
+queued: "2026-03-21T15:36:30Z"
 ---
 
 <summary>
@@ -89,15 +90,15 @@ Read `pkg/executor/command.go` — the `commandRunner` interface used by `watchF
 2. In `pkg/executor/executor.go`, add a public method `StopAndRemoveContainer` (next to existing `removeContainerIfExists`):
    ```go
    // StopAndRemoveContainer gracefully stops a container (SIGTERM + 10s timeout) then removes it.
-   func (e *executor) StopAndRemoveContainer(ctx context.Context, containerName string) {
-       stopCmd := e.commandRunner.CommandContext(ctx, "docker", "stop", containerName)
+   func (e *dockerExecutor) StopAndRemoveContainer(ctx context.Context, containerName string) {
+       stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName) // #nosec G204 -- containerName is generated internally
        if err := stopCmd.Run(); err != nil {
            slog.Debug("docker stop", "container", containerName, "error", err)
        }
        e.removeContainerIfExists(containerName)
    }
    ```
-   Add `StopAndRemoveContainer(ctx context.Context, containerName string)` to the `Executor` interface. This keeps all Docker operations in the executor package where `commandRunner` is already available and testable via counterfeiter.
+   Add `StopAndRemoveContainer(ctx context.Context, containerName string)` to the `Executor` interface. This follows the existing pattern in executor.go where `exec.CommandContext` is used directly (see `watchForCompletionReport` line ~194, `removeContainerIfExists` line ~385).
 
 3. In `pkg/processor/processor.go`, modify `processPrompt` to run `watchForCancellation` concurrently with `executor.Execute`:
 

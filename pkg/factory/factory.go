@@ -233,7 +233,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
-		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName, n,
+		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName,
+		executor.NewDockerContainerChecker(), n,
 	)
 }
 
@@ -302,6 +303,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
 		currentDateTimeGetter,
+		executor.NewDockerContainerChecker(),
 		autoApprove,
 	)
 }

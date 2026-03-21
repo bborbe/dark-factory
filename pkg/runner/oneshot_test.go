@@ -20,14 +20,15 @@ import (
 
 var _ = Describe("OneShotRunner", func() {
 	var (
-		tempDir    string
-		promptsDir string
-		specsDir   string
-		manager    *mocks.Manager
-		locker     *mocks.Locker
-		processor  *mocks.Processor
-		ctx        context.Context
-		cancel     context.CancelFunc
+		tempDir          string
+		promptsDir       string
+		specsDir         string
+		manager          *mocks.Manager
+		locker           *mocks.Locker
+		processor        *mocks.Processor
+		containerChecker *mocks.ContainerChecker
+		ctx              context.Context
+		cancel           context.CancelFunc
 	)
 
 	BeforeEach(func() {
@@ -44,6 +45,7 @@ var _ = Describe("OneShotRunner", func() {
 		manager = &mocks.Manager{}
 		locker = &mocks.Locker{}
 		processor = &mocks.Processor{}
+		containerChecker = &mocks.ContainerChecker{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})
@@ -70,6 +72,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			nil,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			false,
 		)
 	}
@@ -77,7 +80,6 @@ var _ = Describe("OneShotRunner", func() {
 	setupMocks := func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 		processor.ProcessQueueReturns(nil)
 	}
@@ -103,14 +105,17 @@ var _ = Describe("OneShotRunner", func() {
 		Expect(processor.ProcessQueueCallCount()).To(Equal(1))
 	})
 
-	It("should reset executing prompts on startup", func() {
+	It("should handle executing prompts on startup without calling ResetExecuting", func() {
 		setupMocks()
+		// inProgressDir is empty — no executing prompts, no container check
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
 
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		Expect(manager.ResetExecutingCallCount()).To(Equal(1))
+		// ResetExecuting is no longer called — selective logic used instead
+		Expect(manager.ResetExecutingCallCount()).To(Equal(0))
+		Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
 	})
 
 	It("should return nil when queue is empty", func() {
@@ -184,6 +189,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			false,
 		)
 
@@ -242,6 +248,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			true,
 		)
 
@@ -298,6 +305,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			false,
 		)
 
@@ -353,6 +361,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			true,
 		)
 
@@ -414,22 +423,9 @@ var _ = Describe("OneShotRunner", func() {
 		Expect(err.Error()).To(ContainSubstring("acquire lock"))
 	})
 
-	It("should return error when ResetExecuting fails", func() {
-		locker.AcquireReturns(nil)
-		locker.ReleaseReturns(nil)
-		manager.NormalizeFilenamesReturns(nil, nil)
-		manager.ResetExecutingReturns(context.DeadlineExceeded)
-
-		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
-		err := r.Run(ctx)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("reset executing prompts"))
-	})
-
 	It("should return error when initial NormalizeFilenames fails", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
 
 		r := newTestOneShotRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
@@ -457,6 +453,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			&mocks.SpecGenerator{},
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			false,
 		)
 
@@ -516,6 +513,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				mockSpecGen,
 				libtime.NewCurrentDateTime(),
+				containerChecker,
 				false,
 			)
 
@@ -551,7 +549,6 @@ var _ = Describe("OneShotRunner", func() {
 
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		processor.ProcessQueueReturns(nil)
 
 		// NormalizeFilenames fails (used both in initial normalize and in approveInboxPrompts)
@@ -579,6 +576,7 @@ var _ = Describe("OneShotRunner", func() {
 			processor,
 			mockSpecGen,
 			libtime.NewCurrentDateTime(),
+			containerChecker,
 			true,
 		)
 
@@ -622,6 +620,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
+				containerChecker,
 				false,
 			)
 
@@ -663,6 +662,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				nil,
 				libtime.NewCurrentDateTime(),
+				containerChecker,
 				false,
 			)
 
@@ -730,6 +730,7 @@ var _ = Describe("OneShotRunner", func() {
 				processor,
 				mockSpecGen,
 				libtime.NewCurrentDateTime(),
+				containerChecker,
 				true,
 			)
 
@@ -769,6 +770,7 @@ var _ = Describe("OneShotRunner", func() {
 					processor,
 					mockSpecGen,
 					libtime.NewCurrentDateTime(),
+					containerChecker,
 					false,
 				)
 

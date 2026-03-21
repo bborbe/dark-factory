@@ -14,6 +14,7 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
@@ -41,6 +42,7 @@ func NewOneShotRunner(
 	proc processor.Processor,
 	specGen generator.SpecGenerator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	containerChecker executor.ContainerChecker,
 	autoApprove bool,
 ) OneShotRunner {
 	return &oneShotRunner{
@@ -57,6 +59,7 @@ func NewOneShotRunner(
 		processor:             proc,
 		specGenerator:         specGen,
 		currentDateTimeGetter: currentDateTimeGetter,
+		containerChecker:      containerChecker,
 		autoApprove:           autoApprove,
 	}
 }
@@ -76,6 +79,7 @@ type oneShotRunner struct {
 	processor             processor.Processor
 	specGenerator         generator.SpecGenerator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	containerChecker      executor.ContainerChecker
 	autoApprove           bool
 }
 
@@ -104,9 +108,9 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "create directories")
 	}
 
-	// Reset any stuck "executing" prompts from previous crash
-	if err := r.promptManager.ResetExecuting(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reset executing prompts")
+	// Selectively resume or reset executing prompts based on container liveness
+	if err := r.resumeOrResetExecuting(ctx); err != nil {
+		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
 	// Normalize filenames before processing
@@ -136,6 +140,18 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.
+func (r *oneShotRunner) resumeOrResetExecuting(ctx context.Context) error {
+	return resumeOrResetExecuting(
+		ctx,
+		r.inProgressDir,
+		r.promptManager,
+		r.containerChecker,
+		nil,
+		"",
+	)
 }
 
 // generateFromApprovedSpecs scans specsInProgressDir for approved specs, generates prompts

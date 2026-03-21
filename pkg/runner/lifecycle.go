@@ -9,9 +9,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -59,4 +62,81 @@ func createDirectories(ctx context.Context, dirs []string) error {
 		}
 	}
 	return nil
+}
+
+// resumeOrResetExecuting scans inProgressDir for prompts with "executing" status.
+// If the container is still running, the prompt is left in executing state (to be resumed).
+// If the container is gone, a stuck_container notification is fired and the prompt is reset to approved.
+// n may be nil (no notification fired) and projectName may be empty.
+func resumeOrResetExecuting(
+	ctx context.Context,
+	inProgressDir string,
+	mgr prompt.Manager,
+	checker executor.ContainerChecker,
+	n notifier.Notifier,
+	projectName string,
+) error {
+	entries, err := os.ReadDir(inProgressDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(ctx, err, "read in-progress dir")
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if err := resumeOrResetExecutingEntry(ctx, inProgressDir, entry.Name(), mgr, checker, n, projectName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resumeOrResetExecutingEntry handles a single prompt file: checks liveness and resumes or resets.
+func resumeOrResetExecutingEntry(
+	ctx context.Context,
+	inProgressDir string,
+	name string,
+	mgr prompt.Manager,
+	checker executor.ContainerChecker,
+	n notifier.Notifier,
+	projectName string,
+) error {
+	path := filepath.Join(inProgressDir, name)
+	pf, err := mgr.Load(ctx, path)
+	if err != nil || pf == nil {
+		return nil
+	}
+	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
+		return nil
+	}
+	containerName := pf.Frontmatter.Container
+	running, err := checker.IsRunning(ctx, containerName)
+	if err != nil {
+		slog.Warn("failed to check container liveness, resetting prompt",
+			"file", name, "container", containerName, "error", err)
+		running = false
+	}
+	if running {
+		slog.Info(
+			"resuming prompt, container still running",
+			"file",
+			name,
+			"container",
+			containerName,
+		)
+		return nil
+	}
+	slog.Info("resetting prompt, container not found", "file", name, "container", containerName)
+	if n != nil {
+		_ = n.Notify(ctx, notifier.Event{
+			ProjectName: projectName,
+			EventType:   "stuck_container",
+			PromptName:  name,
+		})
+	}
+	pf.MarkApproved()
+	return errors.Wrap(ctx, pf.Save(ctx), "reset executing prompt")
 }

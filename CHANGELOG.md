@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.65.0
+
+- feat: selective container liveness check on startup — executing prompts with a still-running container are left in executing state for re-attach; prompts without a container are reset to approved and fire `stuck_container` notification
+
 ## v0.64.1
 
 - refactor: remove `prompts/ideas/` directory concept — ideas with `status: idea` live in the normal `prompts/` inbox; removed `IdeasCount` from status output

@@ -7,15 +7,13 @@ package runner
 import (
 	"context"
 	"log/slog"
-	"os"
 	"os/signal"
-	"path/filepath"
-	"strings"
 	"syscall"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
@@ -49,6 +47,7 @@ func NewRunner(
 	reviewPoller review.ReviewPoller,
 	specWatcher specwatcher.SpecWatcher,
 	projectName string,
+	containerChecker executor.ContainerChecker,
 	n notifier.Notifier,
 ) Runner {
 	return &runner{
@@ -68,6 +67,7 @@ func NewRunner(
 		reviewPoller:       reviewPoller,
 		specWatcher:        specWatcher,
 		projectName:        projectName,
+		containerChecker:   containerChecker,
 		notifier:           n,
 	}
 }
@@ -90,6 +90,7 @@ type runner struct {
 	reviewPoller       review.ReviewPoller
 	specWatcher        specwatcher.SpecWatcher
 	projectName        string
+	containerChecker   executor.ContainerChecker
 	notifier           notifier.Notifier
 }
 
@@ -127,12 +128,9 @@ func (r *runner) Run(ctx context.Context) error {
 
 	slog.Info("watching for queued prompts", "dir", r.inProgressDir)
 
-	// Notify about stuck containers before resetting them
-	r.notifyStuckContainers(ctx)
-
-	// Reset any stuck "executing" prompts from previous crash
-	if err := r.promptManager.ResetExecuting(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reset executing prompts")
+	// Selectively resume or reset executing prompts based on container liveness
+	if err := r.resumeOrResetExecuting(ctx); err != nil {
+		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
 	// Normalize filenames before processing
@@ -170,30 +168,16 @@ func (r *runner) migrateQueueDir(ctx context.Context) error {
 	return migrateQueueDir(ctx, r.inProgressDir)
 }
 
-// notifyStuckContainers scans inProgressDir for prompts with "executing" status
-// and fires a stuck_container notification for each one found before ResetExecuting clears them.
-func (r *runner) notifyStuckContainers(ctx context.Context) {
-	entries, err := os.ReadDir(r.inProgressDir)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		path := filepath.Join(r.inProgressDir, entry.Name())
-		fm, err := r.promptManager.ReadFrontmatter(ctx, path)
-		if err != nil || fm == nil {
-			continue
-		}
-		if prompt.PromptStatus(fm.Status) == prompt.ExecutingPromptStatus {
-			_ = r.notifier.Notify(ctx, notifier.Event{
-				ProjectName: r.projectName,
-				EventType:   "stuck_container",
-				PromptName:  entry.Name(),
-			})
-		}
-	}
+// resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.
+func (r *runner) resumeOrResetExecuting(ctx context.Context) error {
+	return resumeOrResetExecuting(
+		ctx,
+		r.inProgressDir,
+		r.promptManager,
+		r.containerChecker,
+		r.notifier,
+		r.projectName,
+	)
 }
 
 // createDirectories creates all eight lifecycle directories if they don't exist.

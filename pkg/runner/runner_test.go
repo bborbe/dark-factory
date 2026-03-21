@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -21,16 +22,17 @@ import (
 
 var _ = Describe("Runner", func() {
 	var (
-		tempDir    string
-		promptsDir string
-		specsDir   string
-		manager    *mocks.Manager
-		locker     *mocks.Locker
-		watcher    *mocks.Watcher
-		processor  *mocks.Processor
-		server     *mocks.Server
-		ctx        context.Context
-		cancel     context.CancelFunc
+		tempDir          string
+		promptsDir       string
+		specsDir         string
+		manager          *mocks.Manager
+		locker           *mocks.Locker
+		watcher          *mocks.Watcher
+		processor        *mocks.Processor
+		server           *mocks.Server
+		containerChecker *mocks.ContainerChecker
+		ctx              context.Context
+		cancel           context.CancelFunc
 	)
 
 	BeforeEach(func() {
@@ -49,6 +51,7 @@ var _ = Describe("Runner", func() {
 		watcher = &mocks.Watcher{}
 		processor = &mocks.Processor{}
 		server = &mocks.Server{}
+		containerChecker = &mocks.ContainerChecker{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})
@@ -79,6 +82,7 @@ var _ = Describe("Runner", func() {
 			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
+			containerChecker,
 			notifier.NewMultiNotifier(),
 		)
 	}
@@ -86,7 +90,6 @@ var _ = Describe("Runner", func() {
 	It("should acquire and release lock", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		// Make watcher, processor, and server return immediately
@@ -117,11 +120,15 @@ var _ = Describe("Runner", func() {
 		Expect(locker.ReleaseCallCount()).To(Equal(1))
 	})
 
-	It("should reset executing prompts on startup", func() {
+	It("should process executing prompts on startup", func() {
+		inProgressDir := filepath.Join(promptsDir, "in-progress")
+		Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
+		// No executing files — containerChecker.IsRunning not called
+		containerChecker.IsRunningReturns(false, nil)
 
 		watcher.WatchStub = func(ctx context.Context) error {
 			<-ctx.Done()
@@ -136,7 +143,11 @@ var _ = Describe("Runner", func() {
 			return nil
 		}
 
-		r := newTestRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
+		r := newTestRunner(
+			filepath.Join(promptsDir, "inbox"),
+			inProgressDir,
+			filepath.Join(promptsDir, "completed"),
+		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
 		defer runCancel()
@@ -144,8 +155,8 @@ var _ = Describe("Runner", func() {
 		err := r.Run(runCtx)
 		Expect(err).To(BeNil())
 
-		// Verify ResetExecuting was called
-		Expect(manager.ResetExecutingCallCount()).To(Equal(1))
+		// No executing prompts in dir — containerChecker should not be called
+		Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
 	})
 
 	It("should normalize filenames only in queue directory, not inbox", func() {
@@ -154,7 +165,6 @@ var _ = Describe("Runner", func() {
 
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcher.WatchStub = func(ctx context.Context) error {
@@ -189,7 +199,6 @@ var _ = Describe("Runner", func() {
 	It("should run watcher and processor in parallel", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcherCalled := make(chan struct{})
@@ -226,7 +235,6 @@ var _ = Describe("Runner", func() {
 	It("should stop both goroutines on context cancel", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcher.WatchStub = func(ctx context.Context) error {
@@ -271,7 +279,6 @@ var _ = Describe("Runner", func() {
 
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, context.DeadlineExceeded)
 
 		r := newTestRunner(inboxDir, inProgressDir, filepath.Join(promptsDir, "completed"))
@@ -293,7 +300,6 @@ var _ = Describe("Runner", func() {
 
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 
 		// Simulate a rename during normalization
 		manager.NormalizeFilenamesStub = func(ctx context.Context, dir string) ([]prompt.Rename, error) {
@@ -336,7 +342,6 @@ var _ = Describe("Runner", func() {
 	It("should not start server when server is nil", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcher.WatchStub = func(ctx context.Context) error {
@@ -365,6 +370,7 @@ var _ = Describe("Runner", func() {
 			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
+			containerChecker,
 			notifier.NewMultiNotifier(),
 		)
 
@@ -382,7 +388,6 @@ var _ = Describe("Runner", func() {
 	It("should include reviewPoller in run loop when non-nil", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		mockReviewPoller := &mocks.ReviewPoller{}
@@ -419,6 +424,7 @@ var _ = Describe("Runner", func() {
 			mockReviewPoller,
 			nil, // no specWatcher
 			"",
+			containerChecker,
 			notifier.NewMultiNotifier(),
 		)
 
@@ -434,7 +440,6 @@ var _ = Describe("Runner", func() {
 	It("should not include reviewPoller in run loop when nil", func() {
 		locker.AcquireReturns(nil)
 		locker.ReleaseReturns(nil)
-		manager.ResetExecutingReturns(nil)
 		manager.NormalizeFilenamesReturns(nil, nil)
 
 		watcher.WatchStub = func(ctx context.Context) error {
@@ -463,6 +468,7 @@ var _ = Describe("Runner", func() {
 			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
+			containerChecker,
 			notifier.NewMultiNotifier(),
 		)
 
@@ -490,7 +496,6 @@ var _ = Describe("Runner", func() {
 
 			locker.AcquireReturns(nil)
 			locker.ReleaseReturns(nil)
-			manager.ResetExecutingReturns(nil)
 			manager.NormalizeFilenamesReturns(nil, nil)
 
 			watcher.WatchStub = func(ctx context.Context) error {
@@ -523,6 +528,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				"",
+				containerChecker,
 				notifier.NewMultiNotifier(),
 			)
 
@@ -560,7 +566,6 @@ var _ = Describe("Runner", func() {
 
 			locker.AcquireReturns(nil)
 			locker.ReleaseReturns(nil)
-			manager.ResetExecutingReturns(nil)
 			manager.NormalizeFilenamesReturns(nil, nil)
 
 			watcher.WatchStub = func(ctx context.Context) error {
@@ -605,7 +610,6 @@ var _ = Describe("Runner", func() {
 
 			locker.AcquireReturns(nil)
 			locker.ReleaseReturns(nil)
-			manager.ResetExecutingReturns(nil)
 			manager.NormalizeFilenamesReturns(nil, nil)
 
 			watcher.WatchStub = func(ctx context.Context) error {
@@ -654,8 +658,9 @@ var _ = Describe("Runner", func() {
 
 			locker.AcquireReturns(nil)
 			locker.ReleaseReturns(nil)
-			manager.ResetExecutingReturns(nil)
 			manager.NormalizeFilenamesReturns(nil, nil)
+			// Stub Load to return nil for non-executing files
+			manager.LoadReturns(nil, nil)
 
 			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
@@ -692,25 +697,16 @@ var _ = Describe("Runner", func() {
 		})
 	})
 
-	Describe("notifyStuckContainers", func() {
-		It("fires stuck_container notification for prompts with executing status", func() {
+	Describe("resumeOrResetExecuting", func() {
+		It("fires no notification and does no reset when no executing prompts exist", func() {
 			inProgressDir := filepath.Join(promptsDir, "in-progress")
 			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
-
-			stuckPromptPath := filepath.Join(inProgressDir, "001-stuck.md")
-			Expect(
-				os.WriteFile(stuckPromptPath, []byte("---\nstatus: executing\n---\ncontent"), 0600),
-			).To(Succeed())
 
 			fakeNotifier := &mocks.Notifier{}
 
 			locker.AcquireReturns(nil)
 			locker.ReleaseReturns(nil)
-			manager.ResetExecutingReturns(nil)
 			manager.NormalizeFilenamesReturns(nil, nil)
-			manager.ReadFrontmatterReturns(&prompt.Frontmatter{
-				Status: string(prompt.ExecutingPromptStatus),
-			}, nil)
 
 			watcher.WatchStub = func(ctx context.Context) error {
 				<-ctx.Done()
@@ -742,6 +738,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				"test-project",
+				containerChecker,
 				fakeNotifier,
 			)
 
@@ -751,11 +748,255 @@ var _ = Describe("Runner", func() {
 			err := r.Run(runCtx)
 			Expect(err).To(BeNil())
 
+			Expect(fakeNotifier.NotifyCallCount()).To(Equal(0))
+			Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
+		})
+
+		It("leaves prompt in executing state when container is still running", func() {
+			inProgressDir := filepath.Join(promptsDir, "in-progress")
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+
+			stuckPromptPath := filepath.Join(inProgressDir, "001-stuck.md")
+			Expect(
+				os.WriteFile(
+					stuckPromptPath,
+					[]byte("---\nstatus: executing\ncontainer: proj-001-stuck\n---\ncontent"),
+					0600,
+				),
+			).To(Succeed())
+
+			fakeNotifier := &mocks.Notifier{}
+
+			pf := prompt.NewPromptFile(
+				stuckPromptPath,
+				prompt.Frontmatter{
+					Status:    string(prompt.ExecutingPromptStatus),
+					Container: "proj-001-stuck",
+				},
+				[]byte("content"),
+				libtime.NewCurrentDateTime(),
+			)
+			manager.LoadReturns(pf, nil)
+			containerChecker.IsRunningReturns(true, nil)
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			server.ListenAndServeStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := runner.NewRunner(
+				filepath.Join(promptsDir, "inbox"),
+				inProgressDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil,
+				nil,
+				nil,
+				"test-project",
+				containerChecker,
+				fakeNotifier,
+			)
+
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			// Container running — no notification, prompt not reset
+			Expect(fakeNotifier.NotifyCallCount()).To(Equal(0))
+			Expect(containerChecker.IsRunningCallCount()).To(Equal(1))
+			_, name := containerChecker.IsRunningArgsForCall(0)
+			Expect(name).To(Equal("proj-001-stuck"))
+
+			// File should still have executing status (not reset)
+			content, err := os.ReadFile(stuckPromptPath)
+			Expect(err).To(BeNil())
+			Expect(string(content)).To(ContainSubstring("status: executing"))
+		})
+
+		It(
+			"resets prompt to approved and fires notification when container is not running",
+			func() {
+				inProgressDir := filepath.Join(promptsDir, "in-progress")
+				Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+
+				stuckPromptPath := filepath.Join(inProgressDir, "001-stuck.md")
+				Expect(
+					os.WriteFile(
+						stuckPromptPath,
+						[]byte("---\nstatus: executing\ncontainer: proj-001-stuck\n---\ncontent"),
+						0600,
+					),
+				).To(Succeed())
+
+				fakeNotifier := &mocks.Notifier{}
+
+				pf := prompt.NewPromptFile(
+					stuckPromptPath,
+					prompt.Frontmatter{
+						Status:    string(prompt.ExecutingPromptStatus),
+						Container: "proj-001-stuck",
+					},
+					[]byte("content"),
+					libtime.NewCurrentDateTime(),
+				)
+				manager.LoadReturns(pf, nil)
+				containerChecker.IsRunningReturns(false, nil)
+
+				locker.AcquireReturns(nil)
+				locker.ReleaseReturns(nil)
+				manager.NormalizeFilenamesReturns(nil, nil)
+
+				watcher.WatchStub = func(ctx context.Context) error {
+					<-ctx.Done()
+					return nil
+				}
+				processor.ProcessStub = func(ctx context.Context) error {
+					<-ctx.Done()
+					return nil
+				}
+				server.ListenAndServeStub = func(ctx context.Context) error {
+					<-ctx.Done()
+					return nil
+				}
+
+				r := runner.NewRunner(
+					filepath.Join(promptsDir, "inbox"),
+					inProgressDir,
+					filepath.Join(promptsDir, "completed"),
+					filepath.Join(promptsDir, "logs"),
+					filepath.Join(specsDir, "inbox"),
+					filepath.Join(specsDir, "in-progress"),
+					filepath.Join(specsDir, "completed"),
+					filepath.Join(specsDir, "logs"),
+					manager,
+					locker,
+					watcher,
+					processor,
+					nil,
+					nil,
+					nil,
+					"test-project",
+					containerChecker,
+					fakeNotifier,
+				)
+
+				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+				defer runCancel()
+
+				err := r.Run(runCtx)
+				Expect(err).To(BeNil())
+
+				// Container gone — notification fired, prompt reset
+				Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
+				_, event := fakeNotifier.NotifyArgsForCall(0)
+				Expect(event.EventType).To(Equal("stuck_container"))
+				Expect(event.ProjectName).To(Equal("test-project"))
+				Expect(event.PromptName).To(Equal("001-stuck.md"))
+
+				// File should be reset to approved
+				content, err := os.ReadFile(stuckPromptPath)
+				Expect(err).To(BeNil())
+				Expect(string(content)).To(ContainSubstring("status: approved"))
+			},
+		)
+
+		It("resets prompt when container name is empty (treat as not running)", func() {
+			inProgressDir := filepath.Join(promptsDir, "in-progress")
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+
+			stuckPromptPath := filepath.Join(inProgressDir, "002-no-container.md")
+			Expect(
+				os.WriteFile(stuckPromptPath, []byte("---\nstatus: executing\n---\ncontent"), 0600),
+			).To(Succeed())
+
+			fakeNotifier := &mocks.Notifier{}
+
+			pf := prompt.NewPromptFile(
+				stuckPromptPath,
+				prompt.Frontmatter{
+					Status:    string(prompt.ExecutingPromptStatus),
+					Container: "", // empty container name
+				},
+				[]byte("content"),
+				libtime.NewCurrentDateTime(),
+			)
+			manager.LoadReturns(pf, nil)
+			containerChecker.IsRunningReturns(false, nil)
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			server.ListenAndServeStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := runner.NewRunner(
+				filepath.Join(promptsDir, "inbox"),
+				inProgressDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil,
+				nil,
+				nil,
+				"test-project",
+				containerChecker,
+				fakeNotifier,
+			)
+
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			// Empty container treated as not running — notification and reset
 			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
 			_, event := fakeNotifier.NotifyArgsForCall(0)
 			Expect(event.EventType).To(Equal("stuck_container"))
-			Expect(event.ProjectName).To(Equal("test-project"))
-			Expect(event.PromptName).To(Equal("001-stuck.md"))
+
+			content, err := os.ReadFile(stuckPromptPath)
+			Expect(err).To(BeNil())
+			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 	})
 })

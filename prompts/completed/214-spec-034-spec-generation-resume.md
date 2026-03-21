@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["034"]
+summary: 'Extended re-attach mechanism to spec generation containers: SpecGenerator checks if a generation container is already running on restart and reattaches instead of relaunching, with ContainerChecker injected via constructor and factory'
+container: dark-factory-214-spec-034-spec-generation-resume
+dark-factory-version: v0.63.0
 created: "2026-03-21T18:00:00Z"
 queued: "2026-03-21T19:11:50Z"
+started: "2026-03-21T19:59:26Z"
+completed: "2026-03-21T20:11:46Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 

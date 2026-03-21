@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.63.1
+
+- docs: add `prompt cancel` and `prompt requeue` to README command table; remove renamed `prompt retry` row
+
 ## v0.63.0
 
 - feat: detect prompt cancellation during execution via fsnotify and gracefully stop/remove the Docker container

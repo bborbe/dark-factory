@@ -100,7 +100,8 @@ dark-factory daemon
 | `dark-factory status` | Show combined status |
 | `dark-factory prompt list` | List prompts with status |
 | `dark-factory prompt approve <name>` | Queue a prompt for execution |
-| `dark-factory prompt retry` | Re-queue failed prompts |
+| `dark-factory prompt cancel <name>` | Cancel an approved or executing prompt |
+| `dark-factory prompt requeue <name>` | Re-queue a failed or cancelled prompt |
 | `dark-factory spec list` | List specs with status |
 | `dark-factory spec approve <name>` | Approve a spec (triggers prompt generation) |
 | `dark-factory spec complete <name>` | Mark a verified spec as completed |

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.4
+
+- update plugin version to match release
+
 ## v0.67.3
 
 - fix: Daemon shutdown leaves prompt in executing state so resume-on-restart can reattach

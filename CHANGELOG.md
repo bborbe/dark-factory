@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.6
+
+- update default container image to claude-yolo v0.4.0
+
 ## v0.67.5
 
 - fix prompt temp file permissions so container user can read mounted prompt

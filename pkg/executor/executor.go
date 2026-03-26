@@ -285,6 +285,16 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 		return "", nil, errors.Wrap(ctx, err, "close prompt temp file")
 	}
 
+	// Make readable by container user (node/uid 1000) since Docker mounts preserve host permissions
+	if err := os.Chmod(tmpDir, 0755); err != nil { // #nosec G302 -- intentional: container user needs read access
+		_ = os.RemoveAll(tmpDir)
+		return "", nil, errors.Wrap(ctx, err, "chmod temp directory")
+	}
+	if err := os.Chmod(promptFile.Name(), 0644); err != nil { // #nosec G302 -- intentional: container user needs read access
+		_ = os.RemoveAll(tmpDir)
+		return "", nil, errors.Wrap(ctx, err, "chmod prompt temp file")
+	}
+
 	cleanup = func() {
 		_ = os.RemoveAll(tmpDir)
 	}

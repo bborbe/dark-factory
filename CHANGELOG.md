@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.5
+
+- fix prompt temp file permissions so container user can read mounted prompt
+
 ## v0.67.4
 
 - update plugin version to match release

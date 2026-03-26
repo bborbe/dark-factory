@@ -55,7 +55,24 @@ env:
 
 See [configuration.md](configuration.md) for all config fields.
 
-## Step 3: Create Directories
+## Step 3: Create Definition of Done
+
+The config references `validationPrompt: docs/dod.md` — this file must exist or validation will fail.
+
+```bash
+mkdir -p docs
+```
+
+Create `docs/dod.md` with project-specific quality criteria. See [vault-cli/docs/dod.md](https://github.com/bborbe/vault-cli/blob/master/docs/dod.md) for a reference template covering:
+
+- **Code Quality** — doc comments, error handling, factory patterns
+- **Testing** — coverage targets, framework conventions
+- **Install** — `go install` works, no `replace`/`exclude` in go.mod
+- **Documentation** — README and CHANGELOG updated
+
+Adapt each section to your project (e.g., remove CLI-specific checks for libraries, add service-specific checks for services).
+
+## Step 4: Create Directories
 
 ```bash
 mkdir -p prompts/in-progress prompts/completed prompts/log
@@ -66,7 +83,7 @@ touch specs/in-progress/.keep specs/completed/.keep specs/log/.keep
 
 `.keep` files ensure git tracks empty directories.
 
-## Step 4: Update .gitignore
+## Step 5: Update .gitignore
 
 Add:
 
@@ -76,7 +93,7 @@ Add:
 /specs/log
 ```
 
-## Step 5: Add Dark Factory Section to CLAUDE.md
+## Step 6: Add Dark Factory Section to CLAUDE.md
 
 The project CLAUDE.md serves two audiences:
 1. **Claude Code sessions** — humans working interactively, need workflow rules
@@ -90,19 +107,20 @@ At minimum, add:
 - Architecture section (package map)
 - Key Design Decisions (constraints the agent must respect)
 
-## Step 6: Commit
+## Step 7: Commit
 
 ```bash
-git add .dark-factory.yaml .gitignore prompts/ specs/ CLAUDE.md
+git add .dark-factory.yaml .gitignore prompts/ specs/ docs/dod.md CLAUDE.md
 git commit -m "setup dark-factory config and directories"
 ```
 
-## Step 7: Verify Setup
+## Step 8: Verify Setup
 
 Run all checks — every line must succeed:
 
 ```bash
 cat .dark-factory.yaml              # config exists
+cat docs/dod.md                     # DoD exists
 ls prompts/in-progress/.keep        # dirs tracked
 ls specs/in-progress/.keep
 grep dark-factory.lock .gitignore   # lock ignored
@@ -110,9 +128,9 @@ grep prompts/log .gitignore         # logs ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```
 
-**Do not proceed to step 8 until all checks pass.**
+**Do not proceed to step 9 until all checks pass.**
 
-## Step 8: Smoke-Test Prompt (REQUIRED)
+## Step 9: Smoke-Test Prompt (REQUIRED)
 
 **This step is mandatory.** Run the smoke test before writing any real prompts. It confirms the pipeline works end-to-end (Docker, CLAUDE.md, build commands, YOLO container).
 

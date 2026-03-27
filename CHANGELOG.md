@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.9
+
+- Wrap bare `return err` in spec-show command with `errors.Wrap` for consistent error context
+- Update default container image to claude-yolo v0.4.2 (fixes prompt quoting in headless mode)
+
 ## v0.67.8
 
 - Update default container image to claude-yolo v0.4.1 (fixes root UID remapping on Docker Desktop for Mac)

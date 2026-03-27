@@ -226,10 +226,12 @@ func (b *brancher) IsClean(ctx context.Context) (bool, error) {
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.
+// If the default branch cannot be determined, it logs a warning and skips the merge.
 func (b *brancher) MergeOriginDefault(ctx context.Context) error {
 	defaultBranch, err := b.DefaultBranch(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, "get default branch")
+		slog.Warn("skipping merge origin default: could not determine default branch", "error", err)
+		return nil
 	}
 
 	slog.Debug("merging origin default branch", "branch", defaultBranch)

@@ -333,10 +333,11 @@ var _ = Describe("Brancher", func() {
 	})
 
 	Describe("MergeOriginDefault", func() {
-		It("returns error when not in a GitHub repository", func() {
-			// MergeOriginDefault requires DefaultBranch which needs gh CLI
+		It("skips merge when default branch cannot be determined", func() {
+			// When DefaultBranch fails (no GitHub remote, no config), MergeOriginDefault
+			// logs a warning and returns nil instead of aborting the prompt execution.
 			err := b.MergeOriginDefault(ctx)
-			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("with configured default branch skips gh CLI and attempts git merge", func() {

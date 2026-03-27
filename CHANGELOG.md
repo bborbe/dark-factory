@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.68.1
+
+- fix: `MergeOriginDefault` now skips gracefully with a warning instead of returning an error when the default branch cannot be determined (local bare repos, non-GitHub remotes without `defaultBranch` config)
+
 ## v0.68.0
 
 - feat: Add git-native fallback to `DefaultBranch()` using `git symbolic-ref refs/remotes/origin/HEAD` so dark-factory works with non-GitHub remotes (Bitbucket, GitLab, local bare repos) without requiring `defaultBranch` in config

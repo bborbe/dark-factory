@@ -14,13 +14,11 @@ printf 'pr: false\nworktree: false\n' > .dark-factory.yaml
 # Redirect push to local bare repo (avoid polluting real remote)
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"
-git push origin master
 ```
 
 - [ ] Repo has `.dark-factory.yaml` with `pr: false`, `worktree: false`
 - [ ] Repo has `CHANGELOG.md` with at least one version entry
 - [ ] Remote points to local bare repo (not GitHub)
-- [ ] Master branch pushed to bare repo (dark-factory needs it for sync)
 
 ## Action
 

@@ -4,15 +4,15 @@
     "name": "Benjamin Borbe"
   },
   "metadata": {
-    "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
-    "version": "0.67.3"
+    "description": "Commands for writing, auditing, and managing dark-factory specs, prompts, and scenarios",
+    "version": "0.68.1"
   },
   "plugins": [
     {
       "name": "dark-factory",
-      "description": "Commands for writing, auditing, and managing dark-factory specs and prompts",
+      "description": "Commands for writing, auditing, and managing dark-factory specs, prompts, and scenarios",
       "source": "./",
-      "version": "0.67.3",
+      "version": "0.68.1",
       "strict": true
     }
   ]

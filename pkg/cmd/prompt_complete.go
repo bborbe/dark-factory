@@ -18,15 +18,15 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
-//counterfeiter:generate -o ../../mocks/prompt-verify-command.go --fake-name PromptVerifyCommand . PromptVerifyCommand
+//counterfeiter:generate -o ../../mocks/prompt-complete-command.go --fake-name PromptCompleteCommand . PromptCompleteCommand
 
-// PromptVerifyCommand executes the prompt verify subcommand.
-type PromptVerifyCommand interface {
+// PromptCompleteCommand executes the prompt complete subcommand.
+type PromptCompleteCommand interface {
 	Run(ctx context.Context, args []string) error
 }
 
-// promptVerifyCommand implements PromptVerifyCommand.
-type promptVerifyCommand struct {
+// promptCompleteCommand implements PromptCompleteCommand.
+type promptCompleteCommand struct {
 	queueDir              string
 	completedDir          string
 	promptManager         prompt.Manager
@@ -37,8 +37,8 @@ type promptVerifyCommand struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
-// NewPromptVerifyCommand creates a new PromptVerifyCommand.
-func NewPromptVerifyCommand(
+// NewPromptCompleteCommand creates a new PromptCompleteCommand.
+func NewPromptCompleteCommand(
 	queueDir string,
 	completedDir string,
 	promptManager prompt.Manager,
@@ -47,8 +47,8 @@ func NewPromptVerifyCommand(
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) PromptVerifyCommand {
-	return &promptVerifyCommand{
+) PromptCompleteCommand {
+	return &promptCompleteCommand{
 		queueDir:              queueDir,
 		completedDir:          completedDir,
 		promptManager:         promptManager,
@@ -60,10 +60,10 @@ func NewPromptVerifyCommand(
 	}
 }
 
-// Run executes the prompt verify command.
-func (c *promptVerifyCommand) Run(ctx context.Context, args []string) error {
+// Run executes the prompt complete command.
+func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 	if len(args) == 0 {
-		return errors.Errorf(ctx, "usage: dark-factory prompt verify <file>")
+		return errors.Errorf(ctx, "usage: dark-factory prompt complete <file>")
 	}
 
 	path, err := FindPromptFile(ctx, c.queueDir, args[0])
@@ -76,10 +76,16 @@ func (c *promptVerifyCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	if pf.Frontmatter.Status != string(prompt.PendingVerificationPromptStatus) {
+	switch prompt.PromptStatus(pf.Frontmatter.Status) {
+	case prompt.PendingVerificationPromptStatus,
+		prompt.FailedPromptStatus,
+		prompt.InReviewPromptStatus,
+		prompt.ExecutingPromptStatus:
+		// acceptable states — proceed
+	default:
 		return errors.Errorf(
 			ctx,
-			"prompt is not in pending verification state (current: %s)",
+			"prompt cannot be completed (current status: %s)",
 			pf.Frontmatter.Status,
 		)
 	}
@@ -111,12 +117,12 @@ func (c *promptVerifyCommand) Run(ctx context.Context, args []string) error {
 		}
 	}
 
-	fmt.Printf("verified: %s\n", filepath.Base(path))
+	fmt.Printf("completed: %s\n", filepath.Base(path))
 	return nil
 }
 
 // completeDirectWorkflow handles commit/release for the direct workflow.
-func (c *promptVerifyCommand) completeDirectWorkflow(
+func (c *promptCompleteCommand) completeDirectWorkflow(
 	gitCtx, ctx context.Context,
 	title string,
 ) error {
@@ -137,7 +143,7 @@ func (c *promptVerifyCommand) completeDirectWorkflow(
 }
 
 // completePRWorkflow handles commit/push/PR for PR or worktree workflow.
-func (c *promptVerifyCommand) completePRWorkflow(
+func (c *promptCompleteCommand) completePRWorkflow(
 	gitCtx context.Context,
 	ctx context.Context,
 	pf *prompt.PromptFile,

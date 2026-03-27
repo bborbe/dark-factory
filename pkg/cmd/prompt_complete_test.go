@@ -18,7 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 )
 
-var _ = Describe("PromptVerifyCommand", func() {
+var _ = Describe("PromptCompleteCommand", func() {
 	var (
 		tempDir       string
 		queueDir      string
@@ -32,7 +32,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 
 	BeforeEach(func() {
 		var err error
-		tempDir, err = os.MkdirTemp("", "verify-test-*")
+		tempDir, err = os.MkdirTemp("", "complete-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		queueDir = filepath.Join(tempDir, "in-progress")
@@ -55,8 +55,8 @@ var _ = Describe("PromptVerifyCommand", func() {
 		_ = os.RemoveAll(tempDir)
 	})
 
-	makeCmd := func(pr bool) cmd.PromptVerifyCommand {
-		return cmd.NewPromptVerifyCommand(
+	makeCmd := func(pr bool) cmd.PromptCompleteCommand {
+		return cmd.NewPromptCompleteCommand(
 			queueDir,
 			completedDir,
 			promptManager,
@@ -72,7 +72,7 @@ var _ = Describe("PromptVerifyCommand", func() {
 		It("returns usage error", func() {
 			err := makeCmd(false).Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("usage: dark-factory prompt verify"))
+			Expect(err.Error()).To(ContainSubstring("usage: dark-factory prompt complete"))
 		})
 	})
 
@@ -84,33 +84,80 @@ var _ = Describe("PromptVerifyCommand", func() {
 	})
 
 	Context("prompt in approved state", func() {
-		It("returns not in pending verification error", func() {
+		It("returns cannot be completed error", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(testFile, []byte("---\nstatus: approved\n---\n# Test\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not in pending verification state"))
+			Expect(err.Error()).To(ContainSubstring("prompt cannot be completed"))
 			Expect(err.Error()).To(ContainSubstring("approved"))
 		})
 	})
 
 	Context("prompt in failed state", func() {
-		It("returns not in pending verification error", func() {
+		It("succeeds and calls MoveToCompleted, CommitCompletedFile, CommitOnly", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(testFile, []byte("---\nstatus: failed\n---\n# Test\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
 			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("not in pending verification state"))
-			Expect(err.Error()).To(ContainSubstring("failed"))
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+		})
+	})
+
+	Context("prompt in executing state", func() {
+		It("succeeds and calls MoveToCompleted, CommitCompletedFile, CommitOnly", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(testFile, []byte("---\nstatus: executing\n---\n# Test\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+		})
+	})
+
+	Context("prompt in in_review state", func() {
+		It("succeeds and calls MoveToCompleted, CommitCompletedFile, CommitOnly", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(testFile, []byte("---\nstatus: in_review\n---\n# Test\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
+			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
 		})
 	})
 
 	Context("prompt in pending_verification state, workflow direct, no CHANGELOG", func() {
-		It("calls MoveToCompleted, CommitCompletedFile, CommitOnly and prints verified", func() {
+		It("calls MoveToCompleted, CommitCompletedFile, CommitOnly and prints completed", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(
 				testFile,

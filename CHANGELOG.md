@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.69.0
+
+- feat: rename `prompt verify` to `prompt complete`, accept `failed`, `in_review`, and `executing` prompts in addition to `pending_verification`
+
 ## v0.68.1
 
 - fix: `MergeOriginDefault` now skips gracefully with a warning instead of returning an error when the default branch cannot be determined (local bare repos, non-GitHub remotes without `defaultBranch` config)

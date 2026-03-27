@@ -8,7 +8,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cmd"
 )
 
-type PromptVerifyCommand struct {
+type PromptCompleteCommand struct {
 	RunStub        func(context.Context, []string) error
 	runMutex       sync.RWMutex
 	runArgsForCall []struct {
@@ -25,7 +25,7 @@ type PromptVerifyCommand struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PromptVerifyCommand) Run(arg1 context.Context, arg2 []string) error {
+func (fake *PromptCompleteCommand) Run(arg1 context.Context, arg2 []string) error {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -50,26 +50,26 @@ func (fake *PromptVerifyCommand) Run(arg1 context.Context, arg2 []string) error 
 	return fakeReturns.result1
 }
 
-func (fake *PromptVerifyCommand) RunCallCount() int {
+func (fake *PromptCompleteCommand) RunCallCount() int {
 	fake.runMutex.RLock()
 	defer fake.runMutex.RUnlock()
 	return len(fake.runArgsForCall)
 }
 
-func (fake *PromptVerifyCommand) RunCalls(stub func(context.Context, []string) error) {
+func (fake *PromptCompleteCommand) RunCalls(stub func(context.Context, []string) error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = stub
 }
 
-func (fake *PromptVerifyCommand) RunArgsForCall(i int) (context.Context, []string) {
+func (fake *PromptCompleteCommand) RunArgsForCall(i int) (context.Context, []string) {
 	fake.runMutex.RLock()
 	defer fake.runMutex.RUnlock()
 	argsForCall := fake.runArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *PromptVerifyCommand) RunReturns(result1 error) {
+func (fake *PromptCompleteCommand) RunReturns(result1 error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = nil
@@ -78,7 +78,7 @@ func (fake *PromptVerifyCommand) RunReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *PromptVerifyCommand) RunReturnsOnCall(i int, result1 error) {
+func (fake *PromptCompleteCommand) RunReturnsOnCall(i int, result1 error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = nil
@@ -92,7 +92,7 @@ func (fake *PromptVerifyCommand) RunReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *PromptVerifyCommand) Invocations() map[string][][]interface{} {
+func (fake *PromptCompleteCommand) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -102,7 +102,7 @@ func (fake *PromptVerifyCommand) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *PromptVerifyCommand) recordInvocation(key string, args []interface{}) {
+func (fake *PromptCompleteCommand) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -114,4 +114,4 @@ func (fake *PromptVerifyCommand) recordInvocation(key string, args []interface{}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ cmd.PromptVerifyCommand = new(PromptVerifyCommand)
+var _ cmd.PromptCompleteCommand = new(PromptCompleteCommand)

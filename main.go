@@ -104,8 +104,8 @@ func runPromptCommand(
 		return factory.CreateCancelCommand(cfg).Run(ctx, args)
 	case "retry":
 		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
-	case "verify":
-		return factory.CreatePromptVerifyCommand(cfg).Run(ctx, args)
+	case "complete":
+		return factory.CreatePromptCompleteCommand(cfg).Run(ctx, args)
 	case "show":
 		return factory.CreatePromptShowCommand(cfg).Run(ctx, args)
 	default:
@@ -149,7 +149,7 @@ func printHelp() {
 			"  prompt requeue <id>    Reset a prompt's status to queued\n"+
 			"  prompt cancel <id>     Cancel an approved or executing prompt\n"+
 			"  prompt retry           Shorthand for prompt requeue --failed\n"+
-			"  prompt verify <id>     Verify a pending-verification prompt (triggers commit/push)\n"+
+			"  prompt complete <id>   Complete a prompt (triggers commit/push)\n"+
 			"  prompt show <id>       Show details for a single prompt\n\n"+
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+

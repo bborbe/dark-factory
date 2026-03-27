@@ -571,8 +571,8 @@ func CreateCancelCommand(cfg config.Config) cmd.CancelCommand {
 	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
 }
 
-// CreatePromptVerifyCommand creates a PromptVerifyCommand.
-func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
+// CreatePromptCompleteCommand creates a PromptCompleteCommand.
+func CreatePromptCompleteCommand(cfg config.Config) cmd.PromptCompleteCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, releaser := createPromptManager(
 		cfg.Prompts.InboxDir,
@@ -581,7 +581,7 @@ func CreatePromptVerifyCommand(cfg config.Config) cmd.PromptVerifyCommand {
 		currentDateTimeGetter,
 	)
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
-	return cmd.NewPromptVerifyCommand(
+	return cmd.NewPromptCompleteCommand(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		promptManager,

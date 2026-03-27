@@ -1,8 +1,9 @@
 ---
-status: verifying
+status: completed
 approved: "2026-03-21T17:42:13Z"
 prompted: "2026-03-21T18:44:46Z"
 verifying: "2026-03-21T20:11:46Z"
+completed: "2026-03-27T16:33:47Z"
 branch: dark-factory/resume-executing-on-restart
 ---
 

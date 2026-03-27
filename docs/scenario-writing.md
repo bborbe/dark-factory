@@ -1,6 +1,21 @@
 # Scenario Writing Guide
 
-Scenarios are end-to-end checklists that prove a feature works as specified. They live in the project's `scenarios/` directory.
+Scenarios are end-to-end acceptance tests that define what success looks like from the outside. They come before specs in the workflow: Task → Scenario → Spec → Prompts. They live in the project's `scenarios/` directory.
+
+## Status Lifecycle
+
+```
+idea → draft → active → outdated
+```
+
+| Status | Meaning | When |
+|--------|---------|------|
+| `idea` | Planned — title + what it proves, no steps | Feature not yet built |
+| `draft` | Being written — steps exist but not yet validated | During/after implementation |
+| `active` | Verified, part of regression suite | After first successful run |
+| `outdated` | Feature changed/removed, no longer applies | Keep for history, skip during runs |
+
+All scenarios use explicit frontmatter: `status: idea`, `draft`, `active`, or `outdated`. No `failing` status — that's a run result, not a lifecycle state.
 
 ## When to Write a Scenario
 
@@ -14,10 +29,14 @@ Scenarios are end-to-end checklists that prove a feature works as specified. The
 
 ## Format
 
-Three sections only: Setup → Action → Expected.
-
 ```markdown
-# Scenario: [what this proves in one line]
+---
+status: draft
+---
+
+# Scenario NNN: [what this proves in one line]
+
+Validates that [one sentence describing what aspect this tests].
 
 ## Setup
 - [ ] Precondition 1
@@ -31,7 +50,12 @@ Three sections only: Setup → Action → Expected.
 - [ ] Observable outcome 1
 - [ ] Observable outcome 2
 - [ ] Observable outcome 3
+
+## Cleanup
+Teardown steps.
 ```
+
+Description line right after the title — one sentence starting with "Validates that...". Three core sections: Setup → Action → Expected. Optional Cleanup section. Each item is a checkbox.
 
 ## Writing Rules
 
@@ -41,14 +65,18 @@ Three sections only: Setup → Action → Expected.
 
 **3. One journey per file.** Don't combine happy path and failure path — split them into separate scenarios.
 
-**4. Name files for the journey.** `workflow-pr.md`, `config-invalid-rejected.md`, `multi-prompt-ordering.md`. No numbers — order doesn't matter for manual execution.
+**4. Number files sequentially.** `001-workflow-direct.md`, `002-workflow-pr.md`, `003-smoke-test-container.md`. Numbers provide stable ordering and reference.
 
 **5. Keep it short.** A scenario with 20+ checkboxes is too large. Split it.
 
 ## Example
 
 ```markdown
-# Scenario: PR workflow creates branch, opens PR, cleans up
+---
+status: active
+---
+
+# Scenario 002: PR workflow creates branch, opens PR, cleans up
 
 ## Setup
 - [ ] Git repo with at least one commit
@@ -57,7 +85,7 @@ Three sections only: Setup → Action → Expected.
 
 ## Action
 - [ ] Approve the prompt: `dark-factory prompt approve my-feature`
-- [ ] Start daemon: `dark-factory daemon`
+- [ ] Start dark-factory: `dark-factory run`
 - [ ] Wait for processing to complete
 
 ## Expected
@@ -67,6 +95,9 @@ Three sections only: Setup → Action → Expected.
 - [ ] Prompt moved to `prompts/completed/`
 - [ ] Master branch has no new commits
 - [ ] Log exists at `prompts/log/NNN-my-feature.log`
+
+## Cleanup
+- Remove temp directory
 ```
 
 ## Running a Scenario
@@ -85,7 +116,7 @@ Three sections only: Setup → Action → Expected.
 ## Best Practices
 
 - **Scenarios accumulate** — new feature = new scenario, never delete passing ones
-- **Scenarios complement specs** — spec says what to build, scenario proves it works
+- **Scenarios come first** — write the scenario before the spec
 - **Use a temp copy** for destructive scenarios — never run against your working repo
 - **Schedule scenario runs** after every 10-15 prompts or after completing a spec
 
@@ -94,10 +125,11 @@ Three sections only: Setup → Action → Expected.
 ```
 your-project/
 ├── scenarios/
-│   ├── workflow-direct.md
-│   ├── workflow-pr.md
-│   ├── failure-recovery.md
-│   └── multi-prompt-ordering.md
+│   ├── 001-workflow-direct.md      (active)
+│   ├── 002-workflow-pr.md          (active)
+│   ├── 003-smoke-test-container.md (active)
+│   ├── 004-custom-config-dirs.md   (idea)
+│   └── ...
 ├── specs/
 └── prompts/
 ```

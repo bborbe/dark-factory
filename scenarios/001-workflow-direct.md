@@ -1,4 +1,10 @@
-# Scenario 001: Direct workflow commits, tags, and pushes
+---
+status: active
+---
+
+# Direct workflow commits, tags, and pushes
+
+Validates that a prompt executes on master, creates a commit with version tag, and pushes to remote.
 
 Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 

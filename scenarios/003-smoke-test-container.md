@@ -1,4 +1,8 @@
-# Scenario 003: Pre-release container smoke test
+---
+status: active
+---
+
+# Pre-release container smoke test
 
 Validates that the claude-yolo container boots, Claude starts, edits files, and produces log output. Run before releasing a new dark-factory version that bumps the container image.
 

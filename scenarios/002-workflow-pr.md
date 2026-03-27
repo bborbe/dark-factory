@@ -1,4 +1,10 @@
-# Scenario 002: PR workflow creates clone, opens PR, cleans up
+---
+status: active
+---
+
+# PR workflow creates clone, opens PR, cleans up
+
+Validates that a prompt creates a clone, executes in isolation, pushes a feature branch, and opens a PR.
 
 Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 

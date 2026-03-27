@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.7
+
+- Bump core deps: errors, time, validation, golangci-lint, osv-scanner, go-modtool
+- Bump docker/moby deps: docker v28.5.2, buildkit v0.28.1, containerd/hcsshim
+- Fix non-deterministic test assertion in executor Reattach cancellation case
+- Add daemon vs run decision table to running.md
+- Add DoD setup step to init-project guide
+
 ## v0.67.6
 
 - update default container image to claude-yolo v0.4.0

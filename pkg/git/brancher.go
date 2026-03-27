@@ -169,6 +169,9 @@ func (b *brancher) DefaultBranch(ctx context.Context) (string, error) {
 	)
 	output, err := cmd.Output()
 	if err != nil {
+		if branch := defaultBranchFromSymbolicRef(ctx); branch != "" {
+			return branch, nil
+		}
 		return "", errors.Wrap(ctx, err, "get default branch")
 	}
 	branch := strings.TrimSpace(string(output))
@@ -177,6 +180,28 @@ func (b *brancher) DefaultBranch(ctx context.Context) (string, error) {
 	}
 	slog.Debug("default branch", "branch", branch)
 	return branch, nil
+}
+
+// defaultBranchFromSymbolicRef tries to determine the default branch using
+// git symbolic-ref refs/remotes/origin/HEAD, which works for any git remote.
+func defaultBranchFromSymbolicRef(ctx context.Context) string {
+	// #nosec G204 -- static command with no user input
+	cmd := exec.CommandContext(ctx, "git", "symbolic-ref", "refs/remotes/origin/HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	const prefix = "refs/remotes/origin/"
+	ref := strings.TrimSpace(string(output))
+	if !strings.HasPrefix(ref, prefix) {
+		return ""
+	}
+	branch := strings.TrimPrefix(ref, prefix)
+	if branch == "" {
+		return ""
+	}
+	slog.Debug("default branch from git symbolic-ref", "branch", branch)
+	return branch
 }
 
 // Pull runs git pull on the current branch.

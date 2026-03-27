@@ -2,6 +2,10 @@ module github.com/bborbe/dark-factory
 
 go 1.26.1
 
+replace (
+	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.2.0
+)
+
 require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/bborbe/collection v1.20.7

@@ -259,6 +259,51 @@ var _ = Describe("Brancher", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(branch).To(Equal("master"))
 		})
+
+		It("falls back to git symbolic-ref when gh is unavailable", func() {
+			// Create a bare repo to act as origin
+			bareDir, err := os.MkdirTemp("", "brancher-bare-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(bareDir) }()
+
+			cmd := exec.Command("git", "init", "--bare", bareDir)
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Add bare repo as remote origin
+			cmd = exec.Command("git", "remote", "add", "origin", bareDir)
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Push current branch to bare repo
+			cmd = exec.Command("git", "push", "origin", "HEAD:master")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Fetch to populate refs/remotes/origin/
+			cmd = exec.Command("git", "fetch", "origin")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Set the symbolic ref so git knows the default branch
+			cmd = exec.Command("git", "remote", "set-head", "origin", "--auto")
+			cmd.Dir = tempDir
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred())
+
+			branch, err := b.DefaultBranch(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(branch).To(Equal("master"))
+		})
+
+		It("returns error when both gh and git symbolic-ref fail", func() {
+			// No remote configured, so git symbolic-ref also fails
+			_, err := b.DefaultBranch(ctx)
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("Pull", func() {

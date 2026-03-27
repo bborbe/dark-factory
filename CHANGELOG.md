@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.67.8
+
+- Update default container image to claude-yolo v0.4.1 (fixes root UID remapping on Docker Desktop for Mac)
+
 ## v0.67.7
 
 - Bump core deps: errors, time, validation, golangci-lint, osv-scanner, go-modtool

@@ -173,13 +173,13 @@ A channel is active if its env var resolves to a non-empty value. No env var = n
 ## Container
 
 ```yaml
-containerImage: "docker.io/bborbe/claude-yolo:v0.3.1"
+containerImage: "docker.io/bborbe/claude-yolo:v0.4.1"
 model: "claude-sonnet-4-6"
 ```
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `containerImage` | `docker.io/bborbe/claude-yolo:v0.3.1` | Docker image for YOLO execution |
+| `containerImage` | `docker.io/bborbe/claude-yolo:v0.4.1` | Docker image for YOLO execution |
 | `model` | `claude-sonnet-4-6` | Claude model used inside the container |
 
 ## Private Go Modules
@@ -237,7 +237,7 @@ defaultBranch: master
 validationCommand: "make precommit"
 validationPrompt: docs/dod.md
 provider: github
-containerImage: "docker.io/bborbe/claude-yolo:v0.3.1"
+containerImage: "docker.io/bborbe/claude-yolo:v0.4.1"
 model: "claude-sonnet-4-6"
 notifications:
   telegram:

@@ -10,8 +10,20 @@ Run from the project root (where `.dark-factory.yaml` lives):
 dark-factory daemon
 ```
 
-- **`daemon`** — watches for new prompts, processes continuously (recommended)
+- **`daemon`** — watches for new prompts, processes continuously
 - **`run`** — one-shot mode, processes all queued prompts and exits
+
+### When to use daemon vs run
+
+| Scenario | Command | Why |
+|----------|---------|-----|
+| Multiple prompts queued | `daemon` | Processes all sequentially, watches for more |
+| Iterating on failures (retry → fix → retry) | `daemon` | Auto-picks up retried prompts without restarting |
+| Single prompt, want quick feedback | `run` | Exits when done — no cleanup needed |
+| CI/automation | `run` | Predictable lifecycle, exits with status code |
+| Spec-based flow (auto-generated prompts) | `daemon` | Watches for new prompts as spec generates them |
+
+**Rule of thumb:** Use `daemon` when you'll be iterating or have multiple prompts. Use `run` for a single known prompt where you want it to finish and exit.
 
 **From Claude Code:** Use Bash tool with `run_in_background: true`:
 

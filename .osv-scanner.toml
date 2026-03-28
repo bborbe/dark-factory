@@ -1,0 +1,7 @@
+[[IgnoredVulns]]
+id = "GHSA-pxq6-2prw-chj9"
+reason = "github.com/docker/docker indirect dep, no fix available"
+
+[[IgnoredVulns]]
+id = "GHSA-x744-4wpc-v9h2"
+reason = "github.com/docker/docker indirect dep, no fix available"

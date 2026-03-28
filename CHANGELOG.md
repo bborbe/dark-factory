@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.69.1
+
+- Update bborbe/http to v1.26.8
+- Update bborbe/run to v1.9.12
+- Update indirect dependencies (kv, log, math, sentry, getsentry)
+
 ## v0.69.0
 
 - feat: rename `prompt verify` to `prompt complete`, accept `failed`, `in_review`, and `executing` prompts in addition to `pending_verification`

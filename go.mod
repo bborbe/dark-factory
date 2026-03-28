@@ -10,8 +10,8 @@ require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/bborbe/collection v1.20.7
 	github.com/bborbe/errors v1.5.8
-	github.com/bborbe/http v1.26.7
-	github.com/bborbe/run v1.9.11
+	github.com/bborbe/http v1.26.8
+	github.com/bborbe/run v1.9.12
 	github.com/bborbe/time v1.25.6
 	github.com/bborbe/validation v1.4.9
 	github.com/fsnotify/fsnotify v1.9.0
@@ -92,11 +92,11 @@ require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694 // indirect
-	github.com/bborbe/kv v1.18.6 // indirect
-	github.com/bborbe/log v1.6.5 // indirect
-	github.com/bborbe/math v1.3.5 // indirect
+	github.com/bborbe/kv v1.19.2 // indirect
+	github.com/bborbe/log v1.6.8 // indirect
+	github.com/bborbe/math v1.3.6 // indirect
 	github.com/bborbe/parse v1.10.8 // indirect
-	github.com/bborbe/sentry v1.9.10 // indirect
+	github.com/bborbe/sentry v1.9.13 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bkielbasa/cyclop v1.2.3 // indirect
 	github.com/blizzy78/varnamelen v0.8.0 // indirect
@@ -171,7 +171,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/firefart/nonamedreturns v1.0.6 // indirect
 	github.com/fzipp/gocyclo v0.6.0 // indirect
-	github.com/getsentry/sentry-go v0.43.0 // indirect
+	github.com/getsentry/sentry-go v0.44.1 // indirect
 	github.com/ghostiam/protogetter v0.3.20 // indirect
 	github.com/go-critic/go-critic v0.14.3 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Bumped DefaultContainerImage from v0.4.3 to v0.5.0 in pkg/const.go and added changelog entry.
+container: dark-factory-221-bump-claude-yolo-v050
+dark-factory-version: v0.69.0
 created: "2026-03-30T15:08:40Z"
 queued: "2026-03-30T15:08:40Z"
+started: "2026-03-30T15:35:32Z"
+completed: "2026-03-30T15:45:51Z"
 ---
 
 <summary>

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.75.0
+
+- feat: Add `pkg/reindex` package to detect and resolve duplicate numeric prefixes across lifecycle directories using `created` frontmatter date as tie-breaker
+
 ## v0.74.0
 
 - feat: Wire `slugmigrator.Migrator` into generator post-processing, daemon runner startup, and one-shot runner startup so all spec number references are migrated to full slugs on every run

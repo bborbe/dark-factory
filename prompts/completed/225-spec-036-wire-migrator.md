@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["036"]
+summary: Wired slugmigrator.Migrator into generator post-processing, runner startup, and one-shot runner startup via factory helpers
+container: dark-factory-225-spec-036-wire-migrator
+dark-factory-version: v0.69.0
 created: "2026-03-30T17:00:00Z"
 queued: "2026-03-30T17:29:26Z"
+started: "2026-03-30T18:16:21Z"
+completed: "2026-03-30T18:31:11Z"
 branch: dark-factory/full-slug-spec-references
 ---
 <summary>

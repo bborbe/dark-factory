@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["036"]
+summary: Created pkg/slugmigrator with Migrator interface and implementation that replaces bare spec number references with full spec slugs, including tests with 81.8% coverage and counterfeiter mock generation.
 container: dark-factory-224-spec-036-slug-migrator
 dark-factory-version: v0.69.0
 created: "2026-03-30T17:00:00Z"
 queued: "2026-03-30T17:29:26Z"
-started: "2026-03-30T17:29:28Z"
+started: "2026-03-30T18:10:34Z"
+completed: "2026-03-30T18:16:17Z"
 branch: dark-factory/full-slug-spec-references
 ---
 <summary>

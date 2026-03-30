@@ -109,6 +109,8 @@ func runPromptCommand(
 		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
 	case "complete":
 		return factory.CreatePromptCompleteCommand(cfg).Run(ctx, args)
+	case "unapprove":
+		return factory.CreateUnapproveCommand(cfg).Run(ctx, args)
 	case "show":
 		return factory.CreatePromptShowCommand(cfg).Run(ctx, args)
 	default:
@@ -161,6 +163,7 @@ func printHelp() {
 			"  prompt cancel <id>     Cancel an approved or executing prompt\n"+
 			"  prompt retry           Shorthand for prompt requeue --failed\n"+
 			"  prompt complete <id>   Complete a prompt (triggers commit/push)\n"+
+			"  prompt unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
 			"  prompt show <id>       Show details for a single prompt\n\n"+
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+

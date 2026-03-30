@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.77.0
+
+- feat: Add `dark-factory prompt unapprove` command to reverse prompt approval, moving file back to inbox with draft status and renumbering remaining queue entries
+
 ## v0.76.0
 
 - feat: Add `UpdateSpecRefs` to `pkg/reindex` to propagate spec file renames to prompt frontmatter and filenames, and wire full reindex sequence into daemon and one-shot runner startup

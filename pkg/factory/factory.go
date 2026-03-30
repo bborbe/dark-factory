@@ -618,6 +618,24 @@ func CreatePromptCompleteCommand(cfg config.Config) cmd.PromptCompleteCommand {
 	)
 }
 
+// CreateUnapproveCommand creates an UnapproveCommand.
+func CreateUnapproveCommand(cfg config.Config) cmd.UnapproveCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
+
+	return cmd.NewUnapproveCommand(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		promptManager,
+		currentDateTimeGetter,
+	)
+}
+
 // CreateApproveCommand creates an ApproveCommand.
 func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()

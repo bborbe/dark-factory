@@ -20,6 +20,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/server"
+	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
@@ -49,6 +50,7 @@ func NewRunner(
 	projectName string,
 	containerChecker executor.ContainerChecker,
 	n notifier.Notifier,
+	slugMigrator slugmigrator.Migrator,
 ) Runner {
 	return &runner{
 		inboxDir:           inboxDir,
@@ -69,6 +71,7 @@ func NewRunner(
 		projectName:        projectName,
 		containerChecker:   containerChecker,
 		notifier:           n,
+		slugMigrator:       slugMigrator,
 	}
 }
 
@@ -92,6 +95,7 @@ type runner struct {
 	projectName        string
 	containerChecker   executor.ContainerChecker
 	notifier           notifier.Notifier
+	slugMigrator       slugmigrator.Migrator
 }
 
 // Run executes the main processing loop:
@@ -143,6 +147,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
 
+	// Migrate bare spec number refs to full slugs in all prompt lifecycle dirs
+	if err := r.migrateSpecSlugs(ctx); err != nil {
+		return errors.Wrap(ctx, err, "migrate spec slugs")
+	}
+
 	// Run watcher, processor, server, and optional reviewPoller in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
@@ -159,6 +168,13 @@ func (r *runner) Run(ctx context.Context) error {
 		runners = append(runners, r.specWatcher.Watch)
 	}
 	return run.CancelOnFirstError(ctx, runners...)
+}
+
+// migrateSpecSlugs replaces bare spec number references with full slugs in all prompt dirs.
+func (r *runner) migrateSpecSlugs(ctx context.Context) error {
+	return r.slugMigrator.MigrateDirs(ctx, []string{
+		r.inboxDir, r.inProgressDir, r.completedDir, r.logDir,
+	})
 }
 
 // normalizeFilenames normalizes filenames in the in-progress directory only.

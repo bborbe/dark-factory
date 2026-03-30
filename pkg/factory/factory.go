@@ -29,6 +29,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/server"
+	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/status"
@@ -178,6 +179,17 @@ func fetchBitbucketCurrentUser(ctx context.Context, baseURL, token string) strin
 	return strings.TrimSpace(string(body))
 }
 
+// createSpecSlugMigrator creates a Migrator that resolves bare spec number refs to full slugs.
+func createSpecSlugMigrator(
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) slugmigrator.Migrator {
+	return slugmigrator.NewMigrator(
+		[]string{cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir},
+		currentDateTimeGetter,
+	)
+}
+
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	inboxDir := cfg.Prompts.InboxDir
@@ -193,7 +205,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	versionGetter := version.NewGetter(ver)
 	projectName := project.Name(cfg.ProjectName)
 	ready := make(chan struct{}, 10)
-	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter)
+	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
+	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
 
 	n := CreateNotifier(cfg)
@@ -235,7 +248,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
 		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName,
-		executor.NewDockerContainerChecker(), n,
+		executor.NewDockerContainerChecker(), n, migrator,
 	)
 }
 
@@ -254,6 +267,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 	versionGetter := version.NewGetter(ver)
 	projectName := project.Name(cfg.ProjectName)
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 
 	// One-shot mode uses a nil ready channel — ProcessQueue never reads from it.
 	ready := make(chan struct{}, 10)
@@ -303,10 +317,11 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			n,
 			cfg.ResolvedClaudeDir(),
 		),
-		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
+		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
 		executor.NewDockerContainerChecker(),
 		autoApprove,
+		migrator,
 	)
 }
 
@@ -315,6 +330,7 @@ func CreateSpecGenerator(
 	cfg config.Config,
 	containerImage string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	slugMigrator slugmigrator.Migrator,
 ) generator.SpecGenerator {
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
@@ -332,6 +348,7 @@ func CreateSpecGenerator(
 		cfg.Specs.InboxDir,
 		cfg.Specs.LogDir,
 		currentDateTimeGetter,
+		slugMigrator,
 	)
 }
 

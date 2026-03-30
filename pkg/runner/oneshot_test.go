@@ -74,6 +74,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			false,
+			&mocks.SpecSlugMigrator{},
 		)
 	}
 
@@ -191,6 +192,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			false,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		err := r.Run(ctx)
@@ -250,6 +252,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			true,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		err := r.Run(ctx)
@@ -307,6 +310,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			false,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		err := r.Run(ctx)
@@ -363,6 +367,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			true,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		err := r.Run(ctx)
@@ -455,6 +460,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			false,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		// Should succeed (createDirectories creates the dir, but generateFromApprovedSpecs
@@ -515,6 +521,7 @@ var _ = Describe("OneShotRunner", func() {
 				libtime.NewCurrentDateTime(),
 				containerChecker,
 				false,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			err := r.Run(ctx)
@@ -578,6 +585,7 @@ var _ = Describe("OneShotRunner", func() {
 			libtime.NewCurrentDateTime(),
 			containerChecker,
 			true,
+			&mocks.SpecSlugMigrator{},
 		)
 
 		err := r.Run(ctx)
@@ -622,6 +630,7 @@ var _ = Describe("OneShotRunner", func() {
 				libtime.NewCurrentDateTime(),
 				containerChecker,
 				false,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			err := r.Run(ctx)
@@ -664,6 +673,7 @@ var _ = Describe("OneShotRunner", func() {
 				libtime.NewCurrentDateTime(),
 				containerChecker,
 				false,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			err := r.Run(ctx)
@@ -732,6 +742,7 @@ var _ = Describe("OneShotRunner", func() {
 				libtime.NewCurrentDateTime(),
 				containerChecker,
 				true,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			err := r.Run(ctx)
@@ -772,6 +783,7 @@ var _ = Describe("OneShotRunner", func() {
 					libtime.NewCurrentDateTime(),
 					containerChecker,
 					false,
+					&mocks.SpecSlugMigrator{},
 				)
 
 				err := r.Run(ctx)

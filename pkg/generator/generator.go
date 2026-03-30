@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -36,6 +37,7 @@ func NewSpecGenerator(
 	specsDir string,
 	logDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	slugMigrator slugmigrator.Migrator,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:              executor,
@@ -45,6 +47,7 @@ func NewSpecGenerator(
 		specsDir:              specsDir,
 		logDir:                logDir,
 		currentDateTimeGetter: currentDateTimeGetter,
+		slugMigrator:          slugMigrator,
 	}
 }
 
@@ -57,6 +60,7 @@ type dockerSpecGenerator struct {
 	specsDir              string
 	logDir                string
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	slugMigrator          slugmigrator.Migrator
 }
 
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,
@@ -102,6 +106,11 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	// g. Determine new files
 	newFiles := diffFiles(beforeFiles, afterFiles)
+
+	// Resolve bare spec number refs to full slugs in newly generated prompts.
+	if err := g.slugMigrator.MigrateDirs(ctx, []string{g.inboxDir}); err != nil {
+		slog.Warn("failed to migrate spec slugs in inbox", "error", err)
+	}
 
 	// g. Verify new files were created
 	if len(newFiles) == 0 {
@@ -245,6 +254,11 @@ func (g *dockerSpecGenerator) reattachAndFinalize(
 	if len(newFiles) == 0 {
 		slog.Info("no prompt files found in inbox for spec after reattach", "spec", specBasename)
 		return nil
+	}
+
+	// Resolve bare spec number refs to full slugs in newly generated prompts.
+	if err := g.slugMigrator.MigrateDirs(ctx, []string{g.inboxDir}); err != nil {
+		slog.Warn("failed to migrate spec slugs in inbox", "error", err)
 	}
 
 	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)

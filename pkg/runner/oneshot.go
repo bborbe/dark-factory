@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -44,6 +45,7 @@ func NewOneShotRunner(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	containerChecker executor.ContainerChecker,
 	autoApprove bool,
+	slugMigrator slugmigrator.Migrator,
 ) OneShotRunner {
 	return &oneShotRunner{
 		inboxDir:              inboxDir,
@@ -61,6 +63,7 @@ func NewOneShotRunner(
 		currentDateTimeGetter: currentDateTimeGetter,
 		containerChecker:      containerChecker,
 		autoApprove:           autoApprove,
+		slugMigrator:          slugMigrator,
 	}
 }
 
@@ -81,6 +84,7 @@ type oneShotRunner struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	containerChecker      executor.ContainerChecker
 	autoApprove           bool
+	slugMigrator          slugmigrator.Migrator
 }
 
 // Run acquires the lock, initializes directories, then loops: generate prompts from approved
@@ -116,6 +120,13 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	// Normalize filenames before processing
 	if err := r.normalizeFilenames(ctx); err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")
+	}
+
+	// Migrate bare spec number refs to full slugs in all prompt lifecycle dirs
+	if err := r.slugMigrator.MigrateDirs(ctx, []string{
+		r.inboxDir, r.inProgressDir, r.completedDir, r.logDir,
+	}); err != nil {
+		return errors.Wrap(ctx, err, "migrate spec slugs")
 	}
 
 	// Loop: generate from approved specs, then drain queue; repeat until idle.

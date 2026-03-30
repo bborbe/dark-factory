@@ -59,6 +59,7 @@ var _ = Describe("SpecGenerator", func() {
 			specsDir,
 			logDir,
 			libtime.NewCurrentDateTime(),
+			&mocks.SpecSlugMigrator{},
 		)
 
 		// Write a spec file with status "approved"

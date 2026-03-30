@@ -84,6 +84,7 @@ var _ = Describe("Runner", func() {
 			"",
 			containerChecker,
 			notifier.NewMultiNotifier(),
+			&mocks.SpecSlugMigrator{},
 		)
 	}
 
@@ -372,6 +373,7 @@ var _ = Describe("Runner", func() {
 			"",
 			containerChecker,
 			notifier.NewMultiNotifier(),
+			&mocks.SpecSlugMigrator{},
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -426,6 +428,7 @@ var _ = Describe("Runner", func() {
 			"",
 			containerChecker,
 			notifier.NewMultiNotifier(),
+			&mocks.SpecSlugMigrator{},
 		)
 
 		go func() {
@@ -470,6 +473,7 @@ var _ = Describe("Runner", func() {
 			"",
 			containerChecker,
 			notifier.NewMultiNotifier(),
+			&mocks.SpecSlugMigrator{},
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -530,6 +534,7 @@ var _ = Describe("Runner", func() {
 				"",
 				containerChecker,
 				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -740,6 +745,7 @@ var _ = Describe("Runner", func() {
 				"test-project",
 				containerChecker,
 				fakeNotifier,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -815,6 +821,7 @@ var _ = Describe("Runner", func() {
 				"test-project",
 				containerChecker,
 				fakeNotifier,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -900,6 +907,7 @@ var _ = Describe("Runner", func() {
 					"test-project",
 					containerChecker,
 					fakeNotifier,
+					&mocks.SpecSlugMigrator{},
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -981,6 +989,7 @@ var _ = Describe("Runner", func() {
 				"test-project",
 				containerChecker,
 				fakeNotifier,
+				&mocks.SpecSlugMigrator{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)

@@ -95,6 +95,54 @@ func TestParseArgsSpec(t *testing.T) {
 	)
 }
 
+func TestParseArgsPromptHelp(t *testing.T) {
+	t.Parallel()
+	assertParseArgs(
+		t,
+		[]string{"prompt", "--help"},
+		parseArgsResult{command: "prompt", subcommand: "--help", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"prompt", "-h"},
+		parseArgsResult{command: "prompt", subcommand: "-h", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"prompt", "help"},
+		parseArgsResult{command: "prompt", subcommand: "help", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"prompt"},
+		parseArgsResult{command: "prompt", subcommand: "", args: []string{}},
+	)
+}
+
+func TestParseArgsSpecHelp(t *testing.T) {
+	t.Parallel()
+	assertParseArgs(
+		t,
+		[]string{"spec", "--help"},
+		parseArgsResult{command: "spec", subcommand: "--help", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"spec", "-h"},
+		parseArgsResult{command: "spec", subcommand: "-h", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"spec", "help"},
+		parseArgsResult{command: "spec", subcommand: "help", args: []string{}},
+	)
+	assertParseArgs(
+		t,
+		[]string{"spec"},
+		parseArgsResult{command: "spec", subcommand: "", args: []string{}},
+	)
+}
+
 func TestParseArgsUnknown(t *testing.T) {
 	t.Parallel()
 	assertParseArgs(

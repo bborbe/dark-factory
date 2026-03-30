@@ -95,6 +95,9 @@ func runPromptCommand(
 	args []string,
 ) error {
 	switch subcommand {
+	case "", "--help", "-h", "help":
+		printPromptHelp()
+		return nil
 	case "status":
 		return factory.CreateStatusCommand(cfg).Run(ctx, args)
 	case "list":
@@ -125,6 +128,9 @@ func runSpecCommand(
 	args []string,
 ) error {
 	switch subcommand {
+	case "", "--help", "-h", "help":
+		printSpecHelp()
+		return nil
 	case "list":
 		return factory.CreateSpecListCommand(cfg).Run(ctx, args)
 	case "status":
@@ -175,6 +181,35 @@ func printHelp() {
 			"  spec show <id>         Show details for a single spec\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+
 			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
+	)
+}
+
+func printPromptHelp() {
+	fmt.Fprintf(
+		os.Stdout,
+		"Usage: dark-factory prompt <subcommand>\n\nSubcommands:\n"+
+			"  list            List prompts with their status\n"+
+			"  status          Show prompt status\n"+
+			"  approve <id>    Approve a prompt (move from inbox to queue)\n"+
+			"  requeue <id>    Reset a prompt's status to queued\n"+
+			"  cancel <id>     Cancel an approved or executing prompt\n"+
+			"  retry           Shorthand for prompt requeue --failed\n"+
+			"  complete <id>   Complete a prompt (triggers commit/push)\n"+
+			"  unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
+			"  show <id>       Show details for a single prompt\n",
+	)
+}
+
+func printSpecHelp() {
+	fmt.Fprintf(
+		os.Stdout,
+		"Usage: dark-factory spec <subcommand>\n\nSubcommands:\n"+
+			"  list            List specs\n"+
+			"  status          Show spec status\n"+
+			"  approve <id>    Approve a spec\n"+
+			"  unapprove <id>  Unapprove a spec (move back to inbox, reset to draft)\n"+
+			"  complete <id>   Mark a verified spec as completed\n"+
+			"  show <id>       Show details for a single spec\n",
 	)
 }
 

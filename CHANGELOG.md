@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.79.0
+
+- feat: Add per-group help to `prompt` and `spec` commands — `--help`, `-h`, `help`, and no-args print available subcommands with descriptions instead of returning an error
+
 ## v0.78.0
 
 - feat: Add `dark-factory spec unapprove` command to reverse spec approval, moving file back to inbox with draft status, clearing approved/branch metadata, and renumbering remaining in-progress specs to close the gap

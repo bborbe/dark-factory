@@ -111,6 +111,11 @@ Every prompt MUST have these XML sections:
 - Correct form: `cd api && make test` or `make precommit` (repo-root-relative)
 - Wrong form: `cd /Users/bborbe/Documents/workspaces/foo/bar && make test` or `cd ~/Documents/workspaces/foo/bar && make test`
 
+**Config/args documentation completeness:**
+- If the prompt adds, renames, removes, or changes defaults for CLI args, config fields, env vars, or flags, grep the repo for all references
+- If `docs/`, `README.md`, examples, or comments reference the old name or are missing the new name, flag as critical: "`X` changed but `file.md` still references old value/name"
+- Common missed locations: `docs/`, `README.md`, `CLAUDE.md`, test fixtures, comments, config examples
+
 **Documentation placement:**
 
 Knowledge lives in four locations: specs (behavioral, dies after implementation), prompts (one-off, dies after execution), project docs (project-specific, lives with the project), yolo docs (generic coding patterns, lives across projects). Prompts should reference docs instead of inlining reusable knowledge.

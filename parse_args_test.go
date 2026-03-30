@@ -48,6 +48,7 @@ func TestParseArgsDefaults(t *testing.T) {
 	assertParseArgs(t, []string{"daemon"}, parseArgsResult{command: "daemon", args: []string{}})
 	assertParseArgs(t, []string{"status"}, parseArgsResult{command: "status", args: []string{}})
 	assertParseArgs(t, []string{"list"}, parseArgsResult{command: "list", args: []string{}})
+	assertParseArgs(t, []string{"config"}, parseArgsResult{command: "config", args: []string{}})
 }
 
 func TestParseArgsNoArgs(t *testing.T) {

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.72.0
+
+- feat: Add `config` command to show effective configuration
+
 ## v0.71.1
 
 - chore: Bump default claude-yolo image to v0.5.0

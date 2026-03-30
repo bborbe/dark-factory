@@ -22,4 +22,5 @@ After completing your implementation, review your own changes against each crite
 
 - README.md is updated if the change affects usage, configuration, or setup
 - Documentation is updated if the change affects behavior described in docs/
+- When changing CLI args, config fields, env vars, or flags (add, rename, remove, change default), grep the entire repo and update all references in docs/, README.md, examples, and comments
 - CHANGELOG.md has an entry under `## Unreleased`

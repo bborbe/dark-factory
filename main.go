@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/bborbe/errors"
+	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
@@ -76,6 +77,8 @@ func run() error {
 		return factory.CreateCombinedStatusCommand(cfg).Run(ctx, args)
 	case "list":
 		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
+	case "config":
+		return printConfig(cfg)
 	case "run":
 		return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
 	case "daemon":
@@ -135,6 +138,13 @@ func runSpecCommand(
 	}
 }
 
+func printConfig(cfg config.Config) error {
+	enc := yaml.NewEncoder(os.Stdout)
+	enc.SetIndent(2)
+	defer enc.Close()
+	return enc.Encode(cfg)
+}
+
 func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
@@ -142,7 +152,8 @@ func printHelp() {
 			"  run                    Process all queued prompts and exit\n"+
 			"  daemon                 Watch for queued prompts and execute them (long-running)\n"+
 			"  status                 Show combined status of prompts and specs\n"+
-			"  list                   List all prompts and specs with their status\n\n"+
+			"  list                   List all prompts and specs with their status\n"+
+			"  config                 Show effective configuration (defaults + .dark-factory.yaml)\n\n"+
 			"  prompt list            List prompts with their status\n"+
 			"  prompt status          Show prompt status\n"+
 			"  prompt approve <id>    Approve a prompt (move from inbox to queue)\n"+
@@ -196,7 +207,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 		return debug, "help", "", []string{}, autoApprove
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}, autoApprove
-	case "run", "daemon", "status", "list":
+	case "run", "daemon", "status", "list", "config":
 		return debug, command, "", rest, autoApprove
 	case "prompt", "spec":
 		if len(rest) == 0 {

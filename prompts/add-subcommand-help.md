@@ -3,6 +3,18 @@ status: draft
 created: "2026-03-30T18:55:33Z"
 ---
 
+<summary>
+- `dark-factory prompt --help` and `dark-factory spec --help` show available subcommands instead of erroring
+- `-h` and `help` also work as aliases
+- Running `dark-factory prompt` or `dark-factory spec` with no args shows help instead of an error
+- Help output follows the style of the existing top-level `printHelp()`
+- Tests cover help flags and no-args behavior
+</summary>
+
+<objective>
+Add per-group help to `prompt` and `spec` commands so that `--help`, `-h`, `help`, and no-args all print available subcommands with descriptions instead of returning an error.
+</objective>
+
 <context>
 Read CLAUDE.md for project conventions.
 
@@ -26,6 +38,15 @@ When `dark-factory prompt` or `dark-factory spec` is called with no subcommand, 
 
 </requirements>
 
+<constraints>
+- Do NOT commit — dark-factory handles git
+- Match the output style of the existing `printHelp()` function
+- Existing tests must still pass
+- Add test cases in `parse_args_test.go` for help flags and no-args behavior
+</constraints>
+
 <verification>
+```bash
 make precommit
+```
 </verification>

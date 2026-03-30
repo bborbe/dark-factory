@@ -1,8 +1,10 @@
 ---
+status: approved
 tags:
-  - dark-factory
-  - spec
-status: draft
+    - dark-factory
+    - spec
+approved: "2026-03-30T16:37:46Z"
+branch: dark-factory/full-slug-spec-references
 ---
 
 ## Summary
@@ -19,22 +21,22 @@ Prompt frontmatter stores spec references as bare numbers: `spec: ["001"]`. This
 2. **Fragile** — after a branch merge with number conflicts, bare `001` could point to the wrong spec
 3. **Inconsistent** — some prompts already use full slugs (e.g., `spec: "020-auto-prompt-generation"` in test fixtures)
 
-The full slug format (`001-workflow-direct`) is already supported by `specnum.Parse()` and `HasSpec()` — it's just not consistently used.
+The full slug format (`001-workflow-direct`) is already supported by the existing number extraction and spec-matching logic — it's just not consistently used.
 
 ## Goal
 
-All spec references in prompt frontmatter use the full slug format. New prompts generated from specs automatically get the full slug. Existing prompts are migrated.
+After this work, every spec reference in every prompt across all lifecycle directories uses the human-readable full slug format. New prompts generated from specs automatically get the full slug. Existing bare-number references are auto-migrated on daemon/run startup.
 
 ## Assumptions
 
-- `specnum.Parse()` is the single source of truth for number extraction and already handles both bare numbers and full slugs
+- The existing number extraction logic is the single source of truth and already handles both bare numbers and full slugs
 - No external consumers depend on bare-number format in prompt frontmatter
 - All spec files follow the `NNN-slug.md` naming convention
 
 ## Non-goals
 
 - Changing the spec file format itself
-- Changing how `specnum.Parse()` works (already handles both formats)
+- Changing how number extraction works (already handles both formats)
 - Changing spec filenames
 
 ## Desired Behavior
@@ -48,9 +50,9 @@ All spec references in prompt frontmatter use the full slug format. New prompts 
 
 ## Constraints
 
-- `specnum.Parse()` is the canonical number extractor — do not duplicate its logic
+- Use the existing number extraction logic — do not duplicate it
 - Existing prompts with full-slug references must not be modified
-- The `SpecList` type (`[]string`) and YAML format are unchanged
+- The spec field format in YAML (string or array of strings) is unchanged
 - Migration must work across all lifecycle dirs (inbox, in-progress, completed, log)
 
 ## Security / Abuse Cases
@@ -72,7 +74,7 @@ N/A — internal CLI tooling, no user-facing input. Migration operates only on c
 - [ ] Daemon/run auto-migrates bare spec numbers to full slugs on startup
 - [ ] Migration is idempotent (second run = no changes)
 - [ ] Unresolvable bare numbers logged as warnings, not modified
-- [ ] `HasSpec()` works with both `"001"` and `"001-workflow-direct"`
+- [ ] Spec-matching accepts both `"001"` and `"001-workflow-direct"` (backward compatible)
 - [ ] All existing tests pass
 
 ## Verification

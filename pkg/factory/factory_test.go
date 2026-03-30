@@ -77,6 +77,7 @@ var _ = Describe("Factory", func() {
 				nil,
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),
+				cfg.ResolvedClaudeDir(),
 			)
 			Expect(processor).NotTo(BeNil())
 		})

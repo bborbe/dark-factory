@@ -27,7 +27,6 @@ You come back                       ←── changes committed and pushed
 - **Docker** — to run claude-yolo containers
 - **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.3.1`
 - **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Setup](docs/yolo-container-setup.md))
-- **DARK_FACTORY_CLAUDE_CONFIG_DIR** — set to `~/.claude-yolo` (otherwise defaults to `~/.claude`)
 
 ## Installation
 
@@ -144,6 +143,7 @@ validationCommand: "make precommit"                  # shell command run after e
 validationPrompt: docs/dod.md                        # AI-judged quality criteria (file or inline)
 containerImage: docker.io/bborbe/claude-yolo:v0.3.1  # YOLO Docker image
 model: claude-sonnet-4-6                             # Claude model
+claudeDir: ~/.claude-yolo                            # host claude config dir (default: ~/.claude-yolo)
 ```
 
 See [docs/configuration.md](docs/configuration.md) for all config fields, validation, notifications, and providers.
@@ -157,7 +157,6 @@ Dark-factory executes prompts inside a [claude-yolo](https://github.com/bborbe/c
 ```bash
 git clone https://github.com/bborbe/claude-yolo.git ~/.claude-yolo
 cd ~/.claude-yolo && claude login
-export DARK_FACTORY_CLAUDE_CONFIG_DIR=~/.claude-yolo
 ```
 
 **Minimal setup** (create your own): You need three files — OAuth credentials (`claude login`), `settings.json`, and a `CLAUDE.md` with agent instructions.

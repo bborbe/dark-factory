@@ -92,6 +92,7 @@ type Config struct {
 	Bitbucket         BitbucketConfig     `yaml:"bitbucket"`
 	Notifications     NotificationsConfig `yaml:"notifications"`
 	Env               map[string]string   `yaml:"env,omitempty"`
+	ClaudeDir         string              `yaml:"claudeDir"`
 }
 
 // Defaults returns a Config with all default values.
@@ -126,6 +127,7 @@ func Defaults() Config {
 		GitHub:            GitHubConfig{},
 		Provider:          ProviderGitHub,
 		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
+		ClaudeDir:         "~/.claude-yolo",
 	}
 }
 
@@ -318,6 +320,11 @@ func resolveFilePath(value string) string {
 		}
 	}
 	return value
+}
+
+// ResolvedClaudeDir returns the claude-yolo config directory with ~ expanded.
+func (c Config) ResolvedClaudeDir() string {
+	return resolveFilePath(c.ClaudeDir)
 }
 
 // ResolvedGitHubToken returns the GitHub token with environment variables resolved.

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.71.0
+
+- feat: Add `claudeDir` config field to set claude-yolo config directory per project (replaces `DARK_FACTORY_CLAUDE_CONFIG_DIR` env var)
+
 ## v0.70.0
 
 - Add documentation placement guide (docs/documentation.md) covering 4 knowledge locations

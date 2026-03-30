@@ -226,6 +226,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.ValidationCommand, cfg.ValidationPrompt,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
 		cfg.VerificationGate, cfg.Env, currentDateTimeGetter, n,
+		cfg.ResolvedClaudeDir(),
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -300,6 +301,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cfg.Env,
 			currentDateTimeGetter,
 			n,
+			cfg.ResolvedClaudeDir(),
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter),
 		currentDateTimeGetter,
@@ -322,6 +324,7 @@ func CreateSpecGenerator(
 			cfg.NetrcFile,
 			cfg.GitconfigFile,
 			cfg.Env,
+			cfg.ResolvedClaudeDir(),
 		),
 		executor.NewDockerContainerChecker(),
 		cfg.Prompts.InboxDir,
@@ -396,6 +399,7 @@ func CreateProcessor(
 	env map[string]string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	n notifier.Notifier,
+	claudeDir string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -409,6 +413,7 @@ func CreateProcessor(
 			netrcFile,
 			gitconfigFile,
 			env,
+			claudeDir,
 		),
 		promptManager,
 		releaser,

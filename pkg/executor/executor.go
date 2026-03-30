@@ -44,6 +44,7 @@ func NewDockerExecutor(
 	netrcFile string,
 	gitconfigFile string,
 	env map[string]string,
+	claudeDir string,
 ) Executor {
 	return &dockerExecutor{
 		containerImage: containerImage,
@@ -52,6 +53,7 @@ func NewDockerExecutor(
 		netrcFile:      netrcFile,
 		gitconfigFile:  gitconfigFile,
 		env:            env,
+		claudeDir:      claudeDir,
 		commandRunner:  &defaultCommandRunner{},
 	}
 }
@@ -64,6 +66,7 @@ type dockerExecutor struct {
 	netrcFile      string
 	gitconfigFile  string
 	env            map[string]string
+	claudeDir      string
 	commandRunner  commandRunner
 }
 
@@ -116,8 +119,8 @@ func (e *dockerExecutor) Execute(
 	// Extract prompt basename from containerName (format: projectName-basename)
 	promptBaseName := extractPromptBaseName(containerName, e.projectName)
 
-	// Resolve Claude config dir (env var override or default ~/.claude)
-	claudeConfigDir := resolveClaudeConfigDir(home)
+	// Use the configured Claude config dir
+	claudeConfigDir := e.claudeDir
 
 	// Validate Claude auth before starting Docker
 	if err := validateClaudeAuth(ctx, claudeConfigDir); err != nil {
@@ -404,25 +407,6 @@ func validateClaudeAuth(_ context.Context, configDir string) error {
 		configDir,
 		configDir,
 	)
-}
-
-// resolveClaudeConfigDir returns the Claude config directory to mount in the container.
-// It reads DARK_FACTORY_CLAUDE_CONFIG_DIR from the environment; if empty, defaults to ~/.claude.
-// Supports ~ prefix and $HOME/$variable expansion.
-func resolveClaudeConfigDir(home string) string {
-	dir := os.Getenv("DARK_FACTORY_CLAUDE_CONFIG_DIR")
-	if dir == "" {
-		return home + "/.claude"
-	}
-	// Expand leading ~ to home directory
-	if dir == "~" {
-		dir = home
-	} else if strings.HasPrefix(dir, "~/") {
-		dir = home + dir[1:]
-	}
-	// Expand $HOME and other environment variables
-	dir = os.ExpandEnv(dir)
-	return dir
 }
 
 // StopAndRemoveContainer gracefully stops a container (SIGTERM + 10s timeout) then removes it.

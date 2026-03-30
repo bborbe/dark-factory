@@ -33,6 +33,7 @@ var _ = Describe("DockerExecutor", func() {
 			"",
 			"",
 			nil,
+			config.Defaults().ResolvedClaudeDir(),
 		)
 
 		var err error
@@ -156,6 +157,7 @@ More lines...`
 				"",
 				"",
 				nil,
+				config.Defaults().ResolvedClaudeDir(),
 			)
 			Expect(executor).NotTo(BeNil())
 		})

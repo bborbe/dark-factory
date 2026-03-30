@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added ProjectDir to Status struct and NewChecker(), showed it in formatter output, updated all three factory call sites, and updated tests.
+container: dark-factory-231-status-show-project-dir
+dark-factory-version: v0.69.0
 created: "2026-03-30T22:10:00Z"
 queued: "2026-03-30T20:15:19Z"
+started: "2026-03-30T20:57:37Z"
+completed: "2026-03-30T21:06:41Z"
 ---
 
 <summary>

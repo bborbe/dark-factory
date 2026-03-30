@@ -114,14 +114,11 @@ Host                          Container
 ~/.claude-yolo/docs/       →  /home/node/.claude/docs/
 ```
 
-The mount path is configurable via the `DARK_FACTORY_CLAUDE_CONFIG_DIR` environment variable:
+The mount path defaults to `~/.claude-yolo` and is configurable per project via `.dark-factory.yaml`:
 
-```bash
-# Default: ~/.claude (override to use separate YOLO config)
-export DARK_FACTORY_CLAUDE_CONFIG_DIR=~/.claude-yolo
+```yaml
+claudeDir: ~/my-custom-claude-config
 ```
-
-**Important:** If you don't set this variable, dark-factory uses `~/.claude` (your main Claude Code config). Setting it to `~/.claude-yolo` keeps YOLO config isolated from your interactive sessions.
 
 ## Pulling the Container Image
 
@@ -148,6 +145,4 @@ cat ~/.claude-yolo/CLAUDE.md
 # Container image available
 docker images | grep claude-yolo
 
-# Env var set (add to ~/.zshrc or ~/.bashrc)
-echo $DARK_FACTORY_CLAUDE_CONFIG_DIR
 ```

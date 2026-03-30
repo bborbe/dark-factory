@@ -1,9 +1,10 @@
 ---
-status: approved
+status: prompted
 tags:
     - dark-factory
     - spec
 approved: "2026-03-30T16:37:46Z"
+prompted: "2026-03-30T16:42:18Z"
 branch: dark-factory/full-slug-spec-references
 ---
 

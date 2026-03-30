@@ -1,8 +1,11 @@
 ---
+status: prompted
 tags:
-  - dark-factory
-  - spec
-status: draft
+    - dark-factory
+    - spec
+approved: "2026-03-30T16:39:15Z"
+prompted: "2026-03-30T16:49:46Z"
+branch: dark-factory/self-healing-number-conflicts
 ---
 
 ## Summary

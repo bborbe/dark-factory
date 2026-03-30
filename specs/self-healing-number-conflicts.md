@@ -21,6 +21,12 @@ When two branches independently create prompts or specs, dark-factory assigns th
 
 After this work, dark-factory self-heals number collisions during normal operation. The daemon watch loop and `run` command detect duplicates across prompt and spec lifecycle directories, deterministically resolve them using creation timestamps, and propagate spec number changes to all referencing prompts. No manual intervention required.
 
+## Assumptions
+
+- Most prompts/specs have a `created` frontmatter field in ISO format for reliable tie-breaking
+- Branch merges are the primary source of number conflicts
+- Conflict resolution runs sequentially at startup, before any prompt processing begins (no concurrent access)
+
 ## Non-goals
 
 - Preventing conflicts at branch creation time (that would require git hooks, out of scope)
@@ -41,9 +47,9 @@ After this work, dark-factory self-heals number collisions during normal operati
 ## Constraints
 
 - Existing prompt and spec file formats must not change (same frontmatter fields, same `NNN-slug.md` naming convention)
-- The `findNextAvailableNumber` logic must remain consistent: new numbers assigned by reindex use the same gap-filling approach
+- New numbers assigned during conflict resolution must use the same gap-filling approach as initial approval numbering
 - Specs use 3-digit zero-padded numbers; prompts use 3-digit zero-padded numbers
-- `specnum.Parse()` remains the canonical way to extract spec numbers
+- Spec number extraction must use the existing parsing logic (no new number-parsing paths)
 - All existing tests must continue to pass
 - The `created` frontmatter field format is ISO date (YYYY-MM-DD) or ISO datetime
 - Reindex must not modify file content beyond the frontmatter `spec:` field (no body changes)
@@ -62,7 +68,7 @@ After this work, dark-factory self-heals number collisions during normal operati
 
 - Reindex only operates on configured prompt/spec directories, never arbitrary paths
 - Filenames are validated against the existing `NNN-slug.md` pattern before rename
-- No user input beyond the `--apply` flag; all paths come from config
+- No user input; all paths come from config, resolution is automatic
 
 ## Acceptance Criteria
 

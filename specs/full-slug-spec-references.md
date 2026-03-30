@@ -8,9 +8,9 @@ status: draft
 ## Summary
 
 - Spec references in prompt frontmatter use full slug (`spec: ["001-workflow-direct"]`) instead of bare number (`spec: ["001"]`)
-- Migration command updates all existing prompts from bare numbers to full slugs
+- Dark-factory auto-detects bare number spec references and migrates them to full slugs during normal operation
 - Makes spec references human-readable and resilient to number conflicts after branch merges
-- No behavior change — `specnum.Parse()` already handles both formats
+- No behavior change for lookups — existing number extraction already handles both formats
 
 ## Problem
 
@@ -25,6 +25,12 @@ The full slug format (`001-workflow-direct`) is already supported by `specnum.Pa
 
 All spec references in prompt frontmatter use the full slug format. New prompts generated from specs automatically get the full slug. Existing prompts are migrated.
 
+## Assumptions
+
+- `specnum.Parse()` is the single source of truth for number extraction and already handles both bare numbers and full slugs
+- No external consumers depend on bare-number format in prompt frontmatter
+- All spec files follow the `NNN-slug.md` naming convention
+
 ## Non-goals
 
 - Changing the spec file format itself
@@ -34,11 +40,11 @@ All spec references in prompt frontmatter use the full slug format. New prompts 
 ## Desired Behavior
 
 1. When the YOLO agent generates prompts from a spec, the `spec:` frontmatter field contains the full spec filename without extension (e.g., `spec: ["035-self-healing-number-conflicts"]` instead of `spec: ["035"]`).
-2. A new CLI command `dark-factory prompt migrate-spec-refs` scans all prompt directories and replaces bare spec numbers with full slugs by looking up the actual spec file. Prints changes, applies them.
+2. During normal operation (daemon startup, run command), dark-factory scans all prompt directories and replaces bare spec numbers with full slugs by looking up the actual spec file. Changes are logged.
 3. If a bare spec number matches multiple spec files (shouldn't happen, but defensive), log a warning and skip that reference.
 4. If a bare spec number matches no spec file, leave it unchanged and log a warning.
 5. The migration is idempotent — references that already have the full slug are left unchanged.
-6. `HasSpec()`, `CountBySpec()`, and other spec-matching functions continue to work with both formats (they already do via `specnum.Parse()`).
+6. Spec-matching operations continue to accept both bare numbers and full slugs — no behavior change for lookups.
 
 ## Constraints
 
@@ -46,6 +52,10 @@ All spec references in prompt frontmatter use the full slug format. New prompts 
 - Existing prompts with full-slug references must not be modified
 - The `SpecList` type (`[]string`) and YAML format are unchanged
 - Migration must work across all lifecycle dirs (inbox, in-progress, completed, log)
+
+## Security / Abuse Cases
+
+N/A — internal CLI tooling, no user-facing input. Migration operates only on configured prompt/spec directories.
 
 ## Failure Modes
 
@@ -59,7 +69,7 @@ All spec references in prompt frontmatter use the full slug format. New prompts 
 ## Acceptance Criteria
 
 - [ ] Generated prompts from specs have full slug in `spec:` field
-- [ ] `dark-factory prompt migrate-spec-refs` updates bare numbers to full slugs
+- [ ] Daemon/run auto-migrates bare spec numbers to full slugs on startup
 - [ ] Migration is idempotent (second run = no changes)
 - [ ] Unresolvable bare numbers logged as warnings, not modified
 - [ ] `HasSpec()` works with both `"001"` and `"001-workflow-direct"`

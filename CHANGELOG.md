@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.71.1
+
+- chore: Bump default claude-yolo image to v0.5.0
+
 ## v0.71.0
 
 - feat: Add `claudeDir` config field to set claude-yolo config directory per project (replaces `DARK_FACTORY_CLAUDE_CONFIG_DIR` env var)

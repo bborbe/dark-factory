@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added `dark-factory spec unapprove` command that reverses spec approval — moves file back to inbox, resets status to draft, clears approved/branch metadata, blocks if linked prompts exist, and renumbers remaining in-progress specs to close the gap.
+container: dark-factory-229-add-spec-unapprove
+dark-factory-version: v0.69.0
 created: "2026-03-30T18:55:33Z"
 queued: "2026-03-30T19:59:21Z"
+started: "2026-03-30T20:16:15Z"
+completed: "2026-03-30T20:42:32Z"
 ---
 
 <summary>

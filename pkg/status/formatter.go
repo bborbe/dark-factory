@@ -32,6 +32,11 @@ func (f *formatter) Format(st *Status) string {
 
 	b.WriteString("Dark Factory Status\n")
 
+	// Project directory
+	if st.ProjectDir != "" {
+		fmt.Fprintf(&b, "  Project:    %s\n", st.ProjectDir)
+	}
+
 	// Daemon status
 	if st.DaemonPID > 0 {
 		fmt.Fprintf(&b, "  Daemon:     %s (pid %d)\n", st.Daemon, st.DaemonPID)

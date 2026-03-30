@@ -48,6 +48,7 @@ var _ = Describe("StatusChecker", func() {
 
 		promptMgr = &mocks.Manager{}
 		statusChecker = status.NewChecker(
+			"",
 			queueDir,
 			completedDir,
 			"prompts/log",
@@ -278,6 +279,7 @@ status: executing
 
 			// Create checker with log directory
 			checkerWithLogs := status.NewChecker(
+				"",
 				queueDir,
 				completedDir,
 				logDir,
@@ -298,6 +300,7 @@ status: executing
 
 			// Create checker with non-existent log directory
 			checkerWithLogs := status.NewChecker(
+				"",
 				queueDir,
 				completedDir,
 				"/nonexistent/log",

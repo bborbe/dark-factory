@@ -164,5 +164,31 @@ var _ = Describe("Formatter", func() {
 			output := formatter.Format(st)
 			Expect(output).NotTo(ContainSubstring("Last log:"))
 		})
+
+		It("shows project dir when set", func() {
+			st := &status.Status{
+				ProjectDir:     "/home/user/myproject",
+				Daemon:         "not running",
+				QueueCount:     0,
+				QueuedPrompts:  []string{},
+				CompletedCount: 0,
+			}
+
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Project:    /home/user/myproject"))
+		})
+
+		It("omits project dir line when empty", func() {
+			st := &status.Status{
+				ProjectDir:     "",
+				Daemon:         "not running",
+				QueueCount:     0,
+				QueuedPrompts:  []string{},
+				CompletedCount: 0,
+			}
+
+			output := formatter.Format(st)
+			Expect(output).NotTo(ContainSubstring("Project:"))
+		})
 	})
 })

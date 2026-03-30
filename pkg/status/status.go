@@ -24,6 +24,7 @@ import (
 
 // Status represents the current daemon status.
 type Status struct {
+	ProjectDir          string   `json:"project_dir,omitempty"`
 	Daemon              string   `json:"daemon"`
 	DaemonPID           int      `json:"daemon_pid,omitempty"`
 	CurrentPrompt       string   `json:"current_prompt,omitempty"`
@@ -63,6 +64,7 @@ type Checker interface {
 
 // checker implements Checker.
 type checker struct {
+	projectDir   string
 	queueDir     string
 	completedDir string
 	logDir       string
@@ -73,6 +75,7 @@ type checker struct {
 
 // NewChecker creates a new Checker with additional options.
 func NewChecker(
+	projectDir string,
 	queueDir string,
 	completedDir string,
 	logDir string,
@@ -81,6 +84,7 @@ func NewChecker(
 	promptMgr prompt.Manager,
 ) Checker {
 	return &checker{
+		projectDir:   projectDir,
 		queueDir:     queueDir,
 		completedDir: completedDir,
 		logDir:       logDir,
@@ -93,6 +97,7 @@ func NewChecker(
 // GetStatus returns the current daemon status.
 func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	status := &Status{
+		ProjectDir:    s.projectDir,
 		Daemon:        "not running",
 		QueuedPrompts: []string{},
 	}

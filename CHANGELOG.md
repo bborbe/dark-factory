@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.80.0
+
+- feat: Add `project_dir` to `dark-factory status` output so users can confirm which project root was resolved when running from subdirectories
+
 ## v0.79.0
 
 - feat: Add per-group help to `prompt` and `spec` commands — `--help`, `-h`, `help`, and no-args print available subcommands with descriptions instead of returning an error

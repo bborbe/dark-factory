@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -522,7 +523,9 @@ func CreateServer(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	projectDir, _ := os.Getwd()
 	statusChecker := status.NewChecker(
+		projectDir,
 		inProgressDir,
 		completedDir,
 		logDir,
@@ -563,7 +566,9 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		libtime.NewCurrentDateTime(),
 	)
 
+	projectDir, _ := os.Getwd()
 	statusChecker := status.NewChecker(
+		projectDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,
@@ -735,7 +740,9 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 		currentDateTimeGetter,
 	)
 
+	projectDir, _ := os.Getwd()
 	statusChecker := status.NewChecker(
+		projectDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,

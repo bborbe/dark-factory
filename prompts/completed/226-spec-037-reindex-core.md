@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["037"]
+summary: Created pkg/reindex package with Reindexer interface and implementation that detects and resolves duplicate numeric prefixes across lifecycle directories using created frontmatter date as tie-breaker, plus counterfeiter mocks and 92.2% test coverage
+container: dark-factory-226-spec-037-reindex-core
+dark-factory-version: v0.69.0
 created: "2026-03-30T17:00:00Z"
 queued: "2026-03-30T17:29:26Z"
+started: "2026-03-30T18:31:15Z"
+completed: "2026-03-30T18:55:33Z"
 branch: dark-factory/self-healing-number-conflicts
 ---
 

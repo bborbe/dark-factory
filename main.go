@@ -131,6 +131,8 @@ func runSpecCommand(
 		return factory.CreateSpecStatusCommand(cfg).Run(ctx, args)
 	case "approve":
 		return factory.CreateSpecApproveCommand(cfg).Run(ctx, args)
+	case "unapprove":
+		return factory.CreateSpecUnapproveCommand(cfg).Run(ctx, args)
 	case "complete":
 		return factory.CreateSpecCompleteCommand(cfg).Run(ctx, args)
 	case "show":
@@ -168,6 +170,7 @@ func printHelp() {
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+
 			"  spec approve <id>      Approve a spec\n"+
+			"  spec unapprove <id>    Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  spec complete <id>     Mark a verified spec as completed\n"+
 			"  spec show <id>         Show details for a single spec\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+

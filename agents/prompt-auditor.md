@@ -25,7 +25,8 @@ Expert dark-factory prompt auditor. You evaluate prompt files against the Prompt
 1. Read the prompt file
 2. Verify code references by reading referenced source files
 3. Evaluate against all criteria below
-4. Generate report
+4. Cross-check code in requirements against coding guidelines (see Coding Guidelines Compliance section)
+5. Generate report
 </workflow>
 
 <prompt_definition_of_done>
@@ -99,6 +100,21 @@ Every prompt MUST have these XML sections:
 - Existing untested code does NOT need retroactive coverage
 - Flag as warning if requirements change code but mention no tests
 
+**Coding Guidelines Compliance:**
+- If the prompt contains Go code in `<requirements>`, cross-check patterns against coding guidelines
+- Read relevant guides from TWO locations:
+  1. `~/.claude-yolo/docs/` — global coding guidelines (always check)
+  2. `docs/` in the project root — project-specific guidelines (check if exists)
+- Key guidelines to check for HTTP handlers:
+  - `go-http-handler.md`: handlers return `libhttp.WithError`, not `http.Handler`; factory wraps with `NewErrorHandler`
+  - `go-json-error-handler.md`: use `WrapWithStatusCode`/`WrapWithCode` instead of `http.Error()`
+  - `go-factory-pattern.md`: zero business logic in factories
+  - `go-error-wrapping.md`: use `errors.Wrapf(ctx, err, ...)` not `fmt.Errorf`
+  - `go-testing.md`: external test packages, Ginkgo/Gomega patterns
+- Only check guides relevant to the code in the prompt (e.g., skip `go-concurrency-patterns.md` if no goroutines)
+- Flag violations as **Critical Issues** if the prompt instructs the agent to write code that violates a guideline
+- Flag as **Recommendation** if the prompt doesn't specify and the agent might choose a non-compliant pattern
+
 **Anchoring:**
 - Anchor by method/function names, not line numbers (line numbers go stale)
 - Line numbers only as optional hints (e.g. "~line 176")
@@ -168,8 +184,13 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 |-----------|------|--------|
 | `pkg/foo/bar.go` `FuncName()` | Verified | Correct / Stale / Missing |
 
+## Coding Guidelines Compliance
+| Guideline | File | Status |
+|-----------|------|--------|
+| e.g. Handler returns WithError | `go-http-handler.md` | Compliant / Violation |
+
 ## Critical Issues
-[MUST fix before approving]
+[MUST fix before approving — includes guideline violations]
 
 ## Recommendations
 [Quality improvements]

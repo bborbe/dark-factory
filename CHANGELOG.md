@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.78.0
+
+- feat: Add `dark-factory spec unapprove` command to reverse spec approval, moving file back to inbox with draft status, clearing approved/branch metadata, and renumbering remaining in-progress specs to close the gap
+
 ## v0.77.0
 
 - feat: Add `dark-factory prompt unapprove` command to reverse prompt approval, moving file back to inbox with draft status and renumbering remaining queue entries

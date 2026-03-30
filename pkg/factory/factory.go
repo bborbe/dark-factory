@@ -704,6 +704,17 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 	)
 }
 
+// CreateSpecUnapproveCommand creates a SpecUnapproveCommand.
+func CreateSpecUnapproveCommand(cfg config.Config) cmd.SpecUnapproveCommand {
+	return cmd.NewSpecUnapproveCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		libtime.NewCurrentDateTime(),
+	)
+}
+
 // CreateSpecCompleteCommand creates a SpecCompleteCommand.
 func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
 	return cmd.NewSpecCompleteCommand(

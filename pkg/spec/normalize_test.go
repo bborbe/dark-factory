@@ -15,6 +15,76 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
+var _ = Describe("RenumberSpecsAfterRemoval", func() {
+	var (
+		ctx     context.Context
+		tempDir string
+		dir     string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		tempDir, err = os.MkdirTemp("", "renumber-spec-test-*")
+		Expect(err).NotTo(HaveOccurred())
+		dir = filepath.Join(tempDir, "in-progress")
+		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	It("renames specs with numbers higher than removedNum", func() {
+		Expect(os.WriteFile(filepath.Join(dir, "001-first.md"), []byte(""), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "002-second.md"), []byte(""), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "003-third.md"), []byte(""), 0600)).To(Succeed())
+
+		err := spec.RenumberSpecsAfterRemoval(ctx, dir, 2)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = os.Stat(filepath.Join(dir, "001-first.md"))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = os.Stat(filepath.Join(dir, "002-third.md"))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = os.Stat(filepath.Join(dir, "003-third.md"))
+		Expect(os.IsNotExist(err)).To(BeTrue())
+	})
+
+	It("does not rename specs with lower or equal numbers", func() {
+		Expect(os.WriteFile(filepath.Join(dir, "001-first.md"), []byte(""), 0600)).To(Succeed())
+
+		err := spec.RenumberSpecsAfterRemoval(ctx, dir, 2)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = os.Stat(filepath.Join(dir, "001-first.md"))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("returns nil for non-existent dir", func() {
+		err := spec.RenumberSpecsAfterRemoval(ctx, "/nonexistent/dir", 1)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("handles empty dir without error", func() {
+		err := spec.RenumberSpecsAfterRemoval(ctx, dir, 1)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("ignores non-.md files", func() {
+		Expect(
+			os.WriteFile(filepath.Join(dir, "003-spec.txt"), []byte(""), 0600),
+		).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "004-spec.md"), []byte(""), 0600)).To(Succeed())
+
+		err := spec.RenumberSpecsAfterRemoval(ctx, dir, 2)
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = os.Stat(filepath.Join(dir, "003-spec.md"))
+		Expect(err).NotTo(HaveOccurred())
+	})
+})
+
 var _ = Describe("NormalizeSpecFilename", func() {
 	var (
 		ctx     context.Context

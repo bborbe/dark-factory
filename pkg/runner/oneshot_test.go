@@ -75,6 +75,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			false,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 	}
 
@@ -193,6 +194,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			false,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		err := r.Run(ctx)
@@ -253,6 +255,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			true,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		err := r.Run(ctx)
@@ -311,6 +314,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			false,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		err := r.Run(ctx)
@@ -368,6 +372,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			true,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		err := r.Run(ctx)
@@ -461,6 +466,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			false,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		// Should succeed (createDirectories creates the dir, but generateFromApprovedSpecs
@@ -522,6 +528,7 @@ var _ = Describe("OneShotRunner", func() {
 				containerChecker,
 				false,
 				&mocks.SpecSlugMigrator{},
+				&mocks.FileMover{},
 			)
 
 			err := r.Run(ctx)
@@ -586,6 +593,7 @@ var _ = Describe("OneShotRunner", func() {
 			containerChecker,
 			true,
 			&mocks.SpecSlugMigrator{},
+			&mocks.FileMover{},
 		)
 
 		err := r.Run(ctx)
@@ -631,6 +639,7 @@ var _ = Describe("OneShotRunner", func() {
 				containerChecker,
 				false,
 				&mocks.SpecSlugMigrator{},
+				&mocks.FileMover{},
 			)
 
 			err := r.Run(ctx)
@@ -674,6 +683,7 @@ var _ = Describe("OneShotRunner", func() {
 				containerChecker,
 				false,
 				&mocks.SpecSlugMigrator{},
+				&mocks.FileMover{},
 			)
 
 			err := r.Run(ctx)
@@ -743,6 +753,7 @@ var _ = Describe("OneShotRunner", func() {
 				containerChecker,
 				true,
 				&mocks.SpecSlugMigrator{},
+				&mocks.FileMover{},
 			)
 
 			err := r.Run(ctx)
@@ -784,6 +795,7 @@ var _ = Describe("OneShotRunner", func() {
 					containerChecker,
 					false,
 					&mocks.SpecSlugMigrator{},
+					&mocks.FileMover{},
 				)
 
 				err := r.Run(ctx)

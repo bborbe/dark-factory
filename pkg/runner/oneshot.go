@@ -46,6 +46,7 @@ func NewOneShotRunner(
 	containerChecker executor.ContainerChecker,
 	autoApprove bool,
 	slugMigrator slugmigrator.Migrator,
+	mover prompt.FileMover,
 ) OneShotRunner {
 	return &oneShotRunner{
 		inboxDir:              inboxDir,
@@ -64,6 +65,7 @@ func NewOneShotRunner(
 		containerChecker:      containerChecker,
 		autoApprove:           autoApprove,
 		slugMigrator:          slugMigrator,
+		mover:                 mover,
 	}
 }
 
@@ -85,6 +87,7 @@ type oneShotRunner struct {
 	containerChecker      executor.ContainerChecker
 	autoApprove           bool
 	slugMigrator          slugmigrator.Migrator
+	mover                 prompt.FileMover
 }
 
 // Run acquires the lock, initializes directories, then loops: generate prompts from approved
@@ -115,6 +118,11 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	// Selectively resume or reset executing prompts based on container liveness
 	if err := r.resumeOrResetExecuting(ctx); err != nil {
 		return errors.Wrap(ctx, err, "resume or reset executing prompts")
+	}
+
+	// Reindex all spec and prompt dirs to resolve cross-directory number conflicts
+	if err := r.reindexAll(ctx); err != nil {
+		return errors.Wrap(ctx, err, "reindex files")
 	}
 
 	// Normalize filenames before processing
@@ -154,6 +162,13 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 }
 
 // resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.
+// reindexAll runs the full reindex sequence for this runner's spec and prompt dirs.
+func (r *oneShotRunner) reindexAll(ctx context.Context) error {
+	specDirs := []string{r.specsInboxDir, r.specsInProgressDir, r.specsCompletedDir, r.specsLogDir}
+	promptDirs := []string{r.inboxDir, r.inProgressDir, r.completedDir, r.logDir}
+	return reindexAll(ctx, specDirs, promptDirs, r.mover, r.currentDateTimeGetter)
+}
+
 func (r *oneShotRunner) resumeOrResetExecuting(ctx context.Context) error {
 	return resumeOrResetExecuting(
 		ctx,

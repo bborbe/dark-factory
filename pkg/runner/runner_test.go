@@ -85,6 +85,8 @@ var _ = Describe("Runner", func() {
 			containerChecker,
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
+			libtime.NewCurrentDateTime(),
+			&mocks.FileMover{},
 		)
 	}
 
@@ -374,6 +376,8 @@ var _ = Describe("Runner", func() {
 			containerChecker,
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
+			libtime.NewCurrentDateTime(),
+			&mocks.FileMover{},
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -429,6 +433,8 @@ var _ = Describe("Runner", func() {
 			containerChecker,
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
+			libtime.NewCurrentDateTime(),
+			&mocks.FileMover{},
 		)
 
 		go func() {
@@ -474,6 +480,8 @@ var _ = Describe("Runner", func() {
 			containerChecker,
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
+			libtime.NewCurrentDateTime(),
+			&mocks.FileMover{},
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -535,6 +543,8 @@ var _ = Describe("Runner", func() {
 				containerChecker,
 				notifier.NewMultiNotifier(),
 				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -746,6 +756,8 @@ var _ = Describe("Runner", func() {
 				containerChecker,
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -822,6 +834,8 @@ var _ = Describe("Runner", func() {
 				containerChecker,
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -908,6 +922,8 @@ var _ = Describe("Runner", func() {
 					containerChecker,
 					fakeNotifier,
 					&mocks.SpecSlugMigrator{},
+					libtime.NewCurrentDateTime(),
+					&mocks.FileMover{},
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -990,6 +1006,8 @@ var _ = Describe("Runner", func() {
 				containerChecker,
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)

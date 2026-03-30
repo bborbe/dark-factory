@@ -12,6 +12,7 @@ import (
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/lock"
@@ -51,51 +52,57 @@ func NewRunner(
 	containerChecker executor.ContainerChecker,
 	n notifier.Notifier,
 	slugMigrator slugmigrator.Migrator,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	mover prompt.FileMover,
 ) Runner {
 	return &runner{
-		inboxDir:           inboxDir,
-		inProgressDir:      inProgressDir,
-		completedDir:       completedDir,
-		logDir:             logDir,
-		specsInboxDir:      specsInboxDir,
-		specsInProgressDir: specsInProgressDir,
-		specsCompletedDir:  specsCompletedDir,
-		specsLogDir:        specsLogDir,
-		promptManager:      promptManager,
-		locker:             locker,
-		watcher:            watcher,
-		processor:          processor,
-		server:             server,
-		reviewPoller:       reviewPoller,
-		specWatcher:        specWatcher,
-		projectName:        projectName,
-		containerChecker:   containerChecker,
-		notifier:           n,
-		slugMigrator:       slugMigrator,
+		inboxDir:              inboxDir,
+		inProgressDir:         inProgressDir,
+		completedDir:          completedDir,
+		logDir:                logDir,
+		specsInboxDir:         specsInboxDir,
+		specsInProgressDir:    specsInProgressDir,
+		specsCompletedDir:     specsCompletedDir,
+		specsLogDir:           specsLogDir,
+		promptManager:         promptManager,
+		locker:                locker,
+		watcher:               watcher,
+		processor:             processor,
+		server:                server,
+		reviewPoller:          reviewPoller,
+		specWatcher:           specWatcher,
+		projectName:           projectName,
+		containerChecker:      containerChecker,
+		notifier:              n,
+		slugMigrator:          slugMigrator,
+		currentDateTimeGetter: currentDateTimeGetter,
+		mover:                 mover,
 	}
 }
 
 // runner orchestrates the main processing loop.
 type runner struct {
-	inboxDir           string
-	inProgressDir      string
-	completedDir       string
-	logDir             string
-	specsInboxDir      string
-	specsInProgressDir string
-	specsCompletedDir  string
-	specsLogDir        string
-	promptManager      prompt.Manager
-	locker             lock.Locker
-	watcher            watcher.Watcher
-	processor          processor.Processor
-	server             server.Server
-	reviewPoller       review.ReviewPoller
-	specWatcher        specwatcher.SpecWatcher
-	projectName        string
-	containerChecker   executor.ContainerChecker
-	notifier           notifier.Notifier
-	slugMigrator       slugmigrator.Migrator
+	inboxDir              string
+	inProgressDir         string
+	completedDir          string
+	logDir                string
+	specsInboxDir         string
+	specsInProgressDir    string
+	specsCompletedDir     string
+	specsLogDir           string
+	promptManager         prompt.Manager
+	locker                lock.Locker
+	watcher               watcher.Watcher
+	processor             processor.Processor
+	server                server.Server
+	reviewPoller          review.ReviewPoller
+	specWatcher           specwatcher.SpecWatcher
+	projectName           string
+	containerChecker      executor.ContainerChecker
+	notifier              notifier.Notifier
+	slugMigrator          slugmigrator.Migrator
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	mover                 prompt.FileMover
 }
 
 // Run executes the main processing loop:
@@ -142,6 +149,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "resume executing prompts")
 	}
 
+	// Reindex all spec and prompt dirs to resolve cross-directory number conflicts
+	if err := r.reindexAll(ctx); err != nil {
+		return errors.Wrap(ctx, err, "reindex files")
+	}
+
 	// Normalize filenames before processing
 	if err := r.normalizeFilenames(ctx); err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")
@@ -168,6 +180,13 @@ func (r *runner) Run(ctx context.Context) error {
 		runners = append(runners, r.specWatcher.Watch)
 	}
 	return run.CancelOnFirstError(ctx, runners...)
+}
+
+// reindexAll runs the full reindex sequence for this runner's spec and prompt dirs.
+func (r *runner) reindexAll(ctx context.Context) error {
+	specDirs := []string{r.specsInboxDir, r.specsInProgressDir, r.specsCompletedDir, r.specsLogDir}
+	promptDirs := []string{r.inboxDir, r.inProgressDir, r.completedDir, r.logDir}
+	return reindexAll(ctx, specDirs, promptDirs, r.mover, r.currentDateTimeGetter)
 }
 
 // migrateSpecSlugs replaces bare spec number references with full slugs in all prompt dirs.

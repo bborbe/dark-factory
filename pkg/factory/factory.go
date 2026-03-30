@@ -249,6 +249,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
 		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName,
 		executor.NewDockerContainerChecker(), n, migrator,
+		currentDateTimeGetter,
+		releaser,
 	)
 }
 
@@ -322,6 +324,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 		executor.NewDockerContainerChecker(),
 		autoApprove,
 		migrator,
+		releaser,
 	)
 }
 

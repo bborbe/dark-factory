@@ -1,8 +1,6 @@
 ---
 status: draft
-tags:
-    - dark-factory
-    - prompt
+created: "2026-03-30T18:55:33Z"
 ---
 
 <context>

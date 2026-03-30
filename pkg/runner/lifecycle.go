@@ -12,11 +12,47 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/reindex"
 )
+
+// reindexAll runs the full reindex sequence:
+//  1. Reindex spec dirs (resolve cross-directory spec number conflicts)
+//  2. Update spec cross-references in prompt dirs (propagate spec renames)
+//  3. Reindex prompt dirs (resolve cross-directory prompt number conflicts)
+func reindexAll(
+	ctx context.Context,
+	specDirs []string,
+	promptDirs []string,
+	mover prompt.FileMover,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	// Step 1: Reindex spec files
+	specReindexer := reindex.NewReindexer(specDirs, mover)
+	specRenames, err := specReindexer.Reindex(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "reindex spec files")
+	}
+
+	// Step 2: Propagate spec renames to prompt cross-references
+	if len(specRenames) > 0 {
+		if _, err := reindex.UpdateSpecRefs(ctx, specRenames, promptDirs, mover, currentDateTimeGetter); err != nil {
+			return errors.Wrap(ctx, err, "update spec refs")
+		}
+	}
+
+	// Step 3: Reindex prompt files
+	promptReindexer := reindex.NewReindexer(promptDirs, mover)
+	if _, err := promptReindexer.Reindex(ctx); err != nil {
+		return errors.Wrap(ctx, err, "reindex prompt files")
+	}
+
+	return nil
+}
 
 // normalizeFilenames normalizes filenames in the given inProgressDir using the
 // provided prompt.Manager and logs each rename at debug level.

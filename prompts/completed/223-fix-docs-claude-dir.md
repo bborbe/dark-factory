@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Updated docs/yolo-container-setup.md to replace DARK_FACTORY_CLAUDE_CONFIG_DIR env var references with the claudeDir config field and updated CHANGELOG.md with an Unreleased entry.
+container: dark-factory-223-fix-docs-claude-dir
+dark-factory-version: v0.69.0
 created: "2026-03-30T16:04:31Z"
 queued: "2026-03-30T16:04:31Z"
+started: "2026-03-30T16:11:04Z"
+completed: "2026-03-30T16:31:32Z"
 ---
 
 <summary>

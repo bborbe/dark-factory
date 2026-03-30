@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added per-group help to prompt and spec commands — --help, -h, help, and no-args now print subcommand listings instead of returning an error
+container: dark-factory-230-add-subcommand-help
+dark-factory-version: v0.69.0
 created: "2026-03-30T18:55:33Z"
 queued: "2026-03-30T19:59:24Z"
+started: "2026-03-30T20:42:36Z"
+completed: "2026-03-30T20:57:33Z"
 ---
 
 <summary>

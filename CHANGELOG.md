@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.70.0
+
+- Add documentation placement guide (docs/documentation.md) covering 4 knowledge locations
+- Extend prompt-auditor and spec-auditor with documentation placement checks
+- Extend prompt-creator and spec-creator to scan existing docs before writing
+- Expand read-guides command to scan project docs and yolo docs index
+
 ## v0.69.1
 
 - Update bborbe/http to v1.26.8

@@ -35,7 +35,13 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
    - What must NOT change?
    - What can go wrong?
 
-3. **Write spec file** to `specs/<name>.md` (the inbox directory)
+3. **Scan existing documentation** for domain knowledge that the spec can reference instead of inlining:
+   - List `docs/` directory in the project — these are project-specific docs
+   - Read any docs whose filenames match the spec's domain (e.g., `kafka-schema-design.md` for a Kafka feature)
+   - Reference relevant docs in the spec's Constraints or Assumptions section
+   - If the spec describes domain rules (file formats, event flows, naming) NOT already in `docs/`, note them as candidates for new docs — flag in the output
+
+4. **Write spec file** to `specs/<name>.md` (the inbox directory)
    - NEVER number the filename — dark-factory assigns numbers on approve
    - NEVER write to `specs/in-progress/` or `specs/completed/` — only the inbox `specs/`
    - Filename: `<descriptive-name>.md` (e.g. `decision-list-ack.md`)
@@ -159,4 +165,5 @@ After creating the spec, report:
 - Preflight checklist status (all 7 questions answered?)
 - Suggest: "Run `/audit-spec <file>` to validate before approving"
 - Remind: "Use `dark-factory spec approve <name>` to approve — never edit status manually"
+- If domain knowledge was found that should become a project doc: list the topics and suggest creating `docs/X.md` before generating prompts
 </output>

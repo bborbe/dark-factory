@@ -116,6 +116,16 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - Testable (can write test to verify)
 - Covers all desired behaviors
 - Uses checkbox format `- [ ]`
+
+## Documentation Placement
+
+Knowledge lives in four locations: specs (behavioral, dies after implementation), prompts (one-off, dies after execution), project docs (project-specific, lives with the project), yolo docs (generic coding patterns, lives across projects). Specs should reference project docs for domain context and flag undocumented business logic.
+
+Check these:
+- **Undocumented domain knowledge** — if spec describes business rules, file formats, event flows, naming conventions, or deployment topology that are NOT already captured in `project/docs/`, flag as recommendation: "This domain knowledge should be documented in `docs/X.md` before generating prompts. Specs die after implementation; docs live on."
+  - To check: list files in the project's `docs/` directory, scan for topic matches against domain knowledge in the spec
+- **Implementation detail in spec** — if spec contains code examples, struct definitions, or API signatures that aren't frozen constraints, flag as recommendation: "Move implementation detail to `docs/X.md` and reference from spec. Specs describe behavior, not code."
+- **Missing doc references** — if spec references domain concepts that have matching `project/docs/` files but doesn't link to them, flag as recommendation: "Reference `docs/X.md` in Constraints or Assumptions."
 </spec_requirements>
 
 <scoring>
@@ -151,6 +161,11 @@ Adjustments:
 - [x/!] What could go wrong?
 - [x/!] What must not regress?
 - [x/!] How will we know it's done?
+
+## Documentation Placement
+- [x/!] Domain knowledge documented in `project/docs/` (not only in spec)
+- [x/!] No implementation detail that should be in docs instead of spec
+- [x/!] Existing project docs referenced where relevant
 
 ## Critical Issues
 [MUST fix before approving]

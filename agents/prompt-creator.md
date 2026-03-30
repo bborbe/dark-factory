@@ -29,16 +29,22 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 
 1. Read the spec file
 2. Read 3-5 recent completed prompts from `prompts/completed/` for style reference
-3. Identify: Desired Behaviors, Constraints, Acceptance Criteria
-4. Group coupled behaviors (can't verify independently → same prompt)
-5. Sequence: most foundational first, postconditions = next prompt's preconditions
-6. Write 2-6 prompt files to `prompts/`
+3. **Scan existing documentation** to reference instead of inlining:
+   - List `docs/` directory in the project — project-specific domain docs
+   - List `/home/node/.claude/docs/` in the container (or `~/.claude-yolo/docs/` on host) — generic coding pattern docs
+   - For each pattern used in requirements, check if a doc already covers it
+   - Reference matching docs in `<context>` instead of inlining the pattern
+4. Identify: Desired Behaviors, Constraints, Acceptance Criteria
+5. Group coupled behaviors (can't verify independently → same prompt)
+6. Sequence: most foundational first, postconditions = next prompt's preconditions
+7. Write 2-6 prompt files to `prompts/`
 
 ## From Task Description
 
 1. If description is vague, ask clarifying questions
 2. Read CLAUDE.md and relevant source files
-3. Write 1-3 focused prompt files to `prompts/`
+3. **Scan existing documentation** (same as step 3 above)
+4. Write 1-3 focused prompt files to `prompts/`
 
 ## Sizing Guide
 
@@ -130,5 +136,7 @@ After creating prompts, report:
 - Files created (with paths)
 - Execution order (if sequential)
 - Key constraints repeated in each prompt
+- Docs referenced in `<context>` (project docs and yolo docs)
+- If a reusable pattern was inlined because no doc exists: flag it and suggest creating the doc
 - Suggest: "Run `/audit-prompt <file>` to validate before approving"
 </output>

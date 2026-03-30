@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.73.0
+
+- feat: Add `pkg/slugmigrator` with `Migrator` interface and implementation to replace bare spec number references in prompt files with full spec slugs
+
 ## v0.72.1
 
 - docs: Update yolo-container-setup.md to replace `DARK_FACTORY_CLAUDE_CONFIG_DIR` env var with `claudeDir` config field

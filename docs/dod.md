@@ -13,8 +13,9 @@ After completing your implementation, review your own changes against each crite
 - New code has good test coverage (target >= 80%)
 - Changes to existing code have tests covering at least the changed behavior
 
-## Install
+## Dependencies
 
+- If `make precommit` fails due to a dependency vulnerability with a known fix version, update the dependency (`go get <pkg>@<fixed-version> && go mod tidy && go mod vendor`) as part of your change
 - `go install github.com/bborbe/dark-factory@latest` works
 - No `exclude` or `replace` directives in go.mod (break remote install)
 

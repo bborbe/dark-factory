@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [038-global-container-limit]
+summary: 'Added system-wide container limit: ContainerCounter interface, waitForContainerSlot method in processor, global config wired through factory to NewProcessor, mock generated, tests added'
+container: dark-factory-233-spec-038-container-limit
+dark-factory-version: v0.80.0-1-g2b37ac1
 created: "2026-03-31T18:01:00Z"
 queued: "2026-03-31T19:11:30Z"
+started: "2026-03-31T19:53:33Z"
+completed: "2026-03-31T20:21:14Z"
 branch: dark-factory/global-container-limit
 ---
 

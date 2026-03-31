@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added `dark-factory kill` command that reads the PID from the lock file, sends SIGTERM with a 5-second SIGKILL fallback, and wires it into main.go and the factory.
+container: dark-factory-235-add-kill-command
+dark-factory-version: v0.80.0-1-g2b37ac1
 created: "2026-03-31T21:25:00Z"
 queued: "2026-03-31T19:26:35Z"
+started: "2026-03-31T20:32:30Z"
+completed: "2026-03-31T20:42:22Z"
 ---
 
 <summary>

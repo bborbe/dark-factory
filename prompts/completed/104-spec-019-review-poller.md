@@ -1,5 +1,6 @@
 ---
 status: completed
+spec: [019-review-fix-loop]
 summary: Created ReviewPoller in pkg/review/poller.go with 13 tests covering all verdict/state paths, regenerated mocks including mocks/review_poller.go, and fixed revive lint stutter with nolint comment
 container: dark-factory-104-spec-019-review-poller
 dark-factory-version: v0.17.29
@@ -7,7 +8,6 @@ created: "2026-03-06T14:55:39Z"
 queued: "2026-03-06T14:55:39Z"
 started: "2026-03-06T14:55:39Z"
 completed: "2026-03-06T15:09:57Z"
-spec: ["019"]
 ---
 <objective>
 Create the `ReviewPoller` that watches all `in_review` prompts, fetches GitHub review state, generates fix prompts on request-changes, triggers merge on approval, and handles retry limits and external close/merge. This is the core loop of spec 018.

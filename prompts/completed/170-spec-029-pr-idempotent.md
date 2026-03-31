@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["029"]
+spec: [029-branch-execution-and-release]
 summary: Made PR creation idempotent per branch and deferred auto-merge until the last prompt on the branch completes, with PR body including issue reference when set.
 container: dark-factory-170-spec-029-pr-idempotent
 dark-factory-version: v0.36.0-dirty

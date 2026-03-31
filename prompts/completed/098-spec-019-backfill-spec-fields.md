@@ -1,6 +1,6 @@
 ---
-spec: ["019"]
 status: completed
+spec: [019-review-fix-loop]
 summary: 'Added spec frontmatter field to 9 completed prompts: 084-086 tagged spec 017, 087-093 tagged spec 018'
 container: dark-factory-098-spec-019-backfill-spec-fields
 dark-factory-version: v0.17.29

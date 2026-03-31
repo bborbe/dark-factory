@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 container: dark-factory-051-test-success-completion-report
 dark-factory-version: dev
 created: "2026-03-02T21:03:55Z"

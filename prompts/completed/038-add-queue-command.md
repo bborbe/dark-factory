@@ -1,6 +1,6 @@
 ---
-spec: ["009"]
 status: completed
+spec: [009-cli-commands]
 container: dark-factory-038-add-queue-command
 dark-factory-version: v0.9.1
 ---

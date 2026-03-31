@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["026"]
+spec: [026-prompt-verification-gate]
 summary: Added dark-factory prompt verify <file> command with direct and PR/worktree workflow support, counterfeiter mock, and full test coverage at 85.9%
 container: dark-factory-137-spec-026-prompt-verify-command
 dark-factory-version: v0.26.0

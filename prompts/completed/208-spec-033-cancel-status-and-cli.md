@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["033"]
+spec: [033-prompt-cancel]
 summary: Added CancelledPromptStatus to prompt lifecycle and implemented `dark-factory prompt cancel <id>` CLI command with tests and processor guard against auto-promoting cancelled prompts
 container: dark-factory-208-spec-033-cancel-status-and-cli
 dark-factory-version: v0.59.5-dirty

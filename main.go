@@ -16,6 +16,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -149,10 +150,25 @@ func runSpecCommand(
 }
 
 func printConfig(cfg config.Config) error {
+	ctx := context.Background()
+	globalCfg, err := globalconfig.NewLoader().Load(ctx)
+	if err != nil {
+		return err
+	}
+
+	type output struct {
+		Global  globalconfig.GlobalConfig `yaml:"global"`
+		Project config.Config             `yaml:"project"`
+	}
+	out := output{
+		Global:  globalCfg,
+		Project: cfg,
+	}
+
 	enc := yaml.NewEncoder(os.Stdout)
 	enc.SetIndent(2)
 	defer enc.Close()
-	return enc.Encode(cfg)
+	return enc.Encode(out)
 }
 
 func printHelp() {

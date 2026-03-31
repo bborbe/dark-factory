@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["019"]
+spec: [019-review-fix-loop]
 summary: 'Fixed spec-prompt ID matching by comparing parsed integer prefixes: HasSpec now matches ''019'' to ''019-review-fix-loop'', CheckAndComplete scans directories by numeric prefix to find spec files, and SpecNumber() method added to SpecFile.'
 container: dark-factory-126-fix-spec-id-matching
 dark-factory-version: v0.23.0

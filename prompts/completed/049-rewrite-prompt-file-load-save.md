@@ -1,6 +1,6 @@
 ---
-spec: ["012"]
 status: completed
+spec: [012-duplicate-frontmatter-handling]
 container: dark-factory-049-rewrite-prompt-file-load-save
 dark-factory-version: dev
 created: "2026-03-02T20:17:47Z"

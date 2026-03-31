@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 summary: Switched git commit operations from go-git to subprocess calls for proper git config support
 container: dark-factory-060-switch-commits-to-git-subprocess
 dark-factory-version: v0.14.1

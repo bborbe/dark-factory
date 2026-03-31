@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["034"]
+spec: [034-resume-executing-on-restart]
 summary: Skip handlePromptFailure on daemon shutdown so prompt stays in executing state for resume-on-restart, and return early from processPrompt when ctx is cancelled to leave container running.
 container: dark-factory-215-fix-rm-flag-prevents-resume
 dark-factory-version: v0.67.1

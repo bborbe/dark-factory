@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["027"]
+spec: [027-unified-pr-workflow]
 summary: 'Verified PR workflow fix: prompt lifecycle operations (move to completed, status updates, PR URL) happen in the original repo, not in the clone; stale clone recovery, better error messages, and correct test coverage all confirmed in place.'
 container: dark-factory-152-pr-workflow-prompt-lifecycle
 dark-factory-version: dev

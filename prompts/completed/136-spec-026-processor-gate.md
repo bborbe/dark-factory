@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["026"]
+spec: [026-prompt-verification-gate]
 summary: 'Wired verification gate into processor post-execution flow: added verificationGate field/param, hasPendingVerification and enterPendingVerification methods, queue blocking check, gate intercept in handlePostExecution, updated factory wiring, and added gate tests covering all four required scenarios'
 container: dark-factory-136-spec-026-processor-gate
 dark-factory-version: v0.26.0

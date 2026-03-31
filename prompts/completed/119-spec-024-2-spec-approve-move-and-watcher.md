@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["024"]
+spec: [024-config-restructure]
 summary: Updated spec approve to move file from inboxDir to inProgressDir after setting status, and changed SpecWatcher to watch inProgressDir for Create events only (no status check needed).
 container: dark-factory-119-spec-024-2-spec-approve-move-and-watcher
 dark-factory-version: v0.20.2

@@ -1,6 +1,6 @@
 ---
-spec: ["017"]
 status: completed
+spec: [017-continue-on-existing-branch]
 summary: Added Branch field to Frontmatter struct, Branch()/PRURL() getters and SetBranch() method to PromptFile, SetBranch package-level function, SetBranch to Manager interface and manager implementation, regenerated mocks, and added tests covering all new functionality.
 container: dark-factory-084-branch-frontmatter-field
 dark-factory-version: v0.17.12

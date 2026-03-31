@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["032"]
+spec: [032-validation-prompt]
 summary: 'Wired validationPrompt into prompt execution pipeline: added ValidationPromptSuffix to report package, resolveValidationPrompt helper to processor, validationPrompt field/param threading through processor and factory, and tests for all new behavior'
 container: dark-factory-203-spec-032-suffix-and-injection
 dark-factory-version: v0.54.0

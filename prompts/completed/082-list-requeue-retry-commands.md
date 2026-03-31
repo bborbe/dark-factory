@@ -1,6 +1,6 @@
 ---
-spec: ["009"]
 status: completed
+spec: [009-cli-commands]
 summary: Added list, requeue, retry, and approve subcommands with tests, mocks, factory wiring, and main.go dispatch
 container: dark-factory-082-list-requeue-retry-commands
 dark-factory-version: v0.17.12

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.81.0
+
+- feat: Add `pkg/globalconfig` package to load ~/.dark-factory/config.yaml with maxContainers field
+- feat: Show global config section in `dark-factory config` output
+
 ## v0.80.0
 
 - feat: Add `project_dir` to `dark-factory status` output so users can confirm which project root was resolved when running from subdirectories

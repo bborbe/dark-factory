@@ -1,5 +1,6 @@
 ---
 status: completed
+spec: [019-review-fix-loop]
 summary: Added RetryCount field to Frontmatter struct, RetryCount() getter, IncrementRetryCount to Manager interface and implementation, regenerated mocks, and added tests covering the new functionality.
 container: dark-factory-101-spec-019-retry-count-frontmatter
 dark-factory-version: v0.17.29
@@ -7,7 +8,6 @@ created: "2026-03-06T14:32:00Z"
 queued: "2026-03-06T14:32:00Z"
 started: "2026-03-06T14:32:00Z"
 completed: "2026-03-06T14:38:06Z"
-spec: ["019"]
 ---
 <objective>
 Add `retryCount` field to prompt frontmatter so the review-fix loop can track how many fix iterations have been attempted. Depends on spec-018-in-review-status-and-config.

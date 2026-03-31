@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["032"]
+spec: [032-validation-prompt]
 summary: Added ValidationPrompt string field to Config struct with path-safety validation rejecting absolute paths and directory traversal, plus full test coverage
 container: dark-factory-202-spec-032-config-and-validation
 dark-factory-version: v0.54.0

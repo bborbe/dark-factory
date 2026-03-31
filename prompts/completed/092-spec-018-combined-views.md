@@ -1,6 +1,6 @@
 ---
-spec: ["018"]
 status: completed
+spec: [018-native-spec-integration]
 summary: Implemented CombinedStatusCommand and CombinedListCommand that show both prompt and spec information together, wired into top-level dark-factory status and list commands with --json flag support
 container: dark-factory-092-spec-019-combined-views
 dark-factory-version: v0.17.15

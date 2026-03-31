@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 container: dark-factory-019-optional-changelog
 ---
 

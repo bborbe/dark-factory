@@ -1,6 +1,6 @@
 ---
-spec: ["018"]
 status: completed
+spec: [018-native-spec-integration]
 summary: Added spec field to prompt frontmatter, prompt.Counter interface for counting prompts by spec, updated spec_list.go and spec_status.go to show linked prompt counts, added LinkedPromptsCompleted/LinkedPromptsTotal to spec.Summary, wired factory, and added tests.
 container: dark-factory-091-spec-019-prompt-spec-field
 dark-factory-version: v0.17.15

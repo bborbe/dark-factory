@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["030"]
+spec: [030-bitbucket-server-pr-workflow]
 summary: Added shared bitbucketClient HTTP helper with redactToken, refactored all Bitbucket implementations to use it, renamed extractBitbucketPRID to parseBitbucketPRID, and added unit tests for parseBitbucketPRID and redactToken
 container: dark-factory-178-spec-030-bitbucket-client
 dark-factory-version: v0.48.0

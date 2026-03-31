@@ -1,5 +1,6 @@
 ---
 status: completed
+spec: [019-review-fix-loop]
 summary: Added StatusInReview status constant, autoReview/maxReviewRetries/allowedReviewers/useCollaborators/pollIntervalSec config fields with validation and tests
 container: dark-factory-100-spec-019-in-review-status-and-config
 dark-factory-version: v0.17.29
@@ -7,7 +8,6 @@ created: "2026-03-06T14:21:44Z"
 queued: "2026-03-06T14:21:44Z"
 started: "2026-03-06T14:21:44Z"
 completed: "2026-03-06T14:31:56Z"
-spec: ["019"]
 ---
 <objective>
 Add `in_review` as a new prompt status and add config fields for the review-fix loop (spec 018). This is the foundation — no polling logic yet, just the data model and config.

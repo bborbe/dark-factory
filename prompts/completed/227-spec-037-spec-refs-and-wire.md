@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["037"]
+spec: [037-self-healing-number-conflicts]
 summary: Added UpdateSpecRefs to pkg/reindex for spec cross-reference propagation, added reindexAll helper to pkg/runner/lifecycle.go, wired full reindex sequence into both runner and oneshot runner startup, and updated factory.go and all tests accordingly.
 container: dark-factory-227-spec-037-spec-refs-and-wire
 dark-factory-version: v0.69.0

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["034"]
+spec: [034-resume-executing-on-restart]
 summary: Added ContainerChecker interface and docker implementation in pkg/executor/checker.go; replaced notifyStuckContainers+ResetExecuting with resumeOrResetExecuting that selectively preserves executing prompts whose container is still running and resets those without a live container; updated runner, oneshot runner, factory, and tests accordingly; regenerated mocks.
 container: dark-factory-212-spec-034-container-liveness-selective-reset
 dark-factory-version: v0.63.0

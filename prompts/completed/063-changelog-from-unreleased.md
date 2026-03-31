@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 summary: 'Simplified changelog handling to only rename ## Unreleased section, preserving all content'
 container: dark-factory-063-changelog-from-unreleased
 dark-factory-version: v0.14.2

@@ -1,6 +1,6 @@
 ---
-spec: ["016"]
 status: completed
+spec: [016-auto-merge-and-release]
 summary: Fixed changelog entry creation when no Unreleased section exists by passing title through CommitAndRelease
 container: dark-factory-079-fix-changelog-entry-before-tag
 dark-factory-version: v0.17.9

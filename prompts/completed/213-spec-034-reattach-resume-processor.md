@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["034"]
+spec: [034-resume-executing-on-restart]
 container: dark-factory-213-spec-034-reattach-resume-processor
 dark-factory-version: v0.63.0
 created: "2026-03-21T18:00:00Z"

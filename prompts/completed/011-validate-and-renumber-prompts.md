@@ -1,6 +1,6 @@
 ---
-spec: ["003"]
 status: completed
+spec: [003-filename-normalization]
 ---
 
 # Add prompt filename validation and auto-renumbering

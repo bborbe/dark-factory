@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["020"]
+spec: [020-auto-prompt-generation]
 summary: 'In handleFileEvent, differentiate context-cancelled errors from real failures: log ''spec generation cancelled'' at Info (no stack trace) when ctx is done or err is context.Canceled, otherwise log ''spec generation failed'' as before; added captureHandler and test to verify the correct log message on cancellation.'
 container: dark-factory-110-fix-spec-watcher-clean-shutdown
 dark-factory-version: v0.18.2

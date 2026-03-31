@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["031"]
+spec: [031-notifications]
 container: dark-factory-175-spec-031-wire-notifier
 dark-factory-version: v0.46.1-3-g7588a45-dirty
 created: "2026-03-11T22:30:00Z"

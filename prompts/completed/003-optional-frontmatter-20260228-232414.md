@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 ---
 
 # Make frontmatter optional for prompt pickup

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["027"]
+spec: [027-unified-pr-workflow]
 summary: Unified WorkflowPR to always use isolated git worktree; removed in-place PR branching (setupPRWorkflowState, handlePRWorkflow, switchToExistingBranch, handleAutoMerge), removed AmendCommit from Releaser and ForcePush from Brancher, removed WorkflowWorktree constant, regenerated mocks, updated all tests
 container: dark-factory-140-spec-027-processor-unification
 dark-factory-version: v0.26.0

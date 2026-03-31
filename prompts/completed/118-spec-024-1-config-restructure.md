@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["024"]
+spec: [024-config-restructure]
 summary: Replaced flat Config fields (InboxDir, QueueDir, CompletedDir, LogDir, SpecDir) with nested PromptsConfig and SpecsConfig structs; renamed queueDir to inProgressDir throughout runner, watcher, and factory; extracted merge helpers in loader.go to satisfy linter complexity limits
 container: dark-factory-118-spec-024-1-config-restructure
 dark-factory-version: v0.20.2

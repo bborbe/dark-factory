@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["030"]
+spec: [030-bitbucket-server-pr-workflow]
 summary: Added Provider enum, BitbucketConfig, validateBitbucketConfig, ResolvedBitbucketToken to pkg/config and ParseBitbucketRemoteURL/ParseBitbucketRemoteFromGit to pkg/git with full test coverage
 container: dark-factory-177-spec-030-config-and-url-parser
 dark-factory-version: v0.48.0

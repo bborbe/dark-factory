@@ -1,6 +1,6 @@
 ---
-spec: ["005"]
 status: completed
+spec: [005-instance-locking]
 container: dark-factory-027-add-instance-lock
 ---
 

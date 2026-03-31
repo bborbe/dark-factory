@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["019"]
+spec: [019-review-fix-loop]
 summary: 'Added spec: ["019"] frontmatter field to six completed prompt files (100-105) that implement the review-fix loop.'
 container: dark-factory-111-spec-019-1-backfill-review-fix-loop-spec-tags
 dark-factory-version: v0.18.2

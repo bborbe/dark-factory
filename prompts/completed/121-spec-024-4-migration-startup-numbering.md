@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["024"]
+spec: [024-config-restructure]
 summary: Implemented startup directory creation for all 8 lifecycle dirs, queue→in-progress migration, and inbox number scanning in NormalizeFilenames
 container: dark-factory-121-spec-024-4-migration-startup-numbering
 dark-factory-version: v0.20.2

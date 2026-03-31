@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 summary: Added git fetch and merge origin/master before prompt execution
 container: dark-factory-061-fetch-merge-origin-master-before-execution
 dark-factory-version: v0.14.2

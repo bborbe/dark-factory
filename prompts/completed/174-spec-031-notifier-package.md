@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["031"]
+spec: [031-notifications]
 summary: Created pkg/notifier package with Telegram, Discord, and multi-notifier implementations, plus NotificationsConfig structs and Discord HTTPS validation in pkg/config/config.go
 container: dark-factory-174-spec-031-notifier-package
 dark-factory-version: v0.46.1-3-g7588a45-dirty

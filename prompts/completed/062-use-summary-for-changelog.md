@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 summary: 'Modified changelog generation to use DARK-FACTORY-REPORT summary instead of filename, removed ### Added subsections for cleaner format'
 container: dark-factory-062-use-summary-for-changelog
 dark-factory-version: v0.14.2

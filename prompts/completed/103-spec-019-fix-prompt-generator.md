@@ -1,5 +1,6 @@
 ---
 status: completed
+spec: [019-review-fix-loop]
 summary: Created FixPromptGenerator in pkg/review with interface, implementation, tests, and counterfeiter mock
 container: dark-factory-103-spec-019-fix-prompt-generator
 dark-factory-version: v0.17.29
@@ -7,7 +8,6 @@ created: "2026-03-06T14:49:47Z"
 queued: "2026-03-06T14:49:47Z"
 started: "2026-03-06T14:49:47Z"
 completed: "2026-03-06T14:55:35Z"
-spec: ["019"]
 ---
 <objective>
 Create a `FixPromptGenerator` that writes a fix prompt to the inbox when a PR receives a `request-changes` review. The generated prompt targets the existing branch and PR (using spec 017 fields). Depends on spec-018-retry-count-frontmatter and spec-018-review-fetcher.

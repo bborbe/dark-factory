@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["025"]
+spec: [025-prompt-validation-command]
 summary: Added ValidationCommand config field with 'make precommit' default, ValidationSuffix function, and processor injection that appends the validation command override to every prompt before execution
 container: dark-factory-134-spec-025-prompt-validation-command
 dark-factory-version: v0.26.0

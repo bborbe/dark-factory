@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["033"]
+spec: [033-prompt-cancel]
 summary: Added watchForCancellation to processor and StopAndRemoveContainer to executor interface/impl, enabling graceful cancellation of executing prompts via fsnotify file watching
 container: dark-factory-209-spec-033-daemon-cancel-detection
 dark-factory-version: v0.59.5-dirty

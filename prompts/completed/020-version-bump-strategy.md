@@ -1,6 +1,6 @@
 ---
-spec: ["007"]
 status: completed
+spec: [007-git-direct-workflow]
 container: dark-factory-020-version-bump-strategy
 ---
 

@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 container: dark-factory-014-serialize-prompt-execution
 ---
 

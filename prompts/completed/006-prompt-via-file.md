@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 ---
 
 # Pass prompt content via file instead of env var

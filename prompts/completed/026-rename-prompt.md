@@ -1,6 +1,6 @@
 ---
-spec: ["003"]
 status: completed
+spec: [003-filename-normalization]
 container: dark-factory-026-rename-prompt
 ---
 

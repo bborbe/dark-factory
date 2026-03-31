@@ -1,6 +1,6 @@
 ---
-spec: ["010"]
 status: completed
+spec: [010-pr-workflow]
 container: dark-factory-036-add-pr-workflow
 dark-factory-version: v0.8.1
 ---

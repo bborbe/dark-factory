@@ -1,6 +1,6 @@
 ---
-spec: ["011"]
 status: completed
+spec: [011-timestamp-frontmatter]
 container: workspace-055-store-summary-in-frontmatter
 dark-factory-version: dev
 created: "2026-03-02T22:41:26Z"

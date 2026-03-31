@@ -1,6 +1,6 @@
 ---
-spec: ["012"]
 status: completed
+spec: [012-duplicate-frontmatter-handling]
 container: dark-factory-048-replace-splitfrontmatter-with-adrg-frontmatter
 dark-factory-version: v0.11.2
 created: "2026-03-02T18:09:06Z"

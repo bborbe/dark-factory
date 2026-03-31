@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["022"]
+spec: [022-lifecycle-timestamps]
 summary: Added lifecycle timestamp fields (approved, prompted, verifying, completed) to spec Frontmatter with nowFunc injection for testability, stampOnce helper to write timestamps once, SetStatus updated to stamp on each transition, MarkVerifying/MarkCompleted delegating to SetStatus, and full test coverage for all transitions including no-overwrite and Save/Load roundtrip
 container: dark-factory-115-spec-022-1-spec-timestamp-fields
 dark-factory-version: v0.19.0

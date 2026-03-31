@@ -1,6 +1,6 @@
 ---
-spec: ["010"]
 status: completed
+spec: [010-pr-workflow]
 summary: Wired worktree workflow into processor and factory with comprehensive tests and refactoring
 container: dark-factory-059-wire-worktree-workflow
 dark-factory-version: v0.13.2

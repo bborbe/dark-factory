@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["026"]
+spec: [026-prompt-verification-gate]
 summary: Added PendingVerificationPromptStatus constant, MarkPendingVerification() and VerificationSection() methods on PromptFile, updated ListQueued to skip pending_verification, added VerificationGate config field with loader support, and tests for all new behavior.
 container: dark-factory-135-spec-026-status-and-config
 dark-factory-version: v0.26.0

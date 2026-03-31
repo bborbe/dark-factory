@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["028"]
+spec: [028-shared-branch-per-spec]
 summary: Added Issue field to prompt.Frontmatter, SetIssue/SetIssueIfEmpty/SetBranchIfEmpty methods to PromptFile, and refactored generator to use listMDFiles/diffFiles/inheritFromSpec for spec metadata inheritance into generated prompts.
 container: dark-factory-167-spec-028-prompt-inheritance
 dark-factory-version: v0.36.0-dirty

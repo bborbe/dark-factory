@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["023"]
+spec: [023-conventional-changelog-prefixes]
 summary: Replaced keyword-based determineBump() with exact '- feat:' prefix detection, updated all internal tests to prefix-based cases, and fixed the integration test in processor_test.go to use the new prefix format.
 container: dark-factory-117-spec-023-1-determinebump-prefix-logic
 dark-factory-version: v0.19.0

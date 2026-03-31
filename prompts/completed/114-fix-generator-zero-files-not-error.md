@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["020"]
+spec: [020-auto-prompt-generation]
 summary: SpecGenerator now checks completedDir for linked prompts before erroring on zero new files, skipping generation when spec is already covered
 container: dark-factory-114-fix-generator-zero-files-not-error
 dark-factory-version: v0.18.6

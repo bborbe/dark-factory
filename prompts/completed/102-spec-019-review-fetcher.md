@@ -1,5 +1,6 @@
 ---
 status: completed
+spec: [019-review-fix-loop]
 summary: Created ReviewFetcher in pkg/git/review_fetcher.go with FetchLatestReview and FetchPRState methods, internal NDJSON parsing, mocks regenerated, and test coverage at 80.9%
 container: dark-factory-102-spec-019-review-fetcher
 dark-factory-version: v0.17.29
@@ -7,7 +8,6 @@ created: "2026-03-06T14:38:10Z"
 queued: "2026-03-06T14:38:10Z"
 started: "2026-03-06T14:38:10Z"
 completed: "2026-03-06T14:49:44Z"
-spec: ["019"]
 ---
 <objective>
 Create a `ReviewFetcher` that polls a GitHub PR for reviews from trusted reviewers and returns the latest verdict. This is the GitHub API layer for spec 018 — no processor wiring yet, just the fetching logic.

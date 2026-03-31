@@ -1,6 +1,6 @@
 ---
-spec: ["004"]
 status: completed
+spec: [004-directory-separation]
 container: dark-factory-032-restructure-prompt-dirs
 ---
 

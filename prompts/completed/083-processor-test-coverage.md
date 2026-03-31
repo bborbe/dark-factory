@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 summary: Added 17 new test cases to pkg/processor/processor_test.go covering savePRURLToFrontmatter, shouldSkipPrompt, handlePRWorkflow, postMergeActions, handleAutoMerge, and handleDirectWorkflow error paths, raising processor coverage from 81.4% to 90.7%
 container: dark-factory-083-processor-test-coverage
 dark-factory-version: v0.17.12

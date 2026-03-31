@@ -1,6 +1,6 @@
 ---
-spec: ["016"]
 status: completed
+spec: [016-auto-merge-and-release]
 summary: Wired auto-merge and auto-release into processor and factory
 container: dark-factory-077-wire-auto-merge-into-processor
 dark-factory-version: dev

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["029"]
+spec: [029-branch-execution-and-release]
 summary: Split processor pr bool into worktree bool + pr bool flags, added in-place branch switching for non-worktree mode, existing-remote-branch tracking in clone mode, and IsClean to Brancher interface
 container: dark-factory-168-spec-029-branch-switching
 dark-factory-version: v0.36.0-dirty

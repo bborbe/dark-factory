@@ -1,6 +1,6 @@
 ---
-spec: ["018"]
 status: completed
+spec: [018-native-spec-integration]
 summary: Removed approveAll from approve.go so no-args returns a usage error, and updated tests accordingly; spec_approve.go already required an argument.
 container: dark-factory-094-remove-approve-all
 dark-factory-version: v0.17.15

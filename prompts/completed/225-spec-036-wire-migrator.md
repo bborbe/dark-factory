@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["036"]
+spec: [036-full-slug-spec-references]
 summary: Wired slugmigrator.Migrator into generator post-processing, runner startup, and one-shot runner startup via factory helpers
 container: dark-factory-225-spec-036-wire-migrator
 dark-factory-version: v0.69.0

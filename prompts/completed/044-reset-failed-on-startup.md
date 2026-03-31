@@ -1,6 +1,6 @@
 ---
-spec: ["006"]
 status: completed
+spec: [006-crash-recovery]
 container: dark-factory-044-reset-failed-on-startup
 dark-factory-version: v0.10.2
 ---

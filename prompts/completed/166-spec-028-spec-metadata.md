@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["028"]
+spec: [028-shared-branch-per-spec]
 summary: Added optional branch and issue fields to spec frontmatter, auto-assign branch on spec approve, with validation and full test coverage
 container: dark-factory-166-spec-028-spec-metadata
 dark-factory-version: v0.36.0-dirty

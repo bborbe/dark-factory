@@ -1,6 +1,6 @@
 ---
-spec: ["011"]
 status: completed
+spec: [011-timestamp-frontmatter]
 container: dark-factory-031-add-version-to-frontmatter
 ---
 

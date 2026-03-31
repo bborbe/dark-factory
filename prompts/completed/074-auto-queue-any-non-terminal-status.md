@@ -1,6 +1,6 @@
 ---
-spec: ["015"]
 status: completed
+spec: [015-prompt-status-frontmatter]
 summary: Updated autoSetQueuedStatus to handle any non-terminal status using switch statement
 container: dark-factory-074-auto-queue-any-non-terminal-status
 dark-factory-version: v0.17.2

@@ -1,6 +1,6 @@
 ---
-spec: ["019"]
 status: completed
+spec: [019-review-fix-loop]
 summary: Removed Location field from PromptEntry, updated scanDir signature, changed --queue to status-based filtering, and updated table output format to two columns in both list.go and combined_list.go.
 container: dark-factory-099-spec-019-compact-list-output
 dark-factory-version: v0.17.29

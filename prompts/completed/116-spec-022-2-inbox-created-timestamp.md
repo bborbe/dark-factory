@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["022"]
+spec: [022-lifecycle-timestamps]
 summary: Added inboxDir to watcher struct and NewWatcher, implemented stampCreatedTimestamps method that sets created timestamp on inbox prompt files lacking one, updated factory and all tests
 container: dark-factory-116-spec-022-2-inbox-created-timestamp
 dark-factory-version: v0.19.0

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["028"]
+spec: [028-shared-branch-per-spec]
 summary: Replaced workflow string enum with PR and Worktree boolean flags in Config, added deprecation mapping in loader, updated processor/factory/cmd to use pr bool, and updated all tests accordingly.
 container: dark-factory-165-spec-028-config-booleans
 dark-factory-version: v0.36.0-dirty

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["020"]
+spec: [020-auto-prompt-generation]
 summary: Added startup scan to SpecWatcher that calls generator.Generate for any already-approved specs before entering the fsnotify event loop, with tests covering the happy path and negative cases
 container: dark-factory-109-fix-spec-watcher-startup-scan
 dark-factory-version: v0.18.1

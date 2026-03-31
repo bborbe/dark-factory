@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["024"]
+spec: [024-config-restructure]
 summary: 'Implemented spec directory lifecycle: spec verify marks completed and moves file to completedDir, spec list/status aggregate across all three dirs, AutoCompleter searches all three spec dirs, FindSpecFileInDirs searches multiple dirs in order'
 container: dark-factory-120-spec-024-3-spec-lifecycle-commands
 dark-factory-version: v0.20.2

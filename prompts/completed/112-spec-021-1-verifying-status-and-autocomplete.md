@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["021"]
+spec: [021-spec-verification-gate]
 summary: Added StatusVerifying to the spec lifecycle so CheckAndComplete transitions specs to verifying instead of completed when all linked prompts are done, with full test coverage and UI updates to spec_list and spec_status commands.
 container: dark-factory-112-spec-021-1-verifying-status-and-autocomplete
 dark-factory-version: v0.18.2

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["030"]
+spec: [030-bitbucket-server-pr-workflow]
 summary: Wired Bitbucket Server provider into factory layer via createProviderDeps helper; added bitbucket_pr_creator.go, bitbucket_pr_merger.go, bitbucket_review_fetcher.go, bitbucket_collaborator_fetcher.go; refactored CreateProcessor to accept brancher/prCreator/prMerger interfaces instead of ghToken/defaultBranch strings
 container: dark-factory-176-spec-030-factory-wiring
 dark-factory-version: v0.48.0

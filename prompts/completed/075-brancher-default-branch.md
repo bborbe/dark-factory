@@ -1,6 +1,6 @@
 ---
-spec: ["010"]
 status: completed
+spec: [010-pr-workflow]
 summary: Added DefaultBranch, Pull, and renamed MergeOriginMaster to MergeOriginDefault for dynamic default branch detection
 container: dark-factory-075-brancher-default-branch
 dark-factory-version: dev

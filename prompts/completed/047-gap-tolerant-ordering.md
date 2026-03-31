@@ -1,6 +1,6 @@
 ---
-spec: ["003"]
 status: completed
+spec: [003-filename-normalization]
 container: dark-factory-047-gap-tolerant-ordering
 dark-factory-version: v0.11.1
 created: "2026-03-02T12:09:04Z"

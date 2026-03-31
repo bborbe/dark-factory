@@ -1,6 +1,6 @@
 ---
-spec: ["004"]
 status: completed
+spec: [004-directory-separation]
 summary: Changed default QueueDir from prompts to prompts/queue
 container: dark-factory-057-change-queuedir-default
 dark-factory-version: v0.13.2

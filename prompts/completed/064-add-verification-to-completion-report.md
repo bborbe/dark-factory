@@ -1,6 +1,6 @@
 ---
-spec: ["001"]
 status: completed
+spec: [001-core-pipeline]
 summary: Added verification field to completion report with validation
 container: dark-factory-064-add-verification-to-completion-report
 dark-factory-version: v0.14.5

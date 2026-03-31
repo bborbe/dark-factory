@@ -124,6 +124,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -192,6 +194,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -264,6 +268,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -334,6 +340,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -394,6 +402,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -452,6 +462,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			fakeNotifier,
+			nil,
+			0,
 		)
 
 		go func() {
@@ -514,6 +526,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -578,6 +592,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -674,6 +690,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -744,6 +762,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -804,6 +824,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -868,6 +890,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -921,6 +945,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -972,6 +998,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1033,6 +1061,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1107,6 +1137,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1178,6 +1210,8 @@ var _ = Describe("Processor", func() {
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -1243,6 +1277,8 @@ var _ = Describe("Processor", func() {
 			"readme.md is updated",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -1310,6 +1346,8 @@ var _ = Describe("Processor", func() {
 				"nonexistent-file.md",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -1390,6 +1428,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -1505,6 +1545,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -1598,6 +1640,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -1687,6 +1731,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor
@@ -1769,6 +1815,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor
@@ -1858,6 +1906,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -1922,6 +1972,8 @@ var _ = Describe("Processor", func() {
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor
@@ -2021,6 +2073,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2098,6 +2152,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2172,6 +2228,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2247,6 +2305,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2322,6 +2382,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				fakeNotifier,
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2395,6 +2457,8 @@ more output
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2469,6 +2533,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2547,6 +2613,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2609,6 +2677,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2663,6 +2733,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2724,6 +2796,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2810,6 +2884,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2889,6 +2965,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -2951,6 +3029,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -3027,6 +3107,8 @@ DARK-FACTORY-REPORT -->
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -3083,6 +3165,8 @@ DARK-FACTORY-REPORT -->
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3148,6 +3232,8 @@ DARK-FACTORY-REPORT -->
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3200,6 +3286,8 @@ DARK-FACTORY-REPORT -->
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		errCh := make(chan error, 1)
@@ -3260,6 +3348,8 @@ DARK-FACTORY-REPORT -->
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3343,6 +3433,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3429,6 +3521,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3488,6 +3582,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3572,6 +3668,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			"",
 			false,
 			notifier.NewMultiNotifier(),
+			nil,
+			0,
 		)
 
 		go func() {
@@ -3662,6 +3760,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -3758,6 +3858,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					false,
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				go func() {
@@ -3860,6 +3962,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -3946,6 +4050,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					false,
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				go func() {
@@ -4036,6 +4142,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -4122,6 +4230,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					false,
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				go func() {
@@ -4222,6 +4332,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			go func() {
@@ -4306,6 +4418,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4376,6 +4490,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4435,6 +4551,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 						"",
 						false,
 						notifier.NewMultiNotifier(),
+						nil,
+						0,
 					)
 
 					errCh := make(chan error, 1)
@@ -4485,6 +4603,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					true, // gate enabled but no pending file
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4544,6 +4664,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 
 			errCh := make(chan error, 1)
@@ -4609,6 +4731,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 		}
 
@@ -4723,6 +4847,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 		}
 
@@ -5043,6 +5169,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					"",
 					false,
 					notifier.NewMultiNotifier(),
+					nil,
+					0,
 				)
 			}
 		})
@@ -5170,6 +5298,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 			go func() { _ = p.Process(ctx) }()
 
@@ -5240,6 +5370,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 		}
 
@@ -5473,6 +5605,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"",
 				false,
 				notifier.NewMultiNotifier(),
+				nil,
+				0,
 			)
 		}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
@@ -37,6 +38,16 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
+
+// errRunner is a Runner that immediately returns an error when Run is called.
+type errRunner struct{ err error }
+
+func (e *errRunner) Run(_ context.Context) error { return e.err }
+
+// errOneShotRunner is an OneShotRunner that immediately returns an error when Run is called.
+type errOneShotRunner struct{ err error }
+
+func (e *errOneShotRunner) Run(_ context.Context) error { return e.err }
 
 // createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
 func createPromptManager(
@@ -193,6 +204,10 @@ func createSpecSlugMigrator(
 
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
 func CreateRunner(cfg config.Config, ver string) runner.Runner {
+	globalCfg, err := globalconfig.NewLoader().Load(context.Background())
+	if err != nil {
+		return &errRunner{err: fmt.Errorf("globalconfig: %w", err)}
+	}
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
@@ -241,6 +256,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
 		cfg.VerificationGate, cfg.Env, currentDateTimeGetter, n,
 		cfg.ResolvedClaudeDir(),
+		executor.NewDockerContainerCounter(),
+		globalCfg.MaxContainers,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -257,6 +274,10 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 
 // CreateOneShotRunner creates an OneShotRunner that drains the queue and exits.
 func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner.OneShotRunner {
+	globalCfg, err := globalconfig.NewLoader().Load(context.Background())
+	if err != nil {
+		return &errOneShotRunner{err: fmt.Errorf("globalconfig: %w", err)}
+	}
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
@@ -319,6 +340,8 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			currentDateTimeGetter,
 			n,
 			cfg.ResolvedClaudeDir(),
+			executor.NewDockerContainerCounter(),
+			globalCfg.MaxContainers,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -421,6 +444,8 @@ func CreateProcessor(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	n notifier.Notifier,
 	claudeDir string,
+	containerCounter executor.ContainerCounter,
+	maxContainers int,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -464,6 +489,8 @@ func CreateProcessor(
 		validationPrompt,
 		verificationGate,
 		n,
+		containerCounter,
+		maxContainers,
 	)
 }
 

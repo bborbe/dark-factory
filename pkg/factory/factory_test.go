@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
@@ -78,6 +79,8 @@ var _ = Describe("Factory", func() {
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),
 				cfg.ResolvedClaudeDir(),
+				executor.NewDockerContainerCounter(),
+				0,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -67,63 +67,71 @@ func NewProcessor(
 	validationPrompt string,
 	verificationGate bool,
 	n notifier.Notifier,
+	containerCounter executor.ContainerCounter,
+	maxContainers int,
 ) Processor {
 	return &processor{
-		queueDir:          queueDir,
-		completedDir:      completedDir,
-		logDir:            logDir,
-		projectName:       projectName,
-		executor:          exec,
-		promptManager:     promptManager,
-		releaser:          releaser,
-		versionGetter:     versionGetter,
-		ready:             ready,
-		pr:                pr,
-		worktree:          worktree,
-		brancher:          brancher,
-		prCreator:         prCreator,
-		cloner:            cloner,
-		autoMerge:         autoMerge,
-		autoRelease:       autoRelease,
-		autoReview:        autoReview,
-		prMerger:          prMerger,
-		autoCompleter:     autoCompleter,
-		specLister:        specLister,
-		validationCommand: validationCommand,
-		validationPrompt:  validationPrompt,
-		verificationGate:  verificationGate,
-		skippedPrompts:    make(map[string]time.Time),
-		notifier:          n,
+		queueDir:              queueDir,
+		completedDir:          completedDir,
+		logDir:                logDir,
+		projectName:           projectName,
+		executor:              exec,
+		promptManager:         promptManager,
+		releaser:              releaser,
+		versionGetter:         versionGetter,
+		ready:                 ready,
+		pr:                    pr,
+		worktree:              worktree,
+		brancher:              brancher,
+		prCreator:             prCreator,
+		cloner:                cloner,
+		autoMerge:             autoMerge,
+		autoRelease:           autoRelease,
+		autoReview:            autoReview,
+		prMerger:              prMerger,
+		autoCompleter:         autoCompleter,
+		specLister:            specLister,
+		validationCommand:     validationCommand,
+		validationPrompt:      validationPrompt,
+		verificationGate:      verificationGate,
+		skippedPrompts:        make(map[string]time.Time),
+		notifier:              n,
+		containerCounter:      containerCounter,
+		maxContainers:         maxContainers,
+		containerPollInterval: 10 * time.Second,
 	}
 }
 
 // processor implements Processor.
 type processor struct {
-	queueDir          string
-	completedDir      string
-	logDir            string
-	projectName       string
-	executor          executor.Executor
-	promptManager     prompt.Manager
-	releaser          git.Releaser
-	versionGetter     version.Getter
-	ready             <-chan struct{}
-	pr                bool
-	worktree          bool
-	brancher          git.Brancher
-	prCreator         git.PRCreator
-	cloner            git.Cloner
-	autoMerge         bool
-	autoRelease       bool
-	autoReview        bool
-	prMerger          git.PRMerger
-	autoCompleter     spec.AutoCompleter
-	specLister        spec.Lister
-	validationCommand string
-	validationPrompt  string
-	verificationGate  bool
-	skippedPrompts    map[string]time.Time // filename → mod time when skipped
-	notifier          notifier.Notifier
+	queueDir              string
+	completedDir          string
+	logDir                string
+	projectName           string
+	executor              executor.Executor
+	promptManager         prompt.Manager
+	releaser              git.Releaser
+	versionGetter         version.Getter
+	ready                 <-chan struct{}
+	pr                    bool
+	worktree              bool
+	brancher              git.Brancher
+	prCreator             git.PRCreator
+	cloner                git.Cloner
+	autoMerge             bool
+	autoRelease           bool
+	autoReview            bool
+	prMerger              git.PRMerger
+	autoCompleter         spec.AutoCompleter
+	specLister            spec.Lister
+	validationCommand     string
+	validationPrompt      string
+	verificationGate      bool
+	skippedPrompts        map[string]time.Time // filename → mod time when skipped
+	notifier              notifier.Notifier
+	containerCounter      executor.ContainerCounter
+	maxContainers         int
+	containerPollInterval time.Duration
 }
 
 // Process starts processing queued prompts.
@@ -524,6 +532,36 @@ func (p *processor) checkPromptedSpecs(ctx context.Context) error {
 	return nil
 }
 
+// waitForContainerSlot blocks until the system-wide running container count
+// is below maxContainers, then returns. Checks every 10 seconds.
+// Returns immediately if maxContainers <= 0 (no limit).
+// Returns ctx.Err() if context is cancelled while waiting.
+func (p *processor) waitForContainerSlot(ctx context.Context) error {
+	if p.maxContainers <= 0 {
+		return nil
+	}
+	for {
+		count, err := p.containerCounter.CountRunning(ctx)
+		if err != nil {
+			slog.Warn("failed to count running containers, proceeding anyway", "error", err)
+			return nil
+		}
+		if count < p.maxContainers {
+			return nil
+		}
+		slog.Info(
+			"waiting for container slot",
+			"running", count,
+			"limit", p.maxContainers,
+		)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(p.containerPollInterval):
+		}
+	}
+}
+
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Sync with remote before execution
@@ -533,6 +571,11 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 	if err := p.brancher.MergeOriginDefault(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git merge origin default branch")
+	}
+
+	// Wait until a system-wide container slot is available
+	if err := p.waitForContainerSlot(ctx); err != nil {
+		return errors.Wrap(ctx, err, "wait for container slot")
 	}
 
 	// Load prompt file once

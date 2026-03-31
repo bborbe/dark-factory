@@ -6,8 +6,10 @@ package processor
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	libtime "github.com/bborbe/time"
@@ -799,3 +801,90 @@ var _ = Describe("ResumeExecuting", func() {
 type testReattachError struct{}
 
 func (t *testReattachError) Error() string { return "reattach sentinel error" }
+
+// stubContainerCounter is a minimal ContainerCounter for internal waitForContainerSlot tests.
+type stubContainerCounter struct {
+	callCount int32
+	fn        func(n int) (int, error)
+}
+
+func (s *stubContainerCounter) CountRunning(_ context.Context) (int, error) {
+	n := int(atomic.AddInt32(&s.callCount, 1))
+	return s.fn(n)
+}
+
+func (s *stubContainerCounter) calls() int {
+	return int(atomic.LoadInt32(&s.callCount))
+}
+
+var _ = Describe("waitForContainerSlot", func() {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+		p      *processor
+	)
+
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.Background())
+		p = &processor{
+			maxContainers:         3,
+			containerPollInterval: 10 * time.Millisecond,
+			skippedPrompts:        make(map[string]time.Time),
+		}
+	})
+
+	AfterEach(func() {
+		cancel()
+	})
+
+	It("returns nil immediately when maxContainers is 0", func() {
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 0, nil }}
+		p.maxContainers = 0
+		p.containerCounter = counter
+		err := p.waitForContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.calls()).To(Equal(0))
+	})
+
+	It("returns nil immediately when count is below limit", func() {
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 2, nil }}
+		p.containerCounter = counter
+		err := p.waitForContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.calls()).To(Equal(1))
+	})
+
+	It("waits and returns nil when slot frees up", func() {
+		counter := &stubContainerCounter{fn: func(n int) (int, error) {
+			if n == 1 {
+				return 3, nil // at limit on first call
+			}
+			return 2, nil // slot freed on second call
+		}}
+		p.containerCounter = counter
+		err := p.waitForContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.calls()).To(Equal(2))
+	})
+
+	It("returns ctx.Err() when context is cancelled while waiting", func() {
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 3, nil }}
+		p.containerCounter = counter
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			cancel()
+		}()
+		err := p.waitForContainerSlot(ctx)
+		Expect(err).To(Equal(context.Canceled))
+	})
+
+	It("proceeds (returns nil) when counter returns error", func() {
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) {
+			return 0, stderrors.New("docker error")
+		}}
+		p.containerCounter = counter
+		err := p.waitForContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.calls()).To(Equal(1))
+	})
+})

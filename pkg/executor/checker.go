@@ -8,6 +8,8 @@ import (
 	"context"
 	"os/exec"
 	"strings"
+
+	"github.com/bborbe/errors"
 )
 
 //counterfeiter:generate -o ../../mocks/container-checker.go --fake-name ContainerChecker . ContainerChecker
@@ -37,4 +39,48 @@ func (c *dockerContainerChecker) IsRunning(ctx context.Context, name string) (bo
 		return false, nil
 	}
 	return strings.TrimSpace(out.String()) == "true", nil
+}
+
+//counterfeiter:generate -o ../../mocks/container-counter.go --fake-name ContainerCounter . ContainerCounter
+
+// ContainerCounter counts running dark-factory containers system-wide.
+type ContainerCounter interface {
+	CountRunning(ctx context.Context) (int, error)
+}
+
+// NewDockerContainerCounter creates a ContainerCounter that uses docker ps with label filtering.
+func NewDockerContainerCounter() ContainerCounter {
+	return &dockerContainerCounter{}
+}
+
+// dockerContainerCounter implements ContainerCounter using docker ps.
+type dockerContainerCounter struct{}
+
+// CountRunning returns the number of currently running dark-factory containers system-wide.
+// It filters by the label dark-factory.project which is set on every container.
+func (c *dockerContainerCounter) CountRunning(ctx context.Context) (int, error) {
+	// #nosec G204 -- filter value is a hardcoded label key, not user input
+	cmd := exec.CommandContext(
+		ctx,
+		"docker", "ps",
+		"--filter", "label=dark-factory.project",
+		"--format", "{{.Names}}",
+	)
+	var out strings.Builder
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0, errors.Wrapf(ctx, err, "docker ps for container count")
+	}
+	output := strings.TrimSpace(out.String())
+	if output == "" {
+		return 0, nil
+	}
+	lines := strings.Split(output, "\n")
+	count := 0
+	for _, line := range lines {
+		if strings.TrimSpace(line) != "" {
+			count++
+		}
+	}
+	return count, nil
 }

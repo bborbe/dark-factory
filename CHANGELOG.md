@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.82.0
+
+- feat: Enforce system-wide container limit via ~/.dark-factory/config.yaml maxContainers (default: 3)
+- feat: Add ContainerCounter interface counting running dark-factory containers via docker ps label filter
+
 ## v0.81.0
 
 - feat: Add `pkg/globalconfig` package to load ~/.dark-factory/config.yaml with maxContainers field

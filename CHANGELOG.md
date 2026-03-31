@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.83.0
+
+- feat: Show system-wide container count in `dark-factory status` output as `Containers: N/M (system-wide)`
+
 ## v0.82.0
 
 - feat: Enforce system-wide container limit via ~/.dark-factory/config.yaml maxContainers (default: 3)

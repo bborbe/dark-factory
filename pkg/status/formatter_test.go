@@ -5,6 +5,8 @@
 package status_test
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -189,6 +191,56 @@ var _ = Describe("Formatter", func() {
 
 			output := formatter.Format(st)
 			Expect(output).NotTo(ContainSubstring("Project:"))
+		})
+	})
+
+	Describe("Format container line", func() {
+		It("includes container line when ContainerMax > 0", func() {
+			st := &status.Status{
+				Daemon:         "not running",
+				QueuedPrompts:  []string{},
+				ContainerCount: 2,
+				ContainerMax:   3,
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Containers: 2/3 (system-wide)"))
+		})
+
+		It("omits container line when ContainerMax is 0", func() {
+			st := &status.Status{
+				Daemon:        "not running",
+				QueuedPrompts: []string{},
+				ContainerMax:  0,
+			}
+			output := formatter.Format(st)
+			Expect(output).NotTo(ContainSubstring("Containers:"))
+		})
+
+		It("shows container line after Project and before Daemon", func() {
+			st := &status.Status{
+				ProjectDir:     "/my/project",
+				Daemon:         "running",
+				DaemonPID:      1234,
+				QueuedPrompts:  []string{},
+				ContainerCount: 1,
+				ContainerMax:   5,
+			}
+			output := formatter.Format(st)
+			lines := strings.Split(output, "\n")
+			var projectIdx, containerIdx, daemonIdx int
+			for i, l := range lines {
+				if strings.Contains(l, "Project:") {
+					projectIdx = i
+				}
+				if strings.Contains(l, "Containers:") {
+					containerIdx = i
+				}
+				if strings.Contains(l, "Daemon:") {
+					daemonIdx = i
+				}
+			}
+			Expect(containerIdx).To(BeNumerically(">", projectIdx))
+			Expect(containerIdx).To(BeNumerically("<", daemonIdx))
 		})
 	})
 })

@@ -37,6 +37,11 @@ func (f *formatter) Format(st *Status) string {
 		fmt.Fprintf(&b, "  Project:    %s\n", st.ProjectDir)
 	}
 
+	// Container count (only when limit is configured)
+	if st.ContainerMax > 0 {
+		fmt.Fprintf(&b, "  Containers: %d/%d (system-wide)\n", st.ContainerCount, st.ContainerMax)
+	}
+
 	// Daemon status
 	if st.DaemonPID > 0 {
 		fmt.Fprintf(&b, "  Daemon:     %s (pid %d)\n", st.Daemon, st.DaemonPID)

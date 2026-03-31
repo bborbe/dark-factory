@@ -551,6 +551,13 @@ func CreateServer(
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	projectDir, _ := os.Getwd()
+	globalCfgForServer, err := globalconfig.NewLoader().Load(context.Background())
+	if err != nil {
+		slog.Warn("globalconfig load failed for server status, using default", "error", err)
+		globalCfgForServer = globalconfig.GlobalConfig{
+			MaxContainers: globalconfig.DefaultMaxContainers,
+		}
+	}
 	statusChecker := status.NewChecker(
 		projectDir,
 		inProgressDir,
@@ -559,6 +566,8 @@ func CreateServer(
 		lock.FilePath("."),
 		port,
 		promptManager,
+		executor.NewDockerContainerCounter(),
+		globalCfgForServer.MaxContainers,
 	)
 
 	// Build the mux with all routes
@@ -594,6 +603,13 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	)
 
 	projectDir, _ := os.Getwd()
+	globalCfgForStatus, err := globalconfig.NewLoader().Load(context.Background())
+	if err != nil {
+		slog.Warn("globalconfig load failed for status, using default", "error", err)
+		globalCfgForStatus = globalconfig.GlobalConfig{
+			MaxContainers: globalconfig.DefaultMaxContainers,
+		}
+	}
 	statusChecker := status.NewChecker(
 		projectDir,
 		cfg.Prompts.InProgressDir,
@@ -602,6 +618,8 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
+		executor.NewDockerContainerCounter(),
+		globalCfgForStatus.MaxContainers,
 	)
 	formatter := status.NewFormatter()
 
@@ -768,6 +786,13 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	)
 
 	projectDir, _ := os.Getwd()
+	globalCfgForCombined, err := globalconfig.NewLoader().Load(context.Background())
+	if err != nil {
+		slog.Warn("globalconfig load failed for combined status, using default", "error", err)
+		globalCfgForCombined = globalconfig.GlobalConfig{
+			MaxContainers: globalconfig.DefaultMaxContainers,
+		}
+	}
 	statusChecker := status.NewChecker(
 		projectDir,
 		cfg.Prompts.InProgressDir,
@@ -776,6 +801,8 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
+		executor.NewDockerContainerCounter(),
+		globalCfgForCombined.MaxContainers,
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

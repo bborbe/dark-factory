@@ -6,6 +6,7 @@ package status_test
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,6 +56,8 @@ var _ = Describe("StatusChecker", func() {
 			lockFilePath,
 			8080,
 			promptMgr,
+			nil,
+			0,
 		)
 	})
 
@@ -286,6 +289,8 @@ status: executing
 				lockFilePath,
 				8080,
 				promptMgr,
+				nil,
+				0,
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -307,6 +312,8 @@ status: executing
 				lockFilePath,
 				8080,
 				promptMgr,
+				nil,
+				0,
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -434,6 +441,81 @@ container: dark-factory-nonexistent-container-xyz
 			Expect(completed).To(HaveLen(1))
 			Expect(completed[0].Name).To(Equal("001-empty-fm.md"))
 			Expect(completed[0].CompletedAt).NotTo(BeZero())
+		})
+	})
+
+	Describe("GetStatus container count", func() {
+		It("populates ContainerCount and ContainerMax when counter returns count", func() {
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(2, nil)
+
+			checker := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				counter,
+				3,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.ContainerCount).To(Equal(2))
+			Expect(st.ContainerMax).To(Equal(3))
+		})
+
+		It("leaves ContainerCount zero when counter returns error", func() {
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, stderrors.New("docker not available"))
+
+			checker := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				counter,
+				3,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.ContainerCount).To(Equal(0))
+		})
+
+		It("leaves ContainerCount zero when maxContainers is 0", func() {
+			counter := &mocks.ContainerCounter{}
+
+			checker := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				counter,
+				0,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.ContainerCount).To(Equal(0))
+			Expect(counter.CountRunningCallCount()).To(Equal(0))
 		})
 	})
 })

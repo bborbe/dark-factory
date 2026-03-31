@@ -1,10 +1,11 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-03-31T17:49:18Z"
 prompted: "2026-03-31T17:55:15Z"
+verifying: "2026-03-31T20:32:27Z"
 branch: dark-factory/global-container-limit
 ---
 

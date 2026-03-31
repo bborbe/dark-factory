@@ -19,6 +19,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -36,6 +37,8 @@ type Status struct {
 	QueueCount          int      `json:"queue_count"`
 	QueuedPrompts       []string `json:"queued_prompts"`
 	CompletedCount      int      `json:"completed_count"`
+	ContainerCount      int      `json:"container_count,omitempty"`
+	ContainerMax        int      `json:"container_max,omitempty"`
 	LastLogFile         string   `json:"last_log_file,omitempty"`
 	LastLogSize         int64    `json:"last_log_size,omitempty"`
 }
@@ -64,13 +67,15 @@ type Checker interface {
 
 // checker implements Checker.
 type checker struct {
-	projectDir   string
-	queueDir     string
-	completedDir string
-	logDir       string
-	lockFilePath string
-	serverPort   int
-	promptMgr    prompt.Manager
+	projectDir       string
+	queueDir         string
+	completedDir     string
+	logDir           string
+	lockFilePath     string
+	serverPort       int
+	promptMgr        prompt.Manager
+	containerCounter executor.ContainerCounter
+	maxContainers    int
 }
 
 // NewChecker creates a new Checker with additional options.
@@ -82,15 +87,19 @@ func NewChecker(
 	lockFilePath string,
 	serverPort int,
 	promptMgr prompt.Manager,
+	containerCounter executor.ContainerCounter,
+	maxContainers int,
 ) Checker {
 	return &checker{
-		projectDir:   projectDir,
-		queueDir:     queueDir,
-		completedDir: completedDir,
-		logDir:       logDir,
-		lockFilePath: lockFilePath,
-		serverPort:   serverPort,
-		promptMgr:    promptMgr,
+		projectDir:       projectDir,
+		queueDir:         queueDir,
+		completedDir:     completedDir,
+		logDir:           logDir,
+		lockFilePath:     lockFilePath,
+		serverPort:       serverPort,
+		promptMgr:        promptMgr,
+		containerCounter: containerCounter,
+		maxContainers:    maxContainers,
 	}
 }
 
@@ -136,6 +145,17 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	// Find latest log file
 	if err := s.populateLogInfo(ctx, status); err != nil {
 		return nil, errors.Wrap(ctx, err, "populate log info")
+	}
+
+	// Populate system-wide container count
+	if s.containerCounter != nil && s.maxContainers > 0 {
+		count, err := s.containerCounter.CountRunning(ctx)
+		if err != nil {
+			slog.Debug("failed to count running containers for status", "error", err)
+		} else {
+			status.ContainerCount = count
+			status.ContainerMax = s.maxContainers
+		}
 	}
 
 	return status, nil

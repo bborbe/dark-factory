@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [038-global-container-limit]
+summary: 'Added ContainerCount/ContainerMax to Status struct, wired ContainerCounter into NewChecker, rendered Containers: N/M (system-wide) in formatter between Project and Daemon lines, updated factory wiring with global config load, and added tests for all new behavior'
+container: dark-factory-234-spec-038-status-display
+dark-factory-version: v0.80.0-1-g2b37ac1
 created: "2026-03-31T18:02:00Z"
 queued: "2026-03-31T19:11:44Z"
+started: "2026-03-31T20:21:18Z"
+completed: "2026-03-31T20:32:27Z"
 branch: dark-factory/global-container-limit
 ---
 

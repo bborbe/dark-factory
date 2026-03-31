@@ -15,7 +15,7 @@ Store the PR URL in prompt frontmatter when using the PR workflow, so completed 
 
 <context>
 Read CLAUDE.md for project conventions.
-Read ALL markdown files in ~/Documents/workspaces/coding-guidelines/ for Go patterns.
+Read ALL markdown files in ~/Documents/workspaces/coding/docs/ for Go patterns.
 Spec: specs/015-pr-url-in-frontmatter.md
 Key files: pkg/prompt/prompt.go (Frontmatter struct, PromptFile methods), pkg/processor/processor.go (handlePRWorkflow)
 </context>

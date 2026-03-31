@@ -15,7 +15,7 @@ Log why prompts in the queue are skipped instead of silently ignoring them.
 
 <context>
 Read CLAUDE.md for project conventions.
-Read ALL markdown files in ~/Documents/workspaces/coding-guidelines/ for Go patterns.
+Read ALL markdown files in ~/Documents/workspaces/coding/docs/ for Go patterns.
 Read pkg/processor/processor.go — `processExistingQueued` method, lines around `ValidateForExecution` and `AllPreviousCompleted`.
 Read pkg/prompt/prompt.go — `ListQueued` function, the skip logic for executing/completed/failed status.
 </context>

@@ -14,7 +14,7 @@ Add a "Specs" section to README.md that lists all spec files from specs/ with th
 
 <context>
 Read CLAUDE.md for project conventions.
-Read ALL markdown files in ~/Documents/workspaces/coding-guidelines/ for Go patterns.
+Read ALL markdown files in ~/Documents/workspaces/coding/docs/ for Go patterns.
 </context>
 
 <requirements>

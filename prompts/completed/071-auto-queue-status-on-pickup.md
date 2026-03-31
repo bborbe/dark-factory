@@ -15,7 +15,7 @@ Auto-set `status: queued` when dark-factory picks up a prompt from the queue dir
 
 <context>
 Read CLAUDE.md for project conventions.
-Read ALL markdown files in ~/Documents/workspaces/coding-guidelines/ for Go patterns.
+Read ALL markdown files in ~/Documents/workspaces/coding/docs/ for Go patterns.
 Read pkg/processor/processor.go — `processExistingQueued` method, the `ValidateForExecution` call.
 Read pkg/prompt/prompt.go — `ValidateForExecution`, `ListQueued`, `PrepareForExecution` methods.
 </context>

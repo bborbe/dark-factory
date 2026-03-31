@@ -22,7 +22,7 @@ Refactor prompt statuses to follow the go-enum-type-pattern. Rename `Status` to 
 
 <context>
 Read CLAUDE.md for project conventions.
-Read `~/Documents/workspaces/coding-guidelines/go-enum-type-pattern.md` — the canonical enum pattern to follow.
+Read `~/Documents/workspaces/coding/docs/go-enum-type-pattern.md` — the canonical enum pattern to follow.
 Read `pkg/prompt/prompt.go` — current `Status` type and constants (`StatusQueued`, `StatusExecuting`, etc.).
 Read `pkg/cmd/approve.go` — uses `MarkQueued()` which will be renamed.
 Read `pkg/server/queue_helpers.go` — calls `MarkQueued()`, needs update.

@@ -15,7 +15,7 @@ Add configurable GitHub identity via GH_TOKEN so dark-factory can create PRs und
 
 <context>
 Read CLAUDE.md for project conventions.
-Read ALL markdown files in ~/Documents/workspaces/coding-guidelines/ for Go patterns.
+Read ALL markdown files in ~/Documents/workspaces/coding/docs/ for Go patterns.
 Precondition: pkg/config, pkg/git, pkg/factory exist and are tested.
 Spec: specs/014-configurable-github-identity.md
 </context>

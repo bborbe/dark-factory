@@ -534,6 +534,11 @@ func CreateNotifier(cfg config.Config) notifier.Notifier {
 	return notifier.NewMultiNotifier(notifiers...)
 }
 
+// CreateKillCommand creates a KillCommand that stops the running daemon.
+func CreateKillCommand(_ config.Config) cmd.KillCommand {
+	return cmd.NewKillCommand(lock.FilePath("."), nil, nil)
+}
+
 // CreateLocker creates a Locker for the specified directory.
 func CreateLocker(dir string) lock.Locker {
 	return lock.NewLocker(dir)

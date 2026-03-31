@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.84.0
+
+- feat: Add `dark-factory kill` command that stops the running daemon via SIGTERM with SIGKILL fallback after 5 seconds
+
 ## v0.83.0
 
 - feat: Show system-wide container count in `dark-factory status` output as `Containers: N/M (system-wide)`

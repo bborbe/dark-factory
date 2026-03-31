@@ -80,6 +80,8 @@ func run() error {
 		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
 	case "config":
 		return printConfig(cfg)
+	case "kill":
+		return factory.CreateKillCommand(cfg).Run(ctx, args)
 	case "run":
 		return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
 	case "daemon":
@@ -177,6 +179,7 @@ func printHelp() {
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
 			"  run                    Process all queued prompts and exit\n"+
 			"  daemon                 Watch for queued prompts and execute them (long-running)\n"+
+			"  kill                   Stop the running daemon\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
 			"  config                 Show effective configuration (defaults + .dark-factory.yaml)\n\n"+
@@ -264,7 +267,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 		return debug, "help", "", []string{}, autoApprove
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}, autoApprove
-	case "run", "daemon", "status", "list", "config":
+	case "run", "daemon", "kill", "status", "list", "config":
 		return debug, command, "", rest, autoApprove
 	case "prompt", "spec":
 		if len(rest) == 0 {

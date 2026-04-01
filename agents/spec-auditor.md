@@ -104,6 +104,12 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - Covers realistic failure scenarios
 - Recovery actions are actionable
 
+## Filename-Content Alignment
+
+- Filename should describe the primary problem or change
+- Compare filename against `## Summary` and `## Goal` — should match the main intent
+- Flag as recommendation if filename emphasizes a minor aspect
+
 ## Do-Nothing Option Quality
 
 - Honest assessment of current state
@@ -151,6 +157,7 @@ Adjustments:
 ## Location & Frontmatter
 - [x/!] File in `specs/` inbox (not `specs/in-progress/`)
 - [x/!] Filename not numbered (dark-factory assigns numbers on approve)
+- [x/!] Filename reflects primary problem/change (matches `## Summary` and `## Goal`)
 - [x/!] Status is `idea` or `draft` (not other values)
 
 ## Preflight Checklist

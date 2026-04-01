@@ -115,6 +115,12 @@ Every prompt MUST have these XML sections:
 - Flag violations as **Critical Issues** if the prompt instructs the agent to write code that violates a guideline
 - Flag as **Recommendation** if the prompt doesn't specify and the agent might choose a non-compliant pattern
 
+**Filename-content alignment:**
+- Filename should describe the primary change, not a secondary or defensive addition
+- Compare filename against `<objective>` and `<summary>` — the filename should match the main intent
+- Flag as recommendation if filename emphasizes a minor aspect while the primary fix is something else
+- Example: if the main fix is reordering pipeline steps but the file is named `fix-add-download-step`, suggest renaming
+
 **Anchoring:**
 - Anchor by method/function names, not line numbers (line numbers go stale)
 - Line numbers only as optional hints (e.g. "~line 176")
@@ -171,6 +177,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] All paths repo-relative (no absolute or `~/` paths)
 - [x/!] File in `prompts/` inbox (not `prompts/in-progress/`)
 - [x/!] Filename not numbered (dark-factory assigns numbers on approve)
+- [x/!] Filename reflects primary change (e.g. `fix-X` names the thing being fixed, not a secondary detail)
 - [x/!] Status is `idea` or `draft` (not `created`, `queued`, or other)
 
 ## Documentation Placement

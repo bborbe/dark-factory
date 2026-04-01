@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.86.0
+
+- feat: Add scenario-auditor agent with full DoD checklist, scoring, and quality criteria
+- feat: Add filename-content alignment check to prompt-auditor, spec-auditor, and scenario-auditor
+- refactor: Refactor audit-scenario command to delegate to scenario-auditor agent (matching prompt/spec pattern)
+- chore: Bump plugin version to 0.86.0
+
 ## v0.85.0
 
 - feat: Add configurable `generateCommand` config field (default `/dark-factory:generate-prompts-for-spec`)

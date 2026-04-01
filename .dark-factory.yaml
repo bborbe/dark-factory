@@ -1,3 +1,4 @@
 pr: false
 worktree: false
 validationPrompt: docs/dod.md
+autoRelease: true

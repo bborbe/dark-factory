@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.86.1
+
+- chore: Bump default claude-yolo container image to v0.5.1
+
 ## v0.86.0
 
 - feat: Add scenario-auditor agent with full DoD checklist, scoring, and quality criteria

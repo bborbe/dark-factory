@@ -1,8 +1,9 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
+completed: "2026-04-01T12:47:52Z"
 ---
 
 ## Summary

@@ -46,11 +46,10 @@ Single source of truth: coding content lives in `bborbe/coding` (plugin), dark-f
 - [x] Migrate `~/.claude-yolo/agents/` to coding plugin (deleted, all 16 agents exist in coding plugin)
 - [x] Test container execution end-to-end with new layout (Max function prompt in dark-factory-sandbox, v1.1.0 released)
 - [x] Verify plugin auto-discovery works in YOLO container (confirmed `/plugin` shows both plugins)
-- [ ] Decide: keep claude-yolo-config as minimal repo or eliminate entirely
-- [ ] Update `agents/prompt-auditor.md` doc paths in dark-factory
+- [x] Decide: keep claude-yolo-config as minimal repo (CLAUDE.md, settings.json, plugins/)
+- [x] Update `agents/prompt-auditor.md` doc paths in dark-factory (yolo docs → coding plugin docs)
 
-## Open Questions
+## Decisions
 
-- Should `~/.claude-yolo/` remain a git repo (minimal) or become untracked local files?
-- How to handle the 200+ completed prompts that reference old paths (leave as-is)
-- Impact on other users of `bborbe/claude-yolo-config` if any?
+- `~/.claude-yolo/` stays as minimal git repo (`bborbe/claude-yolo-config`) with CLAUDE.md, settings.json, plugins/
+- 200+ completed prompts referencing old paths: leave as-is (historical)

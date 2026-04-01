@@ -134,12 +134,12 @@ Every prompt MUST have these XML sections:
 
 **Documentation placement:**
 
-Knowledge lives in four locations: specs (behavioral, dies after implementation), prompts (one-off, dies after execution), project docs (project-specific, lives with the project), yolo docs (generic coding patterns, lives across projects). Prompts should reference docs instead of inlining reusable knowledge.
+Knowledge lives in four locations: specs (behavioral, dies after implementation), prompts (one-off, dies after execution), project docs (project-specific, lives with the project), coding plugin docs (generic coding patterns, lives across projects via the coding marketplace plugin). Prompts should reference docs instead of inlining reusable knowledge.
 
 Check these:
 - **Inline pattern detection** — if `<requirements>` contains >10 lines of a reusable coding pattern (CQRS wiring, factory setup, test suite bootstrap, BoltDB setup), flag as recommendation: "Consider extracting to a doc and referencing instead of inlining. Inline patterns drift from actual APIs and cause prompt failures."
-- **Missing doc reference** — if prompt uses a library pattern that has a matching doc in `/home/node/.claude/docs/` (yolo docs) but `<context>` doesn't reference it, flag as recommendation: "A yolo doc exists for this pattern — reference it in `<context>` instead of inlining."
-  - To check: list files in the project's `docs/` directory and in `/home/node/.claude/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
+- **Missing doc reference** — if prompt uses a library pattern that has a matching doc in the coding plugin (`/home/node/.claude/plugins/marketplaces/coding/docs/`) but `<context>` doesn't reference it, flag as recommendation: "A coding plugin doc exists for this pattern — reference it in `<context>` instead of inlining."
+  - To check: list files in the project's `docs/` directory and in `/home/node/.claude/plugins/marketplaces/coding/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
 - **Existing project doc ignored** — if `project/docs/` has a relevant doc (topic match) but prompt doesn't mention it in `<context>`, flag as recommendation: "Project doc `docs/X.md` covers this topic — reference it in `<context>`."
 - **Knowledge that outlives the prompt** — if prompt inlines domain knowledge (file formats, naming conventions, event flows, deployment topology) that other prompts will also need, flag as recommendation: "This domain knowledge should be in `project/docs/` so future prompts can reference it."
 </prompt_definition_of_done>
@@ -176,7 +176,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 ## Documentation Placement
 - [x/!] No inlined reusable patterns (>10 lines) that should be in a doc
 - [x/!] Existing project docs referenced in `<context>` where relevant
-- [x/!] Existing yolo docs referenced in `<context>` where relevant
+- [x/!] Existing coding plugin docs referenced in `<context>` where relevant
 - [x/!] Domain knowledge that outlives the prompt is in `project/docs/`, not inlined
 
 ## Code Reference Verification

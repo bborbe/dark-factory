@@ -25,7 +25,9 @@ specs:
   inProgressDir: specs/in-progress
   completedDir: specs/completed
   logDir: specs/log
-containerImage: docker.io/bborbe/claude-yolo:v0.3.1
+containerImage: docker.io/bborbe/claude-yolo:v0.5.0
 model: claude-sonnet-4-6
 debounceMs: 500
 serverPort: 0
+generateCommand: /dark-factory:generate-prompts-for-spec
+claudeDir: ~/.claude-yolo

@@ -38,6 +38,7 @@ func NewSpecGenerator(
 	logDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	slugMigrator slugmigrator.Migrator,
+	generateCommand string,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:              executor,
@@ -48,6 +49,7 @@ func NewSpecGenerator(
 		logDir:                logDir,
 		currentDateTimeGetter: currentDateTimeGetter,
 		slugMigrator:          slugMigrator,
+		generateCommand:       generateCommand,
 	}
 }
 
@@ -61,13 +63,14 @@ type dockerSpecGenerator struct {
 	logDir                string
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	slugMigrator          slugmigrator.Migrator
+	generateCommand       string
 }
 
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,
 // then transitions the spec status to prompted if new prompt files were created.
 func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) error {
 	// a. Build prompt content
-	promptContent := "/generate-prompts-for-spec " + specPath
+	promptContent := g.generateCommand + " " + specPath
 
 	// b. Derive container name from spec filename
 	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")

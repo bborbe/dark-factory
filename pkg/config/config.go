@@ -93,6 +93,7 @@ type Config struct {
 	Notifications     NotificationsConfig `yaml:"notifications"`
 	Env               map[string]string   `yaml:"env,omitempty"`
 	ClaudeDir         string              `yaml:"claudeDir"`
+	GenerateCommand   string              `yaml:"generateCommand"`
 }
 
 // Defaults returns a Config with all default values.
@@ -128,6 +129,7 @@ func Defaults() Config {
 		Provider:          ProviderGitHub,
 		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
 		ClaudeDir:         "~/.claude-yolo",
+		GenerateCommand:   "/dark-factory:generate-prompts-for-spec",
 	}
 }
 

@@ -60,6 +60,7 @@ var _ = Describe("SpecGenerator", func() {
 			logDir,
 			libtime.NewCurrentDateTime(),
 			&mocks.SpecSlugMigrator{},
+			"/dark-factory:generate-prompts-for-spec",
 		)
 
 		// Write a spec file with status "approved"
@@ -94,7 +95,7 @@ var _ = Describe("SpecGenerator", func() {
 
 				Expect(executor.ExecuteCallCount()).To(Equal(1))
 				_, gotPrompt, gotLogFile, gotContainer := executor.ExecuteArgsForCall(0)
-				Expect(gotPrompt).To(Equal("/generate-prompts-for-spec " + specPath))
+				Expect(gotPrompt).To(Equal("/dark-factory:generate-prompts-for-spec " + specPath))
 				Expect(gotContainer).To(Equal("dark-factory-gen-020-auto-prompt-generation"))
 				Expect(
 					gotLogFile,

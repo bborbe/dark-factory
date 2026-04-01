@@ -376,6 +376,7 @@ func CreateSpecGenerator(
 		cfg.Specs.LogDir,
 		currentDateTimeGetter,
 		slugMigrator,
+		cfg.GenerateCommand,
 	)
 }
 

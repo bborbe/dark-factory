@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.85.0
+
+- feat: Add configurable `generateCommand` config field (default `/dark-factory:generate-prompts-for-spec`)
+- feat: Add `generate-prompts-for-spec` and `run-prompt` plugin commands for YOLO container use
+- chore: Add `autoRelease: true` to project config
+
 ## v0.84.1
 
 - fix: Respect `autoRelease` flag in direct workflow — commit-only when false, tag and push when true

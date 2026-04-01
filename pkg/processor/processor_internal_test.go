@@ -888,3 +888,92 @@ var _ = Describe("waitForContainerSlot", func() {
 		Expect(counter.calls()).To(Equal(1))
 	})
 })
+
+// stubReleaser is a minimal git.Releaser stub for handleDirectWorkflow tests.
+type stubReleaser struct {
+	hasChangelog       bool
+	commitOnlyCalled   int
+	commitAndRelCalled int
+	nextVersion        string
+}
+
+func (s *stubReleaser) HasChangelog(_ context.Context) bool { return s.hasChangelog }
+
+func (s *stubReleaser) CommitOnly(_ context.Context, _ string) error {
+	s.commitOnlyCalled++
+	return nil
+}
+
+func (s *stubReleaser) CommitAndRelease(_ context.Context, _ git.VersionBump) error {
+	s.commitAndRelCalled++
+	return nil
+}
+
+func (s *stubReleaser) GetNextVersion(_ context.Context, _ git.VersionBump) (string, error) {
+	return s.nextVersion, nil
+}
+
+func (s *stubReleaser) CommitCompletedFile(_ context.Context, _ string) error { return nil }
+
+func (s *stubReleaser) MoveFile(_ context.Context, _, _ string) error { return nil }
+
+var _ = Describe("handleDirectWorkflow", func() {
+	var (
+		ctx    context.Context
+		gitCtx context.Context
+		rel    *stubReleaser
+		p      *processor
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		gitCtx = context.Background()
+		rel = &stubReleaser{nextVersion: "v1.1.0"}
+		p = &processor{
+			releaser:       rel,
+			skippedPrompts: make(map[string]time.Time),
+		}
+	})
+
+	Context("with CHANGELOG present and autoRelease disabled", func() {
+		BeforeEach(func() {
+			p.autoRelease = false
+			rel.hasChangelog = true
+		})
+
+		It("calls CommitOnly and does not call CommitAndRelease", func() {
+			err := p.handleDirectWorkflow(gitCtx, ctx, "test title", "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitOnlyCalled).To(Equal(1))
+			Expect(rel.commitAndRelCalled).To(Equal(0))
+		})
+	})
+
+	Context("with CHANGELOG present and autoRelease enabled", func() {
+		BeforeEach(func() {
+			p.autoRelease = true
+			rel.hasChangelog = true
+		})
+
+		It("calls CommitAndRelease and does not call CommitOnly", func() {
+			err := p.handleDirectWorkflow(gitCtx, ctx, "test title", "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitAndRelCalled).To(Equal(1))
+			Expect(rel.commitOnlyCalled).To(Equal(0))
+		})
+	})
+
+	Context("without CHANGELOG (autoRelease value irrelevant)", func() {
+		BeforeEach(func() {
+			p.autoRelease = true
+			rel.hasChangelog = false
+		})
+
+		It("calls CommitOnly regardless of autoRelease", func() {
+			err := p.handleDirectWorkflow(gitCtx, ctx, "test title", "")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitOnlyCalled).To(Equal(1))
+			Expect(rel.commitAndRelCalled).To(Equal(0))
+		})
+	})
+})

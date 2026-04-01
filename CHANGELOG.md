@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.84.1
+
+- fix: Respect `autoRelease` flag in direct workflow — commit-only when false, tag and push when true
+- fix: Remove incorrect validation that required `autoRelease` to have `autoMerge` enabled
+
 ## v0.84.0
 
 - feat: Add `dark-factory kill` command that stops the running daemon via SIGTERM with SIGKILL fallback after 5 seconds

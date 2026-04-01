@@ -31,8 +31,6 @@ worktree: true
 
 ### Auto-merge and Auto-release
 
-When using PRs:
-
 ```yaml
 pr: true
 worktree: true
@@ -42,8 +40,8 @@ autoRelease: true
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `autoMerge` | `false` | Merge PR automatically after checks pass |
-| `autoRelease` | `false` | Create release after merge (requires `autoMerge`) |
+| `autoMerge` | `false` | Merge PR automatically after checks pass (requires `pr: true`) |
+| `autoRelease` | `false` | Tag and push a release after each prompt completes. When `false` (default), changes are committed with changelog under `## Unreleased` but not tagged or pushed. When `true`, tags and pushes after completion. Works in all workflows (direct, PR, branch). |
 
 ## Validation
 

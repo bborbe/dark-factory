@@ -1246,7 +1246,16 @@ func (p *processor) handleDirectWorkflow(
 		return nil
 	}
 
-	// With CHANGELOG: rename ## Unreleased to version, bump version, tag, push
+	// With CHANGELOG but autoRelease disabled: commit only, keep "## Unreleased"
+	if !p.autoRelease {
+		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
+			return errors.Wrap(ctx, err, "commit without release")
+		}
+		slog.Info("committed changes (autoRelease disabled, skipping tag)")
+		return nil
+	}
+
+	// With CHANGELOG and autoRelease enabled: rename ## Unreleased to version, tag, push
 	bump := git.DetermineBumpFromChangelog(ctx, ".")
 	nextVersion, err := p.releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {

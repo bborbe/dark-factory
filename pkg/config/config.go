@@ -175,15 +175,6 @@ func (c Config) Validate(ctx context.Context) error {
 			}
 			return nil
 		})),
-		validation.Name(
-			"autoRelease",
-			validation.HasValidationFunc(func(ctx context.Context) error {
-				if c.AutoRelease && !c.AutoMerge {
-					return errors.Errorf(ctx, "autoRelease requires autoMerge")
-				}
-				return nil
-			}),
-		),
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
 		validation.Name("provider", validation.HasValidationFunc(func(ctx context.Context) error {
 			provider := c.Provider

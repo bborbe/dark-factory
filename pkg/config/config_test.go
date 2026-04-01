@@ -495,27 +495,28 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("fails for autoRelease true with autoMerge false", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowPR,
-				PR:       true,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage: pkg.DefaultContainerImage,
-				Model:          "claude-sonnet-4-6",
-				DebounceMs:     500,
-				ServerPort:     8080,
-				AutoMerge:      false,
-				AutoRelease:    true,
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("autoRelease requires autoMerge"))
-		})
+		It(
+			"succeeds for autoRelease true with autoMerge false (autoRelease is independent)",
+			func() {
+				cfg := config.Config{
+					Workflow: config.WorkflowDirect,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+					ServerPort:     8080,
+					AutoMerge:      false,
+					AutoRelease:    true,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
 
 		It("fails for autoReview true with workflow direct", func() {
 			cfg := config.Config{

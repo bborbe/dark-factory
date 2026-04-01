@@ -584,7 +584,7 @@ var _ = Describe("Processor", func() {
 			cloner,
 			prMerger,
 			false,
-			false,
+			true, // autoRelease=true
 			false,
 			autoCompleter,
 			specLister,
@@ -682,7 +682,7 @@ var _ = Describe("Processor", func() {
 			cloner,
 			prMerger,
 			false,
-			false,
+			true, // autoRelease=true
 			false,
 			autoCompleter,
 			specLister,
@@ -3157,7 +3157,7 @@ DARK-FACTORY-REPORT -->
 			cloner,
 			prMerger,
 			false,
-			false,
+			true, // autoRelease=true
 			false,
 			autoCompleter,
 			specLister,
@@ -5161,7 +5161,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					cloner,
 					prMerger,
 					false,
-					false,
+					true, // autoRelease=true
 					false,
 					autoCompleter,
 					specLister,

@@ -138,8 +138,8 @@ Knowledge lives in four locations: specs (behavioral, dies after implementation)
 
 Check these:
 - **Inline pattern detection** — if `<requirements>` contains >10 lines of a reusable coding pattern (CQRS wiring, factory setup, test suite bootstrap, BoltDB setup), flag as recommendation: "Consider extracting to a doc and referencing instead of inlining. Inline patterns drift from actual APIs and cause prompt failures."
-- **Missing doc reference** — if prompt uses a library pattern that has a matching doc in the coding plugin (`/home/node/.claude/plugins/marketplaces/coding/docs/`) but `<context>` doesn't reference it, flag as recommendation: "A coding plugin doc exists for this pattern — reference it in `<context>` instead of inlining."
-  - To check: list files in the project's `docs/` directory and in `/home/node/.claude/plugins/marketplaces/coding/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
+- **Missing doc reference** — if prompt uses a library pattern that has a matching doc in the coding plugin (`~/.claude/plugins/marketplaces/coding/docs/`) but `<context>` doesn't reference it, flag as recommendation: "A coding plugin doc exists for this pattern — reference it in `<context>` instead of inlining."
+  - To check: list files in the project's `docs/` directory and in `~/.claude/plugins/marketplaces/coding/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
 - **Existing project doc ignored** — if `project/docs/` has a relevant doc (topic match) but prompt doesn't mention it in `<context>`, flag as recommendation: "Project doc `docs/X.md` covers this topic — reference it in `<context>`."
 - **Knowledge that outlives the prompt** — if prompt inlines domain knowledge (file formats, naming conventions, event flows, deployment topology) that other prompts will also need, flag as recommendation: "This domain knowledge should be in `project/docs/` so future prompts can reference it."
 </prompt_definition_of_done>

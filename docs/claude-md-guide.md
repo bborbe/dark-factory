@@ -93,6 +93,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 | `dark-factory prompt list` | List all prompts with status |
 | `dark-factory spec list` | List all specs with status |
 | `dark-factory prompt retry` | Re-queue failed prompts for retry |
+| `dark-factory prompt cancel <name>` | Cancel a running or queued prompt (never use `docker kill`) |
 
 ### Key rules
 
@@ -126,6 +127,10 @@ If the agent needs to know something to avoid breaking the project, it must be i
 ### Manually editing frontmatter
 
 Never change `status: draft` to `status: approved` by editing the file. The CLI does more than change the status — it moves files, assigns numbers, and normalizes filenames. Always use `dark-factory prompt approve` or `dark-factory spec approve`.
+
+### Killing containers with docker kill
+
+Never use `docker kill` to stop a running prompt. It leaves dark-factory in an inconsistent state (stale lock, no proper cleanup). Use `dark-factory prompt cancel <name>` instead — it stops the container and updates the prompt status cleanly.
 
 ### Starting daemon wrong
 

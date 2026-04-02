@@ -1,11 +1,12 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
 approved: "2026-04-02T09:16:22Z"
 prompted: "2026-04-02T09:19:29Z"
 verifying: "2026-04-02T10:09:55Z"
+completed: "2026-04-02T10:26:32Z"
 branch: dark-factory/per-project-container-limit
 ---
 

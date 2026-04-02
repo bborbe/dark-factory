@@ -47,7 +47,7 @@ After this work, per-project `.dark-factory.yaml` can override the global contai
 
 2. **Fallback to global**: When `maxContainers` is missing or zero in `.dark-factory.yaml`, the daemon uses the global limit from `~/.dark-factory/config.yaml` (default: 3).
 
-3. **Wait loop uses project limit**: The existing `waitForContainerSlot` logic compares the system-wide running container count against this project's `maxContainers` value instead of always using the global value.
+3. **Wait loop uses project limit**: Before starting a container, the daemon compares the system-wide running container count against this project's `maxContainers` value instead of always using the global value.
 
 4. **Status display**: `dark-factory status` shows the effective limit (project or global) in the `Containers: N/M` line.
 

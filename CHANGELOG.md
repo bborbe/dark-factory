@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.89.0
+
+- feat: Add per-project `maxContainers` field to `.dark-factory.yaml` that overrides the global container limit for a specific project's daemon
+
 ## v0.88.0
 
 - feat: Add `additionalInstructions` config field that prepends project-level context to every prompt and spec generation command

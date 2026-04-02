@@ -1813,4 +1813,53 @@ worktree: false
 			Expect(m.IsReadonly()).To(BeFalse())
 		})
 	})
+
+	Describe("MaxContainers validation", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+		}
+
+		It("succeeds when maxContainers is missing (zero)", func() {
+			cfg := validBase()
+			Expect(cfg.MaxContainers).To(Equal(0))
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when maxContainers is zero (unset)", func() {
+			cfg := validBase()
+			cfg.MaxContainers = 0
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when maxContainers is 1", func() {
+			cfg := validBase()
+			cfg.MaxContainers = 1
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when maxContainers is 5", func() {
+			cfg := validBase()
+			cfg.MaxContainers = 5
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails when maxContainers is -1", func() {
+			cfg := validBase()
+			cfg.MaxContainers = -1
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("maxContainers"))
+		})
+	})
 })

@@ -105,6 +105,7 @@ var _ = Describe("Factory", func() {
 				cfg.Prompts.LogDir,
 				nil, // promptManager not needed for nil check
 				libtime.NewCurrentDateTime(),
+				0,
 			)
 			Expect(server).NotTo(BeNil())
 		})
@@ -128,6 +129,20 @@ var _ = Describe("Factory", func() {
 		It("should return a non-nil combined list command", func() {
 			cmd := factory.CreateCombinedListCommand(cfg)
 			Expect(cmd).NotTo(BeNil())
+		})
+	})
+
+	Describe("EffectiveMaxContainers", func() {
+		It("returns global when project is zero", func() {
+			Expect(factory.EffectiveMaxContainers(0, 3)).To(Equal(3))
+		})
+
+		It("returns project when project is set", func() {
+			Expect(factory.EffectiveMaxContainers(5, 3)).To(Equal(5))
+		})
+
+		It("returns project when project is 1", func() {
+			Expect(factory.EffectiveMaxContainers(1, 3)).To(Equal(1))
 		})
 	})
 })

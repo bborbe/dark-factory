@@ -180,6 +180,24 @@ model: "claude-sonnet-4-6"
 | `containerImage` | `docker.io/bborbe/claude-yolo:v0.4.1` | Docker image for YOLO execution |
 | `model` | `claude-sonnet-4-6` | Claude model used inside the container |
 
+## Per-Project Container Limit
+
+Override the global `maxContainers` limit for a specific project by adding `maxContainers` to `.dark-factory.yaml`:
+
+```yaml
+# Priority project: allow up to 5 containers
+maxContainers: 5
+
+# Background project: restrict to 1 container at a time
+maxContainers: 1
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `maxContainers` | (global limit) | Override the system-wide container limit for this project. Missing or 0 falls back to the global limit from `~/.dark-factory/config.yaml` (default: 3). Must be ≥ 1 if set. |
+
+Counting remains system-wide (all running dark-factory containers across all projects). Only the threshold is per-project. Two projects both set to 5 can together exceed any single limit — this is intentional.
+
 ## Private Go Modules
 
 For projects with private dependencies:

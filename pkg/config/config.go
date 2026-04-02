@@ -111,6 +111,7 @@ type Config struct {
 	ClaudeDir              string              `yaml:"claudeDir"`
 	GenerateCommand        string              `yaml:"generateCommand"`
 	AdditionalInstructions string              `yaml:"additionalInstructions,omitempty"`
+	MaxContainers          int                 `yaml:"maxContainers,omitempty"`
 }
 
 // Defaults returns a Config with all default values.
@@ -212,6 +213,19 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name(
 			"validationPrompt",
 			validation.HasValidationFunc(c.validateValidationPrompt),
+		),
+		validation.Name(
+			"maxContainers",
+			validation.HasValidationFunc(func(ctx context.Context) error {
+				if c.MaxContainers < 0 {
+					return errors.Errorf(
+						ctx,
+						"maxContainers must not be negative, got %d",
+						c.MaxContainers,
+					)
+				}
+				return nil
+			}),
 		),
 	}.Validate(ctx)
 }

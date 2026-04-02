@@ -69,6 +69,7 @@ type partialConfig struct {
 	Env                    map[string]string     `yaml:"env,omitempty"`
 	ExtraMounts            []ExtraMount          `yaml:"extraMounts,omitempty"`
 	AdditionalInstructions *string               `yaml:"additionalInstructions,omitempty"`
+	MaxContainers          *int                  `yaml:"maxContainers,omitempty"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -188,6 +189,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.AdditionalInstructions != nil {
 		cfg.AdditionalInstructions = *partial.AdditionalInstructions
+	}
+	if partial.MaxContainers != nil {
+		cfg.MaxContainers = *partial.MaxContainers
 	}
 }
 

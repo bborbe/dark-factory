@@ -39,6 +39,15 @@ import (
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
+// EffectiveMaxContainers returns the per-project limit when set (> 0),
+// otherwise falls back to the global limit.
+func EffectiveMaxContainers(projectMax, globalMax int) int {
+	if projectMax > 0 {
+		return projectMax
+	}
+	return globalMax
+}
+
 // errRunner is a Runner that immediately returns an error when Run is called.
 type errRunner struct{ err error }
 
@@ -237,6 +246,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 			cfg.Prompts.LogDir,
 			promptManager,
 			currentDateTimeGetter,
+			cfg.MaxContainers,
 		)
 	}
 
@@ -257,7 +267,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.VerificationGate, cfg.Env, cfg.ExtraMounts, currentDateTimeGetter, n,
 		cfg.ResolvedClaudeDir(),
 		executor.NewDockerContainerCounter(),
-		globalCfg.MaxContainers,
+		EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 		cfg.AdditionalInstructions,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
@@ -343,7 +353,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			n,
 			cfg.ResolvedClaudeDir(),
 			executor.NewDockerContainerCounter(),
-			globalCfg.MaxContainers,
+			EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 			cfg.AdditionalInstructions,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
@@ -573,6 +583,7 @@ func CreateServer(
 	logDir string,
 	promptManager prompt.Manager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectMaxContainers int,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	projectDir, _ := os.Getwd()
@@ -592,7 +603,7 @@ func CreateServer(
 		port,
 		promptManager,
 		executor.NewDockerContainerCounter(),
-		globalCfgForServer.MaxContainers,
+		EffectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers),
 	)
 
 	// Build the mux with all routes
@@ -644,7 +655,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		cfg.ServerPort,
 		promptManager,
 		executor.NewDockerContainerCounter(),
-		globalCfgForStatus.MaxContainers,
+		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers),
 	)
 	formatter := status.NewFormatter()
 
@@ -827,7 +838,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 		cfg.ServerPort,
 		promptManager,
 		executor.NewDockerContainerCounter(),
-		globalCfgForCombined.MaxContainers,
+		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForCombined.MaxContainers),
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

@@ -67,6 +67,7 @@ type partialConfig struct {
 	VerificationGate *bool                 `yaml:"verificationGate"`
 	GitHub           *GitHubConfig         `yaml:"github"`
 	Env              map[string]string     `yaml:"env,omitempty"`
+	ExtraMounts      []ExtraMount          `yaml:"extraMounts,omitempty"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -180,6 +181,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.Env != nil {
 		cfg.Env = partial.Env
+	}
+	if partial.ExtraMounts != nil {
+		cfg.ExtraMounts = partial.ExtraMounts
 	}
 }
 

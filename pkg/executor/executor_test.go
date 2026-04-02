@@ -33,6 +33,7 @@ var _ = Describe("DockerExecutor", func() {
 			"",
 			"",
 			nil,
+			nil,
 			config.Defaults().ResolvedClaudeDir(),
 		)
 
@@ -156,6 +157,7 @@ More lines...`
 				"claude-sonnet-4-6",
 				"",
 				"",
+				nil,
 				nil,
 				config.Defaults().ResolvedClaudeDir(),
 			)

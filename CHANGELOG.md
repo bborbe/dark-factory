@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.87.0
+
+- feat: Add `extraMounts` config field to inject additional volume mounts into YOLO containers
+
 ## v0.86.1
 
 - chore: Bump default claude-yolo container image to v0.5.1

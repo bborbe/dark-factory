@@ -497,6 +497,147 @@ var _ = Describe("Internal helper functions", func() {
 			}
 			Expect(envValues).To(ConsistOf("YOLO_PROMPT_FILE=/tmp/prompt.md", "ANTHROPIC_MODEL="))
 		})
+
+		It("does not add extra -v flags when extraMounts is nil", func() {
+			exec.extraMounts = nil
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			// Collect all -v values
+			var mounts []string
+			args := cmd.Args
+			for i, a := range args {
+				if a == "-v" && i+1 < len(args) {
+					mounts = append(mounts, args[i+1])
+				}
+			}
+			// Only the standard four mounts
+			Expect(mounts).To(HaveLen(4))
+		})
+
+		It("adds extra mount with :ro suffix when IsReadonly is true (nil Readonly)", func() {
+			srcDir, err := os.MkdirTemp("", "extramount-src-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(srcDir) }()
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: srcDir, Dst: "/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs:ro"))
+		})
+
+		It("adds extra mount without :ro suffix when Readonly is false", func() {
+			srcDir, err := os.MkdirTemp("", "extramount-src-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(srcDir) }()
+
+			f := false
+			exec.extraMounts = []config.ExtraMount{
+				{Src: srcDir, Dst: "/docs", Readonly: &f},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs"))
+			for _, arg := range cmd.Args {
+				if arg == srcDir+":/docs:ro" {
+					Fail("expected no :ro suffix but found it")
+				}
+			}
+		})
+
+		It("skips extra mount when src does not exist", func() {
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "/nonexistent/path/that/does/not/exist", Dst: "/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			for _, arg := range cmd.Args {
+				Expect(arg).NotTo(ContainSubstring("/nonexistent/path"))
+			}
+		})
+
+		It("resolves relative src path against projectRoot", func() {
+			projectRoot, err := os.MkdirTemp("", "extramount-project-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(projectRoot) }()
+
+			// Create a subdirectory inside projectRoot
+			subDir := filepath.Join(projectRoot, "docs")
+			Expect(os.MkdirAll(subDir, 0755)).To(Succeed())
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "docs", Dst: "/container/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				projectRoot,
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement(subDir + ":/container/docs:ro"))
+		})
+
+		It("expands tilde in extra mount src", func() {
+			// Use tempDir as home and create a subdir inside it to simulate ~/docs
+			homeDir, err := os.MkdirTemp("", "extramount-home-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(homeDir) }()
+
+			docsDir := filepath.Join(homeDir, "docs")
+			Expect(os.MkdirAll(docsDir, 0755)).To(Succeed())
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "~/docs", Dst: "/container/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				homeDir,
+			)
+
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+		})
 	})
 
 	Describe("watchForCompletionReport", func() {

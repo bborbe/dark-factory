@@ -76,6 +76,7 @@ var _ = Describe("Factory", func() {
 				"specs/completed",
 				false,
 				nil,
+				nil,
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),
 				cfg.ResolvedClaudeDir(),

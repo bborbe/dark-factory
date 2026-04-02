@@ -197,6 +197,28 @@ env:
 | `gitconfigFile` | (empty) | `.gitconfig` mounted into the container |
 | `netrcFile` | (empty) | `.netrc` mounted into the container |
 | `env` | (empty) | Env vars passed to the container |
+| `extraMounts` | (empty) | Additional volume mounts injected into the container |
+
+## Extra Mounts
+
+Share documentation or config directories across repos without duplicating them:
+
+```yaml
+extraMounts:
+  - src: ../docs/howto
+    dst: /docs
+  - src: ~/Documents/workspaces/coding/docs
+    dst: /coding-docs
+    readonly: true
+```
+
+| Field | Required | Default | Purpose |
+|-------|----------|---------|---------|
+| `src` | yes | — | Host path. Relative paths resolved from project root. `~/` expanded to home. |
+| `dst` | yes | — | Container path where `src` is mounted. |
+| `readonly` | no | `true` | Mount read-only (`:ro`). Set `false` for writable access. |
+
+Missing `src` paths at execution time are logged as a warning and skipped — they do not abort the run.
 
 ## Directory Layout
 
@@ -243,4 +265,7 @@ notifications:
     chatIDEnv: TELEGRAM_CHAT_ID
 env:
   GOPRIVATE: "github.com/myorg/*"
+extraMounts:
+  - src: ~/Documents/workspaces/coding/docs
+    dst: /coding-docs
 ```

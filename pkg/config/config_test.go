@@ -1434,6 +1434,47 @@ worktree: false
 					Expect(cfg.Worktree).To(BeFalse())
 				},
 			)
+
+			It("loads extraMounts from config file", func() {
+				configContent := `extraMounts:
+  - src: /some/host/path
+    dst: /container/path
+  - src: ~/docs
+    dst: /docs
+    readonly: false
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.ExtraMounts).To(HaveLen(2))
+				Expect(cfg.ExtraMounts[0].Src).To(Equal("/some/host/path"))
+				Expect(cfg.ExtraMounts[0].Dst).To(Equal("/container/path"))
+				Expect(cfg.ExtraMounts[0].IsReadonly()).To(BeTrue())
+				Expect(cfg.ExtraMounts[1].Src).To(Equal("~/docs"))
+				Expect(cfg.ExtraMounts[1].Dst).To(Equal("/docs"))
+				Expect(cfg.ExtraMounts[1].IsReadonly()).To(BeFalse())
+			})
+
+			It("leaves ExtraMounts nil when field is absent", func() {
+				configContent := `containerImage: docker.io/bborbe/claude-yolo:latest
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.ExtraMounts).To(BeNil())
+			})
 		})
 	})
 
@@ -1675,6 +1716,67 @@ worktree: false
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("outside the project root"))
+		})
+	})
+
+	Describe("validateExtraMounts", func() {
+		It("passes when ExtraMounts is nil", func() {
+			cfg := config.Defaults()
+			cfg.ExtraMounts = nil
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("passes when ExtraMounts is empty slice", func() {
+			cfg := config.Defaults()
+			cfg.ExtraMounts = []config.ExtraMount{}
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("passes for valid entry with non-empty src and dst", func() {
+			cfg := config.Defaults()
+			cfg.ExtraMounts = []config.ExtraMount{
+				{Src: "/some/path", Dst: "/container/path"},
+			}
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails for entry with empty src", func() {
+			cfg := config.Defaults()
+			cfg.ExtraMounts = []config.ExtraMount{
+				{Src: "", Dst: "/container/path"},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("src must not be empty"))
+		})
+
+		It("fails for entry with empty dst", func() {
+			cfg := config.Defaults()
+			cfg.ExtraMounts = []config.ExtraMount{
+				{Src: "/some/path", Dst: ""},
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("dst must not be empty"))
+		})
+	})
+
+	Describe("ExtraMount.IsReadonly", func() {
+		It("returns true when Readonly is nil (default)", func() {
+			m := config.ExtraMount{Src: "/src", Dst: "/dst"}
+			Expect(m.IsReadonly()).To(BeTrue())
+		})
+
+		It("returns true when Readonly is explicitly true", func() {
+			t := true
+			m := config.ExtraMount{Src: "/src", Dst: "/dst", Readonly: &t}
+			Expect(m.IsReadonly()).To(BeTrue())
+		})
+
+		It("returns false when Readonly is false", func() {
+			f := false
+			m := config.ExtraMount{Src: "/src", Dst: "/dst", Readonly: &f}
+			Expect(m.IsReadonly()).To(BeFalse())
 		})
 	})
 })

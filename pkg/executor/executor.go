@@ -20,6 +20,7 @@ import (
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -44,6 +45,7 @@ func NewDockerExecutor(
 	netrcFile string,
 	gitconfigFile string,
 	env map[string]string,
+	extraMounts []config.ExtraMount,
 	claudeDir string,
 ) Executor {
 	return &dockerExecutor{
@@ -53,6 +55,7 @@ func NewDockerExecutor(
 		netrcFile:      netrcFile,
 		gitconfigFile:  gitconfigFile,
 		env:            env,
+		extraMounts:    extraMounts,
 		claudeDir:      claudeDir,
 		commandRunner:  &defaultCommandRunner{},
 	}
@@ -66,6 +69,7 @@ type dockerExecutor struct {
 	netrcFile      string
 	gitconfigFile  string
 	env            map[string]string
+	extraMounts    []config.ExtraMount
 	claudeDir      string
 	commandRunner  commandRunner
 }
@@ -357,6 +361,23 @@ func (e *dockerExecutor) buildDockerCommand(
 			resolved = home + resolved[1:]
 		}
 		args = append(args, "-v", resolved+":/home/node/.gitconfig-extra:ro")
+	}
+	for _, m := range e.extraMounts {
+		src := m.Src
+		if strings.HasPrefix(src, "~/") {
+			src = home + src[1:]
+		} else if !filepath.IsAbs(src) {
+			src = filepath.Join(projectRoot, src)
+		}
+		if _, err := os.Stat(src); err != nil {
+			slog.Warn("extraMounts: src path does not exist, skipping", "src", src, "dst", m.Dst)
+			continue
+		}
+		mount := src + ":" + m.Dst
+		if m.IsReadonly() {
+			mount += ":ro"
+		}
+		args = append(args, "-v", mount)
 	}
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design

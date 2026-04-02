@@ -62,6 +62,21 @@ type SpecsConfig struct {
 	LogDir        string `yaml:"logDir"`
 }
 
+// ExtraMount describes an additional volume mount to inject into the YOLO container.
+type ExtraMount struct {
+	Src      string `yaml:"src"`
+	Dst      string `yaml:"dst"`
+	Readonly *bool  `yaml:"readonly,omitempty"` // nil defaults to true
+}
+
+// IsReadonly returns true if the mount is read-only (default when Readonly is nil).
+func (m ExtraMount) IsReadonly() bool {
+	if m.Readonly == nil {
+		return true
+	}
+	return *m.Readonly
+}
+
 // Config holds the dark-factory configuration.
 type Config struct {
 	ProjectName       string              `yaml:"projectName"`
@@ -92,6 +107,7 @@ type Config struct {
 	Bitbucket         BitbucketConfig     `yaml:"bitbucket"`
 	Notifications     NotificationsConfig `yaml:"notifications"`
 	Env               map[string]string   `yaml:"env,omitempty"`
+	ExtraMounts       []ExtraMount        `yaml:"extraMounts,omitempty"`
 	ClaudeDir         string              `yaml:"claudeDir"`
 	GenerateCommand   string              `yaml:"generateCommand"`
 }
@@ -189,6 +205,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("netrcFile", validation.HasValidationFunc(c.validateNetrcFile)),
 		validation.Name("gitconfigFile", validation.HasValidationFunc(c.validateGitconfigFile)),
 		validation.Name("env", validation.HasValidationFunc(c.validateEnv)),
+		validation.Name("extraMounts", validation.HasValidationFunc(c.validateExtraMounts)),
 		validation.Name("notifications", validation.HasValidationFunc(c.validateNotifications)),
 		validation.Name("github.token", validation.HasValidationFunc(c.validateGitHubToken)),
 		validation.Name(
@@ -270,6 +287,19 @@ func (c Config) validateEnv(ctx context.Context) error {
 		}
 		if strings.ContainsAny(v, "\x00\n\r") {
 			return errors.Errorf(ctx, "env value for %q contains invalid characters", k)
+		}
+	}
+	return nil
+}
+
+// validateExtraMounts validates each extra mount entry.
+func (c Config) validateExtraMounts(ctx context.Context) error {
+	for i, m := range c.ExtraMounts {
+		if m.Src == "" {
+			return errors.Errorf(ctx, "extraMounts[%d].src must not be empty", i)
+		}
+		if m.Dst == "" {
+			return errors.Errorf(ctx, "extraMounts[%d].dst must not be empty", i)
 		}
 	}
 	return nil

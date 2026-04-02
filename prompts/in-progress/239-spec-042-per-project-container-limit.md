@@ -1,8 +1,11 @@
 ---
-status: created
-spec: [042-per-project-container-limit]
+status: executing
+spec: ["042"]
+container: dark-factory-239-spec-042-per-project-container-limit
+dark-factory-version: v0.85.0
 created: "2026-04-02T09:20:00Z"
-branch: dark-factory/per-project-container-limit
+queued: "2026-04-02T09:57:22Z"
+started: "2026-04-02T09:57:25Z"
 ---
 
 <summary>
@@ -39,7 +42,7 @@ Key files to read before making changes:
      ```go
      validation.Name("maxContainers", validation.HasValidationFunc(func(ctx context.Context) error {
          if c.MaxContainers < 0 {
-             return errors.Errorf(ctx, "maxContainers must be >= 1 if set, got %d", c.MaxContainers)
+             return errors.Errorf(ctx, "maxContainers must not be negative, got %d", c.MaxContainers)
          }
          return nil
      })),
@@ -68,9 +71,9 @@ Key files to read before making changes:
 
    a. Line ~260: `CreateProcessor(... globalCfg.MaxContainers)` — inside `CreateRunner`
    b. Line ~345: `CreateProcessor(... globalCfg.MaxContainers)` — inside `CreateOneShotRunner`
-   c. Line ~580: `status.NewChecker(... globalCfgForServer.MaxContainers)` — inside `CreateServer`
-   d. Line ~632: `status.NewChecker(... globalCfgForStatus.MaxContainers)` — inside `CreateStatusChecker`
-   e. Line ~815: `status.NewChecker(... globalCfgForCombined.MaxContainers)` — inside `CreateCombinedStatusChecker`
+   c. Line ~580: `status.NewChecker(... globalCfgForServer.MaxContainers)` — inside `CreateServer` (does NOT receive `cfg`)
+   d. Line ~632: `status.NewChecker(... globalCfgForStatus.MaxContainers)` — inside `CreateStatusCommand` (receives `cfg config.Config`)
+   e. Line ~815: `status.NewChecker(... globalCfgForCombined.MaxContainers)` — inside `CreateCombinedStatusCommand` (receives `cfg config.Config`)
 
    For each of these, replace the raw `globalCfg.MaxContainers` with a helper call or inline expression:
    ```go
@@ -89,7 +92,9 @@ Key files to read before making changes:
    }
    ```
 
-   For cases (c), (d), (e): these paths load `globalCfg` from `globalconfig.NewLoader().Load(ctx)` but they do NOT have access to `cfg` in all cases — read the existing code carefully. In `CreateServer`, `CreateStatusChecker`, and `CreateCombinedStatusChecker`, `cfg` IS a parameter; use `effectiveMaxContainers(cfg.MaxContainers, globalCfgForServer.MaxContainers)` etc.
+   For cases (d), (e): `CreateStatusCommand(cfg config.Config)` and `CreateCombinedStatusCommand(cfg config.Config)` already receive `cfg` — use `effectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers)` etc.
+
+   For case (c): `CreateServer` does NOT receive `cfg`. Add `projectMaxContainers int` as a new parameter to `CreateServer`. The caller must pass `cfg.MaxContainers`. Then use `effectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers)` inside. Update all call sites of `CreateServer` accordingly (search for `CreateServer(` in `main.go` and factory tests).
 
 5. **Add a test for `effectiveMaxContainers`** in `pkg/factory/` (either in an existing `_test.go` or a new `util_test.go`):
    - project=0, global=3 → 3
@@ -124,7 +129,7 @@ Key files to read before making changes:
 <constraints>
 - Existing global `maxContainers` in `~/.dark-factory/config.yaml` continues to work as before — `globalCfg.MaxContainers` is still the source of truth when no per-project value is set
 - No changes to Docker label scheme or container counting mechanism (`waitForContainerSlot` in processor, `CountRunning` in executor)
-- Validation: `maxContainers` in project config must be >= 1 if present (zero is treated as "unset", negative is an error)
+- Validation: `maxContainers` in project config must not be negative (zero is treated as "unset" and falls back to global)
 - No inter-process coordination — each daemon reads its own config independently
 - Do NOT commit — dark-factory handles git
 - All existing tests must pass

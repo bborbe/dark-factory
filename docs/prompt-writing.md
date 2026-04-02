@@ -15,9 +15,18 @@ Use the Claude Code command:
 /dark-factory:create-prompt
 ```
 
-Or create manually in the `prompts/` inbox directory:
+Or create manually. Location depends on status:
+
+| Status | Directory | Purpose |
+|--------|-----------|---------|
+| `idea` | `prompts/ideas/` | Rough concepts, not ready for approval |
+| `draft` | `prompts/` (inbox) | Complete prompts, ready for review and approval |
 
 ```bash
+# Idea — park it for later
+touch prompts/ideas/my-change.md
+
+# Draft — ready for review
 touch prompts/my-change.md
 ```
 
@@ -185,14 +194,14 @@ This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a numbe
 
 ## Prompt Status Lifecycle
 
-| Status | Meaning | How it happens |
-|--------|---------|----------------|
-| `idea` | Rough concept, needs refinement | Human creates file |
-| `draft` | Complete, ready for review and approval | Human/AI creates file |
-| `approved` | Queued for execution | `dark-factory prompt approve` |
-| `executing` | YOLO container running | Auto (dark-factory) |
-| `completed` | Done, archived | Auto (dark-factory) |
-| `failed` | Needs fix or retry | Auto (dark-factory) |
+| Status | Directory | Meaning | How it happens |
+|--------|-----------|---------|----------------|
+| `idea` | `prompts/ideas/` | Rough concept, needs refinement | Human creates file |
+| `draft` | `prompts/` | Complete, ready for review and approval | Human/AI creates file |
+| `approved` | `prompts/in-progress/` | Queued for execution | `dark-factory prompt approve` |
+| `executing` | `prompts/in-progress/` | YOLO container running | Auto (dark-factory) |
+| `completed` | `prompts/completed/` | Done, archived | Auto (dark-factory) |
+| `failed` | `prompts/in-progress/` | Needs fix or retry | Auto (dark-factory) |
 
 Completed prompts are immutable. If behavior changes later, create a new prompt.
 

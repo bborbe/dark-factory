@@ -20,9 +20,18 @@ Use the Claude Code command:
 /dark-factory:create-spec
 ```
 
-Or create manually in the `specs/` inbox directory:
+Or create manually. Location depends on status:
+
+| Status | Directory | Purpose |
+|--------|-----------|---------|
+| `idea` | `specs/ideas/` | Rough concepts, not ready for approval |
+| `draft` | `specs/` (inbox) | Complete specs, ready for review and approval |
 
 ```bash
+# Idea — park it for later
+touch specs/ideas/my-feature.md
+
+# Draft — ready for review
 touch specs/my-feature.md
 ```
 
@@ -112,14 +121,14 @@ This moves the spec from `specs/` to `specs/in-progress/`, assigns a number, and
 
 ## Spec Status Lifecycle
 
-| Status | Meaning | How it happens |
-|--------|---------|----------------|
-| `idea` | Rough concept, no full sections | Human creates file |
-| `draft` | All sections filled | Human/AI writes spec |
-| `approved` | Ready for prompt generation | `dark-factory spec approve` |
-| `prompted` | Prompts generated | Auto (dark-factory) |
-| `verifying` | All linked prompts completed | Auto (dark-factory) |
-| `completed` | Acceptance criteria verified | `dark-factory spec complete` |
+| Status | Directory | Meaning | How it happens |
+|--------|-----------|---------|----------------|
+| `idea` | `specs/ideas/` | Rough concept, no full sections | Human creates file |
+| `draft` | `specs/` | All sections filled, ready for review | Human/AI writes spec |
+| `approved` | `specs/in-progress/` | Ready for prompt generation | `dark-factory spec approve` |
+| `prompted` | `specs/in-progress/` | Prompts generated | Auto (dark-factory) |
+| `verifying` | `specs/in-progress/` | All linked prompts completed | Auto (dark-factory) |
+| `completed` | `specs/completed/` | Acceptance criteria verified | `dark-factory spec complete` |
 
 Completed specs are immutable. If behavior changes later, create a new spec.
 

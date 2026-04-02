@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.89.1
+
+- docs: Add directory locations to spec/prompt lifecycle tables and creation instructions
+- docs: Update Full Example with maxContainers, additionalInstructions, container image v0.5.1
+- docs: Update example .dark-factory.yaml with new config fields
+- chore: Bump plugin version to 0.89.0
+
 ## v0.89.0
 
 - feat: Add per-project `maxContainers` field to `.dark-factory.yaml` that overrides the global container limit for a specific project's daemon

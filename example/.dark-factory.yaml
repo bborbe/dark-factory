@@ -27,7 +27,10 @@ specs:
   logDir: specs/log
 containerImage: docker.io/bborbe/claude-yolo:v0.5.1
 model: claude-sonnet-4-6
+maxContainers: 0
 debounceMs: 500
 serverPort: 0
 generateCommand: /dark-factory:generate-prompts-for-spec
 claudeDir: ~/.claude-yolo
+additionalInstructions: ""
+extraMounts: []

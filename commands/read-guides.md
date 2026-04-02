@@ -28,12 +28,12 @@ Glob: docs/*.md
 
 Read each file found. These docs contain domain knowledge (Kafka schemas, task file formats, controller design, etc.) that prompts should reference instead of inlining.
 
-## Step 3: Read yolo docs index
+## Step 3: Read coding plugin docs index
 
-Read `~/.claude-yolo/docs/README.md` to understand which generic coding pattern docs are available. These are mounted in the YOLO container at `/home/node/.claude/docs/` and prompts should reference them for reusable patterns.
+List coding plugin docs to understand which generic coding pattern docs are available. These are installed via the coding plugin and available to YOLO agents.
 
 ```
-Read: ~/.claude-yolo/docs/README.md
+Glob: ~/.claude-yolo/plugins/marketplaces/coding/docs/*.md
 ```
 
 After reading all three sources, summarize:

@@ -103,7 +103,7 @@ Every prompt MUST have these XML sections:
 **Coding Guidelines Compliance:**
 - If the prompt contains Go code in `<requirements>`, cross-check patterns against coding guidelines
 - Read relevant guides from TWO locations:
-  1. `~/.claude-yolo/docs/` — global coding guidelines (always check)
+  1. Coding plugin `docs/` (`~/.claude-yolo/plugins/marketplaces/coding/docs/`) — global coding guidelines (always check)
   2. `docs/` in the project root — project-specific guidelines (check if exists)
 - Key guidelines to check for HTTP handlers:
   - `go-http-handler.md`: handlers return `libhttp.WithError`, not `http.Handler`; factory wraps with `NewErrorHandler`

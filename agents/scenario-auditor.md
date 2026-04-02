@@ -91,11 +91,17 @@ Every scenario MUST have:
 - Steps are concrete commands or user actions
 - Ordered sequentially
 - Flag as recommendation if steps are vague ("do the thing")
+- `curl -w "%{http_code}" ... | jq .` is BROKEN — the status code appended to body breaks jq parsing. Flag as critical. Fix: split into two commands (one with `-o /dev/null -w "%{http_code}"` for status, one without `-w` piped to `jq`)
 
 **Expected quality:**
 - Each outcome independently verifiable
 - Specific (file paths, exact output, state changes)
 - Flag as recommendation if outcomes are vague ("it works")
+- If Expected references HTTP status but Action doesn't capture it, flag as recommendation
+
+**Shell variable safety:**
+- Flag as critical if scenarios use `USERNAME`, `USER`, `HOME`, `SHELL`, `PATH`, `LANG`, `TERM`, `PWD`, or `HOSTNAME` as variable names — these are pre-set by macOS/POSIX and silently shadow assignments
+- Safe alternatives: `AUTH`, `TV_USER`, `TV_PASS`, `CRED_USER`, `API_USER`
 </scenario_definition_of_done>
 
 <scoring>
@@ -110,6 +116,9 @@ Adjustments:
 - Tests internals instead of observables: -2 points
 - Not self-contained: -2 points
 - Mixes happy and failure paths: -1 point
+- Broken commands (`curl -w | jq` piping): -2 points
+- Reserved shell variables (`USERNAME`, `USER`, etc.): -2 points
+- Expected checks HTTP status but Action doesn't capture it: -1 point
 </scoring>
 
 <output_format>

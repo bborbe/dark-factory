@@ -2,7 +2,7 @@
 
 Dark-factory executes prompts inside a [claude-yolo](https://github.com/bborbe/claude-yolo) Docker container. The container needs a Claude Code configuration directory (`~/.claude-yolo/`) on the host, mounted as `/home/node/.claude` inside the container.
 
-Two options: use bborbe's config (includes Go/Python coding guides, agents, and slash commands) or create your own minimal config.
+Two options: use bborbe's config (includes plugins with coding guides, agents, and slash commands) or create your own minimal config.
 
 ## Option 1: Use bborbe's Config
 
@@ -16,14 +16,19 @@ claude login
 
 This gives you:
 - `CLAUDE.md` — workflow instructions (no attribution, verification rules, completion protocol)
-- `docs/` — 25+ coding guides (Go patterns, testing, security, Python, etc.)
-- `commands/` — slash commands (`/run-prompt`, `/create-prompt`, `/code-review`, etc.)
-- `agents/` — specialized agents (quality, security, coverage, etc.)
+- `plugins/marketplaces/coding/` — coding plugin with 40+ guides (Go patterns, testing, security, Python, etc.), agents, and slash commands
+
+Install the coding plugin:
+
+```bash
+claude plugins install coding
+```
 
 Update periodically:
 
 ```bash
 cd ~/.claude-yolo && git pull
+claude plugins update coding
 ```
 
 ## Option 2: Create Your Own Config
@@ -87,31 +92,28 @@ That's it. Dark-factory will work with just these three files.
 
 ### Optional Enhancements
 
-Add these as needed:
+Install the coding plugin for Go/Python coding guides, agents, and slash commands:
 
-```
-~/.claude-yolo/
-├── docs/               # Coding guides the agent can reference
-│   ├── go-testing.md
-│   └── go-patterns.md
-├── commands/           # Slash commands available in container
-│   └── run-prompt.md
-└── agents/             # Specialized agents
-    └── simple-bash-runner.md
+```bash
+CLAUDE_CONFIG_DIR=~/.claude-yolo claude plugins install coding
 ```
 
-- **`docs/`** — coding guidelines. The agent can read these if your `CLAUDE.md` references them. Example: `"For Go: Read docs/go-testing.md"`
-- **`commands/`** — slash commands. Not required by dark-factory (it passes prompts directly via `-p` flag), but useful for interactive container sessions.
-- **`agents/`** — specialized sub-agents. Same as commands — optional.
+This installs to `~/.claude-yolo/plugins/marketplaces/coding/` with:
+- `docs/` — 40+ coding guides (Go patterns, testing, error handling, Python, etc.)
+- `agents/` — specialized agents (quality, security, coverage, etc.)
+- `commands/` — slash commands (`/code-review`, etc.)
+- `skills/` — reusable skills
+
+The agent can reference these guides in prompts. Example: `"Read the go-testing-guide.md from coding plugin for Ginkgo/Gomega patterns"`
 
 ## How Dark-Factory Uses the Config
 
 Dark-factory mounts `~/.claude-yolo/` as `/home/node/.claude` inside the container:
 
 ```
-Host                          Container
-~/.claude-yolo/CLAUDE.md  →  /home/node/.claude/CLAUDE.md
-~/.claude-yolo/docs/       →  /home/node/.claude/docs/
+Host                                                    Container
+~/.claude-yolo/CLAUDE.md                            →  /home/node/.claude/CLAUDE.md
+~/.claude-yolo/plugins/marketplaces/coding/docs/    →  /home/node/.claude/plugins/marketplaces/coding/docs/
 ```
 
 The mount path defaults to `~/.claude-yolo` and is configurable per project via `.dark-factory.yaml`:

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.89.2
+
+- Update docs and agents to reference coding plugin path instead of deprecated ~/.claude-yolo/docs/
+- Fix scenario auditor: detect broken curl|jq piping and reserved shell variable names
+
 ## v0.89.1
 
 - docs: Add directory locations to spec/prompt lifecycle tables and creation instructions

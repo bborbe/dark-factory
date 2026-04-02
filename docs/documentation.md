@@ -9,11 +9,11 @@ Knowledge lives in four locations. Each has a clear purpose. Putting knowledge i
 | **Spec** | Behavioral contract — what/why/constraints | Dies after implementation | Prompt generator, human reviewer |
 | **Prompt** | Implementation instructions — one-off details | Dies after execution | YOLO agent |
 | **Project docs** (`project/docs/`) | Project-specific domain knowledge | Lives with the project | Specs, prompts, humans |
-| **Yolo docs** (`~/.claude-yolo/docs/`) | Generic coding patterns | Lives across projects | All YOLO agents |
+| **Coding plugin docs** (`plugins/marketplaces/coding/docs/`) | Generic coding patterns | Lives across projects | All YOLO agents |
 
 **Container mount paths:**
 - `project/docs/` → `/workspace/docs` (repo is mounted at `/workspace`)
-- `~/.claude-yolo/docs/` → `/home/node/.claude/docs`
+- coding plugin `docs/` → `/home/node/.claude/plugins/marketplaces/coding/docs/` (installed via `claude plugins install coding`)
 
 ### Spec
 
@@ -62,7 +62,7 @@ Project-specific domain knowledge that multiple specs and prompts need. Survives
 - Repo-relative paths in examples
 - Include enough detail that a prompt can say "follow `docs/X.md`" without repeating it
 
-### Yolo docs (`~/.claude-yolo/docs/`)
+### Coding plugin docs (`plugins/marketplaces/coding/docs/`)
 
 Generic coding patterns (Go, Python, Git, etc.) from shared libraries. Apply across all projects.
 
@@ -93,7 +93,7 @@ Is it behavioral (what/why/constraints)?
                               |-- No  --> Prompt (inline)
                               |-- Yes --> Is it project-specific?
                                            |-- Yes --> project/docs/
-                                           |-- No  --> ~/.claude-yolo/docs/
+                                           |-- No  --> coding plugin docs/
 ```
 
 ## The Lifecycle Rule
@@ -124,15 +124,15 @@ Prompts reference both project docs and yolo docs in `<context>`:
 <context>
 Read CLAUDE.md for project conventions.
 Read `docs/kafka-schema-design.md` — topic naming and SchemaID pattern.
-Read `/home/node/.claude/docs/go-cqrs.md` — CommandObjectExecutorTxFunc pattern.
-Read `/home/node/.claude/docs/go-boltkv.md` — BoltDB setup with ChangeOptions.
+Read `go-cqrs.md` from coding plugin — CommandObjectExecutorTxFunc pattern.
+Read `go-boltkv.md` from coding plugin — BoltDB setup with ChangeOptions.
 
 Key files to read before making changes:
 - `pkg/factory/factory.go` — existing factory wiring
 </context>
 ```
 
-Note: `docs/` is repo-relative (mounted at `/workspace/docs`). Yolo docs use the absolute container path `/home/node/.claude/docs/`.
+Note: `docs/` is repo-relative (mounted at `/workspace/docs`). Coding plugin docs are available via the plugin system.
 
 Then `<requirements>` says "follow the pattern from `go-cqrs.md`" instead of inlining 30 lines.
 
@@ -177,16 +177,16 @@ Then `<requirements>` says "follow the pattern from `go-cqrs.md`" instead of inl
 
 ### Process
 
-1. Check if doc already exists (`project/docs/` or `~/.claude-yolo/docs/`)
+1. Check if doc already exists (`project/docs/` or coding plugin `docs/`)
 2. Write the doc in the correct location
 3. Update specs/prompts to reference instead of inline
-4. For yolo docs: update `~/.claude-yolo/docs/README.md` index
+4. For coding plugin docs: no index update needed (managed by plugin)
 
 ## Anti-Patterns
 
 **Inline everything** — 200-line prompt with CQRS wiring, BoltDB setup, and test bootstrap inlined. Breaks when library API changes. Prompt 3 of spec-005 had 4 bugs from inlined patterns.
 
-**Wrong location** — project-specific Kafka topic naming in `~/.claude-yolo/docs/`. Now every project sees irrelevant detail.
+**Wrong location** — project-specific Kafka topic naming in the coding plugin docs. Now every project sees irrelevant detail.
 
 **Doc exists but not referenced** — `go-cqrs.md` has the exact pattern, but prompt reinvents it differently. Agent follows prompt, not doc.
 

@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: [040-extra-mounts]
+summary: Added extraMounts config field to inject additional volume mounts into YOLO containers, with ExtraMount type, validation, loader support, executor injection, factory wiring, docs update, and full test coverage.
 container: dark-factory-237-spec-040-extra-mounts
 dark-factory-version: v0.85.0
 created: "2026-04-02T08:30:00Z"
 queued: "2026-04-02T08:52:08Z"
 started: "2026-04-02T08:52:14Z"
+completed: "2026-04-02T09:05:28Z"
 ---
 
 <summary>

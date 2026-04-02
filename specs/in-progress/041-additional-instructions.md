@@ -1,9 +1,11 @@
 ---
-status: approved
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-02T08:59:14Z"
+prompted: "2026-04-02T09:07:49Z"
+verifying: "2026-04-02T09:47:54Z"
 branch: dark-factory/additional-instructions
 ---
 

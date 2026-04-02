@@ -82,6 +82,7 @@ var _ = Describe("Factory", func() {
 				cfg.ResolvedClaudeDir(),
 				executor.NewDockerContainerCounter(),
 				0,
+				"",
 			)
 			Expect(processor).NotTo(BeNil())
 		})

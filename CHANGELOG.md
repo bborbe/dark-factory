@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.88.0
+
+- feat: Add `additionalInstructions` config field that prepends project-level context to every prompt and spec generation command
+
 ## v0.87.0
 
 - feat: Add `extraMounts` config field to inject additional volume mounts into YOLO containers

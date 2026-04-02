@@ -51,23 +51,24 @@ type partialSpecsConfig struct {
 // partialConfig is used for YAML unmarshaling to distinguish between
 // explicitly set zero values and missing fields.
 type partialConfig struct {
-	Workflow         *Workflow             `yaml:"workflow"`
-	PR               *bool                 `yaml:"pr"`
-	Worktree         *bool                 `yaml:"worktree"`
-	DefaultBranch    *string               `yaml:"defaultBranch"`
-	Prompts          *partialPromptsConfig `yaml:"prompts"`
-	Specs            *partialSpecsConfig   `yaml:"specs"`
-	ContainerImage   *string               `yaml:"containerImage"`
-	NetrcFile        *string               `yaml:"netrcFile"`
-	GitconfigFile    *string               `yaml:"gitconfigFile"`
-	DebounceMs       *int                  `yaml:"debounceMs"`
-	ServerPort       *int                  `yaml:"serverPort"`
-	AutoMerge        *bool                 `yaml:"autoMerge"`
-	AutoRelease      *bool                 `yaml:"autoRelease"`
-	VerificationGate *bool                 `yaml:"verificationGate"`
-	GitHub           *GitHubConfig         `yaml:"github"`
-	Env              map[string]string     `yaml:"env,omitempty"`
-	ExtraMounts      []ExtraMount          `yaml:"extraMounts,omitempty"`
+	Workflow               *Workflow             `yaml:"workflow"`
+	PR                     *bool                 `yaml:"pr"`
+	Worktree               *bool                 `yaml:"worktree"`
+	DefaultBranch          *string               `yaml:"defaultBranch"`
+	Prompts                *partialPromptsConfig `yaml:"prompts"`
+	Specs                  *partialSpecsConfig   `yaml:"specs"`
+	ContainerImage         *string               `yaml:"containerImage"`
+	NetrcFile              *string               `yaml:"netrcFile"`
+	GitconfigFile          *string               `yaml:"gitconfigFile"`
+	DebounceMs             *int                  `yaml:"debounceMs"`
+	ServerPort             *int                  `yaml:"serverPort"`
+	AutoMerge              *bool                 `yaml:"autoMerge"`
+	AutoRelease            *bool                 `yaml:"autoRelease"`
+	VerificationGate       *bool                 `yaml:"verificationGate"`
+	GitHub                 *GitHubConfig         `yaml:"github"`
+	Env                    map[string]string     `yaml:"env,omitempty"`
+	ExtraMounts            []ExtraMount          `yaml:"extraMounts,omitempty"`
+	AdditionalInstructions *string               `yaml:"additionalInstructions,omitempty"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -184,6 +185,9 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.ExtraMounts != nil {
 		cfg.ExtraMounts = partial.ExtraMounts
+	}
+	if partial.AdditionalInstructions != nil {
+		cfg.AdditionalInstructions = *partial.AdditionalInstructions
 	}
 }
 

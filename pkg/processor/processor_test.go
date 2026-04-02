@@ -126,6 +126,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -196,6 +197,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -270,6 +272,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -342,6 +345,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -404,6 +408,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -464,6 +469,7 @@ var _ = Describe("Processor", func() {
 			fakeNotifier,
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -528,6 +534,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -594,6 +601,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -692,6 +700,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -764,6 +773,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -826,6 +836,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -892,6 +903,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -947,6 +959,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -1000,6 +1013,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -1063,6 +1077,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -1139,6 +1154,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		// Run processor in goroutine
@@ -1212,6 +1228,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -1279,6 +1296,7 @@ var _ = Describe("Processor", func() {
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -1348,6 +1366,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -1430,6 +1449,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -1547,6 +1567,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -1642,6 +1663,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -1733,6 +1755,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor
@@ -1817,6 +1840,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor
@@ -1908,6 +1932,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -1974,6 +1999,7 @@ var _ = Describe("Processor", func() {
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor
@@ -2075,6 +2101,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2154,6 +2181,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2230,6 +2258,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2307,6 +2336,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2384,6 +2414,7 @@ DARK-FACTORY-REPORT -->
 				fakeNotifier,
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -2459,6 +2490,7 @@ more output
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2535,6 +2567,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2615,6 +2648,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			// Run processor in goroutine
@@ -2679,6 +2713,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -2735,6 +2770,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -2798,6 +2834,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -2886,6 +2923,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -2967,6 +3005,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -3031,6 +3070,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -3109,6 +3149,7 @@ DARK-FACTORY-REPORT -->
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -3167,6 +3208,7 @@ DARK-FACTORY-REPORT -->
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3234,6 +3276,7 @@ DARK-FACTORY-REPORT -->
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3288,6 +3331,7 @@ DARK-FACTORY-REPORT -->
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		errCh := make(chan error, 1)
@@ -3350,6 +3394,7 @@ DARK-FACTORY-REPORT -->
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3435,6 +3480,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3523,6 +3569,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3584,6 +3631,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3670,6 +3718,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			notifier.NewMultiNotifier(),
 			nil,
 			0,
+			"",
 		)
 
 		go func() {
@@ -3762,6 +3811,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -3860,6 +3910,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				go func() {
@@ -3964,6 +4015,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -4052,6 +4104,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				go func() {
@@ -4144,6 +4197,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -4232,6 +4286,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				go func() {
@@ -4334,6 +4389,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			go func() {
@@ -4420,6 +4476,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				errCh := make(chan error, 1)
@@ -4492,6 +4549,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				errCh := make(chan error, 1)
@@ -4553,6 +4611,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						notifier.NewMultiNotifier(),
 						nil,
 						0,
+						"",
 					)
 
 					errCh := make(chan error, 1)
@@ -4605,6 +4664,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 
 				errCh := make(chan error, 1)
@@ -4666,6 +4726,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 
 			errCh := make(chan error, 1)
@@ -4733,6 +4794,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 		}
 
@@ -4849,6 +4911,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 		}
 
@@ -5171,6 +5234,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					notifier.NewMultiNotifier(),
 					nil,
 					0,
+					"",
 				)
 			}
 		})
@@ -5300,6 +5364,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 			go func() { _ = p.Process(ctx) }()
 
@@ -5372,6 +5437,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 		}
 
@@ -5607,6 +5673,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				notifier.NewMultiNotifier(),
 				nil,
 				0,
+				"",
 			)
 		}
 
@@ -5689,6 +5756,153 @@ DARK-FACTORY-REPORT -->`), 0600)
 			case <-time.After(2 * time.Second):
 				Fail("processor did not stop within timeout")
 			}
+		})
+	})
+
+	Describe("additionalInstructions", func() {
+		It("prepends additionalInstructions to prompt content before executor call", func() {
+			promptPath := filepath.Join(promptsDir, "001-additional-instructions.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# My prompt\n\nContent here."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
+			manager.TitleReturns("My prompt", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"Read /docs/guide.md before starting.",
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return executor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+			Expect(promptContent).To(HavePrefix("Read /docs/guide.md before starting.\n\n"))
+			Expect(promptContent).To(ContainSubstring("# My prompt"))
+
+			cancel()
+		})
+
+		It("does not prepend anything when additionalInstructions is empty", func() {
+			promptPath := filepath.Join(promptsDir, "001-no-additional.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.LoadReturns(
+				prompt.NewPromptFile(
+					promptPath,
+					prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+					[]byte("# My prompt\n\nContent here."),
+					libtime.NewCurrentDateTime(),
+				),
+				nil,
+			)
+			manager.TitleReturns("My prompt", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return executor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+			Expect(promptContent).To(HavePrefix("# My prompt"))
+
+			cancel()
 		})
 	})
 })

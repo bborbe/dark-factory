@@ -258,6 +258,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.ResolvedClaudeDir(),
 		executor.NewDockerContainerCounter(),
 		globalCfg.MaxContainers,
+		cfg.AdditionalInstructions,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -343,6 +344,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cfg.ResolvedClaudeDir(),
 			executor.NewDockerContainerCounter(),
 			globalCfg.MaxContainers,
+			cfg.AdditionalInstructions,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -379,6 +381,7 @@ func CreateSpecGenerator(
 		currentDateTimeGetter,
 		slugMigrator,
 		cfg.GenerateCommand,
+		cfg.AdditionalInstructions,
 	)
 }
 
@@ -412,6 +415,22 @@ func CreateWatcher(
 		ready,
 		debounce,
 		currentDateTimeGetter,
+	)
+}
+
+// createDockerExecutor creates a Docker executor with the given configuration.
+func createDockerExecutor(
+	containerImage string,
+	projectName string,
+	model string,
+	netrcFile string,
+	gitconfigFile string,
+	env map[string]string,
+	extraMounts []config.ExtraMount,
+	claudeDir string,
+) executor.Executor {
+	return executor.NewDockerExecutor(
+		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
 	)
 }
 
@@ -450,21 +469,16 @@ func CreateProcessor(
 	claudeDir string,
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
+	additionalInstructions string,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
 		completedDir,
 		logDir,
 		projectName,
-		executor.NewDockerExecutor(
-			containerImage,
-			projectName,
-			model,
-			netrcFile,
-			gitconfigFile,
-			env,
-			extraMounts,
-			claudeDir,
+		createDockerExecutor(
+			containerImage, projectName, model, netrcFile,
+			gitconfigFile, env, extraMounts, claudeDir,
 		),
 		promptManager,
 		releaser,
@@ -496,6 +510,7 @@ func CreateProcessor(
 		n,
 		containerCounter,
 		maxContainers,
+		additionalInstructions,
 	)
 }
 

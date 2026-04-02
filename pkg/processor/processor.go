@@ -69,69 +69,72 @@ func NewProcessor(
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
+	additionalInstructions string,
 ) Processor {
 	return &processor{
-		queueDir:              queueDir,
-		completedDir:          completedDir,
-		logDir:                logDir,
-		projectName:           projectName,
-		executor:              exec,
-		promptManager:         promptManager,
-		releaser:              releaser,
-		versionGetter:         versionGetter,
-		ready:                 ready,
-		pr:                    pr,
-		worktree:              worktree,
-		brancher:              brancher,
-		prCreator:             prCreator,
-		cloner:                cloner,
-		autoMerge:             autoMerge,
-		autoRelease:           autoRelease,
-		autoReview:            autoReview,
-		prMerger:              prMerger,
-		autoCompleter:         autoCompleter,
-		specLister:            specLister,
-		validationCommand:     validationCommand,
-		validationPrompt:      validationPrompt,
-		verificationGate:      verificationGate,
-		skippedPrompts:        make(map[string]time.Time),
-		notifier:              n,
-		containerCounter:      containerCounter,
-		maxContainers:         maxContainers,
-		containerPollInterval: 10 * time.Second,
+		queueDir:               queueDir,
+		completedDir:           completedDir,
+		logDir:                 logDir,
+		projectName:            projectName,
+		executor:               exec,
+		promptManager:          promptManager,
+		releaser:               releaser,
+		versionGetter:          versionGetter,
+		ready:                  ready,
+		pr:                     pr,
+		worktree:               worktree,
+		brancher:               brancher,
+		prCreator:              prCreator,
+		cloner:                 cloner,
+		autoMerge:              autoMerge,
+		autoRelease:            autoRelease,
+		autoReview:             autoReview,
+		prMerger:               prMerger,
+		autoCompleter:          autoCompleter,
+		specLister:             specLister,
+		validationCommand:      validationCommand,
+		validationPrompt:       validationPrompt,
+		verificationGate:       verificationGate,
+		skippedPrompts:         make(map[string]time.Time),
+		notifier:               n,
+		containerCounter:       containerCounter,
+		maxContainers:          maxContainers,
+		containerPollInterval:  10 * time.Second,
+		additionalInstructions: additionalInstructions,
 	}
 }
 
 // processor implements Processor.
 type processor struct {
-	queueDir              string
-	completedDir          string
-	logDir                string
-	projectName           string
-	executor              executor.Executor
-	promptManager         prompt.Manager
-	releaser              git.Releaser
-	versionGetter         version.Getter
-	ready                 <-chan struct{}
-	pr                    bool
-	worktree              bool
-	brancher              git.Brancher
-	prCreator             git.PRCreator
-	cloner                git.Cloner
-	autoMerge             bool
-	autoRelease           bool
-	autoReview            bool
-	prMerger              git.PRMerger
-	autoCompleter         spec.AutoCompleter
-	specLister            spec.Lister
-	validationCommand     string
-	validationPrompt      string
-	verificationGate      bool
-	skippedPrompts        map[string]time.Time // filename → mod time when skipped
-	notifier              notifier.Notifier
-	containerCounter      executor.ContainerCounter
-	maxContainers         int
-	containerPollInterval time.Duration
+	queueDir               string
+	completedDir           string
+	logDir                 string
+	projectName            string
+	executor               executor.Executor
+	promptManager          prompt.Manager
+	releaser               git.Releaser
+	versionGetter          version.Getter
+	ready                  <-chan struct{}
+	pr                     bool
+	worktree               bool
+	brancher               git.Brancher
+	prCreator              git.PRCreator
+	cloner                 git.Cloner
+	autoMerge              bool
+	autoRelease            bool
+	autoReview             bool
+	prMerger               git.PRMerger
+	autoCompleter          spec.AutoCompleter
+	specLister             spec.Lister
+	validationCommand      string
+	validationPrompt       string
+	verificationGate       bool
+	skippedPrompts         map[string]time.Time // filename → mod time when skipped
+	notifier               notifier.Notifier
+	containerCounter       executor.ContainerCounter
+	maxContainers          int
+	containerPollInterval  time.Duration
+	additionalInstructions string
 }
 
 // Process starts processing queued prompts.
@@ -653,8 +656,11 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
 }
 
-// enrichPromptContent appends machine-parseable suffixes and project-level validation to prompt content.
+// enrichPromptContent prepends additionalInstructions and appends machine-parseable suffixes and project-level validation to prompt content.
 func (p *processor) enrichPromptContent(ctx context.Context, content string) string {
+	if p.additionalInstructions != "" {
+		content = p.additionalInstructions + "\n\n" + content
+	}
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
 	// Append changelog instructions when the project has a CHANGELOG.md

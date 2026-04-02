@@ -1,14 +1,17 @@
 ---
-status: draft
+status: prompted
 tags:
-  - dark-factory
-  - spec
+    - dark-factory
+    - spec
+approved: "2026-04-02T09:16:22Z"
+prompted: "2026-04-02T09:19:29Z"
+branch: dark-factory/per-project-container-limit
 ---
 
 ## Summary
 
 - Add optional `maxContainers` field to per-project `.dark-factory.yaml`
-- Overrides the global `~/.dark-factory/config.yaml` limit for this project
+- Overrides the global `~/.dark-factory/config.yaml` threshold for this project (counting stays global)
 - Lower values restrict the project to fewer slots (low-priority repos)
 - Higher values allow priority projects to run more containers than the global default
 - Missing field falls back to global limit
@@ -47,7 +50,7 @@ After this work, per-project `.dark-factory.yaml` can override the global contai
 
 2. **Fallback to global**: When `maxContainers` is missing or zero in `.dark-factory.yaml`, the daemon uses the global limit from `~/.dark-factory/config.yaml` (default: 3).
 
-3. **Wait loop uses project limit**: Before starting a container, the daemon counts all running dark-factory containers system-wide (from all projects) and compares against this project's `maxContainers`. If system-wide count >= project limit, the daemon waits. This means a project with limit 5 will still wait if 5+ containers from other projects are already running.
+3. **Wait loop uses project limit against global count**: Before starting a container, the daemon counts all running dark-factory containers system-wide (across all projects, same `docker ps` query as today). It compares this global count against this project's `maxContainers` value. The counting logic is unchanged — only the threshold value is overridden. Example: global default is 3, project sets `maxContainers: 5`. If 4 containers are running (from any project), the default would block but this project proceeds because 4 < 5.
 
 4. **Status display**: `dark-factory status` shows the effective limit (project or global) in the `Containers: N/M` line.
 

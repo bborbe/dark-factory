@@ -198,6 +198,7 @@ env:
 | `netrcFile` | (empty) | `.netrc` mounted into the container |
 | `env` | (empty) | Env vars passed to the container |
 | `extraMounts` | (empty) | Additional volume mounts injected into the container |
+| `additionalInstructions` | (empty) | Text prepended to every prompt and spec generation command |
 
 ## Extra Mounts
 
@@ -219,6 +220,28 @@ extraMounts:
 | `readonly` | no | `true` | Mount read-only (`:ro`). Set `false` for writable access. |
 
 Missing `src` paths at execution time are logged as a warning and skipped — they do not abort the run.
+
+## Additional Instructions
+
+Inject project-level context into every prompt without repeating it in each prompt's `<context>` section:
+
+```yaml
+additionalInstructions: |
+  Read shared documentation at /docs for coding guidelines.
+  Follow conventions in /docs/go-testing-guide.md for all test code.
+```
+
+The text is prepended before all other prompt content and before any spec generation command. When empty or absent, no content is injected.
+
+Combine with `extraMounts` to mount and reference shared documentation:
+
+```yaml
+extraMounts:
+  - src: ~/Documents/workspaces/coding/docs
+    dst: /docs
+additionalInstructions: |
+  Read /docs/go-testing-guide.md before writing any tests.
+```
 
 ## Directory Layout
 

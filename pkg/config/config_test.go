@@ -1475,6 +1475,40 @@ worktree: false
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.ExtraMounts).To(BeNil())
 			})
+
+			It("loads additionalInstructions from config file", func() {
+				configContent := "additionalInstructions: |\n  Read /docs/guidelines.md before starting.\n  Follow conventions in /docs/go-testing-guide.md for all test code.\n"
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(
+					cfg.AdditionalInstructions,
+				).To(ContainSubstring("Read /docs/guidelines.md before starting."))
+				Expect(
+					cfg.AdditionalInstructions,
+				).To(ContainSubstring("Follow conventions in /docs/go-testing-guide.md"))
+			})
+
+			It("leaves AdditionalInstructions empty when field is absent", func() {
+				configContent := `containerImage: docker.io/bborbe/claude-yolo:latest
+`
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte(configContent),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				cfg, err := loader.Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.AdditionalInstructions).To(BeEmpty())
+			})
 		})
 	})
 

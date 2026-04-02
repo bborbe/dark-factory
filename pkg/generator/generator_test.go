@@ -61,6 +61,7 @@ var _ = Describe("SpecGenerator", func() {
 			libtime.NewCurrentDateTime(),
 			&mocks.SpecSlugMigrator{},
 			"/dark-factory:generate-prompts-for-spec",
+			"",
 		)
 
 		// Write a spec file with status "approved"
@@ -493,5 +494,58 @@ var _ = Describe("SpecGenerator", func() {
 				})
 			},
 		)
+	})
+
+	Describe("additionalInstructions", func() {
+		Context("with non-empty additionalInstructions", func() {
+			BeforeEach(func() {
+				sg = generator.NewSpecGenerator(
+					executor,
+					containerChecker,
+					inboxDir,
+					completedDir,
+					specsDir,
+					logDir,
+					libtime.NewCurrentDateTime(),
+					&mocks.SpecSlugMigrator{},
+					"/dark-factory:generate-prompts-for-spec",
+					"Read /docs/guidelines.md before starting.",
+				)
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "120-additional-instructions.md"),
+						[]byte("# Generated"),
+						0600,
+					)
+				}
+			})
+
+			It("prepends additionalInstructions to the prompt content", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				Expect(executor.ExecuteCallCount()).To(Equal(1))
+				_, gotPrompt, _, _ := executor.ExecuteArgsForCall(0)
+				Expect(gotPrompt).To(HavePrefix("Read /docs/guidelines.md before starting.\n\n"))
+				Expect(
+					gotPrompt,
+				).To(ContainSubstring("/dark-factory:generate-prompts-for-spec " + specPath))
+			})
+		})
+
+		Context("with empty additionalInstructions", func() {
+			It("does not prepend anything to the prompt content", func() {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "121-no-additional.md"),
+						[]byte("# Generated"),
+						0600,
+					)
+				}
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				_, gotPrompt, _, _ := executor.ExecuteArgsForCall(0)
+				Expect(gotPrompt).To(Equal("/dark-factory:generate-prompts-for-spec " + specPath))
+			})
+		})
 	})
 })

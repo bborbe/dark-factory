@@ -39,38 +39,51 @@ func NewSpecGenerator(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	slugMigrator slugmigrator.Migrator,
 	generateCommand string,
+	additionalInstructions string,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
-		executor:              executor,
-		containerChecker:      containerChecker,
-		inboxDir:              inboxDir,
-		completedDir:          completedDir,
-		specsDir:              specsDir,
-		logDir:                logDir,
-		currentDateTimeGetter: currentDateTimeGetter,
-		slugMigrator:          slugMigrator,
-		generateCommand:       generateCommand,
+		executor:               executor,
+		containerChecker:       containerChecker,
+		inboxDir:               inboxDir,
+		completedDir:           completedDir,
+		specsDir:               specsDir,
+		logDir:                 logDir,
+		currentDateTimeGetter:  currentDateTimeGetter,
+		slugMigrator:           slugMigrator,
+		generateCommand:        generateCommand,
+		additionalInstructions: additionalInstructions,
 	}
 }
 
 // dockerSpecGenerator implements SpecGenerator using the Docker executor.
 type dockerSpecGenerator struct {
-	executor              executor.Executor
-	containerChecker      executor.ContainerChecker
-	inboxDir              string
-	completedDir          string
-	specsDir              string
-	logDir                string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	slugMigrator          slugmigrator.Migrator
-	generateCommand       string
+	executor               executor.Executor
+	containerChecker       executor.ContainerChecker
+	inboxDir               string
+	completedDir           string
+	specsDir               string
+	logDir                 string
+	currentDateTimeGetter  libtime.CurrentDateTimeGetter
+	slugMigrator           slugmigrator.Migrator
+	generateCommand        string
+	additionalInstructions string
+}
+
+// buildPromptContent assembles the full prompt content for spec generation,
+// prepending additionalInstructions when set.
+func (g *dockerSpecGenerator) buildPromptContent(specPath string) string {
+	content := g.generateCommand + " " + specPath
+	if g.additionalInstructions != "" {
+		content = g.additionalInstructions + "\n\n" + content
+	}
+	return content
 }
 
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,
 // then transitions the spec status to prompted if new prompt files were created.
 func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) error {
 	// a. Build prompt content
-	promptContent := g.generateCommand + " " + specPath
+	promptContent := g.buildPromptContent(specPath)
 
 	// b. Derive container name from spec filename
 	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")

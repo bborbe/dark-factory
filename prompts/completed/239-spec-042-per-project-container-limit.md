@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: ["042"]
+summary: Added per-project maxContainers field to .dark-factory.yaml config with validation, effectiveMaxContainers helper, updated all factory call sites, and documented in configuration.md
 container: dark-factory-239-spec-042-per-project-container-limit
 dark-factory-version: v0.85.0
 created: "2026-04-02T09:20:00Z"
 queued: "2026-04-02T09:57:22Z"
 started: "2026-04-02T09:57:25Z"
+completed: "2026-04-02T10:09:55Z"
 ---
 
 <summary>

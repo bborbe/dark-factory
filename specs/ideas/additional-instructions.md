@@ -7,7 +7,7 @@ tags:
 
 ## Summary
 
-- Add `promptPreamble` config field to `.dark-factory.yaml` — a text block prepended to every prompt
+- Add `additionalInstructions` config field to `.dark-factory.yaml` — a text block prepended to every prompt
 - Injected into both prompt execution and spec-to-prompt generation
 - Allows telling the agent about shared docs, conventions, or project-specific instructions
 
@@ -19,7 +19,7 @@ More broadly, there's no way to give the agent project-wide instructions that ap
 
 ## Goal
 
-After this work, users configure a `promptPreamble` in `.dark-factory.yaml` that is automatically prepended to every prompt. The agent sees it as part of the prompt content — no per-prompt boilerplate needed.
+After this work, users configure a `additionalInstructions` in `.dark-factory.yaml` that is automatically prepended to every prompt. The agent sees it as part of the prompt content — no per-prompt boilerplate needed.
 
 ## Example
 
@@ -28,7 +28,7 @@ extraMounts:
   - src: ../docs/howto
     dst: /docs
 
-promptPreamble: |
+additionalInstructions: |
   Also read shared documentation at /docs for coding guidelines and patterns.
   Follow the conventions in /docs/go-testing-guide.md for all test code.
 ```

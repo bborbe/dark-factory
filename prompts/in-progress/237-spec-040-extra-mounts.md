@@ -1,7 +1,11 @@
 ---
-status: draft
+status: executing
 spec: [040-extra-mounts]
+container: dark-factory-237-spec-040-extra-mounts
+dark-factory-version: v0.85.0
 created: "2026-04-02T08:30:00Z"
+queued: "2026-04-02T08:52:08Z"
+started: "2026-04-02T08:52:14Z"
 ---
 
 <summary>

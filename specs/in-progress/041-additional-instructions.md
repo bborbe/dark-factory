@@ -1,8 +1,10 @@
 ---
-status: draft
+status: approved
 tags:
-  - dark-factory
-  - spec
+    - dark-factory
+    - spec
+approved: "2026-04-02T08:59:14Z"
+branch: dark-factory/additional-instructions
 ---
 
 ## Summary

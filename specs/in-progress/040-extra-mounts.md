@@ -1,8 +1,11 @@
 ---
-status: draft
+status: prompted
 tags:
-  - dark-factory
-  - spec
+    - dark-factory
+    - spec
+approved: "2026-04-02T07:58:51Z"
+prompted: "2026-04-02T08:01:31Z"
+branch: dark-factory/extra-mounts
 ---
 
 ## Summary

@@ -39,7 +39,7 @@ After this work, users configure `additionalInstructions` in `.dark-factory.yaml
      Follow conventions in /docs/go-testing-guide.md for all test code.
    ```
 
-2. **Prompt execution**: When the processor assembles prompt content for execution, `additionalInstructions` is prepended before the prompt body (and before the enrichment suffixes like DARK-FACTORY-REPORT).
+2. **Prompt execution**: When the processor assembles prompt content for execution, `additionalInstructions` appears before the prompt body and before any system-appended sections.
 
 3. **Spec generation**: When the generator builds the command for spec-to-prompt generation, `additionalInstructions` is prepended before the generate command content.
 
@@ -91,6 +91,12 @@ Manual verification:
 3. Generate prompts from a spec, verify the instructions appear in the generation command
 4. Remove `additionalInstructions`, verify existing behavior unchanged
 
+## Assumptions
+
+- Instructions are plain text, no Markdown rendering or processing by dark-factory
+- Prepend order: additionalInstructions appears before all prompt content
+- No length validation — user is responsible for keeping instructions reasonable
+
 ## Do-Nothing Option
 
-Users add doc references to every prompt manually, or put instructions in CLAUDE.md (which applies globally to all projects). Neither is per-project or automatic.
+Users add doc references to every prompt manually, or put instructions in CLAUDE.md (which applies globally to all projects). Neither is per-project or automatic. For a project with 20+ prompts, that is 20+ identical `<context>` blocks to maintain. Forgetting one means the agent misses conventions and produces inconsistent output.

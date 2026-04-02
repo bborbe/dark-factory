@@ -47,7 +47,9 @@ After this work, users can configure additional volume mounts in `.dark-factory.
 
 3. **Docker flag injection**: Each extra mount is added as a volume mount to the YOLO container, following the same pattern as netrc and gitconfig mounts. Read-only mounts use `:ro` suffix; if `readonly: false`, the mount is writable.
 
-4. **Validation**: At config load time, verify `src` is not empty and `dst` is not empty. At execution time, verify `src` exists on the filesystem (warning if not, skip that mount).
+4. **Config validation**: At config load time, verify `src` is not empty and `dst` is not empty.
+
+5. **Runtime validation**: At execution time, verify each `src` exists on the filesystem. If missing, log a warning and skip that mount (not fatal).
 
 ## Constraints
 
@@ -61,7 +63,7 @@ After this work, users can configure additional volume mounts in `.dark-factory.
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
 | `src` path does not exist | Log warning, skip that mount, continue | User fixes path |
-| `dst` conflicts with existing mount (e.g., `/workspace`) | Docker uses last mount — undefined behavior | User fixes config |
+| `dst` conflicts with existing mount (e.g., `/workspace`) | Log warning, mount still added (Docker last-mount-wins) | User fixes config |
 | `extraMounts` field missing | No extra mounts, existing behavior unchanged | N/A |
 | Relative `src` resolves outside project tree | Allowed — user is trusted (same as netrc/gitconfig) | N/A |
 

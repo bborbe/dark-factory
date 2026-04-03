@@ -3,6 +3,6 @@ worktree: false
 validationPrompt: docs/dod.md
 autoRelease: true
 maxContainers: 5
-#extraMounts:
-#  - src: ${GOPATH}/pkg
-#    dst: /home/node/go/pkg
+extraMounts:
+  - src: ${GOPATH}/pkg
+    dst: /home/node/go/pkg

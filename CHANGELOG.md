@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.94.2
+
+- chore: Verify GOPATH mount provides Go module cache inside YOLO container at `/home/node/go/pkg`
+
 ## v0.94.1
 
 - **breaking:** Remove hardcoded `$HOME/go/pkg` mount — add `extraMounts` with `${GOPATH}/pkg` for Go projects

@@ -146,8 +146,7 @@ func (e *dockerExecutor) Execute(
 		"image", e.containerImage,
 		"containerName", containerName,
 		"workspaceMount", projectRoot+":/workspace",
-		"configMount", claudeConfigDir+":/home/node/.claude",
-		"goPkgMount", home+"/go/pkg:/home/node/go/pkg")
+		"configMount", claudeConfigDir+":/home/node/.claude")
 
 	// Pipe stdout/stderr to both terminal and log file
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
@@ -346,7 +345,6 @@ func (e *dockerExecutor) buildDockerCommand(
 		"-v", promptFilePath+":/tmp/prompt.md:ro",
 		"-v", projectRoot+":/workspace",
 		"-v", claudeConfigDir+":/home/node/.claude",
-		"-v", home+"/go/pkg:/home/node/go/pkg",
 	)
 	if e.netrcFile != "" {
 		resolved := e.netrcFile

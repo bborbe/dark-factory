@@ -277,7 +277,6 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(cmd.Args).To(ContainElement("/tmp/test.md:/tmp/prompt.md:ro"))
 			Expect(cmd.Args).To(ContainElement("/workspace:/workspace"))
 			Expect(cmd.Args).To(ContainElement("/home/user/.claude:/home/node/.claude"))
-			Expect(cmd.Args).To(ContainElement("/home/user/go/pkg:/home/node/go/pkg"))
 		})
 
 		It("always includes network capabilities", func() {
@@ -518,8 +517,8 @@ var _ = Describe("Internal helper functions", func() {
 					mounts = append(mounts, args[i+1])
 				}
 			}
-			// Only the standard four mounts
-			Expect(mounts).To(HaveLen(4))
+			// Only the standard three mounts
+			Expect(mounts).To(HaveLen(3))
 		})
 
 		It("adds extra mount with :ro suffix when IsReadonly is true (nil Readonly)", func() {

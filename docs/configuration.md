@@ -233,6 +233,14 @@ env:
 
 Share documentation or config directories across repos without duplicating them:
 
+> **Go module cache:** The Go module cache is no longer mounted by default. Add it explicitly if your project uses Go:
+>
+> ```yaml
+> extraMounts:
+>   - src: ${GOPATH}/pkg
+>     dst: /home/node/go/pkg
+> ```
+
 ```yaml
 extraMounts:
   - src: ../docs/howto

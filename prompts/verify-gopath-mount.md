@@ -1,11 +1,6 @@
 ---
-status: failed
-container: dark-factory-245-verify-gopath-mount
-dark-factory-version: v0.94.0
 created: "2026-04-03T00:00:00Z"
-queued: "2026-04-03T12:45:09Z"
 started: "2026-04-03T12:49:51Z"
-completed: "2026-04-03T12:49:52Z"
 ---
 
 <summary>

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.94.1
+
+- **breaking:** Remove hardcoded `$HOME/go/pkg` mount — add `extraMounts` with `${GOPATH}/pkg` for Go projects
+
 ## v0.94.0
 
 - feat: Expand environment variables (`$VAR`, `${VAR}`) in `extraMounts` `src` paths before tilde and relative path resolution

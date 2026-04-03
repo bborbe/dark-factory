@@ -1,7 +1,8 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-04-03T09:20:52Z"
 prompted: "2026-04-03T09:36:02Z"
+verifying: "2026-04-03T10:31:27Z"
 branch: dark-factory/container-health-check
 ---
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.91.0
+
+- feat: Periodic container health check loop detects disappeared executing prompt containers and generating spec containers at runtime, resetting them to approved within 30-60 seconds without requiring a daemon restart
+
 ## v0.90.0
 
 - feat: Add `generating` lifecycle state to spec so the health-check loop can identify specs with an active generation container; generator sets spec to `generating` before launching Execute() and resets to `approved` on non-cancellation failure; daemon startup resets orphaned `generating` specs whose container is gone

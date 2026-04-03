@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
@@ -184,6 +185,7 @@ func (r *runner) Run(ctx context.Context) error {
 	if r.specWatcher != nil {
 		runners = append(runners, r.specWatcher.Watch)
 	}
+	runners = append(runners, r.healthCheckLoop)
 	return run.CancelOnFirstError(ctx, runners...)
 }
 
@@ -211,6 +213,21 @@ func (r *runner) normalizeFilenames(ctx context.Context) error {
 // exists and the new path does not. This is a one-time migration.
 func (r *runner) migrateQueueDir(ctx context.Context) error {
 	return migrateQueueDir(ctx, r.inProgressDir)
+}
+
+// healthCheckLoop runs the periodic container health check loop.
+func (r *runner) healthCheckLoop(ctx context.Context) error {
+	return runHealthCheckLoop(
+		ctx,
+		30*time.Second,
+		r.inProgressDir,
+		r.specsInProgressDir,
+		r.containerChecker,
+		r.promptManager,
+		r.notifier,
+		r.projectName,
+		r.currentDateTimeGetter,
+	)
 }
 
 // resumeOrResetGenerating selectively resumes or resets generating specs based on container liveness.

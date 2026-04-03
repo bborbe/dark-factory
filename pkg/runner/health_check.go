@@ -90,7 +90,13 @@ func checkExecutingPrompts(
 			continue
 		}
 		if running {
-			slog.Debug("health check: prompt container running", "file", entry.Name(), "container", containerName)
+			slog.Debug(
+				"health check: prompt container running",
+				"file",
+				entry.Name(),
+				"container",
+				containerName,
+			)
 			continue
 		}
 		slog.Warn("health check: prompt container gone, resetting to approved",
@@ -147,7 +153,13 @@ func checkGeneratingSpecs(
 			continue
 		}
 		if running {
-			slog.Debug("health check: spec container running", "file", entry.Name(), "container", containerName)
+			slog.Debug(
+				"health check: spec container running",
+				"file",
+				entry.Name(),
+				"container",
+				containerName,
+			)
 			continue
 		}
 		slog.Warn("health check: spec generation container gone, resetting to approved",

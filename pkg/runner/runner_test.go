@@ -1026,4 +1026,135 @@ var _ = Describe("Runner", func() {
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 	})
+
+	Describe("resumeOrResetGenerating", func() {
+		newRunnerForGenerating := func(specsInProgressDir string) runner.Runner {
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			server.ListenAndServeStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			return runner.NewRunner(
+				filepath.Join(promptsDir, "inbox"),
+				filepath.Join(promptsDir, "in-progress"),
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				specsInProgressDir,
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil,
+				nil,
+				nil,
+				"test-project",
+				containerChecker,
+				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
+			)
+		}
+
+		It("no-op when specs in-progress dir has no spec files", func() {
+			specsInProgressDir := filepath.Join(specsDir, "in-progress")
+			Expect(os.MkdirAll(specsInProgressDir, 0750)).To(Succeed())
+
+			r := newRunnerForGenerating(specsInProgressDir)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+			Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
+		})
+
+		It("leaves spec in generating state when container is still running", func() {
+			specsInProgressDir := filepath.Join(specsDir, "in-progress")
+			Expect(os.MkdirAll(specsInProgressDir, 0750)).To(Succeed())
+
+			specPath := filepath.Join(specsInProgressDir, "042-my-spec.md")
+			Expect(
+				os.WriteFile(specPath, []byte("---\nstatus: generating\n---\n# Spec\n"), 0600),
+			).To(Succeed())
+
+			containerChecker.IsRunningReturns(true, nil)
+
+			r := newRunnerForGenerating(specsInProgressDir)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			content, err := os.ReadFile(specPath)
+			Expect(err).To(BeNil())
+			Expect(string(content)).To(ContainSubstring("status: generating"))
+
+			Expect(containerChecker.IsRunningCallCount()).To(Equal(1))
+			_, name := containerChecker.IsRunningArgsForCall(0)
+			Expect(name).To(Equal("dark-factory-gen-042-my-spec"))
+		})
+
+		It("resets spec to approved when container is not running", func() {
+			specsInProgressDir := filepath.Join(specsDir, "in-progress")
+			Expect(os.MkdirAll(specsInProgressDir, 0750)).To(Succeed())
+
+			specPath := filepath.Join(specsInProgressDir, "043-dead-spec.md")
+			Expect(
+				os.WriteFile(specPath, []byte("---\nstatus: generating\n---\n# Spec\n"), 0600),
+			).To(Succeed())
+
+			containerChecker.IsRunningReturns(false, nil)
+
+			r := newRunnerForGenerating(specsInProgressDir)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			content, err := os.ReadFile(specPath)
+			Expect(err).To(BeNil())
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+
+		It("skips spec in approved state (not generating)", func() {
+			specsInProgressDir := filepath.Join(specsDir, "in-progress")
+			Expect(os.MkdirAll(specsInProgressDir, 0750)).To(Succeed())
+
+			specPath := filepath.Join(specsInProgressDir, "044-approved-spec.md")
+			Expect(
+				os.WriteFile(specPath, []byte("---\nstatus: approved\n---\n# Spec\n"), 0600),
+			).To(Succeed())
+
+			r := newRunnerForGenerating(specsInProgressDir)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+
+			// No container check for non-generating specs
+			Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
+
+			// File unchanged
+			content, err := os.ReadFile(specPath)
+			Expect(err).To(BeNil())
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+	})
 })

@@ -184,6 +184,20 @@ var _ = Describe("Timestamp fields", func() {
 		Expect(sf.Frontmatter.Status).To(Equal("completed"))
 	})
 
+	It("SetStatus generating sets Generating timestamp", func() {
+		sf := newSpecFile()
+		sf.SetStatus("generating")
+		Expect(sf.Frontmatter.Generating).To(Equal(fixedStamp))
+		Expect(sf.Frontmatter.Status).To(Equal("generating"))
+	})
+
+	It("SetStatus generating does NOT overwrite existing Generating timestamp", func() {
+		sf := newSpecFile()
+		sf.Frontmatter.Generating = "2025-01-01T00:00:00Z"
+		sf.SetStatus("generating")
+		Expect(sf.Frontmatter.Generating).To(Equal("2025-01-01T00:00:00Z"))
+	})
+
 	It("roundtrips all four timestamp fields through Save/Load", func() {
 		path := filepath.Join(dir, "002-spec.md")
 		writeSpec(path, "draft")
@@ -194,6 +208,7 @@ var _ = Describe("Timestamp fields", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		sf.Frontmatter.Approved = fixedStamp
+		sf.Frontmatter.Generating = fixedStamp
 		sf.Frontmatter.Prompted = fixedStamp
 		sf.Frontmatter.Verifying = fixedStamp
 		sf.Frontmatter.Completed = fixedStamp
@@ -203,9 +218,21 @@ var _ = Describe("Timestamp fields", func() {
 		sf2, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(sf2.Frontmatter.Approved).To(Equal(fixedStamp))
+		Expect(sf2.Frontmatter.Generating).To(Equal(fixedStamp))
 		Expect(sf2.Frontmatter.Prompted).To(Equal(fixedStamp))
 		Expect(sf2.Frontmatter.Verifying).To(Equal(fixedStamp))
 		Expect(sf2.Frontmatter.Completed).To(Equal(fixedStamp))
+	})
+
+	It("loads a spec YAML with generating field correctly", func() {
+		path := filepath.Join(dir, "003-spec.md")
+		content := "---\nstatus: generating\napproved: \"2026-04-03T09:00:00Z\"\ngenerating: \"2026-04-03T09:00:00Z\"\n---\n# Spec\n"
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+
+		sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sf.Frontmatter.Status).To(Equal("generating"))
+		Expect(sf.Frontmatter.Generating).To(Equal("2026-04-03T09:00:00Z"))
 	})
 })
 

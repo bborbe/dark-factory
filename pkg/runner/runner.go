@@ -144,6 +144,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
+	// Reset any specs left in generating state if their container is gone
+	if err := r.resumeOrResetGenerating(ctx); err != nil {
+		return errors.Wrap(ctx, err, "resume or reset generating specs")
+	}
+
 	// Resume any prompts still in executing state (container was still running on restart)
 	if err := r.processor.ResumeExecuting(ctx); err != nil {
 		return errors.Wrap(ctx, err, "resume executing prompts")
@@ -206,6 +211,16 @@ func (r *runner) normalizeFilenames(ctx context.Context) error {
 // exists and the new path does not. This is a one-time migration.
 func (r *runner) migrateQueueDir(ctx context.Context) error {
 	return migrateQueueDir(ctx, r.inProgressDir)
+}
+
+// resumeOrResetGenerating selectively resumes or resets generating specs based on container liveness.
+func (r *runner) resumeOrResetGenerating(ctx context.Context) error {
+	return resumeOrResetGenerating(
+		ctx,
+		r.specsInProgressDir,
+		r.containerChecker,
+		r.currentDateTimeGetter,
+	)
 }
 
 // resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.

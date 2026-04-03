@@ -103,24 +103,75 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		return g.reattachAndFinalize(ctx, specPath, specBasename, containerName, logFile)
 	}
 
-	// e. Snapshot .md files in inboxDir before execution
+	// Mark spec as generating before launching the container
+	if err := g.markSpecGenerating(ctx, specPath); err != nil {
+		return err
+	}
+
+	// Ensure spec is reset to approved on any non-success return (unless cancelled).
+	prompted, err := g.executeAndFinalize(
+		ctx,
+		specPath,
+		specBasename,
+		promptContent,
+		logFile,
+		containerName,
+	)
+	if err != nil {
+		if !prompted && ctx.Err() == nil {
+			if resetErr := resetSpecToApproved(context.WithoutCancel(ctx), specPath, g.currentDateTimeGetter); resetErr != nil {
+				slog.Warn("failed to reset spec to approved after generation failure",
+					"spec", specBasename, "error", resetErr)
+			}
+		}
+		return err
+	}
+	if !prompted && ctx.Err() == nil {
+		if resetErr := resetSpecToApproved(context.WithoutCancel(ctx), specPath, g.currentDateTimeGetter); resetErr != nil {
+			slog.Warn("failed to reset spec to approved after generation skip",
+				"spec", specBasename, "error", resetErr)
+		}
+	}
+	return nil
+}
+
+// markSpecGenerating loads the spec and sets its status to generating.
+func (g *dockerSpecGenerator) markSpecGenerating(ctx context.Context, specPath string) error {
+	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load spec file before generation")
+	}
+	sf.SetStatus(string(spec.StatusGenerating))
+	return errors.Wrap(ctx, sf.Save(ctx), "save spec file as generating")
+}
+
+// executeAndFinalize runs the executor, collects new prompt files, and marks the spec as prompted.
+// Returns (prompted, error): prompted=true means the spec was successfully set to prompted status.
+func (g *dockerSpecGenerator) executeAndFinalize(
+	ctx context.Context,
+	specPath string,
+	specBasename string,
+	promptContent string,
+	logFile string,
+	containerName string,
+) (bool, error) {
+	// Snapshot .md files in inboxDir before execution
 	beforeFiles, err := listMDFiles(g.inboxDir)
 	if err != nil {
-		return errors.Wrap(ctx, err, "count inbox files before")
+		return false, errors.Wrap(ctx, err, "count inbox files before")
 	}
 
-	// d. Execute via executor
+	// Execute via executor
 	if err := g.executor.Execute(ctx, promptContent, logFile, containerName); err != nil {
-		return errors.Wrap(ctx, err, "execute spec generator")
+		return false, errors.Wrap(ctx, err, "execute spec generator")
 	}
 
-	// f. Snapshot .md files in inboxDir after execution
+	// Snapshot .md files in inboxDir after execution
 	afterFiles, err := listMDFiles(g.inboxDir)
 	if err != nil {
-		return errors.Wrap(ctx, err, "count inbox files after")
+		return false, errors.Wrap(ctx, err, "count inbox files after")
 	}
 
-	// g. Determine new files
 	newFiles := diffFiles(beforeFiles, afterFiles)
 
 	// Resolve bare spec number refs to full slugs in newly generated prompts.
@@ -128,31 +179,38 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		slog.Warn("failed to migrate spec slugs in inbox", "error", err)
 	}
 
-	// g. Verify new files were created
 	if len(newFiles) == 0 {
-		count, err := countCompletedPromptsForSpec(
-			ctx,
-			g.completedDir,
-			specBasename,
-			g.currentDateTimeGetter,
-		)
-		if err != nil {
-			return errors.Wrap(ctx, err, "count completed prompts for spec")
-		}
-		if count > 0 {
-			slog.Info(
-				"spec already has completed prompts, skipping generation",
-				"spec",
-				specBasename,
-				"count",
-				count,
-			)
-			return nil
-		}
-		return errors.New(ctx, "generation produced no prompt files")
+		return false, g.handleNoNewFiles(ctx, specBasename)
 	}
 
-	// h. Load spec, inherit metadata to prompts, set status to prompted, save
+	return true, g.finalizePrompted(ctx, specPath, newFiles)
+}
+
+// handleNoNewFiles returns nil if completed prompts already exist for this spec, or an error otherwise.
+func (g *dockerSpecGenerator) handleNoNewFiles(ctx context.Context, specBasename string) error {
+	count, err := countCompletedPromptsForSpec(
+		ctx,
+		g.completedDir,
+		specBasename,
+		g.currentDateTimeGetter,
+	)
+	if err != nil {
+		return errors.Wrap(ctx, err, "count completed prompts for spec")
+	}
+	if count > 0 {
+		slog.Info("spec already has completed prompts, skipping generation",
+			"spec", specBasename, "count", count)
+		return nil
+	}
+	return errors.New(ctx, "generation produced no prompt files")
+}
+
+// finalizePrompted loads the spec, inherits metadata to new prompts, and sets status to prompted.
+func (g *dockerSpecGenerator) finalizePrompted(
+	ctx context.Context,
+	specPath string,
+	newFiles []string,
+) error {
 	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec file")
@@ -167,11 +225,7 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 	}
 
 	sf.SetStatus(string(spec.StatusPrompted))
-	if err := sf.Save(ctx); err != nil {
-		return errors.Wrap(ctx, err, "save spec file")
-	}
-
-	return nil
+	return errors.Wrap(ctx, sf.Save(ctx), "save spec file")
 }
 
 // inheritFromSpec copies branch and issue from the spec into each newly created prompt file,
@@ -332,6 +386,20 @@ func (g *dockerSpecGenerator) listPromptsForSpec(
 		}
 	}
 	return files, nil
+}
+
+// resetSpecToApproved reloads the spec file and resets its status to approved.
+func resetSpecToApproved(
+	ctx context.Context,
+	specPath string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	sf, err := spec.Load(ctx, specPath, currentDateTimeGetter)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load spec for reset")
+	}
+	sf.SetStatus(string(spec.StatusApproved))
+	return errors.Wrap(ctx, sf.Save(ctx), "save spec after reset")
 }
 
 // diffFiles returns full paths of files present in after but not in before.

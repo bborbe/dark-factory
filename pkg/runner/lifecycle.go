@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/reindex"
+	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
 // reindexAll runs the full reindex sequence:
@@ -128,6 +129,70 @@ func resumeOrResetExecuting(
 		}
 	}
 	return nil
+}
+
+// resumeOrResetGenerating scans specsInProgressDir for specs with "generating" status.
+// If the generation container is still running, the spec is left as-is (the specwatcher
+// will reattach on next scan). If the container is gone, the spec is reset to approved.
+func resumeOrResetGenerating(
+	ctx context.Context,
+	specsInProgressDir string,
+	checker executor.ContainerChecker,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	entries, err := os.ReadDir(specsInProgressDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrap(ctx, err, "read specs in-progress dir")
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if err := resumeOrResetGeneratingEntry(ctx, specsInProgressDir, entry.Name(), checker, currentDateTimeGetter); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resumeOrResetGeneratingEntry handles a single spec file: checks container liveness and resets if gone.
+func resumeOrResetGeneratingEntry(
+	ctx context.Context,
+	specsInProgressDir string,
+	name string,
+	checker executor.ContainerChecker,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	path := filepath.Join(specsInProgressDir, name)
+	sf, err := spec.Load(ctx, path, currentDateTimeGetter)
+	if err != nil || sf == nil {
+		return nil
+	}
+	if spec.Status(sf.Frontmatter.Status) != spec.StatusGenerating {
+		return nil
+	}
+	// Derive container name from spec filename (dark-factory-gen-<basename>)
+	specBasename := strings.TrimSuffix(name, ".md")
+	containerName := "dark-factory-gen-" + specBasename
+
+	running, err := checker.IsRunning(ctx, containerName)
+	if err != nil {
+		slog.Warn("failed to check spec generation container liveness, resetting spec",
+			"file", name, "container", containerName, "error", err)
+		running = false
+	}
+	if running {
+		slog.Info("spec generation container still running, leaving as generating",
+			"file", name, "container", containerName)
+		return nil
+	}
+	slog.Warn("spec generation container not found, resetting spec to approved",
+		"file", name, "container", containerName)
+	sf.SetStatus(string(spec.StatusApproved))
+	return errors.Wrap(ctx, sf.Save(ctx), "reset generating spec to approved")
 }
 
 // resumeOrResetExecutingEntry handles a single prompt file: checks liveness and resumes or resets.

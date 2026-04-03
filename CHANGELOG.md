@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.90.0
+
+- feat: Add `generating` lifecycle state to spec so the health-check loop can identify specs with an active generation container; generator sets spec to `generating` before launching Execute() and resets to `approved` on non-cancellation failure; daemon startup resets orphaned `generating` specs whose container is gone
+
 ## v0.89.2
 
 - Update docs and agents to reference coding plugin path instead of deprecated ~/.claude-yolo/docs/

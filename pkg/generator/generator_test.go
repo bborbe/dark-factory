@@ -181,6 +181,34 @@ var _ = Describe("SpecGenerator", func() {
 			})
 		})
 
+		Context("spec transitions to generating before Execute is called", func() {
+			BeforeEach(func() {
+				// Executor checks the spec status mid-execution and creates a file
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusGenerating)))
+					return os.WriteFile(
+						filepath.Join(inboxDir, "116-mid-execution.md"),
+						[]byte("# Mid"),
+						0600,
+					)
+				}
+			})
+
+			It("has generating status on disk when Execute runs", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+			})
+
+			It("ends with prompted status after successful Execute", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+			})
+		})
+
 		Context("executor error: executor returns an error", func() {
 			BeforeEach(func() {
 				executor.ExecuteReturns(errors.New("docker run failed"))
@@ -192,12 +220,32 @@ var _ = Describe("SpecGenerator", func() {
 				Expect(err.Error()).To(ContainSubstring("execute spec generator"))
 			})
 
-			It("does not change the spec status", func() {
+			It("resets spec to approved on non-cancellation error", func() {
 				_ = sg.Generate(ctx, specPath)
 
 				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sf.Frontmatter.Status).To(Equal("approved"))
+			})
+		})
+
+		Context("executor error: context is cancelled", func() {
+			BeforeEach(func() {
+				executor.ExecuteStub = func(execCtx context.Context, promptContent, logFile, containerName string) error {
+					return execCtx.Err()
+				}
+			})
+
+			It("does NOT reset spec to approved when context is cancelled", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel() // cancel immediately
+
+				_ = sg.Generate(cancelCtx, specPath)
+
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				// Spec should remain generating (not reset to approved)
+				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusGenerating)))
 			})
 		})
 

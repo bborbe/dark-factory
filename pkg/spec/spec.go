@@ -35,6 +35,8 @@ const (
 	StatusDraft Status = "draft"
 	// StatusApproved indicates the spec has been reviewed and approved for prompt generation.
 	StatusApproved Status = "approved"
+	// StatusGenerating indicates the spec is currently being processed to generate prompts.
+	StatusGenerating Status = "generating"
 	// StatusPrompted indicates prompts have been generated from the spec.
 	StatusPrompted Status = "prompted"
 	// StatusVerifying indicates all linked prompts completed, awaiting human verification of acceptance criteria.
@@ -45,14 +47,15 @@ const (
 
 // Frontmatter represents the YAML frontmatter in a spec file.
 type Frontmatter struct {
-	Status    string   `yaml:"status"`
-	Tags      []string `yaml:"tags,omitempty"`
-	Approved  string   `yaml:"approved,omitempty"`
-	Prompted  string   `yaml:"prompted,omitempty"`
-	Verifying string   `yaml:"verifying,omitempty"`
-	Completed string   `yaml:"completed,omitempty"`
-	Branch    string   `yaml:"branch,omitempty"`
-	Issue     string   `yaml:"issue,omitempty"`
+	Status     string   `yaml:"status"`
+	Tags       []string `yaml:"tags,omitempty"`
+	Approved   string   `yaml:"approved,omitempty"`
+	Generating string   `yaml:"generating,omitempty"`
+	Prompted   string   `yaml:"prompted,omitempty"`
+	Verifying  string   `yaml:"verifying,omitempty"`
+	Completed  string   `yaml:"completed,omitempty"`
+	Branch     string   `yaml:"branch,omitempty"`
+	Issue      string   `yaml:"issue,omitempty"`
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.
@@ -124,6 +127,8 @@ func (s *SpecFile) SetStatus(status string) {
 	switch Status(status) {
 	case StatusApproved:
 		s.stampOnce(&s.Frontmatter.Approved)
+	case StatusGenerating:
+		s.stampOnce(&s.Frontmatter.Generating)
 	case StatusPrompted:
 		s.stampOnce(&s.Frontmatter.Prompted)
 	case StatusVerifying:

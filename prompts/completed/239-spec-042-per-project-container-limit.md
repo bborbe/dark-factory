@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["042"]
+spec: [042-per-project-container-limit]
 summary: Added per-project maxContainers field to .dark-factory.yaml config with validation, effectiveMaxContainers helper, updated all factory call sites, and documented in configuration.md
 container: dark-factory-239-spec-042-per-project-container-limit
 dark-factory-version: v0.85.0

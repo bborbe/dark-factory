@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -113,10 +114,7 @@ func runCommand(
 	case "spec":
 		return runSpecCommand(ctx, cfg, subcommand, args)
 	case "status":
-		if err := validateNoArgs(ctx, args, printStatusHelp); err != nil {
-			return err
-		}
-		return factory.CreateCombinedStatusCommand(cfg).Run(ctx, args)
+		return runStatusCommand(ctx, cfg, args)
 	case "list":
 		if err := validateNoArgs(ctx, args, printListHelp); err != nil {
 			return err
@@ -133,18 +131,54 @@ func runCommand(
 		}
 		return factory.CreateKillCommand(cfg).Run(ctx, args)
 	case "run":
-		if err := validateNoArgs(ctx, args, printRunHelp); err != nil {
-			return err
-		}
-		return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
+		return runRunCommand(ctx, cfg, args, autoApprove)
 	case "daemon":
-		if err := validateNoArgs(ctx, args, printDaemonHelp); err != nil {
-			return err
-		}
-		return factory.CreateRunner(cfg, version.Version).Run(ctx)
+		return runDaemonCommand(ctx, cfg, args)
 	default:
 		return errors.Errorf(ctx, "unknown command: %s", command)
 	}
+}
+
+func runStatusCommand(ctx context.Context, cfg config.Config, args []string) error {
+	n, remaining, err := extractMaxContainers(ctx, args)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		cfg.MaxContainers = n
+	}
+	if err := validateNoArgs(ctx, remaining, printStatusHelp); err != nil {
+		return err
+	}
+	return factory.CreateCombinedStatusCommand(cfg).Run(ctx, remaining)
+}
+
+func runRunCommand(ctx context.Context, cfg config.Config, args []string, autoApprove bool) error {
+	n, remaining, err := extractMaxContainers(ctx, args)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		cfg.MaxContainers = n
+	}
+	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
+		return err
+	}
+	return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
+}
+
+func runDaemonCommand(ctx context.Context, cfg config.Config, args []string) error {
+	n, remaining, err := extractMaxContainers(ctx, args)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		cfg.MaxContainers = n
+	}
+	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
+		return err
+	}
+	return factory.CreateRunner(cfg, version.Version).Run(ctx)
 }
 
 func runPromptCommand(
@@ -330,6 +364,35 @@ func validateRequeueArgs(ctx context.Context, args []string, helpFn func()) erro
 	return nil
 }
 
+// extractMaxContainers removes --max-containers N from args and returns the value (0 = not set).
+// Returns an error if the value is missing, not an integer, or < 1.
+func extractMaxContainers(ctx context.Context, args []string) (int, []string, error) {
+	for i, arg := range args {
+		if arg != "--max-containers" {
+			continue
+		}
+		if i+1 >= len(args) {
+			return 0, nil, errors.Errorf(ctx, "--max-containers requires a value")
+		}
+		n, err := strconv.Atoi(args[i+1])
+		if err != nil {
+			return 0, nil, errors.Errorf(
+				ctx,
+				"--max-containers value must be an integer, got %q",
+				args[i+1],
+			)
+		}
+		if n < 1 {
+			return 0, nil, errors.Errorf(ctx, "--max-containers value must be >= 1, got %d", n)
+		}
+		remaining := make([]string, 0, len(args)-2)
+		remaining = append(remaining, args[:i]...)
+		remaining = append(remaining, args[i+2:]...)
+		return n, remaining, nil
+	}
+	return 0, args, nil
+}
+
 func printConfig(cfg config.Config) error {
 	ctx := context.Background()
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -356,8 +419,8 @@ func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
-			"  run                    Process all queued prompts and exit\n"+
-			"  daemon                 Watch for queued prompts and execute them (long-running)\n"+
+			"  run [--max-containers N]    Process all queued prompts and exit\n"+
+			"  daemon [--max-containers N] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
@@ -385,21 +448,23 @@ func printHelp() {
 func printRunHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory run [--auto-approve]\n\n"+
+		"Usage: dark-factory run [--max-containers N] [--auto-approve]\n\n"+
 			"Process all queued prompts and exit.\n\n"+
 			"Flags:\n"+
-			"  --auto-approve  Automatically approve new prompts found during run\n"+
-			"  --help, -h      Show this help\n",
+			"  --max-containers N  Override the container limit for this run\n"+
+			"  --auto-approve      Automatically approve new prompts found during run\n"+
+			"  --help, -h          Show this help\n",
 	)
 }
 
 func printDaemonHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory daemon\n\n"+
+		"Usage: dark-factory daemon [--max-containers N]\n\n"+
 			"Watch for queued prompts and execute them (long-running).\n\n"+
 			"Flags:\n"+
-			"  --help, -h  Show this help\n",
+			"  --max-containers N  Override the container limit for this run\n"+
+			"  --help, -h          Show this help\n",
 	)
 }
 

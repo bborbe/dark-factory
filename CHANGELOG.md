@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.93.0
+
+- feat: Add `--max-containers N` flag to `run` and `daemon` commands to override the container limit for a single invocation without editing config files; priority chain is CLI arg > project config > global config > default (3)
+
 ## v0.92.0
 
 - feat: Strict CLI arg validation — every command rejects unknown args and flags with an error and relevant help text; `--help`/`-h` intercepted before config load or lock acquisition on all commands and subcommands

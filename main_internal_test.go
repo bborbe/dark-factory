@@ -11,6 +11,58 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("extractMaxContainers", func() {
+	ctx := context.Background()
+
+	It("returns value and empty remaining args when only flag present", func() {
+		n, remaining, err := extractMaxContainers(ctx, []string{"--max-containers", "5"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(5))
+		Expect(remaining).To(BeEmpty())
+	})
+
+	It("returns value and trailing args", func() {
+		n, remaining, err := extractMaxContainers(ctx, []string{"--max-containers", "5", "other"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(5))
+		Expect(remaining).To(Equal([]string{"other"}))
+	})
+
+	It("returns value with leading args", func() {
+		n, remaining, err := extractMaxContainers(ctx, []string{"other", "--max-containers", "5"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(5))
+		Expect(remaining).To(Equal([]string{"other"}))
+	})
+
+	It("returns 0 and original args when flag not present", func() {
+		n, remaining, err := extractMaxContainers(ctx, []string{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(0))
+		Expect(remaining).To(BeEmpty())
+	})
+
+	It("returns error when value is missing", func() {
+		_, _, err := extractMaxContainers(ctx, []string{"--max-containers"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns error when value is not an integer", func() {
+		_, _, err := extractMaxContainers(ctx, []string{"--max-containers", "abc"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns error when value is 0", func() {
+		_, _, err := extractMaxContainers(ctx, []string{"--max-containers", "0"})
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns error when value is negative", func() {
+		_, _, err := extractMaxContainers(ctx, []string{"--max-containers", "-1"})
+		Expect(err).To(HaveOccurred())
+	})
+})
+
 var _ = Describe("ParseArgs", func() {
 	type result struct {
 		debug       bool

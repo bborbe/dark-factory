@@ -198,6 +198,17 @@ maxContainers: 1
 
 Counting remains system-wide (all running dark-factory containers across all projects). Only the threshold is per-project. Two projects both set to 5 can together exceed any single limit — this is intentional.
 
+### CLI Override
+
+Override the limit for a single run without editing config:
+
+```bash
+dark-factory run --max-containers 5
+dark-factory daemon --max-containers 1
+```
+
+Priority: CLI arg > project config > global config > default (3).
+
 ## Private Go Modules
 
 For projects with private dependencies:

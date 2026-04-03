@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.92.0
+
+- feat: Strict CLI arg validation — every command rejects unknown args and flags with an error and relevant help text; `--help`/`-h` intercepted before config load or lock acquisition on all commands and subcommands
+
 ## v0.91.0
 
 - feat: Periodic container health check loop detects disappeared executing prompt containers and generating spec containers at runtime, resetting them to approved within 30-60 seconds without requiring a daemon restart

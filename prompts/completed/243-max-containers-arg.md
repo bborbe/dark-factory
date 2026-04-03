@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added --max-containers N flag to run, daemon, and status commands with extractMaxContainers helper, tests, updated help text, docs, and CHANGELOG
+container: dark-factory-243-max-containers-arg
+dark-factory-version: v0.89.1-dirty
 created: "2026-04-03T00:00:00Z"
 queued: "2026-04-03T10:46:35Z"
+started: "2026-04-03T11:08:35Z"
+completed: "2026-04-03T11:19:13Z"
 ---
 
 <summary>

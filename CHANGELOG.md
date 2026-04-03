@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.94.0
+
+- feat: Expand environment variables (`$VAR`, `${VAR}`) in `extraMounts` `src` paths before tilde and relative path resolution
+
 ## v0.93.0
 
 - feat: Add `--max-containers N` flag to `run` and `daemon` commands to override the container limit for a single invocation without editing config files; priority chain is CLI arg > project config > global config > default (3)

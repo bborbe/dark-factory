@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["043"]
+spec: [043-container-health-check]
 summary: 'Added generating lifecycle state to spec: StatusGenerating constant, Generating timestamp field, generator sets spec to generating before Execute() and resets to approved on non-cancellation failure, and daemon startup resets orphaned generating specs via resumeOrResetGenerating.'
 container: dark-factory-240-spec-043-generating-state
 dark-factory-version: v0.89.1-dirty

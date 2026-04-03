@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["043"]
+spec: [043-container-health-check]
 summary: Added periodic health check loop that detects disappeared executing prompt and generating spec containers at runtime, resetting them to approved within 30-60 seconds
 container: dark-factory-241-spec-043-health-check-loop
 dark-factory-version: v0.89.1-dirty

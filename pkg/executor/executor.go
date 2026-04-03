@@ -364,6 +364,7 @@ func (e *dockerExecutor) buildDockerCommand(
 	}
 	for _, m := range e.extraMounts {
 		src := m.Src
+		src = os.ExpandEnv(src)
 		if strings.HasPrefix(src, "~/") {
 			src = home + src[1:]
 		} else if !filepath.IsAbs(src) {

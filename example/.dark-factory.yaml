@@ -33,4 +33,6 @@ serverPort: 0
 generateCommand: /dark-factory:generate-prompts-for-spec
 claudeDir: ~/.claude-yolo
 additionalInstructions: ""
-extraMounts: []
+extraMounts:
+  - src: ${GOPATH}/pkg
+    dst: /home/node/go/pkg

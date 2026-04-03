@@ -638,6 +638,105 @@ var _ = Describe("Internal helper functions", func() {
 
 			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
 		})
+
+		It("expands $VAR env var in extra mount src", func() {
+			homeDir, err := os.MkdirTemp("", "extramount-envvar-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(homeDir) }()
+
+			docsDir := filepath.Join(homeDir, "docs")
+			Expect(os.MkdirAll(docsDir, 0755)).To(Succeed())
+
+			Expect(os.Setenv("TEST_HOME_VAR", homeDir)).To(Succeed())
+			DeferCleanup(func() { _ = os.Unsetenv("TEST_HOME_VAR") })
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "$TEST_HOME_VAR/docs", Dst: "/container/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+		})
+
+		It("expands ${VAR} env var in extra mount src", func() {
+			gopathDir, err := os.MkdirTemp("", "extramount-gopath-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(gopathDir) }()
+
+			pkgDir := filepath.Join(gopathDir, "pkg")
+			Expect(os.MkdirAll(pkgDir, 0755)).To(Succeed())
+
+			Expect(os.Setenv("TEST_GOPATH_VAR", gopathDir)).To(Succeed())
+			DeferCleanup(func() { _ = os.Unsetenv("TEST_GOPATH_VAR") })
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "${TEST_GOPATH_VAR}/pkg", Dst: "/home/node/go/pkg"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			Expect(cmd.Args).To(ContainElement(pkgDir + ":/home/node/go/pkg:ro"))
+		})
+
+		It("skips extra mount when env var is undefined (expands to empty string)", func() {
+			Expect(os.Unsetenv("TEST_UNDEFINED_VAR_XYZ")).To(Succeed())
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "$TEST_UNDEFINED_VAR_XYZ/docs", Dst: "/container/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				"/home/user",
+			)
+
+			for _, arg := range cmd.Args {
+				Expect(arg).NotTo(ContainSubstring("/container/docs"))
+			}
+		})
+
+		It("expands tilde after env var expansion in extra mount src", func() {
+			homeDir, err := os.MkdirTemp("", "extramount-tilde-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(homeDir) }()
+
+			docsDir := filepath.Join(homeDir, "docs")
+			Expect(os.MkdirAll(docsDir, 0755)).To(Succeed())
+
+			exec.extraMounts = []config.ExtraMount{
+				{Src: "~/docs", Dst: "/container/docs"},
+			}
+			cmd := exec.buildDockerCommand(
+				ctx,
+				"test",
+				"/tmp/test.md",
+				"/workspace",
+				"/home/user/.claude",
+				"test",
+				homeDir,
+			)
+
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+		})
 	})
 
 	Describe("watchForCompletionReport", func() {

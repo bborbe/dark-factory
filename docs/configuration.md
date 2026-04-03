@@ -244,11 +244,25 @@ extraMounts:
 
 | Field | Required | Default | Purpose |
 |-------|----------|---------|---------|
-| `src` | yes | — | Host path. Relative paths resolved from project root. `~/` expanded to home. |
+| `src` | yes | — | Host path. Environment variables (`$VAR`, `${VAR}`) are expanded. `~/` expanded to home. Relative paths resolved from project root. |
 | `dst` | yes | — | Container path where `src` is mounted. |
 | `readonly` | no | `true` | Mount read-only (`:ro`). Set `false` for writable access. |
 
 Missing `src` paths at execution time are logged as a warning and skipped — they do not abort the run.
+
+Examples using environment variables:
+
+```yaml
+# Go module cache (uses GOPATH env var)
+extraMounts:
+  - src: ${GOPATH}/pkg
+    dst: /home/node/go/pkg
+
+# Python uv cache
+extraMounts:
+  - src: ~/.cache/uv
+    dst: /home/node/.cache/uv
+```
 
 ## Additional Instructions
 

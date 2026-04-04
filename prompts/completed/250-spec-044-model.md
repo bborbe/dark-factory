@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["044"]
+summary: Added maxPromptDuration and autoRetryLimit config fields with validation, permanently_failed prompt status, lastFailReason frontmatter field, and MarkPermanentlyFailed/SetLastFailReason methods with full test coverage.
+container: dark-factory-250-spec-044-model
+dark-factory-version: v0.95.0
 created: "2026-04-04T20:50:00Z"
 queued: "2026-04-04T21:49:26Z"
+started: "2026-04-04T22:00:32Z"
+completed: "2026-04-04T22:11:18Z"
 ---
 
 <summary>

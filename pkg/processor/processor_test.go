@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	stderrors "errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -131,6 +132,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -206,6 +208,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -285,6 +288,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -362,6 +366,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -429,6 +434,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -494,6 +500,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -563,6 +570,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -634,6 +642,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -737,6 +746,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -814,6 +824,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -881,6 +892,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -952,6 +964,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -1012,6 +1025,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1070,6 +1084,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1138,6 +1153,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1219,6 +1235,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		// Run processor in goroutine
@@ -1297,6 +1314,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -1369,6 +1387,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -1443,6 +1462,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -1530,6 +1550,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -1652,6 +1673,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -1752,6 +1774,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -1848,6 +1871,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor
@@ -1937,6 +1961,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor
@@ -2033,6 +2058,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -2104,6 +2130,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor
@@ -2210,6 +2237,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2294,6 +2322,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2375,6 +2404,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2457,6 +2487,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2539,6 +2570,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -2619,6 +2651,7 @@ more output
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2700,6 +2733,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2785,6 +2819,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			// Run processor in goroutine
@@ -2854,6 +2889,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -2915,6 +2951,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -2983,6 +3020,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -3076,6 +3114,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -3162,6 +3201,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -3231,6 +3271,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -3314,6 +3355,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -3377,6 +3419,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3449,6 +3492,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3508,6 +3552,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		errCh := make(chan error, 1)
@@ -3575,6 +3620,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3665,6 +3711,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3758,6 +3805,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3824,6 +3872,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -3915,6 +3964,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			nil,
+			0,
 		)
 
 		go func() {
@@ -4012,6 +4062,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -4115,6 +4166,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				go func() {
@@ -4224,6 +4276,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -4317,6 +4370,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				go func() {
@@ -4414,6 +4468,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -4507,6 +4562,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				go func() {
@@ -4614,6 +4670,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -4705,6 +4762,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4782,6 +4840,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4848,6 +4907,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						nil,
 						0,
 						nil,
+						0,
 					)
 
 					errCh := make(chan error, 1)
@@ -4905,6 +4965,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 
 				errCh := make(chan error, 1)
@@ -4971,6 +5032,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			errCh := make(chan error, 1)
@@ -5043,6 +5105,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 		}
 
@@ -5164,6 +5227,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 		}
 
@@ -5491,6 +5555,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					0,
 				)
 			}
 		})
@@ -5625,6 +5690,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 			go func() { _ = p.Process(ctx) }()
 
@@ -5702,6 +5768,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 		}
 
@@ -5942,22 +6009,24 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 		}
 
-		It("ProcessQueue returns non-nil error when a prompt fails", func() {
+		It("ProcessQueue continues after a prompt fails and returns nil", func() {
 			promptPath := filepath.Join(promptsDir, "001-fail.md")
 			queued := []prompt.Prompt{
 				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
 			}
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProc()
 			err := p.ProcessQueue(ctx)
-			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("ProcessQueue does not call ResetFailed on startup", func() {
@@ -6088,6 +6157,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -6165,6 +6235,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				0,
 			)
 
 			go func() {
@@ -6180,5 +6251,191 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 			cancel()
 		})
+	})
+
+	Describe("auto-retry behavior", func() {
+		newProcWithNotifierAndRetryLimit := func(n notifier.Notifier, autoRetryLimit int) processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				n,
+				nil,
+				0,
+				"",
+				nil,
+				nil,
+				0,
+				nil,
+				autoRetryLimit,
+			)
+		}
+
+		writePromptFile := func(path string, status string, retryCount int) {
+			content := fmt.Sprintf(
+				"---\nstatus: %s\nretryCount: %d\n---\n# Test\n\nContent",
+				status,
+				retryCount,
+			)
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+		}
+
+		It(
+			"re-queues with incremented retryCount on first failure when autoRetryLimit > 0",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-retry.md")
+				writePromptFile(promptPath, "approved", 0)
+
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				// Use the real Load (not the stub) since Save writes to disk
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				}
+
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				executor.ExecuteReturns(stderrors.New("execution failed"))
+
+				p := newProcWithNotifierAndRetryLimit(notifier.NewMultiNotifier(), 3)
+				err := p.ProcessQueue(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Read the file back and verify it was re-queued with incremented retryCount
+				content, readErr := os.ReadFile(promptPath)
+				Expect(readErr).NotTo(HaveOccurred())
+				Expect(string(content)).To(ContainSubstring("status: approved"))
+				Expect(string(content)).To(ContainSubstring("retryCount: 1"))
+			},
+		)
+
+		It("marks permanently_failed when retries exhausted", func() {
+			promptPath := filepath.Join(promptsDir, "001-exhausted.md")
+			writePromptFile(promptPath, "approved", 2) // retryCount already at limit
+
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			n := &mocks.Notifier{}
+			n.NotifyReturns(nil)
+
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(stderrors.New("execution failed"))
+
+			p := newProcWithNotifierAndRetryLimit(
+				n,
+				2,
+			) // autoRetryLimit=2, retryCount=2 → exhausted
+			err := p.ProcessQueue(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify permanently_failed notification was fired
+			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
+			found := false
+			for i := 0; i < n.NotifyCallCount(); i++ {
+				_, evt := n.NotifyArgsForCall(i)
+				if evt.EventType == "prompt_permanently_failed" {
+					found = true
+				}
+			}
+			Expect(found).To(BeTrue(), "expected prompt_permanently_failed notification")
+
+			// Verify file is marked permanently_failed
+			content, readErr := os.ReadFile(promptPath)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("status: permanently_failed"))
+		})
+
+		It("marks failed (standard) when autoRetryLimit is 0", func() {
+			promptPath := filepath.Join(promptsDir, "001-std-fail.md")
+			writePromptFile(promptPath, "approved", 0)
+
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			n := &mocks.Notifier{}
+			n.NotifyReturns(nil)
+
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			executor.ExecuteReturns(stderrors.New("execution failed"))
+
+			p := newProcWithNotifierAndRetryLimit(n, 0) // autoRetryLimit=0 → standard failure
+			err := p.ProcessQueue(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify prompt_failed (not prompt_permanently_failed) was notified
+			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
+			found := false
+			for i := 0; i < n.NotifyCallCount(); i++ {
+				_, evt := n.NotifyArgsForCall(i)
+				if evt.EventType == "prompt_failed" {
+					found = true
+				}
+			}
+			Expect(found).To(BeTrue(), "expected prompt_failed notification")
+
+			// Verify file is marked failed
+			content, readErr := os.ReadFile(promptPath)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("status: failed"))
+		})
+
+		It(
+			"skips permanently_failed prompts (ValidateForExecution rejects non-approved status)",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-perm-failed.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.PermanentlyFailedPromptStatus},
+				}
+
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+
+				p := newProcWithNotifierAndRetryLimit(notifier.NewMultiNotifier(), 0)
+				err := p.ProcessQueue(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Execute must NOT be called for permanently_failed prompts
+				Expect(executor.ExecuteCallCount()).To(Equal(0))
+			},
+		)
 	})
 })

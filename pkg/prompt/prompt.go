@@ -694,6 +694,7 @@ func ListQueued(
 		if fm.Status == string(ExecutingPromptStatus) ||
 			fm.Status == string(CompletedPromptStatus) ||
 			fm.Status == string(FailedPromptStatus) ||
+			fm.Status == string(PermanentlyFailedPromptStatus) ||
 			fm.Status == string(InReviewPromptStatus) ||
 			fm.Status == string(PendingVerificationPromptStatus) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)

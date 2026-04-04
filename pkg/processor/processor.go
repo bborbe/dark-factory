@@ -77,6 +77,7 @@ func NewProcessor(
 	containerChecker executor.ContainerChecker,
 	dirtyFileThreshold int,
 	dirtyFileChecker DirtyFileChecker,
+	autoRetryLimit int,
 ) Processor {
 	return &processor{
 		queueDir:               queueDir,
@@ -112,6 +113,7 @@ func NewProcessor(
 		containerChecker:       containerChecker,
 		dirtyFileThreshold:     dirtyFileThreshold,
 		dirtyFileChecker:       dirtyFileChecker,
+		autoRetryLimit:         autoRetryLimit,
 	}
 }
 
@@ -151,6 +153,7 @@ type processor struct {
 	dirtyFileThreshold     int
 	dirtyFileChecker       DirtyFileChecker
 	lastBlockedMsg         string
+	autoRetryLimit         int
 }
 
 // Process starts processing queued prompts.
@@ -417,7 +420,7 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 				return errors.Wrap(ctx, err, "prompt failed")
 			}
 			p.handlePromptFailure(ctx, pr.Path, err)
-			return errors.Wrap(ctx, err, "prompt failed")
+			continue // re-queued or permanently failed — process next prompt
 		}
 
 		slog.Info("watching for queued prompts", "dir", p.queueDir)
@@ -495,6 +498,7 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 		prompt.ExecutingPromptStatus,
 		prompt.CompletedPromptStatus,
 		prompt.FailedPromptStatus,
+		prompt.PermanentlyFailedPromptStatus,
 		prompt.PendingVerificationPromptStatus,
 		prompt.CancelledPromptStatus:
 		// Already in a valid processing state — don't override
@@ -518,19 +522,68 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 	return nil
 }
 
-// handlePromptFailure marks a prompt as failed after execution error.
+// handlePromptFailure decides whether to retry, permanently fail, or fail the prompt.
+// Re-queuing increments retryCount and calls MarkApproved; exhausted retries call MarkPermanentlyFailed.
 func (p *processor) handlePromptFailure(ctx context.Context, path string, err error) {
 	slog.Error("prompt failed", "file", filepath.Base(path), "error", err)
-	// Mark as failed — file may have been moved to completed/ before the error.
-	if pf, loadErr := p.promptManager.Load(ctx, path); loadErr == nil {
-		pf.MarkFailed()
+
+	pf, loadErr := p.promptManager.Load(ctx, path)
+	if loadErr != nil {
+		slog.Error("failed to load prompt for failure handling", "error", loadErr)
+		return
+	}
+
+	reason := err.Error()
+	pf.SetLastFailReason(reason)
+
+	if p.autoRetryLimit > 0 && pf.RetryCount() < p.autoRetryLimit {
+		// Re-queue with incremented retry count
+		pf.Frontmatter.RetryCount++
+		pf.MarkApproved()
 		if saveErr := pf.Save(ctx); saveErr != nil {
-			slog.Error("failed to set failed status", "error", saveErr)
+			slog.Error("failed to save prompt for retry", "error", saveErr)
+			// Treat as permanent failure — fall through to MarkPermanentlyFailed
+			pf.MarkPermanentlyFailed(reason)
+			if saveErr2 := pf.Save(ctx); saveErr2 != nil {
+				slog.Error("failed to save permanently failed prompt", "error", saveErr2)
+			}
+			p.notifyPermanentFailure(ctx, path)
+			return
 		}
+		slog.Info("prompt re-queued for retry",
+			"file", filepath.Base(path),
+			"retryCount", pf.RetryCount(),
+			"autoRetryLimit", p.autoRetryLimit)
+		return
+	}
+
+	if p.autoRetryLimit > 0 {
+		// Retries exhausted — permanently fail
+		pf.MarkPermanentlyFailed(reason)
+		if saveErr := pf.Save(ctx); saveErr != nil {
+			slog.Error("failed to save permanently failed prompt", "error", saveErr)
+		}
+		p.notifyPermanentFailure(ctx, path)
+		return
+	}
+
+	// autoRetryLimit == 0 — standard failure (no retry configured)
+	pf.MarkFailed()
+	if saveErr := pf.Save(ctx); saveErr != nil {
+		slog.Error("failed to set failed status", "error", saveErr)
 	}
 	_ = p.notifier.Notify(ctx, notifier.Event{
 		ProjectName: p.projectName,
 		EventType:   "prompt_failed",
+		PromptName:  filepath.Base(path),
+	})
+}
+
+// notifyPermanentFailure fires a notification for a permanently failed prompt.
+func (p *processor) notifyPermanentFailure(ctx context.Context, path string) {
+	_ = p.notifier.Notify(ctx, notifier.Event{
+		ProjectName: p.projectName,
+		EventType:   "prompt_permanently_failed",
 		PromptName:  filepath.Base(path),
 	})
 }

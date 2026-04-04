@@ -279,9 +279,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.AdditionalInstructions,
 		cl,
 		containerChecker,
-		cfg.DirtyFileThreshold,
-		dirtyFileChecker,
-		cfg.ParsedMaxPromptDuration(),
+		cfg.DirtyFileThreshold, dirtyFileChecker,
+		cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -370,7 +369,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cl,
 			containerChecker,
 			cfg.DirtyFileThreshold, processor.NewDirtyFileChecker("."),
-			cfg.ParsedMaxPromptDuration(),
+			cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -525,9 +524,8 @@ func CreateProcessor(
 	additionalInstructions string,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
-	dirtyFileThreshold int,
-	dirtyFileChecker processor.DirtyFileChecker,
-	maxPromptDuration time.Duration,
+	dirtyFileThreshold int, dirtyFileChecker processor.DirtyFileChecker,
+	maxPromptDuration time.Duration, autoRetryLimit int,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -568,6 +566,7 @@ func CreateProcessor(
 		containerChecker,
 		dirtyFileThreshold,
 		dirtyFileChecker,
+		autoRetryLimit,
 	)
 }
 

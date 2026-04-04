@@ -89,6 +89,7 @@ var _ = Describe("Factory", func() {
 				0,
 				processor.NewDirtyFileChecker("."),
 				0,
+				0,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

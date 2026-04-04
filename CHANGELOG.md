@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.100.0
+
+- feat: Wire auto-retry into processor — failed prompts are re-queued up to `autoRetryLimit` times, exhausted prompts are marked `permanently_failed` with a notification, and the daemon continues processing; `requeue --failed` also handles `permanently_failed` prompts and resets the retry counter
+
 ## v0.99.0
 
 - feat: Wire `maxPromptDuration` into executor — containers exceeding their wall-clock budget are stopped cleanly via `docker stop` (with `docker kill` fallback) and return a descriptive timeout error; zero duration disables the timeout

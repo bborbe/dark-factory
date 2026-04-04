@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["044"]
+summary: Wired maxPromptDuration into dockerExecutor — containers exceeding their wall-clock budget are killed via docker stop (with docker kill fallback) and return a descriptive timeout error; zero duration disables the timeout; factory.go threads cfg.ParsedMaxPromptDuration() through CreateProcessor and CreateSpecGenerator
+container: dark-factory-251-spec-044-executor-timeout
+dark-factory-version: v0.95.0
 created: "2026-04-04T20:50:00Z"
 queued: "2026-04-04T21:49:26Z"
+started: "2026-04-04T22:33:50Z"
+completed: "2026-04-04T22:48:21Z"
 ---
 
 <summary>

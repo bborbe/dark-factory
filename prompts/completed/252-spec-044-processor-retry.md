@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["044"]
+summary: 'Wired auto-retry and permanent failure into the processor: failed prompts are re-queued up to autoRetryLimit times, exhausted retries mark permanently_failed with notification, daemon continues via continue instead of return, requeue commands reset retryCount, and permanently_failed status is excluded from ListQueued'
+container: dark-factory-252-spec-044-processor-retry
+dark-factory-version: v0.95.0
 created: "2026-04-04T20:50:00Z"
 queued: "2026-04-04T21:52:40Z"
+started: "2026-04-04T22:48:25Z"
+completed: "2026-04-04T23:42:07Z"
 ---
 
 <summary>

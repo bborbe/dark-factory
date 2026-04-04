@@ -335,6 +335,10 @@ func (s *stubManager) NormalizeFilenames(_ context.Context, _ string) ([]prompt.
 
 func (s *stubManager) AllPreviousCompleted(_ context.Context, _ int) bool { return false }
 
+func (s *stubManager) FindMissingCompleted(_ context.Context, _ int) []int { return nil }
+
+func (s *stubManager) FindPromptStatusInProgress(_ context.Context, _ int) string { return "" }
+
 func (s *stubManager) HasQueuedPromptsOnBranch(
 	_ context.Context,
 	_ string,

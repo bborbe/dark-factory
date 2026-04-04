@@ -35,6 +35,30 @@ type Manager struct {
 		result1 string
 		result2 error
 	}
+	FindMissingCompletedStub        func(context.Context, int) []int
+	findMissingCompletedMutex       sync.RWMutex
+	findMissingCompletedArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+	}
+	findMissingCompletedReturns struct {
+		result1 []int
+	}
+	findMissingCompletedReturnsOnCall map[int]struct {
+		result1 []int
+	}
+	FindPromptStatusInProgressStub        func(context.Context, int) string
+	findPromptStatusInProgressMutex       sync.RWMutex
+	findPromptStatusInProgressArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+	}
+	findPromptStatusInProgressReturns struct {
+		result1 string
+	}
+	findPromptStatusInProgressReturnsOnCall map[int]struct {
+		result1 string
+	}
 	HasExecutingStub        func(context.Context) bool
 	hasExecutingMutex       sync.RWMutex
 	hasExecutingArgsForCall []struct {
@@ -370,6 +394,130 @@ func (fake *Manager) ContentReturnsOnCall(i int, result1 string, result2 error) 
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Manager) FindMissingCompleted(arg1 context.Context, arg2 int) []int {
+	fake.findMissingCompletedMutex.Lock()
+	ret, specificReturn := fake.findMissingCompletedReturnsOnCall[len(fake.findMissingCompletedArgsForCall)]
+	fake.findMissingCompletedArgsForCall = append(fake.findMissingCompletedArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+	}{arg1, arg2})
+	stub := fake.FindMissingCompletedStub
+	fakeReturns := fake.findMissingCompletedReturns
+	fake.recordInvocation("FindMissingCompleted", []interface{}{arg1, arg2})
+	fake.findMissingCompletedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) FindMissingCompletedCallCount() int {
+	fake.findMissingCompletedMutex.RLock()
+	defer fake.findMissingCompletedMutex.RUnlock()
+	return len(fake.findMissingCompletedArgsForCall)
+}
+
+func (fake *Manager) FindMissingCompletedCalls(stub func(context.Context, int) []int) {
+	fake.findMissingCompletedMutex.Lock()
+	defer fake.findMissingCompletedMutex.Unlock()
+	fake.FindMissingCompletedStub = stub
+}
+
+func (fake *Manager) FindMissingCompletedArgsForCall(i int) (context.Context, int) {
+	fake.findMissingCompletedMutex.RLock()
+	defer fake.findMissingCompletedMutex.RUnlock()
+	argsForCall := fake.findMissingCompletedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Manager) FindMissingCompletedReturns(result1 []int) {
+	fake.findMissingCompletedMutex.Lock()
+	defer fake.findMissingCompletedMutex.Unlock()
+	fake.FindMissingCompletedStub = nil
+	fake.findMissingCompletedReturns = struct {
+		result1 []int
+	}{result1}
+}
+
+func (fake *Manager) FindMissingCompletedReturnsOnCall(i int, result1 []int) {
+	fake.findMissingCompletedMutex.Lock()
+	defer fake.findMissingCompletedMutex.Unlock()
+	fake.FindMissingCompletedStub = nil
+	if fake.findMissingCompletedReturnsOnCall == nil {
+		fake.findMissingCompletedReturnsOnCall = make(map[int]struct {
+			result1 []int
+		})
+	}
+	fake.findMissingCompletedReturnsOnCall[i] = struct {
+		result1 []int
+	}{result1}
+}
+
+func (fake *Manager) FindPromptStatusInProgress(arg1 context.Context, arg2 int) string {
+	fake.findPromptStatusInProgressMutex.Lock()
+	ret, specificReturn := fake.findPromptStatusInProgressReturnsOnCall[len(fake.findPromptStatusInProgressArgsForCall)]
+	fake.findPromptStatusInProgressArgsForCall = append(fake.findPromptStatusInProgressArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+	}{arg1, arg2})
+	stub := fake.FindPromptStatusInProgressStub
+	fakeReturns := fake.findPromptStatusInProgressReturns
+	fake.recordInvocation("FindPromptStatusInProgress", []interface{}{arg1, arg2})
+	fake.findPromptStatusInProgressMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Manager) FindPromptStatusInProgressCallCount() int {
+	fake.findPromptStatusInProgressMutex.RLock()
+	defer fake.findPromptStatusInProgressMutex.RUnlock()
+	return len(fake.findPromptStatusInProgressArgsForCall)
+}
+
+func (fake *Manager) FindPromptStatusInProgressCalls(stub func(context.Context, int) string) {
+	fake.findPromptStatusInProgressMutex.Lock()
+	defer fake.findPromptStatusInProgressMutex.Unlock()
+	fake.FindPromptStatusInProgressStub = stub
+}
+
+func (fake *Manager) FindPromptStatusInProgressArgsForCall(i int) (context.Context, int) {
+	fake.findPromptStatusInProgressMutex.RLock()
+	defer fake.findPromptStatusInProgressMutex.RUnlock()
+	argsForCall := fake.findPromptStatusInProgressArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Manager) FindPromptStatusInProgressReturns(result1 string) {
+	fake.findPromptStatusInProgressMutex.Lock()
+	defer fake.findPromptStatusInProgressMutex.Unlock()
+	fake.FindPromptStatusInProgressStub = nil
+	fake.findPromptStatusInProgressReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *Manager) FindPromptStatusInProgressReturnsOnCall(i int, result1 string) {
+	fake.findPromptStatusInProgressMutex.Lock()
+	defer fake.findPromptStatusInProgressMutex.Unlock()
+	fake.FindPromptStatusInProgressStub = nil
+	if fake.findPromptStatusInProgressReturnsOnCall == nil {
+		fake.findPromptStatusInProgressReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.findPromptStatusInProgressReturnsOnCall[i] = struct {
+		result1 string
+	}{result1}
 }
 
 func (fake *Manager) HasExecuting(arg1 context.Context) bool {

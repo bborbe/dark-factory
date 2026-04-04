@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: ["044"]
 created: "2026-04-04T20:50:00Z"
+queued: "2026-04-04T21:49:26Z"
 ---
 
 <summary>
@@ -144,11 +145,11 @@ In `prompt_complete.go`, find the slice of allowed statuses that contains `promp
 
 In `list.go`, find where `prompt.FailedPromptStatus` is used for the `--failed` flag filter. Add `prompt.PermanentlyFailedPromptStatus` to the same filter condition so `dark-factory prompt list --failed` shows both failed and permanently-failed prompts.
 
-**Step 8: Update `docs/configuration.md`**
+**Step 7: Update `docs/configuration.md`**
 
 Add documentation for the two new config fields (`maxPromptDuration`, `autoRetryLimit`) near the existing `maxContainers` documentation. Include defaults (0 = disabled) and behavior description.
 
-**Step 7: Add tests**
+**Step 8: Add tests**
 
 In `pkg/config/config_test.go` (following existing Ginkgo patterns):
 - `maxPromptDuration: "invalid"` → `Validate` returns error
@@ -173,7 +174,7 @@ In `pkg/prompt/prompt_test.go` (following existing patterns):
 - `permanently_failed` prompts must be added to `AvailablePromptStatuses` so status validation passes
 - Keep `retryCount` already existing in `Frontmatter` — do NOT add it again
 - Follow existing error wrapping: `errors.Errorf(ctx, ...)` — never `fmt.Errorf`
-- Config defaults must be set in `Defaults()` so that loading a config without these fields gets the right defaults
+- Zero values are the correct defaults — do NOT add entries to `Defaults()` for `MaxPromptDuration` or `AutoRetryLimit`
 - `ParsedMaxPromptDuration()` must not panic if called after successful `Validate()` — the validation ensures only valid strings are stored
 </constraints>
 

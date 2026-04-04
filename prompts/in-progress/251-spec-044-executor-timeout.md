@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: ["044"]
 created: "2026-04-04T20:50:00Z"
+queued: "2026-04-04T21:49:26Z"
 ---
 
 <summary>
@@ -36,18 +37,12 @@ Read these files before making any changes:
 Add a `maxPromptDuration time.Duration` field to `dockerExecutor`:
 ```go
 type dockerExecutor struct {
-    containerImage   string
-    projectName      string
-    model            string
-    netrcFile        string
-    gitconfigFile    string
-    env              map[string]string
-    extraMounts      []config.ExtraMount
-    claudeDir        string
-    commandRunner    commandRunner
+    // ... existing fields ...
     maxPromptDuration time.Duration // NEW: 0 = disabled
 }
 ```
+
+Place it as the last field in the struct. Do NOT remove or reorder existing fields.
 
 Update `NewDockerExecutor` to accept and store it:
 ```go

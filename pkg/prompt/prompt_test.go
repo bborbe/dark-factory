@@ -391,6 +391,123 @@ var _ = Describe("Prompt", func() {
 		})
 	})
 
+	Describe("FindMissingCompleted", func() {
+		Context("with no previous prompts", func() {
+			It("returns nil for n=1", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
+				Expect(result).To(BeNil())
+			})
+		})
+
+		Context("with all previous prompts completed", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "001-first.md", "completed")
+				createPromptFile(completedDir, "002-second.md", "completed")
+				createPromptFile(completedDir, "003-third.md", "completed")
+			})
+
+			It("returns nil for n=4", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				Expect(result).To(BeNil())
+			})
+
+			It("returns nil for n=2", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				Expect(result).To(BeNil())
+			})
+		})
+
+		Context("with gap in completed prompts", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+				createPromptFile(completedDir, "001-first.md", "completed")
+				// Missing 002
+				createPromptFile(completedDir, "003-third.md", "completed")
+			})
+
+			It("returns missing numbers for n=4", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				Expect(result).To(Equal([]int{2}))
+			})
+
+			It("returns sorted missing numbers when multiple are missing", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 5)
+				Expect(result).To(Equal([]int{2, 4}))
+			})
+		})
+
+		Context("with empty completed directory", func() {
+			BeforeEach(func() {
+				completedDir := filepath.Join(tempDir, "completed")
+				err := os.MkdirAll(completedDir, 0750)
+				Expect(err).To(BeNil())
+			})
+
+			It("returns all missing for n=3", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				Expect(result).To(Equal([]int{1, 2}))
+			})
+		})
+
+		Context("with no completed directory", func() {
+			It("returns all missing for n=3", func() {
+				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				Expect(result).To(Equal([]int{1, 2}))
+			})
+		})
+	})
+
+	Describe("FindPromptStatus", func() {
+		var inProgressDir string
+
+		BeforeEach(func() {
+			inProgressDir = filepath.Join(tempDir, "in-progress")
+			err := os.MkdirAll(inProgressDir, 0750)
+			Expect(err).To(BeNil())
+		})
+
+		Context("when prompt is found", func() {
+			BeforeEach(func() {
+				createPromptFile(inProgressDir, "083-some-prompt.md", "failed")
+			})
+
+			It("returns the status", func() {
+				result := prompt.FindPromptStatus(ctx, inProgressDir, 83)
+				Expect(result).To(Equal("failed"))
+			})
+		})
+
+		Context("when prompt has executing status", func() {
+			BeforeEach(func() {
+				createPromptFile(inProgressDir, "042-another-prompt.md", "executing")
+			})
+
+			It("returns executing", func() {
+				result := prompt.FindPromptStatus(ctx, inProgressDir, 42)
+				Expect(result).To(Equal("executing"))
+			})
+		})
+
+		Context("when prompt is not found", func() {
+			It("returns empty string", func() {
+				result := prompt.FindPromptStatus(ctx, inProgressDir, 99)
+				Expect(result).To(Equal(""))
+			})
+		})
+
+		Context("when directory does not exist", func() {
+			It("returns empty string", func() {
+				result := prompt.FindPromptStatus(ctx, filepath.Join(tempDir, "nonexistent"), 1)
+				Expect(result).To(Equal(""))
+			})
+		})
+	})
+
 	Describe("ListQueued", func() {
 		Context("with explicit status: approved", func() {
 			BeforeEach(func() {

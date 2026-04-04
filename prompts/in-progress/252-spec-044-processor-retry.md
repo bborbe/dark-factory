@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: ["044"]
 created: "2026-04-04T20:50:00Z"
+queued: "2026-04-04T21:52:40Z"
 ---
 
 <summary>
@@ -14,7 +15,7 @@ created: "2026-04-04T20:50:00Z"
 - When `autoRetryLimit` is 0 (default), prompts fail immediately without retry — same as current behavior
 - A notification fires when a prompt is permanently failed (new event type `prompt_permanently_failed`)
 - All existing status consumers (list, requeue, prompt_complete) handle `permanently_failed` consistently
-- The daemon in one-shot mode (`ProcessQueue`) stops and returns error on first failure (no retry in one-shot)
+- One-shot mode (`ProcessQueue`) uses the same retry logic — re-queued prompts are picked up on the next loop iteration
 </summary>
 
 <objective>
@@ -131,7 +132,7 @@ func (p *processor) notifyPermanentFailure(ctx context.Context, path string, rea
 
 **Step 3: Fix `processExistingQueued` flow control for retry/permanent failure**
 
-In `processExistingQueued` (line 351), after the `processPrompt` call (line 407), the current code is:
+In `processExistingQueued`, after the `processPrompt` call, the current code is:
 ```go
 if err := p.processPrompt(ctx, pr); err != nil {
     if ctx.Err() != nil {
@@ -142,7 +143,7 @@ if err := p.processPrompt(ctx, pr); err != nil {
 }
 ```
 
-The `return` on line 417 exits the loop after ANY failure, which prevents the daemon from continuing to the next prompt after a re-queue or permanent failure. Replace the `return` with `continue` so the loop processes the next queued prompt:
+The `return` after `handlePromptFailure` exits the loop after ANY failure, which prevents the daemon from continuing to the next prompt after a re-queue or permanent failure. Replace the `return` with `continue` so the loop processes the next queued prompt:
 
 ```go
 if err := p.processPrompt(ctx, pr); err != nil {
@@ -158,20 +159,40 @@ if err := p.processPrompt(ctx, pr); err != nil {
 
 This is critical: without this change, the daemon stops processing after the first failure even when auto-retry re-queues the prompt.
 
-**Step 3b: Add `permanently_failed` to skip logic in `processExistingQueued`**
+**Step 3b: Add `permanently_failed` to skip list in `ListQueued` (pkg/prompt/prompt.go)**
 
-Find `shouldSkipPrompt` in `processor.go` (or the place inside `processExistingQueued` where failed prompts are skipped). Add `PermanentlyFailedPromptStatus` to the skip list next to the existing `FailedPromptStatus` skip:
+In the `ListQueued` method, find the status skip block that contains `FailedPromptStatus` (around line 678-682):
 ```go
-if pr.Status == prompt.PermanentlyFailedPromptStatus {
-    slog.Debug("skipping permanently failed prompt", "file", filepath.Base(pr.Path))
-    p.skippedPrompts[filepath.Base(pr.Path)] = modTime
-    continue
-}
+if fm.Status == string(ExecutingPromptStatus) ||
+    fm.Status == string(CompletedPromptStatus) ||
+    fm.Status == string(FailedPromptStatus) ||
+    fm.Status == string(InReviewPromptStatus) ||
+    fm.Status == string(PendingVerificationPromptStatus) {
 ```
 
-**Step 4: Update `pkg/factory/factory.go` — thread `autoRetry` and `autoRetryLimit` into `CreateProcessor`**
+Add `PermanentlyFailedPromptStatus` to this condition:
+```go
+    fm.Status == string(PermanentlyFailedPromptStatus) ||
+```
 
-Add one parameter to `CreateProcessor` (line 467 in `pkg/factory/factory.go`):
+This ensures permanently-failed prompts are not returned as queued.
+
+**Step 3c: Add `permanently_failed` to `autoSetQueuedStatus` in `pkg/processor/processor.go`**
+
+In the `autoSetQueuedStatus` method, find the switch-case that lists statuses that should NOT be overridden (contains `FailedPromptStatus`). Add `PermanentlyFailedPromptStatus` to prevent a permanently-failed prompt from being silently re-set to approved:
+```go
+case prompt.ApprovedPromptStatus,
+    prompt.ExecutingPromptStatus,
+    prompt.CompletedPromptStatus,
+    prompt.FailedPromptStatus,
+    prompt.PermanentlyFailedPromptStatus, // NEW
+    prompt.PendingVerificationPromptStatus,
+    prompt.CancelledPromptStatus:
+```
+
+**Step 4: Update `pkg/factory/factory.go` — thread `autoRetryLimit` into `CreateProcessor`**
+
+Add one parameter to `CreateProcessor` in `pkg/factory/factory.go`:
 ```go
 func CreateProcessor(
     // ... existing params ...

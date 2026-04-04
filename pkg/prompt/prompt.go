@@ -491,6 +491,8 @@ type Manager interface {
 	MoveToCompleted(ctx context.Context, path string) error
 	NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error)
 	AllPreviousCompleted(ctx context.Context, n int) bool
+	FindMissingCompleted(ctx context.Context, n int) []int
+	FindPromptStatusInProgress(ctx context.Context, number int) string
 	// HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
 	// has the given branch value in its frontmatter.
 	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
@@ -606,6 +608,16 @@ func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
 func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
 	return AllPreviousCompleted(ctx, pm.completedDir, n)
+}
+
+// FindMissingCompleted returns prompt numbers less than n that are NOT in completed/.
+func (pm *manager) FindMissingCompleted(ctx context.Context, n int) []int {
+	return FindMissingCompleted(ctx, pm.completedDir, n)
+}
+
+// FindPromptStatusInProgress looks up a prompt by number in the in-progress directory and returns its frontmatter status.
+func (pm *manager) FindPromptStatusInProgress(ctx context.Context, number int) string {
+	return FindPromptStatus(ctx, pm.inProgressDir, number)
 }
 
 // HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
@@ -1245,4 +1257,72 @@ func AllPreviousCompleted(ctx context.Context, completedDir string, n int) bool 
 	}
 
 	return true
+}
+
+// FindMissingCompleted returns prompt numbers less than n that are NOT in the completed directory.
+// Returns nil if all are completed.
+func FindMissingCompleted(ctx context.Context, completedDir string, n int) []int {
+	if n <= 1 {
+		return nil
+	}
+
+	completedEntries, err := os.ReadDir(completedDir)
+	if err != nil {
+		// completed directory doesn't exist or can't be read — all are missing
+		missing := make([]int, 0, n-1)
+		for i := 1; i < n; i++ {
+			missing = append(missing, i)
+		}
+		return missing
+	}
+
+	completedNumbers := make(map[int]bool)
+	for _, entry := range completedEntries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		num := extractNumberFromFilename(entry.Name())
+		if num != -1 {
+			completedNumbers[num] = true
+		}
+	}
+
+	var missing []int
+	for i := 1; i < n; i++ {
+		if !completedNumbers[i] {
+			missing = append(missing, i)
+		}
+	}
+	sort.Ints(missing)
+	return missing
+}
+
+// FindPromptStatus looks up a prompt by number in the given directory and returns its frontmatter status.
+// Returns empty string if not found.
+func FindPromptStatus(ctx context.Context, dir string, number int) string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	prefix := fmt.Sprintf("%03d-", number)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		// #nosec G304 -- path is constructed from os.ReadDir of a trusted directory
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return ""
+		}
+		var fm Frontmatter
+		if _, err := frontmatter.Parse(bytes.NewReader(data), &fm); err != nil {
+			return ""
+		}
+		return fm.Status
+	}
+	return ""
 }

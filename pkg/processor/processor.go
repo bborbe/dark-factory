@@ -7,6 +7,7 @@ package processor
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -149,6 +150,7 @@ type processor struct {
 	containerChecker       executor.ContainerChecker
 	dirtyFileThreshold     int
 	dirtyFileChecker       DirtyFileChecker
+	lastBlockedMsg         string
 }
 
 // Process starts processing queued prompts.
@@ -397,15 +399,10 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Check ordering - all previous prompts must be completed
 		if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
-			slog.Info(
-				"prompt blocked",
-				"file",
-				filepath.Base(pr.Path),
-				"reason",
-				"previous prompt not completed",
-			)
+			p.logBlockedOnce(ctx, pr)
 			return nil // blocked — wait for watcher signal or periodic scan
 		}
+		p.lastBlockedMsg = ""
 
 		slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
 
@@ -462,6 +459,32 @@ func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool
 	}
 
 	return false
+}
+
+// logBlockedOnce logs the "prompt blocked" message only when the missing-prompt details change,
+// suppressing repeated identical messages on every poll cycle.
+func (p *processor) logBlockedOnce(ctx context.Context, pr prompt.Prompt) {
+	missing := p.promptManager.FindMissingCompleted(ctx, pr.Number())
+	details := make([]string, 0, len(missing))
+	for _, num := range missing {
+		status := p.promptManager.FindPromptStatusInProgress(ctx, num)
+		if status != "" {
+			details = append(details, fmt.Sprintf("%03d(%s)", num, status))
+		} else {
+			details = append(details, fmt.Sprintf("%03d(not found)", num))
+		}
+	}
+	msg := strings.Join(details, ", ")
+	if msg == p.lastBlockedMsg {
+		return
+	}
+	slog.Info(
+		"prompt blocked",
+		"file", filepath.Base(pr.Path),
+		"reason", "previous prompt not completed",
+		"missing", msg,
+	)
+	p.lastBlockedMsg = msg
 }
 
 // autoSetQueuedStatus sets status to "queued" for any non-terminal status.

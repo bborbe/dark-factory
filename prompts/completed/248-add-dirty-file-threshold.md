@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Added dirtyFileThreshold config field that skips prompt execution when git working tree has too many dirty files, with DirtyFileChecker interface, counterfeiter mock, processor integration, factory wiring, tests, and documentation.
 container: dark-factory-248-add-dirty-file-threshold
 dark-factory-version: v0.95.0
 created: "2026-04-04T16:00:00Z"
 queued: "2026-04-04T21:13:56Z"
 started: "2026-04-04T21:13:57Z"
+completed: "2026-04-04T21:46:32Z"
 ---
 
 <summary>

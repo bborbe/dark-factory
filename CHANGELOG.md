@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.99.0
+
+- feat: Wire `maxPromptDuration` into executor — containers exceeding their wall-clock budget are stopped cleanly via `docker stop` (with `docker kill` fallback) and return a descriptive timeout error; zero duration disables the timeout
+
 ## v0.98.0
 
 - feat: Add `maxPromptDuration` and `autoRetryLimit` config fields with validation and `ParsedMaxPromptDuration()` helper

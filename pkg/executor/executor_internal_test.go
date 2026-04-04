@@ -49,6 +49,29 @@ func (f *fakeCommandRunner) Commands() []*exec.Cmd {
 	return f.commands
 }
 
+// multiFailRunner is a test double that fails on the first Run call and succeeds on subsequent calls.
+type multiFailRunner struct {
+	mu        sync.Mutex
+	failFirst bool
+	commands  []*exec.Cmd
+}
+
+func (m *multiFailRunner) Run(_ context.Context, cmd *exec.Cmd) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.commands = append(m.commands, cmd)
+	if m.failFirst && len(m.commands) == 1 {
+		return errors.New(context.Background(), "docker stop failed")
+	}
+	return nil
+}
+
+func (m *multiFailRunner) Commands() []*exec.Cmd {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.commands
+}
+
 var _ = Describe("Internal helper functions", func() {
 	var (
 		ctx     context.Context
@@ -1041,6 +1064,58 @@ This has frontmatter.`
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("prepare log file for reattach"))
 				Expect(fakeRunner.RunCalled()).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("timeoutKiller", func() {
+		var (
+			fakeRunner    *fakeCommandRunner
+			containerName string
+		)
+
+		BeforeEach(func() {
+			fakeRunner = &fakeCommandRunner{}
+			containerName = "test-timeout-container"
+		})
+
+		Context("when context is cancelled before deadline", func() {
+			It("returns nil without calling any docker command", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				cancel() // cancel immediately
+
+				err := timeoutKiller(cancelCtx, 10*time.Second, containerName, fakeRunner)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(fakeRunner.RunCalled()).To(BeFalse())
+			})
+		})
+
+		Context("when deadline fires before context is cancelled", func() {
+			It("calls docker stop and returns timeout error", func() {
+				err := timeoutKiller(ctx, 10*time.Millisecond, containerName, fakeRunner)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("timed out after"))
+				Expect(fakeRunner.Commands()).To(HaveLen(1))
+				Expect(
+					fakeRunner.Commands()[0].Args,
+				).To(ContainElements("docker", "stop", containerName))
+			})
+		})
+
+		Context("when docker stop fails", func() {
+			It("falls back to docker kill", func() {
+				multiRunner := &multiFailRunner{failFirst: true}
+
+				err := timeoutKiller(ctx, 10*time.Millisecond, containerName, multiRunner)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("timed out after"))
+				Expect(multiRunner.Commands()).To(HaveLen(2))
+				Expect(
+					multiRunner.Commands()[0].Args,
+				).To(ContainElements("docker", "stop", containerName))
+				Expect(
+					multiRunner.Commands()[1].Args,
+				).To(ContainElements("docker", "kill", containerName))
 			})
 		})
 	})

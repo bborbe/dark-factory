@@ -281,6 +281,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		containerChecker,
 		cfg.DirtyFileThreshold,
 		dirtyFileChecker,
+		cfg.ParsedMaxPromptDuration(),
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -368,8 +369,8 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cfg.AdditionalInstructions,
 			cl,
 			containerChecker,
-			cfg.DirtyFileThreshold,
-			processor.NewDirtyFileChecker("."),
+			cfg.DirtyFileThreshold, processor.NewDirtyFileChecker("."),
+			cfg.ParsedMaxPromptDuration(),
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -397,6 +398,7 @@ func CreateSpecGenerator(
 			cfg.Env,
 			cfg.ExtraMounts,
 			cfg.ResolvedClaudeDir(),
+			cfg.ParsedMaxPromptDuration(),
 		),
 		executor.NewDockerContainerChecker(),
 		cfg.Prompts.InboxDir,
@@ -462,9 +464,11 @@ func createDockerExecutor(
 	env map[string]string,
 	extraMounts []config.ExtraMount,
 	claudeDir string,
+	maxPromptDuration time.Duration,
 ) executor.Executor {
 	return executor.NewDockerExecutor(
 		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
+		maxPromptDuration,
 	)
 }
 
@@ -523,6 +527,7 @@ func CreateProcessor(
 	containerChecker executor.ContainerChecker,
 	dirtyFileThreshold int,
 	dirtyFileChecker processor.DirtyFileChecker,
+	maxPromptDuration time.Duration,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -531,7 +536,7 @@ func CreateProcessor(
 		projectName,
 		createDockerExecutor(
 			containerImage, projectName, model, netrcFile,
-			gitconfigFile, env, extraMounts, claudeDir,
+			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
 		),
 		promptManager,
 		releaser,

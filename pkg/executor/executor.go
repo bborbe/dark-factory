@@ -47,31 +47,34 @@ func NewDockerExecutor(
 	env map[string]string,
 	extraMounts []config.ExtraMount,
 	claudeDir string,
+	maxPromptDuration time.Duration,
 ) Executor {
 	return &dockerExecutor{
-		containerImage: containerImage,
-		projectName:    projectName,
-		model:          model,
-		netrcFile:      netrcFile,
-		gitconfigFile:  gitconfigFile,
-		env:            env,
-		extraMounts:    extraMounts,
-		claudeDir:      claudeDir,
-		commandRunner:  &defaultCommandRunner{},
+		containerImage:    containerImage,
+		projectName:       projectName,
+		model:             model,
+		netrcFile:         netrcFile,
+		gitconfigFile:     gitconfigFile,
+		env:               env,
+		extraMounts:       extraMounts,
+		claudeDir:         claudeDir,
+		commandRunner:     &defaultCommandRunner{},
+		maxPromptDuration: maxPromptDuration,
 	}
 }
 
 // dockerExecutor implements Executor using Docker.
 type dockerExecutor struct {
-	containerImage string
-	projectName    string
-	model          string
-	netrcFile      string
-	gitconfigFile  string
-	env            map[string]string
-	extraMounts    []config.ExtraMount
-	claudeDir      string
-	commandRunner  commandRunner
+	containerImage    string
+	projectName       string
+	model             string
+	netrcFile         string
+	gitconfigFile     string
+	env               map[string]string
+	extraMounts       []config.ExtraMount
+	claudeDir         string
+	commandRunner     commandRunner
+	maxPromptDuration time.Duration // 0 = disabled
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -153,18 +156,41 @@ func (e *dockerExecutor) Execute(
 	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
 
 	// Run container and watcher in parallel; whichever finishes first cancels the other.
-	if err := run.CancelOnFirstFinish(ctx,
-		func(ctx context.Context) error {
-			return e.commandRunner.Run(ctx, cmd)
-		},
-		func(ctx context.Context) error {
-			return watchForCompletionReport(ctx, logFile, containerName, 2*time.Minute, 10*time.Second, e.commandRunner)
-		},
-	); err != nil {
+	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncs(cmd, logFile, containerName)...); err != nil {
 		return errors.Wrap(ctx, err, "docker run failed")
 	}
 
 	return nil
+}
+
+// buildRunFuncs returns the set of parallel functions for Execute/Reattach.
+func (e *dockerExecutor) buildRunFuncs(
+	cmd *exec.Cmd,
+	logFile string,
+	containerName string,
+) []run.Func {
+	funcs := []run.Func{
+		func(ctx context.Context) error {
+			return e.commandRunner.Run(ctx, cmd)
+		},
+		func(ctx context.Context) error {
+			return watchForCompletionReport(
+				ctx,
+				logFile,
+				containerName,
+				2*time.Minute,
+				10*time.Second,
+				e.commandRunner,
+			)
+		},
+	}
+	if e.maxPromptDuration > 0 {
+		d := e.maxPromptDuration
+		funcs = append(funcs, func(ctx context.Context) error {
+			return timeoutKiller(ctx, d, containerName, e.commandRunner)
+		})
+	}
+	return funcs
 }
 
 // Reattach connects to a running container's output stream and waits for it to exit.
@@ -185,17 +211,42 @@ func (e *dockerExecutor) Reattach(ctx context.Context, logFile string, container
 
 	slog.Info("reattaching to running container", "containerName", containerName)
 
-	if err := run.CancelOnFirstFinish(ctx,
-		func(ctx context.Context) error {
-			return e.commandRunner.Run(ctx, cmd)
-		},
-		func(ctx context.Context) error {
-			return watchForCompletionReport(ctx, logFile, containerName, 2*time.Minute, 10*time.Second, e.commandRunner)
-		},
-	); err != nil {
+	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncs(cmd, logFile, containerName)...); err != nil {
 		return errors.Wrap(ctx, err, "reattach failed")
 	}
 	return nil
+}
+
+// timeoutKiller waits for the given deadline and then stops the container cleanly.
+// Returns nil if ctx is cancelled before the deadline (normal container exit).
+// The error message includes the duration so callers can surface it as lastFailReason.
+func timeoutKiller(
+	ctx context.Context,
+	duration time.Duration,
+	containerName string,
+	runner commandRunner,
+) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-time.After(duration):
+	}
+	slog.Warn("container exceeded maxPromptDuration, stopping",
+		"containerName", containerName,
+		"duration", duration)
+	// #nosec G204 -- containerName is generated internally from prompt filename
+	stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
+	if err := runner.Run(ctx, stopCmd); err != nil {
+		slog.Warn("docker stop failed after timeout, attempting force kill",
+			"containerName", containerName, "error", err)
+		// #nosec G204 -- containerName is generated internally
+		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
+		if killErr := runner.Run(ctx, killCmd); killErr != nil {
+			slog.Error("docker kill also failed after timeout",
+				"containerName", containerName, "error", killErr)
+		}
+	}
+	return errors.Errorf(ctx, "prompt timed out after %s", duration)
 }
 
 // watchForCompletionReport polls the log file for the completion report marker.

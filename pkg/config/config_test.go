@@ -1862,4 +1862,41 @@ worktree: false
 			Expect(err.Error()).To(ContainSubstring("maxContainers"))
 		})
 	})
+
+	Describe("DirtyFileThreshold", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+		}
+
+		It("succeeds when dirtyFileThreshold is 0 (disabled)", func() {
+			cfg := validBase()
+			cfg.DirtyFileThreshold = 0
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when dirtyFileThreshold is 10", func() {
+			cfg := validBase()
+			cfg.DirtyFileThreshold = 10
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails when dirtyFileThreshold is -1", func() {
+			cfg := validBase()
+			cfg.DirtyFileThreshold = -1
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("dirtyFileThreshold"))
+		})
+	})
 })

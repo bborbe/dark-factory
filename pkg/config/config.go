@@ -112,6 +112,7 @@ type Config struct {
 	GenerateCommand        string              `yaml:"generateCommand"`
 	AdditionalInstructions string              `yaml:"additionalInstructions,omitempty"`
 	MaxContainers          int                 `yaml:"maxContainers,omitempty"`
+	DirtyFileThreshold     int                 `yaml:"dirtyFileThreshold,omitempty"`
 }
 
 // Defaults returns a Config with all default values.
@@ -214,20 +215,32 @@ func (c Config) Validate(ctx context.Context) error {
 			"validationPrompt",
 			validation.HasValidationFunc(c.validateValidationPrompt),
 		),
+		validation.Name("maxContainers", validation.HasValidationFunc(c.validateMaxContainers)),
 		validation.Name(
-			"maxContainers",
-			validation.HasValidationFunc(func(ctx context.Context) error {
-				if c.MaxContainers < 0 {
-					return errors.Errorf(
-						ctx,
-						"maxContainers must not be negative, got %d",
-						c.MaxContainers,
-					)
-				}
-				return nil
-			}),
+			"dirtyFileThreshold",
+			validation.HasValidationFunc(c.validateDirtyFileThreshold),
 		),
 	}.Validate(ctx)
+}
+
+// validateMaxContainers rejects negative maxContainers values.
+func (c Config) validateMaxContainers(ctx context.Context) error {
+	if c.MaxContainers < 0 {
+		return errors.Errorf(ctx, "maxContainers must not be negative, got %d", c.MaxContainers)
+	}
+	return nil
+}
+
+// validateDirtyFileThreshold rejects negative dirtyFileThreshold values.
+func (c Config) validateDirtyFileThreshold(ctx context.Context) error {
+	if c.DirtyFileThreshold < 0 {
+		return errors.Errorf(
+			ctx,
+			"dirtyFileThreshold must not be negative, got %d",
+			c.DirtyFileThreshold,
+		)
+	}
+	return nil
 }
 
 // validateAutoReview validates the autoReview configuration.

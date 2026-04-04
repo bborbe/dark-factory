@@ -198,6 +198,19 @@ maxContainers: 1
 
 Counting remains system-wide (all running dark-factory containers across all projects). Only the threshold is per-project. Two projects both set to 5 can together exceed any single limit — this is intentional.
 
+### Dirty File Threshold
+
+Skip prompt execution when the git working tree has too many dirty (uncommitted) files.
+Useful for large repos where dirty vendor directories cause slow `git status` inside containers.
+
+```yaml
+dirtyFileThreshold: 50
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `dirtyFileThreshold` | `0` (disabled) | Skip prompt execution when dirty file count exceeds this value. `0` disables the check. When exceeded, the prompt is skipped (not failed) and re-checked on the next poll cycle. User must clean up dirty files manually — no auto-cleanup. |
+
 ### CLI Override
 
 Override the limit for a single run without editing config:

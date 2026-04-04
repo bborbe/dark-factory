@@ -14,6 +14,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/processor"
 )
 
 var _ = Describe("Factory", func() {
@@ -85,6 +86,8 @@ var _ = Describe("Factory", func() {
 				"",
 				nil,
 				nil,
+				0,
+				processor.NewDirtyFileChecker("."),
 			)
 			Expect(processor).NotTo(BeNil())
 		})

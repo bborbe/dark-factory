@@ -20,6 +20,18 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
+// fakeDirtyFileChecker is a test stub for DirtyFileChecker.
+type fakeDirtyFileChecker struct {
+	count     int
+	err       error
+	callCount int
+}
+
+func (f *fakeDirtyFileChecker) CountDirtyFiles(_ context.Context) (int, error) {
+	f.callCount++
+	return f.count, f.err
+}
+
 var _ = Describe("DetermineBumpFromChangelog", func() {
 	var (
 		ctx     context.Context
@@ -975,5 +987,64 @@ var _ = Describe("handleDirectWorkflow", func() {
 			Expect(rel.commitOnlyCalled).To(Equal(1))
 			Expect(rel.commitAndRelCalled).To(Equal(0))
 		})
+	})
+})
+
+var _ = Describe("checkDirtyFileThreshold", func() {
+	var (
+		ctx     context.Context
+		p       *processor
+		checker *fakeDirtyFileChecker
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		checker = &fakeDirtyFileChecker{}
+		p = &processor{}
+	})
+
+	It("returns (false, nil) when threshold is 0 (disabled) without calling checker", func() {
+		p.dirtyFileThreshold = 0
+		p.dirtyFileChecker = checker
+		skip, err := p.checkDirtyFileThreshold(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeFalse())
+		Expect(checker.callCount).To(Equal(0))
+	})
+
+	It("returns (false, nil) when dirty count is under threshold", func() {
+		p.dirtyFileThreshold = 10
+		p.dirtyFileChecker = checker
+		checker.count = 5
+		skip, err := p.checkDirtyFileThreshold(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeFalse())
+	})
+
+	It("returns (false, nil) when dirty count equals threshold", func() {
+		p.dirtyFileThreshold = 10
+		p.dirtyFileChecker = checker
+		checker.count = 10
+		skip, err := p.checkDirtyFileThreshold(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeFalse())
+	})
+
+	It("returns (true, nil) when dirty count exceeds threshold", func() {
+		p.dirtyFileThreshold = 10
+		p.dirtyFileChecker = checker
+		checker.count = 11
+		skip, err := p.checkDirtyFileThreshold(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeTrue())
+	})
+
+	It("returns (false, err) when checker returns an error", func() {
+		p.dirtyFileThreshold = 10
+		p.dirtyFileChecker = checker
+		checker.err = stderrors.New("git error")
+		skip, err := p.checkDirtyFileThreshold(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(skip).To(BeFalse())
 	})
 })

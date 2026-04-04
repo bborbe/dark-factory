@@ -261,6 +261,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		return &errRunner{err: fmt.Errorf("containerlock: %w", clErr)}
 	}
 
+	dirtyFileChecker := processor.NewDirtyFileChecker(".")
+
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
 		promptManager, releaser, versionGetter, ready,
@@ -277,6 +279,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.AdditionalInstructions,
 		cl,
 		containerChecker,
+		cfg.DirtyFileThreshold,
+		dirtyFileChecker,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -311,7 +315,6 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 	projectName := project.Name(cfg.ProjectName)
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	ready := make(chan struct{}, 10) // ProcessQueue never reads from it in one-shot mode
 	n := CreateNotifier(cfg)
 	cl, containerChecker, clErr := createContainerDeps()
 	if clErr != nil {
@@ -336,7 +339,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			promptManager,
 			releaser,
 			versionGetter,
-			ready,
+			make(chan struct{}, 10), // ProcessQueue never reads from it in one-shot mode
 			cfg.ContainerImage,
 			cfg.Model,
 			cfg.NetrcFile,
@@ -365,6 +368,8 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cfg.AdditionalInstructions,
 			cl,
 			containerChecker,
+			cfg.DirtyFileThreshold,
+			processor.NewDirtyFileChecker("."),
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -463,6 +468,21 @@ func createDockerExecutor(
 	)
 }
 
+// createAutoCompleter creates a spec.AutoCompleter with the given parameters.
+func createAutoCompleter(
+	inProgressDir, completedDir string,
+	specsInboxDir, specsInProgressDir, specsCompletedDir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
+	n notifier.Notifier,
+) spec.AutoCompleter {
+	return spec.NewAutoCompleter(
+		inProgressDir, completedDir,
+		specsInboxDir, specsInProgressDir, specsCompletedDir,
+		currentDateTimeGetter, projectName, n,
+	)
+}
+
 // CreateProcessor creates a Processor that executes queued prompts.
 func CreateProcessor(
 	inProgressDir string,
@@ -501,6 +521,8 @@ func CreateProcessor(
 	additionalInstructions string,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
+	dirtyFileThreshold int,
+	dirtyFileChecker processor.DirtyFileChecker,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -524,15 +546,10 @@ func CreateProcessor(
 		autoMerge,
 		autoRelease,
 		autoReview,
-		spec.NewAutoCompleter(
-			inProgressDir,
-			completedDir,
-			specsInboxDir,
-			specsInProgressDir,
-			specsCompletedDir,
-			currentDateTimeGetter,
-			projectName,
-			n,
+		createAutoCompleter(
+			inProgressDir, completedDir,
+			specsInboxDir, specsInProgressDir, specsCompletedDir,
+			currentDateTimeGetter, projectName, n,
 		),
 		spec.NewLister(currentDateTimeGetter, specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
@@ -544,6 +561,8 @@ func CreateProcessor(
 		additionalInstructions,
 		containerLock,
 		containerChecker,
+		dirtyFileThreshold,
+		dirtyFileChecker,
 	)
 }
 

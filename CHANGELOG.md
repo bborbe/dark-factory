@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.96.0
+
+- feat: Add `dirtyFileThreshold` config to skip prompts when git working tree has too many dirty files
+
 ## v0.95.0
 
 - feat: Add global container lock (`pkg/containerlock`) that serializes the count-and-start window across multiple dark-factory daemon instances, preventing concurrent daemons from exceeding `maxContainers`

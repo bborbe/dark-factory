@@ -74,6 +74,8 @@ func NewProcessor(
 	additionalInstructions string,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
+	dirtyFileThreshold int,
+	dirtyFileChecker DirtyFileChecker,
 ) Processor {
 	return &processor{
 		queueDir:               queueDir,
@@ -107,6 +109,8 @@ func NewProcessor(
 		additionalInstructions: additionalInstructions,
 		containerLock:          containerLock,
 		containerChecker:       containerChecker,
+		dirtyFileThreshold:     dirtyFileThreshold,
+		dirtyFileChecker:       dirtyFileChecker,
 	}
 }
 
@@ -143,6 +147,8 @@ type processor struct {
 	additionalInstructions string
 	containerLock          containerlock.ContainerLock
 	containerChecker       executor.ContainerChecker
+	dirtyFileThreshold     int
+	dirtyFileChecker       DirtyFileChecker
 }
 
 // Process starts processing queued prompts.
@@ -608,9 +614,30 @@ func (p *processor) startContainerLockRelease(ctx context.Context, name string, 
 	}()
 }
 
-// processPrompt executes a single prompt and commits the result.
-func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
-	// Sync with remote before execution
+// checkDirtyFileThreshold returns (true, nil) when the prompt should be skipped
+// because the working tree has too many dirty files. Returns (false, nil) when
+// the check is disabled or the count is within threshold.
+func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
+	if p.dirtyFileThreshold <= 0 {
+		return false, nil
+	}
+	count, err := p.dirtyFileChecker.CountDirtyFiles(ctx)
+	if err != nil {
+		return false, err
+	}
+	if count > p.dirtyFileThreshold {
+		slog.Warn(
+			"dirty file threshold exceeded, skipping prompt",
+			"dirtyFiles", count,
+			"threshold", p.dirtyFileThreshold,
+		)
+		return true, nil
+	}
+	return false, nil
+}
+
+// syncWithRemote fetches and merges from the remote default branch.
+func (p *processor) syncWithRemote(ctx context.Context) error {
 	slog.Info("syncing with remote default branch")
 	if err := p.brancher.Fetch(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git fetch origin")
@@ -618,27 +645,35 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if err := p.brancher.MergeOriginDefault(ctx); err != nil {
 		return errors.Wrap(ctx, err, "git merge origin default branch")
 	}
+	return nil
+}
 
-	// Acquire the global container lock and wait for a free container slot.
-	// The lock is released once the container is confirmed running (see startContainerLockRelease).
+// processPrompt executes a single prompt and commits the result.
+func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
+	if skip, err := p.checkDirtyFileThreshold(ctx); err != nil {
+		return errors.Wrap(ctx, err, "check dirty file threshold")
+	} else if skip {
+		return nil // skip this cycle, re-check on next poll
+	}
+
+	if err := p.syncWithRemote(ctx); err != nil {
+		return err
+	}
 	releaseLock, err := p.prepareContainerSlot(ctx)
 	if err != nil {
 		return err
 	}
 	defer releaseLock()
 
-	// Load prompt file once
 	pf, err := p.promptManager.Load(ctx, pr.Path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
-	// Check if empty
 	content, err := pf.Content()
 	if err != nil {
 		return p.handleEmptyPrompt(ctx, pr.Path, err)
 	}
 
-	// Prepare prompt for execution
 	baseName, containerName, title, err := preparePromptForExecution(
 		ctx,
 		pf,

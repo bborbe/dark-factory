@@ -24,7 +24,7 @@ Wire auto-retry and permanent failure into the processor: after a prompt fails, 
 <context>
 Read CLAUDE.md for project conventions.
 
-**This prompt builds on Prompts 1 and 2 (spec-044-model, spec-044-executor-timeout)**: `PermanentlyFailedPromptStatus`, `MarkPermanentlyFailed`, `SetLastFailReason`, `LastFailReason` frontmatter field, and the new config fields `AutoRetry`/`AutoRetryLimit` all exist before this prompt runs.
+**This prompt builds on Prompts 1 and 2 (spec-044-model, spec-044-executor-timeout)**: `PermanentlyFailedPromptStatus`, `MarkPermanentlyFailed`, `SetLastFailReason`, `LastFailReason` frontmatter field, and the new config field `AutoRetryLimit` all exist before this prompt runs.
 
 Read these files before making any changes:
 - `pkg/processor/processor.go` — `NewProcessor`, `processor` struct, `Process`, `ProcessQueue`, `processExistingQueued`, `handlePromptFailure`, `shouldSkipPrompt`
@@ -37,24 +37,21 @@ Read these files before making any changes:
 </context>
 
 <requirements>
-**Step 1: Add `autoRetry` and `autoRetryLimit` fields to `processor` struct in `pkg/processor/processor.go`**
+**Step 1: Add `autoRetryLimit` field to `processor` struct in `pkg/processor/processor.go`**
 
 Add to the struct:
 ```go
-autoRetry      bool
 autoRetryLimit int
 ```
 
-Update `NewProcessor` to accept them (add as the last two parameters before or after `containerLock`/`containerChecker` — follow alphabetical or logical grouping consistent with the existing parameter list):
+Update `NewProcessor` to accept it (add as the last parameter):
 ```go
 func NewProcessor(
     // ... existing params ...
-    autoRetry      bool,
     autoRetryLimit int,
 ) Processor {
     return &processor{
         // ... existing fields ...
-        autoRetry:      autoRetry,
         autoRetryLimit: autoRetryLimit,
     }
 }
@@ -79,7 +76,7 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
     reason := err.Error()
     pf.SetLastFailReason(reason)
 
-    if p.autoRetry && p.autoRetryLimit > 0 && pf.RetryCount() < p.autoRetryLimit {
+    if p.autoRetryLimit > 0 && pf.RetryCount() < p.autoRetryLimit {
         // Re-queue with incremented retry count
         pf.Frontmatter.RetryCount++
         pf.MarkApproved()
@@ -100,7 +97,7 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
         return
     }
 
-    if p.autoRetry {
+    if p.autoRetryLimit > 0 {
         // Retries exhausted — permanently fail
         pf.MarkPermanentlyFailed(reason)
         if saveErr := pf.Save(ctx); saveErr != nil {
@@ -110,7 +107,7 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
         return
     }
 
-    // autoRetry disabled — standard failure
+    // autoRetryLimit == 0 — standard failure (no retry configured)
     pf.MarkFailed()
     if saveErr := pf.Save(ctx); saveErr != nil {
         slog.Error("failed to set failed status", "error", saveErr)
@@ -174,20 +171,19 @@ if pr.Status == prompt.PermanentlyFailedPromptStatus {
 
 **Step 4: Update `pkg/factory/factory.go` — thread `autoRetry` and `autoRetryLimit` into `CreateProcessor`**
 
-Add two parameters to `CreateProcessor` (line 467 in `pkg/factory/factory.go`):
+Add one parameter to `CreateProcessor` (line 467 in `pkg/factory/factory.go`):
 ```go
 func CreateProcessor(
     // ... existing params ...
-    autoRetry      bool,   // NEW
     autoRetryLimit int,    // NEW
 ) processor.Processor {
 ```
 
-Pass them through to `processor.NewProcessor`.
+Pass it through to `processor.NewProcessor`.
 
 `CreateProcessor` is called from two locations — update both:
-- `CreateRunner` (line 264): pass `cfg.AutoRetry, cfg.AutoRetryLimit`
-- `CreateOneShotRunner` (line 331): pass `cfg.AutoRetry, cfg.AutoRetryLimit`
+- `CreateRunner` (line 264): pass `cfg.AutoRetryLimit`
+- `CreateOneShotRunner` (line 331): pass `cfg.AutoRetryLimit`
 
 **Step 5: Update `pkg/cmd/requeue.go` — reset `retryCount` on re-queue**
 
@@ -222,18 +218,18 @@ Look at the `filterPromptsByStatus` call or equivalent and include the new statu
 Add tests in `pkg/processor/processor_test.go` using the existing Ginkgo v2 / Gomega patterns. Read the existing test file to understand how `processor` is constructed in tests (what mocks are used).
 
 1. **Auto-retry: first failure re-queues with incremented retryCount**
-   - Set `autoRetry: true`, `autoRetryLimit: 3`
+   - Set `autoRetryLimit: 3`
    - Simulate a prompt failure (`executor.Execute` returns error)
    - Assert prompt status is `approved` (re-queued) and `retryCount` is 1
 
 2. **Auto-retry: exhausted retries → permanently_failed**
-   - Set `autoRetry: true`, `autoRetryLimit: 2`
+   - Set `autoRetryLimit: 2`
    - Load a prompt with `retryCount: 2` already set
    - Trigger `handlePromptFailure`
    - Assert status is `permanently_failed` and notifier received `prompt_permanently_failed` event
 
-3. **Auto-retry disabled → standard failed status**
-   - Set `autoRetry: false`
+3. **Auto-retry disabled (autoRetryLimit: 0) → standard failed status**
+   - Set `autoRetryLimit: 0`
    - Trigger `handlePromptFailure`
    - Assert status is `failed` and notifier received `prompt_failed` event
 
@@ -257,11 +253,10 @@ Add tests in `pkg/cmd/requeue_test.go`:
 <constraints>
 - Do NOT commit — dark-factory handles git
 - Existing tests must still pass
-- The `failed` status must still exist and work as before when `autoRetry` is false
+- The `failed` status must still exist and work as before when `autoRetryLimit` is 0
 - Daemon mode (`Process`) must NOT stop when a prompt becomes `permanently_failed` — the warn-and-continue pattern from `processExistingQueued` already handles this; `handlePromptFailure` must not return an error
 - One-shot mode (`ProcessQueue`) uses the same `processExistingQueued` loop. With the `continue` fix in Step 3, re-queued prompts are picked up on the next loop iteration. The retry budget limits total attempts regardless of mode.
-- `autoRetry: false` must behave identically to the current behavior (no code-path changes for the disabled case beyond the existing `handlePromptFailure` logic)
-- `autoRetryLimit: 0` with `autoRetry: true` means no auto-retries (same as `autoRetry: false`) — the condition `autoRetryLimit > 0 && retryCount < autoRetryLimit` already handles this
+- `autoRetryLimit: 0` (default) must behave identically to current behavior — standard `failed` status, no retry logic
 - Use `errors.Wrap(ctx, err, "message")` — never `fmt.Errorf`
 - Counterfeiter mocks in `mocks/` must be regenerated if interface signatures change: run `go generate ./...` or manually update affected mock files. Check if `Processor` interface changes (it should not in this prompt)
 - The `prompt_permanently_failed` event type is new — add it to the comment on the `Event` struct in `pkg/notifier/notifier.go`
@@ -269,8 +264,8 @@ Add tests in `pkg/cmd/requeue_test.go`:
 
 <verification>
 ```bash
-# Confirm auto-retry fields in processor struct
-grep -n "autoRetry\|autoRetryLimit" pkg/processor/processor.go
+# Confirm autoRetryLimit field in processor struct
+grep -n "autoRetryLimit" pkg/processor/processor.go
 
 # Confirm permanently_failed is skipped in processExistingQueued
 grep -n "PermanentlyFailed\|permanently_failed" pkg/processor/processor.go

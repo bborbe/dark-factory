@@ -83,6 +83,8 @@ var _ = Describe("Factory", func() {
 				executor.NewDockerContainerCounter(),
 				0,
 				"",
+				nil,
+				nil,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -12,11 +12,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bborbe/errors"
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
@@ -70,6 +72,8 @@ func NewProcessor(
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
 	additionalInstructions string,
+	containerLock containerlock.ContainerLock,
+	containerChecker executor.ContainerChecker,
 ) Processor {
 	return &processor{
 		queueDir:               queueDir,
@@ -101,6 +105,8 @@ func NewProcessor(
 		maxContainers:          maxContainers,
 		containerPollInterval:  10 * time.Second,
 		additionalInstructions: additionalInstructions,
+		containerLock:          containerLock,
+		containerChecker:       containerChecker,
 	}
 }
 
@@ -135,6 +141,8 @@ type processor struct {
 	maxContainers          int
 	containerPollInterval  time.Duration
 	additionalInstructions string
+	containerLock          containerlock.ContainerLock
+	containerChecker       executor.ContainerChecker
 }
 
 // Process starts processing queued prompts.
@@ -565,6 +573,41 @@ func (p *processor) waitForContainerSlot(ctx context.Context) error {
 	}
 }
 
+// prepareContainerSlot acquires the global container lock and waits for a free slot.
+// Returns an idempotent release function to be deferred, and an error on failure.
+// When containerLock is nil the release function is a safe no-op.
+func (p *processor) prepareContainerSlot(ctx context.Context) (func(), error) {
+	releaseLock := func() {}
+	if p.containerLock != nil {
+		if err := p.containerLock.Acquire(ctx); err != nil {
+			return releaseLock, errors.Wrap(ctx, err, "acquire container lock")
+		}
+		var once sync.Once
+		releaseLock = func() {
+			once.Do(func() { _ = p.containerLock.Release(ctx) })
+		}
+	}
+	if err := p.waitForContainerSlot(ctx); err != nil {
+		releaseLock()
+		return func() {}, errors.Wrap(ctx, err, "wait for container slot")
+	}
+	return releaseLock, nil
+}
+
+// startContainerLockRelease spawns a goroutine that releases the container lock
+// as soon as the named container is confirmed running (or after a 30 s timeout).
+// This limits how long the lock is held to the check-and-start window only.
+func (p *processor) startContainerLockRelease(ctx context.Context, name string, release func()) {
+	if p.containerChecker == nil {
+		return
+	}
+	cc := p.containerChecker
+	go func() {
+		_ = cc.WaitUntilRunning(ctx, name, 30*time.Second)
+		release()
+	}()
+}
+
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Sync with remote before execution
@@ -576,10 +619,13 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "git merge origin default branch")
 	}
 
-	// Wait until a system-wide container slot is available
-	if err := p.waitForContainerSlot(ctx); err != nil {
-		return errors.Wrap(ctx, err, "wait for container slot")
+	// Acquire the global container lock and wait for a free container slot.
+	// The lock is released once the container is confirmed running (see startContainerLockRelease).
+	releaseLock, err := p.prepareContainerSlot(ctx)
+	if err != nil {
+		return err
 	}
+	defer releaseLock()
 
 	// Load prompt file once
 	pf, err := p.promptManager.Load(ctx, pr.Path)
@@ -623,6 +669,9 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if p.worktree && workflowState.clonePath != "" {
 		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
+
+	// Release the container lock once the container has started (not after it exits).
+	p.startContainerLockRelease(ctx, containerName, releaseLock)
 
 	// Execute with cancellation watcher running concurrently
 	execCtx, execCancel := context.WithCancel(ctx)

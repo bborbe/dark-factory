@@ -19,6 +19,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -255,6 +256,11 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		poller = CreateReviewPoller(cfg, promptManager, projectName, n)
 	}
 
+	cl, containerChecker, clErr := createContainerDeps()
+	if clErr != nil {
+		return &errRunner{err: fmt.Errorf("containerlock: %w", clErr)}
+	}
+
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
 		promptManager, releaser, versionGetter, ready,
@@ -269,6 +275,8 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 		cfg.AdditionalInstructions,
+		cl,
+		containerChecker,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -277,7 +285,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
 		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName,
-		executor.NewDockerContainerChecker(), n, migrator,
+		containerChecker, n, migrator,
 		currentDateTimeGetter,
 		releaser,
 	)
@@ -303,12 +311,12 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 	projectName := project.Name(cfg.ProjectName)
 	deps := createProviderDeps(cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-
-	// One-shot mode uses a nil ready channel — ProcessQueue never reads from it.
-	ready := make(chan struct{}, 10)
-
+	ready := make(chan struct{}, 10) // ProcessQueue never reads from it in one-shot mode
 	n := CreateNotifier(cfg)
-
+	cl, containerChecker, clErr := createContainerDeps()
+	if clErr != nil {
+		return &errOneShotRunner{err: fmt.Errorf("containerlock: %w", clErr)}
+	}
 	return runner.NewOneShotRunner(
 		inboxDir,
 		inProgressDir,
@@ -355,10 +363,12 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			executor.NewDockerContainerCounter(),
 			EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 			cfg.AdditionalInstructions,
+			cl,
+			containerChecker,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
-		executor.NewDockerContainerChecker(),
+		containerChecker,
 		autoApprove,
 		migrator,
 		releaser,
@@ -428,6 +438,15 @@ func CreateWatcher(
 	)
 }
 
+// createContainerDeps creates the container lock and checker used for the count-and-start window.
+func createContainerDeps() (containerlock.ContainerLock, executor.ContainerChecker, error) {
+	cl, err := containerlock.NewContainerLock()
+	if err != nil {
+		return nil, nil, err
+	}
+	return cl, executor.NewDockerContainerChecker(), nil
+}
+
 // createDockerExecutor creates a Docker executor with the given configuration.
 func createDockerExecutor(
 	containerImage string,
@@ -480,6 +499,8 @@ func CreateProcessor(
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
 	additionalInstructions string,
+	containerLock containerlock.ContainerLock,
+	containerChecker executor.ContainerChecker,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -521,6 +542,8 @@ func CreateProcessor(
 		containerCounter,
 		maxContainers,
 		additionalInstructions,
+		containerLock,
+		containerChecker,
 	)
 }
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.95.0
+
+- feat: Add global container lock (`pkg/containerlock`) that serializes the count-and-start window across multiple dark-factory daemon instances, preventing concurrent daemons from exceeding `maxContainers`
+
 ## v0.94.2
 
 - chore: Verify GOPATH mount provides Go module cache inside YOLO container at `/home/node/go/pkg`

@@ -8,6 +8,7 @@ import (
 	"context"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
 )
@@ -17,6 +18,9 @@ import (
 // ContainerChecker checks whether a Docker container is currently running.
 type ContainerChecker interface {
 	IsRunning(ctx context.Context, name string) (bool, error)
+	// WaitUntilRunning blocks until the named container is in the running state,
+	// the timeout elapses, or ctx is cancelled.
+	WaitUntilRunning(ctx context.Context, name string, timeout time.Duration) error
 }
 
 // NewDockerContainerChecker creates a ContainerChecker backed by docker inspect.
@@ -26,6 +30,33 @@ func NewDockerContainerChecker() ContainerChecker {
 
 // dockerContainerChecker implements ContainerChecker using docker inspect.
 type dockerContainerChecker struct{}
+
+// WaitUntilRunning polls docker inspect every 2 seconds until the named container
+// is running, the timeout expires, or ctx is cancelled.
+func (c *dockerContainerChecker) WaitUntilRunning(
+	ctx context.Context,
+	name string,
+	timeout time.Duration,
+) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		running, err := c.IsRunning(ctx, name)
+		if err != nil {
+			return errors.Wrapf(ctx, err, "check container running")
+		}
+		if running {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return errors.Errorf(ctx, "container %s did not start within %s", name, timeout)
+		}
+		select {
+		case <-ctx.Done():
+			return errors.Wrapf(ctx, ctx.Err(), "wait until running cancelled")
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
 
 // IsRunning returns true if the named container is currently running.
 // If the container does not exist, it returns false with no error.

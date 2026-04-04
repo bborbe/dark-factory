@@ -4,6 +4,7 @@ package mocks
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
@@ -22,6 +23,19 @@ type ContainerChecker struct {
 	isRunningReturnsOnCall map[int]struct {
 		result1 bool
 		result2 error
+	}
+	WaitUntilRunningStub        func(context.Context, string, time.Duration) error
+	waitUntilRunningMutex       sync.RWMutex
+	waitUntilRunningArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 time.Duration
+	}
+	waitUntilRunningReturns struct {
+		result1 error
+	}
+	waitUntilRunningReturnsOnCall map[int]struct {
+		result1 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -90,6 +104,69 @@ func (fake *ContainerChecker) IsRunningReturnsOnCall(i int, result1 bool, result
 		result1 bool
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *ContainerChecker) WaitUntilRunning(arg1 context.Context, arg2 string, arg3 time.Duration) error {
+	fake.waitUntilRunningMutex.Lock()
+	ret, specificReturn := fake.waitUntilRunningReturnsOnCall[len(fake.waitUntilRunningArgsForCall)]
+	fake.waitUntilRunningArgsForCall = append(fake.waitUntilRunningArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 time.Duration
+	}{arg1, arg2, arg3})
+	stub := fake.WaitUntilRunningStub
+	fakeReturns := fake.waitUntilRunningReturns
+	fake.recordInvocation("WaitUntilRunning", []interface{}{arg1, arg2, arg3})
+	fake.waitUntilRunningMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *ContainerChecker) WaitUntilRunningCallCount() int {
+	fake.waitUntilRunningMutex.RLock()
+	defer fake.waitUntilRunningMutex.RUnlock()
+	return len(fake.waitUntilRunningArgsForCall)
+}
+
+func (fake *ContainerChecker) WaitUntilRunningCalls(stub func(context.Context, string, time.Duration) error) {
+	fake.waitUntilRunningMutex.Lock()
+	defer fake.waitUntilRunningMutex.Unlock()
+	fake.WaitUntilRunningStub = stub
+}
+
+func (fake *ContainerChecker) WaitUntilRunningArgsForCall(i int) (context.Context, string, time.Duration) {
+	fake.waitUntilRunningMutex.RLock()
+	defer fake.waitUntilRunningMutex.RUnlock()
+	argsForCall := fake.waitUntilRunningArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *ContainerChecker) WaitUntilRunningReturns(result1 error) {
+	fake.waitUntilRunningMutex.Lock()
+	defer fake.waitUntilRunningMutex.Unlock()
+	fake.WaitUntilRunningStub = nil
+	fake.waitUntilRunningReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ContainerChecker) WaitUntilRunningReturnsOnCall(i int, result1 error) {
+	fake.waitUntilRunningMutex.Lock()
+	defer fake.waitUntilRunningMutex.Unlock()
+	fake.WaitUntilRunningStub = nil
+	if fake.waitUntilRunningReturnsOnCall == nil {
+		fake.waitUntilRunningReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.waitUntilRunningReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *ContainerChecker) Invocations() map[string][][]interface{} {

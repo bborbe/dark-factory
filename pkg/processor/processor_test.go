@@ -127,6 +127,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -198,6 +200,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -273,6 +277,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -346,6 +352,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -409,6 +417,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor — marks failed and continues (no error returned)
@@ -470,6 +480,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -535,6 +547,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -602,6 +616,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -701,6 +717,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -774,6 +792,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -837,6 +857,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -904,6 +926,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -960,6 +984,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -1014,6 +1040,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -1078,6 +1106,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -1155,6 +1185,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		// Run processor in goroutine
@@ -1229,6 +1261,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -1297,6 +1331,8 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -1367,6 +1403,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -1450,6 +1488,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -1568,6 +1608,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -1664,6 +1706,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -1756,6 +1800,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor
@@ -1841,6 +1887,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor
@@ -1933,6 +1981,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -2000,6 +2050,8 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor
@@ -2102,6 +2154,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -2182,6 +2236,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -2259,6 +2315,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2337,6 +2395,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2415,6 +2475,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -2491,6 +2553,8 @@ more output
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -2568,6 +2632,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor — should not return error (continues after failure)
@@ -2649,6 +2715,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			// Run processor in goroutine
@@ -2714,6 +2782,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -2771,6 +2841,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -2835,6 +2907,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -2924,6 +2998,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -3006,6 +3082,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -3071,6 +3149,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -3150,6 +3230,8 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -3209,6 +3291,8 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3277,6 +3361,8 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3332,6 +3418,8 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		errCh := make(chan error, 1)
@@ -3395,6 +3483,8 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3481,6 +3571,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3570,6 +3662,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3632,6 +3726,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3719,6 +3815,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			"",
+			nil,
+			nil,
 		)
 
 		go func() {
@@ -3812,6 +3910,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -3911,6 +4011,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				go func() {
@@ -4016,6 +4118,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -4105,6 +4209,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				go func() {
@@ -4198,6 +4304,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -4287,6 +4395,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				go func() {
@@ -4390,6 +4500,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -4477,6 +4589,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				errCh := make(chan error, 1)
@@ -4550,6 +4664,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				errCh := make(chan error, 1)
@@ -4612,6 +4728,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 						nil,
 						0,
 						"",
+						nil,
+						nil,
 					)
 
 					errCh := make(chan error, 1)
@@ -4665,6 +4783,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 
 				errCh := make(chan error, 1)
@@ -4727,6 +4847,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			errCh := make(chan error, 1)
@@ -4795,6 +4917,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 		}
 
@@ -4912,6 +5036,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 		}
 
@@ -5235,6 +5361,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					"",
+					nil,
+					nil,
 				)
 			}
 		})
@@ -5365,6 +5493,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 			go func() { _ = p.Process(ctx) }()
 
@@ -5438,6 +5568,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 		}
 
@@ -5674,6 +5806,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 		}
 
@@ -5816,6 +5950,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"Read /docs/guide.md before starting.",
+				nil,
+				nil,
 			)
 
 			go func() {
@@ -5889,6 +6025,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				"",
+				nil,
+				nil,
 			)
 
 			go func() {

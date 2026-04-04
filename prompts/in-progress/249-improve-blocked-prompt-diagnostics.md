@@ -1,11 +1,12 @@
 ---
-status: draft
+status: approved
 created: "2026-04-04T14:31:56Z"
+queued: "2026-04-04T21:20:33Z"
 ---
 
 <summary>
-- "prompt blocked" log message now includes which specific prompt numbers are missing from completed/
-- New helper function `FindMissingCompleted` returns the list of missing prompt numbers
+- "prompt blocked" log message now includes which specific prompt numbers are missing and their status
+- Operators can immediately see what's blocking without manual inspection
 - Failed prompts in in-progress/ are reported with their status so operators know what to fix
 - Debug log level shows all completed numbers found during the check
 - Blocked message is logged at most once per prompt until state changes (no more spam every 5 seconds)
@@ -19,7 +20,7 @@ When `dark-factory daemon` or `dark-factory run` encounters a blocked prompt, th
 Read CLAUDE.md for project conventions.
 
 Read these files before making changes:
-- `pkg/processor/processor.go` — `processQueue()` at line ~384 logs the blocked message. This is where the improved diagnostics must be added.
+- `pkg/processor/processor.go` — `processQueue()` at line ~399 logs the blocked message. This is where the improved diagnostics must be added.
 - `pkg/prompt/prompt.go` — `AllPreviousCompleted()` at line ~1217 checks completed directory. Add a companion function `FindMissingCompleted()` that returns the missing numbers.
 - `pkg/prompt/prompt.go` — `extractNumberFromFilename()` at line ~1205 extracts number from filename.
 
@@ -71,7 +72,7 @@ FindPromptStatusInProgress(ctx context.Context, number int) string
 
 **Step 3 — Improve the blocked log message in `pkg/processor/processor.go`**
 
-Replace the current blocked log at line ~385-393 with:
+Replace the current blocked log at line ~399-407 with:
 
 ```go
 if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
@@ -108,7 +109,7 @@ Add a field to the processor struct to track the last blocked message:
 lastBlockedMsg string
 ```
 
-Only log the blocked message if it differs from the last one. Reset `lastBlockedMsg` when the processor successfully picks up a prompt or the queue changes.
+Only log the blocked message if it differs from the last one. Reset `lastBlockedMsg` after the `AllPreviousCompleted` check passes (line ~408, when a prompt is picked up for execution).
 
 This eliminates the spam of identical messages every 5 seconds while still logging when the situation changes.
 
@@ -121,3 +122,18 @@ This eliminates the spam of identical messages every 5 seconds while still loggi
 
 Run `make precommit` — must pass with no lint issues.
 </requirements>
+
+<constraints>
+- Do NOT commit — dark-factory handles git
+- Existing tests must still pass
+- Do NOT change the `AllPreviousCompleted` function signature or behavior
+- Follow existing error wrapping: `errors.Errorf(ctx, ...)` — never `fmt.Errorf`
+- Follow existing test patterns: Ginkgo/Gomega, external test packages
+</constraints>
+
+<verification>
+```bash
+make precommit
+```
+Must pass with no errors.
+</verification>

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added FindMissingCompleted and FindPromptStatus functions to pkg/prompt, extended Manager interface, improved blocked log message to show missing prompt numbers with their status, added deduplication via lastBlockedMsg field in processor, regenerated mocks, and added tests for all new code paths.
+container: dark-factory-249-improve-blocked-prompt-diagnostics
+dark-factory-version: v0.95.0
 created: "2026-04-04T14:31:56Z"
 queued: "2026-04-04T21:20:33Z"
+started: "2026-04-04T21:46:34Z"
+completed: "2026-04-04T22:00:29Z"
 ---
 
 <summary>

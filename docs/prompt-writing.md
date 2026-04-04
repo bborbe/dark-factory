@@ -15,22 +15,29 @@ Use the Claude Code command:
 /dark-factory:create-prompt
 ```
 
-Or create manually. Location depends on status:
+Or create manually. Location depends on status and project config:
 
 | Status | Directory | Purpose |
 |--------|-----------|---------|
 | `idea` | `prompts/ideas/` | Rough concepts, not ready for approval |
-| `draft` | `prompts/` (inbox) | Complete prompts, ready for review and approval |
+| `draft` | inbox dir (default: `prompts/`) | Complete prompts, ready for review and approval |
+
+The inbox directory is configurable per project. Run `dark-factory config` to check the actual `inboxDir` path before writing prompts.
 
 ```bash
+# Check your project's inbox directory
+dark-factory config | grep inboxDir
+
 # Idea — park it for later
 touch prompts/ideas/my-change.md
 
-# Draft — ready for review
+# Draft — ready for review (use the inboxDir from config)
 touch prompts/my-change.md
 ```
 
-Use lowercase-kebab-case. Never number filenames — dark-factory assigns numbers on approve.
+Use lowercase-kebab-case. Dark-factory assigns execution numbers on approve (e.g., `248-spec-044-model.md`).
+
+**Ordering prefix for dependent prompts.** When multiple prompts must execute in strict order, prefix with a simple number to define the sequence: `1-spec-044-model.md`, `2-spec-044-executor-timeout.md`, `3-spec-044-processor-retry.md`. Approve them in order — dark-factory replaces the prefix with execution numbers. Do NOT number standalone prompts.
 
 ## Prompt Structure
 

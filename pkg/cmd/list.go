@@ -102,7 +102,11 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 			string(prompt.ExecutingPromptStatus),
 		)
 	case failedOnly:
-		entries = filterPromptsByStatus(entries, string(prompt.FailedPromptStatus))
+		entries = filterPromptsByStatus(
+			entries,
+			string(prompt.FailedPromptStatus),
+			string(prompt.PermanentlyFailedPromptStatus),
+		)
 	case !showAll:
 		entries = excludePromptStatus(entries, string(prompt.CompletedPromptStatus))
 	}

@@ -211,6 +211,30 @@ dirtyFileThreshold: 50
 |-------|---------|---------|
 | `dirtyFileThreshold` | `0` (disabled) | Skip prompt execution when dirty file count exceeds this value. `0` disables the check. When exceeded, the prompt is skipped (not failed) and re-checked on the next poll cycle. User must clean up dirty files manually — no auto-cleanup. |
 
+### Prompt Timeout
+
+Limit how long a single prompt execution may run before it is killed and marked failed.
+
+```yaml
+maxPromptDuration: "90m"
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `maxPromptDuration` | `""` (disabled) | Maximum wall-clock time allowed for a single YOLO container execution. Empty string or omitted means no timeout. Accepts Go duration strings: `"30m"`, `"2h"`, `"90m"`. Invalid strings are rejected at daemon startup. |
+
+### Auto-Retry
+
+Automatically re-queue failed prompts up to a fixed number of times before marking them `permanently_failed`.
+
+```yaml
+autoRetryLimit: 3
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `autoRetryLimit` | `0` (disabled) | Number of automatic retries after a prompt fails. `0` disables auto-retry. When the retry count is exhausted the prompt transitions to `permanently_failed` and stops being retried. |
+
 ### CLI Override
 
 Override the limit for a single run without editing config:

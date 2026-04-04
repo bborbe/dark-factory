@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -1897,6 +1898,89 @@ worktree: false
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("dirtyFileThreshold"))
+		})
+	})
+
+	Describe("MaxPromptDuration", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+		}
+
+		It("succeeds when maxPromptDuration is empty (disabled)", func() {
+			cfg := validBase()
+			cfg.MaxPromptDuration = ""
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+			Expect(cfg.ParsedMaxPromptDuration()).To(Equal(time.Duration(0)))
+		})
+
+		It("succeeds when maxPromptDuration is '0'", func() {
+			cfg := validBase()
+			cfg.MaxPromptDuration = "0"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+			Expect(cfg.ParsedMaxPromptDuration()).To(Equal(time.Duration(0)))
+		})
+
+		It("succeeds when maxPromptDuration is '90m'", func() {
+			cfg := validBase()
+			cfg.MaxPromptDuration = "90m"
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+			Expect(cfg.ParsedMaxPromptDuration()).To(Equal(90 * time.Minute))
+		})
+
+		It("fails when maxPromptDuration is invalid", func() {
+			cfg := validBase()
+			cfg.MaxPromptDuration = "invalid"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("maxPromptDuration"))
+		})
+	})
+
+	Describe("AutoRetryLimit", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+		}
+
+		It("succeeds when autoRetryLimit is 0 (disabled)", func() {
+			cfg := validBase()
+			cfg.AutoRetryLimit = 0
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when autoRetryLimit is 3", func() {
+			cfg := validBase()
+			cfg.AutoRetryLimit = 3
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails when autoRetryLimit is -1", func() {
+			cfg := validBase()
+			cfg.AutoRetryLimit = -1
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoRetryLimit"))
 		})
 	})
 })

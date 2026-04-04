@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.98.0
+
+- feat: Add `maxPromptDuration` and `autoRetryLimit` config fields with validation and `ParsedMaxPromptDuration()` helper
+- feat: Add `permanently_failed` prompt status for prompts that exhaust auto-retries
+- feat: Add `lastFailReason` frontmatter field and `MarkPermanentlyFailed`/`SetLastFailReason` methods on `PromptFile`
+
 ## v0.97.0
 
 - feat: Improve blocked prompt diagnostics — log missing prompt numbers and their status (e.g., `failed`, `executing`, `not found`) and deduplicate repeated blocked messages

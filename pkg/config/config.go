@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/validation"
@@ -113,6 +114,8 @@ type Config struct {
 	AdditionalInstructions string              `yaml:"additionalInstructions,omitempty"`
 	MaxContainers          int                 `yaml:"maxContainers,omitempty"`
 	DirtyFileThreshold     int                 `yaml:"dirtyFileThreshold,omitempty"`
+	MaxPromptDuration      string              `yaml:"maxPromptDuration"`
+	AutoRetryLimit         int                 `yaml:"autoRetryLimit"`
 }
 
 // Defaults returns a Config with all default values.
@@ -220,13 +223,56 @@ func (c Config) Validate(ctx context.Context) error {
 			"dirtyFileThreshold",
 			validation.HasValidationFunc(c.validateDirtyFileThreshold),
 		),
+		validation.Name(
+			"maxPromptDuration",
+			validation.HasValidationFunc(c.validateMaxPromptDuration),
+		),
+		validation.Name("autoRetryLimit", validation.HasValidationFunc(c.validateAutoRetryLimit)),
 	}.Validate(ctx)
+}
+
+// ParsedMaxPromptDuration returns the parsed duration from MaxPromptDuration.
+// Returns 0 when MaxPromptDuration is empty or unparseable (disables timeout).
+// Safe to call at any time — returns 0 on error, never panics.
+func (c Config) ParsedMaxPromptDuration() time.Duration {
+	if c.MaxPromptDuration == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(c.MaxPromptDuration)
+	if err != nil {
+		return 0
+	}
+	return d
 }
 
 // validateMaxContainers rejects negative maxContainers values.
 func (c Config) validateMaxContainers(ctx context.Context) error {
 	if c.MaxContainers < 0 {
 		return errors.Errorf(ctx, "maxContainers must not be negative, got %d", c.MaxContainers)
+	}
+	return nil
+}
+
+// validateMaxPromptDuration rejects unparseable duration strings.
+func (c Config) validateMaxPromptDuration(ctx context.Context) error {
+	if c.MaxPromptDuration == "" {
+		return nil
+	}
+	if _, err := time.ParseDuration(c.MaxPromptDuration); err != nil {
+		return errors.Errorf(
+			ctx,
+			"maxPromptDuration %q is not a valid duration: %v",
+			c.MaxPromptDuration,
+			err,
+		)
+	}
+	return nil
+}
+
+// validateAutoRetryLimit rejects negative autoRetryLimit values.
+func (c Config) validateAutoRetryLimit(ctx context.Context) error {
+	if c.AutoRetryLimit < 0 {
+		return errors.Errorf(ctx, "autoRetryLimit must not be negative, got %d", c.AutoRetryLimit)
 	}
 	return nil
 }

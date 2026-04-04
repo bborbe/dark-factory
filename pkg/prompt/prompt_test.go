@@ -2671,4 +2671,56 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(has).To(BeFalse())
 		})
 	})
+
+	Describe("PermanentlyFailedPromptStatus", func() {
+		It("validates without error (in AvailablePromptStatuses)", func() {
+			err := prompt.PermanentlyFailedPromptStatus.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("PromptFile.MarkPermanentlyFailed", func() {
+		It("sets status to permanently_failed, records reason, and sets completed", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: executing\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+
+			pf.MarkPermanentlyFailed("some reason")
+			Expect(pf.Frontmatter.Status).To(Equal("permanently_failed"))
+			Expect(pf.Frontmatter.LastFailReason).To(Equal("some reason"))
+			Expect(pf.Frontmatter.Completed).NotTo(BeEmpty())
+		})
+	})
+
+	Describe("PromptFile.SetLastFailReason", func() {
+		It("sets the LastFailReason field", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: failed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+
+			pf.SetLastFailReason("msg")
+			Expect(pf.Frontmatter.LastFailReason).To(Equal("msg"))
+		})
+	})
+
+	Describe("Frontmatter without lastFailReason", func() {
+		It("parses correctly with zero value when field is absent", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: failed\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
+		})
+	})
 })

@@ -1442,7 +1442,7 @@ worktree: false
     dst: /container/path
   - src: ~/docs
     dst: /docs
-    readonly: false
+    readOnly: true
 `
 				err := os.WriteFile(
 					filepath.Join(tmpDir, ".dark-factory.yaml"),
@@ -1456,10 +1456,10 @@ worktree: false
 				Expect(cfg.ExtraMounts).To(HaveLen(2))
 				Expect(cfg.ExtraMounts[0].Src).To(Equal("/some/host/path"))
 				Expect(cfg.ExtraMounts[0].Dst).To(Equal("/container/path"))
-				Expect(cfg.ExtraMounts[0].IsReadonly()).To(BeTrue())
+				Expect(cfg.ExtraMounts[0].IsReadonly()).To(BeFalse())
 				Expect(cfg.ExtraMounts[1].Src).To(Equal("~/docs"))
 				Expect(cfg.ExtraMounts[1].Dst).To(Equal("/docs"))
-				Expect(cfg.ExtraMounts[1].IsReadonly()).To(BeFalse())
+				Expect(cfg.ExtraMounts[1].IsReadonly()).To(BeTrue())
 			})
 
 			It("leaves ExtraMounts nil when field is absent", func() {
@@ -1797,20 +1797,20 @@ worktree: false
 	})
 
 	Describe("ExtraMount.IsReadonly", func() {
-		It("returns true when Readonly is nil (default)", func() {
+		It("returns false when ReadOnly is nil (default)", func() {
 			m := config.ExtraMount{Src: "/src", Dst: "/dst"}
-			Expect(m.IsReadonly()).To(BeTrue())
+			Expect(m.IsReadonly()).To(BeFalse())
 		})
 
-		It("returns true when Readonly is explicitly true", func() {
+		It("returns true when ReadOnly is explicitly true", func() {
 			t := true
-			m := config.ExtraMount{Src: "/src", Dst: "/dst", Readonly: &t}
+			m := config.ExtraMount{Src: "/src", Dst: "/dst", ReadOnly: &t}
 			Expect(m.IsReadonly()).To(BeTrue())
 		})
 
-		It("returns false when Readonly is false", func() {
+		It("returns false when ReadOnly is explicitly false", func() {
 			f := false
-			m := config.ExtraMount{Src: "/src", Dst: "/dst", Readonly: &f}
+			m := config.ExtraMount{Src: "/src", Dst: "/dst", ReadOnly: &f}
 			Expect(m.IsReadonly()).To(BeFalse())
 		})
 	})

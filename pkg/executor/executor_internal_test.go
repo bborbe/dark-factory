@@ -544,7 +544,7 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(mounts).To(HaveLen(3))
 		})
 
-		It("adds extra mount with :ro suffix when IsReadonly is true (nil Readonly)", func() {
+		It("adds extra mount without :ro suffix when ReadOnly is nil (default read-write)", func() {
 			srcDir, err := os.MkdirTemp("", "extramount-src-*")
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { _ = os.RemoveAll(srcDir) }()
@@ -562,17 +562,22 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs:ro"))
+			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs"))
+			for _, arg := range cmd.Args {
+				if arg == srcDir+":/docs:ro" {
+					Fail("expected no :ro suffix but found it")
+				}
+			}
 		})
 
-		It("adds extra mount without :ro suffix when Readonly is false", func() {
+		It("adds extra mount with :ro suffix when ReadOnly is explicitly true", func() {
 			srcDir, err := os.MkdirTemp("", "extramount-src-*")
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { _ = os.RemoveAll(srcDir) }()
 
-			f := false
+			t := true
 			exec.extraMounts = []config.ExtraMount{
-				{Src: srcDir, Dst: "/docs", Readonly: &f},
+				{Src: srcDir, Dst: "/docs", ReadOnly: &t},
 			}
 			cmd := exec.buildDockerCommand(
 				ctx,
@@ -584,12 +589,7 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs"))
-			for _, arg := range cmd.Args {
-				if arg == srcDir+":/docs:ro" {
-					Fail("expected no :ro suffix but found it")
-				}
-			}
+			Expect(cmd.Args).To(ContainElement(srcDir + ":/docs:ro"))
 		})
 
 		It("skips extra mount when src does not exist", func() {
@@ -633,7 +633,7 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement(subDir + ":/container/docs:ro"))
+			Expect(cmd.Args).To(ContainElement(subDir + ":/container/docs"))
 		})
 
 		It("expands tilde in extra mount src", func() {
@@ -658,7 +658,7 @@ var _ = Describe("Internal helper functions", func() {
 				homeDir,
 			)
 
-			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs"))
 		})
 
 		It("expands $VAR env var in extra mount src", func() {
@@ -685,7 +685,7 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs"))
 		})
 
 		It("expands ${VAR} env var in extra mount src", func() {
@@ -712,7 +712,7 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement(pkgDir + ":/home/node/go/pkg:ro"))
+			Expect(cmd.Args).To(ContainElement(pkgDir + ":/home/node/go/pkg"))
 		})
 
 		It("skips extra mount when env var is undefined (expands to empty string)", func() {
@@ -757,7 +757,7 @@ var _ = Describe("Internal helper functions", func() {
 				homeDir,
 			)
 
-			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs:ro"))
+			Expect(cmd.Args).To(ContainElement(docsDir + ":/container/docs"))
 		})
 	})
 

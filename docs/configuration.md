@@ -284,14 +284,14 @@ extraMounts:
     dst: /docs
   - src: ~/Documents/workspaces/coding/docs
     dst: /coding-docs
-    readonly: true
+    readOnly: true
 ```
 
 | Field | Required | Default | Purpose |
 |-------|----------|---------|---------|
 | `src` | yes | — | Host path. Environment variables (`$VAR`, `${VAR}`) are expanded. `~/` expanded to home. Relative paths resolved from project root. |
 | `dst` | yes | — | Container path where `src` is mounted. |
-| `readonly` | no | `true` | Mount read-only (`:ro`). Set `false` for writable access. |
+| `readOnly` | no | `false` | Mount read-only (`:ro`). Set `true` for read-only access. Omitting the field defaults to read-write. |
 
 Missing `src` paths at execution time are logged as a warning and skipped — they do not abort the run.
 

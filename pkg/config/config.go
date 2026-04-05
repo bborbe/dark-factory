@@ -67,15 +67,15 @@ type SpecsConfig struct {
 type ExtraMount struct {
 	Src      string `yaml:"src"`
 	Dst      string `yaml:"dst"`
-	Readonly *bool  `yaml:"readonly,omitempty"` // nil defaults to true
+	ReadOnly *bool  `yaml:"readOnly,omitempty"` // nil defaults to false (read-write)
 }
 
-// IsReadonly returns true if the mount is read-only (default when Readonly is nil).
+// IsReadonly returns true if the mount is read-only (default when ReadOnly is nil is false = read-write).
 func (m ExtraMount) IsReadonly() bool {
-	if m.Readonly == nil {
-		return true
+	if m.ReadOnly == nil {
+		return false
 	}
-	return *m.Readonly
+	return *m.ReadOnly
 }
 
 // Config holds the dark-factory configuration.

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.101.0
+
+- feat: Flip `ExtraMount` default from read-only to read-write; rename struct field from `Readonly` to `ReadOnly` and YAML tag from `readonly` to `readOnly`
+
 ## v0.100.0
 
 - feat: Wire auto-retry into processor — failed prompts are re-queued up to `autoRetryLimit` times, exhausted prompts are marked `permanently_failed` with a notification, and the daemon continues processing; `requeue --failed` also handles `permanently_failed` prompts and resets the retry counter

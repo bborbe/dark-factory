@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.102.1
+
+- fix: Stop daemon when post-execution git failure occurs after prompt moved to completed/ — prevents uncommitted code changes from being silently overwritten by subsequent prompts
+
 ## v0.102.0
 
 - feat: Add git index lock preflight check — daemon startup aborts with a clear error if `.git/index.lock` exists, and prompt/spec-generation cycles skip and retry instead of failing with `git add` exit 128

@@ -6508,4 +6508,118 @@ DARK-FACTORY-REPORT -->`), 0600)
 			},
 		)
 	})
+
+	Describe("processExistingQueued post-execution failure detection", func() {
+		newProc := func() processor.Processor {
+			return processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+				nil,
+				nil,
+				0,
+				nil,
+				nil,
+				0,
+			)
+		}
+
+		It(
+			"stops daemon when prompt file gone from in-progress and found in completed (post-execution failure)",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-post-exec-stop.md")
+				completedDir := filepath.Join(promptsDir, "completed")
+				Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+
+				// Simulate file already moved to completed/ (container succeeded, git commit failed)
+				Expect(os.WriteFile(
+					filepath.Join(completedDir, "001-post-exec-stop.md"),
+					[]byte("---\nstatus: completed\n---\n"),
+					0600,
+				)).To(Succeed())
+
+				// pr.Path does NOT exist on disk — file was already moved to completed/
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, nil, nil)
+				manager.AllPreviousCompletedReturns(true)
+				brancher.FetchReturns(stderrors.New("fetch failed"))
+
+				p := newProc()
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				// Wait for processing to be attempted
+				Eventually(func() int {
+					return brancher.FetchCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// handlePromptFailure must NOT be called — daemon stopped on post-execution failure
+				Consistently(func() int {
+					return manager.LoadCallCount()
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+
+				cancel()
+			},
+		)
+
+		It(
+			"calls handlePromptFailure when file still exists at in-progress path after error",
+			func() {
+				promptPath := filepath.Join(promptsDir, "001-pre-exec-fail.md")
+
+				// File exists at pr.Path — pre-execution failure, file was not moved to completed/
+				Expect(
+					os.WriteFile(promptPath, []byte("---\nstatus: queued\n---\n"), 0600),
+				).To(Succeed())
+
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, nil, nil)
+				manager.AllPreviousCompletedReturns(true)
+				brancher.FetchReturns(stderrors.New("fetch failed"))
+
+				p := newProc()
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				// handlePromptFailure is called because file still exists at pr.Path
+				Eventually(func() int {
+					return manager.LoadCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+				cancel()
+			},
+		)
+	})
 })

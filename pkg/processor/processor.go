@@ -414,15 +414,9 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 
 		// Process the prompt (includes moving to completed/ and committing)
 		if err := p.processPrompt(ctx, pr); err != nil {
-			if ctx.Err() != nil {
-				slog.Info(
-					"daemon shutting down, prompt stays executing",
-					"file",
-					filepath.Base(pr.Path),
-				)
-				return errors.Wrap(ctx, err, "prompt failed")
+			if stopErr := p.handleProcessError(ctx, pr.Path, err); stopErr != nil {
+				return stopErr
 			}
-			p.handlePromptFailure(ctx, pr.Path, err)
 			continue // re-queued or permanently failed — process next prompt
 		}
 
@@ -523,6 +517,47 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 	// Update local status so ValidateForExecution passes
 	pr.Status = prompt.ApprovedPromptStatus
 	return nil
+}
+
+// handleProcessError is called when processPrompt returns an error.
+// If the context is cancelled it returns an error to propagate shutdown.
+// If the prompt was already moved to completed/ (post-execution failure) it stops the daemon.
+// Otherwise it calls handlePromptFailure and returns nil so the loop continues.
+func (p *processor) handleProcessError(ctx context.Context, path string, err error) error {
+	if ctx.Err() != nil {
+		slog.Info("daemon shutting down, prompt stays executing", "file", filepath.Base(path))
+		return errors.Wrap(ctx, err, "prompt failed")
+	}
+	if stopErr := p.checkPostExecutionFailure(ctx, path, err); stopErr != nil {
+		return stopErr
+	}
+	p.handlePromptFailure(ctx, path, err)
+	return nil
+}
+
+// checkPostExecutionFailure returns a non-nil error when the prompt file is gone from its
+// in-progress path but found in completed/ — indicating the container succeeded yet a
+// post-execution git step failed. Returning an error stops the daemon loop so uncommitted
+// code changes are not overwritten by the next prompt's git fetch/merge.
+// Returns nil when the file still exists at path (normal pre-execution failure).
+func (p *processor) checkPostExecutionFailure(
+	ctx context.Context,
+	path string,
+	origErr error,
+) error {
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		return nil
+	}
+	completedFilePath := filepath.Join(p.completedDir, filepath.Base(path))
+	if _, cStatErr := os.Stat(completedFilePath); cStatErr != nil {
+		return nil
+	}
+	slog.Error(
+		"post-execution failure, prompt already moved to completed — stopping daemon",
+		"file", filepath.Base(path),
+		"error", origErr,
+	)
+	return errors.Wrap(ctx, origErr, "post-execution git failure, manual intervention required")
 }
 
 // handlePromptFailure decides whether to retry, permanently fail, or fail the prompt.

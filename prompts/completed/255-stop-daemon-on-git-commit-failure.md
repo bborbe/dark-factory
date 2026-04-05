@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added post-execution failure detection in processExistingQueued — daemon now stops when a prompt file is found in completed/ after a git commit failure, preventing uncommitted code changes from being overwritten
+container: dark-factory-255-stop-daemon-on-git-commit-failure
+dark-factory-version: v0.101.0
 created: "2026-04-04T15:30:00Z"
 queued: "2026-04-05T22:23:55Z"
+started: "2026-04-05T22:37:17Z"
+completed: "2026-04-05T23:03:06Z"
 ---
 
 <summary>

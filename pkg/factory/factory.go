@@ -262,6 +262,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	}
 
 	dirtyFileChecker := processor.NewDirtyFileChecker(".")
+	gitLockChecker := processor.NewGitLockChecker(".")
 
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
@@ -279,7 +280,7 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 		cfg.AdditionalInstructions,
 		cl,
 		containerChecker,
-		cfg.DirtyFileThreshold, dirtyFileChecker,
+		cfg.DirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
@@ -369,7 +370,7 @@ func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner
 			cl,
 			containerChecker,
 			cfg.DirtyFileThreshold, processor.NewDirtyFileChecker("."),
-			cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
+			processor.NewGitLockChecker("."), cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -525,7 +526,7 @@ func CreateProcessor(
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
 	dirtyFileThreshold int, dirtyFileChecker processor.DirtyFileChecker,
-	maxPromptDuration time.Duration, autoRetryLimit int,
+	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -564,8 +565,7 @@ func CreateProcessor(
 		additionalInstructions,
 		containerLock,
 		containerChecker,
-		dirtyFileThreshold,
-		dirtyFileChecker,
+		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		autoRetryLimit,
 	)
 }

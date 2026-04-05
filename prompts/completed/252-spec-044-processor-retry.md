@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["044"]
+spec: [044-prompt-timeout-auto-retry]
 summary: 'Wired auto-retry and permanent failure into the processor: failed prompts are re-queued up to autoRetryLimit times, exhausted retries mark permanently_failed with notification, daemon continues via continue instead of return, requeue commands reset retryCount, and permanently_failed status is excluded from ListQueued'
 container: dark-factory-252-spec-044-processor-retry
 dark-factory-version: v0.95.0

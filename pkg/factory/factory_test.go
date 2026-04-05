@@ -88,6 +88,7 @@ var _ = Describe("Factory", func() {
 				nil,
 				0,
 				processor.NewDirtyFileChecker("."),
+				processor.NewGitLockChecker("."),
 				0,
 				0,
 			)

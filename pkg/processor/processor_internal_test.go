@@ -32,6 +32,15 @@ func (f *fakeDirtyFileChecker) CountDirtyFiles(_ context.Context) (int, error) {
 	return f.count, f.err
 }
 
+// fakeGitLockChecker is a test stub for GitLockChecker.
+type fakeGitLockChecker struct {
+	exists bool
+}
+
+func (f *fakeGitLockChecker) Exists() bool {
+	return f.exists
+}
+
 var _ = Describe("DetermineBumpFromChangelog", func() {
 	var (
 		ctx     context.Context
@@ -1050,5 +1059,34 @@ var _ = Describe("checkDirtyFileThreshold", func() {
 		skip, err := p.checkDirtyFileThreshold(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(skip).To(BeFalse())
+	})
+})
+
+var _ = Describe("checkGitIndexLock", func() {
+	var (
+		p       *processor
+		checker *fakeGitLockChecker
+	)
+
+	BeforeEach(func() {
+		checker = &fakeGitLockChecker{}
+		p = &processor{}
+	})
+
+	It("returns false when checker is nil", func() {
+		p.gitLockChecker = nil
+		Expect(p.checkGitIndexLock()).To(BeFalse())
+	})
+
+	It("returns false when lock file does not exist", func() {
+		checker.exists = false
+		p.gitLockChecker = checker
+		Expect(p.checkGitIndexLock()).To(BeFalse())
+	})
+
+	It("returns true when lock file exists", func() {
+		checker.exists = true
+		p.gitLockChecker = checker
+		Expect(p.checkGitIndexLock()).To(BeTrue())
 	})
 })

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.102.0
+
+- feat: Add git index lock preflight check — daemon startup aborts with a clear error if `.git/index.lock` exists, and prompt/spec-generation cycles skip and retry instead of failing with `git add` exit 128
+
 ## v0.101.0
 
 - feat: Flip `ExtraMount` default from read-only to read-write; rename struct field from `Readonly` to `ReadOnly` and YAML tag from `readonly` to `readOnly`

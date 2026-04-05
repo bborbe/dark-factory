@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["044"]
+spec: [044-prompt-timeout-auto-retry]
 summary: Wired maxPromptDuration into dockerExecutor — containers exceeding their wall-clock budget are killed via docker stop (with docker kill fallback) and return a descriptive timeout error; zero duration disables the timeout; factory.go threads cfg.ParsedMaxPromptDuration() through CreateProcessor and CreateSpecGenerator
 container: dark-factory-251-spec-044-executor-timeout
 dark-factory-version: v0.95.0

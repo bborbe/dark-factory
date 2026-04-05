@@ -7,7 +7,9 @@ package runner
 import (
 	"context"
 	"log/slog"
+	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -123,6 +125,14 @@ func (r *runner) Run(ctx context.Context) error {
 	}()
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
+
+	// Abort if .git/index.lock exists — all git operations will fail
+	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
+		return errors.Errorf(
+			ctx,
+			".git/index.lock exists — remove it before starting the daemon (another git process may be running)",
+		)
+	}
 
 	// Set up signal handling
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)

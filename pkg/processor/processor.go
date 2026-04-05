@@ -77,6 +77,7 @@ func NewProcessor(
 	containerChecker executor.ContainerChecker,
 	dirtyFileThreshold int,
 	dirtyFileChecker DirtyFileChecker,
+	gitLockChecker GitLockChecker,
 	autoRetryLimit int,
 ) Processor {
 	return &processor{
@@ -113,6 +114,7 @@ func NewProcessor(
 		containerChecker:       containerChecker,
 		dirtyFileThreshold:     dirtyFileThreshold,
 		dirtyFileChecker:       dirtyFileChecker,
+		gitLockChecker:         gitLockChecker,
 		autoRetryLimit:         autoRetryLimit,
 	}
 }
@@ -152,6 +154,7 @@ type processor struct {
 	containerChecker       executor.ContainerChecker
 	dirtyFileThreshold     int
 	dirtyFileChecker       DirtyFileChecker
+	gitLockChecker         GitLockChecker
 	lastBlockedMsg         string
 	autoRetryLimit         int
 }
@@ -712,6 +715,22 @@ func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
+// checkGitIndexLock returns true when the prompt should be skipped
+// because .git/index.lock exists, false otherwise.
+func (p *processor) checkGitIndexLock() bool {
+	return p.gitLockChecker != nil && p.gitLockChecker.Exists()
+}
+
+// checkPreflightConditions runs all pre-execution skip checks in order.
+// Returns (true, nil) if the prompt should be skipped this cycle.
+func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) {
+	if p.checkGitIndexLock() {
+		slog.Warn("git index lock exists, skipping prompt — will retry next cycle")
+		return true, nil
+	}
+	return p.checkDirtyFileThreshold(ctx)
+}
+
 // syncWithRemote fetches and merges from the remote default branch.
 func (p *processor) syncWithRemote(ctx context.Context) error {
 	slog.Info("syncing with remote default branch")
@@ -726,8 +745,8 @@ func (p *processor) syncWithRemote(ctx context.Context) error {
 
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
-	if skip, err := p.checkDirtyFileThreshold(ctx); err != nil {
-		return errors.Wrap(ctx, err, "check dirty file threshold")
+	if skip, err := p.checkPreflightConditions(ctx); err != nil {
+		return errors.Wrap(ctx, err, "check preflight conditions")
 	} else if skip {
 		return nil // skip this cycle, re-check on next poll
 	}

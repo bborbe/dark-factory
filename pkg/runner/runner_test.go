@@ -1157,4 +1157,73 @@ var _ = Describe("Runner", func() {
 			Expect(string(content)).To(ContainSubstring("status: approved"))
 		})
 	})
+
+	Describe("git index lock startup check", func() {
+		var (
+			gitTempDir string
+			origDir    string
+		)
+
+		BeforeEach(func() {
+			var err error
+			gitTempDir, err = os.MkdirTemp("", "runner-gitlock-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(os.MkdirAll(filepath.Join(gitTempDir, ".git"), 0750)).To(Succeed())
+
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = os.Chdir(origDir)
+			if gitTempDir != "" {
+				_ = os.RemoveAll(gitTempDir)
+			}
+		})
+
+		It("returns error when .git/index.lock exists at startup", func() {
+			lockPath := filepath.Join(gitTempDir, ".git", "index.lock")
+			Expect(os.WriteFile(lockPath, []byte(""), 0600)).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+
+			r := newTestRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
+			runCtx, runCancel := context.WithTimeout(ctx, 2*time.Second)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("index.lock"))
+		})
+
+		It("starts successfully when .git/index.lock does not exist", func() {
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			server.ListenAndServeStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := newTestRunner(promptsDir, promptsDir, filepath.Join(promptsDir, "completed"))
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+		})
+	})
 })

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["044"]
+spec: [044-prompt-timeout-auto-retry]
 summary: Added maxPromptDuration and autoRetryLimit config fields with validation, permanently_failed prompt status, lastFailReason frontmatter field, and MarkPermanentlyFailed/SetLastFailReason methods with full test coverage.
 container: dark-factory-250-spec-044-model
 dark-factory-version: v0.95.0

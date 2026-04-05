@@ -132,6 +132,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -207,6 +208,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -288,6 +290,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -366,6 +369,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -434,6 +438,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -499,6 +504,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -569,6 +575,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -641,6 +648,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -746,6 +754,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -824,6 +833,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -891,6 +901,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -964,6 +975,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -1025,6 +1037,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -1083,6 +1096,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -1152,6 +1166,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -1235,6 +1250,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -1314,6 +1330,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -1386,6 +1403,7 @@ var _ = Describe("Processor", func() {
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -1461,6 +1479,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -1549,6 +1568,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -1673,6 +1693,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -1774,6 +1795,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -1871,6 +1893,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -1960,6 +1983,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -2058,6 +2082,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2129,6 +2154,7 @@ var _ = Describe("Processor", func() {
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -2237,6 +2263,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2322,6 +2349,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2403,6 +2431,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -2487,6 +2516,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2570,6 +2600,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2650,6 +2681,7 @@ more output
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -2732,6 +2764,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -2819,6 +2852,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2889,6 +2923,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -2950,6 +2985,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -3019,6 +3055,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -3114,6 +3151,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -3201,6 +3239,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -3270,6 +3309,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -3355,6 +3395,7 @@ DARK-FACTORY-REPORT -->
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -3418,6 +3459,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -3492,6 +3534,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -3551,6 +3594,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -3619,6 +3663,7 @@ DARK-FACTORY-REPORT -->
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -3710,6 +3755,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -3805,6 +3851,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			0,
 			nil,
+			nil,
 			0,
 		)
 
@@ -3871,6 +3918,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -3963,6 +4011,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			nil,
 			nil,
 			0,
+			nil,
 			nil,
 			0,
 		)
@@ -4061,6 +4110,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -4165,6 +4215,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					nil,
 					0,
+					nil,
 					nil,
 					0,
 				)
@@ -4276,6 +4327,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -4369,6 +4421,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					nil,
 					0,
+					nil,
 					nil,
 					0,
 				)
@@ -4468,6 +4521,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -4561,6 +4615,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					nil,
 					0,
+					nil,
 					nil,
 					0,
 				)
@@ -4670,6 +4725,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -4762,6 +4818,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					nil,
 					0,
 				)
 
@@ -4840,6 +4897,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					nil,
 					0,
 				)
 
@@ -4907,6 +4965,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						nil,
 						0,
 						nil,
+						nil,
 						0,
 					)
 
@@ -4964,6 +5023,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					nil,
 					0,
+					nil,
 					nil,
 					0,
 				)
@@ -5031,6 +5091,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -5104,6 +5165,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -5226,6 +5288,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -5555,6 +5618,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					nil,
 					0,
 					nil,
+					nil,
 					0,
 				)
 			}
@@ -5690,6 +5754,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 			go func() { _ = p.Process(ctx) }()
@@ -5767,6 +5832,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				0,
 			)
@@ -6009,6 +6075,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 		}
@@ -6157,6 +6224,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -6235,6 +6303,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				0,
 				nil,
+				nil,
 				0,
 			)
 
@@ -6286,6 +6355,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				0,
+				nil,
 				nil,
 				autoRetryLimit,
 			)

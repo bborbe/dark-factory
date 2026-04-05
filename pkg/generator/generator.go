@@ -82,6 +82,16 @@ func (g *dockerSpecGenerator) buildPromptContent(specPath string) string {
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,
 // then transitions the spec status to prompted if new prompt files were created.
 func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) error {
+	// Skip if .git/index.lock exists — will retry on next poll cycle
+	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
+		slog.Warn(
+			"git index lock exists, skipping spec generation — will retry next cycle",
+			"spec",
+			filepath.Base(specPath),
+		)
+		return nil
+	}
+
 	// a. Build prompt content
 	promptContent := g.buildPromptContent(specPath)
 

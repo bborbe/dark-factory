@@ -5,6 +5,8 @@
 package factory_test
 
 import (
+	"context"
+
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,7 +28,7 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateRunner", func() {
 		It("should return a non-nil runner", func() {
-			runner := factory.CreateRunner(cfg, "v0.0.1")
+			runner := factory.CreateRunner(context.Background(), cfg, "v0.0.1")
 			Expect(runner).NotTo(BeNil())
 		})
 	})
@@ -106,6 +108,7 @@ var _ = Describe("Factory", func() {
 	Describe("CreateServer", func() {
 		It("should return a non-nil server", func() {
 			server := factory.CreateServer(
+				context.Background(),
 				8080,
 				cfg.Prompts.InboxDir,
 				cfg.Prompts.InProgressDir,
@@ -121,14 +124,14 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateStatusCommand", func() {
 		It("should return a non-nil status command", func() {
-			cmd := factory.CreateStatusCommand(cfg)
+			cmd := factory.CreateStatusCommand(context.Background(), cfg)
 			Expect(cmd).NotTo(BeNil())
 		})
 	})
 
 	Describe("CreateCombinedStatusCommand", func() {
 		It("should return a non-nil combined status command", func() {
-			cmd := factory.CreateCombinedStatusCommand(cfg)
+			cmd := factory.CreateCombinedStatusCommand(context.Background(), cfg)
 			Expect(cmd).NotTo(BeNil())
 		})
 	})

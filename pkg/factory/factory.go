@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bborbe/errors"
 	libhttp "github.com/bborbe/http"
 	libtime "github.com/bborbe/time"
 
@@ -90,11 +91,12 @@ type providerDeps struct {
 // For github (or empty): uses gh CLI implementations (existing behavior).
 // For bitbucket-server: uses Bitbucket Server REST API implementations.
 func createProviderDeps(
+	ctx context.Context,
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
 	if cfg.Provider == config.ProviderBitbucketServer {
-		return createBitbucketProviderDeps(cfg, currentDateTimeGetter)
+		return createBitbucketProviderDeps(ctx, cfg, currentDateTimeGetter)
 	}
 	return createGitHubProviderDeps(cfg, currentDateTimeGetter)
 }
@@ -127,10 +129,10 @@ func createGitHubProviderDeps(
 // On error (e.g. unparseable remote URL), logs a warning and returns non-nil structs that
 // will fail at operation time with a clear error — startup is not blocked.
 func createBitbucketProviderDeps(
+	ctx context.Context,
 	cfg config.Config,
 	_ libtime.CurrentDateTimeGetter,
 ) providerDeps {
-	ctx := context.Background()
 	token := cfg.ResolvedBitbucketToken()
 	baseURL := cfg.Bitbucket.BaseURL
 
@@ -213,10 +215,10 @@ func createSpecSlugMigrator(
 }
 
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
-func CreateRunner(cfg config.Config, ver string) runner.Runner {
-	globalCfg, err := globalconfig.NewLoader().Load(context.Background())
+func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Runner {
+	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
-		return &errRunner{err: fmt.Errorf("globalconfig: %w", err)}
+		return &errRunner{err: errors.Wrap(ctx, err, "globalconfig")}
 	}
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
@@ -233,13 +235,13 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 	ready := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
-	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 
 	n := CreateNotifier(cfg)
-
 	var srv server.Server
 	if cfg.ServerPort > 0 {
 		srv = CreateServer(
+			ctx,
 			cfg.ServerPort,
 			inboxDir,
 			inProgressDir,
@@ -253,12 +255,12 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 
 	var poller review.ReviewPoller
 	if cfg.AutoReview {
-		poller = CreateReviewPoller(cfg, promptManager, projectName, n)
+		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n)
 	}
 
 	cl, containerChecker, clErr := createContainerDeps()
 	if clErr != nil {
-		return &errRunner{err: fmt.Errorf("containerlock: %w", clErr)}
+		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
 
 	dirtyFileChecker := processor.NewDirtyFileChecker(".")
@@ -297,29 +299,26 @@ func CreateRunner(cfg config.Config, ver string) runner.Runner {
 }
 
 // CreateOneShotRunner creates an OneShotRunner that drains the queue and exits.
-func CreateOneShotRunner(cfg config.Config, ver string, autoApprove bool) runner.OneShotRunner {
-	globalCfg, err := globalconfig.NewLoader().Load(context.Background())
+func CreateOneShotRunner(
+	ctx context.Context, cfg config.Config, ver string, autoApprove bool,
+) runner.OneShotRunner {
+	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
-		return &errOneShotRunner{err: fmt.Errorf("globalconfig: %w", err)}
+		return &errOneShotRunner{err: errors.Wrap(ctx, err, "globalconfig")}
 	}
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, releaser := createPromptManager(
-		inboxDir,
-		inProgressDir,
-		completedDir,
-		currentDateTimeGetter,
-	)
-	versionGetter := version.NewGetter(ver)
+		inboxDir, inProgressDir, completedDir, currentDateTimeGetter)
+	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
 	projectName := project.Name(cfg.ProjectName)
-	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	n := CreateNotifier(cfg)
 	cl, containerChecker, clErr := createContainerDeps()
 	if clErr != nil {
-		return &errOneShotRunner{err: fmt.Errorf("containerlock: %w", clErr)}
+		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
 	return runner.NewOneShotRunner(
 		inboxDir,
@@ -572,13 +571,14 @@ func CreateProcessor(
 
 // CreateReviewPoller creates a ReviewPoller that watches in_review prompts and handles approvals/changes.
 func CreateReviewPoller(
+	ctx context.Context,
 	cfg config.Config,
 	promptManager prompt.Manager,
 	projectName string,
 	n notifier.Notifier,
 ) review.ReviewPoller {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
-	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 
 	return review.NewReviewPoller(
 		cfg.Prompts.InProgressDir,
@@ -622,6 +622,7 @@ func CreateLocker(dir string) lock.Locker {
 
 // CreateServer creates a Server that provides HTTP endpoints for monitoring.
 func CreateServer(
+	ctx context.Context,
 	port int,
 	inboxDir string,
 	inProgressDir string,
@@ -633,7 +634,7 @@ func CreateServer(
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	projectDir, _ := os.Getwd()
-	globalCfgForServer, err := globalconfig.NewLoader().Load(context.Background())
+	globalCfgForServer, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
 		slog.Warn("globalconfig load failed for server status, using default", "error", err)
 		globalCfgForServer = globalconfig.GlobalConfig{
@@ -677,7 +678,7 @@ func CreateServer(
 }
 
 // CreateStatusCommand creates a StatusCommand.
-func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
+func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusCommand {
 	promptManager, _ := createPromptManager(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
@@ -686,7 +687,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 	)
 
 	projectDir, _ := os.Getwd()
-	globalCfgForStatus, err := globalconfig.NewLoader().Load(context.Background())
+	globalCfgForStatus, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
 		slog.Warn("globalconfig load failed for status, using default", "error", err)
 		globalCfgForStatus = globalconfig.GlobalConfig{
@@ -731,7 +732,7 @@ func CreateCancelCommand(cfg config.Config) cmd.CancelCommand {
 }
 
 // CreatePromptCompleteCommand creates a PromptCompleteCommand.
-func CreatePromptCompleteCommand(cfg config.Config) cmd.PromptCompleteCommand {
+func CreatePromptCompleteCommand(ctx context.Context, cfg config.Config) cmd.PromptCompleteCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, releaser := createPromptManager(
 		cfg.Prompts.InboxDir,
@@ -739,7 +740,7 @@ func CreatePromptCompleteCommand(cfg config.Config) cmd.PromptCompleteCommand {
 		cfg.Prompts.CompletedDir,
 		currentDateTimeGetter,
 	)
-	deps := createProviderDeps(cfg, currentDateTimeGetter)
+	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	return cmd.NewPromptCompleteCommand(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
@@ -860,7 +861,7 @@ func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
 }
 
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
-func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
+func CreateCombinedStatusCommand(ctx context.Context, cfg config.Config) cmd.CombinedStatusCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, _ := createPromptManager(
 		cfg.Prompts.InboxDir,
@@ -870,7 +871,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 	)
 
 	projectDir, _ := os.Getwd()
-	globalCfgForCombined, err := globalconfig.NewLoader().Load(context.Background())
+	globalCfgForCombined, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
 		slog.Warn("globalconfig load failed for combined status, using default", "error", err)
 		globalCfgForCombined = globalconfig.GlobalConfig{

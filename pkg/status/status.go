@@ -386,7 +386,7 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	}
 
 	// Check if container is running
-	st.ContainerRunning = s.isContainerRunning(executing.Container)
+	st.ContainerRunning = s.isContainerRunning(ctx, executing.Container)
 
 	return nil
 }
@@ -465,11 +465,10 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 }
 
 // isContainerRunning checks if a Docker container is running.
-func (s *checker) isContainerRunning(containerName string) bool {
+func (s *checker) isContainerRunning(ctx context.Context, containerName string) bool {
 	if containerName == "" {
 		return false
 	}
-	ctx := context.Background()
 	// #nosec G204 -- containerName is derived from trusted frontmatter, not user input
 	cmd := exec.CommandContext(
 		ctx,

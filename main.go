@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/bborbe/errors"
 	"gopkg.in/yaml.v3"
@@ -23,14 +25,15 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	if err := run(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	ctx := context.Background()
+func run(ctx context.Context) error {
 	debug, command, subcommand, args, autoApprove := ParseArgs(os.Args[1:])
 
 	switch command {
@@ -124,7 +127,7 @@ func runCommand(
 		if err := validateNoArgs(ctx, args, printConfigHelp); err != nil {
 			return err
 		}
-		return printConfig(cfg)
+		return printConfig(ctx, cfg)
 	case "kill":
 		if err := validateNoArgs(ctx, args, printKillHelp); err != nil {
 			return err
@@ -150,7 +153,7 @@ func runStatusCommand(ctx context.Context, cfg config.Config, args []string) err
 	if err := validateNoArgs(ctx, remaining, printStatusHelp); err != nil {
 		return err
 	}
-	return factory.CreateCombinedStatusCommand(cfg).Run(ctx, remaining)
+	return factory.CreateCombinedStatusCommand(ctx, cfg).Run(ctx, remaining)
 }
 
 func runRunCommand(ctx context.Context, cfg config.Config, args []string, autoApprove bool) error {
@@ -164,7 +167,7 @@ func runRunCommand(ctx context.Context, cfg config.Config, args []string, autoAp
 	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
 		return err
 	}
-	return factory.CreateOneShotRunner(cfg, version.Version, autoApprove).Run(ctx)
+	return factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove).Run(ctx)
 }
 
 func runDaemonCommand(ctx context.Context, cfg config.Config, args []string) error {
@@ -178,7 +181,7 @@ func runDaemonCommand(ctx context.Context, cfg config.Config, args []string) err
 	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
 		return err
 	}
-	return factory.CreateRunner(cfg, version.Version).Run(ctx)
+	return factory.CreateRunner(ctx, cfg, version.Version).Run(ctx)
 }
 
 func runPromptCommand(
@@ -195,7 +198,7 @@ func runPromptCommand(
 		if err := validateNoArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateStatusCommand(cfg).Run(ctx, args)
+		return factory.CreateStatusCommand(ctx, cfg).Run(ctx, args)
 	case "list":
 		if err := validateNoArgs(ctx, args, printPromptHelp); err != nil {
 			return err
@@ -225,7 +228,7 @@ func runPromptCommand(
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreatePromptCompleteCommand(cfg).Run(ctx, args)
+		return factory.CreatePromptCompleteCommand(ctx, cfg).Run(ctx, args)
 	case "unapprove":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
@@ -393,8 +396,7 @@ func extractMaxContainers(ctx context.Context, args []string) (int, []string, er
 	return 0, args, nil
 }
 
-func printConfig(cfg config.Config) error {
-	ctx := context.Background()
+func printConfig(ctx context.Context, cfg config.Config) error {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
 		return err

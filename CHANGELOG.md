@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.104.0
+
+- fix: Add 30s timeout to git fetch in syncWithRemote — prevents daemon from hanging indefinitely when SSH credentials are unavailable
+- fix: Move container lock acquisition after prompt prep work (load, enrich, setupWorkflow) — lock is now held only during the check-and-start window, not during slow operations
+- feat: Prompt creator and auto-generator now extract Failure Modes and Security from specs, ensuring each failure trigger maps to a requirement step
+- feat: Prompt auditor checks failure mode coverage — flags missing error handling, timeouts, and security as critical issues
+
 ## v0.103.0
 
 - feat: Add git health warnings to `dark-factory status` output — shows `.git/index.lock` and dirty file count with threshold so operators can diagnose why the daemon is skipping prompts

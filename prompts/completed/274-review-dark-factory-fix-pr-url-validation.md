@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added ValidatePRURL function to pkg/git/validate.go and guarded gh subprocess calls in pr_merger.go and review_fetcher.go with URL validation before each invocation.
+container: dark-factory-274-review-dark-factory-fix-pr-url-validation
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:05:26Z"
+started: "2026-04-06T18:28:31Z"
+completed: "2026-04-06T18:36:19Z"
 ---
 
 <summary>

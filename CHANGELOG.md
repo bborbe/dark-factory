@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.104.1
+
+- chore: Generate 18 fix prompts from full code review of dark-factory root covering error handling, time injection, security, concurrency, factory pattern, and test quality findings
+
 ## v0.104.0
 
 - fix: Add 30s timeout to git fetch in syncWithRemote — prevents daemon from hanging indefinitely when SSH credentials are unavailable

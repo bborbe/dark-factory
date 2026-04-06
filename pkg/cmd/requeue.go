@@ -106,8 +106,7 @@ func (r *requeueCommand) requeueFailed(ctx context.Context) error {
 			continue
 		}
 
-		if pf.Frontmatter.Status == string(prompt.FailedPromptStatus) ||
-			pf.Frontmatter.Status == string(prompt.PermanentlyFailedPromptStatus) {
+		if pf.Frontmatter.Status == string(prompt.FailedPromptStatus) {
 			pf.MarkApproved()
 			pf.Frontmatter.RetryCount = 0 // reset auto-retry budget on manual re-queue
 			if err := pf.Save(ctx); err != nil {

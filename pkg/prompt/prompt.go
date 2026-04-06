@@ -70,8 +70,6 @@ const (
 	PendingVerificationPromptStatus PromptStatus = "pending_verification"
 	// CancelledPromptStatus indicates the prompt was cancelled before or during execution.
 	CancelledPromptStatus PromptStatus = "cancelled"
-	// PermanentlyFailedPromptStatus indicates the prompt exhausted all auto-retries and will not be retried automatically.
-	PermanentlyFailedPromptStatus PromptStatus = "permanently_failed"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
@@ -85,7 +83,6 @@ var AvailablePromptStatuses = PromptStatuses{
 	InReviewPromptStatus,
 	PendingVerificationPromptStatus,
 	CancelledPromptStatus,
-	PermanentlyFailedPromptStatus,
 }
 
 // PromptStatuses is a slice of PromptStatus values.
@@ -367,13 +364,6 @@ func (pf *PromptFile) MarkFailed() {
 
 // SetLastFailReason records the human-readable reason for the last failure.
 func (pf *PromptFile) SetLastFailReason(reason string) {
-	pf.Frontmatter.LastFailReason = reason
-}
-
-// MarkPermanentlyFailed sets status to permanently_failed and records the reason.
-func (pf *PromptFile) MarkPermanentlyFailed(reason string) {
-	pf.Frontmatter.Status = string(PermanentlyFailedPromptStatus)
-	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.LastFailReason = reason
 }
 
@@ -694,7 +684,6 @@ func ListQueued(
 		if fm.Status == string(ExecutingPromptStatus) ||
 			fm.Status == string(CompletedPromptStatus) ||
 			fm.Status == string(FailedPromptStatus) ||
-			fm.Status == string(PermanentlyFailedPromptStatus) ||
 			fm.Status == string(InReviewPromptStatus) ||
 			fm.Status == string(PendingVerificationPromptStatus) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)

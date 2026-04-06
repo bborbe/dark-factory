@@ -79,7 +79,6 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 	switch prompt.PromptStatus(pf.Frontmatter.Status) {
 	case prompt.PendingVerificationPromptStatus,
 		prompt.FailedPromptStatus,
-		prompt.PermanentlyFailedPromptStatus,
 		prompt.InReviewPromptStatus,
 		prompt.ExecutingPromptStatus:
 		// acceptable states — proceed

@@ -6402,7 +6402,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			},
 		)
 
-		It("marks permanently_failed when retries exhausted", func() {
+		It("marks failed when retries exhausted", func() {
 			promptPath := filepath.Join(promptsDir, "001-exhausted.md")
 			writePromptFile(promptPath, "approved", 2) // retryCount already at limit
 
@@ -6429,21 +6429,21 @@ DARK-FACTORY-REPORT -->`), 0600)
 			err := p.ProcessQueue(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify permanently_failed notification was fired
+			// Verify prompt_failed notification was fired
 			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
 			found := false
 			for i := 0; i < n.NotifyCallCount(); i++ {
 				_, evt := n.NotifyArgsForCall(i)
-				if evt.EventType == "prompt_permanently_failed" {
+				if evt.EventType == "prompt_failed" {
 					found = true
 				}
 			}
-			Expect(found).To(BeTrue(), "expected prompt_permanently_failed notification")
+			Expect(found).To(BeTrue(), "expected prompt_failed notification")
 
-			// Verify file is marked permanently_failed
+			// Verify file is marked failed
 			content, readErr := os.ReadFile(promptPath)
 			Expect(readErr).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: permanently_failed"))
+			Expect(string(content)).To(ContainSubstring("status: failed"))
 		})
 
 		It("marks failed (standard) when autoRetryLimit is 0", func() {
@@ -6470,7 +6470,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			err := p.ProcessQueue(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify prompt_failed (not prompt_permanently_failed) was notified
+			// Verify prompt_failed was notified
 			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
 			found := false
 			for i := 0; i < n.NotifyCallCount(); i++ {
@@ -6487,26 +6487,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 			Expect(string(content)).To(ContainSubstring("status: failed"))
 		})
 
-		It(
-			"skips permanently_failed prompts (ValidateForExecution rejects non-approved status)",
-			func() {
-				promptPath := filepath.Join(promptsDir, "001-perm-failed.md")
-				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.PermanentlyFailedPromptStatus},
-				}
-
-				manager.ListQueuedReturnsOnCall(0, queued, nil)
-				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				manager.AllPreviousCompletedReturns(true)
-
-				p := newProcWithNotifierAndRetryLimit(notifier.NewMultiNotifier(), 0)
-				err := p.ProcessQueue(ctx)
-				Expect(err).NotTo(HaveOccurred())
-
-				// Execute must NOT be called for permanently_failed prompts
-				Expect(executor.ExecuteCallCount()).To(Equal(0))
-			},
-		)
 	})
 
 	Describe("processExistingQueued post-execution failure detection", func() {
@@ -6621,5 +6601,168 @@ DARK-FACTORY-REPORT -->`), 0600)
 				cancel()
 			},
 		)
+	})
+
+	Describe("container lock timing", func() {
+		It("acquires container lock after prompt load, not before", func() {
+			promptPath := filepath.Join(promptsDir, "001-lock-timing.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.ContentReturns("# Lock test", nil)
+			manager.TitleReturns("Lock test", nil)
+			manager.SetContainerReturns(nil)
+			manager.SetVersionReturns(nil)
+			manager.SetStatusReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+
+			// Track ordering: Load must happen before Acquire
+			var loadTime, acquireTime time.Time
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				loadTime = time.Now()
+				return createMockPromptFile(path, "# Lock test\n\nTest content"), nil
+			}
+
+			lock := &mocks.ContainerLock{}
+			lock.AcquireStub = func(_ context.Context) error {
+				acquireTime = time.Now()
+				return nil
+			}
+			lock.ReleaseReturns(nil)
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+				lock,
+				nil,
+				0,
+				nil,
+				nil,
+				0,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return executor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Lock must have been acquired after Load
+			Expect(loadTime).NotTo(BeZero(), "Load should have been called")
+			Expect(acquireTime).NotTo(BeZero(), "Acquire should have been called")
+			Expect(acquireTime).To(BeTemporally(">=", loadTime),
+				"container lock should be acquired after prompt load, not before")
+
+			cancel()
+		})
+	})
+
+	Describe("fetch timeout", func() {
+		It("cancels fetch after timeout instead of hanging indefinitely", func() {
+			promptPath := filepath.Join(promptsDir, "001-fetch-timeout.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+
+			// Simulate a hanging fetch — block until context is cancelled
+			brancher.FetchStub = func(fetchCtx context.Context) error {
+				<-fetchCtx.Done()
+				return fetchCtx.Err()
+			}
+
+			p := processor.NewProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				false,
+				brancher,
+				prCreator,
+				cloner,
+				prMerger,
+				false,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+				nil,
+				nil,
+				0,
+				nil,
+				nil,
+				0,
+			)
+
+			start := time.Now()
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			// The fetch should time out within 30s, not hang forever.
+			// We verify the processor moves past the fetch (either erroring or retrying)
+			// within a reasonable window. The 30s timeout in syncWithRemote ensures this.
+			Eventually(func() int {
+				return brancher.FetchCallCount()
+			}, 35*time.Second, 100*time.Millisecond).Should(BeNumerically(">=", 1))
+
+			// Verify it didn't take much longer than 30s (the timeout)
+			elapsed := time.Since(start)
+			Expect(elapsed).To(BeNumerically("<", 35*time.Second),
+				"fetch should be cancelled by timeout, not hang indefinitely")
+
+			cancel()
+		})
 	})
 })

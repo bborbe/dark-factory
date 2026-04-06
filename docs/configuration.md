@@ -225,7 +225,7 @@ maxPromptDuration: "90m"
 
 ### Auto-Retry
 
-Automatically re-queue failed prompts up to a fixed number of times before marking them `permanently_failed`.
+Automatically re-queue failed prompts up to a fixed number of times before marking them `failed`.
 
 ```yaml
 autoRetryLimit: 3
@@ -233,7 +233,7 @@ autoRetryLimit: 3
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `autoRetryLimit` | `0` (disabled) | Number of automatic retries after a prompt fails. `0` disables auto-retry. When the retry count is exhausted the prompt transitions to `permanently_failed` and stops being retried. |
+| `autoRetryLimit` | `0` (disabled) | Number of automatic retries after a prompt fails. `0` disables auto-retry. When the retry count is exhausted the prompt transitions to `failed` and stops being retried automatically. |
 
 ### CLI Override
 

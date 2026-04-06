@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.102.2
+
+- refactor: Remove `permanently_failed` prompt status — exhausted retries now mark prompts `failed` with `lastFailReason` and `retryCount` preserved; users can requeue to reset the retry budget
+
 ## v0.102.1
 
 - fix: Stop daemon when post-execution git failure occurs after prompt moved to completed/ — prevents uncommitted code changes from being silently overwritten by subsequent prompts

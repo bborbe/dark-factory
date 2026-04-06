@@ -181,22 +181,5 @@ var _ = Describe("RequeueCommand", func() {
 			Expect(string(content)).NotTo(ContainSubstring("retryCount: 3"))
 		})
 
-		It("requeueFailed includes permanently_failed prompts and resets retryCount", func() {
-			testFile := filepath.Join(queueDir, "081-perm-failed.md")
-			err := os.WriteFile(
-				testFile,
-				[]byte("---\nstatus: permanently_failed\nretryCount: 2\n---\n# Perm failed prompt"),
-				0600,
-			)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = requeueCmd.Run(ctx, []string{"--failed"})
-			Expect(err).NotTo(HaveOccurred())
-
-			content, err := os.ReadFile(testFile)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(string(content)).To(ContainSubstring("status: approved"))
-			Expect(string(content)).NotTo(ContainSubstring("retryCount: 2"))
-		})
 	})
 })

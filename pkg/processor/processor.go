@@ -495,7 +495,6 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 		prompt.ExecutingPromptStatus,
 		prompt.CompletedPromptStatus,
 		prompt.FailedPromptStatus,
-		prompt.PermanentlyFailedPromptStatus,
 		prompt.PendingVerificationPromptStatus,
 		prompt.CancelledPromptStatus:
 		// Already in a valid processing state — don't override
@@ -560,8 +559,8 @@ func (p *processor) checkPostExecutionFailure(
 	return errors.Wrap(ctx, origErr, "post-execution git failure, manual intervention required")
 }
 
-// handlePromptFailure decides whether to retry, permanently fail, or fail the prompt.
-// Re-queuing increments retryCount and calls MarkApproved; exhausted retries call MarkPermanentlyFailed.
+// handlePromptFailure decides whether to retry or fail the prompt.
+// Re-queuing increments retryCount and calls MarkApproved; exhausted retries call MarkFailed.
 func (p *processor) handlePromptFailure(ctx context.Context, path string, err error) {
 	slog.Error("prompt failed", "file", filepath.Base(path), "error", err)
 
@@ -580,12 +579,12 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 		pf.MarkApproved()
 		if saveErr := pf.Save(ctx); saveErr != nil {
 			slog.Error("failed to save prompt for retry", "error", saveErr)
-			// Treat as permanent failure — fall through to MarkPermanentlyFailed
-			pf.MarkPermanentlyFailed(reason)
+			// Fall through to MarkFailed
+			pf.MarkFailed()
 			if saveErr2 := pf.Save(ctx); saveErr2 != nil {
-				slog.Error("failed to save permanently failed prompt", "error", saveErr2)
+				slog.Error("failed to save failed prompt", "error", saveErr2)
 			}
-			p.notifyPermanentFailure(ctx, path)
+			p.notifyFailed(ctx, path)
 			return
 		}
 		slog.Info("prompt re-queued for retry",
@@ -595,33 +594,19 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 		return
 	}
 
-	if p.autoRetryLimit > 0 {
-		// Retries exhausted — permanently fail
-		pf.MarkPermanentlyFailed(reason)
-		if saveErr := pf.Save(ctx); saveErr != nil {
-			slog.Error("failed to save permanently failed prompt", "error", saveErr)
-		}
-		p.notifyPermanentFailure(ctx, path)
-		return
-	}
-
-	// autoRetryLimit == 0 — standard failure (no retry configured)
+	// Retries exhausted or autoRetryLimit == 0 — mark failed
 	pf.MarkFailed()
 	if saveErr := pf.Save(ctx); saveErr != nil {
 		slog.Error("failed to set failed status", "error", saveErr)
 	}
+	p.notifyFailed(ctx, path)
+}
+
+// notifyFailed fires a notification for a failed prompt.
+func (p *processor) notifyFailed(ctx context.Context, path string) {
 	_ = p.notifier.Notify(ctx, notifier.Event{
 		ProjectName: p.projectName,
 		EventType:   "prompt_failed",
-		PromptName:  filepath.Base(path),
-	})
-}
-
-// notifyPermanentFailure fires a notification for a permanently failed prompt.
-func (p *processor) notifyPermanentFailure(ctx context.Context, path string) {
-	_ = p.notifier.Notify(ctx, notifier.Event{
-		ProjectName: p.projectName,
-		EventType:   "prompt_permanently_failed",
 		PromptName:  filepath.Base(path),
 	})
 }
@@ -769,7 +754,9 @@ func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) 
 // syncWithRemote fetches and merges from the remote default branch.
 func (p *processor) syncWithRemote(ctx context.Context) error {
 	slog.Info("syncing with remote default branch")
-	if err := p.brancher.Fetch(ctx); err != nil {
+	fetchCtx, fetchCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer fetchCancel()
+	if err := p.brancher.Fetch(fetchCtx); err != nil {
 		return errors.Wrap(ctx, err, "git fetch origin")
 	}
 	if err := p.brancher.MergeOriginDefault(ctx); err != nil {
@@ -789,11 +776,6 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if err := p.syncWithRemote(ctx); err != nil {
 		return err
 	}
-	releaseLock, err := p.prepareContainerSlot(ctx)
-	if err != nil {
-		return err
-	}
-	defer releaseLock()
 
 	pf, err := p.promptManager.Load(ctx, pr.Path)
 	if err != nil {
@@ -835,39 +817,57 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		defer p.cleanupCloneOnError(ctx, workflowState)
 	}
 
+	// Acquire container lock only for the check-and-start window, not during prep work above.
+	releaseLock, err := p.prepareContainerSlot(ctx)
+	if err != nil {
+		return err
+	}
+	defer releaseLock()
+
 	// Release the container lock once the container has started (not after it exits).
 	p.startContainerLockRelease(ctx, containerName, releaseLock)
 
-	// Execute with cancellation watcher running concurrently
+	cancelled, execErr := p.runContainer(ctx, content, logFile, containerName, pr.Path)
+	if cancelled {
+		return nil // proceed to next prompt; status is already set to cancelled
+	}
+	if execErr != nil {
+		return execErr
+	}
+	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
+}
+
+// runContainer starts the YOLO container with a cancellation watcher and returns whether
+// the prompt was cancelled by the user and any execution error.
+func (p *processor) runContainer(
+	ctx context.Context,
+	content, logFile, containerName, promptPath string,
+) (cancelled bool, err error) {
 	execCtx, execCancel := context.WithCancel(ctx)
 	var cancelledByUser bool
-	go p.watchForCancellation(execCtx, execCancel, pr.Path, containerName, &cancelledByUser)
+	go p.watchForCancellation(execCtx, execCancel, promptPath, containerName, &cancelledByUser)
 
 	execErr := p.executor.Execute(execCtx, content, logFile, containerName)
 	execCancel() // always stop the watcher goroutine
 
 	if cancelledByUser {
-		slog.Info("prompt cancelled", "file", filepath.Base(pr.Path))
-		return nil // proceed to next prompt; status is already set to cancelled
+		slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
+		return true, nil
 	}
-
 	if execErr != nil {
 		if ctx.Err() != nil {
 			slog.Info("daemon shutting down, leaving container running")
-			return errors.Wrap(ctx, execErr, "execute prompt")
+		} else {
+			slog.Info("docker container exited with error", "error", execErr)
 		}
-		slog.Info("docker container exited with error", "error", execErr)
-		return errors.Wrap(ctx, execErr, "execute prompt")
+		return false, errors.Wrap(ctx, execErr, "execute prompt")
 	}
-
 	if ctx.Err() != nil {
 		slog.Info("daemon shutting down, leaving container running")
-		return errors.Wrap(ctx, ctx.Err(), "daemon shutdown during execution")
+		return false, errors.Wrap(ctx, ctx.Err(), "daemon shutdown during execution")
 	}
-
 	slog.Info("docker container exited", "exitCode", 0)
-
-	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
+	return false, nil
 }
 
 // enrichPromptContent prepends additionalInstructions and appends machine-parseable suffixes and project-level validation to prompt content.

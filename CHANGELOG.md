@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.5
+
+- fix: Replace `fmt.Errorf` with `errors.Errorf`/`errors.Wrapf` in `pkg/git/validate.go`, `pkg/git/bitbucket_pr_merger.go`, and `pkg/executor/executor.go`; add `ctx context.Context` to `ValidateBranchName`, `ValidatePRTitle`, and `parseBitbucketPRID`
+
 ## v0.106.4
 
 - fix: Wrap bare `return err` with `errors.Wrap(ctx, err, ...)` in `generator`, `slugmigrator`, `server`, `runner`, and `cmd/kill` to preserve stack traces

@@ -5,6 +5,8 @@
 package git_test
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -12,9 +14,13 @@ import (
 )
 
 var _ = Describe("ValidateBranchName", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
 	DescribeTable("valid branch names",
 		func(name string) {
-			Expect(git.ValidateBranchName(name)).To(Succeed())
+			Expect(git.ValidateBranchName(ctx, name)).To(Succeed())
 		},
 		Entry("simple alphanumeric", "feature"),
 		Entry("with slash", "dark-factory/feature"),
@@ -27,7 +33,7 @@ var _ = Describe("ValidateBranchName", func() {
 
 	DescribeTable("invalid branch names",
 		func(name string) {
-			Expect(git.ValidateBranchName(name)).To(HaveOccurred())
+			Expect(git.ValidateBranchName(ctx, name)).To(HaveOccurred())
 		},
 		Entry("empty string", ""),
 		Entry("leading dash", "-feature"),
@@ -41,9 +47,13 @@ var _ = Describe("ValidateBranchName", func() {
 })
 
 var _ = Describe("ValidatePRTitle", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
 	DescribeTable("valid PR titles",
 		func(title string) {
-			Expect(git.ValidatePRTitle(title)).To(Succeed())
+			Expect(git.ValidatePRTitle(ctx, title)).To(Succeed())
 		},
 		Entry("normal title", "Add feature X"),
 		Entry("title with numbers", "Fix issue #123"),
@@ -52,7 +62,7 @@ var _ = Describe("ValidatePRTitle", func() {
 
 	DescribeTable("invalid PR titles",
 		func(title string) {
-			Expect(git.ValidatePRTitle(title)).To(HaveOccurred())
+			Expect(git.ValidatePRTitle(ctx, title)).To(HaveOccurred())
 		},
 		Entry("empty title", ""),
 		Entry("leading single dash", "-bad-title"),

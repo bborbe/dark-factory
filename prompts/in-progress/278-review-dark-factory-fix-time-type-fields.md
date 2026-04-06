@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T18:07:25Z"
 ---
 
 <summary>
@@ -35,7 +36,7 @@ Files to read before making changes (read ALL first):
    f. Update all callers that use these changed fields:
       - `populateLogInfo` (~line 436): `latestTime` is compared with `info.ModTime().After(latestTime)` — use `info.ModTime().After(time.Time(latestTime))`.
       - `findExecutingPrompt` (~line 326): creates `startedTime := time.Time{}` and parses into it — change to `libtime.DateTime{}`.
-      - `checkExecutingPrompts` (~line 383): uses `.IsZero()` and `time.Since()` on `StartedTime` — convert: `time.Time(executing.StartedTime).IsZero()` and `time.Since(time.Time(executing.StartedTime))`.
+      - `populateExecutingPrompt` (~line 383): uses `.IsZero()` and `time.Since()` on `StartedTime` — convert: `time.Time(executing.StartedTime).IsZero()` and `time.Since(time.Time(executing.StartedTime))`.
       - Any sorting or comparison: use `time.Time(field).Before(...)`, `time.Time(field).After(...)`, `time.Time(field).Sub(...)` where needed.
    g. Add import `libtime "github.com/bborbe/time"`.
 

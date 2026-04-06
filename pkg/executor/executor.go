@@ -7,7 +7,6 @@ package executor
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -495,7 +494,7 @@ func (e *dockerExecutor) buildDockerCommand(
 // If ANTHROPIC_API_KEY is set, the check is skipped (API key auth does not need OAuth).
 // Supports both legacy (.claude.json oauthAccount.accessToken) and current
 // (.credentials.json claudeAiOauth.accessToken) token locations.
-func validateClaudeAuth(_ context.Context, configDir string) error {
+func validateClaudeAuth(ctx context.Context, configDir string) error {
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		return nil
 	}
@@ -530,7 +529,8 @@ func validateClaudeAuth(_ context.Context, configDir string) error {
 		}
 	}
 
-	return fmt.Errorf( //nolint:staticcheck // ST1005: intentional capitalization for user-facing message
+	return errors.Errorf( //nolint:staticcheck // ST1005: intentional capitalization for user-facing message
+		ctx,
 		"Claude OAuth token missing or expired in %s\n\nFix: Run 'CLAUDE_CONFIG_DIR=%s claude' and use /login",
 		configDir,
 		configDir,

@@ -17,7 +17,7 @@ var _ = Describe("parseBitbucketPRID", func() {
 	DescribeTable(
 		"valid URLs",
 		func(prURL string, expectedID int) {
-			id, err := parseBitbucketPRID(prURL)
+			id, err := parseBitbucketPRID(context.Background(), prURL)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(id).To(Equal(expectedID))
 		},
@@ -46,7 +46,7 @@ var _ = Describe("parseBitbucketPRID", func() {
 	DescribeTable(
 		"invalid URLs return error",
 		func(prURL string) {
-			_, err := parseBitbucketPRID(prURL)
+			_, err := parseBitbucketPRID(context.Background(), prURL)
 			Expect(err).To(HaveOccurred())
 		},
 		Entry("GitHub PR URL", "https://github.com/owner/repo/pull/42"),

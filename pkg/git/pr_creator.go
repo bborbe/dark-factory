@@ -75,7 +75,7 @@ func (p *prCreator) FindOpenPR(ctx context.Context, branch string) (string, erro
 
 // Create creates a pull request and returns the PR URL.
 func (p *prCreator) Create(ctx context.Context, title string, body string) (string, error) {
-	if err := ValidatePRTitle(title); err != nil {
+	if err := ValidatePRTitle(ctx, title); err != nil {
 		return "", errors.Wrap(ctx, err, "validate PR title")
 	}
 	// #nosec G204 -- title is from prompt frontmatter, body is static text

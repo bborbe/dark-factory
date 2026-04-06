@@ -48,7 +48,7 @@ type bbPRDetail struct {
 
 // WaitAndMerge polls until the PR is open then merges it.
 func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) error {
-	prID, err := parseBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(ctx, prURL)
 	if err != nil {
 		return errors.Wrap(ctx, err, "extract PR ID from URL")
 	}
@@ -110,17 +110,17 @@ func (b *bitbucketPRMerger) mergePR(ctx context.Context, prID int, version int) 
 
 // parseBitbucketPRID extracts the numeric PR ID from a Bitbucket PR URL.
 // Expected format: .../pull-requests/{id} or .../pull-requests/{id}/overview
-func parseBitbucketPRID(prURL string) (int, error) {
+func parseBitbucketPRID(ctx context.Context, prURL string) (int, error) {
 	parts := strings.Split(strings.TrimRight(prURL, "/"), "/")
 	for i, part := range parts {
 		if part == "pull-requests" && i+1 < len(parts) {
 			idStr := parts[i+1]
 			id, err := strconv.Atoi(idStr)
 			if err != nil {
-				return 0, fmt.Errorf("invalid PR ID %q in URL %q", idStr, prURL)
+				return 0, errors.Errorf(ctx, "invalid PR ID %q in URL %q", idStr, prURL)
 			}
 			return id, nil
 		}
 	}
-	return 0, fmt.Errorf("could not extract PR ID from URL %q", prURL)
+	return 0, errors.Errorf(ctx, "could not extract PR ID from URL %q", prURL)
 }

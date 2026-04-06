@@ -53,7 +53,7 @@ func (b *bitbucketReviewFetcher) FetchLatestReview(
 	prURL string,
 	allowedReviewers []string,
 ) (*ReviewResult, error) {
-	prID, err := parseBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(ctx, prURL)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "extract PR ID")
 	}
@@ -96,7 +96,7 @@ func (b *bitbucketReviewFetcher) FetchLatestReview(
 // FetchPRState returns the Bitbucket Server PR state: "OPEN", "MERGED", or "CLOSED".
 // Bitbucket's "DECLINED" is mapped to "CLOSED" for compatibility with the review poller.
 func (b *bitbucketReviewFetcher) FetchPRState(ctx context.Context, prURL string) (string, error) {
-	prID, err := parseBitbucketPRID(prURL)
+	prID, err := parseBitbucketPRID(ctx, prURL)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "extract PR ID")
 	}

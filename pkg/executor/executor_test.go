@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -36,6 +37,7 @@ var _ = Describe("DockerExecutor", func() {
 			nil,
 			config.Defaults().ResolvedClaudeDir(),
 			0,
+			libtime.NewCurrentDateTime(),
 		)
 
 		var err error
@@ -162,6 +164,7 @@ More lines...`
 				nil,
 				config.Defaults().ResolvedClaudeDir(),
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 			Expect(executor).NotTo(BeNil())
 		})

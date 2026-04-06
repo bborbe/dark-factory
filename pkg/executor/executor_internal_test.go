@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -788,6 +789,7 @@ var _ = Describe("Internal helper functions", func() {
 					100*time.Millisecond,
 					10*time.Millisecond,
 					fakeRunner,
+					libtime.NewCurrentDateTime(),
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.Commands()).To(HaveLen(1))
@@ -818,6 +820,7 @@ var _ = Describe("Internal helper functions", func() {
 					10*time.Second,
 					10*time.Millisecond,
 					fakeRunner,
+					libtime.NewCurrentDateTime(),
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.Commands()).To(BeEmpty())
@@ -841,6 +844,7 @@ var _ = Describe("Internal helper functions", func() {
 					100*time.Millisecond,
 					10*time.Millisecond,
 					fakeRunner,
+					libtime.NewCurrentDateTime(),
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.Commands()).To(BeEmpty())
@@ -1084,7 +1088,13 @@ This has frontmatter.`
 				cancelCtx, cancel := context.WithCancel(ctx)
 				cancel() // cancel immediately
 
-				err := timeoutKiller(cancelCtx, 10*time.Second, containerName, fakeRunner)
+				err := timeoutKiller(
+					cancelCtx,
+					10*time.Second,
+					containerName,
+					fakeRunner,
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.RunCalled()).To(BeFalse())
 			})
@@ -1092,7 +1102,13 @@ This has frontmatter.`
 
 		Context("when deadline fires before context is cancelled", func() {
 			It("calls docker stop and returns timeout error", func() {
-				err := timeoutKiller(ctx, 10*time.Millisecond, containerName, fakeRunner)
+				err := timeoutKiller(
+					ctx,
+					10*time.Millisecond,
+					containerName,
+					fakeRunner,
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("timed out after"))
 				Expect(fakeRunner.Commands()).To(HaveLen(1))
@@ -1106,7 +1122,13 @@ This has frontmatter.`
 			It("falls back to docker kill", func() {
 				multiRunner := &multiFailRunner{failFirst: true}
 
-				err := timeoutKiller(ctx, 10*time.Millisecond, containerName, multiRunner)
+				err := timeoutKiller(
+					ctx,
+					10*time.Millisecond,
+					containerName,
+					multiRunner,
+					libtime.NewCurrentDateTime(),
+				)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("timed out after"))
 				Expect(multiRunner.Commands()).To(HaveLen(2))
@@ -1205,6 +1227,7 @@ This has frontmatter.`
 				err = validateClaudeAuth(ctx, tempDir)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+
 			})
 		})
 
@@ -1246,6 +1269,51 @@ This has frontmatter.`
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 			})
+		})
+	})
+
+	Describe("waitUntilDeadline", func() {
+		It("returns true when deadline is reached", func() {
+			getter := libtime.NewCurrentDateTime()
+			deadline := time.Time(getter.Now()).Add(50 * time.Millisecond)
+			result := waitUntilDeadline(ctx, getter, deadline, 5*time.Millisecond)
+			Expect(result).To(BeTrue())
+		})
+
+		It("returns false when context is cancelled", func() {
+			cancelCtx, cancel := context.WithCancel(ctx)
+			getter := libtime.NewCurrentDateTime()
+			deadline := time.Time(getter.Now()).Add(10 * time.Second)
+			go func() {
+				time.Sleep(50 * time.Millisecond)
+				cancel()
+			}()
+			result := waitUntilDeadline(cancelCtx, getter, deadline, 5*time.Millisecond)
+			Expect(result).To(BeFalse())
+		})
+
+		It("returns true immediately when deadline is already past", func() {
+			getter := libtime.NewCurrentDateTime()
+			deadline := time.Time(getter.Now()).Add(-1 * time.Second)
+			result := waitUntilDeadline(ctx, getter, deadline, 5*time.Millisecond)
+			Expect(result).To(BeTrue())
+		})
+
+		It("uses injected time getter for deadline comparison", func() {
+			calls := 0
+			getter := libtime.CurrentDateTimeGetterFunc(func() libtime.DateTime {
+				calls++
+				if calls <= 2 {
+					return libtime.DateTime(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+				}
+				return libtime.DateTime(
+					time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC),
+				) // past deadline
+			})
+			deadline := time.Date(2026, 1, 1, 0, 30, 0, 0, time.UTC)
+			result := waitUntilDeadline(ctx, getter, deadline, 5*time.Millisecond)
+			Expect(result).To(BeTrue())
+			Expect(calls).To(BeNumerically(">=", 3))
 		})
 	})
 

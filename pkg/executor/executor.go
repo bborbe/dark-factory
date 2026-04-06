@@ -19,6 +19,7 @@ import (
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/report"
@@ -48,33 +49,36 @@ func NewDockerExecutor(
 	extraMounts []config.ExtraMount,
 	claudeDir string,
 	maxPromptDuration time.Duration,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) Executor {
 	return &dockerExecutor{
-		containerImage:    containerImage,
-		projectName:       projectName,
-		model:             model,
-		netrcFile:         netrcFile,
-		gitconfigFile:     gitconfigFile,
-		env:               env,
-		extraMounts:       extraMounts,
-		claudeDir:         claudeDir,
-		commandRunner:     &defaultCommandRunner{},
-		maxPromptDuration: maxPromptDuration,
+		containerImage:        containerImage,
+		projectName:           projectName,
+		model:                 model,
+		netrcFile:             netrcFile,
+		gitconfigFile:         gitconfigFile,
+		env:                   env,
+		extraMounts:           extraMounts,
+		claudeDir:             claudeDir,
+		commandRunner:         &defaultCommandRunner{},
+		maxPromptDuration:     maxPromptDuration,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
 // dockerExecutor implements Executor using Docker.
 type dockerExecutor struct {
-	containerImage    string
-	projectName       string
-	model             string
-	netrcFile         string
-	gitconfigFile     string
-	env               map[string]string
-	extraMounts       []config.ExtraMount
-	claudeDir         string
-	commandRunner     commandRunner
-	maxPromptDuration time.Duration // 0 = disabled
+	containerImage        string
+	projectName           string
+	model                 string
+	netrcFile             string
+	gitconfigFile         string
+	env                   map[string]string
+	extraMounts           []config.ExtraMount
+	claudeDir             string
+	commandRunner         commandRunner
+	maxPromptDuration     time.Duration // 0 = disabled
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -169,6 +173,7 @@ func (e *dockerExecutor) buildRunFuncs(
 	logFile string,
 	containerName string,
 ) []run.Func {
+	getter := e.currentDateTimeGetter
 	funcs := []run.Func{
 		func(ctx context.Context) error {
 			return e.commandRunner.Run(ctx, cmd)
@@ -181,13 +186,14 @@ func (e *dockerExecutor) buildRunFuncs(
 				2*time.Minute,
 				10*time.Second,
 				e.commandRunner,
+				getter,
 			)
 		},
 	}
 	if e.maxPromptDuration > 0 {
 		d := e.maxPromptDuration
 		funcs = append(funcs, func(ctx context.Context) error {
-			return timeoutKiller(ctx, d, containerName, e.commandRunner)
+			return timeoutKiller(ctx, d, containerName, e.commandRunner, getter)
 		})
 	}
 	return funcs
@@ -217,6 +223,29 @@ func (e *dockerExecutor) Reattach(ctx context.Context, logFile string, container
 	return nil
 }
 
+// waitUntilDeadline blocks until the deadline is reached or ctx is cancelled.
+// tickInterval controls how often the wall-clock is checked.
+// Returns true if the deadline was reached, false if ctx was cancelled.
+func waitUntilDeadline(
+	ctx context.Context,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	deadline time.Time,
+	tickInterval time.Duration,
+) bool {
+	ticker := time.NewTicker(tickInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+			if !time.Time(currentDateTimeGetter.Now()).Before(deadline) {
+				return true
+			}
+		}
+	}
+}
+
 // timeoutKiller waits for the given deadline and then stops the container cleanly.
 // Returns nil if ctx is cancelled before the deadline (normal container exit).
 // The error message includes the duration so callers can surface it as lastFailReason.
@@ -225,11 +254,11 @@ func timeoutKiller(
 	duration time.Duration,
 	containerName string,
 	runner commandRunner,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	select {
-	case <-ctx.Done():
-		return nil
-	case <-time.After(duration):
+	deadline := time.Time(currentDateTimeGetter.Now()).Add(duration)
+	if !waitUntilDeadline(ctx, currentDateTimeGetter, deadline, 30*time.Second) {
+		return nil // ctx cancelled — normal container exit
 	}
 	slog.Warn("container exceeded maxPromptDuration, stopping",
 		"containerName", containerName,
@@ -259,6 +288,7 @@ func watchForCompletionReport(
 	gracePeriod time.Duration,
 	pollInterval time.Duration,
 	runner commandRunner,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
@@ -279,10 +309,13 @@ func watchForCompletionReport(
 					"containerName",
 					containerName,
 				)
-				select {
-				case <-ctx.Done():
+				if !waitUntilDeadline(
+					ctx,
+					currentDateTimeGetter,
+					time.Time(currentDateTimeGetter.Now()).Add(gracePeriod),
+					30*time.Second,
+				) {
 					return nil
-				case <-time.After(gracePeriod):
 				}
 				// #nosec G204 -- containerName is derived from prompt filename, not user input
 				stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)

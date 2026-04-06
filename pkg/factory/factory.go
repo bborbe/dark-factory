@@ -43,6 +43,9 @@ import (
 
 // EffectiveMaxContainers returns the per-project limit when set (> 0),
 // otherwise falls back to the global limit.
+// A per-project value MAY exceed the global limit. This is intentional:
+// e.g. dark-factory itself uses maxContainers: 5 so it can self-update
+// even when 3 other containers are already running.
 func EffectiveMaxContainers(projectMax, globalMax int) int {
 	if projectMax > 0 {
 		return projectMax
@@ -398,6 +401,7 @@ func CreateSpecGenerator(
 			cfg.ExtraMounts,
 			cfg.ResolvedClaudeDir(),
 			cfg.ParsedMaxPromptDuration(),
+			currentDateTimeGetter,
 		),
 		executor.NewDockerContainerChecker(),
 		cfg.Prompts.InboxDir,
@@ -464,10 +468,11 @@ func createDockerExecutor(
 	extraMounts []config.ExtraMount,
 	claudeDir string,
 	maxPromptDuration time.Duration,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) executor.Executor {
 	return executor.NewDockerExecutor(
 		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
-		maxPromptDuration,
+		maxPromptDuration, currentDateTimeGetter,
 	)
 }
 
@@ -535,6 +540,7 @@ func CreateProcessor(
 		createDockerExecutor(
 			containerImage, projectName, model, netrcFile,
 			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
+			currentDateTimeGetter,
 		),
 		promptManager,
 		releaser,

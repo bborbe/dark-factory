@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.103.3
+
+- fix: Replace time.After in timeoutKiller and watchForCompletionReport with wall-clock deadline polling to prevent macOS timer coalescing from delaying timeouts by 20-30 minutes when running as a background process
+
 ## v0.103.2
 
 - fix: defaultCommandRunner now respects context cancellation — sends SIGINT/SIGKILL to child process when ctx is cancelled

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added GinkgoConfiguration() with 60s timeout to all 25 suite files and 5min timeout to executor suite (which has 82 specs taking ~91s), ensuring tests cannot hang indefinitely while still passing.
+container: dark-factory-269-review-dark-factory-fix-suite-timeout
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:04:41Z"
+started: "2026-04-06T17:34:33Z"
+completed: "2026-04-06T17:46:56Z"
 ---
 
 <summary>

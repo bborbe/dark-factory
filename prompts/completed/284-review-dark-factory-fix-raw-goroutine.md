@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced raw goroutine in startContainerLockRelease with defer release() to guarantee lock is freed on context cancellation
+container: dark-factory-284-review-dark-factory-fix-raw-goroutine
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T20:04:24Z"
+started: "2026-04-06T20:39:42Z"
+completed: "2026-04-06T20:46:01Z"
 ---
 
 <summary>

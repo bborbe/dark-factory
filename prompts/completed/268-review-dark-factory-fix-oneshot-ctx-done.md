@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added non-blocking ctx.Done() guard at top of one-shot runner loop by extracting drainLoop helper method, and added test verifying context cancellation returns immediately without calling ProcessQueue
+container: dark-factory-268-review-dark-factory-fix-oneshot-ctx-done
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:04:41Z"
+started: "2026-04-06T17:22:31Z"
+completed: "2026-04-06T17:34:30Z"
 ---
 
 <summary>

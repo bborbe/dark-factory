@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Wrapped all bare return err statements in pkg/processor/processor.go with errors.Wrap(ctx, err, ...) to preserve stack traces across all processor error paths
+container: dark-factory-272-review-dark-factory-fix-bare-return-err-processor
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:05:25Z"
+started: "2026-04-06T18:08:51Z"
+completed: "2026-04-06T18:19:51Z"
 ---
 
 <summary>

@@ -80,7 +80,10 @@ func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
 
 // checkPRStatus queries the PR merge state.
 func (p *prMerger) checkPRStatus(ctx context.Context, prURL string) (*prStatus, error) {
-	// #nosec G204 -- prURL is from our own PR creation, not user input
+	if err := ValidatePRURL(ctx, prURL); err != nil {
+		return nil, errors.Wrap(ctx, err, "validate PR URL")
+	}
+	// #nosec G204 -- prURL validated by ValidatePRURL
 	cmd := exec.CommandContext(ctx, "gh", "pr", "view", prURL, "--json", "mergeStateStatus")
 	if p.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
@@ -101,7 +104,10 @@ func (p *prMerger) checkPRStatus(ctx context.Context, prURL string) (*prStatus, 
 
 // mergePR merges the pull request and deletes the branch.
 func (p *prMerger) mergePR(ctx context.Context, prURL string) error {
-	// #nosec G204 -- prURL is from our own PR creation, not user input
+	if err := ValidatePRURL(ctx, prURL); err != nil {
+		return errors.Wrap(ctx, err, "validate PR URL")
+	}
+	// #nosec G204 -- prURL validated by ValidatePRURL
 	cmd := exec.CommandContext(ctx, "gh", "pr", "merge", prURL, "--merge", "--delete-branch")
 	if p.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)

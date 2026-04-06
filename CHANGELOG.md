@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.8
+
+- fix: Add `ValidatePRURL` validation in `pkg/git/validate.go` and guard `gh` subprocess calls in `pr_merger.go` and `review_fetcher.go` against malformed PR URLs
+
 ## v0.106.7
 
 - refactor: Replace bit-mask fsnotify event checks (`event.Op & fsnotify.Write == 0`) with `event.Has()` method in `pkg/watcher/watcher.go`, `pkg/specwatcher/watcher.go`, and `pkg/processor/processor.go`

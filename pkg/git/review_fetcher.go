@@ -70,7 +70,10 @@ func (r *reviewFetcher) FetchLatestReview(
 	prURL string,
 	allowedReviewers []string,
 ) (*ReviewResult, error) {
-	// #nosec G204 -- prURL is from our own PR creation, not user input
+	if err := ValidatePRURL(ctx, prURL); err != nil {
+		return nil, errors.Wrap(ctx, err, "validate PR URL")
+	}
+	// #nosec G204 -- prURL validated by ValidatePRURL
 	cmd := exec.CommandContext(
 		ctx,
 		"gh",
@@ -94,7 +97,10 @@ func (r *reviewFetcher) FetchLatestReview(
 
 // FetchPRState returns the raw PR state: "OPEN", "MERGED", or "CLOSED".
 func (r *reviewFetcher) FetchPRState(ctx context.Context, prURL string) (string, error) {
-	// #nosec G204 -- prURL is from our own PR creation, not user input
+	if err := ValidatePRURL(ctx, prURL); err != nil {
+		return "", errors.Wrap(ctx, err, "validate PR URL")
+	}
+	// #nosec G204 -- prURL validated by ValidatePRURL
 	cmd := exec.CommandContext(ctx, "gh", "pr", "view", prURL, "--json", "state", "--jq", ".state")
 	if r.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+r.ghToken)

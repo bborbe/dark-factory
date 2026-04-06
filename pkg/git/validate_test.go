@@ -46,6 +46,34 @@ var _ = Describe("ValidateBranchName", func() {
 	)
 })
 
+var _ = Describe("ValidatePRURL", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+	DescribeTable("valid PR URLs",
+		func(url string) {
+			Expect(git.ValidatePRURL(ctx, url)).To(Succeed())
+		},
+		Entry("standard GitHub PR URL", "https://github.com/owner/repo/pull/123"),
+		Entry("PR number 1", "https://github.com/org/project/pull/1"),
+		Entry("org with dashes", "https://github.com/my-org/my-repo/pull/999"),
+	)
+
+	DescribeTable("invalid PR URLs",
+		func(url string) {
+			Expect(git.ValidatePRURL(ctx, url)).To(HaveOccurred())
+		},
+		Entry("empty string", ""),
+		Entry("flag-like value", "--flag"),
+		Entry("http instead of https", "http://github.com/owner/repo/pull/123"),
+		Entry("bitbucket URL", "https://bitbucket.org/owner/repo/pull-requests/123"),
+		Entry("missing pull segment", "https://github.com/owner/repo/123"),
+		Entry("non-numeric PR number", "https://github.com/owner/repo/pull/abc"),
+		Entry("trailing slash", "https://github.com/owner/repo/pull/123/"),
+	)
+})
+
 var _ = Describe("ValidatePRTitle", func() {
 	var ctx context.Context
 	BeforeEach(func() {

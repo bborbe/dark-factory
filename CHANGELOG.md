@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.2
+
+- fix: Add non-blocking `ctx.Done()` guard at top of one-shot runner loop to prevent unnecessary `ProcessQueue` cycle after context cancellation
+
 ## v0.106.1
 
 - refactor: Replace `errors.Wrapf` with `errors.Wrap` for plain messages without format verbs in `containerlock`, `reindex`, and `executor/checker`

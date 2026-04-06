@@ -424,6 +424,24 @@ var _ = Describe("OneShotRunner", func() {
 		Expect(err).To(BeNil())
 	})
 
+	It(
+		"should return context error immediately when context is cancelled before loop runs",
+		func() {
+			setupMocks()
+			r := newTestOneShotRunner(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+			)
+
+			cancel()
+
+			err := r.Run(ctx)
+			Expect(err).To(MatchError(context.Canceled))
+			Expect(processor.ProcessQueueCallCount()).To(Equal(0))
+		},
+	)
+
 	It("should return error when lock acquire fails", func() {
 		locker.AcquireReturns(context.DeadlineExceeded)
 

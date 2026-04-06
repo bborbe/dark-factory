@@ -138,7 +138,18 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	}
 
 	// Loop: generate from approved specs, then drain queue; repeat until idle.
+	return r.drainLoop(ctx)
+}
+
+// drainLoop runs the generate-and-drain cycle until no approved specs and no queued prompts remain.
+func (r *oneShotRunner) drainLoop(ctx context.Context) error {
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		generated, err := r.generateFromApprovedSpecs(ctx)
 		if err != nil {
 			return errors.Wrap(ctx, err, "generate from approved specs")

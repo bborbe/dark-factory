@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Wrapped all bare return err statements with errors.Wrap(ctx, err, "message") in generator, slugmigrator, server/queue_action_handler, runner/lifecycle, and cmd/kill
+container: dark-factory-270-review-dark-factory-fix-bare-return-err-other
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:04:41Z"
+started: "2026-04-06T17:46:59Z"
+completed: "2026-04-06T17:56:52Z"
 ---
 
 <summary>

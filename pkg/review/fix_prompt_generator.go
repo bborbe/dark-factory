@@ -9,9 +9,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/bborbe/errors"
 )
+
+var xmlTagPattern = regexp.MustCompile(`<[^>]{0,100}>`)
+
+// SanitizeReviewBody strips XML/HTML-like tags from the review body to prevent prompt injection.
+func SanitizeReviewBody(body string) string {
+	return xmlTagPattern.ReplaceAllStringFunc(body, func(match string) string {
+		return "&lt;" + match[1:len(match)-1] + "&gt;"
+	})
+}
 
 //counterfeiter:generate -o ../../mocks/fix_prompt_generator.go --fake-name FixPromptGenerator . FixPromptGenerator
 
@@ -59,7 +69,7 @@ func (g *fixPromptGenerator) Generate(ctx context.Context, opts GenerateOpts) er
 		"Fix all issues raised in the review feedback below. Do not change unrelated code.\n" +
 		"</requirements>\n\n" +
 		"<review_feedback>\n" +
-		opts.ReviewBody + "\n" +
+		SanitizeReviewBody(opts.ReviewBody) + "\n" +
 		"</review_feedback>\n\n" +
 		"<constraints>\n" +
 		"- Do NOT commit — dark-factory handles git\n" +

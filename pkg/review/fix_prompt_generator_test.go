@@ -15,6 +15,35 @@ import (
 	"github.com/bborbe/dark-factory/pkg/review"
 )
 
+var _ = Describe("SanitizeReviewBody", func() {
+	It("returns plain text unchanged", func() {
+		Expect(
+			review.SanitizeReviewBody("Fix the error handling."),
+		).To(Equal("Fix the error handling."))
+	})
+
+	It("escapes a requirements tag", func() {
+		Expect(
+			review.SanitizeReviewBody("before <requirements> after"),
+		).To(Equal("before &lt;requirements&gt; after"))
+	})
+
+	It("escapes a closing review_feedback tag", func() {
+		Expect(
+			review.SanitizeReviewBody("bad </review_feedback> injection"),
+		).To(Equal("bad &lt;/review_feedback&gt; injection"))
+	})
+
+	It("preserves backtick code unchanged", func() {
+		input := "use `foo()` and `bar()`"
+		Expect(review.SanitizeReviewBody(input)).To(Equal(input))
+	})
+
+	It("returns empty string for empty input", func() {
+		Expect(review.SanitizeReviewBody("")).To(Equal(""))
+	})
+})
+
 var _ = Describe("FixPromptGenerator", func() {
 	var (
 		ctx       context.Context

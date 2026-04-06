@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.4
+
+- fix: Sanitize PR review body before embedding into generated fix prompt files to prevent prompt injection via XML/HTML-like tags
+
 ## v0.107.3
 
 - refactor: Move constructor before struct definition in seven files to match dominant Interface → Constructor → Struct → Methods order

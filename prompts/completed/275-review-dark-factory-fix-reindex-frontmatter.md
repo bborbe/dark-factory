@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Updated pkg/reindex/reindex.go to use gopkg.in/yaml.v3 via frontmatter.NewFormat for consistent YAML unmarshaling, matching the pattern in pkg/prompt/prompt.go and pkg/spec/spec.go, and added a test verifying YAML v3 multi-line and boolean frontmatter parses correctly.
+container: dark-factory-275-review-dark-factory-fix-reindex-frontmatter
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:05:26Z"
+started: "2026-04-06T18:36:22Z"
+completed: "2026-04-06T18:45:57Z"
 ---
 
 <summary>

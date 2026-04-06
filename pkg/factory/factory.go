@@ -134,7 +134,7 @@ func createGitHubProviderDeps(
 func createBitbucketProviderDeps(
 	ctx context.Context,
 	cfg config.Config,
-	_ libtime.CurrentDateTimeGetter,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
 	token := cfg.ResolvedBitbucketToken()
 	baseURL := cfg.Bitbucket.BaseURL
@@ -167,7 +167,13 @@ func createBitbucketProviderDeps(
 		prCreator: git.NewBitbucketPRCreator(
 			baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, reviewers,
 		),
-		prMerger: git.NewBitbucketPRMerger(baseURL, token, coords.Project, coords.Repo),
+		prMerger: git.NewBitbucketPRMerger(
+			baseURL,
+			token,
+			coords.Project,
+			coords.Repo,
+			currentDateTimeGetter,
+		),
 		reviewFetcher: git.NewBitbucketReviewFetcher(
 			baseURL,
 			token,
@@ -261,7 +267,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n)
 	}
 
-	cl, containerChecker, clErr := createContainerDeps()
+	cl, containerChecker, clErr := createContainerDeps(currentDateTimeGetter)
 	if clErr != nil {
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -319,7 +325,7 @@ func CreateOneShotRunner(
 	projectName := project.Name(cfg.ProjectName)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	cl, containerChecker, clErr := createContainerDeps()
+	cl, containerChecker, clErr := createContainerDeps(currentDateTimeGetter)
 	if clErr != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -404,7 +410,7 @@ func CreateSpecGenerator(
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 		),
-		executor.NewDockerContainerChecker(),
+		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,
@@ -451,12 +457,14 @@ func CreateWatcher(
 }
 
 // createContainerDeps creates the container lock and checker used for the count-and-start window.
-func createContainerDeps() (containerlock.ContainerLock, executor.ContainerChecker, error) {
+func createContainerDeps(
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (containerlock.ContainerLock, executor.ContainerChecker, error) {
 	cl, err := containerlock.NewContainerLock()
 	if err != nil {
 		return nil, nil, err
 	}
-	return cl, executor.NewDockerContainerChecker(), nil
+	return cl, executor.NewDockerContainerChecker(currentDateTimeGetter), nil
 }
 
 // createDockerExecutor creates a Docker executor with the given configuration.
@@ -660,6 +668,7 @@ func CreateServer(
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers),
 		0,
+		currentDateTimeGetter,
 	)
 
 	// Build the mux with all routes
@@ -687,11 +696,12 @@ func CreateServer(
 
 // CreateStatusCommand creates a StatusCommand.
 func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	promptManager, _ := createPromptManager(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
-		libtime.NewCurrentDateTime(),
+		currentDateTimeGetter,
 	)
 
 	projectDir, _ := os.Getwd()
@@ -713,6 +723,7 @@ func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusComma
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers),
 		cfg.DirtyFileThreshold,
+		currentDateTimeGetter,
 	)
 	formatter := status.NewFormatter()
 
@@ -897,6 +908,7 @@ func CreateCombinedStatusCommand(ctx context.Context, cfg config.Config) cmd.Com
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForCombined.MaxContainers),
 		cfg.DirtyFileThreshold,
+		currentDateTimeGetter,
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

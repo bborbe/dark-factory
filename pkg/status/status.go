@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -70,16 +71,17 @@ type Checker interface {
 
 // checker implements Checker.
 type checker struct {
-	projectDir         string
-	queueDir           string
-	completedDir       string
-	logDir             string
-	lockFilePath       string
-	serverPort         int
-	promptMgr          prompt.Manager
-	containerCounter   executor.ContainerCounter
-	maxContainers      int
-	dirtyFileThreshold int
+	projectDir            string
+	queueDir              string
+	completedDir          string
+	logDir                string
+	lockFilePath          string
+	serverPort            int
+	promptMgr             prompt.Manager
+	containerCounter      executor.ContainerCounter
+	maxContainers         int
+	dirtyFileThreshold    int
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewChecker creates a new Checker with additional options.
@@ -94,18 +96,20 @@ func NewChecker(
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
 	dirtyFileThreshold int,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) Checker {
 	return &checker{
-		projectDir:         projectDir,
-		queueDir:           queueDir,
-		completedDir:       completedDir,
-		logDir:             logDir,
-		lockFilePath:       lockFilePath,
-		serverPort:         serverPort,
-		promptMgr:          promptMgr,
-		containerCounter:   containerCounter,
-		maxContainers:      maxContainers,
-		dirtyFileThreshold: dirtyFileThreshold,
+		projectDir:            projectDir,
+		queueDir:              queueDir,
+		completedDir:          completedDir,
+		logDir:                logDir,
+		lockFilePath:          lockFilePath,
+		serverPort:            serverPort,
+		promptMgr:             promptMgr,
+		containerCounter:      containerCounter,
+		maxContainers:         maxContainers,
+		dirtyFileThreshold:    dirtyFileThreshold,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -381,7 +385,7 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	st.Container = executing.Container
 
 	if !executing.StartedTime.IsZero() {
-		duration := time.Since(executing.StartedTime)
+		duration := time.Time(s.currentDateTimeGetter.Now()).Sub(executing.StartedTime)
 		st.ExecutingSince = formatDuration(duration)
 	}
 

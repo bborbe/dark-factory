@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.11
+
+- refactor: Inject `libtime.CurrentDateTimeGetter` into `bitbucketPRMerger`, `dockerContainerChecker`, and status `checker`, replacing all direct `time.Now()` calls with the injected getter
+
 ## v0.106.10
 
 - fix: Add `time.Local = time.UTC` and `format.TruncatedDiff = false` to suite runner functions in `pkg/globalconfig` and `pkg/reindex` test suites

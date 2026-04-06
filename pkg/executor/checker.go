@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 //counterfeiter:generate -o ../../mocks/container-checker.go --fake-name ContainerChecker . ContainerChecker
@@ -24,12 +25,16 @@ type ContainerChecker interface {
 }
 
 // NewDockerContainerChecker creates a ContainerChecker backed by docker inspect.
-func NewDockerContainerChecker() ContainerChecker {
-	return &dockerContainerChecker{}
+func NewDockerContainerChecker(
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) ContainerChecker {
+	return &dockerContainerChecker{currentDateTimeGetter: currentDateTimeGetter}
 }
 
 // dockerContainerChecker implements ContainerChecker using docker inspect.
-type dockerContainerChecker struct{}
+type dockerContainerChecker struct {
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+}
 
 // WaitUntilRunning polls docker inspect every 2 seconds until the named container
 // is running, the timeout expires, or ctx is cancelled.
@@ -38,7 +43,7 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 	name string,
 	timeout time.Duration,
 ) error {
-	deadline := time.Now().Add(timeout)
+	deadline := time.Time(c.currentDateTimeGetter.Now()).Add(timeout)
 	for {
 		running, err := c.IsRunning(ctx, name)
 		if err != nil {
@@ -47,7 +52,7 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 		if running {
 			return nil
 		}
-		if time.Now().After(deadline) {
+		if time.Time(c.currentDateTimeGetter.Now()).After(deadline) {
 			return errors.Errorf(ctx, "container %s did not start within %s", name, timeout)
 		}
 		select {

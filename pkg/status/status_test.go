@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -59,6 +60,7 @@ var _ = Describe("StatusChecker", func() {
 			nil,
 			0,
 			0,
+			libtime.NewCurrentDateTime(),
 		)
 	})
 
@@ -293,6 +295,7 @@ status: executing
 				nil,
 				0,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -317,6 +320,7 @@ status: executing
 				nil,
 				0,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -463,6 +467,7 @@ container: dark-factory-nonexistent-container-xyz
 				counter,
 				3,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -489,6 +494,7 @@ container: dark-factory-nonexistent-container-xyz
 				counter,
 				3,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -513,6 +519,7 @@ container: dark-factory-nonexistent-container-xyz
 				counter,
 				0,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -544,6 +551,7 @@ container: dark-factory-nonexistent-container-xyz
 				nil,
 				0,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -566,6 +574,7 @@ container: dark-factory-nonexistent-container-xyz
 				nil,
 				0,
 				0,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -588,6 +597,7 @@ container: dark-factory-nonexistent-container-xyz
 				nil,
 				0,
 				42,
+				libtime.NewCurrentDateTime(),
 			)
 
 			promptMgr.HasExecutingReturns(false)

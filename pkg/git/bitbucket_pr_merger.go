@@ -13,15 +13,17 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 // bitbucketPRMerger implements PRMerger for Bitbucket Server.
 type bitbucketPRMerger struct {
-	client       *bitbucketClient
-	project      string
-	repo         string
-	pollInterval time.Duration
-	mergeTimeout time.Duration
+	client                *bitbucketClient
+	project               string
+	repo                  string
+	pollInterval          time.Duration
+	mergeTimeout          time.Duration
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewBitbucketPRMerger creates a PRMerger backed by the Bitbucket Server REST API.
@@ -30,13 +32,15 @@ func NewBitbucketPRMerger(
 	token string,
 	project string,
 	repo string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) PRMerger {
 	return &bitbucketPRMerger{
-		client:       newBitbucketClient(baseURL, token),
-		project:      project,
-		repo:         repo,
-		pollInterval: 30 * time.Second,
-		mergeTimeout: 30 * time.Minute,
+		client:                newBitbucketClient(baseURL, token),
+		project:               project,
+		repo:                  repo,
+		pollInterval:          30 * time.Second,
+		mergeTimeout:          30 * time.Minute,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
 
@@ -53,7 +57,7 @@ func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) erro
 		return errors.Wrap(ctx, err, "extract PR ID from URL")
 	}
 
-	deadline := time.Now().Add(b.mergeTimeout)
+	deadline := time.Time(b.currentDateTimeGetter.Now()).Add(b.mergeTimeout)
 	ticker := time.NewTicker(b.pollInterval)
 	defer ticker.Stop()
 
@@ -62,7 +66,7 @@ func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) erro
 		case <-ctx.Done():
 			return errors.Wrap(ctx, ctx.Err(), "context cancelled while waiting for PR")
 		case <-ticker.C:
-			if time.Now().After(deadline) {
+			if time.Time(b.currentDateTimeGetter.Now()).After(deadline) {
 				return errors.Errorf(ctx, "timeout waiting for PR to become mergeable")
 			}
 

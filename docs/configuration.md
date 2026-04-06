@@ -47,9 +47,19 @@ autoRelease: true
 
 Two complementary validation mechanisms run after each prompt completes:
 
+### testCommand (fast iteration feedback)
+
+A shell command the YOLO agent runs repeatedly during development for fast build/test feedback. Unlike `validationCommand`, this is not authoritative — it is a development aid that runs frequently while the agent iterates on code changes.
+
+```yaml
+testCommand: "make test"
+```
+
+Default: `make test`. Set to empty string to disable injection entirely.
+
 ### validationCommand (machine-judged)
 
-A shell command whose exit code determines success or failure. Runs first.
+A shell command whose exit code determines success or failure. Runs exactly once at the end as the authoritative final gate — not during iteration.
 
 ```yaml
 validationCommand: "make precommit"

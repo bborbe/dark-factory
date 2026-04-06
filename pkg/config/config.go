@@ -93,6 +93,7 @@ type Config struct {
 	Model                  string              `yaml:"model"`
 	ValidationCommand      string              `yaml:"validationCommand"`
 	ValidationPrompt       string              `yaml:"validationPrompt"`
+	TestCommand            string              `yaml:"testCommand"`
 	DebounceMs             int                 `yaml:"debounceMs"`
 	ServerPort             int                 `yaml:"serverPort"`
 	AutoMerge              bool                `yaml:"autoMerge"`
@@ -139,6 +140,7 @@ func Defaults() Config {
 		ContainerImage:    pkg.DefaultContainerImage,
 		Model:             "claude-sonnet-4-6",
 		ValidationCommand: "make precommit",
+		TestCommand:       "make test",
 		DebounceMs:        500,
 		ServerPort:        0,
 		AutoMerge:         false,

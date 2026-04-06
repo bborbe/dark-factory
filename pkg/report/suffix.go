@@ -38,11 +38,18 @@ After writing this report, STOP. Do not output anything else — no summary, no 
 `
 }
 
+// TestCommandSuffix returns the markdown text injected when a project-level test command is configured.
+// It instructs the agent to use the fast command repeatedly during development for quick feedback,
+// as opposed to the validation command which is the authoritative final gate run once at the end.
+func TestCommandSuffix(cmd string) string {
+	return "\n\n---\n\n## Fast Feedback Command (Run Repeatedly During Development)\n\nAfter each code change, run the following command for fast build/test feedback:\n\n```\n" + cmd + "\n```\n\nUse this command repeatedly while iterating — run it after each meaningful code change to catch compile errors and test failures early. Do NOT wait until the very end.\n"
+}
+
 // ValidationSuffix returns the markdown text injected when a project-level validation command is configured.
-// It instructs the agent to treat the command's exit code as the authoritative success/failure signal,
-// overriding any <verification> section in the prompt.
+// It instructs the agent to run the command exactly once as the authoritative final check,
+// overriding any <verification> section in the prompt. The exit code determines success or failure.
 func ValidationSuffix(cmd string) string {
-	return "\n\n---\n\n## Project Validation Command (REQUIRED — overrides <verification> section)\n\nRun the following command as the authoritative validation step and use its exit code in the completion report:\n\n```\n" + cmd + "\n```\n\nThis overrides any `<verification>` section in this prompt. Report `\"status\":\"success\"` if and only if this command exits 0.\n"
+	return "\n\n---\n\n## Project Validation Command (REQUIRED — run ONCE at the end)\n\nWhen all code changes are complete, run the following command exactly once as the authoritative final validation step:\n\n```\n" + cmd + "\n```\n\nThis overrides any `<verification>` section in this prompt. Report `\"status\":\"success\"` if and only if this command exits 0. Do NOT run this command repeatedly during iteration — use the fast feedback command for that.\n"
 }
 
 // ValidationPromptSuffix returns the markdown text injected when a project-level validation prompt is configured.

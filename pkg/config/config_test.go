@@ -40,6 +40,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 			Expect(cfg.ValidationCommand).To(Equal("make precommit"))
 			Expect(cfg.ValidationPrompt).To(Equal(""))
+			Expect(cfg.TestCommand).To(Equal("make test"))
 			Expect(cfg.DebounceMs).To(Equal(500))
 			Expect(cfg.ServerPort).To(Equal(0))
 			Expect(cfg.AutoMerge).To(BeFalse())
@@ -66,6 +67,42 @@ var _ = Describe("Config", func() {
 				Model:          "claude-sonnet-4-6",
 				DebounceMs:     500,
 				ServerPort:     8080,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when TestCommand is empty string (explicit opt-out)", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				TestCommand:    "",
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when TestCommand is set to make test", func() {
+			cfg := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				TestCommand:    "make test",
 			}
 			err := cfg.Validate(ctx)
 			Expect(err).NotTo(HaveOccurred())

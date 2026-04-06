@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.105.0
+
+- feat: Add `testCommand` config field (default `make test`) for fast iteration feedback during YOLO prompt execution
+- feat: Add `TestCommandSuffix` function in report package to inject fast-feedback instructions into prompts
+- refactor: Update `ValidationSuffix` wording to clarify it runs exactly once at the end as the authoritative final gate
+
 ## v0.104.3
 
 - refactor: Replace manual fakeCommandRunner and multiFailRunner stubs in executor tests with counterfeiter-generated mocks.CommandRunner; move tests to external package executor_test using export_test.go bridge

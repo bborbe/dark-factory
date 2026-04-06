@@ -40,6 +40,23 @@ var _ = Describe("Suffix", func() {
 	})
 })
 
+var _ = Describe("TestCommandSuffix", func() {
+	It("should contain the command string", func() {
+		suffix := report.TestCommandSuffix("make test")
+		Expect(suffix).To(ContainSubstring("make test"))
+	})
+
+	It("should contain the Fast Feedback section header", func() {
+		suffix := report.TestCommandSuffix("make test")
+		Expect(suffix).To(ContainSubstring("Fast Feedback"))
+	})
+
+	It("should contain iteration wording", func() {
+		suffix := report.TestCommandSuffix("make test")
+		Expect(suffix).To(ContainSubstring("repeatedly"))
+	})
+})
+
 var _ = Describe("ValidationSuffix", func() {
 	It("should contain the command string", func() {
 		suffix := report.ValidationSuffix("make precommit")
@@ -55,6 +72,11 @@ var _ = Describe("ValidationSuffix", func() {
 	It("should contain the section header", func() {
 		suffix := report.ValidationSuffix("make precommit")
 		Expect(suffix).To(ContainSubstring("Project Validation Command"))
+	})
+
+	It("should contain once at the end wording", func() {
+		suffix := report.ValidationSuffix("make precommit")
+		Expect(suffix).To(ContainSubstring("ONCE at the end"))
 	})
 })
 

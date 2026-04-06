@@ -17,6 +17,7 @@ import (
 
 	"github.com/adrg/frontmatter"
 	"github.com/bborbe/errors"
+	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
 )
@@ -228,7 +229,8 @@ func readCreated(path string) string {
 	var fm struct {
 		Created string `yaml:"created"`
 	}
-	_, _ = frontmatter.Parse(bytes.NewReader(data), &fm)
+	yamlV3Format := frontmatter.NewFormat("---", "---", yaml.Unmarshal)
+	_, _ = frontmatter.Parse(bytes.NewReader(data), &fm, yamlV3Format)
 	return fm.Created
 }
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.9
+
+- fix: Use `gopkg.in/yaml.v3` via `frontmatter.NewFormat` in `pkg/reindex/reindex.go` for consistent YAML unmarshaling across all frontmatter parsing sites
+
 ## v0.106.8
 
 - fix: Add `ValidatePRURL` validation in `pkg/git/validate.go` and guard `gh` subprocess calls in `pr_merger.go` and `review_fetcher.go` against malformed PR URLs

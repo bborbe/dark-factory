@@ -220,6 +220,30 @@ var _ = Describe("Reindexer", func() {
 		})
 	})
 
+	Context("yaml v3 frontmatter parsing", func() {
+		It(
+			"parses created date correctly when frontmatter contains multi-line and boolean values",
+			func() {
+				dir := GinkgoT().TempDir()
+				// Write a file with YAML v3 features alongside the created field
+				content := "---\ncreated: \"2026-03-15T12:00:00Z\"\ndescription: |\n  line one\n  line two\nenabled: true\n---\n\nbody\n"
+				Expect(
+					os.WriteFile(filepath.Join(dir, "042-first.md"), []byte(content), 0600),
+				).To(Succeed())
+				// Write a second file with a later created date that has the same number
+				writeFile(filepath.Join(dir, "042-second.md"), "2026-06-01T00:00:00Z")
+
+				r := reindex.NewReindexer([]string{dir}, mover)
+				renames, err := r.Reindex(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				// 042-first.md (earlier created) keeps its number
+				Expect(renames).To(HaveLen(1))
+				Expect(filepath.Join(dir, "042-first.md")).To(BeAnExistingFile())
+				Expect(filepath.Join(dir, "042-second.md")).NotTo(BeAnExistingFile())
+			},
+		)
+	})
+
 	Context("rename error is returned", func() {
 		It("propagates the error", func() {
 			dir := GinkgoT().TempDir()

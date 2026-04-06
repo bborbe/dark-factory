@@ -785,7 +785,7 @@ func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
 	}
 	count, err := p.dirtyFileChecker.CountDirtyFiles(ctx)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(ctx, err, "count dirty files")
 	}
 	if count > p.dirtyFileThreshold {
 		slog.Warn(
@@ -837,7 +837,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	if err := p.syncWithRemote(ctx); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "sync with remote")
 	}
 
 	pf, err := p.promptManager.Load(ctx, pr.Path)
@@ -857,7 +857,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		p.projectName,
 	)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "prepare prompt for execution")
 	}
 	content = p.enrichPromptContent(ctx, content)
 
@@ -872,7 +872,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Setup workflow (branch or clone) before execution
 	workflowState, err := p.setupWorkflow(ctx, baseName, pf)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "setup workflow")
 	}
 
 	// Ensure clone cleanup on error (success path cleanup is in handleCloneWorkflow)
@@ -883,7 +883,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	// Acquire container lock only for the check-and-start window, not during prep work above.
 	releaseLock, err := p.prepareContainerSlot(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "prepare container slot")
 	}
 	defer releaseLock()
 
@@ -1054,7 +1054,7 @@ func (p *processor) handlePostExecution(
 	summary, err := validateCompletionReport(ctx, logFile)
 	if err != nil {
 		p.notifyFromReport(ctx, logFile, promptPath)
-		return err
+		return errors.Wrap(ctx, err, "validate completion report")
 	}
 
 	// Store summary in frontmatter before moving to completed
@@ -1084,19 +1084,19 @@ func (p *processor) handlePostExecution(
 	featureBranch := state.inPlaceBranch
 	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
 		p.restoreDefaultBranch(ctx, state)
-		return err
+		return errors.Wrap(ctx, err, "move to completed and commit")
 	}
 
 	if err := p.handleDirectWorkflow(gitCtx, ctx, title, featureBranch); err != nil {
 		p.restoreDefaultBranch(ctx, state)
-		return err
+		return errors.Wrap(ctx, err, "handle direct workflow")
 	}
 	p.restoreDefaultBranch(ctx, state)
 
 	// After restoring to default, check if this is the last prompt on the branch and merge+release.
 	if featureBranch != "" && !p.pr {
 		if err := p.handleBranchCompletion(gitCtx, ctx, promptPath, title, featureBranch); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "handle branch completion")
 		}
 	}
 	return nil
@@ -1229,7 +1229,7 @@ func (p *processor) setupCloneWorkflowState(
 	var err error
 	state.originalDir, err = p.setupCloneForExecution(ctx, state.clonePath, state.branchName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, "setup clone for execution")
 	}
 	return state, nil
 }
@@ -1399,7 +1399,7 @@ func (p *processor) handleAutoMergeForClone(
 	if hasMore {
 		slog.Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
 		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "move to completed and commit")
 		}
 		p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
 		return nil
@@ -1409,7 +1409,7 @@ func (p *processor) handleAutoMergeForClone(
 		return errors.Wrap(ctx, err, "wait and merge PR")
 	}
 	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "move to completed and commit")
 	}
 	return p.postMergeActions(gitCtx, ctx, title)
 }
@@ -1442,7 +1442,7 @@ func (p *processor) handleCloneWorkflow(
 	// Find or create PR (idempotent)
 	prURL, err := p.findOrCreatePR(gitCtx, ctx, branchName, title, pf.Issue())
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "find or create PR")
 	}
 
 	// Switch back to original directory before managing prompt
@@ -1476,7 +1476,7 @@ func (p *processor) handleCloneWorkflow(
 
 	// Default: move prompt to completed in original repo with PR URL
 	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "move to completed and commit")
 	}
 	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
 

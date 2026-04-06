@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.6
+
+- fix: Wrap bare `return err` statements in `pkg/processor/processor.go` with `errors.Wrap(ctx, err, ...)` to preserve stack traces across all processor error paths
+
 ## v0.106.5
 
 - fix: Replace `fmt.Errorf` with `errors.Errorf`/`errors.Wrapf` in `pkg/git/validate.go`, `pkg/git/bitbucket_pr_merger.go`, and `pkg/executor/executor.go`; add `ctx context.Context` to `ValidateBranchName`, `ValidatePRTitle`, and `parseBitbucketPRID`

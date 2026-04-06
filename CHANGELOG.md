@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.7
+
+- refactor: Replace bit-mask fsnotify event checks (`event.Op & fsnotify.Write == 0`) with `event.Has()` method in `pkg/watcher/watcher.go`, `pkg/specwatcher/watcher.go`, and `pkg/processor/processor.go`
+
 ## v0.106.6
 
 - fix: Wrap bare `return err` statements in `pkg/processor/processor.go` with `errors.Wrap(ctx, err, ...)` to preserve stack traces across all processor error paths

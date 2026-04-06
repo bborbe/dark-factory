@@ -994,7 +994,7 @@ func (p *processor) watchForCancellation(
 			if !ok {
 				return
 			}
-			if event.Op&fsnotify.Write == 0 {
+			if !event.Has(fsnotify.Write) {
 				continue
 			}
 			pf, err := p.promptManager.Load(ctx, promptPath)

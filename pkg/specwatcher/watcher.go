@@ -106,7 +106,7 @@ func (w *specWatcher) handleWatchEvent(
 	if !strings.HasSuffix(event.Name, ".md") {
 		return
 	}
-	if event.Op&fsnotify.Create == 0 {
+	if !event.Has(fsnotify.Create) {
 		return
 	}
 

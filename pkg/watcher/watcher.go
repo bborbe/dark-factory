@@ -114,8 +114,8 @@ func (w *watcher) handleWatchEvent(
 	if !strings.HasSuffix(event.Name, ".md") {
 		return
 	}
-	if event.Op&fsnotify.Write == 0 && event.Op&fsnotify.Create == 0 &&
-		event.Op&fsnotify.Chmod == 0 {
+	if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) &&
+		!event.Has(fsnotify.Chmod) {
 		return
 	}
 

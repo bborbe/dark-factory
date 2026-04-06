@@ -15,28 +15,29 @@ import (
 
 // bitbucketPRCreator implements PRCreator for Bitbucket Server.
 type bitbucketPRCreator struct {
-	client        *bitbucketClient
-	project       string
-	repo          string
-	defaultBranch string
-	reviewers     []string
+	client          *bitbucketClient
+	project         string
+	repo            string
+	defaultBranch   string
+	reviewerFetcher CollaboratorFetcher
 }
 
 // NewBitbucketPRCreator creates a PRCreator backed by the Bitbucket Server REST API.
+// reviewerFetcher is called lazily at PR creation time to resolve the reviewer list.
 func NewBitbucketPRCreator(
 	baseURL string,
 	token string,
 	project string,
 	repo string,
 	defaultBranch string,
-	reviewers []string,
+	reviewerFetcher CollaboratorFetcher,
 ) PRCreator {
 	return &bitbucketPRCreator{
-		client:        newBitbucketClient(baseURL, token),
-		project:       project,
-		repo:          repo,
-		defaultBranch: defaultBranch,
-		reviewers:     reviewers,
+		client:          newBitbucketClient(baseURL, token),
+		project:         project,
+		repo:            repo,
+		defaultBranch:   defaultBranch,
+		reviewerFetcher: reviewerFetcher,
 	}
 }
 
@@ -95,8 +96,9 @@ func (b *bitbucketPRCreator) Create(
 		targetBranch = "master"
 	}
 
-	reviewers := make([]bbReviewer, 0, len(b.reviewers))
-	for _, r := range b.reviewers {
+	fetchedReviewers := b.reviewerFetcher.Fetch(ctx)
+	reviewers := make([]bbReviewer, 0, len(fetchedReviewers))
+	for _, r := range fetchedReviewers {
 		reviewers = append(reviewers, bbReviewer{User: bbUser{Name: r}})
 	}
 

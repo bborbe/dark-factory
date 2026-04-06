@@ -7,11 +7,9 @@ package factory
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -149,23 +147,23 @@ func createBitbucketProviderDeps(
 		coords = &git.BitbucketRemoteCoords{Project: "", Repo: ""}
 	}
 
-	// Fetch current user (for excluding from reviewers) — best-effort
-	currentUser := fetchBitbucketCurrentUser(ctx, baseURL, token)
+	// Create lazy fetchers — no HTTP calls at construction time
+	userFetcher := git.NewBitbucketCurrentUserFetcher(baseURL, token)
 
-	// Build collaborator fetcher (default reviewers plugin) with current user excluded
+	// Build collaborator fetcher (default reviewers plugin) with current user excluded lazily
 	collaboratorFetcher := git.NewBitbucketCollaboratorFetcher(
-		baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, currentUser,
+		baseURL,
+		token,
+		coords.Project,
+		coords.Repo,
+		cfg.DefaultBranch,
+		userFetcher,
+		cfg.AllowedReviewers,
 	)
-
-	// Fetch reviewers now; explicit config overrides plugin
-	reviewers := collaboratorFetcher.Fetch(ctx)
-	if len(cfg.AllowedReviewers) > 0 {
-		reviewers = cfg.AllowedReviewers
-	}
 
 	return providerDeps{
 		prCreator: git.NewBitbucketPRCreator(
-			baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, reviewers,
+			baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, collaboratorFetcher,
 		),
 		prMerger: git.NewBitbucketPRMerger(
 			baseURL,
@@ -183,33 +181,6 @@ func createBitbucketProviderDeps(
 		collaboratorFetcher: collaboratorFetcher,
 		brancher:            git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
 	}
-}
-
-// fetchBitbucketCurrentUser fetches the current Bitbucket Server username via the whoami endpoint.
-// Returns empty string on error (graceful degradation — reviewer exclusion will not apply).
-func fetchBitbucketCurrentUser(ctx context.Context, baseURL, token string) string {
-	req, err := http.NewRequestWithContext(
-		ctx, "GET",
-		strings.TrimRight(baseURL, "/")+"/plugins/servlet/applinks/whoami",
-		nil,
-	)
-	if err != nil {
-		slog.Warn("bitbucket: failed to create whoami request", "error", err)
-		return ""
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		slog.Warn("bitbucket: whoami request failed", "error", err)
-		return ""
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		slog.Warn("bitbucket: whoami returned non-200", "status", resp.StatusCode)
-		return ""
-	}
-	body, _ := io.ReadAll(resp.Body)
-	return strings.TrimSpace(string(body))
 }
 
 // createSpecSlugMigrator creates a Migrator that resolves bare spec number refs to full slugs.

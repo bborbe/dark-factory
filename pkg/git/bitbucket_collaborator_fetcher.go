@@ -13,29 +13,33 @@ import (
 // bitbucketCollaboratorFetcher implements CollaboratorFetcher for Bitbucket Server.
 // It fetches default reviewers from the Bitbucket Server default-reviewers plugin.
 type bitbucketCollaboratorFetcher struct {
-	client        *bitbucketClient
-	project       string
-	repo          string
-	defaultBranch string
-	currentUser   string
+	client             *bitbucketClient
+	project            string
+	repo               string
+	defaultBranch      string
+	currentUserFetcher BitbucketCurrentUserFetcher
+	allowedReviewers   []string
 }
 
 // NewBitbucketCollaboratorFetcher creates a CollaboratorFetcher backed by the Bitbucket Server
-// default-reviewers plugin. currentUser is excluded from the result to avoid self-review.
+// default-reviewers plugin. currentUserFetcher is called lazily to exclude the current user from results.
+// If allowedReviewers is non-empty, it is returned directly without any HTTP calls.
 func NewBitbucketCollaboratorFetcher(
 	baseURL string,
 	token string,
 	project string,
 	repo string,
 	defaultBranch string,
-	currentUser string,
+	currentUserFetcher BitbucketCurrentUserFetcher,
+	allowedReviewers []string,
 ) CollaboratorFetcher {
 	return &bitbucketCollaboratorFetcher{
-		client:        newBitbucketClient(baseURL, token),
-		project:       project,
-		repo:          repo,
-		defaultBranch: defaultBranch,
-		currentUser:   currentUser,
+		client:             newBitbucketClient(baseURL, token),
+		project:            project,
+		repo:               repo,
+		defaultBranch:      defaultBranch,
+		currentUserFetcher: currentUserFetcher,
+		allowedReviewers:   allowedReviewers,
 	}
 }
 
@@ -47,8 +51,13 @@ type bbDefaultReviewersResponse struct {
 }
 
 // Fetch returns the list of default reviewers from the Bitbucket Server default-reviewers plugin.
+// If allowedReviewers was provided at construction time, those are returned directly.
 // Returns nil on error (best-effort, graceful degradation).
 func (b *bitbucketCollaboratorFetcher) Fetch(ctx context.Context) []string {
+	if len(b.allowedReviewers) > 0 {
+		return b.allowedReviewers
+	}
+
 	targetBranch := b.defaultBranch
 	if targetBranch == "" {
 		targetBranch = "master"
@@ -71,9 +80,10 @@ func (b *bitbucketCollaboratorFetcher) Fetch(ctx context.Context) []string {
 		return nil
 	}
 
+	currentUser := b.currentUserFetcher.FetchCurrentUser(ctx)
 	var reviewers []string
 	for _, r := range result.Reviewers {
-		if r.Slug != b.currentUser {
+		if r.Slug != currentUser {
 			reviewers = append(reviewers, r.Slug)
 		}
 	}

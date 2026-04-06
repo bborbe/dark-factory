@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.2
+
+- refactor: Move Bitbucket current-user HTTP call out of factory into `BitbucketCurrentUserFetcher` in `pkg/git`; defer collaborator-reviewer resolution to PR creation time so the factory performs zero I/O at construction
+
 ## v0.107.1
 
 - fix: Propagate caller context through `NewContainerLock` constructor by adding `ctx context.Context` parameter and replacing `context.Background()` error wraps in `pkg/containerlock`

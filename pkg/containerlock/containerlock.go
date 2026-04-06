@@ -31,14 +31,14 @@ type ContainerLock interface {
 
 // NewContainerLock creates a ContainerLock backed by a file at
 // $HOME/.dark-factory/container.lock.
-func NewContainerLock() (ContainerLock, error) {
+func NewContainerLock(ctx context.Context) (ContainerLock, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, errors.Wrap(context.Background(), err, "get user home dir")
+		return nil, errors.Wrap(ctx, err, "get user home dir")
 	}
 	lockDir := filepath.Join(homeDir, ".dark-factory")
 	if err := os.MkdirAll(lockDir, 0750); err != nil { //nolint:gosec // 0750 is intentional for dir
-		return nil, errors.Wrap(context.Background(), err, "create lock dir")
+		return nil, errors.Wrap(ctx, err, "create lock dir")
 	}
 	return &containerLock{
 		lockPath: filepath.Join(lockDir, lockFileName),

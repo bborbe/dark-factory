@@ -267,7 +267,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n)
 	}
 
-	cl, containerChecker, clErr := createContainerDeps(currentDateTimeGetter)
+	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -350,7 +350,7 @@ func CreateOneShotRunner(
 	projectName := project.Name(cfg.ProjectName)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	cl, containerChecker, clErr := createContainerDeps(currentDateTimeGetter)
+	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -483,9 +483,10 @@ func CreateWatcher(
 
 // createContainerDeps creates the container lock and checker used for the count-and-start window.
 func createContainerDeps(
+	ctx context.Context,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (containerlock.ContainerLock, executor.ContainerChecker, error) {
-	cl, err := containerlock.NewContainerLock()
+	cl, err := containerlock.NewContainerLock(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

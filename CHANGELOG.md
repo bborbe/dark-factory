@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.1
+
+- fix: Propagate caller context through `NewContainerLock` constructor by adding `ctx context.Context` parameter and replacing `context.Background()` error wraps in `pkg/containerlock`
+
 ## v0.107.0
 
 - feat: Enforce `maxPromptDuration` in the health check loop by adding `ContainerStopper` interface and `dockerContainerStopper` implementation; health check now stops and marks failed any executing prompt whose container has been running longer than the configured limit

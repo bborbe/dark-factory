@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Moved Bitbucket current-user HTTP call into BitbucketCurrentUserFetcher in pkg/git and deferred collaborator-reviewer resolution to PR creation time, making the factory perform zero I/O at construction.
+container: dark-factory-281-review-dark-factory-fix-factory-io
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T20:04:24Z"
+started: "2026-04-06T20:11:46Z"
+completed: "2026-04-06T20:20:40Z"
 ---
 
 <summary>

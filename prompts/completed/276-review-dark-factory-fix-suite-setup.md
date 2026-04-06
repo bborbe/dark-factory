@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added time.Local = time.UTC and format.TruncatedDiff = false to suite runner functions in pkg/globalconfig and pkg/reindex test suites
+container: dark-factory-276-review-dark-factory-fix-suite-setup
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:05:26Z"
+started: "2026-04-06T18:46:00Z"
+completed: "2026-04-06T18:55:32Z"
 ---
 
 <summary>

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.104.0
+
+- fix: Add 30s timeout to git fetch in syncWithRemote — prevents daemon from hanging indefinitely when SSH credentials are unavailable
+- fix: Move container lock acquisition after prompt prep work (load, enrich, setupWorkflow) — lock is now held only during the check-and-start window, not during slow operations
+- feat: Prompt creator and auto-generator now extract Failure Modes and Security from specs
+- feat: Prompt auditor checks failure mode coverage
+- feat: Rewrite generate-code-review-prompts to delegate to `/coding:code-review full`
+- docs: Add code-review-prompts guide
+
 ## v0.103.3
 
 - fix: Replace time.After in timeoutKiller and watchForCompletionReport with wall-clock deadline polling to prevent macOS timer coalescing from delaying timeouts by 20-30 minutes when running as a background process
@@ -13,13 +22,6 @@ All notable changes to this project will be documented in this file.
 ## v0.103.1
 
 - refactor: Thread ctx from main() through factory functions (CreateRunner, CreateOneShotRunner, CreateServer, CreateStatusCommand, CreateCombinedStatusCommand, CreateReviewPoller, CreatePromptCompleteCommand) and status.isContainerRunning — ensures signal cancellation propagates to all long-running operations
-
-## v0.104.0
-
-- fix: Add 30s timeout to git fetch in syncWithRemote — prevents daemon from hanging indefinitely when SSH credentials are unavailable
-- fix: Move container lock acquisition after prompt prep work (load, enrich, setupWorkflow) — lock is now held only during the check-and-start window, not during slow operations
-- feat: Prompt creator and auto-generator now extract Failure Modes and Security from specs, ensuring each failure trigger maps to a requirement step
-- feat: Prompt auditor checks failure mode coverage — flags missing error handling, timeouts, and security as critical issues
 
 ## v0.103.0
 

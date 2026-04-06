@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.1
+
+- refactor: Replace `errors.Wrapf` with `errors.Wrap` for plain messages without format verbs in `containerlock`, `reindex`, and `executor/checker`
+
 ## v0.106.0
 
 - feat: Wire `testCommand` config field into processor; inject `TestCommandSuffix` between changelog and validation suffixes in `enrichPromptContent`

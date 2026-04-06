@@ -42,7 +42,7 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 	for {
 		running, err := c.IsRunning(ctx, name)
 		if err != nil {
-			return errors.Wrapf(ctx, err, "check container running")
+			return errors.Wrap(ctx, err, "check container running")
 		}
 		if running {
 			return nil
@@ -100,7 +100,7 @@ func (c *dockerContainerCounter) CountRunning(ctx context.Context) (int, error) 
 	var out strings.Builder
 	cmd.Stdout = &out
 	if err := cmd.Run(); err != nil {
-		return 0, errors.Wrapf(ctx, err, "docker ps for container count")
+		return 0, errors.Wrap(ctx, err, "docker ps for container count")
 	}
 	output := strings.TrimSpace(out.String())
 	if output == "" {

@@ -65,7 +65,7 @@ type fileEntry struct {
 func (r *reindexer) Reindex(ctx context.Context) ([]Rename, error) {
 	entries, err := collectEntries(r.dirs)
 	if err != nil {
-		return nil, errors.Wrapf(ctx, err, "collect entries")
+		return nil, errors.Wrap(ctx, err, "collect entries")
 	}
 
 	usedNumbers := buildUsedNumbers(entries)

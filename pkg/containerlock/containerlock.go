@@ -100,10 +100,10 @@ func (l *containerLock) Release(ctx context.Context) error {
 		int(l.fd.Fd()), //nolint:gosec // G115: int conversion of uintptr fd is safe
 		syscall.LOCK_UN,
 	); err != nil {
-		return errors.Wrapf(ctx, err, "unlock container lock file")
+		return errors.Wrap(ctx, err, "unlock container lock file")
 	}
 	if err := l.fd.Close(); err != nil {
-		return errors.Wrapf(ctx, err, "close container lock file")
+		return errors.Wrap(ctx, err, "close container lock file")
 	}
 	l.fd = nil
 	return nil

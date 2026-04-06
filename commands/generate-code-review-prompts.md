@@ -160,7 +160,7 @@ Print a summary of findings and generated prompt files.
 </constraints>
 
 <verification>
-After generating fix prompts, list them:
+This prompt only generates markdown files — no code changes, no build needed.
 ls $INBOX_DIR/review-<slug>-*.md
 </verification>
 ```

@@ -1,7 +1,10 @@
 ---
-status: approved
+status: executing
+container: dark-factory-262-fix-reattach-timeout-remaining-duration
+dark-factory-version: v0.104.0
 created: "2026-04-06T16:00:00Z"
 queued: "2026-04-06T14:55:02Z"
+started: "2026-04-06T15:20:38Z"
 ---
 
 <summary>

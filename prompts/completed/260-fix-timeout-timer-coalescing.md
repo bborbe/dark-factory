@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced time.After in timeoutKiller and watchForCompletionReport with wall-clock deadline polling via waitUntilDeadline helper, injecting CurrentDateTimeGetter through constructor and function parameters
+container: dark-factory-260-fix-timeout-timer-coalescing
+dark-factory-version: v0.103.0
 created: "2026-04-06T14:30:00Z"
 queued: "2026-04-06T13:55:36Z"
+started: "2026-04-06T14:09:32Z"
+completed: "2026-04-06T14:25:17Z"
 ---
 
 <summary>

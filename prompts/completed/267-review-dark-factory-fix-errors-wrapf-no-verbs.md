@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced errors.Wrapf with errors.Wrap for all plain messages without format verbs in containerlock.go, reindex.go, and executor/checker.go
+container: dark-factory-267-review-dark-factory-fix-errors-wrapf-no-verbs
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:04:41Z"
+started: "2026-04-06T17:13:24Z"
+completed: "2026-04-06T17:22:28Z"
 ---
 
 <summary>

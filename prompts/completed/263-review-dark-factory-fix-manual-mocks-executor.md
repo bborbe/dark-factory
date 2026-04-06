@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced manual fakeCommandRunner and multiFailRunner stubs in executor tests with counterfeiter-generated mocks.CommandRunner, moved tests to external package executor_test via export_test.go bridge, and deleted executor_internal_test.go
+container: dark-factory-263-review-dark-factory-fix-manual-mocks-executor
+dark-factory-version: v0.104.0
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T15:24:28Z"
+started: "2026-04-06T15:40:00Z"
+completed: "2026-04-06T16:02:15Z"
 ---
 
 <summary>

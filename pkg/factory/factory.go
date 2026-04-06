@@ -412,6 +412,7 @@ func CreateSpecGenerator(
 		slugMigrator,
 		cfg.GenerateCommand,
 		cfg.AdditionalInstructions,
+		cfg.ParsedMaxPromptDuration(),
 	)
 }
 
@@ -571,7 +572,7 @@ func CreateProcessor(
 		containerLock,
 		containerChecker,
 		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
-		autoRetryLimit,
+		autoRetryLimit, maxPromptDuration,
 	)
 }
 

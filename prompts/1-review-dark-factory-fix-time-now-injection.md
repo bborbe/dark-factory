@@ -17,7 +17,7 @@ Inject `libtime.CurrentDateTimeGetter` into `bitbucketPRMerger` (`pkg/git/bitbuc
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-time-injection.md` for the time injection pattern.
+Read the coding plugin's `go-time-injection.md` guide for the time injection pattern.
 
 Files to read before making changes (read ALL first):
 - `pkg/git/bitbucket_pr_merger.go` — `time.Now()` at ~lines 56 and 65 computing merge deadline

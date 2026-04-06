@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.104.2
+
+- fix: reattach timeout uses remaining wall-clock duration instead of full maxPromptDuration
+
 ## v0.104.1
 
 - chore: Generate 18 fix prompts from full code review of dark-factory root covering error handling, time injection, security, concurrency, factory pattern, and test quality findings

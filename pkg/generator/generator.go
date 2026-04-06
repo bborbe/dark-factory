@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
@@ -40,6 +41,7 @@ func NewSpecGenerator(
 	slugMigrator slugmigrator.Migrator,
 	generateCommand string,
 	additionalInstructions string,
+	maxPromptDuration time.Duration,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:               executor,
@@ -52,6 +54,7 @@ func NewSpecGenerator(
 		slugMigrator:           slugMigrator,
 		generateCommand:        generateCommand,
 		additionalInstructions: additionalInstructions,
+		maxPromptDuration:      maxPromptDuration,
 	}
 }
 
@@ -67,6 +70,7 @@ type dockerSpecGenerator struct {
 	slugMigrator           slugmigrator.Migrator
 	generateCommand        string
 	additionalInstructions string
+	maxPromptDuration      time.Duration
 }
 
 // buildPromptContent assembles the full prompt content for spec generation,
@@ -322,7 +326,7 @@ func (g *dockerSpecGenerator) reattachAndFinalize(
 	logFile string,
 ) error {
 	slog.Info("reattaching to running spec generation container", "container", containerName)
-	if err := g.executor.Reattach(ctx, logFile, containerName); err != nil {
+	if err := g.executor.Reattach(ctx, logFile, containerName, g.maxPromptDuration); err != nil {
 		return errors.Wrap(ctx, err, "reattach to spec generation container")
 	}
 	slog.Info("spec generation container exited via reattach", "container", containerName)

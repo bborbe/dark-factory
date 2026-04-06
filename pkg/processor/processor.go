@@ -79,6 +79,7 @@ func NewProcessor(
 	dirtyFileChecker DirtyFileChecker,
 	gitLockChecker GitLockChecker,
 	autoRetryLimit int,
+	maxPromptDuration time.Duration,
 ) Processor {
 	return &processor{
 		queueDir:               queueDir,
@@ -116,6 +117,7 @@ func NewProcessor(
 		dirtyFileChecker:       dirtyFileChecker,
 		gitLockChecker:         gitLockChecker,
 		autoRetryLimit:         autoRetryLimit,
+		maxPromptDuration:      maxPromptDuration,
 	}
 }
 
@@ -157,6 +159,7 @@ type processor struct {
 	gitLockChecker         GitLockChecker
 	lastBlockedMsg         string
 	autoRetryLimit         int
+	maxPromptDuration      time.Duration
 }
 
 // Process starts processing queued prompts.
@@ -314,7 +317,12 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 		containerName,
 	)
 
-	if err := p.executor.Reattach(ctx, logFile, containerName); err != nil {
+	remainingDuration, elapsed, exceeded := p.computeReattachDuration(pf.Frontmatter.Started)
+	if exceeded {
+		return p.killTimedOutContainer(ctx, pf, containerName, elapsed)
+	}
+
+	if err := p.executor.Reattach(ctx, logFile, containerName, remainingDuration); err != nil {
 		return errors.Wrap(ctx, err, "reattach to container")
 	}
 
@@ -327,6 +335,58 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 	}
 
 	return p.handlePostExecution(ctx, pf, promptPath, title, logFile, ws)
+}
+
+// killTimedOutContainer stops a container that has already exceeded its timeout on reattach,
+// marks the prompt as failed, and saves it.
+func (p *processor) killTimedOutContainer(
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	containerName string,
+	elapsed time.Duration,
+) error {
+	slog.Warn("container exceeded maxPromptDuration, killing without reattach",
+		"container", containerName,
+		"started", pf.Frontmatter.Started,
+		"elapsed", elapsed)
+	p.executor.StopAndRemoveContainer(ctx, containerName)
+	pf.SetLastFailReason(fmt.Sprintf("prompt timed out after %s (detected on reattach)", elapsed))
+	pf.MarkFailed()
+	if saveErr := pf.Save(ctx); saveErr != nil {
+		return errors.Wrap(ctx, saveErr, "save prompt after timeout on reattach")
+	}
+	return nil
+}
+
+// computeReattachDuration computes the remaining allowed run time for a reattached container.
+// Returns (remaining, elapsed, exceeded) where exceeded=true means the container has already
+// run past maxPromptDuration and should be killed without reattaching.
+// When maxPromptDuration is 0 or started is empty, remaining equals maxPromptDuration and exceeded is false.
+func (p *processor) computeReattachDuration(started string) (time.Duration, time.Duration, bool) {
+	if p.maxPromptDuration == 0 || started == "" {
+		return p.maxPromptDuration, 0, false
+	}
+	t, err := time.Parse(time.RFC3339, started)
+	if err != nil {
+		slog.Warn(
+			"cannot parse started timestamp, using full timeout",
+			"started",
+			started,
+			"error",
+			err,
+		)
+		return p.maxPromptDuration, 0, false
+	}
+	elapsed := time.Since(t)
+	remaining := p.maxPromptDuration - elapsed
+	if remaining <= 0 {
+		return 0, elapsed, true
+	}
+	slog.Info("computed remaining timeout for reattach",
+		"remaining", remaining,
+		"elapsed", elapsed,
+		"maxPromptDuration", p.maxPromptDuration)
+	return remaining, elapsed, false
 }
 
 // reconstructWorkflowState reconstructs the workflowState for a prompt being resumed.

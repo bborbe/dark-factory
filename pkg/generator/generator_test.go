@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -62,6 +63,7 @@ var _ = Describe("SpecGenerator", func() {
 			&mocks.SpecSlugMigrator{},
 			"/dark-factory:generate-prompts-for-spec",
 			"",
+			0,
 		)
 
 		// Write a spec file with status "approved"
@@ -377,7 +379,7 @@ var _ = Describe("SpecGenerator", func() {
 					containerChecker.IsRunningReturns(true, nil)
 
 					// Reattach creates a prompt file in inbox
-					executor.ReattachStub = func(ctx context.Context, logFile, containerName string) error {
+					executor.ReattachStub = func(ctx context.Context, logFile, containerName string, _ time.Duration) error {
 						return os.WriteFile(
 							filepath.Join(inboxDir, "112-reattached-prompt.md"),
 							[]byte(
@@ -517,7 +519,7 @@ var _ = Describe("SpecGenerator", func() {
 					Expect(os.WriteFile(specPath, []byte(content), 0600)).To(Succeed())
 
 					containerChecker.IsRunningReturns(true, nil)
-					executor.ReattachStub = func(ctx context.Context, logFile, containerName string) error {
+					executor.ReattachStub = func(ctx context.Context, logFile, containerName string, _ time.Duration) error {
 						return os.WriteFile(
 							filepath.Join(inboxDir, "115-reattach-inherit.md"),
 							[]byte(
@@ -558,6 +560,7 @@ var _ = Describe("SpecGenerator", func() {
 					&mocks.SpecSlugMigrator{},
 					"/dark-factory:generate-prompts-for-spec",
 					"Read /docs/guidelines.md before starting.",
+					0,
 				)
 				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(

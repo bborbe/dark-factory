@@ -17,15 +17,15 @@ Replace the raw `go func()` goroutine in `startContainerLockRelease` in `pkg/pro
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claire/plugins/marketplaces/coding/docs/go-concurrency-patterns.md` for the run package pattern.
+Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-concurrency-patterns.md` for the run package pattern.
 
 Files to read before making changes (read ALL first):
-- `pkg/processor/processor.go` — `startContainerLockRelease` function at ~line 705; understand how it is called from `prepareContainerSlot` or similar and what the `release` func does
+- `pkg/processor/processor.go` — `startContainerLockRelease` function at ~line 738; understand how it is called from `prepareContainerSlot` or similar and what the `release` func does
 - `pkg/processor/processor.go` — find where the run group or errgroup is used in the processor to understand the existing concurrency pattern
 </context>
 
 <requirements>
-1. In `pkg/processor/processor.go`, locate `startContainerLockRelease` (~line 705).
+1. In `pkg/processor/processor.go`, locate `startContainerLockRelease` (~line 738).
 
 2. The current implementation:
    ```go

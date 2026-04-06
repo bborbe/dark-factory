@@ -17,7 +17,7 @@ Add a non-blocking `ctx.Done()` guard at the top of the `for` loop body in `pkg/
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-context-cancellation-in-loops.md` for the required pattern.
+Read the coding plugin's `go-context-cancellation-in-loops.md` guide for the required pattern.
 
 Files to read before making changes (read ALL first):
 - `pkg/runner/oneshot.go` — the `for` loop at ~line 141; understand the full loop body before and after the change

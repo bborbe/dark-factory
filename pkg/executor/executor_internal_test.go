@@ -1017,7 +1017,7 @@ This has frontmatter.`
 
 		Context("when container exits normally", func() {
 			It("returns nil and creates log file", func() {
-				err := execImpl.Reattach(ctx, logFile, "test-container")
+				err := execImpl.Reattach(ctx, logFile, "test-container", 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.RunCalled()).To(BeTrue())
 
@@ -1026,7 +1026,7 @@ This has frontmatter.`
 			})
 
 			It("uses docker logs --follow command", func() {
-				err := execImpl.Reattach(ctx, logFile, "my-container")
+				err := execImpl.Reattach(ctx, logFile, "my-container", 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeRunner.Commands()).To(HaveLen(1))
 				Expect(
@@ -1044,7 +1044,7 @@ This has frontmatter.`
 				// With a pre-cancelled context, watchForCompletionReport returns nil immediately.
 				// CancelOnFirstFinish returns the first result from either goroutine, so the
 				// outcome is non-deterministic — just verify Reattach completes promptly.
-				_ = execImpl.Reattach(cancelCtx, logFile, "test-container")
+				_ = execImpl.Reattach(cancelCtx, logFile, "test-container", 0)
 			})
 		})
 
@@ -1054,7 +1054,7 @@ This has frontmatter.`
 			})
 
 			It("returns an error wrapping reattach failed", func() {
-				err := execImpl.Reattach(ctx, logFile, "nonexistent-container")
+				err := execImpl.Reattach(ctx, logFile, "nonexistent-container", 0)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("reattach failed"))
 			})
@@ -1064,7 +1064,7 @@ This has frontmatter.`
 			It("returns error without calling docker", func() {
 				invalidLogFile := "/invalid/path/that/does/not/exist/test.log"
 
-				err := execImpl.Reattach(ctx, invalidLogFile, "test-container")
+				err := execImpl.Reattach(ctx, invalidLogFile, "test-container", 0)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("prepare log file for reattach"))
 				Expect(fakeRunner.RunCalled()).To(BeFalse())

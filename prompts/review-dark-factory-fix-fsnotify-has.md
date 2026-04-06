@@ -8,6 +8,7 @@ created: "2026-04-06T00:00:00Z"
 - fsnotify v1.6.0 introduced the event.Has() method as the idiomatic replacement
 - Using Has() makes intent clearer and is the documented best practice for v1.6+
 - The fix is a mechanical substitution with no behavior change
+- Existing tests continue to pass without modification
 </summary>
 
 <objective>
@@ -20,7 +21,7 @@ Read `CLAUDE.md` for project conventions.
 Files to read before making changes:
 - `pkg/watcher/watcher.go` — ~lines 117–118
 - `pkg/specwatcher/watcher.go` — ~line 109
-- `pkg/processor/processor.go` — ~line 930
+- `pkg/processor/processor.go` — ~line 963
 </context>
 
 <requirements>

@@ -369,7 +369,12 @@ type stubExecutor struct {
 
 func (s *stubExecutor) Execute(_ context.Context, _ string, _ string, _ string) error { return nil }
 
-func (s *stubExecutor) Reattach(ctx context.Context, logFile string, containerName string) error {
+func (s *stubExecutor) Reattach(
+	ctx context.Context,
+	logFile string,
+	containerName string,
+	_ time.Duration,
+) error {
 	s.reattachCallCount++
 	s.reattachContainer = containerName
 	if s.reattachFunc != nil {

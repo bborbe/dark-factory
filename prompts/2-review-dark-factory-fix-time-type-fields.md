@@ -17,7 +17,7 @@ Replace `time.Time` with `libtime.DateTime` for all timestamp-holding struct fie
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-time-injection.md` for the DateTime pattern.
+Read the coding plugin's `go-time-injection.md` guide for the DateTime pattern.
 
 Files to read before making changes (read ALL first):
 - `pkg/status/status.go` — `CompletedAt time.Time` in `CompletedPrompt` struct (~line 59); `completedTime time.Time` in `promptWithTime` (~line 226); `getCompletionTime` return type `time.Time` (~line 254); `StartedTime time.Time` in `executingPrompt` struct (~line 304); `latestTime time.Time` local variable (~line 436)

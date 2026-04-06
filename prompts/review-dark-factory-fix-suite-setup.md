@@ -24,31 +24,9 @@ Files to read and update:
 </context>
 
 <requirements>
-1. In `pkg/globalconfig/globalconfig_suite_test.go`, update the runner function to:
-   ```go
-   func TestGlobalconfig(t *testing.T) {
-       time.Local = time.UTC
-       format.TruncatedDiff = false
-       RegisterFailHandler(Fail)
-       suiteConfig, reporterConfig := GinkgoConfiguration()
-       suiteConfig.Timeout = 60 * time.Second
-       RunSpecs(t, "Globalconfig Suite", suiteConfig, reporterConfig)
-   }
-   ```
-   Add imports: `"time"`, `"github.com/onsi/gomega/format"`.
+1. In `pkg/globalconfig/globalconfig_suite_test.go`, add `time.Local = time.UTC` and `format.TruncatedDiff = false` before the `RegisterFailHandler` call. Add imports: `"time"`, `"github.com/onsi/gomega/format"`. Do NOT add GinkgoConfiguration/Timeout — a separate prompt handles that for all suites.
 
-2. In `pkg/reindex/reindex_suite_test.go`, apply the same pattern:
-   ```go
-   func TestReindex(t *testing.T) {
-       time.Local = time.UTC
-       format.TruncatedDiff = false
-       RegisterFailHandler(Fail)
-       suiteConfig, reporterConfig := GinkgoConfiguration()
-       suiteConfig.Timeout = 60 * time.Second
-       RunSpecs(t, "Reindex Suite", suiteConfig, reporterConfig)
-   }
-   ```
-   Add imports: `"time"`, `"github.com/onsi/gomega/format"`.
+2. In `pkg/reindex/reindex_suite_test.go`, apply the same pattern: add `time.Local = time.UTC` and `format.TruncatedDiff = false` before `RegisterFailHandler`. Add imports: `"time"`, `"github.com/onsi/gomega/format"`. Do NOT add GinkgoConfiguration/Timeout.
 
 3. Verify `//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate` is present in both files (add if missing).
 </requirements>

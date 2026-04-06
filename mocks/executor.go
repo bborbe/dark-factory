@@ -4,6 +4,7 @@ package mocks
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
@@ -23,12 +24,13 @@ type Executor struct {
 	executeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ReattachStub        func(context.Context, string, string) error
+	ReattachStub        func(context.Context, string, string, time.Duration) error
 	reattachMutex       sync.RWMutex
 	reattachArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 time.Duration
 	}
 	reattachReturns struct {
 		result1 error
@@ -110,20 +112,21 @@ func (fake *Executor) ExecuteReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Executor) Reattach(arg1 context.Context, arg2 string, arg3 string) error {
+func (fake *Executor) Reattach(arg1 context.Context, arg2 string, arg3 string, arg4 time.Duration) error {
 	fake.reattachMutex.Lock()
 	ret, specificReturn := fake.reattachReturnsOnCall[len(fake.reattachArgsForCall)]
 	fake.reattachArgsForCall = append(fake.reattachArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 time.Duration
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.ReattachStub
 	fakeReturns := fake.reattachReturns
-	fake.recordInvocation("Reattach", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Reattach", []interface{}{arg1, arg2, arg3, arg4})
 	fake.reattachMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
@@ -137,17 +140,17 @@ func (fake *Executor) ReattachCallCount() int {
 	return len(fake.reattachArgsForCall)
 }
 
-func (fake *Executor) ReattachCalls(stub func(context.Context, string, string) error) {
+func (fake *Executor) ReattachCalls(stub func(context.Context, string, string, time.Duration) error) {
 	fake.reattachMutex.Lock()
 	defer fake.reattachMutex.Unlock()
 	fake.ReattachStub = stub
 }
 
-func (fake *Executor) ReattachArgsForCall(i int) (context.Context, string, string) {
+func (fake *Executor) ReattachArgsForCall(i int) (context.Context, string, string, time.Duration) {
 	fake.reattachMutex.RLock()
 	defer fake.reattachMutex.RUnlock()
 	argsForCall := fake.reattachArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *Executor) ReattachReturns(result1 error) {

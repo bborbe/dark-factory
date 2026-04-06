@@ -19,7 +19,7 @@ Add `GinkgoConfiguration()` and `suiteConfig.Timeout = 60 * time.Second` to ever
 Read `CLAUDE.md` for project conventions.
 
 Files to update (all suite files — read each before editing):
-- `/workspace/main_test.go`
+- `main_test.go`
 - All `pkg/*/` suite files: `cmd_suite_test.go`, `config_suite_test.go`, `containerlock_suite_test.go`, `executor_suite_test.go`, `factory_suite_test.go`, `generator_suite_test.go`, `git_suite_test.go`, `globalconfig_suite_test.go`, `locker_suite_test.go`, `notifier_suite_test.go`, `processor_suite_test.go`, `project_suite_test.go`, `prompt_suite_test.go`, `reindex_suite_test.go`, `report_suite_test.go`, `review_suite_test.go`, `runner_suite_test.go`, `server_suite_test.go`, `migrator_suite_test.go`, `spec_suite_test.go`, `specnum_suite_test.go`, `watcher_suite_test.go` (specwatcher), `status_suite_test.go`, `version_suite_test.go`, `watcher_suite_test.go` (watcher)
 </context>
 

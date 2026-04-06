@@ -18,7 +18,7 @@ Extract `fetchBitbucketCurrentUser` from `pkg/factory/factory.go` into a proper 
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-factory-pattern.md` for factory rules.
+Read the coding plugin's `go-factory-pattern.md` guide for factory rules (zero I/O in constructors).
 
 Files to read before making changes (read ALL first):
 - `pkg/factory/factory.go` — `fetchBitbucketCurrentUser` function (~lines 182–207) and `createBitbucketProviderDeps` function (~lines 134–180); understand what `currentUser` and `reviewers` are used for and which struct receives them

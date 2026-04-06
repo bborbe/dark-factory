@@ -19,7 +19,7 @@ Add a `sanitizeReviewBody` function in `pkg/review/fix_prompt_generator.go` that
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes (read ALL first):
-- `pkg/review/fix_prompt_generator.go` — the `GenerateFixPrompt` function (~lines 51–63) where `opts.ReviewBody` is embedded into the prompt content; understand the surrounding template structure
+- `pkg/review/fix_prompt_generator.go` — the `Generate` function (~lines 51–63) where `opts.ReviewBody` is embedded into the prompt content; understand the surrounding template structure
 - `pkg/review/fix_prompt_generator_test.go` — understand the existing test structure to add tests for the sanitization
 </context>
 
@@ -29,7 +29,7 @@ Files to read before making changes (read ALL first):
    b. A safe approach: use `regexp.MustCompile(`<[^>]+>`)` to replace all angle-bracket tag patterns with their escaped equivalent `&lt;...&gt;`, or simply strip them.
    c. The function must preserve all other content unchanged (code snippets, plain text, markdown, backticks, etc.).
 
-2. In `GenerateFixPrompt` (or whatever function inserts `opts.ReviewBody` into the prompt string):
+2. In `Generate` (or whatever function inserts `opts.ReviewBody` into the prompt string):
    - Change the insertion to: `sanitizeReviewBody(opts.ReviewBody)`.
 
 3. Add tests in `pkg/review/fix_prompt_generator_test.go` covering:

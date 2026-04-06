@@ -33,8 +33,14 @@ type Executor interface {
 	// Reattach connects to a running container's output stream and waits for it to exit.
 	// It does not create a new container. The log file is overwritten from the beginning
 	// of the container's output (docker logs replays all output from container start).
+	// maxPromptDuration is the remaining allowed run time; 0 disables the timeout.
 	// Returns nil when the container exits successfully.
-	Reattach(ctx context.Context, logFile string, containerName string) error
+	Reattach(
+		ctx context.Context,
+		logFile string,
+		containerName string,
+		maxPromptDuration time.Duration,
+	) error
 	StopAndRemoveContainer(ctx context.Context, containerName string)
 }
 
@@ -167,11 +173,22 @@ func (e *dockerExecutor) Execute(
 	return nil
 }
 
-// buildRunFuncs returns the set of parallel functions for Execute/Reattach.
+// buildRunFuncs returns the set of parallel functions for Execute using the configured maxPromptDuration.
 func (e *dockerExecutor) buildRunFuncs(
 	cmd *exec.Cmd,
 	logFile string,
 	containerName string,
+) []run.Func {
+	return e.buildRunFuncsWithTimeout(cmd, logFile, containerName, e.maxPromptDuration)
+}
+
+// buildRunFuncsWithTimeout returns the set of parallel functions with an explicit timeout.
+// timeout=0 disables the timeout killer.
+func (e *dockerExecutor) buildRunFuncsWithTimeout(
+	cmd *exec.Cmd,
+	logFile string,
+	containerName string,
+	timeout time.Duration,
 ) []run.Func {
 	getter := e.currentDateTimeGetter
 	funcs := []run.Func{
@@ -190,8 +207,8 @@ func (e *dockerExecutor) buildRunFuncs(
 			)
 		},
 	}
-	if e.maxPromptDuration > 0 {
-		d := e.maxPromptDuration
+	if timeout > 0 {
+		d := timeout
 		funcs = append(funcs, func(ctx context.Context) error {
 			return timeoutKiller(ctx, d, containerName, e.commandRunner, getter)
 		})
@@ -202,7 +219,13 @@ func (e *dockerExecutor) buildRunFuncs(
 // Reattach connects to a running container's output stream and waits for it to exit.
 // It does not create a new container. The log file is overwritten from the beginning
 // of the container's output (docker logs replays all output from container start).
-func (e *dockerExecutor) Reattach(ctx context.Context, logFile string, containerName string) error {
+// maxPromptDuration is the remaining allowed run time; 0 disables the timeout.
+func (e *dockerExecutor) Reattach(
+	ctx context.Context,
+	logFile string,
+	containerName string,
+	maxPromptDuration time.Duration,
+) error {
 	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare log file for reattach")
@@ -215,9 +238,10 @@ func (e *dockerExecutor) Reattach(ctx context.Context, logFile string, container
 	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
 	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
 
-	slog.Info("reattaching to running container", "containerName", containerName)
+	slog.Info("reattaching to running container", "containerName", containerName,
+		"maxPromptDuration", maxPromptDuration)
 
-	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncs(cmd, logFile, containerName)...); err != nil {
+	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncsWithTimeout(cmd, logFile, containerName, maxPromptDuration)...); err != nil {
 		return errors.Wrap(ctx, err, "reattach failed")
 	}
 	return nil

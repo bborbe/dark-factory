@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Reordered constructor before struct in seven files to match the dominant Interface → Constructor → Struct → Methods pattern.
+container: dark-factory-282-review-dark-factory-fix-file-layout
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T20:04:24Z"
+started: "2026-04-06T20:20:43Z"
+completed: "2026-04-06T20:28:28Z"
 ---
 
 <summary>

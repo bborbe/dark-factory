@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T20:04:24Z"
 ---
 
 <summary>
@@ -32,7 +33,7 @@ Files to read before making changes (read ALL first):
 2. In `Generate` (or whatever function inserts `opts.ReviewBody` into the prompt string):
    - Change the insertion to: `sanitizeReviewBody(opts.ReviewBody)`.
 
-3. Add tests in `pkg/review/fix_prompt_generator_test.go` covering:
+3. Add tests in `pkg/review/fix_prompt_generator_test.go` using the existing Ginkgo/Gomega pattern (external test package `review_test`, `Describe`/`It` blocks) covering:
    - Review body with no tags → returned unchanged.
    - Review body containing `<requirements>` tag → tag is stripped or escaped.
    - Review body containing `</review_feedback>` → tag is stripped or escaped.

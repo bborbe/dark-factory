@@ -1,6 +1,10 @@
 ---
-status: draft
+status: executing
+container: dark-factory-280-review-dark-factory-fix-containerlock-ctx
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T20:04:24Z"
+started: "2026-04-06T20:04:26Z"
 ---
 
 <summary>
@@ -31,8 +35,8 @@ Files to read before making changes (read ALL first):
    d. Remove the `"context"` standard library import if it was only used for `context.Background()` — but keep it since `ctx context.Context` requires it.
 
 2. In `pkg/factory/factory.go`:
-   a. The `createContainerDeps()` helper function (~line 453) has no `ctx` parameter. Change its signature to `createContainerDeps(ctx context.Context)` and pass `ctx` to `containerlock.NewContainerLock(ctx)`.
-   b. Update both call sites of `createContainerDeps()` (~lines 264 and 322 in `CreateRunner` and `CreateOneShotRunner`) to pass `ctx`: `createContainerDeps(ctx)`.
+   a. The `createContainerDeps()` helper function (~line 485) has no `ctx` parameter. Change its signature to `createContainerDeps(ctx context.Context)` and pass `ctx` to `containerlock.NewContainerLock(ctx)`.
+   b. Update both call sites of `createContainerDeps()` in `CreateRunner` (~line 270) and `CreateOneShotRunner` (~line 353) to pass `ctx`: `createContainerDeps(ctx)`.
 
 3. Update any other callers of `NewContainerLock()` found by grepping the repository.
 

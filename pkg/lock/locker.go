@@ -31,17 +31,17 @@ type Locker interface {
 	Release(ctx context.Context) error
 }
 
-// locker implements file-based locking using flock.
-type locker struct {
-	lockPath string
-	fd       *os.File
-}
-
 // NewLocker creates a new Locker for the specified directory.
 func NewLocker(dir string) Locker {
 	return &locker{
 		lockPath: filepath.Join(dir, lockFileName),
 	}
+}
+
+// locker implements file-based locking using flock.
+type locker struct {
+	lockPath string
+	fd       *os.File
 }
 
 // Acquire attempts to acquire an exclusive lock on the lock file.

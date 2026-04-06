@@ -14,13 +14,13 @@ import (
 	"github.com/bborbe/errors"
 )
 
-type discordNotifier struct {
-	webhookURL string
-}
-
 // NewDiscordNotifier returns a Notifier that sends messages via Discord webhook.
 func NewDiscordNotifier(webhookURL string) Notifier {
 	return &discordNotifier{webhookURL: webhookURL}
+}
+
+type discordNotifier struct {
+	webhookURL string
 }
 
 func (d *discordNotifier) Notify(ctx context.Context, event Event) error {

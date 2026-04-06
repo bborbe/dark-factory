@@ -22,14 +22,6 @@ type PRMerger interface {
 	WaitAndMerge(ctx context.Context, prURL string) error
 }
 
-// prMerger implements PRMerger.
-type prMerger struct {
-	ghToken               string
-	pollInterval          time.Duration
-	mergeTimeout          time.Duration
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
-}
-
 // NewPRMerger creates a new PRMerger.
 func NewPRMerger(ghToken string, currentDateTimeGetter libtime.CurrentDateTimeGetter) PRMerger {
 	return &prMerger{
@@ -38,6 +30,14 @@ func NewPRMerger(ghToken string, currentDateTimeGetter libtime.CurrentDateTimeGe
 		mergeTimeout:          30 * time.Minute,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
+}
+
+// prMerger implements PRMerger.
+type prMerger struct {
+	ghToken               string
+	pollInterval          time.Duration
+	mergeTimeout          time.Duration
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // prStatus represents the JSON response from gh pr view.

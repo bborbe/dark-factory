@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.3
+
+- refactor: Move constructor before struct definition in seven files to match dominant Interface → Constructor → Struct → Methods order
+
 ## v0.107.2
 
 - refactor: Move Bitbucket current-user HTTP call out of factory into `BitbucketCurrentUserFetcher` in `pkg/git`; defer collaborator-reviewer resolution to PR creation time so the factory performs zero I/O at construction

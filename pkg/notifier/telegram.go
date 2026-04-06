@@ -16,12 +16,6 @@ import (
 	"github.com/bborbe/errors"
 )
 
-type telegramNotifier struct {
-	botToken string
-	chatID   string
-	baseURL  string
-}
-
 // NewTelegramNotifier returns a Notifier that sends messages via Telegram.
 func NewTelegramNotifier(botToken, chatID string) Notifier {
 	return &telegramNotifier{
@@ -39,6 +33,12 @@ func NewTelegramNotifierWithBaseURL(botToken, chatID, baseURL string) Notifier {
 		chatID:   chatID,
 		baseURL:  baseURL,
 	}
+}
+
+type telegramNotifier struct {
+	botToken string
+	chatID   string
+	baseURL  string
 }
 
 func (t *telegramNotifier) Notify(ctx context.Context, event Event) error {

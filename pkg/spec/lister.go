@@ -35,15 +35,15 @@ type Lister interface {
 	Summary(ctx context.Context) (*Summary, error)
 }
 
+// NewLister creates a new Lister that scans the given directories.
+func NewLister(currentDateTimeGetter libtime.CurrentDateTimeGetter, dirs ...string) Lister {
+	return &lister{currentDateTimeGetter: currentDateTimeGetter, dirs: dirs}
+}
+
 // lister implements Lister.
 type lister struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	dirs                  []string
-}
-
-// NewLister creates a new Lister that scans the given directories.
-func NewLister(currentDateTimeGetter libtime.CurrentDateTimeGetter, dirs ...string) Lister {
-	return &lister{currentDateTimeGetter: currentDateTimeGetter, dirs: dirs}
 }
 
 // List returns all spec files found across all configured directories.

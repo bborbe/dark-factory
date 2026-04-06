@@ -20,16 +20,16 @@ type Loader interface {
 	Load(ctx context.Context) (Config, error)
 }
 
-// fileLoader implements Loader by reading from a file.
-type fileLoader struct {
-	configPath string
-}
-
 // NewLoader creates a Loader that reads from .dark-factory.yaml in the current directory.
 func NewLoader() Loader {
 	return &fileLoader{
 		configPath: ".dark-factory.yaml",
 	}
+}
+
+// fileLoader implements Loader by reading from a file.
+type fileLoader struct {
+	configPath string
 }
 
 // partialPromptsConfig is used for YAML unmarshaling of the prompts section.

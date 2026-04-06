@@ -45,16 +45,16 @@ type ReviewFetcher interface {
 	FetchPRState(ctx context.Context, prURL string) (string, error)
 }
 
-// reviewFetcher implements ReviewFetcher.
-type reviewFetcher struct {
-	ghToken string
-}
-
 // NewReviewFetcher creates a new ReviewFetcher.
 func NewReviewFetcher(ghToken string) ReviewFetcher {
 	return &reviewFetcher{
 		ghToken: ghToken,
 	}
+}
+
+// reviewFetcher implements ReviewFetcher.
+type reviewFetcher struct {
+	ghToken string
 }
 
 // reviewEntry is one JSON object emitted by the jq filter.

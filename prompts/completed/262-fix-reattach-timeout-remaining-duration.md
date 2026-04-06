@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Reattach now accepts an explicit maxPromptDuration parameter; processor computes remaining wall-clock duration from the prompt's started timestamp and kills containers that have already exceeded the timeout without reattaching
 container: dark-factory-262-fix-reattach-timeout-remaining-duration
 dark-factory-version: v0.104.0
 created: "2026-04-06T16:00:00Z"
 queued: "2026-04-06T14:55:02Z"
 started: "2026-04-06T15:20:38Z"
+completed: "2026-04-06T15:39:56Z"
 ---
 
 <summary>

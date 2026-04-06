@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -176,7 +177,7 @@ func migrateFile(
 
 	pf.Frontmatter.Specs = updated
 	if err := pf.Save(ctx); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "save prompt file")
 	}
 
 	slog.InfoContext(ctx, "migrated spec refs to full slugs",

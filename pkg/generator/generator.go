@@ -119,7 +119,7 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	// Mark spec as generating before launching the container
 	if err := g.markSpecGenerating(ctx, specPath); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "mark spec generating")
 	}
 
 	// Ensure spec is reset to approved on any non-success return (unless cancelled).
@@ -138,7 +138,7 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 					"spec", specBasename, "error", resetErr)
 			}
 		}
-		return err
+		return errors.Wrap(ctx, err, "execute and finalize")
 	}
 	if !prompted && ctx.Err() == nil {
 		if resetErr := resetSpecToApproved(context.WithoutCancel(ctx), specPath, g.currentDateTimeGetter); resetErr != nil {

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.4
+
+- fix: Wrap bare `return err` with `errors.Wrap(ctx, err, ...)` in `generator`, `slugmigrator`, `server`, `runner`, and `cmd/kill` to preserve stack traces
+
 ## v0.106.3
 
 - test: Add 60-second suite timeout via `GinkgoConfiguration()` to all 26 `*_suite_test.go` files to prevent indefinite CI hangs

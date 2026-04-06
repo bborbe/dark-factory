@@ -125,7 +125,7 @@ func resumeOrResetExecuting(
 			continue
 		}
 		if err := resumeOrResetExecutingEntry(ctx, inProgressDir, entry.Name(), mgr, checker, n, projectName); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "resume or reset executing entry")
 		}
 	}
 	return nil
@@ -152,7 +152,7 @@ func resumeOrResetGenerating(
 			continue
 		}
 		if err := resumeOrResetGeneratingEntry(ctx, specsInProgressDir, entry.Name(), checker, currentDateTimeGetter); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "resume or reset generating entry")
 		}
 	}
 	return nil

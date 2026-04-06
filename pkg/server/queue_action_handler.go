@@ -87,7 +87,7 @@ func handleQueueAll(
 ) error {
 	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager, currentDateTimeGetter)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "queue all files")
 	}
 
 	return writeQueueResponse(resp, queuedFiles)

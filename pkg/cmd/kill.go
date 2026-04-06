@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/bborbe/errors"
 )
 
 //counterfeiter:generate -o ../../mocks/kill-command.go --fake-name KillCommand . KillCommand
@@ -55,7 +57,7 @@ func NewKillCommand(
 }
 
 // Run executes the kill command.
-func (k *killCommand) Run(_ context.Context, _ []string) error {
+func (k *killCommand) Run(ctx context.Context, _ []string) error {
 	// Read lock file
 	data, err := os.ReadFile(k.lockFilePath)
 	if err != nil {
@@ -63,7 +65,7 @@ func (k *killCommand) Run(_ context.Context, _ []string) error {
 			fmt.Println("no daemon running")
 			return nil
 		}
-		return err
+		return errors.Wrap(ctx, err, "read lock file")
 	}
 
 	pidStr := strings.TrimSpace(string(data))

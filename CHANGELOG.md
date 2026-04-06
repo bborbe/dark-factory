@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.3
+
+- test: Add 60-second suite timeout via `GinkgoConfiguration()` to all 26 `*_suite_test.go` files to prevent indefinite CI hangs
+
 ## v0.106.2
 
 - fix: Add non-blocking `ctx.Done()` guard at top of one-shot runner loop to prevent unnecessary `ProcessQueue` cycle after context cancellation

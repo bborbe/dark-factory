@@ -8,6 +8,7 @@ package globalconfig_test
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,5 +16,7 @@ import (
 
 func TestGlobalconfig(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Globalconfig Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.Timeout = 60 * time.Second
+	RunSpecs(t, "Globalconfig Suite", suiteConfig, reporterConfig)
 }

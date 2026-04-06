@@ -8,6 +8,7 @@ package reindex_test
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,5 +16,7 @@ import (
 
 func TestReindex(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Reindex Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.Timeout = 60 * time.Second
+	RunSpecs(t, "Reindex Suite", suiteConfig, reporterConfig)
 }

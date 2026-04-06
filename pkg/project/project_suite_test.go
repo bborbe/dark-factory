@@ -19,5 +19,7 @@ func TestProject(t *testing.T) {
 	time.Local = time.UTC
 	format.TruncatedDiff = false
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Project Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.Timeout = 60 * time.Second
+	RunSpecs(t, "Project Suite", suiteConfig, reporterConfig)
 }

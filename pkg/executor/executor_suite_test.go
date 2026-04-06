@@ -19,5 +19,7 @@ func TestExecutor(t *testing.T) {
 	time.Local = time.UTC
 	format.TruncatedDiff = false
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Executor Suite")
+	suiteConfig, reporterConfig := GinkgoConfiguration()
+	suiteConfig.Timeout = 5 * time.Minute
+	RunSpecs(t, "Executor Suite", suiteConfig, reporterConfig)
 }

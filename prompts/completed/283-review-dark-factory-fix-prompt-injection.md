@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added SanitizeReviewBody function to pkg/review/fix_prompt_generator.go that escapes XML/HTML-like tags using a bounded regexp, applied it to opts.ReviewBody before insertion, and added Ginkgo tests covering all required cases.
+container: dark-factory-283-review-dark-factory-fix-prompt-injection
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T20:04:24Z"
+started: "2026-04-06T20:28:31Z"
+completed: "2026-04-06T20:39:39Z"
 ---
 
 <summary>

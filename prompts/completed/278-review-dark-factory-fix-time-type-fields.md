@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Replaced time.Time with libtime.DateTime for timestamp fields in CompletedPrompt, promptWithTime, executingPrompt, skippedPrompts map, and parseCreated across pkg/status, pkg/processor, and pkg/reindex, updating callers and test files accordingly.
 container: dark-factory-278-review-dark-factory-fix-time-type-fields
 dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T18:07:25Z"
 started: "2026-04-06T19:14:48Z"
+completed: "2026-04-06T19:28:01Z"
 ---
 
 <summary>

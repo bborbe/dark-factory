@@ -766,14 +766,19 @@ func (p *processor) prepareContainerSlot(ctx context.Context) (func(), error) {
 // startContainerLockRelease spawns a goroutine that releases the container lock
 // as soon as the named container is confirmed running (or after a 30 s timeout).
 // This limits how long the lock is held to the check-and-start window only.
+//
+// A goroutine is required here because lock release must happen asynchronously
+// while the caller continues with prompt execution. release() is deferred to
+// guarantee the lock is always freed, even if ctx is cancelled before
+// WaitUntilRunning returns (e.g. on shutdown).
 func (p *processor) startContainerLockRelease(ctx context.Context, name string, release func()) {
 	if p.containerChecker == nil {
 		return
 	}
 	cc := p.containerChecker
 	go func() {
+		defer release()
 		_ = cc.WaitUntilRunning(ctx, name, 30*time.Second)
-		release()
 	}()
 }
 

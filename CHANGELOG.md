@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.5
+
+- fix: Defer `release()` in `startContainerLockRelease` goroutine to guarantee container lock is freed on context cancellation
+
 ## v0.107.4
 
 - fix: Sanitize PR review body before embedding into generated fix prompt files to prevent prompt injection via XML/HTML-like tags

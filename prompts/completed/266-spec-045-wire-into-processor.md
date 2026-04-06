@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [045-test-command]
+summary: 'Wired testCommand config field into processor pipeline: added testCommand field to processor struct and NewProcessor, injected TestCommandSuffix in enrichPromptContent between changelog and validation suffixes, threaded cfg.TestCommand through CreateProcessor and both call sites in factory.go, updated all NewProcessor and CreateProcessor calls in test files, and added three new tests for injection, suppression, and ordering.'
+container: dark-factory-266-spec-045-wire-into-processor
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T16:30:00Z"
 queued: "2026-04-06T16:40:32Z"
+started: "2026-04-06T16:55:56Z"
+completed: "2026-04-06T17:13:21Z"
 ---
 
 <summary>

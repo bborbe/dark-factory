@@ -12,6 +12,7 @@ import (
 
 	libhttp "github.com/bborbe/http"
 	"github.com/bborbe/run"
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -172,7 +173,7 @@ var _ = Describe("Server", func() {
 
 	Describe("Completed endpoint", func() {
 		It("returns completed prompts with default limit", func() {
-			completedTime := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+			completedTime := libtime.DateTime(time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC))
 			expectedCompleted := []status.CompletedPrompt{
 				{Name: "test1.md", CompletedAt: completedTime},
 			}

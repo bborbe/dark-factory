@@ -17,6 +17,7 @@ import (
 
 	"github.com/adrg/frontmatter"
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -157,10 +158,10 @@ func entriesLess(a, b fileEntry) bool {
 	ta, oka := parseCreated(a.created)
 	tb, okb := parseCreated(b.created)
 	if oka && okb {
-		if ta.Equal(tb) {
+		if time.Time(ta).Equal(time.Time(tb)) {
 			return a.name < b.name
 		}
-		return ta.Before(tb)
+		return time.Time(ta).Before(time.Time(tb))
 	}
 	if oka {
 		return true
@@ -234,15 +235,15 @@ func readCreated(path string) string {
 	return fm.Created
 }
 
-func parseCreated(s string) (time.Time, bool) {
+func parseCreated(s string) (libtime.DateTime, bool) {
 	if s == "" {
-		return time.Time{}, false
+		return libtime.DateTime{}, false
 	}
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return t, true
+		return libtime.DateTime(t), true
 	}
 	if t, err := time.Parse("2006-01-02", s); err == nil {
-		return t, true
+		return libtime.DateTime(t), true
 	}
-	return time.Time{}, false
+	return libtime.DateTime{}, false
 }

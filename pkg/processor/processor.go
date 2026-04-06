@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/bborbe/dark-factory/pkg/containerlock"
@@ -107,7 +108,7 @@ func NewProcessor(
 		validationPrompt:       validationPrompt,
 		testCommand:            testCommand,
 		verificationGate:       verificationGate,
-		skippedPrompts:         make(map[string]time.Time),
+		skippedPrompts:         make(map[string]libtime.DateTime),
 		notifier:               n,
 		containerCounter:       containerCounter,
 		maxContainers:          maxContainers,
@@ -149,7 +150,7 @@ type processor struct {
 	validationPrompt       string
 	testCommand            string
 	verificationGate       bool
-	skippedPrompts         map[string]time.Time // filename → mod time when skipped
+	skippedPrompts         map[string]libtime.DateTime // filename → mod time when skipped
 	notifier               notifier.Notifier
 	containerCounter       executor.ContainerCounter
 	maxContainers          int
@@ -196,7 +197,7 @@ func (p *processor) Process(ctx context.Context) error {
 		case <-p.ready:
 			// Watcher normalized files, check for new queued prompts
 			// Clear skipped prompts so all files get re-evaluated after fsnotify event
-			p.skippedPrompts = make(map[string]time.Time)
+			p.skippedPrompts = make(map[string]libtime.DateTime)
 			if err := p.processExistingQueued(ctx); err != nil {
 				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 				// do NOT return — daemon continues running
@@ -497,7 +498,7 @@ func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool
 	fileInfo, err := os.Stat(pr.Path)
 	if err == nil {
 		if lastSkipped, wasSkipped := p.skippedPrompts[pr.Path]; wasSkipped {
-			if fileInfo.ModTime().Equal(lastSkipped) {
+			if fileInfo.ModTime().Equal(time.Time(lastSkipped)) {
 				// File hasn't changed since we last skipped it - skip silently
 				slog.Debug(
 					"skipping previously-failed prompt (unchanged)",
@@ -516,7 +517,7 @@ func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool
 		slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
 		// Record this prompt as skipped so we don't spam logs on next cycle
 		if fileInfo != nil {
-			p.skippedPrompts[pr.Path] = fileInfo.ModTime()
+			p.skippedPrompts[pr.Path] = libtime.DateTime(fileInfo.ModTime())
 		}
 		return true
 	}

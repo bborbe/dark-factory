@@ -56,8 +56,8 @@ type QueuedPrompt struct {
 
 // CompletedPrompt represents a completed prompt with metadata.
 type CompletedPrompt struct {
-	Name        string    `json:"name"`
-	CompletedAt time.Time `json:"completed_at"`
+	Name        string           `json:"name"`
+	CompletedAt libtime.DateTime `json:"completed_at"`
 }
 
 //counterfeiter:generate -o ../../mocks/status-checker.go --fake-name Checker . Checker
@@ -227,7 +227,7 @@ func (s *checker) GetCompletedPrompts(
 // promptWithTime holds prompt name and completion time.
 type promptWithTime struct {
 	name          string
-	completedTime time.Time
+	completedTime libtime.DateTime
 }
 
 // collectCompletedPrompts collects completed prompts with their completion times.
@@ -242,7 +242,7 @@ func (s *checker) collectCompletedPrompts(
 		}
 
 		completedTime := s.getCompletionTime(ctx, entry)
-		if completedTime.IsZero() {
+		if time.Time(completedTime).IsZero() {
 			continue
 		}
 
@@ -255,29 +255,29 @@ func (s *checker) collectCompletedPrompts(
 }
 
 // getCompletionTime extracts completion time from frontmatter or file mod time.
-func (s *checker) getCompletionTime(ctx context.Context, entry os.DirEntry) time.Time {
+func (s *checker) getCompletionTime(ctx context.Context, entry os.DirEntry) libtime.DateTime {
 	path := filepath.Join(s.completedDir, entry.Name())
 	fm, err := s.promptMgr.ReadFrontmatter(ctx, path)
 
 	// Try frontmatter timestamp first
 	if err == nil && fm != nil && fm.Completed != "" {
 		if t, err := time.Parse(time.RFC3339, fm.Completed); err == nil {
-			return t
+			return libtime.DateTime(t)
 		}
 	}
 
 	// Fall back to file mod time
 	info, err := entry.Info()
 	if err != nil {
-		return time.Time{}
+		return libtime.DateTime{}
 	}
-	return info.ModTime()
+	return libtime.DateTime(info.ModTime())
 }
 
 // sortPromptsByTimeDescending sorts prompts by completion time (most recent first).
 func sortPromptsByTimeDescending(prompts []promptWithTime) {
 	sort.Slice(prompts, func(i, j int) bool {
-		return prompts[i].completedTime.After(prompts[j].completedTime)
+		return time.Time(prompts[i].completedTime).After(time.Time(prompts[j].completedTime))
 	})
 }
 
@@ -305,7 +305,7 @@ func convertToCompletedPrompts(prompts []promptWithTime) []CompletedPrompt {
 type executingPrompt struct {
 	Path        string
 	Container   string
-	StartedTime time.Time
+	StartedTime libtime.DateTime
 }
 
 // findExecutingPrompt finds the currently executing prompt.
@@ -327,11 +327,11 @@ func (s *checker) findExecutingPrompt(ctx context.Context) (*executingPrompt, er
 		}
 
 		if fm.Status == string(prompt.ExecutingPromptStatus) {
-			startedTime := time.Time{}
+			startedTime := libtime.DateTime{}
 			if fm.Started != "" {
 				// Parse the started timestamp from frontmatter
 				if t, err := time.Parse(time.RFC3339, fm.Started); err == nil {
-					startedTime = t
+					startedTime = libtime.DateTime(t)
 				}
 			}
 
@@ -384,8 +384,8 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	st.CurrentPrompt = filepath.Base(executing.Path)
 	st.Container = executing.Container
 
-	if !executing.StartedTime.IsZero() {
-		duration := time.Time(s.currentDateTimeGetter.Now()).Sub(executing.StartedTime)
+	if !time.Time(executing.StartedTime).IsZero() {
+		duration := time.Time(s.currentDateTimeGetter.Now()).Sub(time.Time(executing.StartedTime))
 		st.ExecutingSince = formatDuration(duration)
 	}
 
@@ -437,7 +437,7 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 	}
 
 	var latestLog string
-	var latestTime time.Time
+	var latestTime libtime.DateTime
 
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
@@ -449,9 +449,9 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 			continue
 		}
 
-		if latestLog == "" || info.ModTime().After(latestTime) {
+		if latestLog == "" || info.ModTime().After(time.Time(latestTime)) {
 			latestLog = entry.Name()
-			latestTime = info.ModTime()
+			latestTime = libtime.DateTime(info.ModTime())
 		}
 	}
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.12
+
+- refactor: Replace `time.Time` with `libtime.DateTime` for timestamp fields in `CompletedPrompt`, `promptWithTime`, `executingPrompt`, `skippedPrompts` map, and `parseCreated` return type across `pkg/status`, `pkg/processor`, and `pkg/reindex`
+
 ## v0.106.11
 
 - refactor: Inject `libtime.CurrentDateTimeGetter` into `bitbucketPRMerger`, `dockerContainerChecker`, and status `checker`, replacing all direct `time.Now()` calls with the injected getter

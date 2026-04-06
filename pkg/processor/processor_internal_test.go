@@ -267,7 +267,7 @@ var _ = Describe("autoSetQueuedStatus", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		p = &processor{
-			skippedPrompts: make(map[string]time.Time),
+			skippedPrompts: make(map[string]libtime.DateTime),
 		}
 	})
 
@@ -415,7 +415,7 @@ var _ = Describe("watchForCancellation", func() {
 		p = &processor{
 			promptManager:  mgr,
 			executor:       exec,
-			skippedPrompts: make(map[string]time.Time),
+			skippedPrompts: make(map[string]libtime.DateTime),
 		}
 	})
 
@@ -514,7 +514,7 @@ var _ = Describe("ResumeExecuting", func() {
 			executor:       fakeExec,
 			promptManager:  mgr,
 			worktree:       false,
-			skippedPrompts: make(map[string]time.Time),
+			skippedPrompts: make(map[string]libtime.DateTime),
 		}
 	})
 
@@ -859,7 +859,7 @@ var _ = Describe("waitForContainerSlot", func() {
 		p = &processor{
 			maxContainers:         3,
 			containerPollInterval: 10 * time.Millisecond,
-			skippedPrompts:        make(map[string]time.Time),
+			skippedPrompts:        make(map[string]libtime.DateTime),
 		}
 	})
 
@@ -961,7 +961,7 @@ var _ = Describe("handleDirectWorkflow", func() {
 		rel = &stubReleaser{nextVersion: "v1.1.0"}
 		p = &processor{
 			releaser:       rel,
-			skippedPrompts: make(map[string]time.Time),
+			skippedPrompts: make(map[string]libtime.DateTime),
 		}
 	})
 

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added ContainerStopper interface and dockerContainerStopper, wired maxPromptDuration enforcement into the health check loop so timed-out executing prompts are stopped and marked failed
+container: dark-factory-279-fix-healthcheck-timeout-enforcement
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T18:00:00Z"
 queued: "2026-04-06T19:22:18Z"
+started: "2026-04-06T19:28:04Z"
+completed: "2026-04-06T19:44:54Z"
 ---
 
 <summary>

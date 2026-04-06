@@ -68,6 +68,7 @@ func NewProcessor(
 	specLister spec.Lister,
 	validationCommand string,
 	validationPrompt string,
+	testCommand string,
 	verificationGate bool,
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
@@ -104,6 +105,7 @@ func NewProcessor(
 		specLister:             specLister,
 		validationCommand:      validationCommand,
 		validationPrompt:       validationPrompt,
+		testCommand:            testCommand,
 		verificationGate:       verificationGate,
 		skippedPrompts:         make(map[string]time.Time),
 		notifier:               n,
@@ -145,6 +147,7 @@ type processor struct {
 	specLister             spec.Lister
 	validationCommand      string
 	validationPrompt       string
+	testCommand            string
 	verificationGate       bool
 	skippedPrompts         map[string]time.Time // filename → mod time when skipped
 	notifier               notifier.Notifier
@@ -940,6 +943,10 @@ func (p *processor) enrichPromptContent(ctx context.Context, content string) str
 	// Append changelog instructions when the project has a CHANGELOG.md
 	if p.releaser.HasChangelog(ctx) {
 		content = content + report.ChangelogSuffix()
+	}
+	// Inject project-level test command for fast iteration feedback
+	if p.testCommand != "" {
+		content = content + report.TestCommandSuffix(p.testCommand)
 	}
 	// Inject project-level validation command (overrides prompt-level <verification>)
 	if p.validationCommand != "" {

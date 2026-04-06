@@ -4,11 +4,11 @@ created: "2026-04-06T00:00:00Z"
 ---
 
 <summary>
-- The NewContainerLock constructor uses context.Background() when wrapping errors
-- Using context.Background() in pkg/ business logic violates the project context propagation rule
-- The constructor currently has no ctx parameter, so no caller context is available
-- Adding ctx as the first parameter allows proper error context to propagate from the caller
-- All call sites in the factory must be updated to pass their ctx
+- The container lock constructor uses the background context when wrapping errors
+- Using the background context in business logic violates the project context propagation rule
+- The constructor and its factory helper function both lack a context parameter
+- Adding context as the first parameter allows proper error context to propagate from callers
+- All call sites in the factory must be updated to pass their context through
 </summary>
 
 <objective>
@@ -31,7 +31,8 @@ Files to read before making changes (read ALL first):
    d. Remove the `"context"` standard library import if it was only used for `context.Background()` — but keep it since `ctx context.Context` requires it.
 
 2. In `pkg/factory/factory.go`:
-   - Find every call to `containerlock.NewContainerLock()` and add `ctx` as the first argument.
+   a. The `createContainerDeps()` helper function (~line 453) has no `ctx` parameter. Change its signature to `createContainerDeps(ctx context.Context)` and pass `ctx` to `containerlock.NewContainerLock(ctx)`.
+   b. Update both call sites of `createContainerDeps()` (~lines 264 and 322 in `CreateRunner` and `CreateOneShotRunner`) to pass `ctx`: `createContainerDeps(ctx)`.
 
 3. Update any other callers of `NewContainerLock()` found by grepping the repository.
 

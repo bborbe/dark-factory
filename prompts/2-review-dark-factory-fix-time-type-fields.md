@@ -4,11 +4,11 @@ created: "2026-04-06T00:00:00Z"
 ---
 
 <summary>
-- Several structs and local variables use time.Time where libtime.DateTime should be used
-- The project standard is to use libtime.DateTime for all timestamp storage
-- Affected types are in the status package, processor package, and reindex package
-- Replacing time.Time with libtime.DateTime makes types consistent and compatible with libtime utilities
-- Callers that do arithmetic on these fields may need short type conversion expressions
+- Several components store timestamps using the standard library type instead of the project type
+- The project standard is to use the library date-time type for all timestamp storage
+- Affected components are in the status, processor, and reindex packages
+- Replacing the standard type makes storage consistent and compatible with project utilities
+- Callers that do arithmetic on these fields need short type conversion expressions
 </summary>
 
 <objective>
@@ -32,19 +32,25 @@ Files to read before making changes (read ALL first):
    c. Change `getCompletionTime` return type from `time.Time` to `libtime.DateTime`; update `return time.Time{}` to `return libtime.DateTime{}`.
    d. Change `StartedTime time.Time` in `executingPrompt` to `StartedTime libtime.DateTime`.
    e. Change `var latestTime time.Time` to `var latestTime libtime.DateTime`.
-   f. Update any sorting, comparison, or arithmetic that uses these fields: use `time.Time(field).Before(...)`, `time.Time(field).After(...)`, `time.Time(field).Sub(...)` for arithmetic where needed, or cast to `time.Time` for comparison.
+   f. Update all callers that use these changed fields:
+      - `populateLogInfo` (~line 436): `latestTime` is compared with `info.ModTime().After(latestTime)` — use `info.ModTime().After(time.Time(latestTime))`.
+      - `findExecutingPrompt` (~line 326): creates `startedTime := time.Time{}` and parses into it — change to `libtime.DateTime{}`.
+      - `checkExecutingPrompts` (~line 383): uses `.IsZero()` and `time.Since()` on `StartedTime` — convert: `time.Time(executing.StartedTime).IsZero()` and `time.Since(time.Time(executing.StartedTime))`.
+      - Any sorting or comparison: use `time.Time(field).Before(...)`, `time.Time(field).After(...)`, `time.Time(field).Sub(...)` where needed.
    g. Add import `libtime "github.com/bborbe/time"`.
 
 2. In `pkg/processor/processor.go`:
    a. Change `skippedPrompts map[string]time.Time` field to `skippedPrompts map[string]libtime.DateTime`.
    b. Change `make(map[string]time.Time)` to `make(map[string]libtime.DateTime)` in all locations.
-   c. Update any code that reads from or writes to `skippedPrompts` to use `libtime.DateTime` — for assignments use `libtime.DateTime(time.Now())` or, preferably, use `currentDateTimeGetter.Now()` if available in scope.
+   c. Update all code that reads from or writes to `skippedPrompts`:
+      - Line ~519: `p.skippedPrompts[pr.Path] = fileInfo.ModTime()` — change to `p.skippedPrompts[pr.Path] = libtime.DateTime(fileInfo.ModTime())`.
+      - Line ~499: `lastSkipped, wasSkipped := p.skippedPrompts[pr.Path]` — the comparison with `fileInfo.ModTime()` needs conversion: compare `time.Time(lastSkipped)` with `fileInfo.ModTime()`.
    d. Add import `libtime "github.com/bborbe/time"`.
 
 3. In `pkg/reindex/reindex.go`:
    a. Change `parseCreated` signature from `func parseCreated(...) (time.Time, bool)` to `func parseCreated(...) (libtime.DateTime, bool)`.
    b. Change `return time.Time{}, false` to `return libtime.DateTime{}, false` (both occurrences).
-   c. Update callers of `parseCreated` to use `libtime.DateTime` return type.
+   c. Update callers of `parseCreated` — `entriesLess` (~line 155) calls `parseCreated` and uses `.Equal()`, `.Before()` on the result. Convert: `time.Time(ta).Equal(time.Time(tb))`, `time.Time(ta).Before(time.Time(tb))`.
    d. Add import `libtime "github.com/bborbe/time"`.
 
 4. Run `make test` after each file to catch compilation errors early.

@@ -1,13 +1,14 @@
 ---
-status: draft
+status: approved
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T17:05:25Z"
 ---
 
 <summary>
 - The processor package has many error return sites where ctx is available but errors are returned unwrapped
 - Unwrapped errors lose stack trace and context values the project-wide error library attaches
 - Each bare return is at a call boundary where the function name provides useful context to attach
-- The fix is mechanical: wrap each bare return with errors.Wrap(ctx, err, "short description")
+- The fix is mechanical: wrap each bare return with context and a descriptive message using the project error library
 - No logic changes are needed — only error wrapping is added
 </summary>
 

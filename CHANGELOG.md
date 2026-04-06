@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.0
+
+- feat: Wire `testCommand` config field into processor; inject `TestCommandSuffix` between changelog and validation suffixes in `enrichPromptContent`
+
 ## v0.105.0
 
 - feat: Add `testCommand` config field (default `make test`) for fast iteration feedback during YOLO prompt execution

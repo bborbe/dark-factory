@@ -4,10 +4,10 @@ created: "2026-04-06T00:00:00Z"
 ---
 
 <summary>
-- PR review bodies fetched from GitHub are inserted verbatim into generated prompt files
-- A malicious reviewer could craft a review body to break out of the intended XML structure
-- This could cause the AI agent in the YOLO container to execute attacker-controlled instructions
-- The fix sanitizes the review body by stripping or escaping XML-like tags before insertion
+- Review bodies from pull requests are inserted verbatim into generated prompt files
+- A malicious reviewer could craft a review body that breaks out of the intended structure
+- This could cause the agent to execute attacker-controlled instructions
+- The fix sanitizes the review body by stripping or escaping markup tags before insertion
 - A helper function keeps the sanitization logic testable and reusable
 </summary>
 

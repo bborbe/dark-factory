@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T17:05:26Z"
 ---
 
 <summary>
@@ -21,7 +22,7 @@ Read `CLAUDE.md` for project conventions.
 Files to read before making changes:
 - `pkg/watcher/watcher.go` — ~lines 117–118
 - `pkg/specwatcher/watcher.go` — ~line 109
-- `pkg/processor/processor.go` — ~line 963
+- `pkg/processor/processor.go` — `watchForCancellation` method (~line 997)
 </context>
 
 <requirements>

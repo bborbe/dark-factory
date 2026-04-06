@@ -123,6 +123,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -199,6 +200,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -283,6 +285,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -363,6 +366,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -433,6 +437,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -499,6 +504,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -573,6 +579,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -645,6 +652,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -753,6 +761,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -833,6 +842,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -901,6 +911,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -977,6 +988,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -1040,6 +1052,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -1099,6 +1112,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -1170,6 +1184,7 @@ var _ = Describe("Processor", func() {
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -1256,6 +1271,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -1337,6 +1353,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"make precommit",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -1412,6 +1429,7 @@ var _ = Describe("Processor", func() {
 			specLister,
 			"",
 			"readme.md is updated",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -1436,6 +1454,237 @@ var _ = Describe("Processor", func() {
 
 		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
 		Expect(promptContent).To(ContainSubstring("readme.md is updated"))
+
+		cancel()
+	})
+
+	It("should inject test command suffix when testCommand is set", func() {
+		promptPath := filepath.Join(promptsDir, "001-test-command-inject.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Test command inject test\n\nContent."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			executor,
+			manager,
+			releaser,
+			versionGet,
+			ready,
+			false,
+			false,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
+			false,
+			false,
+			false,
+			autoCompleter,
+			specLister,
+			"",
+			"",
+			"make test",
+			false,
+			notifier.NewMultiNotifier(),
+			nil,
+			0,
+			"",
+			nil,
+			nil,
+			0,
+			nil,
+			nil,
+			0,
+			0,
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return executor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+		Expect(promptContent).To(ContainSubstring("make test"))
+		Expect(promptContent).To(ContainSubstring("Fast Feedback"))
+
+		cancel()
+	})
+
+	It("should not inject test command suffix when testCommand is empty", func() {
+		promptPath := filepath.Join(promptsDir, "001-test-command-empty.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Test command empty test\n\nContent."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			executor,
+			manager,
+			releaser,
+			versionGet,
+			ready,
+			false,
+			false,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
+			false,
+			false,
+			false,
+			autoCompleter,
+			specLister,
+			"",
+			"",
+			"",
+			false,
+			notifier.NewMultiNotifier(),
+			nil,
+			0,
+			"",
+			nil,
+			nil,
+			0,
+			nil,
+			nil,
+			0,
+			0,
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return executor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+		Expect(promptContent).NotTo(ContainSubstring("Fast Feedback"))
+
+		cancel()
+	})
+
+	It("should inject test command suffix before validation command suffix", func() {
+		promptPath := filepath.Join(promptsDir, "001-test-command-order.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
+
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.LoadReturns(
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Test command order test\n\nContent."),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		manager.MoveToCompletedReturns(nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.HasChangelogReturns(false)
+		releaser.CommitOnlyReturns(nil)
+
+		p := processor.NewProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			filepath.Join(promptsDir, "log"),
+			"test-project",
+			executor,
+			manager,
+			releaser,
+			versionGet,
+			ready,
+			false,
+			false,
+			brancher,
+			prCreator,
+			cloner,
+			prMerger,
+			false,
+			false,
+			false,
+			autoCompleter,
+			specLister,
+			"make precommit",
+			"",
+			"make test",
+			false,
+			notifier.NewMultiNotifier(),
+			nil,
+			0,
+			"",
+			nil,
+			nil,
+			0,
+			nil,
+			nil,
+			0,
+			0,
+		)
+
+		go func() {
+			_ = p.Process(ctx)
+		}()
+
+		Eventually(func() int {
+			return executor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+		_, promptContent, _, _ := executor.ExecuteArgsForCall(0)
+		fastFeedbackIdx := strings.Index(promptContent, "Fast Feedback")
+		validationIdx := strings.Index(promptContent, "Project Validation Command")
+		Expect(fastFeedbackIdx).To(BeNumerically("<", validationIdx))
 
 		cancel()
 	})
@@ -1489,6 +1738,7 @@ var _ = Describe("Processor", func() {
 				specLister,
 				"",
 				"nonexistent-file.md",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -1577,6 +1827,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -1704,6 +1955,7 @@ var _ = Describe("Processor", func() {
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -1807,6 +2059,7 @@ var _ = Describe("Processor", func() {
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -1906,6 +2159,7 @@ var _ = Describe("Processor", func() {
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -1996,6 +2250,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -2097,6 +2352,7 @@ var _ = Describe("Processor", func() {
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -2169,6 +2425,7 @@ var _ = Describe("Processor", func() {
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -2280,6 +2537,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -2367,6 +2625,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -2449,6 +2708,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -2536,6 +2796,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -2621,6 +2882,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				fakeNotifier,
 				nil,
@@ -2702,6 +2964,7 @@ more output
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -2786,6 +3049,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -2876,6 +3140,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -2948,6 +3213,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -3010,6 +3276,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -3081,6 +3348,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -3179,6 +3447,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -3268,6 +3537,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -3338,6 +3608,7 @@ DARK-FACTORY-REPORT -->
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -3426,6 +3697,7 @@ DARK-FACTORY-REPORT -->
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -3490,6 +3762,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -3567,6 +3840,7 @@ DARK-FACTORY-REPORT -->
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -3627,6 +3901,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -3697,6 +3972,7 @@ DARK-FACTORY-REPORT -->
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -3790,6 +4066,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -3888,6 +4165,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			specLister,
 			"",
 			"",
+			"",
 			false,
 			notifier.NewMultiNotifier(),
 			nil,
@@ -3955,6 +4233,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -4049,6 +4328,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			false,
 			autoCompleter,
 			specLister,
+			"",
 			"",
 			"",
 			false,
@@ -4149,6 +4429,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -4255,6 +4536,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					"",
 					false,
@@ -4369,6 +4651,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -4463,6 +4746,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					"",
 					false,
@@ -4565,6 +4849,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -4659,6 +4944,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					true, // autoReview enabled
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					"",
 					false,
@@ -4771,6 +5057,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -4865,6 +5152,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					specLister,
 					"",
 					"",
+					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
 					nil,
@@ -4945,6 +5233,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					specLister,
 					"",
 					"",
+					"",
 					true, // verificationGate enabled
 					notifier.NewMultiNotifier(),
 					nil,
@@ -5014,6 +5303,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						specLister,
 						"",
 						"",
+						"",
 						false,
 						notifier.NewMultiNotifier(),
 						nil,
@@ -5072,6 +5362,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					false,
 					autoCompleter,
 					specLister,
+					"",
 					"",
 					"",
 					true, // gate enabled but no pending file
@@ -5141,6 +5432,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				realLister,
+				"",
 				"",
 				"",
 				false,
@@ -5216,6 +5508,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -5340,6 +5633,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -5672,6 +5966,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					specLister,
 					"",
 					"",
+					"",
 					false,
 					notifier.NewMultiNotifier(),
 					nil,
@@ -5809,6 +6104,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -5887,6 +6183,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -6132,6 +6429,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -6282,6 +6580,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -6362,6 +6661,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -6414,6 +6714,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,
@@ -6584,6 +6885,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -6732,6 +7034,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				specLister,
 				"",
 				"",
+				"",
 				false,
 				notifier.NewMultiNotifier(),
 				nil,
@@ -6802,6 +7105,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				false,
 				autoCompleter,
 				specLister,
+				"",
 				"",
 				"",
 				false,

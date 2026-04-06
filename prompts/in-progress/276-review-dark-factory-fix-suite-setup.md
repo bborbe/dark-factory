@@ -1,18 +1,19 @@
 ---
-status: draft
+status: approved
 created: "2026-04-06T00:00:00Z"
+queued: "2026-04-06T17:05:26Z"
 ---
 
 <summary>
 - Two test suite files are missing the standard time zone and diff format setup
-- Without time.Local = time.UTC tests can produce timezone-dependent failures
-- Without format.TruncatedDiff = false assertion failures show truncated diffs that hide the root cause
+- Without the time zone override, tests can produce timezone-dependent failures
+- Without full diff output, assertion failures show truncated diffs that hide the root cause
 - Every other suite in the project already includes these two setup lines
 - The fix adds the missing setup lines to bring these suites in line with the project standard
 </summary>
 
 <objective>
-Add `time.Local = time.UTC` and `format.TruncatedDiff = false` to the suite runner functions in `pkg/globalconfig/globalconfig_suite_test.go` and `pkg/reindex/reindex_suite_test.go`.
+Add the standard time zone and diff format setup to the suite runner functions in `pkg/globalconfig/globalconfig_suite_test.go` and `pkg/reindex/reindex_suite_test.go`, matching the pattern used in every other suite file.
 </objective>
 
 <context>

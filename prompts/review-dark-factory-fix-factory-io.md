@@ -4,16 +4,16 @@ created: "2026-04-06T00:00:00Z"
 ---
 
 <summary>
-- The factory package performs live HTTP calls at object graph construction time
-- One function fetches the current Bitbucket user over HTTP during factory wiring
-- Another function eagerly fetches collaborator reviewers during factory construction
-- Executing I/O at wire time makes startup fail if the remote is unreachable
-- Reviewer data fetched at startup is never refreshed, causing stale reviewer lists
-- The fix moves HTTP logic to pkg/git and makes reviewer resolution lazy
+- The factory performs live HTTP calls during object graph construction
+- One call fetches the current Bitbucket user over HTTP at startup
+- Another eagerly fetches collaborator reviewers before any PR is created
+- Startup fails if the remote is unreachable, even if no PR will be created
+- Reviewer data fetched at startup grows stale and is never refreshed
+- The fix moves HTTP logic out of the factory and makes resolution lazy at PR creation time
 </summary>
 
 <objective>
-Extract `fetchBitbucketCurrentUser` from `pkg/factory/factory.go` into a proper `CurrentUserFetcher` interface and implementation in `pkg/git/`, and change `collaboratorFetcher.Fetch(ctx)` in `createBitbucketProviderDeps` to be called lazily (at PR creation time) rather than eagerly at factory construction time.
+Move the Bitbucket current-user HTTP call out of the factory into a lazy fetcher in the git package, and defer collaborator-reviewer resolution from factory construction to PR creation time. The factory must perform zero I/O.
 </objective>
 
 <context>
@@ -57,9 +57,9 @@ Files to read before making changes (read ALL first):
    c. Change `collaboratorFetcher.Fetch(ctx)` — remove this eager call. Instead, pass `collaboratorFetcher` itself to the PR creator so it can call `Fetch` lazily when a PR is actually being created.
 
 3. In `pkg/git/bitbucket_pr_creator.go`:
-   a. Change the `currentUser string` field/parameter to `currentUserFetcher git.BitbucketCurrentUserFetcher`.
-   b. Change the `allowedReviewers []string` field/parameter to accept the `collaboratorFetcher` (or a combined interface).
-   c. Call `f.currentUserFetcher.FetchCurrentUser(ctx)` and `f.collaboratorFetcher.Fetch(ctx)` at PR creation time (inside the method that creates a PR), not at construction time.
+   a. The struct has a `reviewers []string` field (no `currentUser` field). Change `reviewers []string` to accept a reviewer-fetching interface (e.g., `collaboratorFetcher` or a `ReviewerFetcher` interface) so reviewers are resolved lazily at PR creation time.
+   b. In the PR creation method, call the fetcher to get the reviewer list instead of using the pre-resolved `[]string`.
+   c. The `currentUser` string is passed to `NewBitbucketCollaboratorFetcher` in the factory — change the factory to pass the `BitbucketCurrentUserFetcher` instead, and let the collaborator fetcher call it lazily.
 
 4. Run `make generate` to regenerate the counterfeiter mock for `BitbucketCurrentUserFetcher`.
 

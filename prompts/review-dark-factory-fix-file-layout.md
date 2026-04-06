@@ -5,14 +5,14 @@ created: "2026-04-06T00:00:00Z"
 
 <summary>
 - Seven files have their struct definition appearing before the constructor function
-- The project requires the order: Interface → Constructor → Struct → Methods
-- Struct-before-constructor is a layout violation that makes code harder to navigate
+- The majority of files in the project follow Interface then Constructor then Struct then Methods order
+- Struct-before-constructor is inconsistent with the dominant pattern and harder to navigate
 - The fix reorders the declarations within each file without changing any logic
 - No tests, imports, or behavior changes are needed
 </summary>
 
 <objective>
-Reorder declarations in seven files so that each constructor function (`New*`) appears before the struct it constructs, following the canonical Interface → Constructor → Struct → Methods ordering.
+Reorder declarations in seven files so that each constructor function appears before the struct it constructs, matching the dominant project pattern used in the majority of existing files.
 </objective>
 
 <context>

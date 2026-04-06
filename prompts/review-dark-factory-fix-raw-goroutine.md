@@ -17,7 +17,7 @@ Replace the raw `go func()` goroutine in `startContainerLockRelease` in `pkg/pro
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-concurrency-patterns.md` for the run package pattern.
+Read the coding plugin's `go-concurrency-patterns.md` guide for the run package pattern.
 
 Files to read before making changes (read ALL first):
 - `pkg/processor/processor.go` — `startContainerLockRelease` function at ~line 738; understand how it is called from `prepareContainerSlot` or similar and what the `release` func does
@@ -25,7 +25,7 @@ Files to read before making changes (read ALL first):
 </context>
 
 <requirements>
-1. In `pkg/processor/processor.go`, locate `startContainerLockRelease` (~line 738).
+1. In `pkg/processor/processor.go`, locate `startContainerLockRelease` (~line 768).
 
 2. The current implementation:
    ```go
@@ -44,7 +44,7 @@ Files to read before making changes (read ALL first):
 3. Replace with a pattern that:
    a. Still calls `cc.WaitUntilRunning(ctx, name, 30*time.Second)` followed by `release()`.
    b. Respects context cancellation: if `ctx` is cancelled before `WaitUntilRunning` returns, `release()` should still be called (to avoid leaking the lock), but the goroutine should terminate promptly.
-   c. Uses `run.FireAndForget` from `github.com/bborbe/run` if available, or adds the goroutine to the processor's run group. If neither is viable without large refactoring, use a well-commented raw goroutine that calls `release()` in a `defer` to ensure the lock is always released:
+   c. Check if the processor has an existing run group or errgroup pattern. If the goroutine can be added to an existing tracked group, do so. If wiring into the run group requires large refactoring, use a well-commented raw goroutine that calls `release()` in a `defer` to ensure the lock is always released:
    ```go
    go func() {
        defer release()
@@ -55,7 +55,7 @@ Files to read before making changes (read ALL first):
 
 4. Add a code comment explaining why a goroutine is used here and that `release()` is deferred to guarantee execution.
 
-5. Ensure the `"github.com/bborbe/run"` import is added if used.
+5. Ensure the `"github.com/bborbe/run"` import is added if using the run package.
 </requirements>
 
 <constraints>

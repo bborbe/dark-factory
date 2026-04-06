@@ -4,11 +4,11 @@ created: "2026-04-06T00:00:00Z"
 ---
 
 <summary>
-- Three structs call time.Now() directly instead of using an injected time getter
-- Direct time.Now() calls make the logic untestable without real time passing
-- The project uses github.com/bborbe/time's CurrentDateTimeGetter for injectable time
-- Affected structs are bitbucketPRMerger, dockerContainerChecker, and the status checker
-- Each struct needs a currentDateTimeGetter field added and injected through its constructor
+- Three components call the system clock directly instead of using an injected time getter
+- Direct clock calls make time-dependent logic untestable without real time passing
+- The project standard is to inject a time getter interface for all clock access
+- Affected components are the PR merger, container checker, and status checker
+- Each component needs a time getter field added and injected through its constructor
 </summary>
 
 <objective>
@@ -44,10 +44,13 @@ Files to read before making changes (read ALL first):
 3. In `pkg/status/status.go`:
    a. Confirm whether `checker` struct already has a `currentDateTimeGetter` field; if not, add `currentDateTimeGetter libtime.CurrentDateTimeGetter` and update `NewChecker(...)`.
    b. Replace `time.Since(executing.StartedTime)` with `time.Time(c.currentDateTimeGetter.Now()).Sub(time.Time(executing.StartedTime))` (the field type will be changed in a separate prompt; use `time.Time(...)` conversion as needed to make it compile).
-   e. Add import `libtime "github.com/bborbe/time"` if not present.
+   c. Add import `libtime "github.com/bborbe/time"` if not present.
 
 4. In `pkg/factory/factory.go`:
-   - Locate the `currentDateTimeGetter` variable (already used elsewhere in the factory) and pass it to the updated constructors: `NewBitbucketPRMerger(ctx, ..., currentDateTimeGetter)`, `NewDockerContainerChecker(..., currentDateTimeGetter)`, and `status.NewChecker(..., currentDateTimeGetter)`.
+   - Locate the `currentDateTimeGetter` variable (already used elsewhere in the factory) and pass it to each updated constructor.
+   - `NewBitbucketPRMerger` call site (~line 170): add `currentDateTimeGetter` parameter. Note: this constructor does NOT take `ctx` — do not add one.
+   - `NewDockerContainerChecker` call sites (~lines 407 and 459): add `currentDateTimeGetter` to both calls.
+   - `status.NewChecker` call sites (~lines 654, 707, and 891): add `currentDateTimeGetter` to all three calls.
 
 5. Update tests that call these constructors directly to pass `libtime.NewCurrentDateTimeGetterMock()` or equivalent.
 </requirements>

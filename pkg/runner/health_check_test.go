@@ -32,6 +32,19 @@ func writePromptFile(dir, name, status, container string) string {
 	return path
 }
 
+// writePromptFileWithStarted writes a prompt .md file with status, container, and started fields.
+func writePromptFileWithStarted(dir, name, status, container, started string) string {
+	content := fmt.Sprintf(
+		"---\nstatus: %s\ncontainer: %s\nstarted: %s\n---\n\nPrompt body.\n",
+		status,
+		container,
+		started,
+	)
+	path := filepath.Join(dir, name)
+	Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+	return path
+}
+
 // writeSpecFile writes a minimal spec .md file with given status.
 func writeSpecFile(dir, name, status string) string {
 	content := fmt.Sprintf("---\nstatus: %s\n---\n\nSpec body.\n", status)
@@ -74,14 +87,34 @@ var _ = Describe("CheckExecutingPrompts", func() {
 	})
 
 	It("returns nil when dir is empty (no prompts)", func() {
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 		Expect(n.NotifyCallCount()).To(Equal(0))
 	})
 
 	It("returns nil when dir does not exist", func() {
-		err := runner.CheckExecutingPromptsForTest(ctx, "/nonexistent/path", checker, mgr, n, "")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			"/nonexistent/path",
+			checker,
+			mgr,
+			n,
+			"",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -90,7 +123,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		subDir := filepath.Join(inProgressDir, "subdir")
 		Expect(os.MkdirAll(subDir, 0750)).To(Succeed())
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -100,7 +143,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 			os.WriteFile(filepath.Join(inProgressDir, "notes.txt"), []byte("text"), 0600),
 		).To(Succeed())
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -115,7 +168,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		)
 		mgr.LoadReturns(pf, nil)
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -131,7 +194,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		mgr.LoadReturns(pf, nil)
 		checker.IsRunningReturns(true, nil)
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "proj")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"proj",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(1))
 		Expect(n.NotifyCallCount()).To(Equal(0))
@@ -149,7 +222,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		checker.IsRunningReturns(false, nil)
 		n.NotifyReturns(nil)
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "proj")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"proj",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(1))
 		Expect(n.NotifyCallCount()).To(Equal(1))
@@ -174,7 +257,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		mgr.LoadReturns(pf, nil)
 		checker.IsRunningReturns(false, fmt.Errorf("docker API error"))
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "proj")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"proj",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(n.NotifyCallCount()).To(Equal(0))
 
@@ -212,7 +305,17 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		}
 		n.NotifyReturns(nil)
 
-		err := runner.CheckExecutingPromptsForTest(ctx, inProgressDir, checker, mgr, n, "proj")
+		err := runner.CheckExecutingPromptsForTest(
+			ctx,
+			inProgressDir,
+			checker,
+			mgr,
+			n,
+			"proj",
+			0,
+			nil,
+			currentDateTime,
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(n.NotifyCallCount()).To(Equal(1))
 
@@ -223,6 +326,210 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		// dead file should be reset to approved
 		deadContent, _ := os.ReadFile(pathDead)
 		Expect(string(deadContent)).To(ContainSubstring("status: approved"))
+	})
+
+	Context("timeout enforcement", func() {
+		var (
+			stopper        *mocks.ContainerStopper
+			fixedNow       time.Time
+			fixedCurrentDT libtime.CurrentDateTime
+		)
+
+		BeforeEach(func() {
+			stopper = &mocks.ContainerStopper{}
+			stopper.StopContainerReturns(nil)
+			n.NotifyReturns(nil)
+
+			// Fixed "now" for deterministic tests
+			fixedNow = time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+			fixedCurrentDT = libtime.NewCurrentDateTime()
+			fixedCurrentDT.SetNow(libtime.DateTime(fixedNow))
+		})
+
+		It("stops and marks failed when prompt exceeds maxPromptDuration", func() {
+			// started 2 hours before fixedNow
+			startedTime := fixedNow.Add(-2 * time.Hour)
+			started := startedTime.UTC().Format(time.RFC3339)
+
+			path := writePromptFileWithStarted(
+				inProgressDir,
+				"001-timeout.md",
+				"executing",
+				"timeout-container",
+				started,
+			)
+			pf := prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{
+					Status:    "executing",
+					Container: "timeout-container",
+					Started:   started,
+				},
+				nil,
+				fixedCurrentDT,
+			)
+			mgr.LoadReturns(pf, nil)
+			checker.IsRunningReturns(true, nil)
+
+			err := runner.CheckExecutingPromptsForTest(
+				ctx,
+				inProgressDir,
+				checker,
+				mgr,
+				n,
+				"proj",
+				1*time.Hour,
+				stopper,
+				fixedCurrentDT,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Stopper should have been called
+			Expect(stopper.StopContainerCallCount()).To(Equal(1))
+			_, stoppedContainer := stopper.StopContainerArgsForCall(0)
+			Expect(stoppedContainer).To(Equal("timeout-container"))
+
+			// Prompt should be failed
+			content, err := os.ReadFile(path)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("status: failed"))
+			Expect(string(content)).To(ContainSubstring("exceeded maxPromptDuration"))
+
+			// Notification should have been sent
+			Expect(n.NotifyCallCount()).To(Equal(1))
+			_, event := n.NotifyArgsForCall(0)
+			Expect(event.EventType).To(Equal("prompt_timeout"))
+			Expect(event.PromptName).To(Equal("001-timeout.md"))
+		})
+
+		It("does not stop when maxPromptDuration is 0 (disabled)", func() {
+			// started 2 hours before fixedNow
+			startedTime := fixedNow.Add(-2 * time.Hour)
+			started := startedTime.UTC().Format(time.RFC3339)
+
+			path := writePromptFileWithStarted(
+				inProgressDir,
+				"001-noduration.md",
+				"executing",
+				"noduration-container",
+				started,
+			)
+			pf := prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{
+					Status:    "executing",
+					Container: "noduration-container",
+					Started:   started,
+				},
+				nil,
+				fixedCurrentDT,
+			)
+			mgr.LoadReturns(pf, nil)
+			checker.IsRunningReturns(true, nil)
+
+			err := runner.CheckExecutingPromptsForTest(
+				ctx,
+				inProgressDir,
+				checker,
+				mgr,
+				n,
+				"proj",
+				0,
+				stopper,
+				fixedCurrentDT,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Stopper should NOT have been called
+			Expect(stopper.StopContainerCallCount()).To(Equal(0))
+
+			// Prompt should still be executing
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: executing"))
+		})
+
+		It("does not stop when prompt has no started timestamp", func() {
+			path := writePromptFile(
+				inProgressDir,
+				"001-nostarted.md",
+				"executing",
+				"nostarted-container",
+			)
+			pf := prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{Status: "executing", Container: "nostarted-container"},
+				nil,
+				fixedCurrentDT,
+			)
+			mgr.LoadReturns(pf, nil)
+			checker.IsRunningReturns(true, nil)
+
+			err := runner.CheckExecutingPromptsForTest(
+				ctx,
+				inProgressDir,
+				checker,
+				mgr,
+				n,
+				"proj",
+				1*time.Hour,
+				stopper,
+				fixedCurrentDT,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Stopper should NOT have been called
+			Expect(stopper.StopContainerCallCount()).To(Equal(0))
+
+			// Prompt should still be executing
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: executing"))
+		})
+
+		It("does not stop when prompt is within maxPromptDuration", func() {
+			// started 10 minutes before fixedNow
+			startedTime := fixedNow.Add(-10 * time.Minute)
+			started := startedTime.UTC().Format(time.RFC3339)
+
+			path := writePromptFileWithStarted(
+				inProgressDir,
+				"001-recent.md",
+				"executing",
+				"recent-container",
+				started,
+			)
+			pf := prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{
+					Status:    "executing",
+					Container: "recent-container",
+					Started:   started,
+				},
+				nil,
+				fixedCurrentDT,
+			)
+			mgr.LoadReturns(pf, nil)
+			checker.IsRunningReturns(true, nil)
+
+			err := runner.CheckExecutingPromptsForTest(
+				ctx,
+				inProgressDir,
+				checker,
+				mgr,
+				n,
+				"proj",
+				1*time.Hour,
+				stopper,
+				fixedCurrentDT,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Stopper should NOT have been called
+			Expect(stopper.StopContainerCallCount()).To(Equal(0))
+
+			// Prompt should still be executing
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: executing"))
+		})
 	})
 })
 
@@ -367,7 +674,7 @@ var _ = Describe("RunHealthCheckLoop", func() {
 	It("stops cleanly when context is cancelled", func() {
 		errCh := make(chan error, 1)
 		go func() {
-			errCh <- runner.RunHealthCheckLoopForTest(ctx, 50*time.Millisecond, inProgressDir, specsDir, checker, mgr, nil, "", currentDateTime)
+			errCh <- runner.RunHealthCheckLoopForTest(ctx, 50*time.Millisecond, inProgressDir, specsDir, checker, mgr, nil, "", currentDateTime, 0, nil)
 		}()
 
 		// Cancel context quickly
@@ -383,7 +690,7 @@ var _ = Describe("RunHealthCheckLoop", func() {
 
 		errCh := make(chan error, 1)
 		go func() {
-			errCh <- runner.RunHealthCheckLoopForTest(ctx, 50*time.Millisecond, inProgressDir, specsDir, checker, mgr, nil, "", currentDateTime)
+			errCh <- runner.RunHealthCheckLoopForTest(ctx, 50*time.Millisecond, inProgressDir, specsDir, checker, mgr, nil, "", currentDateTime, 0, nil)
 		}()
 
 		// Wait for at least one tick

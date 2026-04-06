@@ -296,14 +296,39 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
+	specWatcher := CreateSpecWatcher(cfg, specGen, currentDateTimeGetter)
+	return createRunnerInstance(cfg, inboxDir, inProgressDir, completedDir,
+		promptManager, releaser, watcher, proc, srv, poller, specWatcher,
+		projectName, containerChecker, n, migrator, currentDateTimeGetter)
+}
+
+// createRunnerInstance wires the final runner.Runner from pre-built components.
+func createRunnerInstance(
+	cfg config.Config,
+	inboxDir, inProgressDir, completedDir string,
+	promptManager prompt.Manager,
+	releaser prompt.FileMover,
+	w watcher.Watcher,
+	proc processor.Processor,
+	srv server.Server,
+	poller review.ReviewPoller,
+	specWatcher specwatcher.SpecWatcher,
+	projectName string,
+	containerChecker executor.ContainerChecker,
+	n notifier.Notifier,
+	migrator slugmigrator.Migrator,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) runner.Runner {
 	return runner.NewRunner(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
-		promptManager, CreateLocker("."), watcher, proc, srv, poller,
-		CreateSpecWatcher(cfg, specGen, currentDateTimeGetter), projectName,
+		promptManager, CreateLocker("."), w, proc, srv, poller,
+		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
 		releaser,
+		cfg.ParsedMaxPromptDuration(),
+		executor.NewDockerContainerStopper(),
 	)
 }
 

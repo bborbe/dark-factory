@@ -57,6 +57,8 @@ func NewRunner(
 	slugMigrator slugmigrator.Migrator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	mover prompt.FileMover,
+	maxPromptDuration time.Duration,
+	containerStopper executor.ContainerStopper,
 ) Runner {
 	return &runner{
 		inboxDir:              inboxDir,
@@ -80,6 +82,8 @@ func NewRunner(
 		slugMigrator:          slugMigrator,
 		currentDateTimeGetter: currentDateTimeGetter,
 		mover:                 mover,
+		maxPromptDuration:     maxPromptDuration,
+		containerStopper:      containerStopper,
 	}
 }
 
@@ -106,6 +110,8 @@ type runner struct {
 	slugMigrator          slugmigrator.Migrator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	mover                 prompt.FileMover
+	maxPromptDuration     time.Duration
+	containerStopper      executor.ContainerStopper
 }
 
 // Run executes the main processing loop:
@@ -237,6 +243,8 @@ func (r *runner) healthCheckLoop(ctx context.Context) error {
 		r.notifier,
 		r.projectName,
 		r.currentDateTimeGetter,
+		r.maxPromptDuration,
+		r.containerStopper,
 	)
 }
 

@@ -87,6 +87,8 @@ var _ = Describe("Runner", func() {
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
 			&mocks.FileMover{},
+			0,
+			nil,
 		)
 	}
 
@@ -378,6 +380,8 @@ var _ = Describe("Runner", func() {
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
 			&mocks.FileMover{},
+			0,
+			nil,
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -435,6 +439,8 @@ var _ = Describe("Runner", func() {
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
 			&mocks.FileMover{},
+			0,
+			nil,
 		)
 
 		go func() {
@@ -482,6 +488,8 @@ var _ = Describe("Runner", func() {
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
 			&mocks.FileMover{},
+			0,
+			nil,
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -545,6 +553,8 @@ var _ = Describe("Runner", func() {
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
+				0,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -758,6 +768,8 @@ var _ = Describe("Runner", func() {
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
+				0,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -836,6 +848,8 @@ var _ = Describe("Runner", func() {
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
+				0,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -924,6 +938,8 @@ var _ = Describe("Runner", func() {
 					&mocks.SpecSlugMigrator{},
 					libtime.NewCurrentDateTime(),
 					&mocks.FileMover{},
+					0,
+					nil,
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1008,6 +1024,8 @@ var _ = Describe("Runner", func() {
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
+				0,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1066,6 +1084,8 @@ var _ = Describe("Runner", func() {
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
+				0,
+				nil,
 			)
 		}
 

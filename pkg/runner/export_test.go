@@ -23,8 +23,21 @@ func CheckExecutingPromptsForTest(
 	mgr prompt.Manager,
 	n notifier.Notifier,
 	projectName string,
+	maxPromptDuration time.Duration,
+	stopper executor.ContainerStopper,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	return checkExecutingPrompts(ctx, inProgressDir, checker, mgr, n, projectName)
+	return checkExecutingPrompts(
+		ctx,
+		inProgressDir,
+		checker,
+		mgr,
+		n,
+		projectName,
+		maxPromptDuration,
+		stopper,
+		currentDateTimeGetter,
+	)
 }
 
 // CheckGeneratingSpecsForTest exposes checkGeneratingSpecs for external test packages.
@@ -48,6 +61,8 @@ func RunHealthCheckLoopForTest(
 	n notifier.Notifier,
 	projectName string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	maxPromptDuration time.Duration,
+	stopper executor.ContainerStopper,
 ) error {
 	return runHealthCheckLoop(
 		ctx,
@@ -59,5 +74,7 @@ func RunHealthCheckLoopForTest(
 		n,
 		projectName,
 		currentDateTimeGetter,
+		maxPromptDuration,
+		stopper,
 	)
 }

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.0
+
+- feat: Enforce `maxPromptDuration` in the health check loop by adding `ContainerStopper` interface and `dockerContainerStopper` implementation; health check now stops and marks failed any executing prompt whose container has been running longer than the configured limit
+
 ## v0.106.12
 
 - refactor: Replace `time.Time` with `libtime.DateTime` for timestamp fields in `CompletedPrompt`, `promptWithTime`, `executingPrompt`, `skippedPrompts` map, and `parseCreated` return type across `pkg/status`, `pkg/processor`, and `pkg/reindex`

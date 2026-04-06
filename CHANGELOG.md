@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.104.3
+
+- refactor: Replace manual fakeCommandRunner and multiFailRunner stubs in executor tests with counterfeiter-generated mocks.CommandRunner; move tests to external package executor_test using export_test.go bridge
+
 ## v0.104.2
 
 - fix: reattach timeout uses remaining wall-clock duration instead of full maxPromptDuration

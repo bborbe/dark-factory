@@ -13,6 +13,8 @@ import (
 	"github.com/bborbe/errors"
 )
 
+//counterfeiter:generate -o ../../mocks/command-runner.go --fake-name CommandRunner . commandRunner
+
 // commandRunner runs an external command.
 type commandRunner interface {
 	Run(ctx context.Context, cmd *exec.Cmd) error

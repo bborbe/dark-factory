@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.103.2
+
+- fix: defaultCommandRunner now respects context cancellation — sends SIGINT/SIGKILL to child process when ctx is cancelled
+
 ## v0.103.1
 
 - refactor: Thread ctx from main() through factory functions (CreateRunner, CreateOneShotRunner, CreateServer, CreateStatusCommand, CreateCombinedStatusCommand, CreateReviewPoller, CreatePromptCompleteCommand) and status.isContainerRunning — ensures signal cancellation propagates to all long-running operations

@@ -1120,6 +1120,38 @@ This has frontmatter.`
 		})
 	})
 
+	Describe("defaultCommandRunner", func() {
+		It("returns nil when command exits normally", func() {
+			runner := &defaultCommandRunner{}
+			cmd := exec.Command("true")
+			err := runner.Run(ctx, cmd)
+			Expect(err).To(BeNil())
+		})
+
+		It("returns error when command exits with non-zero status", func() {
+			runner := &defaultCommandRunner{}
+			cmd := exec.Command("false")
+			err := runner.Run(ctx, cmd)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("terminates long-running process when context is cancelled", func() {
+			runner := &defaultCommandRunner{}
+			cancelCtx, cancel := context.WithCancel(ctx)
+
+			cmd := exec.Command("sleep", "60")
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- runner.Run(cancelCtx, cmd)
+			}()
+
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+
+			Eventually(errCh).WithTimeout(2 * time.Second).Should(Receive(HaveOccurred()))
+		})
+	})
+
 	Describe("validateClaudeAuth", func() {
 		BeforeEach(func() {
 			// Ensure ANTHROPIC_API_KEY is unset so auth check runs

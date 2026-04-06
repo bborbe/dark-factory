@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Injected libtime.CurrentDateTimeGetter into bitbucketPRMerger, dockerContainerChecker, and status checker, replacing all direct time.Now() calls with the injected getter, and updated factory wiring and tests accordingly.
+container: dark-factory-277-review-dark-factory-fix-time-now-injection
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T18:07:25Z"
+started: "2026-04-06T18:55:35Z"
+completed: "2026-04-06T19:14:45Z"
 ---
 
 <summary>

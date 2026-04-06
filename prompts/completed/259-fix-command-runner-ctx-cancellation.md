@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: defaultCommandRunner.Run() now uses cmd.Start()+cmd.Wait() with a goroutine that sends SIGINT then SIGKILL on context cancellation; three new Ginkgo tests cover normal exit, non-zero exit, and context-cancellation termination
+container: dark-factory-259-fix-command-runner-ctx-cancellation
+dark-factory-version: v0.103.0
 created: "2026-04-06T12:00:00Z"
 queued: "2026-04-06T13:55:33Z"
+started: "2026-04-06T13:58:05Z"
+completed: "2026-04-06T14:09:29Z"
 ---
 
 <summary>

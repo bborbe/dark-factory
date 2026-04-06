@@ -1,11 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [045-test-command]
+summary: Added TestCommand config field with default 'make test', TestCommandSuffix function, updated ValidationSuffix wording to emphasize final-gate semantics, updated docs/configuration.md, and added tests for all new behavior.
 container: dark-factory-265-spec-045-config-and-suffix
 dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T16:30:00Z"
 queued: "2026-04-06T16:40:32Z"
 started: "2026-04-06T16:40:34Z"
+completed: "2026-04-06T16:55:53Z"
 ---
 
 <summary>

@@ -130,7 +130,7 @@ claude plugin update dark-factory@dark-factory
 | `/dark-factory:run` | One-shot: generate prompts from specs, execute queue |
 | `/dark-factory:init-project` | Initialize project for dark-factory |
 | `/dark-factory:read-guides` | Load all dark-factory guides into context |
-| `/dark-factory:generate-code-review-prompts` | Review service against guidelines, generate fix prompts |
+| `/dark-factory:generate-code-review-prompts` | Review service against guidelines, generate fix prompts ([docs](docs/code-review-prompts.md)) |
 
 ## Configuration
 

@@ -14,6 +14,8 @@ Read the spec carefully. Identify:
 - Desired Behaviors (numbered list) — these drive decomposition
 - Constraints — must be repeated in every prompt
 - Acceptance Criteria — used in verification sections
+- Failure Modes table — each trigger must map to a requirement step in at least one prompt (error handling, timeout, fallback, recovery)
+- Security section — include relevant checks in requirements where applicable
 
 Decompose the spec into 2–6 prompt files. Group coupled behaviors that cannot be verified independently into the same prompt. Sequence them so each prompt's postconditions are the next prompt's preconditions.
 

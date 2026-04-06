@@ -35,9 +35,11 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
    - For each pattern used in requirements, check if a doc already covers it
    - Reference matching docs in `<context>` instead of inlining the pattern
 4. Identify: Desired Behaviors, Constraints, Acceptance Criteria
-5. Group coupled behaviors (can't verify independently → same prompt)
-6. Sequence: most foundational first, postconditions = next prompt's preconditions
-7. Write 2-6 prompt files to `prompts/`
+5. Extract **Failure Modes** table — each trigger must map to a requirement step in some prompt (error handling, timeout, fallback, recovery). If a failure trigger has no matching requirement across all prompts, add one.
+6. Extract **Security** section — include relevant checks (input validation, trust boundaries, access control) in requirements where applicable.
+7. Group coupled behaviors (can't verify independently → same prompt). Group failure handling with its happy path when they touch the same code.
+8. Sequence: most foundational first, postconditions = next prompt's preconditions
+9. Write 2-6 prompt files to `prompts/`
 
 ## From Task Description
 
@@ -125,7 +127,9 @@ Run `make precommit` — must pass.
 - Always specify libraries with import paths
 - Always copy constraints from spec into each prompt
 - Show old → new code patterns for reliable find-and-replace
-- Specify error paths, not just happy path
+- **Specify error paths, not just happy path** — for each requirement that can fail (network, file I/O, external commands, user input), state what happens on failure (return error, retry, skip, log and continue)
+- **Cover spec failure modes** — every row in the spec's Failure Modes table must appear as a requirement step in at least one prompt. If a failure trigger isn't addressed, add it.
+- **Include timeouts and cancellation** — when requirements involve external calls (HTTP, exec, Docker), specify timeout behavior and context cancellation handling
 - Include code examples for existing patterns to follow
 - Anchor by function names, line numbers as optional hints only
 </prompt_structure>

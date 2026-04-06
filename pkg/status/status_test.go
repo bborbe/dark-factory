@@ -58,6 +58,7 @@ var _ = Describe("StatusChecker", func() {
 			promptMgr,
 			nil,
 			0,
+			0,
 		)
 	})
 
@@ -291,6 +292,7 @@ status: executing
 				promptMgr,
 				nil,
 				0,
+				0,
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -313,6 +315,7 @@ status: executing
 				8080,
 				promptMgr,
 				nil,
+				0,
 				0,
 			)
 
@@ -459,6 +462,7 @@ container: dark-factory-nonexistent-container-xyz
 				promptMgr,
 				counter,
 				3,
+				0,
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -484,6 +488,7 @@ container: dark-factory-nonexistent-container-xyz
 				promptMgr,
 				counter,
 				3,
+				0,
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -507,6 +512,7 @@ container: dark-factory-nonexistent-container-xyz
 				promptMgr,
 				counter,
 				0,
+				0,
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -516,6 +522,80 @@ container: dark-factory-nonexistent-container-xyz
 			Expect(err).NotTo(HaveOccurred())
 			Expect(st.ContainerCount).To(Equal(0))
 			Expect(counter.CountRunningCallCount()).To(Equal(0))
+		})
+	})
+
+	Describe("GetStatus git warnings", func() {
+		It("sets GitIndexLock true when .git/index.lock exists", func() {
+			gitDir := filepath.Join(tempDir, ".git")
+			Expect(os.MkdirAll(gitDir, 0750)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(gitDir, "index.lock"), []byte(""), 0600),
+			).To(Succeed())
+
+			checkerWithProject := status.NewChecker(
+				tempDir,
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checkerWithProject.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.GitIndexLock).To(BeTrue())
+		})
+
+		It("leaves GitIndexLock false when .git/index.lock does not exist", func() {
+			checkerWithProject := status.NewChecker(
+				tempDir,
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checkerWithProject.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.GitIndexLock).To(BeFalse())
+		})
+
+		It("reflects DirtyFileThreshold from checker config", func() {
+			checkerWithThreshold := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				42,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checkerWithThreshold.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.DirtyFileThreshold).To(Equal(42))
 		})
 	})
 })

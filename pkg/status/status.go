@@ -41,6 +41,9 @@ type Status struct {
 	ContainerMax        int      `json:"container_max,omitempty"`
 	LastLogFile         string   `json:"last_log_file,omitempty"`
 	LastLogSize         int64    `json:"last_log_size,omitempty"`
+	GitIndexLock        bool     `json:"git_index_lock,omitempty"`
+	DirtyFileCount      int      `json:"dirty_file_count,omitempty"`
+	DirtyFileThreshold  int      `json:"dirty_file_threshold,omitempty"`
 }
 
 // QueuedPrompt represents a prompt in the queue with metadata.
@@ -67,15 +70,16 @@ type Checker interface {
 
 // checker implements Checker.
 type checker struct {
-	projectDir       string
-	queueDir         string
-	completedDir     string
-	logDir           string
-	lockFilePath     string
-	serverPort       int
-	promptMgr        prompt.Manager
-	containerCounter executor.ContainerCounter
-	maxContainers    int
+	projectDir         string
+	queueDir           string
+	completedDir       string
+	logDir             string
+	lockFilePath       string
+	serverPort         int
+	promptMgr          prompt.Manager
+	containerCounter   executor.ContainerCounter
+	maxContainers      int
+	dirtyFileThreshold int
 }
 
 // NewChecker creates a new Checker with additional options.
@@ -89,17 +93,19 @@ func NewChecker(
 	promptMgr prompt.Manager,
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
+	dirtyFileThreshold int,
 ) Checker {
 	return &checker{
-		projectDir:       projectDir,
-		queueDir:         queueDir,
-		completedDir:     completedDir,
-		logDir:           logDir,
-		lockFilePath:     lockFilePath,
-		serverPort:       serverPort,
-		promptMgr:        promptMgr,
-		containerCounter: containerCounter,
-		maxContainers:    maxContainers,
+		projectDir:         projectDir,
+		queueDir:           queueDir,
+		completedDir:       completedDir,
+		logDir:             logDir,
+		lockFilePath:       lockFilePath,
+		serverPort:         serverPort,
+		promptMgr:          promptMgr,
+		containerCounter:   containerCounter,
+		maxContainers:      maxContainers,
+		dirtyFileThreshold: dirtyFileThreshold,
 	}
 }
 
@@ -146,6 +152,9 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	if err := s.populateLogInfo(ctx, status); err != nil {
 		return nil, errors.Wrap(ctx, err, "populate log info")
 	}
+
+	// Check git health warnings
+	s.populateGitWarnings(ctx, status)
 
 	// Populate system-wide container count
 	if s.containerCounter != nil && s.maxContainers > 0 {
@@ -516,4 +525,36 @@ func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
 	specName := strings.TrimPrefix(containerName, genPrefix)
 	st.GeneratingSpec = specName
 	st.GeneratingContainer = containerName
+}
+
+// populateGitWarnings checks for .git/index.lock and dirty file count.
+func (s *checker) populateGitWarnings(ctx context.Context, st *Status) {
+	st.DirtyFileThreshold = s.dirtyFileThreshold
+
+	if s.projectDir == "" {
+		return
+	}
+
+	// Check for git index lock
+	lockPath := filepath.Join(s.projectDir, ".git", "index.lock")
+	if _, err := os.Stat(lockPath); err == nil {
+		st.GitIndexLock = true
+	}
+
+	// Count dirty files
+	// #nosec G204 -- projectDir is derived from trusted config, not user input
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	cmd.Dir = s.projectDir
+	out, err := cmd.Output()
+	if err != nil {
+		slog.Debug("git status --porcelain failed", "err", err)
+	} else {
+		count := 0
+		for _, line := range strings.Split(string(out), "\n") {
+			if line != "" {
+				count++
+			}
+		}
+		st.DirtyFileCount = count
+	}
 }

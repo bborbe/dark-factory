@@ -243,4 +243,66 @@ var _ = Describe("Formatter", func() {
 			Expect(containerIdx).To(BeNumerically("<", daemonIdx))
 		})
 	})
+
+	Describe("Format warnings section", func() {
+		It("shows no warnings section when GitIndexLock is false and DirtyFileCount is 0", func() {
+			st := &status.Status{
+				Daemon:        "not running",
+				QueuedPrompts: []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).NotTo(ContainSubstring("Warnings:"))
+		})
+
+		It("shows .git/index.lock warning when GitIndexLock is true", func() {
+			st := &status.Status{
+				Daemon:        "not running",
+				GitIndexLock:  true,
+				QueuedPrompts: []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Warnings:"))
+			Expect(output).To(ContainSubstring(".git/index.lock exists"))
+			Expect(output).To(ContainSubstring("daemon will skip prompts"))
+		})
+
+		It("shows dirty file count with threshold when DirtyFileThreshold > 0", func() {
+			st := &status.Status{
+				Daemon:             "not running",
+				DirtyFileCount:     42,
+				DirtyFileThreshold: 30,
+				QueuedPrompts:      []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Warnings:"))
+			Expect(output).To(ContainSubstring("42 dirty files (threshold: 30)"))
+		})
+
+		It("shows dirty file count without threshold when DirtyFileThreshold is 0", func() {
+			st := &status.Status{
+				Daemon:             "not running",
+				DirtyFileCount:     5,
+				DirtyFileThreshold: 0,
+				QueuedPrompts:      []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Warnings:"))
+			Expect(output).To(ContainSubstring("5 dirty files"))
+			Expect(output).NotTo(ContainSubstring("threshold"))
+		})
+
+		It("shows both warnings when both conditions are true", func() {
+			st := &status.Status{
+				Daemon:             "not running",
+				GitIndexLock:       true,
+				DirtyFileCount:     10,
+				DirtyFileThreshold: 5,
+				QueuedPrompts:      []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Warnings:"))
+			Expect(output).To(ContainSubstring(".git/index.lock exists"))
+			Expect(output).To(ContainSubstring("10 dirty files (threshold: 5)"))
+		})
+	})
 })

@@ -80,7 +80,38 @@ func (f *formatter) Format(st *Status) string {
 		fmt.Fprintf(&b, "  Last log:   %s\n", logInfo)
 	}
 
+	// Warnings
+	f.formatWarnings(&b, st)
+
 	return b.String()
+}
+
+// formatWarnings formats the warnings section when git health issues are detected.
+func (f *formatter) formatWarnings(b *strings.Builder, st *Status) {
+	if !st.GitIndexLock && st.DirtyFileCount == 0 {
+		return
+	}
+	b.WriteString("  Warnings:\n")
+	if st.GitIndexLock {
+		b.WriteString("    \u26a0 .git/index.lock exists \u2014 daemon will skip prompts\n")
+	}
+	if st.DirtyFileCount > 0 {
+		f.formatDirtyFileWarning(b, st)
+	}
+}
+
+// formatDirtyFileWarning formats the dirty file count warning line.
+func (f *formatter) formatDirtyFileWarning(b *strings.Builder, st *Status) {
+	if st.DirtyFileThreshold > 0 {
+		fmt.Fprintf(
+			b,
+			"    \u26a0 %d dirty files (threshold: %d)\n",
+			st.DirtyFileCount,
+			st.DirtyFileThreshold,
+		)
+	} else {
+		fmt.Fprintf(b, "    \u26a0 %d dirty files\n", st.DirtyFileCount)
+	}
 }
 
 // formatGeneratingSpec formats the spec generation section.

@@ -650,6 +650,7 @@ func CreateServer(
 		promptManager,
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers),
+		0,
 	)
 
 	// Build the mux with all routes
@@ -702,6 +703,7 @@ func CreateStatusCommand(cfg config.Config) cmd.StatusCommand {
 		promptManager,
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers),
+		cfg.DirtyFileThreshold,
 	)
 	formatter := status.NewFormatter()
 
@@ -885,6 +887,7 @@ func CreateCombinedStatusCommand(cfg config.Config) cmd.CombinedStatusCommand {
 		promptManager,
 		executor.NewDockerContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForCombined.MaxContainers),
+		cfg.DirtyFileThreshold,
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

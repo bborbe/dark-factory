@@ -83,6 +83,13 @@ Every prompt MUST have these XML sections:
 - Libraries specified with import paths
 - Include verification constraints
 
+**Failure mode coverage:**
+- If prompt links to a spec (`spec:` in frontmatter), read the spec's **Failure Modes** table
+- Every failure trigger in the table must be addressed by a requirement step in this prompt or a sibling prompt in the same spec
+- Flag as critical if a failure mode has no matching requirement across the prompt set
+- If spec has a **Security** section, verify relevant security checks appear in requirements
+- Requirements that involve external calls (exec, HTTP, Docker) should specify timeout or cancellation behavior — flag as recommendation if missing
+
 **Specificity:**
 - Exact file paths, not vague descriptions
 - Code examples for existing patterns to follow
@@ -179,6 +186,11 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] Filename not numbered (dark-factory assigns numbers on approve)
 - [x/!] Filename reflects primary change (e.g. `fix-X` names the thing being fixed, not a secondary detail)
 - [x/!] Status is `idea` or `draft` (not `created`, `queued`, or other)
+
+## Failure Mode Coverage
+- [x/!] Spec failure modes addressed in requirements (or N/A if no spec)
+- [x/!] Security concerns from spec addressed (or N/A)
+- [x/!] External calls have timeout/cancellation behavior specified
 
 ## Documentation Placement
 - [x/!] No inlined reusable patterns (>10 lines) that should be in a doc

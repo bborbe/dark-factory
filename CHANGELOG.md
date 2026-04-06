@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.103.0
+
+- feat: Add git health warnings to `dark-factory status` output — shows `.git/index.lock` and dirty file count with threshold so operators can diagnose why the daemon is skipping prompts
+
 ## v0.102.2
 
 - refactor: Remove `permanently_failed` prompt status — exhausted retries now mark prompts `failed` with `lastFailReason` and `retryCount` preserved; users can requeue to reset the retry budget

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.106.10
+
+- fix: Add `time.Local = time.UTC` and `format.TruncatedDiff = false` to suite runner functions in `pkg/globalconfig` and `pkg/reindex` test suites
+
 ## v0.106.9
 
 - fix: Use `gopkg.in/yaml.v3` via `frontmatter.NewFormat` in `pkg/reindex/reindex.go` for consistent YAML unmarshaling across all frontmatter parsing sites

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced fmt.Errorf with errors.Errorf/errors.Wrapf from github.com/bborbe/errors in pkg/git/validate.go, pkg/git/bitbucket_pr_merger.go, and pkg/executor/executor.go; added ctx context.Context to ValidateBranchName, ValidatePRTitle, and parseBitbucketPRID; updated all callers including brancher.go, pr_creator.go, bitbucket_review_fetcher.go, and test files.
+container: dark-factory-271-review-dark-factory-fix-fmt-errorf
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:04:41Z"
+started: "2026-04-06T17:56:55Z"
+completed: "2026-04-06T18:08:48Z"
 ---
 
 <summary>

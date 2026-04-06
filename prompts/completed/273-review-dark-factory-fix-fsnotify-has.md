@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced bit-mask fsnotify event checks with event.Has() method in pkg/watcher/watcher.go, pkg/specwatcher/watcher.go, and pkg/processor/processor.go
+container: dark-factory-273-review-dark-factory-fix-fsnotify-has
+dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T17:05:26Z"
+started: "2026-04-06T18:19:54Z"
+completed: "2026-04-06T18:28:25Z"
 ---
 
 <summary>

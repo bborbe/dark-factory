@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Added ctx context.Context parameter to NewContainerLock() and createContainerDeps(), replacing context.Background() error wraps with the caller's context in pkg/containerlock and pkg/factory
 container: dark-factory-280-review-dark-factory-fix-containerlock-ctx
 dark-factory-version: v0.104.2-dirty
 created: "2026-04-06T00:00:00Z"
 queued: "2026-04-06T20:04:24Z"
 started: "2026-04-06T20:04:26Z"
+completed: "2026-04-06T20:11:43Z"
 ---
 
 <summary>

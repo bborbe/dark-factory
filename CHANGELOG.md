@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.8
+
+- Ignore CVE-2026-33817 in bbolt (no fix available)
+
 ## v0.107.7
 
 - Bump go.mod toolchain to Go 1.26.2 to fix stdlib vulnerabilities

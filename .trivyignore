@@ -1,3 +1,6 @@
 # github.com/docker/docker indirect dep, no fix available via Go modules
 CVE-2026-34040
 CVE-2026-33997
+
+# go.etcd.io/bbolt v1.4.3 - no fix available yet
+CVE-2026-33817

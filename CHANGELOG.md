@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.6
+
+- Bump default claude-yolo container image to v0.5.3 (Go 1.26.2)
+
 ## v0.107.5
 
 - fix: Defer `release()` in `startContainerLockRelease` goroutine to guarantee container lock is freed on context cancellation

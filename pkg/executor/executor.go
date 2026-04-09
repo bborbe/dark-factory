@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -469,7 +470,7 @@ func (e *dockerExecutor) buildDockerCommand(
 	}
 	for _, m := range e.extraMounts {
 		src := m.Src
-		src = os.ExpandEnv(src)
+		src = resolveExtraMountSrc(src, os.Getenv, runtime.GOOS)
 		if strings.HasPrefix(src, "~/") {
 			src = home + src[1:]
 		} else if !filepath.IsAbs(src) {
@@ -556,6 +557,60 @@ func (e *dockerExecutor) removeContainerIfExists(ctx context.Context, containerN
 		// Non-zero exit is expected when container doesn't exist
 		slog.Debug("docker rm -f", "containerName", containerName, "error", err)
 	}
+}
+
+// resolveExtraMountSrc expands env vars in src using lookupEnv, with a
+// platform-appropriate default for HOST_CACHE_DIR when lookupEnv returns
+// empty for it. Pure function: no globals, no os.Getenv, no os.Setenv.
+//
+// goos is runtime.GOOS at call site.
+// Defaults for HOST_CACHE_DIR:
+//
+//	darwin           → $HOME/Library/Caches
+//	other + XDG set  → $XDG_CACHE_HOME
+//	other + no XDG   → $HOME/.cache
+//
+// If HOME is empty and no fallback is possible, returns empty for that var.
+func resolveExtraMountSrc(src string, lookupEnv func(string) string, goos string) string {
+	mapper := func(name string) string {
+		if name == "HOST_CACHE_DIR" {
+			return resolveHostCacheDir(lookupEnv, goos)
+		}
+		return lookupEnv(name)
+	}
+	return os.Expand(src, mapper)
+}
+
+// resolveHostCacheDir returns the value for HOST_CACHE_DIR using lookupEnv and goos.
+// If the variable is explicitly set, that value is used. Otherwise a platform default is returned.
+func resolveHostCacheDir(lookupEnv func(string) string, goos string) string {
+	if v := lookupEnv("HOST_CACHE_DIR"); v != "" {
+		return v
+	}
+	home := lookupEnv("HOME")
+	if goos == "darwin" {
+		return darwinCacheDir(home)
+	}
+	return linuxCacheDir(lookupEnv, home)
+}
+
+// darwinCacheDir returns the macOS user cache directory for the given home path.
+func darwinCacheDir(home string) string {
+	if home == "" {
+		return ""
+	}
+	return home + "/Library/Caches"
+}
+
+// linuxCacheDir returns the Linux/other user cache directory using XDG_CACHE_HOME or home fallback.
+func linuxCacheDir(lookupEnv func(string) string, home string) string {
+	if xdg := lookupEnv("XDG_CACHE_HOME"); xdg != "" {
+		return xdg
+	}
+	if home == "" {
+		return ""
+	}
+	return home + "/.cache"
 }
 
 // extractPromptBaseName extracts the prompt basename from the containerName.

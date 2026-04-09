@@ -2,5 +2,5 @@
 CVE-2026-34040
 CVE-2026-33997
 
-# go.etcd.io/bbolt v1.4.3 - no fix available yet
+# go.etcd.io/bbolt v1.4.3 dep, no fix available
 CVE-2026-33817

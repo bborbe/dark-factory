@@ -153,3 +153,8 @@ func WaitUntilDeadlineForTest(
 func ValidateClaudeAuthForTest(ctx context.Context, configDir string) error {
 	return validateClaudeAuth(ctx, configDir)
 }
+
+// ResolveExtraMountSrcForTest exposes resolveExtraMountSrc for external test packages.
+func ResolveExtraMountSrcForTest(src string, lookupEnv func(string) string, goos string) string {
+	return resolveExtraMountSrc(src, lookupEnv, goos)
+}

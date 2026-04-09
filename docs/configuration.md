@@ -278,6 +278,23 @@ env:
 
 ## Extra Mounts
 
+### `HOST_CACHE_DIR`
+
+extraMounts `src` supports environment variable expansion. The `HOST_CACHE_DIR`
+variable is auto-defaulted by dark-factory when unset:
+
+- **macOS**: `$HOME/Library/Caches`
+- **Linux/other**: `$XDG_CACHE_HOME` if set, otherwise `$HOME/.cache`
+
+Set `HOST_CACHE_DIR` explicitly to override. Recommended for portable cache
+mounts:
+
+```yaml
+extraMounts:
+  - src: $HOST_CACHE_DIR/go-build
+    dst: /home/node/.cache/go-build
+```
+
 Share documentation or config directories across repos without duplicating them:
 
 > **Go module cache:** The Go module cache is no longer mounted by default. Add it explicitly if your project uses Go:

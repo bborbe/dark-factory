@@ -1,8 +1,20 @@
-pr: false
-worktree: false
-validationPrompt: docs/dod.md
 autoRelease: true
 maxContainers: 5
+pr: false
+validationPrompt: docs/dod.md
+worktree: false
+env:
+  GOPATH: /home/node/go
+  GOCACHE: /home/node/.cache/go-build
+  GOLANGCI_LINT_CACHE: /home/node/.cache/golangci-lint
 extraMounts:
   - src: ${GOPATH}/pkg
     dst: /home/node/go/pkg
+#  - src: ${HOST_CACHE_DIR}/go-build
+#    dst: /home/node/.cache/go-build
+#  - src: ${HOST_CACHE_DIR}/golangci-lint
+#    dst: /home/node/.cache/golangci-lint
+  - src: ${HOME}/Library/Caches/go-build
+    dst: /home/node/.cache/go-build
+  - src: ${HOME}/Library/Caches/golangci-lint
+    dst: /home/node/.cache/golangci-lint

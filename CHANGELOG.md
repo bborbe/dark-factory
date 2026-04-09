@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.108.0
+
+- feat: auto-resolve `$HOST_CACHE_DIR` in extraMounts src with platform-appropriate default (macOS: `$HOME/Library/Caches`, Linux: `$XDG_CACHE_HOME` or `$HOME/.cache`) when unset, without mutating global environment
+
 ## v0.107.9
 
 - fix: prompt-auditor honors container mounts from `dark-factory config` — container-absolute paths backed by a mount (e.g. `/docs/...` when `../docs → /docs`) are no longer flagged as path-portability violations

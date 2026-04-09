@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.108.1
+
+- chore: verify HOST_CACHE_DIR auto-default end-to-end — confirmed go-build and golangci-lint caches bind-mounted in YOLO container
+
 ## v0.108.0
 
 - feat: auto-resolve `$HOST_CACHE_DIR` in extraMounts src with platform-appropriate default (macOS: `$HOME/Library/Caches`, Linux: `$XDG_CACHE_HOME` or `$HOME/.cache`) when unset, without mutating global environment

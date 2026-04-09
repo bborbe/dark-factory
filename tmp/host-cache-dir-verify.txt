@@ -1,0 +1,19 @@
+=== 1. Mount check ===
+/run/host_mark/Users on /home/node/.cache/go-build type fakeowner (rw,nosuid,nodev,relatime,fakeowner)
+/run/host_mark/Users on /home/node/.cache/golangci-lint type fakeowner (rw,nosuid,nodev,relatime,fakeowner)
+
+=== 2. /home/node/.cache/go-build contents ===
+total 12
+drwxr-xr-x  260 node node   8320 Apr  8 08:46 .
+drwxr-xr-x    1 node node   4096 Apr  9 18:41 ..
+drwxr-xr-x 3544 node node 113408 Apr  9 17:55 00
+drwxr-xr-x 3527 node node 112864 Apr  9 17:55 01
+
+=== 3. /home/node/.cache/golangci-lint contents ===
+total 12
+drwxr-xr-x   260 node node   8320 Apr  8 08:49 .
+drwxr-xr-x     1 node node   4096 Apr  9 18:41 ..
+drwxr-xr-x  9868 node node 315776 Apr  9 17:55 00
+drwxr-xr-x  9690 node node 310080 Apr  9 17:55 01
+
+RESULT: PASS

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.107.9
+
+- fix: prompt-auditor honors container mounts from `dark-factory config` — container-absolute paths backed by a mount (e.g. `/docs/...` when `../docs → /docs`) are no longer flagged as path-portability violations
+
 ## v0.107.8
 
 - Ignore CVE-2026-33817 in bbolt (no fix available)

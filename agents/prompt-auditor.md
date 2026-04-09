@@ -23,10 +23,11 @@ Expert dark-factory prompt auditor. You evaluate prompt files against the Prompt
 
 <workflow>
 1. Read the prompt file
-2. Verify code references by reading referenced source files
-3. Evaluate against all criteria below
-4. Cross-check code in requirements against coding guidelines (see Coding Guidelines Compliance section)
-5. Generate report
+2. Run `dark-factory config` from the project root to discover container mounts (e.g. `../docs → /docs`). Record the set of valid container-absolute prefixes — these are NOT path-portability violations.
+3. Verify code references by reading referenced source files (resolve mounted absolute paths to their host equivalents before reading)
+4. Evaluate against all criteria below
+5. Cross-check code in requirements against coding guidelines (see Coding Guidelines Compliance section)
+6. Generate report
 </workflow>
 
 <prompt_definition_of_done>
@@ -134,11 +135,16 @@ Every prompt MUST have these XML sections:
 - Show old → new code pattern for find-and-replace reliability
 
 **Path portability:**
-- Dark-factory executes prompts inside a container with the repo mounted — all paths in `<verification>`, `<requirements>`, and `<context>` MUST be relative to the repository root
-- Absolute paths (e.g. `/Users/...`, `/home/...`, `~/Documents/...`) are **critical issues** — they break inside the container and on other machines
-- Detect by scanning for patterns: paths starting with `/`, `~/`, or `$HOME/`
-- Correct form: `cd api && make test` or `make precommit` (repo-root-relative)
-- Wrong form: `cd /Users/bborbe/Documents/workspaces/foo/bar && make test` or `cd ~/Documents/workspaces/foo/bar && make test`
+- Dark-factory executes prompts inside a container with the repo mounted — all paths in `<verification>`, `<requirements>`, and `<context>` MUST resolve correctly inside the container
+- **Valid forms:**
+  - Repo-root-relative paths: `cd api && make test`, `make precommit`, `docs/howto/foo.md`
+  - Container-absolute paths **only if backed by a mount declared in `dark-factory config`** (e.g. `/docs/howto/foo.md` when `../docs` is mounted to `/docs`, or `/workspace/...`)
+- **Critical issues:**
+  - Host-absolute paths: `/Users/...`, `/home/...`
+  - Home-relative paths: `~/...`, `$HOME/...`
+  - Container-absolute paths with NO matching mount in `dark-factory config` — these hit a non-existent path inside the container
+- Before flagging an absolute path as a violation, check the mount set captured in step 2 of the workflow. If the path's prefix matches a mount target (`/docs`, `/workspace`, etc.), it is valid — do NOT flag.
+- Detect candidate paths by scanning for `/`, `~/`, or `$HOME/` prefixes, then classify each against the mount set.
 
 **Config/args documentation completeness:**
 - If the prompt adds, renames, removes, or changes defaults for CLI args, config fields, env vars, or flags, grep the repo for all references

@@ -31,7 +31,7 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 2. Read 3-5 recent completed prompts from `prompts/completed/` for style reference
 3. **Scan existing documentation** to reference instead of inlining:
    - List `docs/` directory in the project — project-specific domain docs
-   - List coding plugin docs (`~/.claude-yolo/plugins/marketplaces/coding/docs/` on host) — generic coding pattern docs
+   - List coding plugin docs (`~/.claude/plugins/marketplaces/coding/docs/` on host) — generic coding pattern docs
    - For each pattern used in requirements, check if a doc already covers it
    - Reference matching docs in `<context>` instead of inlining the pattern
 4. Identify: Desired Behaviors, Constraints, Acceptance Criteria

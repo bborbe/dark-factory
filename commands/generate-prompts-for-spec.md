@@ -1,7 +1,7 @@
 ---
 description: Generate dark-factory prompt files from an approved spec (non-interactive)
 argument-hint: <spec-file>
-allowed-tools: [Read, Write, Glob, Bash]
+allowed-tools: [Read, Write, Glob, Bash, Task]
 ---
 
 Read the spec file at `/workspace/$ARGUMENTS`.
@@ -16,6 +16,23 @@ Read the spec carefully. Identify:
 - Acceptance Criteria — used in verification sections
 - Failure Modes table — each trigger must map to a requirement step in at least one prompt (error handling, timeout, fallback, recovery)
 - Security section — include relevant checks in requirements where applicable
+
+**Discover relevant coding guides** using the coding-guidelines-finder and project-docs-finder agents:
+
+Spawn both agents in parallel using Task:
+1. `coding:coding-guidelines-finder` — finds relevant guides from `~/.claude/plugins/marketplaces/coding/docs/`
+2. `coding:project-docs-finder` — finds relevant docs from `/workspace/docs/`
+
+Pass the spec's objective and key behaviors as the task description.
+
+If either agent finds no results, that's fine — continue with results from the other.
+If the coding plugin docs directory doesn't exist, STOP and report: "coding plugin not installed. Install it before generating prompts."
+
+For each matching guide, reference it in the prompt's `<context>` section:
+```
+Read `go-http-handler-refactoring-guide.md` in `~/.claude/plugins/marketplaces/coding/docs/`
+```
+Do NOT inline patterns that are already documented — the YOLO agent will read the guide itself.
 
 Decompose the spec into 2–6 prompt files. Group coupled behaviors that cannot be verified independently into the same prompt. Sequence them so each prompt's postconditions are the next prompt's preconditions.
 

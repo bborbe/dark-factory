@@ -30,10 +30,15 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 1. Read the spec file
 2. Read 3-5 recent completed prompts from `prompts/completed/` for style reference
 3. **Scan existing documentation** to reference instead of inlining:
+   - Verify `~/.claude/plugins/marketplaces/coding/docs/` exists — if missing, STOP and report: "coding plugin not installed. Install it before generating prompts."
    - List `docs/` directory in the project — project-specific domain docs
-   - List coding plugin docs (`~/.claude/plugins/marketplaces/coding/docs/` on host) — generic coding pattern docs
+   - List all coding plugin docs:
+     ```bash
+     ls ~/.claude/plugins/marketplaces/coding/docs/*.md
+     ```
+     Match task keywords to relevant guides (e.g., handler → `go-http-handler-refactoring-guide.md`, factory → `go-factory-pattern.md`, test → `go-testing-guide.md`, error → `go-error-wrapping-guide.md`, metrics → `go-prometheus-metrics-guide.md`, JSON error → `go-json-error-handler-guide.md`, changelog → `changelog-guide.md`, git → `git-workflow.md`, python → `python-*.md`)
    - For each pattern used in requirements, check if a doc already covers it
-   - Reference matching docs in `<context>` instead of inlining the pattern
+   - Reference matching docs in `<context>` — do NOT inline patterns that are already documented
 4. Identify: Desired Behaviors, Constraints, Acceptance Criteria
 5. Extract **Failure Modes** table — each trigger must map to a requirement step in some prompt (error handling, timeout, fallback, recovery). If a failure trigger has no matching requirement across all prompts, add one.
 6. Extract **Security** section — include relevant checks (input validation, trust boundaries, access control) in requirements where applicable.

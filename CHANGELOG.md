@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.108.2
+
+- prompt-creator and generate-prompts-for-spec discover and reference coding plugin guides before writing prompts
+
 ## v0.108.1
 
 - chore: verify HOST_CACHE_DIR auto-default end-to-end — confirmed go-build and golangci-lint caches bind-mounted in YOLO container

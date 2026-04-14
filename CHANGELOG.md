@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.109.0
+
+- fix: read-guides command uses `~/.claude/plugins/marketplaces/coding/docs/` (was `~/.claude-yolo/...`)
+
 ## v0.108.2
 
 - prompt-creator and generate-prompts-for-spec discover and reference coding plugin guides before writing prompts

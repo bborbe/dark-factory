@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.110.1
+
+- chore: Bump default claude-yolo container image to v0.5.4 (proxy allowlist + debug logging)
+
 ## v0.110.0
 
 - feat: Bound `dark-factory status` subprocess calls (git status, docker ps) with a 3s warning and 10s hard timeout. Skipped calls are marked `(skipped)` in human output and as `*_skipped: true` flags in JSON output.

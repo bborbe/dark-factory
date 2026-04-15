@@ -6,4 +6,4 @@ package pkg
 
 // DefaultContainerImage is the default YOLO container image.
 // Change this single constant when bumping the container version.
-const DefaultContainerImage = "docker.io/bborbe/claude-yolo:v0.5.3"
+const DefaultContainerImage = "docker.io/bborbe/claude-yolo:v0.5.4"

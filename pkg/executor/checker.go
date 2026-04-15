@@ -12,6 +12,8 @@ import (
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/container-checker.go --fake-name ContainerChecker . ContainerChecker
@@ -85,29 +87,35 @@ type ContainerCounter interface {
 }
 
 // NewDockerContainerCounter creates a ContainerCounter that uses docker ps with label filtering.
-func NewDockerContainerCounter() ContainerCounter {
-	return &dockerContainerCounter{}
+func NewDockerContainerCounter(runner subproc.Runner) ContainerCounter {
+	return &dockerContainerCounter{runner: runner}
 }
 
 // dockerContainerCounter implements ContainerCounter using docker ps.
-type dockerContainerCounter struct{}
+type dockerContainerCounter struct {
+	runner subproc.Runner
+}
 
 // CountRunning returns the number of currently running dark-factory containers system-wide.
 // It filters by the label dark-factory.project which is set on every container.
 func (c *dockerContainerCounter) CountRunning(ctx context.Context) (int, error) {
-	// #nosec G204 -- filter value is a hardcoded label key, not user input
-	cmd := exec.CommandContext(
+	out, err := c.runner.RunWithWarnAndTimeout(
 		ctx,
-		"docker", "ps",
-		"--filter", "label=dark-factory.project",
-		"--format", "{{.Names}}",
+		"docker ps --filter label=dark-factory.project",
+		"docker",
+		"ps",
+		"--filter",
+		"label=dark-factory.project",
+		"--format",
+		"{{.Names}}",
 	)
-	var out strings.Builder
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return 0, err // return sentinel unwrapped so caller's errors.Is check still works
+	}
+	if err != nil {
 		return 0, errors.Wrap(ctx, err, "docker ps for container count")
 	}
-	output := strings.TrimSpace(out.String())
+	output := strings.TrimSpace(string(out))
 	if output == "" {
 		return 0, nil
 	}

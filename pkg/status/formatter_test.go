@@ -304,5 +304,41 @@ var _ = Describe("Formatter", func() {
 			Expect(output).To(ContainSubstring(".git/index.lock exists"))
 			Expect(output).To(ContainSubstring("10 dirty files (threshold: 5)"))
 		})
+
+		It("shows skipped message when DirtyFileCheckSkipped is true", func() {
+			st := &status.Status{
+				Daemon:                "not running",
+				DirtyFileCheckSkipped: true,
+				QueuedPrompts:         []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Warnings:"))
+			Expect(output).To(ContainSubstring("dirty files: (skipped"))
+		})
+
+		It(
+			"shows skipped message for container running when ContainerRunningSkipped is true",
+			func() {
+				st := &status.Status{
+					Daemon:                  "not running",
+					CurrentPrompt:           "p",
+					Container:               "x",
+					ContainerRunningSkipped: true,
+					QueuedPrompts:           []string{},
+				}
+				output := formatter.Format(st)
+				Expect(output).To(ContainSubstring("status unknown"))
+			},
+		)
+
+		It("shows skipped message for container count when ContainerCountSkipped is true", func() {
+			st := &status.Status{
+				Daemon:                "not running",
+				ContainerCountSkipped: true,
+				QueuedPrompts:         []string{},
+			}
+			output := formatter.Format(st)
+			Expect(output).To(ContainSubstring("Containers: (skipped"))
+		})
 	})
 })

@@ -37,9 +37,11 @@ func (f *formatter) Format(st *Status) string {
 		fmt.Fprintf(&b, "  Project:    %s\n", st.ProjectDir)
 	}
 
-	// Container count (only when limit is configured)
+	// Container count (only when limit is configured OR the check was skipped)
 	if st.ContainerMax > 0 {
 		fmt.Fprintf(&b, "  Containers: %d/%d (system-wide)\n", st.ContainerCount, st.ContainerMax)
+	} else if st.ContainerCountSkipped {
+		b.WriteString("  Containers: (skipped — docker ps timed out)\n")
 	}
 
 	// Daemon status
@@ -56,6 +58,9 @@ func (f *formatter) Format(st *Status) string {
 		f.formatGeneratingSpec(&b, st)
 	} else {
 		b.WriteString("  Current:    idle\n")
+		if st.GeneratingSpecSkipped {
+			b.WriteString("  (generating-spec check skipped — docker ps timed out)\n")
+		}
 	}
 
 	// Queue
@@ -88,14 +93,16 @@ func (f *formatter) Format(st *Status) string {
 
 // formatWarnings formats the warnings section when git health issues are detected.
 func (f *formatter) formatWarnings(b *strings.Builder, st *Status) {
-	if !st.GitIndexLock && st.DirtyFileCount == 0 {
+	if !st.GitIndexLock && st.DirtyFileCount == 0 && !st.DirtyFileCheckSkipped {
 		return
 	}
 	b.WriteString("  Warnings:\n")
 	if st.GitIndexLock {
 		b.WriteString("    \u26a0 .git/index.lock exists \u2014 daemon will skip prompts\n")
 	}
-	if st.DirtyFileCount > 0 {
+	if st.DirtyFileCheckSkipped {
+		b.WriteString("    \u26a0 dirty files: (skipped — git status timed out)\n")
+	} else if st.DirtyFileCount > 0 {
 		f.formatDirtyFileWarning(b, st)
 	}
 }
@@ -131,9 +138,12 @@ func (f *formatter) formatCurrentPrompt(b *strings.Builder, st *Status) {
 	// Container info
 	if st.Container != "" {
 		containerStatus := st.Container
-		if st.ContainerRunning {
+		switch {
+		case st.ContainerRunningSkipped:
+			containerStatus += " (status unknown — docker ps skipped)"
+		case st.ContainerRunning:
 			containerStatus += " (running)"
-		} else {
+		default:
 			containerStatus += " (not running)"
 		}
 		fmt.Fprintf(b, "  Container:  %s\n", containerStatus)

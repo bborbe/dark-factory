@@ -35,6 +35,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/status"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
@@ -257,7 +258,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
 		cfg.VerificationGate, cfg.Env, cfg.ExtraMounts, currentDateTimeGetter, n,
 		cfg.ResolvedClaudeDir(),
-		executor.NewDockerContainerCounter(),
+		executor.NewDockerContainerCounter(subproc.NewRunner()),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 		cfg.AdditionalInstructions,
 		cl,
@@ -369,7 +370,7 @@ func CreateOneShotRunner(
 			currentDateTimeGetter,
 			n,
 			cfg.ResolvedClaudeDir(),
-			executor.NewDockerContainerCounter(),
+			executor.NewDockerContainerCounter(subproc.NewRunner()),
 			EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 			cfg.AdditionalInstructions,
 			cl,
@@ -662,10 +663,11 @@ func CreateServer(
 		lock.FilePath("."),
 		port,
 		promptManager,
-		executor.NewDockerContainerCounter(),
+		executor.NewDockerContainerCounter(subproc.NewRunner()),
 		EffectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers),
 		0,
 		currentDateTimeGetter,
+		subproc.NewRunner(),
 	)
 
 	// Build the mux with all routes
@@ -717,10 +719,11 @@ func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusComma
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
-		executor.NewDockerContainerCounter(),
+		executor.NewDockerContainerCounter(subproc.NewRunner()),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers),
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
+		subproc.NewRunner(),
 	)
 	formatter := status.NewFormatter()
 
@@ -902,10 +905,11 @@ func CreateCombinedStatusCommand(ctx context.Context, cfg config.Config) cmd.Com
 		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
-		executor.NewDockerContainerCounter(),
+		executor.NewDockerContainerCounter(subproc.NewRunner()),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForCombined.MaxContainers),
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
+		subproc.NewRunner(),
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

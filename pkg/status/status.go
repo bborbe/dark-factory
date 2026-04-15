@@ -5,11 +5,9 @@
 package status
 
 import (
-	"bytes"
 	"context"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -22,6 +20,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 // Status represents the current daemon status.
@@ -45,6 +44,14 @@ type Status struct {
 	GitIndexLock        bool     `json:"git_index_lock,omitempty"`
 	DirtyFileCount      int      `json:"dirty_file_count,omitempty"`
 	DirtyFileThreshold  int      `json:"dirty_file_threshold,omitempty"`
+
+	// Skipped flags — true when the corresponding subprocess call was
+	// cancelled at timeout. Callers should NOT treat the zero value of
+	// related fields as authoritative when the matching Skipped flag is true.
+	DirtyFileCheckSkipped   bool `json:"dirty_file_check_skipped,omitempty"`
+	ContainerRunningSkipped bool `json:"container_running_skipped,omitempty"`
+	GeneratingSpecSkipped   bool `json:"generating_spec_skipped,omitempty"`
+	ContainerCountSkipped   bool `json:"container_count_skipped,omitempty"`
 }
 
 // QueuedPrompt represents a prompt in the queue with metadata.
@@ -82,6 +89,7 @@ type checker struct {
 	maxContainers         int
 	dirtyFileThreshold    int
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	subprocRunner         subproc.Runner
 }
 
 // NewChecker creates a new Checker with additional options.
@@ -97,6 +105,7 @@ func NewChecker(
 	maxContainers int,
 	dirtyFileThreshold int,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	subprocRunner subproc.Runner,
 ) Checker {
 	return &checker{
 		projectDir:            projectDir,
@@ -110,6 +119,7 @@ func NewChecker(
 		maxContainers:         maxContainers,
 		dirtyFileThreshold:    dirtyFileThreshold,
 		currentDateTimeGetter: currentDateTimeGetter,
+		subprocRunner:         subprocRunner,
 	}
 }
 
@@ -163,7 +173,9 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	// Populate system-wide container count
 	if s.containerCounter != nil && s.maxContainers > 0 {
 		count, err := s.containerCounter.CountRunning(ctx)
-		if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			status.ContainerCountSkipped = true
+		} else if err != nil {
 			slog.Debug("failed to count running containers for status", "error", err)
 		} else {
 			status.ContainerCount = count
@@ -390,7 +402,9 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	}
 
 	// Check if container is running
-	st.ContainerRunning = s.isContainerRunning(ctx, executing.Container)
+	running, skipped := s.isContainerRunning(ctx, executing.Container)
+	st.ContainerRunning = running
+	st.ContainerRunningSkipped = skipped
 
 	return nil
 }
@@ -469,13 +483,19 @@ func (s *checker) populateLogInfo(ctx context.Context, st *Status) error {
 }
 
 // isContainerRunning checks if a Docker container is running.
-func (s *checker) isContainerRunning(ctx context.Context, containerName string) bool {
+// Returns (running, skipped). When skipped is true the caller MUST treat
+// the running value as unknown and surface the skip to the user.
+func (s *checker) isContainerRunning(
+	ctx context.Context,
+	containerName string,
+) (running bool, skipped bool) {
 	if containerName == "" {
-		return false
+		return false, false
 	}
-	// #nosec G204 -- containerName is derived from trusted frontmatter, not user input
-	cmd := exec.CommandContext(
+	op := "docker ps --filter name=" + containerName
+	out, err := s.subprocRunner.RunWithWarnAndTimeout(
 		ctx,
+		op,
 		"docker",
 		"ps",
 		"--filter",
@@ -483,20 +503,22 @@ func (s *checker) isContainerRunning(ctx context.Context, containerName string) 
 		"--format",
 		"{{.Names}}",
 	)
-	out, err := cmd.Output()
+	if errors.Is(err, context.DeadlineExceeded) {
+		return false, true
+	}
 	if err != nil {
 		slog.Debug("docker ps failed", "container", containerName, "err", err)
-		return false
+		return false, false
 	}
-	return strings.Contains(string(out), containerName)
+	return strings.Contains(string(out), containerName), false
 }
 
 // populateGeneratingSpec checks for running spec generation containers and populates status.
 func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
 	const genPrefix = "dark-factory-gen-"
-	// #nosec G204 -- filter value is a hardcoded prefix, not user input
-	cmd := exec.CommandContext(
+	out, err := s.subprocRunner.RunWithWarnAndTimeout(
 		ctx,
+		"docker ps --filter name=dark-factory-gen-",
 		"docker",
 		"ps",
 		"--filter",
@@ -504,7 +526,10 @@ func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
 		"--format",
 		"{{.Names}}",
 	)
-	out, err := cmd.Output()
+	if errors.Is(err, context.DeadlineExceeded) {
+		st.GeneratingSpecSkipped = true
+		return
+	}
 	if err != nil {
 		slog.Debug("docker ps for spec generation failed", "err", err)
 		return
@@ -515,8 +540,8 @@ func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
 	}
 	// Take the first matching container line
 	var containerName string
-	for _, line := range bytes.Split([]byte(output), []byte("\n")) {
-		name := strings.TrimSpace(string(line))
+	for _, line := range strings.Split(output, "\n") {
+		name := strings.TrimSpace(line)
 		if strings.HasPrefix(name, genPrefix) {
 			containerName = name
 			break
@@ -545,19 +570,27 @@ func (s *checker) populateGitWarnings(ctx context.Context, st *Status) {
 	}
 
 	// Count dirty files
-	// #nosec G204 -- projectDir is derived from trusted config, not user input
-	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	cmd.Dir = s.projectDir
-	out, err := cmd.Output()
+	out, err := s.subprocRunner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git status --porcelain",
+		s.projectDir,
+		"git",
+		"status",
+		"--porcelain",
+	)
+	if errors.Is(err, context.DeadlineExceeded) {
+		st.DirtyFileCheckSkipped = true
+		return
+	}
 	if err != nil {
 		slog.Debug("git status --porcelain failed", "err", err)
-	} else {
-		count := 0
-		for _, line := range strings.Split(string(out), "\n") {
-			if line != "" {
-				count++
-			}
-		}
-		st.DirtyFileCount = count
+		return
 	}
+	count := 0
+	for _, line := range strings.Split(string(out), "\n") {
+		if line != "" {
+			count++
+		}
+	}
+	st.DirtyFileCount = count
 }

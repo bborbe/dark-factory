@@ -17,6 +17,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 var _ = Describe("Factory", func() {
@@ -84,7 +85,7 @@ var _ = Describe("Factory", func() {
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),
 				cfg.ResolvedClaudeDir(),
-				executor.NewDockerContainerCounter(),
+				executor.NewDockerContainerCounter(subproc.NewRunner()),
 				0,
 				"",
 				nil,

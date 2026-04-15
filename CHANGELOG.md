@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.110.0
+
+- feat: Bound `dark-factory status` subprocess calls (git status, docker ps) with a 3s warning and 10s hard timeout. Skipped calls are marked `(skipped)` in human output and as `*_skipped: true` flags in JSON output.
+
 ## v0.109.0
 
 - fix: read-guides command uses `~/.claude/plugins/marketplaces/coding/docs/` (was `~/.claude-yolo/...`)

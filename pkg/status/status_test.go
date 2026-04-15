@@ -21,6 +21,14 @@ import (
 	"github.com/bborbe/dark-factory/pkg/status"
 )
 
+// newSubprocRunner returns a mock SubprocRunner that returns empty output and nil error by default.
+func newSubprocRunner() *mocks.SubprocRunner {
+	r := &mocks.SubprocRunner{}
+	r.RunWithWarnAndTimeoutReturns([]byte{}, nil)
+	r.RunWithWarnAndTimeoutDirReturns([]byte{}, nil)
+	return r
+}
+
 var _ = Describe("StatusChecker", func() {
 	var (
 		ctx           context.Context
@@ -61,6 +69,7 @@ var _ = Describe("StatusChecker", func() {
 			0,
 			0,
 			libtime.NewCurrentDateTime(),
+			newSubprocRunner(),
 		)
 	})
 
@@ -296,6 +305,7 @@ status: executing
 				0,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -321,6 +331,7 @@ status: executing
 				0,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			st, err := checkerWithLogs.GetStatus(ctx)
@@ -468,6 +479,7 @@ container: dark-factory-nonexistent-container-xyz
 				3,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -495,6 +507,7 @@ container: dark-factory-nonexistent-container-xyz
 				3,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -520,6 +533,7 @@ container: dark-factory-nonexistent-container-xyz
 				0,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -552,6 +566,7 @@ container: dark-factory-nonexistent-container-xyz
 				0,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -575,6 +590,7 @@ container: dark-factory-nonexistent-container-xyz
 				0,
 				0,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -598,6 +614,7 @@ container: dark-factory-nonexistent-container-xyz
 				0,
 				42,
 				libtime.NewCurrentDateTime(),
+				newSubprocRunner(),
 			)
 
 			promptMgr.HasExecutingReturns(false)
@@ -606,6 +623,142 @@ container: dark-factory-nonexistent-container-xyz
 			st, err := checkerWithThreshold.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(st.DirtyFileThreshold).To(Equal(42))
+		})
+	})
+
+	Describe("GetStatus subprocess timeout (skipped) behavior", func() {
+		It("sets DirtyFileCheckSkipped true when git status times out", func() {
+			runner := &mocks.SubprocRunner{}
+			runner.RunWithWarnAndTimeoutReturns([]byte{}, nil)
+			runner.RunWithWarnAndTimeoutDirReturns(nil, context.DeadlineExceeded)
+
+			checker := status.NewChecker(
+				tempDir,
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.DirtyFileCheckSkipped).To(BeTrue())
+			Expect(st.DirtyFileCount).To(Equal(0))
+		})
+
+		It("sets GeneratingSpecSkipped true when docker ps for gen-spec times out", func() {
+			runner := &mocks.SubprocRunner{}
+			runner.RunWithWarnAndTimeoutReturns(nil, context.DeadlineExceeded)
+			runner.RunWithWarnAndTimeoutDirReturns([]byte{}, nil)
+
+			checker := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.GeneratingSpecSkipped).To(BeTrue())
+		})
+
+		It("sets ContainerRunningSkipped true when docker ps for container times out", func() {
+			runner := &mocks.SubprocRunner{}
+			runner.RunWithWarnAndTimeoutReturns(nil, context.DeadlineExceeded)
+			runner.RunWithWarnAndTimeoutDirReturns([]byte{}, nil)
+
+			execPath := filepath.Join(queueDir, "006-executing.md")
+			execContent := `---
+status: executing
+container: dark-factory-006
+---
+# Test
+`
+			err := os.WriteFile(execPath, []byte(execContent), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptMgr.HasExecutingReturns(true)
+			promptMgr.ReadFrontmatterReturns(&prompt.Frontmatter{
+				Status:    "executing",
+				Container: "dark-factory-006",
+			}, nil)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			checker := status.NewChecker(
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+			)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.ContainerRunningSkipped).To(BeTrue())
+			Expect(st.ContainerRunning).To(BeFalse())
+		})
+
+		It("returns status without error even when all subprocess calls time out", func() {
+			runner := &mocks.SubprocRunner{}
+			runner.RunWithWarnAndTimeoutReturns(nil, context.DeadlineExceeded)
+			runner.RunWithWarnAndTimeoutDirReturns(nil, context.DeadlineExceeded)
+
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, context.DeadlineExceeded)
+
+			checker := status.NewChecker(
+				tempDir,
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				counter,
+				3,
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st).NotTo(BeNil())
+			Expect(st.DirtyFileCheckSkipped).To(BeTrue())
+			Expect(st.GeneratingSpecSkipped).To(BeTrue())
+			Expect(st.ContainerCountSkipped).To(BeTrue())
 		})
 	})
 })

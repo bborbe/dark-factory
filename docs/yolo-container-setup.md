@@ -122,6 +122,50 @@ The mount path defaults to `~/.claude-yolo` and is configurable per project via 
 claudeDir: ~/my-custom-claude-config
 ```
 
+## Project Workspace Mount
+
+In addition to `~/.claude-yolo`, dark-factory mounts the **project directory itself** into the container so the agent can read/write source files.
+
+```
+Host                                     Container
+$PWD (where .dark-factory.yaml lives) →  /workspace
+```
+
+The agent runs with `/workspace` as its working directory. All repo-relative paths in prompts (`raw/fetcher/pkg/foo.go`) resolve under `/workspace`.
+
+## Extra Mounts via `.dark-factory.yaml`
+
+Projects can mount additional directories — useful for sibling repos, Go module caches, and shared docs.
+
+```yaml
+extraMounts:
+  - src: ../docs              # host path (relative to project)
+    dst: /docs                # container path
+  - src: ${GOPATH}/pkg
+    dst: /home/node/go/pkg    # share module cache across prompts
+  - src: ${HOST_CACHE_DIR}/go-build
+    dst: /home/node/.cache/go-build
+  - src: ${HOST_CACHE_DIR}/golangci-lint
+    dst: /home/node/.cache/golangci-lint
+```
+
+Environment variable expansion happens at daemon startup. `HOST_CACHE_DIR` defaults to:
+
+- **macOS**: `$HOME/Library/Caches`
+- **Linux with `XDG_CACHE_HOME`**: `$XDG_CACHE_HOME`
+- **Linux without XDG**: `$HOME/.cache`
+
+Override by exporting `HOST_CACHE_DIR` explicitly before starting dark-factory.
+
+**Cross-repo file access**: If your prompt references a file in a sibling repo (e.g., `~/Documents/workspaces/other-repo/pkg/foo.go`), it will NOT be accessible inside the container unless mounted via `extraMounts` OR vendored into the current project. Rewrite such references to the vendored copy (`vendor/github.com/bborbe/time/...`) or mount the source repo explicitly.
+
+**Path rewriting gotcha**: Inside the container, `~/.claude-yolo/plugins/...` does not exist — the mount lands at `~/.claude/plugins/...` (i.e., `/home/node/.claude/plugins/...`). Use the in-container path in prompts:
+
+```
+BAD (host path):      ~/.claude-yolo/plugins/marketplaces/coding/docs/go-testing-guide.md
+GOOD (container path): ~/.claude/plugins/marketplaces/coding/docs/go-testing-guide.md
+```
+
 ## Pulling the Container Image
 
 ```bash

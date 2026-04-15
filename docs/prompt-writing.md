@@ -139,6 +139,28 @@ Smaller prompts succeed more often. Group coupled behaviors together, but don't 
 
 Dark-factory runs prompts in a Docker container. Never use absolute paths (`/Users/...`) or home-relative paths (`~/...`).
 
+**Exception**: Files under the mounted claude config use the in-container path `~/.claude/plugins/...`, NOT the host path `~/.claude-yolo/plugins/...`. See [yolo-container-setup.md](yolo-container-setup.md#project-workspace-mount).
+
+### Cross-repo references
+
+If a prompt needs to reference code in a sibling repo (e.g., a library at `~/Documents/workspaces/time/`), the file is NOT accessible inside the container. Options:
+
+1. **Point to the vendored copy** — `vendor/github.com/bborbe/time/time_parse-time.go` (preferred when the dep is already vendored).
+2. **Add an `extraMount`** in `.dark-factory.yaml` to mount the sibling repo.
+3. **Inline the relevant snippet** in the prompt body.
+
+Never leave a host-absolute path hoping the agent will figure it out — the agent will get a "file not found" and fail.
+
+### `make ensure` vs `make precommit` mid-implementation
+
+When a prompt says "add a new dependency" or "regenerate vendored code", the intermediate state cannot pass `make precommit` (test+check fail until the code is updated). Use `make ensure` for dependency-only preparation steps, then reserve `make precommit` for final verification.
+
+```
+BAD: Step 1: "Run `make precommit` to add the dep."   # fails — tests reference code not yet written
+GOOD: Step 1: "Run `make ensure` to add the dep."     # deps only
+      Step N (last): "Run `make precommit`."          # full check at the end
+```
+
 ## Decomposition
 
 When breaking a spec into multiple prompts:
@@ -209,8 +231,23 @@ This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a numbe
 | `executing` | `prompts/in-progress/` | YOLO container running | Auto (dark-factory) |
 | `completed` | `prompts/completed/` | Done, archived | Auto (dark-factory) |
 | `failed` | `prompts/in-progress/` | Needs fix or retry | Auto (dark-factory) |
+| `cancelled` | `prompts/in-progress/` | Pulled before/during execution | `dark-factory prompt cancel <id>` |
 
 Completed prompts are immutable. If behavior changes later, create a new prompt.
+
+### Fixing an Approved Prompt
+
+To edit a prompt that has already been approved (or is executing) without recreating it:
+
+```bash
+dark-factory prompt cancel <id>     # sets status: cancelled
+# edit the .md file to fix issues
+dark-factory prompt requeue <id>    # sets status: queued, re-enters the execution queue
+```
+
+Note: `unapprove` does NOT work on `cancelled` prompts (error: "only approved prompts can be unapproved"). Use `requeue`.
+
+Never manually edit the `status:` frontmatter — always use the CLI commands.
 
 ## Next Steps
 

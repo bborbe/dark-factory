@@ -6,9 +6,12 @@ package executor_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -19,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -44,6 +48,7 @@ var _ = Describe("DockerExecutor", func() {
 			0,
 			libtime.NewCurrentDateTime(),
 			false,
+			formatter.NewFormatter(),
 		)
 
 		var err error
@@ -172,6 +177,7 @@ More lines...`
 				0,
 				libtime.NewCurrentDateTime(),
 				false,
+				formatter.NewFormatter(),
 			)
 			Expect(executor).NotTo(BeNil())
 		})
@@ -683,7 +689,9 @@ var _ = Describe("Internal helper functions", func() {
 					envValues = append(envValues, args[i+1])
 				}
 			}
-			Expect(envValues).To(ConsistOf("YOLO_PROMPT_FILE=/tmp/prompt.md", "ANTHROPIC_MODEL="))
+			Expect(
+				envValues,
+			).To(ConsistOf("YOLO_PROMPT_FILE=/tmp/prompt.md", "ANTHROPIC_MODEL=", "YOLO_OUTPUT=json"))
 		})
 
 		It("does not add extra -v flags when extraMounts is nil", func() {
@@ -1161,6 +1169,11 @@ var _ = Describe("Internal helper functions", func() {
 		})
 
 		newExec := func(runner *mocks.CommandRunner, claudeDir string) executor.Executor {
+			fakeFormatter := &mocks.StreamFormatter{}
+			fakeFormatter.ProcessStreamStub = func(_ context.Context, r io.Reader, _ io.Writer, _ io.Writer) error {
+				_, _ = io.Copy(io.Discard, r)
+				return nil
+			}
 			return executor.NewDockerExecutorWithRunnerForTest(
 				config.Defaults().ContainerImage,
 				"test-project",
@@ -1173,6 +1186,7 @@ var _ = Describe("Internal helper functions", func() {
 				0,
 				libtime.NewCurrentDateTime(),
 				runner,
+				fakeFormatter,
 			)
 		}
 
@@ -1321,6 +1335,11 @@ This has frontmatter.`
 		})
 
 		newExec := func(runner *mocks.CommandRunner) executor.Executor {
+			fakeFormatter := &mocks.StreamFormatter{}
+			fakeFormatter.ProcessStreamStub = func(_ context.Context, r io.Reader, _ io.Writer, _ io.Writer) error {
+				_, _ = io.Copy(io.Discard, r)
+				return nil
+			}
 			return executor.NewDockerExecutorWithRunnerForTest(
 				config.Defaults().ContainerImage,
 				"test-project",
@@ -1333,6 +1352,7 @@ This has frontmatter.`
 				0,
 				libtime.NewCurrentDateTime(),
 				runner,
+				fakeFormatter,
 			)
 		}
 
@@ -1400,6 +1420,216 @@ This has frontmatter.`
 				Expect(err.Error()).To(ContainSubstring("prepare log file for reattach"))
 				Expect(fakeRunner.RunCallCount()).To(Equal(0))
 			})
+		})
+	})
+
+	Describe("Execute streaming pipeline", func() {
+		var (
+			fakeRunner *mocks.CommandRunner
+			logFile    string
+			logDir     string
+		)
+
+		BeforeEach(func() {
+			fakeRunner = &mocks.CommandRunner{}
+			logDir = filepath.Join(tempDir, "stream-logs")
+			logFile = filepath.Join(logDir, "042.log")
+			GinkgoT().Setenv("ANTHROPIC_API_KEY", "test-key")
+		})
+
+		newStreamExec := func(runner *mocks.CommandRunner) executor.Executor {
+			return executor.NewDockerExecutorWithRunnerForTest(
+				config.Defaults().ContainerImage,
+				"test-project",
+				"",
+				"",
+				"",
+				nil,
+				nil,
+				"/tmp/test-claude-yolo",
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+				formatter.NewFormatter(),
+			)
+		}
+
+		Context("9a: JSONL file is created alongside formatted log", func() {
+			It("creates both .log and .jsonl files with correct content", func() {
+				jsonLines := strings.Join([]string{
+					`{"type":"system","subtype":"init","session_id":"test-123","model":"claude-opus","cwd":"/workspace","tools":[]}`,
+					`{"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}`,
+					`{"type":"result","result":"success","duration_ms":100}`,
+				}, "\n") + "\n"
+
+				fakeRunner.RunStub = func(_ context.Context, cmd *exec.Cmd) error {
+					if cmd.Stdout != nil && strings.Contains(strings.Join(cmd.Args, " "), "run") {
+						_, _ = io.WriteString(cmd.Stdout, jsonLines)
+					}
+					return nil
+				}
+
+				e := newStreamExec(fakeRunner)
+				err := e.Execute(ctx, "test prompt", logFile, "test-project-042-stream")
+				Expect(err).NotTo(HaveOccurred())
+
+				// Formatted .log file exists and is non-empty
+				logContent, err := os.ReadFile(logFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(logContent).NotTo(BeEmpty())
+
+				// JSONL file exists with exactly 3 lines
+				rawFile := executor.RawLogPathForTest(logFile)
+				Expect(rawFile).To(Equal(filepath.Join(logDir, "042.jsonl")))
+				rawContent, err := os.ReadFile(rawFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawContent).NotTo(BeEmpty())
+
+				rawLines := strings.Split(strings.TrimRight(string(rawContent), "\n"), "\n")
+				Expect(rawLines).To(HaveLen(3))
+
+				// Each line is valid JSON
+				for _, line := range rawLines {
+					var v interface{}
+					Expect(
+						json.Unmarshal([]byte(line), &v),
+					).To(Succeed(), "line should be valid JSON: %s", line)
+				}
+
+				// Formatted log contains "hello" from the assistant message
+				Expect(string(logContent)).To(ContainSubstring("hello"))
+				// Formatted log contains "[init]" from system init event
+				Expect(string(logContent)).To(ContainSubstring("[init]"))
+			})
+		})
+
+		Context("9b: raw JSONL preserves non-JSON lines verbatim", func() {
+			It("passes non-JSON through to both files and returns nil", func() {
+				lines := "not-json-at-all\n" + `{"type":"result","result":"success","duration_ms":1}` + "\n"
+
+				fakeRunner.RunStub = func(_ context.Context, cmd *exec.Cmd) error {
+					if cmd.Stdout != nil && strings.Contains(strings.Join(cmd.Args, " "), "run") {
+						_, _ = io.WriteString(cmd.Stdout, lines)
+					}
+					return nil
+				}
+
+				e := newStreamExec(fakeRunner)
+				err := e.Execute(ctx, "test prompt", logFile, "test-project-042-nonjson")
+				Expect(err).NotTo(HaveOccurred())
+
+				rawFile := executor.RawLogPathForTest(logFile)
+				rawContent, err := os.ReadFile(rawFile)
+				Expect(err).NotTo(HaveOccurred())
+
+				rawStr := string(rawContent)
+				Expect(rawStr).To(ContainSubstring("not-json-at-all"))
+				Expect(rawStr).To(ContainSubstring(`"type":"result"`))
+
+				logContent, err := os.ReadFile(logFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(logContent)).To(ContainSubstring("not-json-at-all"))
+			})
+		})
+
+		Context("9c: raw log file open failure returns error before container starts", func() {
+			It("returns error mentioning raw log path and does not start container", func() {
+				// Create a directory with the JSONL path name to block file creation.
+				Expect(os.MkdirAll(logDir, 0750)).To(Succeed())
+				rawFile := executor.RawLogPathForTest(logFile)
+				// Create a directory where the JSONL file would go — OpenFile will fail.
+				Expect(os.MkdirAll(rawFile, 0750)).To(Succeed())
+
+				e := newStreamExec(fakeRunner)
+				err := e.Execute(ctx, "test prompt", logFile, "test-project-042-rawfail")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(rawFile))
+
+				// The docker run command was never started (only docker rm -f may have been called)
+				for i := 0; i < fakeRunner.RunCallCount(); i++ {
+					_, cmd := fakeRunner.RunArgsForCall(i)
+					Expect(cmd.Args).NotTo(ContainElement("run"))
+				}
+			})
+		})
+
+		Context("9d: Reattach also produces JSONL file", func() {
+			It("creates both .log and .jsonl files when reattaching", func() {
+				jsonLines := strings.Join([]string{
+					`{"type":"system","subtype":"init","session_id":"reattach-456","model":"claude-opus","cwd":"/workspace","tools":[]}`,
+					`{"type":"assistant","message":{"content":[{"type":"text","text":"reattached"}]}}`,
+					`{"type":"result","result":"success","duration_ms":50}`,
+				}, "\n") + "\n"
+
+				fakeRunner.RunStub = func(_ context.Context, cmd *exec.Cmd) error {
+					if cmd.Stdout != nil {
+						_, _ = io.WriteString(cmd.Stdout, jsonLines)
+					}
+					return nil
+				}
+
+				e := newStreamExec(fakeRunner)
+				err := e.Reattach(ctx, logFile, "test-container-reattach", 0)
+				Expect(err).NotTo(HaveOccurred())
+
+				logContent, err := os.ReadFile(logFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(logContent).NotTo(BeEmpty())
+
+				rawFile := executor.RawLogPathForTest(logFile)
+				rawContent, err := os.ReadFile(rawFile)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rawContent).NotTo(BeEmpty())
+			})
+		})
+
+		Context("9e: YOLO_OUTPUT=json is present in docker run args", func() {
+			It("includes -e YOLO_OUTPUT=json as adjacent args pair", func() {
+				cmd := executor.BuildDockerCommandForTest(
+					ctx,
+					config.Defaults().ContainerImage,
+					"test-project",
+					"",
+					"",
+					"",
+					nil,
+					nil,
+					"test-container",
+					"/tmp/prompt.md",
+					"/workspace",
+					"/home/user/.claude",
+					"test-prompt",
+					"/home/user",
+				)
+
+				args := cmd.Args
+				found := false
+				for i, arg := range args {
+					if arg == "-e" && i+1 < len(args) && args[i+1] == "YOLO_OUTPUT=json" {
+						found = true
+						break
+					}
+				}
+				Expect(
+					found,
+				).To(BeTrue(), "expected -e followed by YOLO_OUTPUT=json in docker args")
+			})
+		})
+	})
+
+	Describe("rawLogPath", func() {
+		It("replaces .log extension with .jsonl", func() {
+			Expect(
+				executor.RawLogPathForTest("prompts/log/042.log"),
+			).To(Equal("prompts/log/042.jsonl"))
+		})
+
+		It("handles path with no extension", func() {
+			Expect(executor.RawLogPathForTest("prompts/log/042")).To(Equal("prompts/log/042.jsonl"))
+		})
+
+		It("handles .txt extension", func() {
+			Expect(executor.RawLogPathForTest("/tmp/test.txt")).To(Equal("/tmp/test.jsonl"))
 		})
 	})
 

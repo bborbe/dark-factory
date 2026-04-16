@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-16T17:10:37Z"
 generating: "2026-04-16T17:10:37Z"
 prompted: "2026-04-16T17:17:01Z"
+verifying: "2026-04-16T18:13:06Z"
 branch: dark-factory/go-stream-formatter
 ---
 

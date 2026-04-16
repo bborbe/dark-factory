@@ -20,6 +20,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
@@ -463,6 +464,7 @@ func CreateSpecGenerator(
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			false, // worktreeMode — spec generator never needs tmpfs
+			formatter.NewFormatter(),
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
@@ -538,7 +540,7 @@ func createDockerExecutor(
 ) executor.Executor {
 	return executor.NewDockerExecutor(
 		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
-		maxPromptDuration, currentDateTimeGetter, worktreeMode,
+		maxPromptDuration, currentDateTimeGetter, worktreeMode, formatter.NewFormatter(),
 	)
 }
 

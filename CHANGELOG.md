@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.116.0
+
+- feat: Wire `pkg/formatter.Formatter` into executor so every prompt run produces two log files: raw JSONL (container stdout verbatim) and human-readable formatted log; add `YOLO_OUTPUT=json` env var to docker command; bump `DefaultContainerImage` to `v0.6.0` (minimum version supporting `YOLO_OUTPUT=json` passthrough)
+
 ## v0.115.0
 
 - feat: Add `pkg/formatter/` package — Go port of claude-yolo Python v2 stream-json formatter; reads JSONL from io.Reader, writes raw lines verbatim and human-readable formatted lines simultaneously; handles all Claude Code message types and tool types with glyphs matching the Python v2 oracle; generates Counterfeiter mock in `mocks/formatter.go`

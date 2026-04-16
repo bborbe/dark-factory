@@ -22,6 +22,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -57,6 +58,7 @@ func NewDockerExecutor(
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	worktreeMode bool,
+	fmtr formatter.Formatter,
 ) Executor {
 	return &dockerExecutor{
 		containerImage:        containerImage,
@@ -71,6 +73,7 @@ func NewDockerExecutor(
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
 		hideGitDir:            worktreeMode,
+		formatter:             fmtr,
 	}
 }
 
@@ -88,92 +91,89 @@ type dockerExecutor struct {
 	maxPromptDuration     time.Duration // 0 = disabled
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	hideGitDir            bool
+	formatter             formatter.Formatter
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
 // It blocks until the container exits and returns an error if the exit code is non-zero.
-// Output is streamed to both terminal and the specified log file.
+// Two log files are written: a raw JSONL file (container stdout verbatim) and
+// a human-readable formatted log file.
 func (e *dockerExecutor) Execute(
 	ctx context.Context,
 	promptContent string,
 	logFile string,
 	containerName string,
 ) error {
-	// Get project root (current working directory)
 	projectRoot, err := os.Getwd()
 	if err != nil {
 		return errors.Wrap(ctx, err, "get working directory")
 	}
-
-	// Get home directory
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return errors.Wrap(ctx, err, "get home directory")
 	}
-
-	// Prepare log file
 	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare log file")
 	}
 	defer logFileHandle.Close()
-
-	// Create temp file with prompt content
+	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
+	if err != nil {
+		return err // error already names the raw log path
+	}
+	defer rawFileHandle.Close()
 	promptFilePath, cleanup, err := createPromptTempFile(ctx, promptContent)
 	if err != nil {
 		return errors.Wrap(ctx, err, "create prompt temp file")
 	}
 	defer cleanup()
-
-	slog.Debug(
-		"prompt prepared for execution",
-		"contentSize",
-		len(promptContent),
-		"tempFile",
-		promptFilePath,
-	)
-
-	// Remove any existing container with this name (handles interrupted previous runs)
+	slog.Debug("prompt prepared for execution",
+		"contentSize", len(promptContent), "tempFile", promptFilePath)
 	e.removeContainerIfExists(ctx, containerName)
-
-	// Extract prompt basename from containerName (format: projectName-basename)
 	promptBaseName := extractPromptBaseName(containerName, e.projectName)
-
-	// Use the configured Claude config dir
 	claudeConfigDir := e.claudeDir
-
-	// Validate Claude auth before starting Docker
 	if err := validateClaudeAuth(ctx, claudeConfigDir); err != nil {
 		return err
 	}
-
-	// Build and run docker command
 	cmd := e.buildDockerCommand(
-		ctx,
-		containerName,
-		promptFilePath,
-		projectRoot,
-		claudeConfigDir,
-		promptBaseName,
-		home,
-	)
-
+		ctx, containerName, promptFilePath, projectRoot, claudeConfigDir, promptBaseName, home)
 	slog.Debug("docker command prepared",
-		"image", e.containerImage,
-		"containerName", containerName,
+		"image", e.containerImage, "containerName", containerName,
 		"workspaceMount", projectRoot+":/workspace",
 		"configMount", claudeConfigDir+":/home/node/.claude")
-
-	// Pipe stdout/stderr to both terminal and log file
-	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
-	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
-
-	// Run container and watcher in parallel; whichever finishes first cancels the other.
-	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncs(cmd, logFile, containerName)...); err != nil {
-		return errors.Wrap(ctx, err, "docker run failed")
+	if runErr := e.runWithFormatterPipeline(
+		ctx, cmd, rawFileHandle, logFileHandle,
+		e.buildRunFuncs(cmd, logFile, containerName), "formatter error",
+	); runErr != nil {
+		return errors.Wrap(ctx, runErr, "docker run failed")
 	}
-
 	return nil
+}
+
+// runWithFormatterPipeline wires cmd.Stdout through the formatter pipeline, runs the provided
+// run.Funcs via run.CancelOnFirstFinish, and waits for the formatter goroutine to finish.
+// cmd.Stderr is connected to both os.Stderr and logWriter.
+// pw is closed via wrapFirstFuncWithPipeClose when the first run.Func returns, signalling EOF.
+func (e *dockerExecutor) runWithFormatterPipeline(
+	ctx context.Context,
+	cmd *exec.Cmd,
+	rawWriter io.Writer,
+	logWriter io.Writer,
+	runFuncs []run.Func,
+	fmtErrMsg string,
+) error {
+	pr, pw := io.Pipe()
+	cmd.Stdout = pw
+	cmd.Stderr = io.MultiWriter(os.Stderr, logWriter)
+	fmtDone := make(chan error, 1)
+	go func() {
+		fmtDone <- e.formatter.ProcessStream(ctx, pr, rawWriter, io.MultiWriter(os.Stdout, logWriter))
+	}()
+	runErr := run.CancelOnFirstFinish(ctx, wrapFirstFuncWithPipeClose(runFuncs, pw)...)
+	if fmtErr := <-fmtDone; fmtErr != nil {
+		slog.Warn(fmtErrMsg, "error", fmtErr)
+	}
+	return runErr
 }
 
 // buildRunFuncs returns the set of parallel functions for Execute using the configured maxPromptDuration.
@@ -223,6 +223,8 @@ func (e *dockerExecutor) buildRunFuncsWithTimeout(
 // It does not create a new container. The log file is overwritten from the beginning
 // of the container's output (docker logs replays all output from container start).
 // maxPromptDuration is the remaining allowed run time; 0 disables the timeout.
+// Two log files are written: a raw JSONL file (container stdout verbatim) and
+// a human-readable formatted log file.
 func (e *dockerExecutor) Reattach(
 	ctx context.Context,
 	logFile string,
@@ -234,18 +236,22 @@ func (e *dockerExecutor) Reattach(
 		return errors.Wrap(ctx, err, "prepare log file for reattach")
 	}
 	defer logFileHandle.Close()
-
+	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
+	if err != nil {
+		return err // error already names the raw log path
+	}
+	defer rawFileHandle.Close()
 	// docker logs --follow replays all output from container start and blocks until exit
 	// #nosec G204 -- containerName is generated internally from prompt filename
 	cmd := exec.CommandContext(ctx, "docker", "logs", "--follow", containerName)
-	cmd.Stdout = io.MultiWriter(os.Stdout, logFileHandle)
-	cmd.Stderr = io.MultiWriter(os.Stderr, logFileHandle)
-
 	slog.Info("reattaching to running container", "containerName", containerName,
 		"maxPromptDuration", maxPromptDuration)
-
-	if err := run.CancelOnFirstFinish(ctx, e.buildRunFuncsWithTimeout(cmd, logFile, containerName, maxPromptDuration)...); err != nil {
-		return errors.Wrap(ctx, err, "reattach failed")
+	if runErr := e.runWithFormatterPipeline(
+		ctx, cmd, rawFileHandle, logFileHandle,
+		e.buildRunFuncsWithTimeout(cmd, logFile, containerName, maxPromptDuration),
+		"formatter error on reattach",
+	); runErr != nil {
+		return errors.Wrap(ctx, runErr, "reattach failed")
 	}
 	return nil
 }
@@ -373,6 +379,51 @@ func prepareLogFile(ctx context.Context, logFile string) (*os.File, error) {
 	return logFileHandle, nil
 }
 
+// rawLogPath returns the raw JSONL log path corresponding to the given formatted log path.
+// Example: "prompts/log/042.log" → "prompts/log/042.jsonl"
+func rawLogPath(logFile string) string {
+	ext := filepath.Ext(logFile)
+	if ext == "" {
+		return logFile + ".jsonl"
+	}
+	return strings.TrimSuffix(logFile, ext) + ".jsonl"
+}
+
+// prepareRawLogFile opens the raw JSONL log file for writing.
+// The raw log path is the formatted log path with the extension replaced by ".jsonl".
+// Returns a non-nil error naming the raw log path if the file cannot be opened.
+func prepareRawLogFile(ctx context.Context, rawLogFile string) (*os.File, error) {
+	logDir := filepath.Dir(rawLogFile)
+	if err := os.MkdirAll(logDir, 0750); err != nil {
+		return nil, errors.Wrapf(ctx, err, "create log directory for raw log %s", rawLogFile)
+	}
+	// #nosec G304 -- rawLogFile is derived from prompt filename, not user input
+	f, err := os.OpenFile(rawLogFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, errors.Wrapf(ctx, err, "open raw log file %s", rawLogFile)
+	}
+	return f, nil
+}
+
+// wrapFirstFuncWithPipeClose wraps the first run.Func in fns so that pw is closed
+// when that function returns (regardless of error). The remaining functions are returned unchanged.
+// The first function is always the commandRunner.Run wrapper from buildRunFuncsWithTimeout.
+// pw.Close() signals EOF to the formatter goroutine on both success and cancellation paths —
+// so <-fmtDone will not hang when run.CancelOnFirstFinish cancels the runner mid-stream.
+func wrapFirstFuncWithPipeClose(fns []run.Func, pw *io.PipeWriter) []run.Func {
+	if len(fns) == 0 {
+		return fns
+	}
+	wrapped := make([]run.Func, len(fns))
+	copy(wrapped, fns)
+	original := fns[0]
+	wrapped[0] = func(ctx context.Context) error {
+		defer pw.Close()
+		return original(ctx)
+	}
+	return wrapped
+}
+
 // createPromptTempFile creates a temp file with the prompt content and returns the path and cleanup function.
 func createPromptTempFile(ctx context.Context, promptContent string) (string, func(), error) {
 	// Write prompt to a restricted temp directory to prevent other local processes from reading it
@@ -441,6 +492,7 @@ func (e *dockerExecutor) buildDockerCommand(
 	args = append(args,
 		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
 		"-e", "ANTHROPIC_MODEL="+e.model,
+		"-e", "YOLO_OUTPUT=json",
 	)
 	if len(e.env) > 0 {
 		keys := make([]string, 0, len(e.env))

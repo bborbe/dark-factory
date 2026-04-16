@@ -13,6 +13,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/formatter"
 )
 
 // CommandRunnerForTest is an exported alias for the unexported commandRunner interface.
@@ -36,6 +37,7 @@ func NewDockerExecutorWithRunnerForTest(
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	runner CommandRunnerForTest,
+	fmtr formatter.Formatter,
 ) Executor {
 	return &dockerExecutor{
 		containerImage:        containerImage,
@@ -49,6 +51,7 @@ func NewDockerExecutorWithRunnerForTest(
 		commandRunner:         runner,
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
+		formatter:             fmtr,
 	}
 }
 
@@ -131,6 +134,16 @@ func BuildDockerCommandWithWorktreeModeForTest(
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.
 func PrepareLogFileForTest(ctx context.Context, logFile string) (*os.File, error) {
 	return prepareLogFile(ctx, logFile)
+}
+
+// PrepareRawLogFileForTest exposes prepareRawLogFile for external test packages.
+func PrepareRawLogFileForTest(ctx context.Context, rawLogFile string) (*os.File, error) {
+	return prepareRawLogFile(ctx, rawLogFile)
+}
+
+// RawLogPathForTest exposes rawLogPath for external test packages.
+func RawLogPathForTest(logFile string) string {
+	return rawLogPath(logFile)
 }
 
 // CreatePromptTempFileForTest exposes createPromptTempFile for external test packages.

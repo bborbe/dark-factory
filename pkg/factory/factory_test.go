@@ -70,8 +70,8 @@ var _ = Describe("Factory", func() {
 				cfg.Model,
 				cfg.NetrcFile,
 				cfg.GitconfigFile,
+				cfg.Workflow,
 				cfg.PR,
-				cfg.Worktree,
 				git.NewBrancher(),
 				git.NewPRCreator(""),
 				git.NewPRMerger("", libtime.NewCurrentDateTime()),
@@ -209,7 +209,7 @@ var _ = Describe("Factory", func() {
 			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
 			Expect(output).To(ContainSubstring("containerImage="))
 			Expect(output).To(ContainSubstring("model="))
-			Expect(output).To(ContainSubstring("worktree="))
+			Expect(output).To(ContainSubstring("workflow="))
 			Expect(output).To(ContainSubstring("pr="))
 			Expect(output).To(ContainSubstring("autoRelease="))
 			Expect(output).To(ContainSubstring("autoMerge="))

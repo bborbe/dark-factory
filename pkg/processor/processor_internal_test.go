@@ -17,7 +17,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
@@ -515,7 +517,7 @@ var _ = Describe("ResumeExecuting", func() {
 			projectName:    "test-project",
 			executor:       fakeExec,
 			promptManager:  mgr,
-			worktree:       false,
+			workflow:       config.WorkflowDirect,
 			skippedPrompts: make(map[string]libtime.DateTime),
 		}
 	})
@@ -600,7 +602,7 @@ var _ = Describe("ResumeExecuting", func() {
 
 	Context("when worktree=true and clone dir is missing", func() {
 		BeforeEach(func() {
-			proc.worktree = true
+			proc.workflow = config.WorkflowClone
 			promptPath := filepath.Join(queueDir, "001-test.md")
 			Expect(
 				os.WriteFile(
@@ -739,7 +741,7 @@ var _ = Describe("ResumeExecuting", func() {
 		var clonePath string
 
 		BeforeEach(func() {
-			proc.worktree = true
+			proc.workflow = config.WorkflowClone
 			promptPath := filepath.Join(queueDir, "001-cloneexists.md")
 			clonePath = filepath.Join(os.TempDir(), "dark-factory", "test-project-001-cloneexists")
 			Expect(os.MkdirAll(clonePath, 0750)).To(Succeed())
@@ -788,7 +790,7 @@ var _ = Describe("ResumeExecuting", func() {
 		var clonePath string
 
 		BeforeEach(func() {
-			proc.worktree = true
+			proc.workflow = config.WorkflowClone
 			promptPath := filepath.Join(queueDir, "001-nobranch.md")
 			clonePath = filepath.Join(os.TempDir(), "dark-factory", "test-project-001-nobranch")
 			Expect(os.MkdirAll(clonePath, 0750)).To(Succeed())
@@ -1429,5 +1431,550 @@ DARK-FACTORY-REPORT -->
 		Expect(r).To(BeAssignableToTypeOf(&report.CompletionReport{}))
 		Expect(r.Verification).NotTo(BeNil())
 		Expect(r.Verification.ExitCode).To(Equal(0))
+	})
+})
+
+// --- Stub types for workflow routing tests ---
+
+// stubWorktreer tracks Add/Remove calls.
+type stubWorktreer struct {
+	addStub      func(ctx context.Context, path, branch string) error
+	removeStub   func(ctx context.Context, path string) error
+	addCallCount int
+	addPath      string
+	addBranch    string
+	removeCount  int
+}
+
+func (s *stubWorktreer) Add(ctx context.Context, path, branch string) error {
+	s.addCallCount++
+	s.addPath = path
+	s.addBranch = branch
+	if s.addStub != nil {
+		return s.addStub(ctx, path, branch)
+	}
+	return nil
+}
+
+func (s *stubWorktreer) Remove(_ context.Context, _ string) error {
+	s.removeCount++
+	if s.removeStub != nil {
+		return s.removeStub(context.Background(), "")
+	}
+	return nil
+}
+
+// stubCloner tracks Clone/Remove calls.
+type stubCloner struct {
+	cloneStub   func(ctx context.Context, srcDir, destDir, branch string) error
+	removeStub  func(ctx context.Context, path string) error
+	cloneCount  int
+	removeCount int
+}
+
+func (s *stubCloner) Clone(ctx context.Context, srcDir, destDir, branch string) error {
+	s.cloneCount++
+	if s.cloneStub != nil {
+		return s.cloneStub(ctx, srcDir, destDir, branch)
+	}
+	return nil
+}
+
+func (s *stubCloner) Remove(_ context.Context, _ string) error {
+	s.removeCount++
+	if s.removeStub != nil {
+		return s.removeStub(context.Background(), "")
+	}
+	return nil
+}
+
+// stubBrancher tracks Push/CreateAndSwitch/FetchAndVerify/Switch/IsClean/DefaultBranch/MergeToDefault calls.
+type stubBrancher struct {
+	pushCount            int
+	createAndSwitchCount int
+	fetchAndVerifyErr    error
+	isClean              bool
+	isCleanErr           error
+	defaultBranch        string
+	defaultBranchErr     error
+	switchErr            error
+	mergeToDefaultCount  int
+}
+
+func (s *stubBrancher) Push(_ context.Context, _ string) error {
+	s.pushCount++
+	return nil
+}
+
+func (s *stubBrancher) CreateAndSwitch(_ context.Context, _ string) error {
+	s.createAndSwitchCount++
+	return nil
+}
+
+func (s *stubBrancher) FetchAndVerifyBranch(_ context.Context, _ string) error {
+	return s.fetchAndVerifyErr
+}
+
+func (s *stubBrancher) Switch(_ context.Context, _ string) error { return s.switchErr }
+
+func (s *stubBrancher) IsClean(_ context.Context) (bool, error) {
+	return s.isClean, s.isCleanErr
+}
+
+func (s *stubBrancher) DefaultBranch(_ context.Context) (string, error) {
+	return s.defaultBranch, s.defaultBranchErr
+}
+
+func (s *stubBrancher) MergeToDefault(_ context.Context, _ string) error {
+	s.mergeToDefaultCount++
+	return nil
+}
+
+func (s *stubBrancher) CurrentBranch(_ context.Context) (string, error) { return "", nil }
+
+func (s *stubBrancher) Fetch(_ context.Context) error { return nil }
+
+func (s *stubBrancher) Pull(_ context.Context) error { return nil }
+
+func (s *stubBrancher) MergeOriginDefault(_ context.Context) error { return nil }
+
+// stubPRCreator tracks FindOpenPR/Create calls.
+type stubPRCreator struct {
+	findOpenPRURL string
+	findOpenPRErr error
+	createURL     string
+	createErr     error
+	createCount   int
+}
+
+func (s *stubPRCreator) FindOpenPR(_ context.Context, _ string) (string, error) {
+	return s.findOpenPRURL, s.findOpenPRErr
+}
+
+func (s *stubPRCreator) Create(_ context.Context, _, _ string) (string, error) {
+	s.createCount++
+	if s.createErr != nil {
+		return "", s.createErr
+	}
+	return s.createURL, nil
+}
+
+// stubWorkflowReleaser is a minimal git.Releaser for workflow routing tests.
+type stubWorkflowReleaser struct {
+	commitOnlyCount       int
+	commitFileCount       int
+	hasChangelog          bool
+	commitAndReleaseCount int
+}
+
+func (s *stubWorkflowReleaser) CommitOnly(_ context.Context, _ string) error {
+	s.commitOnlyCount++
+	return nil
+}
+
+func (s *stubWorkflowReleaser) CommitCompletedFile(_ context.Context, _ string) error {
+	s.commitFileCount++
+	return nil
+}
+
+func (s *stubWorkflowReleaser) HasChangelog(_ context.Context) bool { return s.hasChangelog }
+
+func (s *stubWorkflowReleaser) CommitAndRelease(_ context.Context, _ git.VersionBump) error {
+	s.commitAndReleaseCount++
+	return nil
+}
+
+func (s *stubWorkflowReleaser) GetNextVersion(
+	_ context.Context,
+	_ git.VersionBump,
+) (string, error) {
+	return "v1.0.0", nil
+}
+
+func (s *stubWorkflowReleaser) MoveFile(_ context.Context, _, _ string) error { return nil }
+
+// stubWorkflowManager tracks MoveToCompleted and HasQueuedPromptsOnBranch.
+type stubWorkflowManager struct {
+	moveToCompletedCount    int
+	moveToCompletedErr      error
+	hasQueuedOnBranchResult bool
+	hasQueuedOnBranchErr    error
+}
+
+func (s *stubWorkflowManager) MoveToCompleted(_ context.Context, _ string) error {
+	s.moveToCompletedCount++
+	return s.moveToCompletedErr
+}
+
+func (s *stubWorkflowManager) HasQueuedPromptsOnBranch(
+	_ context.Context,
+	_, _ string,
+) (bool, error) {
+	return s.hasQueuedOnBranchResult, s.hasQueuedOnBranchErr
+}
+
+// Remaining prompt.Manager methods (no-ops).
+func (s *stubWorkflowManager) ResetExecuting(_ context.Context) error { return nil }
+
+func (s *stubWorkflowManager) ResetFailed(_ context.Context) error { return nil }
+
+func (s *stubWorkflowManager) HasExecuting(_ context.Context) bool { return false }
+
+func (s *stubWorkflowManager) ListQueued(_ context.Context) ([]prompt.Prompt, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubWorkflowManager) Load(_ context.Context, _ string) (*prompt.PromptFile, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubWorkflowManager) ReadFrontmatter(
+	_ context.Context,
+	_ string,
+) (*prompt.Frontmatter, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubWorkflowManager) SetStatus(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowManager) SetContainer(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowManager) SetVersion(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowManager) SetPRURL(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowManager) SetBranch(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowManager) IncrementRetryCount(_ context.Context, _ string) error { return nil }
+
+func (s *stubWorkflowManager) Content(
+	_ context.Context,
+	_ string,
+) (string, error) {
+	return "", nil
+}
+
+func (s *stubWorkflowManager) Title(_ context.Context, _ string) (string, error) { return "", nil }
+
+func (s *stubWorkflowManager) NormalizeFilenames(
+	_ context.Context,
+	_ string,
+) ([]prompt.Rename, error) {
+	return nil, nil //nolint:nilnil
+}
+
+func (s *stubWorkflowManager) AllPreviousCompleted(_ context.Context, _ int) bool { return false }
+
+func (s *stubWorkflowManager) FindMissingCompleted(_ context.Context, _ int) []int { return nil }
+
+func (s *stubWorkflowManager) FindPromptStatusInProgress(_ context.Context, _ int) string {
+	return ""
+}
+
+var _ = Describe("processor workflow routing", func() {
+	var (
+		ctx           context.Context
+		projectDir    string
+		completedDir  string
+		promptPath    string
+		completedPath string
+
+		stubWt  *stubWorktreer
+		stubCl  *stubCloner
+		stubBr  *stubBrancher
+		stubPR  *stubPRCreator
+		stubRel *stubWorkflowReleaser
+		stubMgr *stubWorkflowManager
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+
+		projectDir = GinkgoT().TempDir()
+		completedDir = filepath.Join(projectDir, "completed")
+		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+
+		promptPath = filepath.Join(projectDir, "001-test.md")
+		completedPath = filepath.Join(completedDir, "001-test.md")
+
+		stubWt = &stubWorktreer{}
+		stubCl = &stubCloner{}
+		stubBr = &stubBrancher{
+			isClean:           true,
+			defaultBranch:     "main",
+			fetchAndVerifyErr: stderrors.New("branch not found"),
+		}
+		stubPR = &stubPRCreator{createURL: "https://github.com/user/repo/pull/1"}
+		stubRel = &stubWorkflowReleaser{}
+		stubMgr = &stubWorkflowManager{}
+	})
+
+	newProc := func(workflow config.Workflow, pr bool) *processor {
+		return &processor{
+			queueDir:       projectDir,
+			completedDir:   completedDir,
+			logDir:         filepath.Join(projectDir, "logs"),
+			projectName:    "test-project",
+			workflow:       workflow,
+			pr:             pr,
+			brancher:       stubBr,
+			prCreator:      stubPR,
+			cloner:         stubCl,
+			worktreer:      stubWt,
+			releaser:       stubRel,
+			promptManager:  stubMgr,
+			notifier:       notifier.NewMultiNotifier(),
+			skippedPrompts: make(map[string]libtime.DateTime),
+		}
+	}
+
+	newPromptFile := func(branch string) *prompt.PromptFile {
+		return prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{
+				Status: string(prompt.ApprovedPromptStatus),
+				Branch: branch,
+			},
+			[]byte("# Test prompt\n"),
+			libtime.NewCurrentDateTime(),
+		)
+	}
+
+	// 11a: workflow: worktree, pr: true
+	Describe("11a: workflow worktree, pr true", func() {
+		It("calls worktreer.Add, worktreer.Remove, brancher.Push, prCreator.Create", func() {
+			p := newProc(config.WorkflowWorktree, true)
+			pf := newPromptFile("feature/test-branch")
+
+			// The Add stub creates the worktree directory so os.Chdir succeeds.
+			expectedWorktreePath := filepath.Join(
+				os.TempDir(),
+				"dark-factory",
+				"test-project-001-test",
+			)
+			stubWt.addStub = func(_ context.Context, path, _ string) error {
+				return os.MkdirAll(path, 0750)
+			}
+			// Ensure the worktree directory is removed after the test to avoid polluting
+			// other tests that check for the directory's non-existence.
+			DeferCleanup(func() { _ = os.RemoveAll(expectedWorktreePath) })
+
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+			state := &workflowState{}
+			returnedState, err := p.setupWorktreeWorkflowState(ctx, "001-test", pf, state)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stubWt.addCallCount).To(Equal(1))
+			Expect(stubWt.addPath).To(Equal(expectedWorktreePath))
+			Expect(stubWt.addBranch).To(Equal("feature/test-branch"))
+
+			// Override originalDir so handleWorktreeWorkflow can chdir back.
+			returnedState.originalDir = originalDir
+
+			err = p.handleWorktreeWorkflow(
+				ctx,
+				ctx,
+				pf,
+				"test title",
+				promptPath,
+				completedPath,
+				returnedState,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubWt.removeCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(1))
+		})
+	})
+
+	// 11b: workflow: worktree, pr: false
+	Describe("11b: workflow worktree, pr false", func() {
+		It("calls worktreer.Remove and brancher.Push but NOT prCreator.Create", func() {
+			p := newProc(config.WorkflowWorktree, false)
+			pf := newPromptFile("feature/no-pr-branch")
+
+			worktreeDir := GinkgoT().TempDir()
+
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+			state := &workflowState{
+				branchName:   "feature/no-pr-branch",
+				worktreePath: worktreeDir,
+				originalDir:  originalDir,
+			}
+
+			// Simulate being inside the worktree
+			Expect(os.Chdir(worktreeDir)).To(Succeed())
+
+			err = p.handleWorktreeWorkflow(
+				ctx,
+				ctx,
+				pf,
+				"test title",
+				promptPath,
+				completedPath,
+				state,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubWt.removeCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(0))
+			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+		})
+	})
+
+	// 11c: workflow: branch, pr: true
+	Describe("11c: workflow branch, pr true", func() {
+		It("sets up in-place branch then calls brancher.Push and prCreator.Create", func() {
+			p := newProc(config.WorkflowBranch, true)
+
+			state := &workflowState{}
+			returnedState, err := p.setupInPlaceBranchState(ctx, "feature/branch-pr", state)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stubBr.createAndSwitchCount).To(Equal(1))
+			Expect(returnedState.inPlaceBranch).To(Equal("feature/branch-pr"))
+			Expect(returnedState.inPlaceDefaultBranch).To(Equal("main"))
+
+			pf := newPromptFile("feature/branch-pr")
+			err = p.handleBranchPRCompletion(
+				ctx,
+				ctx,
+				pf,
+				"feature/branch-pr",
+				"test title",
+				completedPath,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(1))
+		})
+	})
+
+	// 11d: workflow: branch, pr: false
+	Describe("11d: workflow branch, pr false", func() {
+		It("sets up in-place branch then runs handleBranchCompletion without Push", func() {
+			p := newProc(config.WorkflowBranch, false)
+
+			state := &workflowState{}
+			returnedState, err := p.setupInPlaceBranchState(ctx, "feature/branch-nopr", state)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(returnedState.inPlaceBranch).To(Equal("feature/branch-nopr"))
+
+			err = p.handleBranchCompletion(
+				ctx,
+				ctx,
+				promptPath,
+				"test title",
+				"feature/branch-nopr",
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubBr.pushCount).To(Equal(0))
+			Expect(stubPR.createCount).To(Equal(0))
+		})
+	})
+
+	// 11e: workflow: clone, pr: false
+	Describe("11e: workflow clone, pr false", func() {
+		It("calls cloner.Remove, brancher.Push, but NOT prCreator.Create", func() {
+			p := newProc(config.WorkflowClone, false)
+			pf := newPromptFile("feature/clone-no-pr")
+
+			cloneDir := GinkgoT().TempDir()
+
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+			// Simulate being inside the clone
+			Expect(os.Chdir(cloneDir)).To(Succeed())
+
+			state := &workflowState{
+				branchName:  "feature/clone-no-pr",
+				clonePath:   cloneDir,
+				originalDir: originalDir,
+			}
+
+			err = p.handleCloneWorkflow(
+				ctx,
+				ctx,
+				pf,
+				"test title",
+				promptPath,
+				completedPath,
+				state,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubCl.removeCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(0))
+			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+		})
+	})
+
+	// 11f: workflow: clone, pr: true
+	Describe("11f: workflow clone, pr true", func() {
+		It("calls cloner.Remove, brancher.Push, and prCreator.Create", func() {
+			p := newProc(config.WorkflowClone, true)
+			pf := newPromptFile("feature/clone-with-pr")
+
+			cloneDir := GinkgoT().TempDir()
+
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+			Expect(os.Chdir(cloneDir)).To(Succeed())
+
+			state := &workflowState{
+				branchName:  "feature/clone-with-pr",
+				clonePath:   cloneDir,
+				originalDir: originalDir,
+			}
+
+			err = p.handleCloneWorkflow(
+				ctx,
+				ctx,
+				pf,
+				"test title",
+				promptPath,
+				completedPath,
+				state,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubCl.removeCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(1))
+		})
+	})
+
+	// 11g: handleAfterIsolatedCommit — pr false skips PR creation
+	Describe("11g: handleAfterIsolatedCommit — pr false skips PR creation", func() {
+		It("pushes branch and moves to completed without creating a PR", func() {
+			p := newProc(config.WorkflowClone, false)
+			pf := newPromptFile("")
+
+			err := p.handleAfterIsolatedCommit(
+				ctx, ctx, pf,
+				"feature/isolated-no-pr",
+				"test title",
+				promptPath, completedPath,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(0))
+			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+			Expect(stubRel.commitFileCount).To(Equal(1))
+		})
 	})
 })

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.114.0
+
+- feat: Wire four `workflow` enum values (`direct`, `branch`, `worktree`, `clone`) into the processor, replacing `worktree bool`; add `handleWorktreeWorkflow`, `handleAfterIsolatedCommit`, `handleBranchPRCompletion`; update `CreateProcessor` factory signature; add workflow routing unit tests
+
 ## v0.113.0
 
 - feat: Add `Worktreer` interface to `pkg/git/` with `Add`/`Remove` methods for `git worktree` operations; add `worktreeMode bool` parameter to `NewDockerExecutor` that appends `--tmpfs /workspace/.git` to hide the `.git` directory from the YOLO container

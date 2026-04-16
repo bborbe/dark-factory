@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.111.1
+
+- fix: Wire 18 missing Config fields into partialConfig and mergePartial so YAML keys like `maxPromptDuration`, `dirtyFileThreshold`, and `autoRetryLimit` are no longer silently dropped by the loader
+- test: Add exhaustive loader test that round-trips every Config field through YAML to prevent regression of silent field-drop bugs
+
 ## v0.111.0
 
 - feat: Log effective configuration at daemon and one-shot run startup — emits a single `msg="effective config"` slog line with `maxContainers`, `maxContainersSource` (project/global/default), container image, model, workflow flags, commands, debounce, and prompt lifecycle directories

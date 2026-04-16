@@ -54,22 +54,40 @@ type partialConfig struct {
 	Workflow               *Workflow             `yaml:"workflow"`
 	PR                     *bool                 `yaml:"pr"`
 	Worktree               *bool                 `yaml:"worktree"`
+	ProjectName            *string               `yaml:"projectName"`
 	DefaultBranch          *string               `yaml:"defaultBranch"`
 	Prompts                *partialPromptsConfig `yaml:"prompts"`
 	Specs                  *partialSpecsConfig   `yaml:"specs"`
 	ContainerImage         *string               `yaml:"containerImage"`
 	NetrcFile              *string               `yaml:"netrcFile"`
 	GitconfigFile          *string               `yaml:"gitconfigFile"`
+	Model                  *string               `yaml:"model"`
+	ValidationCommand      *string               `yaml:"validationCommand"`
+	ValidationPrompt       *string               `yaml:"validationPrompt"`
+	TestCommand            *string               `yaml:"testCommand"`
 	DebounceMs             *int                  `yaml:"debounceMs"`
 	ServerPort             *int                  `yaml:"serverPort"`
 	AutoMerge              *bool                 `yaml:"autoMerge"`
 	AutoRelease            *bool                 `yaml:"autoRelease"`
 	VerificationGate       *bool                 `yaml:"verificationGate"`
+	AutoReview             *bool                 `yaml:"autoReview"`
+	MaxReviewRetries       *int                  `yaml:"maxReviewRetries"`
+	AllowedReviewers       []string              `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators       *bool                 `yaml:"useCollaborators"`
+	PollIntervalSec        *int                  `yaml:"pollIntervalSec"`
 	GitHub                 *GitHubConfig         `yaml:"github"`
+	Provider               *Provider             `yaml:"provider"`
+	Bitbucket              *BitbucketConfig      `yaml:"bitbucket"`
+	Notifications          *NotificationsConfig  `yaml:"notifications"`
 	Env                    map[string]string     `yaml:"env,omitempty"`
 	ExtraMounts            []ExtraMount          `yaml:"extraMounts,omitempty"`
+	ClaudeDir              *string               `yaml:"claudeDir"`
+	GenerateCommand        *string               `yaml:"generateCommand"`
 	AdditionalInstructions *string               `yaml:"additionalInstructions,omitempty"`
 	MaxContainers          *int                  `yaml:"maxContainers,omitempty"`
+	DirtyFileThreshold     *int                  `yaml:"dirtyFileThreshold,omitempty"`
+	MaxPromptDuration      *string               `yaml:"maxPromptDuration"`
+	AutoRetryLimit         *int                  `yaml:"autoRetryLimit"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -140,6 +158,15 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 
 // mergePartial applies non-nil fields from partial onto cfg.
 func mergePartial(cfg *Config, partial *partialConfig) {
+	mergePartialWorkflow(cfg, partial)
+	mergePartialContainer(cfg, partial)
+	mergePartialReview(cfg, partial)
+	mergePartialProviders(cfg, partial)
+	mergePartialLimits(cfg, partial)
+}
+
+// mergePartialWorkflow merges workflow/PR/branch fields.
+func mergePartialWorkflow(cfg *Config, partial *partialConfig) {
 	if partial.Workflow != nil {
 		cfg.Workflow = *partial.Workflow
 	}
@@ -149,11 +176,18 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	if partial.Worktree != nil {
 		cfg.Worktree = *partial.Worktree
 	}
+	if partial.ProjectName != nil {
+		cfg.ProjectName = *partial.ProjectName
+	}
 	if partial.DefaultBranch != nil {
 		cfg.DefaultBranch = *partial.DefaultBranch
 	}
 	mergePartialPrompts(&cfg.Prompts, partial.Prompts)
 	mergePartialSpecs(&cfg.Specs, partial.Specs)
+}
+
+// mergePartialContainer merges container image, files, commands, and runtime settings.
+func mergePartialContainer(cfg *Config, partial *partialConfig) {
 	if partial.ContainerImage != nil {
 		cfg.ContainerImage = *partial.ContainerImage
 	}
@@ -162,6 +196,18 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	}
 	if partial.GitconfigFile != nil {
 		cfg.GitconfigFile = *partial.GitconfigFile
+	}
+	if partial.Model != nil {
+		cfg.Model = *partial.Model
+	}
+	if partial.ValidationCommand != nil {
+		cfg.ValidationCommand = *partial.ValidationCommand
+	}
+	if partial.ValidationPrompt != nil {
+		cfg.ValidationPrompt = *partial.ValidationPrompt
+	}
+	if partial.TestCommand != nil {
+		cfg.TestCommand = *partial.TestCommand
 	}
 	if partial.DebounceMs != nil {
 		cfg.DebounceMs = *partial.DebounceMs
@@ -178,8 +224,14 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	if partial.VerificationGate != nil {
 		cfg.VerificationGate = *partial.VerificationGate
 	}
-	if partial.GitHub != nil {
-		cfg.GitHub = *partial.GitHub
+	if partial.ClaudeDir != nil {
+		cfg.ClaudeDir = *partial.ClaudeDir
+	}
+	if partial.GenerateCommand != nil {
+		cfg.GenerateCommand = *partial.GenerateCommand
+	}
+	if partial.AdditionalInstructions != nil {
+		cfg.AdditionalInstructions = *partial.AdditionalInstructions
 	}
 	if partial.Env != nil {
 		cfg.Env = partial.Env
@@ -187,11 +239,56 @@ func mergePartial(cfg *Config, partial *partialConfig) {
 	if partial.ExtraMounts != nil {
 		cfg.ExtraMounts = partial.ExtraMounts
 	}
-	if partial.AdditionalInstructions != nil {
-		cfg.AdditionalInstructions = *partial.AdditionalInstructions
+}
+
+// mergePartialReview merges auto-review and reviewer settings.
+func mergePartialReview(cfg *Config, partial *partialConfig) {
+	if partial.AutoReview != nil {
+		cfg.AutoReview = *partial.AutoReview
 	}
+	if partial.MaxReviewRetries != nil {
+		cfg.MaxReviewRetries = *partial.MaxReviewRetries
+	}
+	if partial.AllowedReviewers != nil {
+		cfg.AllowedReviewers = partial.AllowedReviewers
+	}
+	if partial.UseCollaborators != nil {
+		cfg.UseCollaborators = *partial.UseCollaborators
+	}
+	if partial.PollIntervalSec != nil {
+		cfg.PollIntervalSec = *partial.PollIntervalSec
+	}
+}
+
+// mergePartialProviders merges provider and notification settings.
+func mergePartialProviders(cfg *Config, partial *partialConfig) {
+	if partial.GitHub != nil {
+		cfg.GitHub = *partial.GitHub
+	}
+	if partial.Provider != nil {
+		cfg.Provider = *partial.Provider
+	}
+	if partial.Bitbucket != nil {
+		cfg.Bitbucket = *partial.Bitbucket
+	}
+	if partial.Notifications != nil {
+		cfg.Notifications = *partial.Notifications
+	}
+}
+
+// mergePartialLimits merges resource limit and duration settings.
+func mergePartialLimits(cfg *Config, partial *partialConfig) {
 	if partial.MaxContainers != nil {
 		cfg.MaxContainers = *partial.MaxContainers
+	}
+	if partial.DirtyFileThreshold != nil {
+		cfg.DirtyFileThreshold = *partial.DirtyFileThreshold
+	}
+	if partial.MaxPromptDuration != nil {
+		cfg.MaxPromptDuration = *partial.MaxPromptDuration
+	}
+	if partial.AutoRetryLimit != nil {
+		cfg.AutoRetryLimit = *partial.AutoRetryLimit
 	}
 }
 

@@ -1547,6 +1547,194 @@ worktree: false
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cfg.AdditionalInstructions).To(BeEmpty())
 			})
+
+			// If you add a new field to config.Config, you MUST:
+			//   1. Add the field to partialConfig in loader.go
+			//   2. Add the merge block to mergePartial
+			//   3. Add the YAML value to fullYAML() below
+			//   4. Add the Expect() assertion to assertFullConfig() below
+			// The loader otherwise silently ignores the YAML key.
+			Describe("loads every Config field from YAML", func() {
+				var netrcFile string
+				var gitconfigFile string
+
+				BeforeEach(func() {
+					// Create temp files needed for netrcFile / gitconfigFile validation.
+					f, err := os.CreateTemp(tmpDir, "netrc-*")
+					Expect(err).NotTo(HaveOccurred())
+					_ = f.Close()
+					netrcFile = f.Name()
+
+					g, err := os.CreateTemp(tmpDir, "gitconfig-*")
+					Expect(err).NotTo(HaveOccurred())
+					_ = g.Close()
+					gitconfigFile = g.Name()
+				})
+
+				fullYAML := func(netrc, gitconfig string) string {
+					return `pr: true
+worktree: true
+projectName: test-projectname
+defaultBranch: test-branch
+prompts:
+  inboxDir: test-prompts
+  inProgressDir: test-prompts/in-progress
+  completedDir: test-prompts/completed
+  logDir: test-prompts/log
+specs:
+  inboxDir: test-specs
+  inProgressDir: test-specs/in-progress
+  completedDir: test-specs/completed
+  logDir: test-specs/log
+containerImage: test-image:latest
+netrcFile: ` + netrc + `
+gitconfigFile: ` + gitconfig + `
+model: test-model
+validationCommand: test-validate
+validationPrompt: test-validation-prompt
+testCommand: test-command
+debounceMs: 750
+serverPort: 9000
+autoMerge: true
+autoRelease: true
+verificationGate: true
+autoReview: true
+maxReviewRetries: 5
+allowedReviewers:
+  - test-reviewer
+useCollaborators: true
+pollIntervalSec: 30
+github:
+  token: ${TEST_GITHUB_TOKEN}
+provider: bitbucket-server
+bitbucket:
+  baseURL: https://bitbucket.example.com
+  tokenEnv: TEST_BITBUCKET_TOKEN
+notifications:
+  telegram:
+    botTokenEnv: TEST_BOT_TOKEN_ENV
+    chatIDEnv: TEST_CHAT_ID_ENV
+  discord:
+    webhookEnv: TEST_WEBHOOK_ENV
+env:
+  GOPRIVATE: test-value
+extraMounts:
+  - src: /test-src
+    dst: /test-dst
+claudeDir: ~/.test-claude-dir
+generateCommand: test-generate-command
+additionalInstructions: test-instructions
+maxContainers: 2
+dirtyFileThreshold: 100
+maxPromptDuration: 45m
+autoRetryLimit: 2
+`
+				}
+
+				assertFullConfig := func(cfg config.Config, netrc, gitconfig string) {
+					// NOTE: Workflow is not tested in the full YAML because setting both
+					// workflow: and pr:/worktree: is a validation error. The deprecation
+					// path (workflow: pr → PR=true, Worktree=true) is tested separately.
+					Expect(cfg.PR).To(BeTrue())
+					Expect(cfg.Worktree).To(BeTrue())
+					Expect(cfg.ProjectName).To(Equal("test-projectname"))
+					Expect(cfg.DefaultBranch).To(Equal("test-branch"))
+					Expect(cfg.Prompts.InboxDir).To(Equal("test-prompts"))
+					Expect(cfg.Prompts.InProgressDir).To(Equal("test-prompts/in-progress"))
+					Expect(cfg.Prompts.CompletedDir).To(Equal("test-prompts/completed"))
+					Expect(cfg.Prompts.LogDir).To(Equal("test-prompts/log"))
+					Expect(cfg.Specs.InboxDir).To(Equal("test-specs"))
+					Expect(cfg.Specs.InProgressDir).To(Equal("test-specs/in-progress"))
+					Expect(cfg.Specs.CompletedDir).To(Equal("test-specs/completed"))
+					Expect(cfg.Specs.LogDir).To(Equal("test-specs/log"))
+					Expect(cfg.ContainerImage).To(Equal("test-image:latest"))
+					Expect(cfg.NetrcFile).To(Equal(netrc))
+					Expect(cfg.GitconfigFile).To(Equal(gitconfig))
+					Expect(cfg.Model).To(Equal("test-model"))
+					Expect(cfg.ValidationCommand).To(Equal("test-validate"))
+					Expect(cfg.ValidationPrompt).To(Equal("test-validation-prompt"))
+					Expect(cfg.TestCommand).To(Equal("test-command"))
+					Expect(cfg.DebounceMs).To(Equal(750))
+					Expect(cfg.ServerPort).To(Equal(9000))
+					Expect(cfg.AutoMerge).To(BeTrue())
+					Expect(cfg.AutoRelease).To(BeTrue())
+					Expect(cfg.VerificationGate).To(BeTrue())
+					Expect(cfg.AutoReview).To(BeTrue())
+					Expect(cfg.MaxReviewRetries).To(Equal(5))
+					Expect(cfg.AllowedReviewers).To(Equal([]string{"test-reviewer"}))
+					Expect(cfg.UseCollaborators).To(BeTrue())
+					Expect(cfg.PollIntervalSec).To(Equal(30))
+					Expect(cfg.GitHub.Token).To(Equal("${TEST_GITHUB_TOKEN}"))
+					Expect(cfg.Provider).To(Equal(config.ProviderBitbucketServer))
+					Expect(cfg.Bitbucket.BaseURL).To(Equal("https://bitbucket.example.com"))
+					Expect(cfg.Bitbucket.TokenEnv).To(Equal("TEST_BITBUCKET_TOKEN"))
+					Expect(cfg.Notifications.Telegram.BotTokenEnv).To(Equal("TEST_BOT_TOKEN_ENV"))
+					Expect(cfg.Notifications.Telegram.ChatIDEnv).To(Equal("TEST_CHAT_ID_ENV"))
+					Expect(cfg.Notifications.Discord.WebhookEnv).To(Equal("TEST_WEBHOOK_ENV"))
+					Expect(cfg.Env).To(Equal(map[string]string{"GOPRIVATE": "test-value"}))
+					Expect(cfg.ExtraMounts).To(HaveLen(1))
+					Expect(cfg.ExtraMounts[0].Src).To(Equal("/test-src"))
+					Expect(cfg.ExtraMounts[0].Dst).To(Equal("/test-dst"))
+					Expect(cfg.ClaudeDir).To(Equal("~/.test-claude-dir"))
+					Expect(cfg.GenerateCommand).To(Equal("test-generate-command"))
+					Expect(cfg.AdditionalInstructions).To(Equal("test-instructions"))
+					Expect(cfg.MaxContainers).To(Equal(2))
+					Expect(cfg.DirtyFileThreshold).To(Equal(100))
+					Expect(cfg.MaxPromptDuration).To(Equal("45m"))
+					Expect(cfg.AutoRetryLimit).To(Equal(2))
+				}
+
+				It("round-trips every Config field through YAML", func() {
+					err := os.WriteFile(
+						filepath.Join(tmpDir, ".dark-factory.yaml"),
+						[]byte(fullYAML(netrcFile, gitconfigFile)),
+						0600,
+					)
+					Expect(err).NotTo(HaveOccurred())
+
+					cfg, err := loader.Load(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					assertFullConfig(cfg, netrcFile, gitconfigFile)
+				})
+
+				It("returns exactly Defaults() when YAML file is empty", func() {
+					err := os.WriteFile(
+						filepath.Join(tmpDir, ".dark-factory.yaml"),
+						[]byte(""),
+						0600,
+					)
+					Expect(err).NotTo(HaveOccurred())
+
+					cfg, err := loader.Load(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(cfg).To(Equal(config.Defaults()))
+				})
+
+				It(
+					"regression: maxPromptDuration, dirtyFileThreshold, autoRetryLimit round-trip",
+					func() {
+						// These three fields were previously silently dropped by the loader,
+						// causing prompts to run past their configured timeout (billomat 009-015).
+						configContent := `maxPromptDuration: 60m
+dirtyFileThreshold: 500
+autoRetryLimit: 3
+`
+						err := os.WriteFile(
+							filepath.Join(tmpDir, ".dark-factory.yaml"),
+							[]byte(configContent),
+							0600,
+						)
+						Expect(err).NotTo(HaveOccurred())
+
+						cfg, err := loader.Load(ctx)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(cfg.MaxPromptDuration).To(Equal("60m"))
+						Expect(cfg.DirtyFileThreshold).To(Equal(500))
+						Expect(cfg.AutoRetryLimit).To(Equal(3))
+						Expect(cfg.ParsedMaxPromptDuration()).To(Equal(60 * time.Minute))
+					},
+				)
+			})
 		})
 	})
 

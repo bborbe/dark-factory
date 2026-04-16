@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [051-runner-startup-consolidation]
+summary: Extracted six shared startup steps from runner.go and oneshot.go into a single startupSequence function in pkg/runner/lifecycle.go, with a StartupDeps struct, startupDeps() helper methods on both runner types, export_test.go exports, and lifecycle_test.go unit tests covering all six steps.
+container: dark-factory-309-spec-051-startup-consolidation
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:45:00Z"
 queued: "2026-04-16T21:01:48Z"
+started: "2026-04-16T23:09:27Z"
+completed: "2026-04-16T23:17:15Z"
 ---
 
 <summary>

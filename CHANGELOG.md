@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.119.3
+
+- refactor: extract git workflow logic from processor into four WorkflowExecutor implementations (direct, branch, clone, worktree) with shared WorkflowDeps struct and factory wiring via CreateWorkflowExecutor
+
 ## v0.119.2
 
 - refactor: define narrow per-consumer PromptManager interfaces in processor, runner, server, status, review, watcher, and cmd packages with counterfeiter fakes

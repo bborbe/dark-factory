@@ -21,6 +21,8 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/containerlock"
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
@@ -28,6 +30,79 @@ import (
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
+
+// newTestProcessor creates a Processor using the legacy parameter style, building
+// a real WorkflowExecutor from the supplied git mocks. This keeps existing tests
+// working after the WorkflowExecutor refactoring without rewriting every call site.
+func newTestProcessor(
+	queueDir, completedDir, logDir, projectName string,
+	exec *mocks.Executor,
+	mgr *mocks.Manager,
+	rel *mocks.Releaser,
+	vg *mocks.VersionGetter,
+	ready <-chan struct{},
+	pr bool,
+	workflow config.Workflow,
+	brancher *mocks.Brancher,
+	prCreator *mocks.PRCreator,
+	cloner *mocks.Cloner,
+	worktreer *mocks.Worktreer,
+	prMerger *mocks.PRMerger,
+	autoMerge, autoRelease, autoReview bool,
+	autoCompleter spec.AutoCompleter,
+	specLister spec.Lister,
+	validationCommand, validationPrompt, testCommand string,
+	verificationGate bool,
+	n notifier.Notifier,
+	containerCounter executor.ContainerCounter,
+	maxContainers int,
+	additionalInstructions string,
+	containerLock containerlock.ContainerLock,
+	containerChecker executor.ContainerChecker,
+	dirtyFileThreshold int,
+	dirtyFileChecker processor.DirtyFileChecker,
+	gitLockChecker processor.GitLockChecker,
+	autoRetryLimit int,
+	maxPromptDuration time.Duration,
+) processor.Processor {
+	deps := processor.WorkflowDeps{
+		ProjectName:   projectName,
+		PromptManager: mgr,
+		AutoCompleter: autoCompleter,
+		Releaser:      rel,
+		Brancher:      brancher,
+		PRCreator:     prCreator,
+		Cloner:        cloner,
+		Worktreer:     worktreer,
+		PRMerger:      prMerger,
+		PR:            pr,
+		AutoMerge:     autoMerge,
+		AutoReview:    autoReview,
+		AutoRelease:   autoRelease,
+	}
+	var we processor.WorkflowExecutor
+	switch workflow {
+	case config.WorkflowClone:
+		we = processor.NewCloneWorkflowExecutor(deps)
+	case config.WorkflowWorktree:
+		we = processor.NewWorktreeWorkflowExecutor(deps)
+	case config.WorkflowBranch:
+		we = processor.NewBranchWorkflowExecutor(deps)
+	default:
+		we = processor.NewDirectWorkflowExecutor(deps)
+	}
+	return processor.NewProcessor(
+		queueDir, completedDir, logDir, projectName,
+		exec, mgr, rel, vg, ready,
+		we, autoCompleter, specLister,
+		validationCommand, validationPrompt, testCommand,
+		verificationGate,
+		n, containerCounter, maxContainers, additionalInstructions,
+		containerLock, containerChecker,
+		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
+		autoRetryLimit, maxPromptDuration,
+	)
+}
 
 var _ = Describe("Processor", func() {
 	var (
@@ -103,7 +178,7 @@ var _ = Describe("Processor", func() {
 	It("should start and stop cleanly", func() {
 		manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -183,7 +258,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -267,7 +342,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -349,7 +424,7 @@ var _ = Describe("Processor", func() {
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -421,7 +496,7 @@ var _ = Describe("Processor", func() {
 		manager.AllPreviousCompletedReturns(true)
 		executor.ExecuteReturns(stderrors.New("execution failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -491,7 +566,7 @@ var _ = Describe("Processor", func() {
 
 		fakeNotifier := &mocks.Notifier{}
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -565,7 +640,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -641,7 +716,7 @@ var _ = Describe("Processor", func() {
 		releaser.GetNextVersionReturns("v0.1.1", nil)
 		releaser.CommitAndReleaseReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -749,7 +824,7 @@ var _ = Describe("Processor", func() {
 		releaser.GetNextVersionReturns("v0.2.0", nil)
 		releaser.CommitAndReleaseReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -831,7 +906,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -903,7 +978,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -979,7 +1054,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1044,7 +1119,7 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		manager.AllPreviousCompletedReturns(true)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1107,7 +1182,7 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		manager.AllPreviousCompletedReturns(false) // Previous prompts not completed
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1180,7 +1255,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1266,7 +1341,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1349,7 +1424,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1426,7 +1501,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1503,7 +1578,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1581,7 +1656,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1658,7 +1733,7 @@ var _ = Describe("Processor", func() {
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(nil)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -1739,7 +1814,7 @@ var _ = Describe("Processor", func() {
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -1831,7 +1906,7 @@ var _ = Describe("Processor", func() {
 			brancher.PushReturns(nil)
 			prCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -1958,7 +2033,7 @@ var _ = Describe("Processor", func() {
 				return nil
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -2063,7 +2138,7 @@ var _ = Describe("Processor", func() {
 			brancher.PullReturns(nil)
 			releaser.HasChangelogReturns(false)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -2164,7 +2239,7 @@ var _ = Describe("Processor", func() {
 			}
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -2258,7 +2333,7 @@ var _ = Describe("Processor", func() {
 			brancher.PushReturns(nil)
 			prCreator.CreateReturns("https://github.com/user/repo/pull/123", nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -2359,7 +2434,7 @@ var _ = Describe("Processor", func() {
 			prCreator.CreateReturns("https://github.com/test/repo/pull/3", nil)
 			prMerger.WaitAndMergeReturns(stderrors.New("PR has conflicts"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -2435,7 +2510,7 @@ var _ = Describe("Processor", func() {
 			manager.AllPreviousCompletedReturns(true)
 			cloner.CloneReturns(stderrors.New("clone failed"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -2546,7 +2621,7 @@ DARK-FACTORY-REPORT -->
 				return nil
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				completedDir,
 				logDir,
@@ -2635,7 +2710,7 @@ DARK-FACTORY-REPORT -->
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -2721,7 +2796,7 @@ DARK-FACTORY-REPORT -->
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -2808,7 +2883,7 @@ DARK-FACTORY-REPORT -->
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -2895,7 +2970,7 @@ DARK-FACTORY-REPORT -->
 
 			fakeNotifier := &mocks.Notifier{}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -2980,7 +3055,7 @@ more output
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -3066,7 +3141,7 @@ DARK-FACTORY-REPORT -->
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -3156,7 +3231,7 @@ DARK-FACTORY-REPORT -->
 				return os.WriteFile(logFile, []byte(logContent), 0600)
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -3230,7 +3305,7 @@ DARK-FACTORY-REPORT -->
 			brancher.FetchReturns(nil)
 			brancher.MergeOriginDefaultReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3296,7 +3371,7 @@ DARK-FACTORY-REPORT -->
 			manager.AllPreviousCompletedReturns(true)
 			brancher.FetchReturns(stderrors.New("fetch failed"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3369,7 +3444,7 @@ DARK-FACTORY-REPORT -->
 			brancher.FetchReturns(nil)
 			brancher.MergeOriginDefaultReturns(stderrors.New("merge conflict"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3467,7 +3542,7 @@ DARK-FACTORY-REPORT -->
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(stderrors.New("commit failed"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3558,7 +3633,7 @@ DARK-FACTORY-REPORT -->
 			releaser.CommitOnlyReturns(nil)
 			brancher.PushReturns(stderrors.New("push failed"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3632,7 +3707,7 @@ DARK-FACTORY-REPORT -->
 			manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3720,7 +3795,7 @@ DARK-FACTORY-REPORT -->
 			// Fail fast after shouldSkipPrompt passes to keep test simple
 			brancher.FetchReturns(stderrors.New("fetch failed after retry"))
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -3788,7 +3863,7 @@ DARK-FACTORY-REPORT -->
 		releaser.GetNextVersionReturns("v0.1.1", nil)
 		releaser.CommitAndReleaseReturns(stderrors.New("commit and release failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -3865,7 +3940,7 @@ DARK-FACTORY-REPORT -->
 		manager.AllPreviousCompletedReturns(true)
 		manager.MoveToCompletedReturns(stderrors.New("move failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -3929,7 +4004,7 @@ DARK-FACTORY-REPORT -->
 		// Process must continue running until the context is cancelled.
 		manager.ListQueuedReturns(nil, stderrors.New("list queued failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -4001,7 +4076,7 @@ DARK-FACTORY-REPORT -->
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(stderrors.New("commit completed file failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -4096,7 +4171,7 @@ DARK-FACTORY-REPORT -->
 {"status":"success","summary":"test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			logDir,
@@ -4194,7 +4269,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			logDir,
@@ -4265,7 +4340,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		releaser.HasChangelogReturns(false)
 		releaser.CommitOnlyReturns(stderrors.New("commit only failed"))
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			filepath.Join(promptsDir, "log"),
@@ -4361,7 +4436,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-		p := processor.NewProcessor(
+		p := newTestProcessor(
 			promptsDir,
 			filepath.Join(promptsDir, "completed"),
 			logDir,
@@ -4463,7 +4538,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"Auto-merge test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -4571,7 +4646,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"Auto-merge test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					logDir,
@@ -4685,7 +4760,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"Auto-release test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -4783,7 +4858,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"No changelog test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					logDir,
@@ -4885,7 +4960,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"No autorelease test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -4983,7 +5058,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"Auto-review test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					logDir,
@@ -5095,7 +5170,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 {"status":"success","summary":"No auto-review test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				logDir,
@@ -5191,7 +5266,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				executor.ExecuteReturns(nil)
 				releaser.HasChangelogReturns(false)
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
@@ -5273,7 +5348,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				manager.AllPreviousCompletedReturns(true)
 				executor.ExecuteReturns(stderrors.New("execution failed"))
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
@@ -5344,7 +5419,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 						0600,
 					)).To(Succeed())
 
-					p := processor.NewProcessor(
+					p := newTestProcessor(
 						promptsDir,
 						filepath.Join(promptsDir, "completed"),
 						filepath.Join(promptsDir, "log"),
@@ -5406,7 +5481,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			It("calls ListQueued when no pending_verification prompt exists", func() {
 				manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
-				p := processor.NewProcessor(
+				p := newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
@@ -5477,7 +5552,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 			autoCompleter.CheckAndCompleteReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -5554,7 +5629,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 
 		newProc := func() processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -5680,7 +5755,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		}
 
 		newProcWithWorkflow := func(pr bool, workflow config.Workflow) processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6012,7 +6087,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		var newProcDirect func() processor.Processor
 		BeforeEach(func() {
 			newProcDirect = func() processor.Processor {
-				return processor.NewProcessor(
+				return newTestProcessor(
 					promptsDir,
 					filepath.Join(promptsDir, "completed"),
 					filepath.Join(promptsDir, "log"),
@@ -6151,7 +6226,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			prCreator.CreateReturns("https://github.com/user/repo/pull/789", nil)
 
 			// pr=true, worktree=true
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6233,7 +6308,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		}
 
 		newProcWorktree := func(autoMerge bool) processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6478,7 +6553,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 	Describe("stop-on-failure behavior", func() {
 		newProc := func() processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6630,7 +6705,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6712,7 +6787,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6768,7 +6843,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 	Describe("auto-retry behavior", func() {
 		newProcWithNotifierAndRetryLimit := func(n notifier.Notifier, autoRetryLimit int) processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -6938,7 +7013,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 	Describe("processExistingQueued post-execution failure detection", func() {
 		newProc := func() processor.Processor {
-			return processor.NewProcessor(
+			return newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -7001,20 +7076,28 @@ DARK-FACTORY-REPORT -->`), 0600)
 				manager.AllPreviousCompletedReturns(true)
 				brancher.FetchReturns(stderrors.New("fetch failed"))
 
+				// processPrompt now calls manager.Load before Setup (sync). Configure it to
+				// return a minimal PromptFile so Content() does not panic.
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return createMockPromptFile(path, "# Post-exec stop test\n\nContent"), nil
+				}
+
 				p := newProc()
 				go func() {
 					_ = p.Process(ctx)
 				}()
 
-				// Wait for processing to be attempted
+				// Wait for processing to be attempted (sync is called inside Setup)
 				Eventually(func() int {
 					return brancher.FetchCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				// handlePromptFailure must NOT be called — daemon stopped on post-execution failure
+				// handlePromptFailure must NOT be called — daemon stopped on post-execution failure.
+				// processPrompt calls Load once (count=1) before Setup; handlePromptFailure would
+				// call Load a second time (count=2). Consistently ensures Load is called exactly once.
 				Consistently(func() int {
 					return manager.LoadCallCount()
-				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(1))
 
 				cancel()
 			},
@@ -7088,7 +7171,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			}
 			lock.ReleaseReturns(nil)
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),
@@ -7162,7 +7245,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				return fetchCtx.Err()
 			}
 
-			p := processor.NewProcessor(
+			p := newTestProcessor(
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),
 				filepath.Join(promptsDir, "log"),

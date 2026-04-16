@@ -600,6 +600,48 @@ func createAutoCompleter(
 	)
 }
 
+// CreateWorkflowExecutor creates the appropriate WorkflowExecutor based on the config.
+func CreateWorkflowExecutor(
+	workflow config.Workflow,
+	pr bool,
+	brancher git.Brancher,
+	prCreator git.PRCreator,
+	prMerger git.PRMerger,
+	autoMerge bool,
+	autoRelease bool,
+	autoReview bool,
+	projectName string,
+	promptManager prompt.Manager,
+	releaser git.Releaser,
+	autoCompleter spec.AutoCompleter,
+) processor.WorkflowExecutor {
+	deps := processor.WorkflowDeps{
+		ProjectName:   projectName,
+		PromptManager: promptManager,
+		AutoCompleter: autoCompleter,
+		Releaser:      releaser,
+		Brancher:      brancher,
+		PRCreator:     prCreator,
+		Cloner:        git.NewCloner(),
+		Worktreer:     git.NewWorktreer(),
+		PRMerger:      prMerger,
+		PR:            pr,
+		AutoMerge:     autoMerge,
+		AutoReview:    autoReview,
+		AutoRelease:   autoRelease,
+	}
+	switch workflow {
+	case config.WorkflowClone:
+		return processor.NewCloneWorkflowExecutor(deps)
+	case config.WorkflowWorktree:
+		return processor.NewWorktreeWorkflowExecutor(deps)
+	case config.WorkflowBranch:
+		return processor.NewBranchWorkflowExecutor(deps)
+	default:
+		return processor.NewDirectWorkflowExecutor(deps)
+	}
+}
+
 // CreateProcessor creates a Processor that executes queued prompts.
 func CreateProcessor(
 	inProgressDir string,
@@ -641,6 +683,16 @@ func CreateProcessor(
 	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
 	hideGit bool,
 ) processor.Processor {
+	autoCompleter := createAutoCompleter(
+		inProgressDir, completedDir,
+		specsInboxDir, specsInProgressDir, specsCompletedDir,
+		currentDateTimeGetter, projectName, n,
+	)
+	workflowExecutor := CreateWorkflowExecutor(
+		workflow, pr, brancher, prCreator, prMerger,
+		autoMerge, autoRelease, autoReview,
+		projectName, promptManager, releaser, autoCompleter,
+	)
 	return processor.NewProcessor(
 		inProgressDir,
 		completedDir,
@@ -656,21 +708,8 @@ func CreateProcessor(
 		releaser,
 		versionGetter,
 		ready,
-		pr,
-		workflow,
-		brancher,
-		prCreator,
-		git.NewCloner(),
-		git.NewWorktreer(),
-		prMerger,
-		autoMerge,
-		autoRelease,
-		autoReview,
-		createAutoCompleter(
-			inProgressDir, completedDir,
-			specsInboxDir, specsInProgressDir, specsCompletedDir,
-			currentDateTimeGetter, projectName, n,
-		),
+		workflowExecutor,
+		autoCompleter,
 		spec.NewLister(currentDateTimeGetter, specsInboxDir, specsInProgressDir, specsCompletedDir),
 		validationCommand,
 		validationPrompt,

@@ -20,7 +20,6 @@ import (
 	libtime "github.com/bborbe/time"
 	"github.com/fsnotify/fsnotify"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -57,16 +56,7 @@ func NewProcessor(
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	ready <-chan struct{},
-	pr bool,
-	workflow config.Workflow,
-	brancher git.Brancher,
-	prCreator git.PRCreator,
-	cloner git.Cloner,
-	worktreer git.Worktreer,
-	prMerger git.PRMerger,
-	autoMerge bool,
-	autoRelease bool,
-	autoReview bool,
+	workflowExecutor WorkflowExecutor,
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
 	validationCommand string,
@@ -95,16 +85,7 @@ func NewProcessor(
 		releaser:               releaser,
 		versionGetter:          versionGetter,
 		ready:                  ready,
-		pr:                     pr,
-		workflow:               workflow,
-		brancher:               brancher,
-		prCreator:              prCreator,
-		cloner:                 cloner,
-		worktreer:              worktreer,
-		autoMerge:              autoMerge,
-		autoRelease:            autoRelease,
-		autoReview:             autoReview,
-		prMerger:               prMerger,
+		workflowExecutor:       workflowExecutor,
 		autoCompleter:          autoCompleter,
 		specLister:             specLister,
 		validationCommand:      validationCommand,
@@ -138,16 +119,7 @@ type processor struct {
 	releaser               git.Releaser
 	versionGetter          version.Getter
 	ready                  <-chan struct{}
-	pr                     bool
-	workflow               config.Workflow
-	brancher               git.Brancher
-	prCreator              git.PRCreator
-	cloner                 git.Cloner
-	worktreer              git.Worktreer
-	autoMerge              bool
-	autoRelease            bool
-	autoReview             bool
-	prMerger               git.PRMerger
+	workflowExecutor       WorkflowExecutor
 	autoCompleter          spec.AutoCompleter
 	specLister             spec.Lister
 	validationCommand      string
@@ -268,51 +240,24 @@ func (p *processor) ResumeExecuting(ctx context.Context) error {
 
 // resumePrompt resumes a single prompt that is in "executing" state.
 func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
-	pf, err := p.promptManager.Load(ctx, promptPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, "load prompt for resume")
-	}
-	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
-		return nil // not executing — skip
+	pf, containerName, baseName, logFile, title, err := p.prepareResume(ctx, promptPath)
+	if err != nil || pf == nil {
+		return err
 	}
 
-	containerName := pf.Frontmatter.Container
-	if containerName == "" {
-		// No container name in frontmatter — cannot resume; reset to approved
-		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
-			"file", filepath.Base(promptPath))
+	// Reconstruct workflow state via executor
+	canResume, err := p.workflowExecutor.ReconstructState(ctx, baseName, pf)
+	if err != nil {
+		return errors.Wrap(ctx, err, "reconstruct workflow state for resume")
+	}
+	if !canResume {
+		slog.Warn(
+			"cannot resume prompt: isolation directory missing; resetting to approved",
+			"file", filepath.Base(promptPath),
+		)
 		pf.MarkApproved()
 		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "save prompt after failed resume")
-		}
-		return nil
-	}
-
-	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
-	baseName = sanitizeContainerName(baseName)
-
-	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
-	if err != nil {
-		return errors.Wrap(ctx, err, "resolve log file path for resume")
-	}
-
-	title := pf.Title()
-	if title == "" {
-		title = baseName
-	}
-
-	// Reconstruct workflowState from frontmatter and filesystem
-	ws, ok, err := p.reconstructWorkflowState(ctx, baseName, pf)
-	if err != nil {
-		return errors.Wrap(ctx, err, "reconstruct workflow state")
-	}
-	if !ok {
-		// Clone missing for PR workflow — reset to approved
-		slog.Info("resetting prompt: clone directory missing for PR workflow",
-			"file", filepath.Base(promptPath))
-		pf.MarkApproved()
-		if err := pf.Save(ctx); err != nil {
-			return errors.Wrap(ctx, err, "save prompt after clone missing")
 		}
 		return nil
 	}
@@ -342,7 +287,59 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 		return errors.Wrap(ctx, err, "reload prompt after reattach")
 	}
 
-	return p.handlePostExecution(ctx, pf, promptPath, title, logFile, ws)
+	gitCtx := context.WithoutCancel(ctx)
+	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
+
+	completionReport, err := validateCompletionReport(ctx, logFile)
+	if err != nil {
+		p.notifyFromReport(ctx, logFile, promptPath)
+		return errors.Wrap(ctx, err, "validate completion report")
+	}
+	if completionReport != nil && completionReport.Summary != "" {
+		pf.SetSummary(completionReport.Summary)
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "save summary")
+		}
+	}
+
+	return p.workflowExecutor.Complete(gitCtx, ctx, pf, title, promptPath, completedPath)
+}
+
+// prepareResume loads and validates the prompt for resume, returning nil pf when the prompt
+// should not be resumed (not executing, or missing container — caller should return err).
+func (p *processor) prepareResume(
+	ctx context.Context,
+	promptPath string,
+) (*prompt.PromptFile, string, string, string, string, error) {
+	pf, err := p.promptManager.Load(ctx, promptPath)
+	if err != nil {
+		return nil, "", "", "", "", errors.Wrap(ctx, err, "load prompt for resume")
+	}
+	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
+		return nil, "", "", "", "", nil // not executing — skip
+	}
+
+	containerName := pf.Frontmatter.Container
+	if containerName == "" {
+		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
+			"file", filepath.Base(promptPath))
+		pf.MarkApproved()
+		if err := pf.Save(ctx); err != nil {
+			return nil, "", "", "", "", errors.Wrap(ctx, err, "save prompt after failed resume")
+		}
+		return nil, "", "", "", "", nil
+	}
+
+	baseName, _ := computePromptMetadata(promptPath, p.projectName)
+	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
+	if err != nil {
+		return nil, "", "", "", "", errors.Wrap(ctx, err, "resolve log file path for resume")
+	}
+	title := pf.Title()
+	if title == "" {
+		title = baseName
+	}
+	return pf, containerName, baseName, logFile, title, nil
 }
 
 // killTimedOutContainer stops a container that has already exceeded its timeout on reattach,
@@ -395,60 +392,6 @@ func (p *processor) computeReattachDuration(started string) (time.Duration, time
 		"elapsed", elapsed,
 		"maxPromptDuration", p.maxPromptDuration)
 	return remaining, elapsed, false
-}
-
-// reconstructWorkflowState reconstructs the workflowState for a prompt being resumed.
-// Returns (state, true, nil) on success, (nil, false, nil) when the isolation dir is missing (signals reset-to-approved).
-func (p *processor) reconstructWorkflowState(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-) (*workflowState, bool, error) {
-	switch p.workflow {
-	case config.WorkflowClone:
-		// Clone workflow: check clone directory exists
-		clonePath := filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
-		if _, err := os.Stat(clonePath); err != nil {
-			return nil, false, nil // Clone missing — signal reset-to-approved
-		}
-		branchName := pf.Branch()
-		if branchName == "" {
-			branchName = "dark-factory/" + baseName
-		}
-		originalDir, err := os.Getwd()
-		if err != nil {
-			return nil, false, errors.Wrap(ctx, err, "get working directory for resume")
-		}
-		return &workflowState{
-			clonePath:   clonePath,
-			branchName:  branchName,
-			originalDir: originalDir,
-		}, true, nil
-
-	case config.WorkflowWorktree:
-		// Worktree workflow: check worktree directory exists
-		worktreePath := filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
-		if _, err := os.Stat(worktreePath); err != nil {
-			return nil, false, nil // Worktree missing — signal reset-to-approved
-		}
-		branchName := pf.Branch()
-		if branchName == "" {
-			branchName = "dark-factory/" + baseName
-		}
-		originalDir, err := os.Getwd()
-		if err != nil {
-			return nil, false, errors.Wrap(ctx, err, "get working directory for resume")
-		}
-		return &workflowState{
-			worktreePath: worktreePath,
-			branchName:   branchName,
-			originalDir:  originalDir,
-		}, true, nil
-
-	default:
-		// Direct or branch workflow: no isolated directory needed
-		return &workflowState{}, true, nil
-	}
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.
@@ -895,30 +838,12 @@ func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) 
 	return p.checkDirtyFileThreshold(ctx)
 }
 
-// syncWithRemote fetches and merges from the remote default branch.
-func (p *processor) syncWithRemote(ctx context.Context) error {
-	slog.Info("syncing with remote default branch")
-	fetchCtx, fetchCancel := context.WithTimeout(ctx, 30*time.Second)
-	defer fetchCancel()
-	if err := p.brancher.Fetch(fetchCtx); err != nil {
-		return errors.Wrap(ctx, err, "git fetch origin")
-	}
-	if err := p.brancher.MergeOriginDefault(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git merge origin default branch")
-	}
-	return nil
-}
-
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.checkPreflightConditions(ctx); err != nil {
 		return errors.Wrap(ctx, err, "check preflight conditions")
 	} else if skip {
 		return nil // skip this cycle, re-check on next poll
-	}
-
-	if err := p.syncWithRemote(ctx); err != nil {
-		return errors.Wrap(ctx, err, "sync with remote")
 	}
 
 	pf, err := p.promptManager.Load(ctx, pr.Path)
@@ -930,36 +855,34 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return p.handleEmptyPrompt(ctx, pr.Path, err)
 	}
 
-	baseName, containerName, title, err := preparePromptForExecution(
-		ctx,
-		pf,
-		pr.Path,
-		p.versionGetter.Get(),
-		p.projectName,
-	)
-	if err != nil {
-		return errors.Wrap(ctx, err, "prepare prompt for execution")
+	baseName, containerName := computePromptMetadata(pr.Path, p.projectName)
+	title := pf.Title()
+	if title == "" {
+		title = strings.TrimSuffix(filepath.Base(pr.Path), ".md")
 	}
 	content = p.enrichPromptContent(ctx, content)
 
 	slog.Info("executing prompt", "title", title)
 
-	// Derive log file path before setupWorkflow, which may os.Chdir to clone dir.
+	// Derive log file path before Setup, which may os.Chdir to clone/worktree dir.
 	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
 	if err != nil {
 		return errors.Wrap(ctx, err, "resolve log file path")
 	}
 
-	// Setup workflow (branch or clone) before execution
-	workflowState, err := p.setupWorkflow(ctx, baseName, pf)
-	if err != nil {
+	// Setup workflow (sync, branch or clone) before execution.
+	// This is intentionally done BEFORE persisting the container name (pf.Save) so that
+	// if sync fails, the prompt file is not modified and checkPostExecutionFailure can
+	// correctly detect pre-execution failures vs post-execution failures.
+	if err := p.workflowExecutor.Setup(ctx, baseName, pf); err != nil {
 		return errors.Wrap(ctx, err, "setup workflow")
 	}
+	defer p.workflowExecutor.CleanupOnError(ctx)
 
-	// Ensure isolation cleanup on error (success path cleanup is in handleCloneWorkflow/handleWorktreeWorkflow)
-	if (p.workflow == config.WorkflowClone || p.workflow == config.WorkflowWorktree) &&
-		(workflowState.clonePath != "" || workflowState.worktreePath != "") {
-		defer p.cleanupIsolationOnError(ctx, workflowState)
+	// Persist container name and version AFTER sync succeeds (so resume can find the container).
+	pf.PrepareForExecution(containerName, p.versionGetter.Get())
+	if err := pf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
 	// Acquire container lock only for the check-and-start window, not during prep work above.
@@ -979,7 +902,28 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if execErr != nil {
 		return execErr
 	}
-	return p.handlePostExecution(ctx, pf, pr.Path, title, logFile, workflowState)
+
+	gitCtx := context.WithoutCancel(ctx)
+	completedPath := filepath.Join(p.completedDir, filepath.Base(pr.Path))
+
+	// Verification gate: pause before git operations if enabled
+	if p.verificationGate {
+		return p.enterPendingVerification(ctx, pf, pr.Path)
+	}
+
+	completionReport, err := validateCompletionReport(ctx, logFile)
+	if err != nil {
+		p.notifyFromReport(ctx, logFile, pr.Path)
+		return errors.Wrap(ctx, err, "validate completion report")
+	}
+	if completionReport != nil && completionReport.Summary != "" {
+		pf.SetSummary(completionReport.Summary)
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "save summary")
+		}
+	}
+
+	return p.workflowExecutor.Complete(gitCtx, ctx, pf, title, pr.Path, completedPath)
 }
 
 // runContainer starts the YOLO container with a cancellation watcher and returns whether
@@ -1097,280 +1041,6 @@ func (p *processor) watchForCancellation(
 	}
 }
 
-// workflowState holds state needed for workflow cleanup and completion.
-type workflowState struct {
-	branchName           string
-	clonePath            string // clone workflow only
-	worktreePath         string // worktree workflow only
-	originalDir          string
-	cleanedUp            bool
-	inPlaceBranch        string // non-empty when in-place branch was switched
-	inPlaceDefaultBranch string // branch to restore after in-place execution
-}
-
-// cleanupIsolationOnError restores the original directory and removes the clone or worktree
-// when processPrompt exits with an error (success path cleanup is handled by each workflow handler).
-func (p *processor) cleanupIsolationOnError(ctx context.Context, state *workflowState) {
-	if state.cleanedUp {
-		return
-	}
-	if state.originalDir != "" {
-		if err := os.Chdir(state.originalDir); err != nil {
-			slog.Warn("failed to chdir back to original directory on error", "error", err)
-		}
-	}
-	if state.clonePath != "" {
-		if err := p.cloner.Remove(ctx, state.clonePath); err != nil {
-			slog.Warn("failed to remove clone on error", "path", state.clonePath, "error", err)
-		}
-	}
-	if state.worktreePath != "" {
-		if err := p.worktreer.Remove(ctx, state.worktreePath); err != nil {
-			slog.Warn(
-				"failed to remove worktree on error",
-				"path",
-				state.worktreePath,
-				"error",
-				err,
-			)
-		}
-	}
-}
-
-// handlePostExecution handles validation, moving to completed, and workflow completion.
-func (p *processor) handlePostExecution(
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	promptPath string,
-	title string,
-	logFile string,
-	state *workflowState,
-) error {
-	// Validate completion report from log
-	completionReport, err := validateCompletionReport(ctx, logFile)
-	if err != nil {
-		p.notifyFromReport(ctx, logFile, promptPath)
-		return errors.Wrap(ctx, err, "validate completion report")
-	}
-
-	// Store summary in frontmatter before moving to completed
-	if completionReport != nil && completionReport.Summary != "" {
-		pf.SetSummary(completionReport.Summary)
-		if err := pf.Save(ctx); err != nil {
-			return errors.Wrap(ctx, err, "save summary")
-		}
-	}
-
-	// Use a non-cancellable context for git ops so they aren't interrupted by shutdown.
-	gitCtx := context.WithoutCancel(ctx)
-
-	// Verification gate: pause before git operations if enabled
-	if p.verificationGate {
-		return p.enterPendingVerification(ctx, pf, promptPath)
-	}
-
-	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
-
-	switch p.workflow {
-	case config.WorkflowClone:
-		return p.handleCloneWorkflow(gitCtx, ctx, pf, title, promptPath, completedPath, state)
-	case config.WorkflowWorktree:
-		return p.handleWorktreeWorkflow(gitCtx, ctx, pf, title, promptPath, completedPath, state)
-	}
-
-	// WorkflowBranch or WorkflowDirect — in-place path
-	featureBranch := state.inPlaceBranch
-	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-		p.restoreDefaultBranch(ctx, state)
-		return errors.Wrap(ctx, err, "move to completed and commit")
-	}
-
-	if err := p.handleDirectWorkflow(gitCtx, ctx, title, featureBranch); err != nil {
-		p.restoreDefaultBranch(ctx, state)
-		return errors.Wrap(ctx, err, "handle direct workflow")
-	}
-	p.restoreDefaultBranch(ctx, state)
-
-	if featureBranch != "" {
-		if p.pr {
-			// workflow: branch, pr: true — push the feature branch and open a PR
-			return p.handleBranchPRCompletion(gitCtx, ctx, pf, featureBranch, title, completedPath)
-		}
-		// workflow: branch, pr: false — check if last prompt on branch, merge+release
-		return p.handleBranchCompletion(gitCtx, ctx, promptPath, title, featureBranch)
-	}
-	return nil
-}
-
-// moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits the file.
-func (p *processor) moveToCompletedAndCommit(
-	ctx context.Context,
-	gitCtx context.Context,
-	pf *prompt.PromptFile,
-	promptPath string,
-	completedPath string,
-) error {
-	// Move to completed/ before commit so it's included in the release
-	if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed")
-	}
-
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
-
-	// Auto-complete linked specs if all their prompts are now done
-	for _, specID := range pf.Specs() {
-		if err := p.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
-		}
-	}
-
-	// Commit the completed file separately (YOLO may have already committed code changes)
-	if err := p.releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "commit completed file")
-	}
-	return nil
-}
-
-// setupWorkflow sets up the appropriate workflow before execution.
-func (p *processor) setupWorkflow(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-) (*workflowState, error) {
-	state := &workflowState{}
-	switch p.workflow {
-	case config.WorkflowClone:
-		return p.setupCloneWorkflowState(ctx, baseName, pf, state)
-	case config.WorkflowWorktree:
-		return p.setupWorktreeWorkflowState(ctx, baseName, pf, state)
-	case config.WorkflowBranch:
-		branch := pf.Branch()
-		if branch == "" {
-			// No branch specified in prompt frontmatter: run directly on current branch.
-			return state, nil
-		}
-		return p.setupInPlaceBranchState(ctx, branch, state)
-	default: // WorkflowDirect
-		return state, nil
-	}
-}
-
-// setupWorktreeWorkflowState configures state for the worktree workflow.
-func (p *processor) setupWorktreeWorkflowState(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-	state *workflowState,
-) (*workflowState, error) {
-	branch := pf.Branch()
-	if branch == "" {
-		branch = "dark-factory/" + baseName
-	}
-	state.branchName = branch
-	state.worktreePath = filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
-
-	originalDir, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "get current directory")
-	}
-	state.originalDir = originalDir
-
-	if err := p.worktreer.Add(ctx, state.worktreePath, branch); err != nil {
-		return nil, errors.Wrap(ctx, err, "add worktree")
-	}
-
-	if err := os.Chdir(state.worktreePath); err != nil {
-		// Remove worktree since we couldn't chdir into it
-		_ = p.worktreer.Remove(ctx, state.worktreePath)
-		return nil, errors.Wrap(ctx, err, "chdir to worktree")
-	}
-
-	return state, nil
-}
-
-// setupInPlaceBranchState configures in-place branch switching for non-worktree execution.
-func (p *processor) setupInPlaceBranchState(
-	ctx context.Context,
-	branch string,
-	state *workflowState,
-) (*workflowState, error) {
-	// Check working tree is clean before switching
-	clean, err := p.brancher.IsClean(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "check working tree")
-	}
-	if !clean {
-		return nil, errors.Errorf(
-			ctx,
-			"working tree is not clean; cannot switch to branch %q",
-			branch,
-		)
-	}
-
-	// Record default branch for restoration
-	defaultBranch, err := p.brancher.DefaultBranch(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "get default branch")
-	}
-	state.inPlaceDefaultBranch = defaultBranch
-	state.inPlaceBranch = branch
-
-	// Check if branch exists remotely; if so switch, else create
-	if err := p.brancher.FetchAndVerifyBranch(ctx, branch); err == nil {
-		// Branch exists remotely — switch to it
-		if err := p.brancher.Switch(ctx, branch); err != nil {
-			return nil, errors.Wrap(ctx, err, "switch to existing branch")
-		}
-	} else {
-		// Branch does not exist — create from default
-		if err := p.brancher.CreateAndSwitch(ctx, branch); err != nil {
-			return nil, errors.Wrap(ctx, err, "create and switch to branch")
-		}
-	}
-	slog.Info("switched to branch for in-place execution", "branch", branch)
-	return state, nil
-}
-
-// restoreDefaultBranch switches back to the default branch after in-place execution.
-// It is a no-op when state.inPlaceDefaultBranch is empty.
-func (p *processor) restoreDefaultBranch(ctx context.Context, state *workflowState) {
-	if state.inPlaceDefaultBranch == "" {
-		return
-	}
-	if err := p.brancher.Switch(ctx, state.inPlaceDefaultBranch); err != nil {
-		slog.Warn(
-			"failed to restore default branch",
-			"branch",
-			state.inPlaceDefaultBranch,
-			"error",
-			err,
-		)
-	} else {
-		slog.Info("restored default branch", "branch", state.inPlaceDefaultBranch)
-	}
-}
-
-// setupCloneWorkflowState configures state for the clone workflow.
-func (p *processor) setupCloneWorkflowState(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-	state *workflowState,
-) (*workflowState, error) {
-	if branch := pf.Branch(); branch != "" {
-		state.branchName = branch
-	} else {
-		state.branchName = "dark-factory/" + baseName
-	}
-	state.clonePath = filepath.Join(os.TempDir(), "dark-factory", p.projectName+"-"+baseName)
-	var err error
-	state.originalDir, err = p.setupCloneForExecution(ctx, state.clonePath, state.branchName)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, "setup clone for execution")
-	}
-	return state, nil
-}
-
 // hasPendingVerification returns true if any prompt in queueDir has pending_verification status.
 func (p *processor) hasPendingVerification(ctx context.Context) bool {
 	entries, err := os.ReadDir(p.queueDir)
@@ -1444,447 +1114,13 @@ func (p *processor) handleEmptyPrompt(
 	return errors.Wrap(ctx, contentErr, "get prompt content")
 }
 
-// postMergeActions performs post-merge actions: switch to default branch, pull, and optionally release.
-func (p *processor) postMergeActions(
-	gitCtx context.Context,
-	ctx context.Context,
-	title string,
-) error {
-	// PR merged successfully — switch to default branch
-	defaultBranch, err := p.brancher.DefaultBranch(gitCtx)
-	if err != nil {
-		return errors.Wrap(ctx, err, "get default branch")
-	}
-
-	if err := p.brancher.Switch(gitCtx, defaultBranch); err != nil {
-		return errors.Wrap(ctx, err, "switch to default branch")
-	}
-
-	if err := p.brancher.Pull(gitCtx); err != nil {
-		return errors.Wrap(ctx, err, "pull default branch")
-	}
-
-	slog.Info("merged PR and updated default branch", "branch", defaultBranch)
-
-	// If autoRelease enabled and has changelog, create release
-	if p.autoRelease && p.releaser.HasChangelog(gitCtx) {
-		if err := p.handleDirectWorkflow(gitCtx, ctx, title, ""); err != nil {
-			return errors.Wrap(ctx, err, "auto-release after merge")
-		}
-	}
-
-	return nil
-}
-
-// buildPRBody constructs the PR body, appending an issue reference when one is set.
-func buildPRBody(issue string) string {
-	if issue != "" {
-		return "Automated by dark-factory\n\nIssue: " + issue
-	}
-	return "Automated by dark-factory"
-}
-
-// findOrCreatePR checks for an existing open PR on the branch and creates one if absent.
-// Returns the PR URL (existing or newly created).
-func (p *processor) findOrCreatePR(
-	gitCtx context.Context,
-	ctx context.Context,
-	branchName string,
-	title string,
-	issue string,
-) (string, error) {
-	prURL, err := p.prCreator.FindOpenPR(gitCtx, branchName)
-	if err != nil {
-		slog.Warn("failed to check for existing PR", "branch", branchName, "error", err)
-		// Fall through to create attempt — may result in duplicate, user can resolve
-	}
-	if prURL != "" {
-		slog.Info(
-			"open PR already exists for branch — skipping creation",
-			"branch",
-			branchName,
-			"url",
-			prURL,
-		)
-		return prURL, nil
-	}
-	prURL, err = p.prCreator.Create(gitCtx, title, buildPRBody(issue))
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "create pull request")
-	}
-	slog.Info("created PR", "url", prURL)
-	return prURL, nil
-}
-
-// handleAutoMergeForClone handles the auto-merge decision after clone workflow:
-// defers merge when more prompts remain on branch, otherwise merges immediately.
-func (p *processor) handleAutoMergeForClone(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	branchName string,
-	promptPath string,
-	completedPath string,
-	prURL string,
-	title string,
-) error {
-	hasMore, err := p.promptManager.HasQueuedPromptsOnBranch(ctx, branchName, promptPath)
-	if err != nil {
-		slog.Warn("failed to check remaining prompts on branch", "branch", branchName, "error", err)
-		// Fall through: merge anyway (safe default, avoids blocking forever)
-	}
-	if hasMore {
-		slog.Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
-		if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-			return errors.Wrap(ctx, err, "move to completed and commit")
-		}
-		p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
-		return nil
-	}
-	// Last prompt on branch — proceed with merge
-	if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
-		return errors.Wrap(ctx, err, "wait and merge PR")
-	}
-	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed and commit")
-	}
-	return p.postMergeActions(gitCtx, ctx, title)
-}
-
-// handleAfterIsolatedCommit handles push + optional PR creation + prompt lifecycle completion
-// for clone and worktree workflows. Called after: (1) code committed in isolated dir,
-// (2) chdir back to original repo, (3) cleanup of isolated dir (clone removed / worktree removed).
-// p.pr controls whether a PR is created. For pr: false, the branch is still pushed.
-func (p *processor) handleAfterIsolatedCommit(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	branchName string,
-	title string,
-	promptPath string,
-	completedPath string,
-) error {
-	// Always push the feature branch
-	if err := p.brancher.Push(gitCtx, branchName); err != nil {
-		return errors.Wrap(ctx, err, "push branch")
-	}
-
-	if !p.pr {
-		// No PR — just move prompt to completed
-		return p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath)
-	}
-
-	// Find or create PR (idempotent)
-	prURL, err := p.findOrCreatePR(gitCtx, ctx, branchName, title, pf.Issue())
-	if err != nil {
-		return errors.Wrap(ctx, err, "find or create PR")
-	}
-
-	if p.autoMerge {
-		return p.handleAutoMergeForClone(
-			gitCtx,
-			ctx,
-			pf,
-			branchName,
-			promptPath,
-			completedPath,
-			prURL,
-			title,
-		)
-	}
-
-	if p.autoReview {
-		p.savePRURLToFrontmatter(gitCtx, promptPath, prURL)
-		if err := p.promptManager.SetStatus(ctx, promptPath, string(prompt.InReviewPromptStatus)); err != nil {
-			return errors.Wrap(ctx, err, "set in_review status")
-		}
-		slog.Info("PR created, waiting for review", "url", prURL)
-		return nil
-	}
-
-	// Default: move to completed and save PR URL
-	if err := p.moveToCompletedAndCommit(ctx, gitCtx, pf, promptPath, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed and commit")
-	}
-	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
-	return nil
-}
-
-// handleCloneWorkflow handles the clone-based workflow: commit code in clone, push, optionally create PR,
-// then manage prompt lifecycle in the original repo.
-func (p *processor) handleCloneWorkflow(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	title string,
-	promptPath string,
-	completedPath string,
-	state *workflowState,
-) error {
-	branchName := state.branchName
-	clonePath := state.clonePath
-	originalDir := state.originalDir
-
-	// Commit only code changes in the clone (no prompt files)
-	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-		return errors.Wrap(ctx, err, "commit changes")
-	}
-
-	// Switch back to original directory before managing prompt
-	if err := os.Chdir(originalDir); err != nil {
-		return errors.Wrap(ctx, err, "chdir back to original directory")
-	}
-
-	// Remove clone (best-effort cleanup)
-	if err := p.cloner.Remove(gitCtx, clonePath); err != nil {
-		slog.Warn("failed to remove clone", "path", clonePath, "error", err)
-	}
-	state.cleanedUp = true
-
-	// --- From here, we're back in the original repo ---
-	return p.handleAfterIsolatedCommit(
-		gitCtx,
-		ctx,
-		pf,
-		branchName,
-		title,
-		promptPath,
-		completedPath,
-	)
-}
-
-// handleWorktreeWorkflow handles the worktree-based workflow: commit code in the worktree,
-// remove the worktree, then manage the prompt lifecycle in the original repo.
-func (p *processor) handleWorktreeWorkflow(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	title string,
-	promptPath string,
-	completedPath string,
-	state *workflowState,
-) error {
-	branchName := state.branchName
-	worktreePath := state.worktreePath
-	originalDir := state.originalDir
-
-	// Commit only code changes in the worktree (no prompt files)
-	if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-		return errors.Wrap(ctx, err, "commit changes")
-	}
-
-	// Switch back to original directory before managing prompt
-	if err := os.Chdir(originalDir); err != nil {
-		return errors.Wrap(ctx, err, "chdir back to original directory")
-	}
-
-	// Remove worktree (best-effort cleanup)
-	if err := p.worktreer.Remove(gitCtx, worktreePath); err != nil {
-		slog.Warn("failed to remove worktree", "path", worktreePath, "error", err)
-	}
-	state.cleanedUp = true
-
-	// --- From here, we're back in the original repo ---
-	return p.handleAfterIsolatedCommit(
-		gitCtx,
-		ctx,
-		pf,
-		branchName,
-		title,
-		promptPath,
-		completedPath,
-	)
-}
-
-// setupCloneForExecution creates a clone, switches to it, and sets up cleanup.
-// Returns the original directory path for later restoration.
-func (p *processor) setupCloneForExecution(
-	ctx context.Context,
-	clonePath string,
-	branchName string,
-) (string, error) {
-	originalDir, err := os.Getwd()
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "get current directory")
-	}
-
-	if err := p.cloner.Clone(ctx, originalDir, clonePath, branchName); err != nil {
-		return "", errors.Wrap(ctx, err, "clone repo")
-	}
-
-	// Switch to clone directory
-	if err := os.Chdir(clonePath); err != nil {
-		return "", errors.Wrap(ctx, err, "chdir to clone")
-	}
-
-	return originalDir, nil
-}
-
-// handleDirectWorkflow handles the direct commit workflow: commit, tag, push.
-// When featureBranch is non-empty, only commits (no release) — release happens after the branch merges.
-func (p *processor) handleDirectWorkflow(
-	gitCtx context.Context,
-	ctx context.Context,
-	title string,
-	featureBranch string,
-) error {
-	// On a feature branch: commit only, never release
-	if featureBranch != "" {
-		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-			return errors.Wrap(ctx, err, "commit on feature branch")
-		}
-		slog.Info("committed changes on feature branch (no release)", "branch", featureBranch)
-		return nil
-	}
-
-	// Without CHANGELOG: simple commit only (no tag, no push)
-	if !p.releaser.HasChangelog(gitCtx) {
-		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-			return errors.Wrap(ctx, err, "commit")
-		}
-		slog.Info("committed changes")
-		return nil
-	}
-
-	// With CHANGELOG but autoRelease disabled: commit only, keep "## Unreleased"
-	if !p.autoRelease {
-		if err := p.releaser.CommitOnly(gitCtx, title); err != nil {
-			return errors.Wrap(ctx, err, "commit without release")
-		}
-		slog.Info("committed changes (autoRelease disabled, skipping tag)")
-		return nil
-	}
-
-	// With CHANGELOG and autoRelease enabled: rename ## Unreleased to version, tag, push
-	bump := git.DetermineBumpFromChangelog(ctx, ".")
-	nextVersion, err := p.releaser.GetNextVersion(gitCtx, bump)
-	if err != nil {
-		return errors.Wrap(ctx, err, "get next version")
-	}
-
-	if err := p.releaser.CommitAndRelease(gitCtx, bump); err != nil {
-		return errors.Wrap(ctx, err, "commit and release")
-	}
-
-	slog.Info("committed and tagged", "version", nextVersion)
-
-	return nil
-}
-
-// handleBranchCompletion checks if this was the last prompt on a feature branch.
-// If so, merges the branch to default and triggers a release.
-func (p *processor) handleBranchCompletion(
-	gitCtx context.Context,
-	ctx context.Context,
-	promptPath string,
-	title string,
-	featureBranch string,
-) error {
-	// Check if any other queued prompts share the same branch
-	hasMore, err := p.promptManager.HasQueuedPromptsOnBranch(ctx, featureBranch, promptPath)
-	if err != nil {
-		slog.Warn(
-			"failed to check remaining prompts on branch",
-			"branch",
-			featureBranch,
-			"error",
-			err,
-		)
-		return nil // non-fatal: skip merge, let next run re-check
-	}
-	if hasMore {
-		slog.Info("more prompts queued on branch — skipping merge", "branch", featureBranch)
-		return nil
-	}
-
-	slog.Info("last prompt on branch — merging to default and releasing", "branch", featureBranch)
-
-	// Merge feature branch to default (we're already on default after restoreDefaultBranch)
-	if err := p.brancher.MergeToDefault(gitCtx, featureBranch); err != nil {
-		return errors.Wrap(ctx, err, "merge feature branch to default")
-	}
-
-	// Release on default branch (pass empty featureBranch so release logic runs)
-	if err := p.handleDirectWorkflow(gitCtx, ctx, title, ""); err != nil {
-		return errors.Wrap(ctx, err, "release after branch merge")
-	}
-
-	return nil
-}
-
-// handleBranchPRCompletion pushes the feature branch and creates a PR after an in-place commit.
-// Called when workflow: branch, pr: true and the prompt is already at completedPath.
-func (p *processor) handleBranchPRCompletion(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	featureBranch string,
-	title string,
-	completedPath string,
-) error {
-	if err := p.brancher.Push(gitCtx, featureBranch); err != nil {
-		return errors.Wrap(ctx, err, "push feature branch")
-	}
-
-	prURL, err := p.findOrCreatePR(gitCtx, ctx, featureBranch, title, pf.Issue())
-	if err != nil {
-		return errors.Wrap(ctx, err, "find or create PR")
-	}
-
-	if p.autoMerge {
-		hasMore, err := p.promptManager.HasQueuedPromptsOnBranch(ctx, featureBranch, completedPath)
-		if err != nil {
-			slog.Warn(
-				"failed to check remaining prompts on branch",
-				"branch",
-				featureBranch,
-				"error",
-				err,
-			)
-		}
-		if hasMore {
-			slog.Info(
-				"more prompts queued on branch — deferring auto-merge",
-				"branch",
-				featureBranch,
-			)
-			p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
-			return nil
-		}
-		if err := p.prMerger.WaitAndMerge(gitCtx, prURL); err != nil {
-			return errors.Wrap(ctx, err, "wait and merge PR")
-		}
-		return p.postMergeActions(gitCtx, ctx, title)
-	}
-
-	p.savePRURLToFrontmatter(gitCtx, completedPath, prURL)
-	return nil
-}
-
-// preparePromptForExecution sets up the prompt metadata and returns execution parameters.
-func preparePromptForExecution(
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	promptPath string,
-	version string,
-	projectName string,
-) (string, string, string, error) {
+// computePromptMetadata derives the baseName and containerName from the prompt path and project name.
+// It does NOT save to disk — call pf.PrepareForExecution + pf.Save separately after sync succeeds.
+func computePromptMetadata(promptPath, projectName string) (string, string) {
 	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
 	baseName = sanitizeContainerName(baseName)
 	containerName := projectName + "-" + baseName
-
-	pf.PrepareForExecution(containerName, version)
-	if err := pf.Save(ctx); err != nil {
-		return "", "", "", errors.Wrap(ctx, err, "save prompt metadata")
-	}
-
-	title := pf.Title()
-	if title == "" {
-		// Fallback to filename if no title found
-		title = strings.TrimSuffix(filepath.Base(promptPath), ".md")
-	}
-
-	return baseName, containerName, title, nil
+	return baseName, containerName
 }
 
 // validateCompletionReport parses the completion report from the log and detects claude-CLI-level failures.
@@ -1952,24 +1188,6 @@ func validateCompletionReport(
 	}
 
 	return completionReport, nil
-}
-
-// savePRURLToFrontmatter saves the PR URL to the prompt frontmatter.
-// This is best-effort and non-fatal — all failures are logged as warnings.
-func (p *processor) savePRURLToFrontmatter(
-	ctx context.Context,
-	completedPath string,
-	prURL string,
-) {
-	// Preserve existing pr-url for follow-up prompts
-	if existingPF, err := p.promptManager.Load(ctx, completedPath); err == nil &&
-		existingPF != nil && existingPF.PRURL() != "" {
-		slog.Debug("pr-url already set, preserving existing value")
-		return
-	}
-	if err := p.promptManager.SetPRURL(ctx, completedPath, prURL); err != nil {
-		slog.Warn("failed to save PR URL to frontmatter", "error", err)
-	}
 }
 
 // sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]

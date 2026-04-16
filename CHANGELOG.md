@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.115.0
+
+- feat: Add `pkg/formatter/` package — Go port of claude-yolo Python v2 stream-json formatter; reads JSONL from io.Reader, writes raw lines verbatim and human-readable formatted lines simultaneously; handles all Claude Code message types and tool types with glyphs matching the Python v2 oracle; generates Counterfeiter mock in `mocks/formatter.go`
+
 ## v0.114.0
 
 - feat: Wire four `workflow` enum values (`direct`, `branch`, `worktree`, `clone`) into the processor, replacing `worktree bool`; add `handleWorktreeWorkflow`, `handleAfterIsolatedCommit`, `handleBranchPRCompletion`; update `CreateProcessor` factory signature; add workflow routing unit tests

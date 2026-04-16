@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.119.1
+
+- refactor: deduplicate status-checker and container-counter construction in factory
+
 ## v0.119.0
 
 - feat: add WorkflowExecutor interface and WorkflowDeps struct to pkg/processor for git-lifecycle abstraction

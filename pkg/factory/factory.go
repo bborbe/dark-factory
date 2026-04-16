@@ -311,7 +311,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir,
 		cfg.VerificationGate, cfg.Env, cfg.ExtraMounts, currentDateTimeGetter, n,
 		cfg.ResolvedClaudeDir(),
-		executor.NewDockerContainerCounter(subproc.NewRunner()),
+		createContainerCounter(),
 		EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 		cfg.AdditionalInstructions,
 		cl,
@@ -427,7 +427,7 @@ func CreateOneShotRunner(
 			currentDateTimeGetter,
 			n,
 			cfg.ResolvedClaudeDir(),
-			executor.NewDockerContainerCounter(subproc.NewRunner()),
+			createContainerCounter(),
 			EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
 			cfg.AdditionalInstructions,
 			cl,
@@ -511,6 +511,44 @@ func CreateWatcher(
 		ready,
 		debounce,
 		currentDateTimeGetter,
+	)
+}
+
+// createContainerCounter returns a ContainerCounter backed by docker ps.
+func createContainerCounter() executor.ContainerCounter {
+	return executor.NewDockerContainerCounter(subproc.NewRunner())
+}
+
+// createStatusChecker loads global config and constructs a status.Checker.
+// projectMax is the project-level MaxContainers value (may be 0); effective max is resolved against global config.
+func createStatusChecker(
+	ctx context.Context,
+	inProgressDir, completedDir, logDir string,
+	serverPort int,
+	promptManager prompt.Manager,
+	projectMax int,
+	dirtyFileThreshold int,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) status.Checker {
+	projectDir, _ := os.Getwd()
+	globalCfg, err := globalconfig.NewLoader().Load(ctx)
+	if err != nil {
+		slog.Warn("globalconfig load failed for status checker, using default", "error", err)
+		globalCfg = globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
+	}
+	return status.NewChecker(
+		projectDir,
+		inProgressDir,
+		completedDir,
+		logDir,
+		lock.FilePath("."),
+		serverPort,
+		promptManager,
+		createContainerCounter(),
+		EffectiveMaxContainers(projectMax, globalCfg.MaxContainers),
+		dirtyFileThreshold,
+		currentDateTimeGetter,
+		subproc.NewRunner(),
 	)
 }
 
@@ -710,27 +748,16 @@ func CreateServer(
 	projectMaxContainers int,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	projectDir, _ := os.Getwd()
-	globalCfgForServer, err := globalconfig.NewLoader().Load(ctx)
-	if err != nil {
-		slog.Warn("globalconfig load failed for server status, using default", "error", err)
-		globalCfgForServer = globalconfig.GlobalConfig{
-			MaxContainers: globalconfig.DefaultMaxContainers,
-		}
-	}
-	statusChecker := status.NewChecker(
-		projectDir,
+	statusChecker := createStatusChecker(
+		ctx,
 		inProgressDir,
 		completedDir,
 		logDir,
-		lock.FilePath("."),
 		port,
 		promptManager,
-		executor.NewDockerContainerCounter(subproc.NewRunner()),
-		EffectiveMaxContainers(projectMaxContainers, globalCfgForServer.MaxContainers),
-		0,
+		projectMaxContainers,
+		0, // CreateServer has no dirty-file threshold — server is status-only
 		currentDateTimeGetter,
-		subproc.NewRunner(),
 	)
 
 	// Build the mux with all routes
@@ -766,27 +793,16 @@ func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusComma
 		currentDateTimeGetter,
 	)
 
-	projectDir, _ := os.Getwd()
-	globalCfgForStatus, err := globalconfig.NewLoader().Load(ctx)
-	if err != nil {
-		slog.Warn("globalconfig load failed for status, using default", "error", err)
-		globalCfgForStatus = globalconfig.GlobalConfig{
-			MaxContainers: globalconfig.DefaultMaxContainers,
-		}
-	}
-	statusChecker := status.NewChecker(
-		projectDir,
+	statusChecker := createStatusChecker(
+		ctx,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,
-		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
-		executor.NewDockerContainerCounter(subproc.NewRunner()),
-		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForStatus.MaxContainers),
+		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
-		subproc.NewRunner(),
 	)
 	formatter := status.NewFormatter()
 
@@ -952,27 +968,16 @@ func CreateCombinedStatusCommand(ctx context.Context, cfg config.Config) cmd.Com
 		currentDateTimeGetter,
 	)
 
-	projectDir, _ := os.Getwd()
-	globalCfgForCombined, err := globalconfig.NewLoader().Load(ctx)
-	if err != nil {
-		slog.Warn("globalconfig load failed for combined status, using default", "error", err)
-		globalCfgForCombined = globalconfig.GlobalConfig{
-			MaxContainers: globalconfig.DefaultMaxContainers,
-		}
-	}
-	statusChecker := status.NewChecker(
-		projectDir,
+	statusChecker := createStatusChecker(
+		ctx,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,
-		lock.FilePath("."),
 		cfg.ServerPort,
 		promptManager,
-		executor.NewDockerContainerCounter(subproc.NewRunner()),
-		EffectiveMaxContainers(cfg.MaxContainers, globalCfgForCombined.MaxContainers),
+		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
-		subproc.NewRunner(),
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

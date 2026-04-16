@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.118.1
+
+- fix: clear lastFailReason from frontmatter when prompt transitions to completed status
+
 ## v0.118.0
 
 - feat: mask /workspace/.git inside containers for worktree workflow and via hideGit config opt-in

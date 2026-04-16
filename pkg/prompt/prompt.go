@@ -350,10 +350,14 @@ func (pf *PromptFile) PrepareForExecution(container, version string) {
 	}
 }
 
-// MarkCompleted sets status to completed with timestamp.
+// MarkCompleted sets status to completed with timestamp and clears any
+// previously recorded lastFailReason so a successful retry leaves no stale
+// failure data in the frontmatter. The YAML tag is lastFailReason,omitempty
+// so the field is dropped entirely from the serialised file when empty.
 func (pf *PromptFile) MarkCompleted() {
 	pf.Frontmatter.Status = string(CompletedPromptStatus)
 	pf.Frontmatter.Completed = pf.now().UTC().Format(time.RFC3339)
+	pf.Frontmatter.LastFailReason = ""
 }
 
 // MarkFailed sets status to failed with timestamp.

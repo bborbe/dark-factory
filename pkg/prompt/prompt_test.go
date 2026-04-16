@@ -2672,6 +2672,100 @@ var _ = Describe("Frontmatter spec field", func() {
 		})
 	})
 
+	Describe("PromptFile.MarkCompleted clears LastFailReason", func() {
+		It(
+			"success after failure clears the field (reproducer: 003-test-build-info-metrics)",
+			func() {
+				path := filepath.Join(tempDir, "001-test.md")
+				content := "---\nstatus: failed\nlastFailReason: 'execute prompt: docker run failed: wait command: exit status 128'\n---\n\n# Test\n\nContent.\n"
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+
+				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				Expect(err).To(BeNil())
+				Expect(pf.Frontmatter.LastFailReason).NotTo(BeEmpty())
+
+				pf.MarkCompleted()
+				err = pf.Save(ctx)
+				Expect(err).To(BeNil())
+
+				pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				Expect(err).To(BeNil())
+				Expect(pf2.Frontmatter.Status).To(Equal("completed"))
+				Expect(pf2.Frontmatter.LastFailReason).To(BeEmpty())
+
+				raw, err := os.ReadFile(path)
+				Expect(err).To(BeNil())
+				Expect(string(raw)).NotTo(ContainSubstring("lastFailReason"))
+			},
+		)
+
+		It("pristine success leaves frontmatter clean", func() {
+			path := filepath.Join(tempDir, "002-test.md")
+			content := "---\nstatus: approved\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
+
+			pf.MarkCompleted()
+			err = pf.Save(ctx)
+			Expect(err).To(BeNil())
+
+			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(pf2.Frontmatter.Status).To(Equal("completed"))
+			Expect(pf2.Frontmatter.LastFailReason).To(BeEmpty())
+
+			raw, err := os.ReadFile(path)
+			Expect(err).To(BeNil())
+			Expect(string(raw)).NotTo(ContainSubstring("lastFailReason"))
+		})
+
+		It("second failure replaces the old reason (failure path is untouched)", func() {
+			path := filepath.Join(tempDir, "003-test.md")
+			content := "---\nstatus: approved\nlastFailReason: 'first reason'\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+
+			pf.SetLastFailReason("second reason")
+			pf.MarkFailed()
+			err = pf.Save(ctx)
+			Expect(err).To(BeNil())
+
+			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(pf2.Frontmatter.Status).To(Equal("failed"))
+			Expect(pf2.Frontmatter.LastFailReason).To(Equal("second reason"))
+
+			raw, err := os.ReadFile(path)
+			Expect(err).To(BeNil())
+			Expect(string(raw)).To(ContainSubstring("second reason"))
+			Expect(string(raw)).NotTo(ContainSubstring("first reason"))
+		})
+
+		It("in-memory clear without Save clears the field immediately", func() {
+			pf := prompt.NewPromptFile(
+				"/tmp/unused.md",
+				prompt.Frontmatter{
+					Status:         "failed",
+					LastFailReason: "stale",
+				},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+			Expect(pf.Frontmatter.LastFailReason).To(Equal("stale"))
+
+			pf.MarkCompleted()
+			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
+		})
+	})
+
 	Describe("PromptFile.SetLastFailReason", func() {
 		It("sets the LastFailReason field", func() {
 			path := filepath.Join(tempDir, "001-test.md")

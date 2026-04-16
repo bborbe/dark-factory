@@ -81,6 +81,43 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - One independently deployable behavior change per spec
 - Two features with different do-nothing arguments = two specs
 
+## Spec vs Prompt Fitness (CRITICAL — flag at top of report if mismatch)
+
+**Specs exist to think through multi-prompt, multi-file, architecturally non-trivial changes.** Small fixes belong in a single prompt, written directly. Evaluate on these signals:
+
+### Smells that "this should be a prompt, not a spec"
+
+Count how many apply. **3+ smells → recommend downgrading to a prompt.**
+
+1. **Single-file change** — all behavior is in one package (e.g. one frontmatter field, one switch case, one helper). No plumbing across factory/executor/config.
+2. **All "Desired Behaviors" restate the same micro-rule** — e.g. "clear field X on success", "don't clear X on failure", "preserve Y". These are aspects of one rule, not independent behaviors.
+3. **No architectural question** — no alternative approaches worth weighing, no preflight uncertainty. The implementation is obvious once stated.
+4. **Failure Modes table is contrived** — rows describe implementation-level edge cases (write-failure, malformed field) not user-observable scenarios.
+5. **Do-Nothing is uninteresting** — "bug stays" rather than "architectural debt compounds".
+6. **Acceptance criteria read like test cases, not behaviors** — "unit test covers X path" suggests the spec is just expanding the test plan for a single change.
+7. **No Constraints that substitute for institutional memory** — the constraints are self-evident (use errors lib, don't break tests) rather than project-specific invariants.
+8. **One prompt would cover it all** — if you can imagine the prompt as 20-40 lines of requirements, skip the spec.
+
+### Signals that a spec IS warranted
+
+- Multi-prompt coordination: config changes need plumbing + tests + docs in separate prompts
+- Alternative approaches exist that a human should weigh before committing (worktree vs clone, sync vs async)
+- Behavioral contract with external callers that must be preserved across iterations
+- Domain knowledge worth recording: why the rule exists, what past incident motivated it
+- Migration/deprecation path: legacy behavior must keep working
+
+### When flagging:
+
+Add a top-level section **"Spec vs Prompt Fitness"** in the report. Example:
+
+> ⚠ **This should probably be a prompt, not a spec.** 4/8 smells:
+> - All 5 Desired Behaviors restate "clear field X" from different angles
+> - Single-file change in `pkg/processor/processor.go`
+> - Failure modes describe implementation edge cases, not user scenarios
+> - Acceptance criteria are unit-test paths
+>
+> Recommendation: delete the spec, write a prompt in `prompts/` inbox with ~30 lines covering the behavior + tests.
+
 ## Goal Quality
 
 - Describes end state, not steps
@@ -173,6 +210,10 @@ Adjustments:
 - [x/!] Domain knowledge documented in `project/docs/` (not only in spec)
 - [x/!] No implementation detail that should be in docs instead of spec
 - [x/!] Existing project docs referenced where relevant
+
+## Spec vs Prompt Fitness
+[Only include this section if 3+ smells apply. Otherwise omit.]
+[If included, place it BEFORE "Critical Issues" — this blocks approval.]
 
 ## Critical Issues
 [MUST fix before approving]

@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [049-split-processor-workflow]
+summary: 'Extended WorkflowExecutor test coverage in processor_internal_test.go to 80.1%: fixed stub field gaps (switchCount, commitFileErr, existingPRURL, setPRURLCount, fetchErr, mergeOriginDefaultErr, commitOnlyErr), added tests 11o-11ai covering error paths for setupInPlaceBranch (IsClean/DefaultBranch errors), handleBranchCompletion (HasQueued error), handleBranchPRCompletion (WaitAndMerge error, autoMerge+hasMore deferral), worktree/clone Setup error paths, CleanupOnError warn-only paths, and default branch-name fallback for both worktree and clone executors'
+container: dark-factory-305-spec-049-extract-and-wire
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:34:55Z"
 queued: "2026-04-16T21:01:39Z"
+started: "2026-04-16T21:16:43Z"
+completed: "2026-04-16T22:30:11Z"
 ---
 
 <summary>

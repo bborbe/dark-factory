@@ -462,6 +462,7 @@ func CreateSpecGenerator(
 			cfg.ResolvedClaudeDir(),
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
+			false, // worktreeMode — spec generator never needs tmpfs
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
@@ -533,10 +534,11 @@ func createDockerExecutor(
 	claudeDir string,
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	worktreeMode bool,
 ) executor.Executor {
 	return executor.NewDockerExecutor(
 		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
-		maxPromptDuration, currentDateTimeGetter,
+		maxPromptDuration, currentDateTimeGetter, worktreeMode,
 	)
 }
 
@@ -603,7 +605,7 @@ func CreateProcessor(
 		createDockerExecutor(
 			containerImage, projectName, model, netrcFile,
 			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
-			currentDateTimeGetter,
+			currentDateTimeGetter, false,
 		),
 		promptManager,
 		releaser,

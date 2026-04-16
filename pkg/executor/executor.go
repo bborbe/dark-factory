@@ -56,6 +56,7 @@ func NewDockerExecutor(
 	claudeDir string,
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	worktreeMode bool,
 ) Executor {
 	return &dockerExecutor{
 		containerImage:        containerImage,
@@ -69,6 +70,7 @@ func NewDockerExecutor(
 		commandRunner:         &defaultCommandRunner{},
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
+		hideGitDir:            worktreeMode,
 	}
 }
 
@@ -85,6 +87,7 @@ type dockerExecutor struct {
 	commandRunner         commandRunner
 	maxPromptDuration     time.Duration // 0 = disabled
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	hideGitDir            bool
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -485,6 +488,9 @@ func (e *dockerExecutor) buildDockerCommand(
 			mount += ":ro"
 		}
 		args = append(args, "-v", mount)
+	}
+	if e.hideGitDir {
+		args = append(args, "--tmpfs", "/workspace/.git")
 	}
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design

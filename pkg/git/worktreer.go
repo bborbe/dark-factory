@@ -55,12 +55,18 @@ func (w *worktreer) Add(ctx context.Context, worktreePath string, branch string)
 	)
 	branchExists := check.Run() == nil
 
-	// #nosec G204 -- worktreePath and branch are derived from config and prompt filename
 	var cmd *exec.Cmd
 	if branchExists {
-		cmd = exec.CommandContext(ctx, "git", "worktree", "add", worktreePath, branch)
+		cmd = exec.CommandContext(
+			ctx,
+			"git",
+			"worktree",
+			"add",
+			worktreePath,
+			branch,
+		) // #nosec G204 -- worktreePath and branch are derived from config and prompt filename
 	} else {
-		cmd = exec.CommandContext(ctx, "git", "worktree", "add", "-b", branch, worktreePath)
+		cmd = exec.CommandContext(ctx, "git", "worktree", "add", "-b", branch, worktreePath) // #nosec G204 -- branch and worktreePath are derived from config and prompt filename
 	}
 
 	var stderr strings.Builder

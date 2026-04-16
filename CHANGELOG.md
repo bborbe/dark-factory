@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.113.0
+
+- feat: Add `Worktreer` interface to `pkg/git/` with `Add`/`Remove` methods for `git worktree` operations; add `worktreeMode bool` parameter to `NewDockerExecutor` that appends `--tmpfs /workspace/.git` to hide the `.git` directory from the YOLO container
+
 ## v0.112.0
 
 - feat: Expand `workflow` enum from two values (`direct`/`pr`) to four (`direct`, `branch`, `worktree`, `clone`); invert deprecation so `workflow` is primary and `worktree: bool` is the legacy field; add `workflow: direct + pr: true` validation; map `workflow: pr` → `workflow: clone, pr: true` and legacy `worktree: bool` combos via Compatibility Matrix

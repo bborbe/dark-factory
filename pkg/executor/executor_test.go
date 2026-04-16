@@ -43,6 +43,7 @@ var _ = Describe("DockerExecutor", func() {
 			config.Defaults().ResolvedClaudeDir(),
 			0,
 			libtime.NewCurrentDateTime(),
+			false,
 		)
 
 		var err error
@@ -170,6 +171,7 @@ More lines...`
 				config.Defaults().ResolvedClaudeDir(),
 				0,
 				libtime.NewCurrentDateTime(),
+				false,
 			)
 			Expect(executor).NotTo(BeNil())
 		})
@@ -969,6 +971,54 @@ var _ = Describe("Internal helper functions", func() {
 			for _, arg := range cmd.Args {
 				Expect(arg).NotTo(ContainSubstring("/container/docs"))
 			}
+		})
+
+		Describe("worktree flag", func() {
+			buildWorktreeCmd := func(worktreeMode bool) *exec.Cmd {
+				return executor.BuildDockerCommandWithWorktreeModeForTest(
+					ctx,
+					config.Defaults().ContainerImage,
+					"test-project",
+					"",
+					"",
+					"",
+					nil,
+					nil,
+					"test-container",
+					"/tmp/prompt.md",
+					"/workspace",
+					"/home/user/.claude",
+					"test-prompt",
+					"/home/user",
+					worktreeMode,
+				)
+			}
+
+			It("does not include --tmpfs when worktreeMode is false", func() {
+				cmd := buildWorktreeCmd(false)
+				for _, arg := range cmd.Args {
+					Expect(arg).NotTo(Equal("--tmpfs"))
+				}
+			})
+
+			It("includes --tmpfs /workspace/.git when worktreeMode is true", func() {
+				cmd := buildWorktreeCmd(true)
+				args := cmd.Args
+				var found bool
+				for i, arg := range args {
+					if arg == "--tmpfs" && i+1 < len(args) && args[i+1] == "/workspace/.git" {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "expected --tmpfs /workspace/.git in args")
+			})
+
+			It("args differ by exactly two elements between worktreeMode false and true", func() {
+				argsWithout := buildWorktreeCmd(false).Args
+				argsWith := buildWorktreeCmd(true).Args
+				Expect(len(argsWith) - len(argsWithout)).To(Equal(2))
+			})
 		})
 
 		It("expands tilde after env var expansion in extra mount src", func() {

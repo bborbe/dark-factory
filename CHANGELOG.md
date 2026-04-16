@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.110.2
+
+- fix: Detect claude CLI critical failures (auth error, API error) in container log when no completion report is present, marking prompt as failed instead of completed
+- refactor: Replace `validateCompletionReport` `(string, error)` return with `(*CompletionReport, error)` to eliminate ambiguous `("", nil)` case
+
 ## v0.110.1
 
 - chore: Bump default claude-yolo container image to v0.5.4 (proxy allowlist + debug logging)

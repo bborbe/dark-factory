@@ -1057,15 +1057,15 @@ func (p *processor) handlePostExecution(
 	state *workflowState,
 ) error {
 	// Validate completion report from log
-	summary, err := validateCompletionReport(ctx, logFile)
+	completionReport, err := validateCompletionReport(ctx, logFile)
 	if err != nil {
 		p.notifyFromReport(ctx, logFile, promptPath)
 		return errors.Wrap(ctx, err, "validate completion report")
 	}
 
 	// Store summary in frontmatter before moving to completed
-	if summary != "" {
-		pf.SetSummary(summary)
+	if completionReport != nil && completionReport.Summary != "" {
+		pf.SetSummary(completionReport.Summary)
 		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "save summary")
 		}
@@ -1631,20 +1631,38 @@ func preparePromptForExecution(
 	return baseName, containerName, title, nil
 }
 
-// validateCompletionReport parses and validates the completion report from the log file.
-// Returns the summary and an error if the report indicates failure.
-// Returns ("", nil) if no report found (backwards compatible) or parse error.
-// Returns (summary, nil) if report indicates success.
-func validateCompletionReport(ctx context.Context, logFile string) (string, error) {
+// validateCompletionReport parses the completion report from the log and detects claude-CLI-level failures.
+// Returns (report, nil) when a report is present and indicates success.
+// Returns (nil, nil) when no report is present AND no critical failure is detected in the log
+// (backwards compatible — old prompts without reports are treated as successful).
+// Returns (nil, error) when:
+//   - the log shows a claude-CLI critical failure (auth error, API error) even without a report
+//   - a parseable report indicates non-success status (after consistency check)
+//   - the report exists but is malformed
+func validateCompletionReport(
+	ctx context.Context,
+	logFile string,
+) (*report.CompletionReport, error) {
 	completionReport, err := report.ParseFromLog(ctx, logFile)
 	if err != nil {
 		slog.Debug("failed to parse completion report", "error", err)
-		// Continue — don't fail the prompt just because report parsing failed
-		return "", nil
+		// Parse error — downgrade to "no report" and fall through to critical failure scan.
+		completionReport = nil
 	}
+
 	if completionReport == nil {
-		// No report found — backwards compatible
-		return "", nil
+		// No report found (or parse error) — scan for claude-CLI-level critical failures.
+		reason, scanErr := report.ScanForCriticalFailures(ctx, logFile)
+		if scanErr != nil {
+			slog.Debug("failed to scan for critical failures", "error", scanErr)
+			// I/O error during scan — treat as no failure detected (don't block backwards compat).
+			return nil, nil //nolint:nilnil
+		}
+		if reason != "" {
+			return nil, errors.Errorf(ctx, "claude CLI critical failure: %s", reason)
+		}
+		// No report, no critical failure — backwards compatible success.
+		return nil, nil //nolint:nilnil
 	}
 
 	slog.Info(
@@ -1655,7 +1673,7 @@ func validateCompletionReport(ctx context.Context, logFile string) (string, erro
 		completionReport.Summary,
 	)
 
-	// Validate consistency between status and verification results
+	// Validate consistency between status and verification results.
 	correctedStatus, overridden := completionReport.ValidateConsistency()
 	if overridden {
 		slog.Warn(
@@ -1669,15 +1687,15 @@ func validateCompletionReport(ctx context.Context, logFile string) (string, erro
 	}
 
 	if completionReport.Status != "success" {
-		// Report says not success — treat as failure
+		// Report says not success — treat as failure.
 		slog.Info("completion report indicates failure", "status", completionReport.Status)
 		if len(completionReport.Blockers) > 0 {
 			slog.Info("blockers reported", "blockers", completionReport.Blockers)
 		}
-		return "", errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
+		return nil, errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
 	}
 
-	return completionReport.Summary, nil
+	return completionReport, nil
 }
 
 // savePRURLToFrontmatter saves the PR URL to the prompt frontmatter.

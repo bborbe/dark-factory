@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: [048-hide-git]
+summary: Wired hideGit in CreateProcessor (worktree always true, other workflows use cfg.HideGit), updated docs/workflows.md with masking docs, and added 5 executor hideGit test cases.
 container: dark-factory-300-spec-048-factory-docs
 dark-factory-version: v0.111.2
 created: "2026-04-16T19:30:00Z"
 queued: "2026-04-16T19:14:05Z"
 started: "2026-04-16T19:26:14Z"
+completed: "2026-04-16T19:40:56Z"
 branch: dark-factory/hide-git
 ---
 

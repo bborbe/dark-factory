@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [047-go-stream-formatter]
+summary: 'Wired pkg/formatter.Formatter into executor.go so every prompt run (Execute and Reattach) produces two log files: raw JSONL (container stdout verbatim) and human-readable formatted log; added YOLO_OUTPUT=json env var to docker command; bumped DefaultContainerImage to v0.6.0; updated NewDockerExecutor signature, export_test.go, executor_test.go, and factory.go; added streaming pipeline unit tests (9a-9e); extracted runWithFormatterPipeline helper to satisfy funlen lint limit.'
+container: dark-factory-297-spec-047-executor-integration
+dark-factory-version: v0.111.2
 created: "2026-04-16T17:22:00Z"
 queued: "2026-04-16T17:27:46Z"
+started: "2026-04-16T17:51:10Z"
+completed: "2026-04-16T18:13:06Z"
 branch: dark-factory/go-stream-formatter
 ---
 

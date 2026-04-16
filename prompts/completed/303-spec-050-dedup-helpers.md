@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [050-factory-dedup]
+summary: Introduced createContainerCounter and createStatusChecker private helpers in pkg/factory/factory.go, replacing five executor.NewDockerContainerCounter call sites and three inline globalconfig+status.NewChecker blocks with single-line calls to the new helpers
+container: dark-factory-303-spec-050-dedup-helpers
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:50:00Z"
 queued: "2026-04-16T21:01:33Z"
+started: "2026-04-16T21:07:20Z"
+completed: "2026-04-16T21:10:43Z"
 ---
 
 <summary>

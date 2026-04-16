@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: [047-go-stream-formatter]
+summary: Created pkg/formatter/ package — Go port of claude-yolo Python v2 stream-json formatter with full unit tests (89.6% coverage) and Counterfeiter mock in mocks/formatter.go
 container: dark-factory-296-spec-047-formatter
 dark-factory-version: v0.111.2
 created: "2026-04-16T17:22:00Z"
 queued: "2026-04-16T17:27:40Z"
 started: "2026-04-16T17:27:42Z"
+completed: "2026-04-16T17:51:06Z"
 branch: dark-factory/go-stream-formatter
 ---
 

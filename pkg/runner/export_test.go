@@ -14,6 +14,14 @@ import (
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
 
+// StartupDepsForTest re-exports StartupDeps for external test packages.
+type StartupDepsForTest = StartupDeps
+
+// RunStartupSequenceForTest exposes startupSequence for external test packages.
+func RunStartupSequenceForTest(ctx context.Context, deps StartupDeps) error {
+	return startupSequence(ctx, deps)
+}
+
 // CheckExecutingPromptsForTest exposes checkExecutingPrompts for external test packages.
 func CheckExecutingPromptsForTest(
 	ctx context.Context,

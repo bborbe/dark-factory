@@ -18,8 +18,90 @@ import (
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/reindex"
+	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
+
+// StartupDeps carries every dependency the shared startup sequence needs.
+// Both Runner and OneShotRunner populate this struct from their own fields
+// before calling startupSequence.
+type StartupDeps struct {
+	InboxDir              string
+	InProgressDir         string
+	CompletedDir          string
+	LogDir                string
+	SpecsInboxDir         string
+	SpecsInProgressDir    string
+	SpecsCompletedDir     string
+	SpecsLogDir           string
+	PromptManager         PromptManager
+	ContainerChecker      executor.ContainerChecker
+	Notifier              notifier.Notifier // may be nil (oneshot passes nil)
+	ProjectName           string            // may be empty (oneshot passes "")
+	SlugMigrator          slugmigrator.Migrator
+	Mover                 prompt.FileMover
+	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
+}
+
+// startupSequence runs the six startup steps shared by both Runner and OneShotRunner.
+// Steps:
+//  1. migrateQueueDir — migrate prompts/queue/ → prompts/in-progress/ if needed
+//  2. createDirectories — ensure all eight lifecycle dirs exist
+//  3. resumeOrResetExecuting — selectively resume or reset stuck executing prompts
+//  4. reindexAll — resolve cross-directory number conflicts
+//  5. normalizeFilenames — normalize in-progress filenames
+//  6. migrateSpecSlugs — replace bare spec number refs with full slugs
+//
+// Daemon-only steps (resumeOrResetGenerating, processor.ResumeExecuting) are NOT
+// included here because they are interleaved between steps 3 and 4 only in the
+// daemon runner. Forcing them here would split this function or add mode-specific
+// conditionals. They remain in runner.go with a comment.
+func startupSequence(ctx context.Context, deps StartupDeps) error {
+	if err := migrateQueueDir(ctx, deps.InProgressDir); err != nil {
+		return errors.Wrap(ctx, err, "migrate queue dir")
+	}
+
+	dirs := []string{
+		deps.InboxDir,
+		deps.InProgressDir,
+		deps.CompletedDir,
+		deps.LogDir,
+		deps.SpecsInboxDir,
+		deps.SpecsInProgressDir,
+		deps.SpecsCompletedDir,
+		deps.SpecsLogDir,
+	}
+	if err := createDirectories(ctx, dirs); err != nil {
+		return errors.Wrap(ctx, err, "create directories")
+	}
+
+	if err := resumeOrResetExecuting(ctx, deps.InProgressDir, deps.PromptManager, deps.ContainerChecker, deps.Notifier, deps.ProjectName); err != nil {
+		return errors.Wrap(ctx, err, "resume or reset executing prompts")
+	}
+
+	specDirs := []string{
+		deps.SpecsInboxDir,
+		deps.SpecsInProgressDir,
+		deps.SpecsCompletedDir,
+		deps.SpecsLogDir,
+	}
+	promptDirs := []string{deps.InboxDir, deps.InProgressDir, deps.CompletedDir, deps.LogDir}
+	if err := reindexAll(ctx, specDirs, promptDirs, deps.Mover, deps.CurrentDateTimeGetter); err != nil {
+		return errors.Wrap(ctx, err, "reindex files")
+	}
+
+	if err := normalizeFilenames(ctx, deps.PromptManager, deps.InProgressDir); err != nil {
+		return errors.Wrap(ctx, err, "normalize filenames")
+	}
+
+	if err := deps.SlugMigrator.MigrateDirs(ctx, []string{
+		deps.InboxDir, deps.InProgressDir, deps.CompletedDir, deps.LogDir,
+	}); err != nil {
+		return errors.Wrap(ctx, err, "migrate spec slugs")
+	}
+
+	return nil
+}
 
 // reindexAll runs the full reindex sequence:
 //  1. Reindex spec dirs (resolve cross-directory spec number conflicts)

@@ -114,36 +114,10 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 		r.startupLogger()
 	}
 
-	// Migrate old prompts/queue/ → prompts/in-progress/ if needed
-	if err := r.migrateQueueDir(ctx); err != nil {
-		return errors.Wrap(ctx, err, "migrate queue dir")
-	}
-
-	// Create directories if they don't exist
-	if err := r.createDirectories(ctx); err != nil {
-		return errors.Wrap(ctx, err, "create directories")
-	}
-
-	// Selectively resume or reset executing prompts based on container liveness
-	if err := r.resumeOrResetExecuting(ctx); err != nil {
-		return errors.Wrap(ctx, err, "resume or reset executing prompts")
-	}
-
-	// Reindex all spec and prompt dirs to resolve cross-directory number conflicts
-	if err := r.reindexAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reindex files")
-	}
-
-	// Normalize filenames before processing
-	if err := r.normalizeFilenames(ctx); err != nil {
-		return errors.Wrap(ctx, err, "normalize filenames")
-	}
-
-	// Migrate bare spec number refs to full slugs in all prompt lifecycle dirs
-	if err := r.slugMigrator.MigrateDirs(ctx, []string{
-		r.inboxDir, r.inProgressDir, r.completedDir, r.logDir,
-	}); err != nil {
-		return errors.Wrap(ctx, err, "migrate spec slugs")
+	// Run the six shared startup steps (migrateQueueDir, createDirectories,
+	// resumeOrResetExecuting, reindexAll, normalizeFilenames, migrateSpecSlugs).
+	if err := startupSequence(ctx, r.startupDeps()); err != nil {
+		return errors.Wrap(ctx, err, "startup sequence")
 	}
 
 	// Loop: generate from approved specs, then drain queue; repeat until idle.
@@ -181,23 +155,25 @@ func (r *oneShotRunner) drainLoop(ctx context.Context) error {
 	return nil
 }
 
-// resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.
-// reindexAll runs the full reindex sequence for this runner's spec and prompt dirs.
-func (r *oneShotRunner) reindexAll(ctx context.Context) error {
-	specDirs := []string{r.specsInboxDir, r.specsInProgressDir, r.specsCompletedDir, r.specsLogDir}
-	promptDirs := []string{r.inboxDir, r.inProgressDir, r.completedDir, r.logDir}
-	return reindexAll(ctx, specDirs, promptDirs, r.mover, r.currentDateTimeGetter)
-}
-
-func (r *oneShotRunner) resumeOrResetExecuting(ctx context.Context) error {
-	return resumeOrResetExecuting(
-		ctx,
-		r.inProgressDir,
-		r.promptManager,
-		r.containerChecker,
-		nil,
-		"",
-	)
+// startupDeps builds a StartupDeps from this runner's fields.
+func (r *oneShotRunner) startupDeps() StartupDeps {
+	return StartupDeps{
+		InboxDir:              r.inboxDir,
+		InProgressDir:         r.inProgressDir,
+		CompletedDir:          r.completedDir,
+		LogDir:                r.logDir,
+		SpecsInboxDir:         r.specsInboxDir,
+		SpecsInProgressDir:    r.specsInProgressDir,
+		SpecsCompletedDir:     r.specsCompletedDir,
+		SpecsLogDir:           r.specsLogDir,
+		PromptManager:         r.promptManager,
+		ContainerChecker:      r.containerChecker,
+		Notifier:              nil, // oneshot has no notifier field
+		ProjectName:           "",  // oneshot has no projectName field
+		SlugMigrator:          r.slugMigrator,
+		Mover:                 r.mover,
+		CurrentDateTimeGetter: r.currentDateTimeGetter,
+	}
 }
 
 // generateFromApprovedSpecs scans specsInProgressDir for approved specs, generates prompts
@@ -325,25 +301,4 @@ func (r *oneShotRunner) approveInboxPrompts(ctx context.Context) (int, error) {
 	}
 
 	return moved, nil
-}
-
-func (r *oneShotRunner) normalizeFilenames(ctx context.Context) error {
-	return normalizeFilenames(ctx, r.promptManager, r.inProgressDir)
-}
-
-func (r *oneShotRunner) migrateQueueDir(ctx context.Context) error {
-	return migrateQueueDir(ctx, r.inProgressDir)
-}
-
-func (r *oneShotRunner) createDirectories(ctx context.Context) error {
-	return createDirectories(ctx, []string{
-		r.inboxDir,
-		r.inProgressDir,
-		r.completedDir,
-		r.logDir,
-		r.specsInboxDir,
-		r.specsInProgressDir,
-		r.specsCompletedDir,
-		r.specsLogDir,
-	})
 }

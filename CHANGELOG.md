@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.119.7
+
+- refactor: extract shared startupSequence from runner and oneshot into pkg/runner/lifecycle.go
+
 ## v0.119.6
 
 - refactor: replace 20-method prompt.Manager god interface with per-consumer narrow interfaces at point of use

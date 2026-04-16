@@ -153,46 +153,24 @@ func (r *runner) Run(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// Migrate old prompts/queue/ → prompts/in-progress/ if needed
-	if err := r.migrateQueueDir(ctx); err != nil {
-		return errors.Wrap(ctx, err, "migrate queue dir")
-	}
-
-	// Create directories if they don't exist
-	if err := r.createDirectories(ctx); err != nil {
-		return errors.Wrap(ctx, err, "create directories")
-	}
-
 	slog.Info("watching for queued prompts", "dir", r.inProgressDir)
 
-	// Selectively resume or reset executing prompts based on container liveness
-	if err := r.resumeOrResetExecuting(ctx); err != nil {
-		return errors.Wrap(ctx, err, "resume or reset executing prompts")
+	// Run the six shared startup steps (migrateQueueDir, createDirectories,
+	// resumeOrResetExecuting, reindexAll, normalizeFilenames, migrateSpecSlugs).
+	if err := startupSequence(ctx, r.startupDeps()); err != nil {
+		return errors.Wrap(ctx, err, "startup sequence")
 	}
 
-	// Reset any specs left in generating state if their container is gone
+	// Daemon-only: reset specs left in generating state if their container is gone.
+	// Not in startupSequence because this step has no counterpart in the one-shot runner.
 	if err := r.resumeOrResetGenerating(ctx); err != nil {
 		return errors.Wrap(ctx, err, "resume or reset generating specs")
 	}
 
-	// Resume any prompts still in executing state (container was still running on restart)
+	// Daemon-only: reattach to any prompts still in executing state from a prior run.
+	// Not in startupSequence for the same reason.
 	if err := r.processor.ResumeExecuting(ctx); err != nil {
 		return errors.Wrap(ctx, err, "resume executing prompts")
-	}
-
-	// Reindex all spec and prompt dirs to resolve cross-directory number conflicts
-	if err := r.reindexAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reindex files")
-	}
-
-	// Normalize filenames before processing
-	if err := r.normalizeFilenames(ctx); err != nil {
-		return errors.Wrap(ctx, err, "normalize filenames")
-	}
-
-	// Migrate bare spec number refs to full slugs in all prompt lifecycle dirs
-	if err := r.migrateSpecSlugs(ctx); err != nil {
-		return errors.Wrap(ctx, err, "migrate spec slugs")
 	}
 
 	// Run watcher, processor, server, and optional reviewPoller in parallel
@@ -214,30 +192,25 @@ func (r *runner) Run(ctx context.Context) error {
 	return run.CancelOnFirstError(ctx, runners...)
 }
 
-// reindexAll runs the full reindex sequence for this runner's spec and prompt dirs.
-func (r *runner) reindexAll(ctx context.Context) error {
-	specDirs := []string{r.specsInboxDir, r.specsInProgressDir, r.specsCompletedDir, r.specsLogDir}
-	promptDirs := []string{r.inboxDir, r.inProgressDir, r.completedDir, r.logDir}
-	return reindexAll(ctx, specDirs, promptDirs, r.mover, r.currentDateTimeGetter)
-}
-
-// migrateSpecSlugs replaces bare spec number references with full slugs in all prompt dirs.
-func (r *runner) migrateSpecSlugs(ctx context.Context) error {
-	return r.slugMigrator.MigrateDirs(ctx, []string{
-		r.inboxDir, r.inProgressDir, r.completedDir, r.logDir,
-	})
-}
-
-// normalizeFilenames normalizes filenames in the in-progress directory only.
-// The inbox directory is not normalized as it contains draft files.
-func (r *runner) normalizeFilenames(ctx context.Context) error {
-	return normalizeFilenames(ctx, r.promptManager, r.inProgressDir)
-}
-
-// migrateQueueDir renames prompts/queue/ → prompts/in-progress/ if the old path
-// exists and the new path does not. This is a one-time migration.
-func (r *runner) migrateQueueDir(ctx context.Context) error {
-	return migrateQueueDir(ctx, r.inProgressDir)
+// startupDeps builds a StartupDeps from this runner's fields.
+func (r *runner) startupDeps() StartupDeps {
+	return StartupDeps{
+		InboxDir:              r.inboxDir,
+		InProgressDir:         r.inProgressDir,
+		CompletedDir:          r.completedDir,
+		LogDir:                r.logDir,
+		SpecsInboxDir:         r.specsInboxDir,
+		SpecsInProgressDir:    r.specsInProgressDir,
+		SpecsCompletedDir:     r.specsCompletedDir,
+		SpecsLogDir:           r.specsLogDir,
+		PromptManager:         r.promptManager,
+		ContainerChecker:      r.containerChecker,
+		Notifier:              r.notifier,
+		ProjectName:           r.projectName,
+		SlugMigrator:          r.slugMigrator,
+		Mover:                 r.mover,
+		CurrentDateTimeGetter: r.currentDateTimeGetter,
+	}
 }
 
 // healthCheckLoop runs the periodic container health check loop.
@@ -265,30 +238,4 @@ func (r *runner) resumeOrResetGenerating(ctx context.Context) error {
 		r.containerChecker,
 		r.currentDateTimeGetter,
 	)
-}
-
-// resumeOrResetExecuting selectively resumes or resets executing prompts based on container liveness.
-func (r *runner) resumeOrResetExecuting(ctx context.Context) error {
-	return resumeOrResetExecuting(
-		ctx,
-		r.inProgressDir,
-		r.promptManager,
-		r.containerChecker,
-		r.notifier,
-		r.projectName,
-	)
-}
-
-// createDirectories creates all eight lifecycle directories if they don't exist.
-func (r *runner) createDirectories(ctx context.Context) error {
-	return createDirectories(ctx, []string{
-		r.inboxDir,
-		r.inProgressDir,
-		r.completedDir,
-		r.logDir,
-		r.specsInboxDir,
-		r.specsInProgressDir,
-		r.specsCompletedDir,
-		r.specsLogDir,
-	})
 }

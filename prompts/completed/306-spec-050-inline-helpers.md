@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [050-factory-dedup]
+summary: Inlined single-caller factory helpers createDockerExecutor and createRunnerInstance into their respective call sites (CreateProcessor and CreateRunner), added //nolint:funlen comments with justification on both composition roots, and updated CHANGELOG.md.
+container: dark-factory-306-spec-050-inline-helpers
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:50:00Z"
 queued: "2026-04-16T21:01:41Z"
+started: "2026-04-16T22:30:15Z"
+completed: "2026-04-16T22:34:31Z"
 ---
 
 <summary>

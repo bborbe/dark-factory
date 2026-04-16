@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [053-rate-limit-event-formatter]
+summary: Added rate_limit_event rendering branch to pkg/formatter/ — RateLimitInfo struct, renderRateLimitEvent function, switch case, 5 new tests, and CHANGELOG entry
+container: dark-factory-310-spec-053-rate-limit-formatter
+dark-factory-version: v0.111.2
 created: "2026-04-16T20:10:00Z"
 queued: "2026-04-16T21:01:50Z"
+started: "2026-04-16T23:17:19Z"
+completed: "2026-04-16T23:25:58Z"
 ---
 
 <summary>

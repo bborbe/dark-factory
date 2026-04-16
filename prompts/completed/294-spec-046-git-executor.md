@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [046-workflow-enum-with-worktree-mode]
+summary: Added Worktreer interface with Add/Remove methods for git worktree operations, generated Counterfeiter mock, added worktreeMode bool parameter to NewDockerExecutor that conditionally appends --tmpfs /workspace/.git to docker args, updated factory.go call sites, and added unit tests for both Worktreer and the executor worktree flag.
+container: dark-factory-294-spec-046-git-executor
+dark-factory-version: v0.111.2
 created: "2026-04-16T12:00:00Z"
 queued: "2026-04-16T15:00:47Z"
+started: "2026-04-16T15:20:08Z"
+completed: "2026-04-16T15:34:34Z"
 branch: dark-factory/workflow-enum-with-worktree-mode
 ---
 

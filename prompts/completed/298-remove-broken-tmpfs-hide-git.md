@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Removed broken --tmpfs /workspace/.git overlay and associated worktreeMode/hideGitDir plumbing from executor and factory, updated docs and tests
+container: dark-factory-298-remove-broken-tmpfs-hide-git
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:35:00Z"
 queued: "2026-04-16T17:39:12Z"
+started: "2026-04-16T18:13:09Z"
+completed: "2026-04-16T18:23:08Z"
 ---
 
 <summary>

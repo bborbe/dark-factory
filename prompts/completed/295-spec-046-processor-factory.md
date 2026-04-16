@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [046-workflow-enum-with-worktree-mode]
+summary: Wired four workflow enum values (direct/branch/worktree/clone) into processor and factory, replacing worktree bool. Added handleWorktreeWorkflow, handleAfterIsolatedCommit, handleBranchPRCompletion. Updated CreateProcessor factory signature. Added 7 workflow routing unit tests (11a-11g). All 174 processor tests and full precommit pass.
+container: dark-factory-295-spec-046-processor-factory
+dark-factory-version: v0.111.2
 created: "2026-04-16T12:00:00Z"
 queued: "2026-04-16T15:00:47Z"
+started: "2026-04-16T15:34:38Z"
+completed: "2026-04-16T16:16:38Z"
 branch: dark-factory/workflow-enum-with-worktree-mode
 ---
 

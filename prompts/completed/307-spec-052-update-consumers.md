@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [052-split-prompt-manager]
+summary: Wired narrow PromptManager interfaces into all seven consumer packages (processor, runner, server, status, review, watcher, cmd) by updating struct fields, constructor parameters, helper function signatures, export_test.go parameters, and replacing mocks.Manager with package-specific mock types in all test files.
+container: dark-factory-307-spec-052-update-consumers
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:53:47Z"
 queued: "2026-04-16T21:01:43Z"
+started: "2026-04-16T22:34:34Z"
+completed: "2026-04-16T23:04:14Z"
 ---
 
 <summary>

@@ -1,8 +1,8 @@
 ---
-status: created
+status: approved
 spec: [049-split-processor-workflow]
 created: "2026-04-16T19:34:55Z"
-branch: dark-factory/split-processor-workflow
+queued: "2026-04-16T21:01:39Z"
 ---
 
 <summary>
@@ -12,7 +12,7 @@ branch: dark-factory/split-processor-workflow
 - `processPrompt` delegates to `executor.Setup`, `defer executor.CleanupOnError`, `executor.Complete` — no `switch p.workflow` or `if p.pr` branches remain
 - `resumePrompt` delegates to `executor.ReconstructState` instead of calling `reconstructWorkflowState` directly
 - `NewProcessor` loses brancher/prCreator/cloner/worktreer/prMerger/workflow/pr/autoMerge/autoReview/autoRelease parameters; gains a single `workflowExecutor WorkflowExecutor` parameter
-- `pkg/processor/processor.go` no longer imports `pkg/git/brancher`, `pkg/git/cloner`, `pkg/git/prcreator`, `pkg/git/prmerger` — only `git.Releaser` remains (used by `enrichPromptContent`)
+- `pkg/processor/processor.go` no longer references the git workflow types `git.Brancher`, `git.Cloner`, `git.PRCreator`, `git.PRMerger`, `git.Worktreer` — only `git.Releaser` remains (used by `enrichPromptContent`). Note: all these types live in the flat `pkg/git/` package (no subpackages).
 - The factory creates the correct executor based on `cfg.Workflow` and passes it to `NewProcessor`; `CreateProcessor` signature is updated accordingly
 - Each concrete executor has its own `*_test.go` file with ≥80% statement coverage; processor tests are updated for the simplified constructor; factory tests assert correct executor type selection
 - `make precommit` passes
@@ -386,7 +386,7 @@ Delete ALL of these methods from `processor.go`:
 - `postMergeActions`
 - `workflowState` struct
 
-Also remove the `config` package import if `config.Workflow*` constants are no longer referenced in `processor.go`. Remove `pkg/git/brancher`, `pkg/git/cloner`, `pkg/git/prcreator`, `pkg/git/prmerger` imports.
+Also remove the `config` package import if `config.Workflow*` constants are no longer referenced in `processor.go`. The git workflow types (`Brancher`, `Cloner`, `PRCreator`, `PRMerger`, `Worktreer`) all live in the flat `pkg/git/` package — they share the single `"github.com/bborbe/dark-factory/pkg/git"` import with `git.Releaser`, so do NOT remove that import. Only remove struct fields and constructor params that reference those types.
 
 **Keep:**
 - `git.Releaser` import and field (used by `enrichPromptContent`, `syncWithRemote`)
@@ -575,7 +575,7 @@ It("direct workflow creates directWorkflowExecutor", func() {
 - This prompt depends on prompt 1 already adding `WorkflowExecutor` interface and `WorkflowDeps` to `pkg/processor/workflow_executor.go`. If that file does not exist, STOP and report failure.
 - **No behavioral changes.** Every existing `make test` case passes after this refactor. The only test changes are constructor-arg updates and switching from git-mock assertions to executor-mock assertions.
 - **One cut-over only.** The processor must not carry both old and new code paths. All old workflow methods must be deleted in the same commit.
-- `pkg/processor/processor.go` must NOT import `pkg/git/brancher`, `pkg/git/cloner`, `pkg/git/prcreator`, `pkg/git/prmerger` after this change. Only `git.Releaser` (via `pkg/git`) may remain.
+- `pkg/processor/processor.go` must NOT reference the types `git.Brancher`, `git.Cloner`, `git.PRCreator`, `git.PRMerger`, `git.Worktreer` after this change. (They live in the flat `pkg/git/` package; the package import stays because `git.Releaser` is still used.)
 - Dual-context pattern preserved: `gitCtx := context.WithoutCancel(ctx)` is computed in `processPrompt` (not inside the executor), then passed to `executor.Complete(gitCtx, ctx, ...)`. The executor receives BOTH contexts.
 - All errors wrapped with `errors.Wrap` / `errors.Wrapf` / `errors.Errorf` from `github.com/bborbe/errors`. Never `fmt.Errorf`, never bare `return err`.
 - Error messages: lowercase, no file paths in the message string.
@@ -592,7 +592,7 @@ Run `make precommit` in `/workspace` — must exit 0.
 
 Additional checks:
 1. `grep -rn "p\.workflow\b\|p\.pr\b\|p\.brancher\b\|p\.cloner\b\|p\.worktreer\b\|p\.prCreator\b\|p\.prMerger\b\|p\.autoMerge\b\|p\.autoReview\b\|p\.autoRelease\b" pkg/processor/processor.go` — must return zero matches.
-2. `grep -rn "\"github.com/bborbe/dark-factory/pkg/git/brancher\"\|\"github.com/bborbe/dark-factory/pkg/git/cloner\"\|\"github.com/bborbe/dark-factory/pkg/git/prcreator\"\|\"github.com/bborbe/dark-factory/pkg/git/prmerger\"" pkg/processor/processor.go` — must return zero matches.
+2. `grep -n "git\.Brancher\|git\.Cloner\|git\.PRCreator\|git\.PRMerger\|git\.Worktreer" pkg/processor/processor.go` — must return zero matches (the workflow git types live in the flat `pkg/git/` package; scoping them out by type name rather than subpackage path).
 3. `grep -n "WorkflowExecutor" pkg/processor/processor.go` — must return at least one match (the field declaration).
 4. `grep -rn "switch p\.workflow\|if p\.pr\b\|if p\.worktree\b" pkg/processor/processor.go` — must return zero matches.
 5. `go test -coverprofile=/tmp/cover.out ./pkg/processor/... && go tool cover -func=/tmp/cover.out | grep workflow_executor` — each executor file ≥80% coverage.

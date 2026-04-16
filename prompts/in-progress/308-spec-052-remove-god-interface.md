@@ -1,8 +1,8 @@
 ---
-status: created
+status: approved
 spec: [052-split-prompt-manager]
 created: "2026-04-16T19:53:47Z"
-branch: dark-factory/split-prompt-manager
+queued: "2026-04-16T21:01:46Z"
 ---
 
 <summary>

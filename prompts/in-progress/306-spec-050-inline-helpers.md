@@ -1,8 +1,8 @@
 ---
-status: created
+status: approved
 spec: [050-factory-dedup]
 created: "2026-04-16T19:50:00Z"
-branch: dark-factory/factory-dedup
+queued: "2026-04-16T21:01:41Z"
 ---
 
 <summary>

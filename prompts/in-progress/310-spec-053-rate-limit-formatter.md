@@ -1,8 +1,8 @@
 ---
-status: created
+status: approved
 spec: [053-rate-limit-event-formatter]
 created: "2026-04-16T20:10:00Z"
-branch: dark-factory/rate-limit-event-formatter
+queued: "2026-04-16T21:01:50Z"
 ---
 
 <summary>

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.119.0
+
+- feat: add WorkflowExecutor interface and WorkflowDeps struct to pkg/processor for git-lifecycle abstraction
+
 ## v0.118.1
 
 - fix: clear lastFailReason from frontmatter when prompt transitions to completed status

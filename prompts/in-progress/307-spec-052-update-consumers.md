@@ -1,15 +1,16 @@
 ---
-status: created
+status: approved
 spec: [052-split-prompt-manager]
 created: "2026-04-16T19:53:47Z"
-branch: dark-factory/split-prompt-manager
+queued: "2026-04-16T21:01:43Z"
 ---
 
 <summary>
-- All eight consumer packages switch their constructor parameter and struct field from `prompt.Manager` to the local `PromptManager` interface defined in the previous prompt
+- All seven consumer packages switch their constructor parameter and struct field from `prompt.Manager` to the local `PromptManager` interface defined in the previous prompt
 - Package-level helper functions in `pkg/runner` (`normalizeFilenames`, `resumeOrResetExecuting`, `runHealthCheckLoop`, `checkExecutingPrompts`) switch their `mgr prompt.Manager` parameters to `mgr PromptManager`
 - `pkg/runner/export_test.go` helper signatures are updated to accept `PromptManager` instead of `prompt.Manager`
-- Test files across all eight packages replace `&mocks.Manager{}` with the package-specific fake (e.g., `&mocks.ProcessorPromptManager{}`) and replace stub/spy calls accordingly
+- Test files across all seven packages replace `&mocks.Manager{}` with the package-specific fake (e.g., `&mocks.ProcessorPromptManager{}`) and replace stub/spy calls accordingly
+- `pkg/processor/processor_internal_test.go` uses hand-written `stubManager` / `stubWorkflowManager` stubs that already satisfy the narrow interface — no mechanical changes needed there
 - The factory continues to pass `prompt.Manager` (the wide interface) to each consumer — this compiles because `prompt.Manager` is a superset of every narrow interface
 - `make test` passes with all behavioral changes intact
 </summary>
@@ -95,6 +96,18 @@ Find all occurrences of `*mocks.Manager` and replace with `*mocks.ProcessorPromp
 Find all occurrences of `&mocks.Manager{}` and replace with `&mocks.ProcessorPromptManager{}`.
 
 The method stub names on `ProcessorPromptManager` are named identically to those on `Manager` (e.g., `ListQueuedReturns`, `LoadReturns`, `SetStatusReturns`). The stub calls do not need to change — only the type declaration changes.
+
+### 1c. `pkg/processor/processor_internal_test.go` — verify only, do not edit
+
+This file is in `package processor` (internal test) and defines hand-written stubs `stubManager` and `stubWorkflowManager` that implement the FULL `prompt.Manager` interface. After this prompt's change, `NewProcessor` accepts the narrow `PromptManager` (9 methods). Both stubs already implement those 9 methods, so the file continues to compile without change. Do NOT mechanically rename anything here — no `*mocks.Manager` references exist in this file.
+
+Verify with:
+```bash
+grep -n "mocks\.Manager" pkg/processor/processor_internal_test.go
+```
+Expected: no output. If output is non-empty, inspect and update as needed.
+
+Stale doc comments referencing `prompt.Manager` (e.g., "minimal prompt.Manager stub", "Remaining prompt.Manager methods") are left alone in this prompt — comment cleanup is out of scope and happens in prompt 3 when the wide interface is removed.
 
 Run `make test ./pkg/processor/...` after this step to verify.
 

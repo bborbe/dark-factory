@@ -1,8 +1,8 @@
 ---
-status: created
+status: approved
 spec: [051-runner-startup-consolidation]
 created: "2026-04-16T19:45:00Z"
-branch: dark-factory/runner-startup-consolidation
+queued: "2026-04-16T21:01:48Z"
 ---
 
 <summary>
@@ -266,19 +266,8 @@ if err := r.processor.ResumeExecuting(ctx); err != nil {
 
 ### 3c. Remove the now-unused helper method wrappers from `runner`
 
-After the refactor, the following receiver methods on `runner` are no longer called from `Run()` (they were only there to delegate to lifecycle package-level functions):
-- `(*runner).migrateQueueDir`
-- `(*runner).createDirectories`
-- `(*runner).normalizeFilenames`
-- `(*runner).migrateSpecSlugs`
+After step 3b, the following six receiver methods on `runner` have zero callers and must be deleted:
 
-Remove all four. **Keep** `(*runner).reindexAll`, `(*runner).resumeOrResetExecuting`, `(*runner).resumeOrResetGenerating`, and `(*runner).createDirectories` — wait, recheck: `reindexAll` and `resumeOrResetExecuting` and `resumeOrResetGenerating` are still called (two daemon-only ones remain as direct method calls). So remove only the four that are now dead code: `migrateQueueDir`, `createDirectories`, `normalizeFilenames`, `migrateSpecSlugs`.
-
-**Verification step before removing:** run `grep -n "r\.migrateQueueDir\|r\.createDirectories\|r\.normalizeFilenames\|r\.migrateSpecSlugs" pkg/runner/runner.go` — each should return zero hits after removing the call sites in step 3b. Then remove the method definitions.
-
-Also remove `(*runner).reindexAll` if it is now unused (it was called from `Run()` before but `startupSequence` now calls the package-level function directly). **Check** with `grep -n "r\.reindexAll" pkg/runner/runner.go` — if zero hits, remove the method. Similarly for `(*runner).resumeOrResetExecuting` — it is now called only from `resumeOrResetGenerating`? No — `resumeOrResetExecuting` is daemon-specific remaining. Wait: after step 3b, `resumeOrResetExecuting` is inside `startupSequence`, so the receiver method `(*runner).resumeOrResetExecuting` is dead. **Check** with grep and remove if unused.
-
-Summary: after 3b, these receiver methods are dead and must be removed:
 - `(*runner).migrateQueueDir`
 - `(*runner).createDirectories`
 - `(*runner).normalizeFilenames`
@@ -286,12 +275,18 @@ Summary: after 3b, these receiver methods are dead and must be removed:
 - `(*runner).reindexAll`
 - `(*runner).resumeOrResetExecuting`
 
-These receiver methods are still needed (called from Run or healthCheckLoop):
-- `(*runner).resumeOrResetGenerating` — called directly in Run() as daemon-only step
-- `(*runner).healthCheckLoop` — called from Run() via `runners` slice
-- `(*runner).createDirectories` — wait, no, this was moved into startupSequence
+These receiver methods remain (still called from `Run()` or `healthCheckLoop`):
 
-Run `grep -n "func (r \*runner)" pkg/runner/runner.go` before and after to confirm exactly which methods to remove.
+- `(*runner).resumeOrResetGenerating` — daemon-only step
+- `(*runner).healthCheckLoop` — iterated from `runners` slice
+
+**Verification before removal:** run this grep — each name must return zero hits:
+
+```bash
+grep -n "r\.migrateQueueDir\|r\.createDirectories\|r\.normalizeFilenames\|r\.migrateSpecSlugs\|r\.reindexAll\|r\.resumeOrResetExecuting" pkg/runner/runner.go
+```
+
+Then delete the six method definitions. Re-run `grep -n "func (r \*runner)" pkg/runner/runner.go` before and after to confirm the expected count dropped by exactly six.
 
 ## 4. Update `pkg/runner/oneshot.go`
 
@@ -391,7 +386,7 @@ Note: `approveInboxPrompts`, `generateSpecPrompts`, `generateFromApprovedSpecs`,
 
 ### 4d. Remove now-unused imports in `oneshot.go`
 
-After removing the inline `r.slugMigrator.MigrateDirs` call and the wrapper methods, check if any imports become unused. Specifically, `"strings"` was used in the removed wrapper `generateSpecPrompts` → no wait, `generateSpecPrompts` is still there. Run `go build ./pkg/runner/...` to catch unused imports; fix as needed.
+Run `go build ./pkg/runner/...` after the wrapper-method removals in 4c. Delete any imports flagged as unused by the compiler.
 
 ## 5. Add unit tests in `pkg/runner/lifecycle_test.go`
 
@@ -410,6 +405,7 @@ package runner_test
 
 import (
     "context"
+    stderrors "errors"
     "os"
     "path/filepath"
 
@@ -448,8 +444,9 @@ var _ = Describe("startupSequence", func() {
         slugMigrator := &mocks.SpecSlugMigrator{}
         slugMigrator.MigrateDirsReturns(nil)
 
+        // FileMover has only MoveFile. Empty temp dirs have no NNN-slug.md files to reindex,
+        // so no MoveFile stub is needed — reindexAll is a no-op against empty dirs.
         mover := &mocks.FileMover{}
-        mover.ListReturns(nil, nil) // reindexAll uses mover.List
 
         deps = runner.StartupDepsForTest{
             InboxDir:              filepath.Join(promptsBase, "inbox"),
@@ -502,7 +499,7 @@ var _ = Describe("startupSequence", func() {
 
     It("returns an error if NormalizeFilenames fails", func() {
         manager := deps.PromptManager.(*mocks.Manager)
-        manager.NormalizeFilenamesReturns(nil, errors.New("normalize error"))
+        manager.NormalizeFilenamesReturns(nil, stderrors.New("normalize error"))
         err := runner.RunStartupSequenceForTest(ctx, deps)
         Expect(err).To(HaveOccurred())
         Expect(err.Error()).To(ContainSubstring("normalize filenames"))
@@ -510,7 +507,7 @@ var _ = Describe("startupSequence", func() {
 
     It("returns an error if MigrateDirs fails", func() {
         migrator := deps.SlugMigrator.(*mocks.SpecSlugMigrator)
-        migrator.MigrateDirsReturns(errors.New("migrate error"))
+        migrator.MigrateDirsReturns(stderrors.New("migrate error"))
         err := runner.RunStartupSequenceForTest(ctx, deps)
         Expect(err).To(HaveOccurred())
         Expect(err.Error()).To(ContainSubstring("migrate spec slugs"))

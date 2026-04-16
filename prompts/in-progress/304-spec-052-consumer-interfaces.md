@@ -1,20 +1,20 @@
 ---
-status: created
+status: approved
 spec: [052-split-prompt-manager]
 created: "2026-04-16T19:53:47Z"
-branch: dark-factory/split-prompt-manager
+queued: "2026-04-16T21:01:36Z"
 ---
 
 <summary>
-- Eight consumer packages each gain a `prompt_manager.go` file declaring a narrow `PromptManager` interface containing only the methods that consumer actually calls
+- Seven consumer packages each gain a `prompt_manager.go` file declaring a narrow `PromptManager` interface containing only the methods that consumer actually calls
 - A counterfeiter fake is generated per consumer (e.g., `mocks/processor-prompt-manager.go` with type `ProcessorPromptManager`)
 - Consumer constructors and struct fields are NOT changed yet — all existing code continues to compile against the wide `prompt.Manager` interface
-- The eight consumers and their method counts: processor (9), runner (3 covering both runner+oneshot), server (1), status (4), review (5), watcher (1), cmd (2)
+- The seven consumers and their method counts: processor (9), runner (3 covering both runner+oneshot), server (1), status (4), review (5), watcher (1), cmd (2)
 - `make test` passes without any behavioral change
 </summary>
 
 <objective>
-Define narrow per-consumer `PromptManager` interfaces in each of the eight consumer packages (`pkg/processor`, `pkg/runner`, `pkg/server`, `pkg/status`, `pkg/review`, `pkg/watcher`, `pkg/cmd`) and generate counterfeiter fakes for each. This is the foundation step before switching constructors to use the narrow interfaces. No existing code changes in this prompt — only new interface files and generated fakes.
+Define narrow per-consumer `PromptManager` interfaces in each of the seven consumer packages (`pkg/processor`, `pkg/runner`, `pkg/server`, `pkg/status`, `pkg/review`, `pkg/watcher`, `pkg/cmd`) and generate counterfeiter fakes for each. This is the foundation step before switching constructors to use the narrow interfaces. No existing code changes in this prompt — only new interface files and generated fakes.
 </objective>
 
 <context>
@@ -65,9 +65,11 @@ The processor calls: `ListQueued`, `Load`, `AllPreviousCompleted`, `FindMissingC
 
 package processor
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/processor-prompt-manager.go --fake-name ProcessorPromptManager . PromptManager
 
@@ -104,9 +106,11 @@ Combined interface: `NormalizeFilenames`, `Load`, `ListQueued`.
 
 package runner
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/runner-prompt-manager.go --fake-name RunnerPromptManager . PromptManager
 
@@ -129,9 +133,11 @@ The server package calls only `NormalizeFilenames` through the prompt manager.
 
 package server
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/server-prompt-manager.go --fake-name ServerPromptManager . PromptManager
 
@@ -152,9 +158,11 @@ The status package calls: `ListQueued`, `Title`, `ReadFrontmatter`, `HasExecutin
 
 package status
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/status-prompt-manager.go --fake-name StatusPromptManager . PromptManager
 
@@ -178,9 +186,11 @@ The review package calls: `ReadFrontmatter`, `Load`, `MoveToCompleted`, `SetStat
 
 package review
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/review-prompt-manager.go --fake-name ReviewPromptManager . PromptManager
 
@@ -205,9 +215,11 @@ The watcher package calls only `NormalizeFilenames`.
 
 package watcher
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/watcher-prompt-manager.go --fake-name WatcherPromptManager . PromptManager
 
@@ -231,9 +243,11 @@ The cmd package uses:
 
 package cmd
 
-import "context"
+import (
+	"context"
 
-import "github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/prompt"
+)
 
 //counterfeiter:generate -o ../../mocks/cmd-prompt-manager.go --fake-name CmdPromptManager . PromptManager
 
@@ -246,7 +260,7 @@ type PromptManager interface {
 
 ## 9. Run `go generate` to create all fakes
 
-Run counterfeiter for all eight packages:
+Run counterfeiter for all seven packages:
 
 ```bash
 cd /workspace

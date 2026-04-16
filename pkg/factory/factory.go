@@ -249,6 +249,8 @@ func createSpecSlugMigrator(
 }
 
 // CreateRunner creates a Runner that coordinates watcher and processor using the provided config.
+//
+//nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
 func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Runner {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
@@ -323,41 +325,17 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
 	specWatcher := CreateSpecWatcher(cfg, specGen, currentDateTimeGetter)
-	return createRunnerInstance(cfg, inboxDir, inProgressDir, completedDir,
-		promptManager, releaser, watcher, proc, srv, poller, specWatcher,
-		projectName, containerChecker, n, migrator, currentDateTimeGetter,
-		createStartupLogger(ctx, cfg, globalCfg))
-}
-
-// createRunnerInstance wires the final runner.Runner from pre-built components.
-func createRunnerInstance(
-	cfg config.Config,
-	inboxDir, inProgressDir, completedDir string,
-	promptManager prompt.Manager,
-	releaser prompt.FileMover,
-	w watcher.Watcher,
-	proc processor.Processor,
-	srv server.Server,
-	poller review.ReviewPoller,
-	specWatcher specwatcher.SpecWatcher,
-	projectName string,
-	containerChecker executor.ContainerChecker,
-	n notifier.Notifier,
-	migrator slugmigrator.Migrator,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	startupLogger func(),
-) runner.Runner {
 	return runner.NewRunner(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
-		promptManager, CreateLocker("."), w, proc, srv, poller,
+		promptManager, CreateLocker("."), watcher, proc, srv, poller,
 		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
 		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
-		startupLogger,
+		createStartupLogger(ctx, cfg, globalCfg),
 	)
 }
 
@@ -564,27 +542,6 @@ func createContainerDeps(
 	return cl, executor.NewDockerContainerChecker(currentDateTimeGetter), nil
 }
 
-// createDockerExecutor creates a Docker executor with the given configuration.
-func createDockerExecutor(
-	containerImage string,
-	projectName string,
-	model string,
-	netrcFile string,
-	gitconfigFile string,
-	env map[string]string,
-	extraMounts []config.ExtraMount,
-	claudeDir string,
-	maxPromptDuration time.Duration,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	hideGit bool,
-) executor.Executor {
-	return executor.NewDockerExecutor(
-		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
-		maxPromptDuration, currentDateTimeGetter, formatter.NewFormatter(),
-		hideGit,
-	)
-}
-
 // createAutoCompleter creates a spec.AutoCompleter with the given parameters.
 func createAutoCompleter(
 	inProgressDir, completedDir string,
@@ -643,6 +600,8 @@ func CreateWorkflowExecutor(
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.
+//
+//nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
 func CreateProcessor(
 	inProgressDir string,
 	completedDir string,
@@ -698,10 +657,18 @@ func CreateProcessor(
 		completedDir,
 		logDir,
 		projectName,
-		createDockerExecutor(
-			containerImage, projectName, model, netrcFile,
-			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
+		executor.NewDockerExecutor(
+			containerImage,
+			projectName,
+			model,
+			netrcFile,
+			gitconfigFile,
+			env,
+			extraMounts,
+			claudeDir,
+			maxPromptDuration,
 			currentDateTimeGetter,
+			formatter.NewFormatter(),
 			workflow == config.WorkflowWorktree || hideGit,
 		),
 		promptManager,

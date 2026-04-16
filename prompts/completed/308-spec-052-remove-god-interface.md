@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [052-split-prompt-manager]
+summary: Removed the 20-method prompt.Manager god interface, exported the concrete Manager struct, updated NewManager to return *Manager, renamed all method receivers from *manager to *Manager, deleted mocks/prompt-manager.go, and updated factory.go to pass *prompt.Manager throughout.
+container: dark-factory-308-spec-052-remove-god-interface
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:53:47Z"
 queued: "2026-04-16T21:01:46Z"
+started: "2026-04-16T23:04:18Z"
+completed: "2026-04-16T23:09:23Z"
 ---
 
 <summary>

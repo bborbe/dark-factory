@@ -1,5 +1,9 @@
 ---
-status: draft
+status: prompted
+approved: "2026-04-16T19:30:07Z"
+generating: "2026-04-16T19:30:07Z"
+prompted: "2026-04-16T19:38:24Z"
+branch: dark-factory/split-processor-workflow
 ---
 
 ## Summary
@@ -75,7 +79,8 @@ The processor keeps growing with every workflow variant. The 22-parameter constr
 ## Acceptance Criteria
 
 - [ ] `processor.processPrompt` contains no conditional branching on workflow type (no `if p.worktree`, `if p.pr`, etc. selecting git behavior).
-- [ ] `pkg/processor/processor.go` no longer imports `pkg/git/brancher`, `pkg/git/cloner`, `pkg/git/prcreator`, `pkg/git/prmerger` directly — or imports only interfaces used through the executor.
+- [ ] `pkg/processor/processor.go` does not import `pkg/git/brancher`, `pkg/git/cloner`, `pkg/git/prcreator`, or `pkg/git/prmerger` at package level.
+- [ ] Any git interface that processor.go still references is reached only through the `WorkflowExecutor` abstraction, not held on the processor struct as a direct field.
 - [ ] A `WorkflowExecutor` interface exists in `pkg/processor` with a generated counterfeiter fake under `mocks/`.
 - [ ] At least three concrete `WorkflowExecutor` implementations exist covering every current workflow variant; each has its own test file.
 - [ ] Adding a hypothetical fourth variant (demonstrated as a test-only fake) requires zero edits in `processor.go` and `processor_test.go`.

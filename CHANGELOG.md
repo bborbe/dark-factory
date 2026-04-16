@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.116.1
+
+- fix: Remove broken `--tmpfs /workspace/.git` overlay from worktree-mode executor; the overlay caused a Docker mount error because a git worktree's `.git` is a file, not a directory
+
 ## v0.116.0
 
 - feat: Wire `pkg/formatter.Formatter` into executor so every prompt run produces two log files: raw JSONL (container stdout verbatim) and human-readable formatted log; add `YOLO_OUTPUT=json` env var to docker command; bump `DefaultContainerImage` to `v0.6.0` (minimum version supporting `YOLO_OUTPUT=json` passthrough)

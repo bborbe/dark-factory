@@ -92,45 +92,6 @@ func BuildDockerCommandForTest(
 	)
 }
 
-// BuildDockerCommandWithWorktreeModeForTest exposes buildDockerCommand with worktreeMode for external test packages.
-func BuildDockerCommandWithWorktreeModeForTest(
-	ctx context.Context,
-	containerImage string,
-	projectName string,
-	model string,
-	netrcFile string,
-	gitconfigFile string,
-	env map[string]string,
-	extraMounts []config.ExtraMount,
-	containerName string,
-	promptFilePath string,
-	projectRoot string,
-	claudeConfigDir string,
-	promptBaseName string,
-	home string,
-	worktreeMode bool,
-) *exec.Cmd {
-	e := &dockerExecutor{
-		containerImage: containerImage,
-		projectName:    projectName,
-		model:          model,
-		netrcFile:      netrcFile,
-		gitconfigFile:  gitconfigFile,
-		env:            env,
-		extraMounts:    extraMounts,
-		hideGitDir:     worktreeMode,
-	}
-	return e.buildDockerCommand(
-		ctx,
-		containerName,
-		promptFilePath,
-		projectRoot,
-		claudeConfigDir,
-		promptBaseName,
-		home,
-	)
-}
-
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.
 func PrepareLogFileForTest(ctx context.Context, logFile string) (*os.File, error) {
 	return prepareLogFile(ctx, logFile)

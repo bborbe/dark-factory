@@ -57,7 +57,6 @@ func NewDockerExecutor(
 	claudeDir string,
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	worktreeMode bool,
 	fmtr formatter.Formatter,
 ) Executor {
 	return &dockerExecutor{
@@ -72,7 +71,6 @@ func NewDockerExecutor(
 		commandRunner:         &defaultCommandRunner{},
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
-		hideGitDir:            worktreeMode,
 		formatter:             fmtr,
 	}
 }
@@ -90,7 +88,6 @@ type dockerExecutor struct {
 	commandRunner         commandRunner
 	maxPromptDuration     time.Duration // 0 = disabled
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	hideGitDir            bool
 	formatter             formatter.Formatter
 }
 
@@ -540,9 +537,6 @@ func (e *dockerExecutor) buildDockerCommand(
 			mount += ":ro"
 		}
 		args = append(args, "-v", mount)
-	}
-	if e.hideGitDir {
-		args = append(args, "--tmpfs", "/workspace/.git")
 	}
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design

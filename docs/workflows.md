@@ -41,7 +41,7 @@ Progressive isolation levels.
 - dark-factory runs `git worktree add /tmp/dark-factory/<project>-<prompt> <promptBranch>` in the parent repo
 - No object-store copy — worktree shares `.git/objects` with the parent (fast even for huge repos)
 - The worktree's `.git` is a FILE pointing at `<parentRepo>/.git/worktrees/<name>`, which is NOT accessible inside the container
-- Container mounts the worktree at `/workspace` with `--tmpfs /workspace/.git` — `.git` is hidden inside the container
+- Container mounts the worktree at `/workspace` — the worktree's `.git` pointer file is present but its target (`<parentRepo>/.git/worktrees/<name>`) is not mounted, so git commands inside the container fail naturally
 - **Git does not work inside the container.** Prompts must not rely on `git status`, `git diff`, or `git commit` from inside
 - Parallel execution: each prompt gets its own worktree
 - Host-side commits: dark-factory runs `git add` / `commit` / `push` against the worktree path on the host, where the `.git` pointer resolves correctly
@@ -90,7 +90,7 @@ Invalid: `workflow: direct` with `pr: true` (no feature branch to open a PR for 
 | direct | parent repo | real `.git/` directory | yes |
 | branch | parent repo (new branch checked out) | real `.git/` directory | yes |
 | clone | fresh clone | real `.git/` directory (cloned) | yes |
-| worktree | worktree files | `--tmpfs` overmount (empty) | NO — prompts must avoid git |
+| worktree | worktree files | `.git` pointer file (target not mounted) | NO — prompts must avoid git |
 
 ## Choosing a mode
 

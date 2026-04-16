@@ -1,6 +1,8 @@
 ---
-status: approved
+status: prompted
 approved: "2026-04-16T19:30:10Z"
+generating: "2026-04-16T19:46:40Z"
+prompted: "2026-04-16T19:56:38Z"
 branch: dark-factory/split-prompt-manager
 ---
 

@@ -1,9 +1,10 @@
 ---
-status: approved
+status: generating
 tags:
     - dark-factory
     - spec
 approved: "2026-04-16T19:39:29Z"
+generating: "2026-04-16T19:56:39Z"
 branch: dark-factory/rate-limit-event-formatter
 ---
 

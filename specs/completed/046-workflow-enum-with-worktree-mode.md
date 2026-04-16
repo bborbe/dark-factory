@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-04-16T11:47:58Z"
 generating: "2026-04-16T11:47:58Z"
 prompted: "2026-04-16T12:00:37Z"
 verifying: "2026-04-16T16:16:38Z"
+completed: "2026-04-16T19:56:01Z"
 branch: dark-factory/workflow-enum-with-worktree-mode
 ---
 

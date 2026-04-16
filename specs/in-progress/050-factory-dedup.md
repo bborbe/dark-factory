@@ -1,7 +1,8 @@
 ---
-status: generating
+status: prompted
 approved: "2026-04-16T19:30:10Z"
 generating: "2026-04-16T19:38:24Z"
+prompted: "2026-04-16T19:41:15Z"
 branch: dark-factory/factory-dedup
 ---
 

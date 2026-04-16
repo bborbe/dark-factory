@@ -1,7 +1,8 @@
 ---
-spec: ["050"]
 status: created
+spec: [050-factory-dedup]
 created: "2026-04-16T19:50:00Z"
+branch: dark-factory/factory-dedup
 ---
 
 <summary>

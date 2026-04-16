@@ -3,7 +3,7 @@ maxContainers: 5
 pr: false
 testCommand: "make test"
 validationPrompt: docs/dod.md
-worktree: false
+workflow: direct
 env:
   GOPATH: /home/node/go
   GOCACHE: /home/node/.cache/go-build

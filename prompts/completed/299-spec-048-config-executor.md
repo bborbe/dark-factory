@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: [048-hide-git]
+summary: Added HideGit bool to Config, hideGit bool field+parameter to dockerExecutor/NewDockerExecutor, buildHideGitArgs helper for .git masking logic, updated all call sites in factory.go and executor_test.go to pass false, and updated export_test.go helpers to accept and wire the new parameter.
 container: dark-factory-299-spec-048-config-executor
 dark-factory-version: v0.111.2
 created: "2026-04-16T19:30:00Z"
 queued: "2026-04-16T19:14:05Z"
 started: "2026-04-16T19:14:07Z"
+completed: "2026-04-16T19:26:11Z"
 branch: dark-factory/hide-git
 ---
 

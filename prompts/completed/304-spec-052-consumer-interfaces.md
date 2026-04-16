@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [052-split-prompt-manager]
+summary: Defined narrow per-consumer PromptManager interfaces in seven packages (processor, runner, server, status, review, watcher, cmd) and generated counterfeiter fakes for each in the mocks directory without changing any existing code.
+container: dark-factory-304-spec-052-consumer-interfaces
+dark-factory-version: v0.111.2
 created: "2026-04-16T19:53:47Z"
 queued: "2026-04-16T21:01:36Z"
+started: "2026-04-16T21:10:47Z"
+completed: "2026-04-16T21:16:39Z"
 ---
 
 <summary>

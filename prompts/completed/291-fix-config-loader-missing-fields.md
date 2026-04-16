@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added 18 missing Config fields to partialConfig and mergePartial in loader.go (including maxPromptDuration, dirtyFileThreshold, autoRetryLimit and 15 others), and added exhaustive loader tests that round-trip every Config field through YAML to prevent regression
+container: dark-factory-291-fix-config-loader-missing-fields
+dark-factory-version: v0.110.2
 created: "2026-04-16T10:41:23Z"
 queued: "2026-04-16T10:47:13Z"
+started: "2026-04-16T10:47:59Z"
+completed: "2026-04-16T10:56:58Z"
 ---
 <summary>
 - `pkg/config/loader.go` currently uses a `partialConfig` struct that is missing fields present on `Config`, so those YAML keys are silently dropped by `yaml.Unmarshal` and never merged onto the defaults

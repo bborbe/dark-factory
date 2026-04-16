@@ -23,7 +23,7 @@ var _ = Describe("ApproveCommand", func() {
 		tempDir       string
 		inboxDir      string
 		queueDir      string
-		promptManager *mocks.Manager
+		promptManager *mocks.CmdPromptManager
 		approveCmd    cmd.ApproveCommand
 		ctx           context.Context
 	)
@@ -41,7 +41,7 @@ var _ = Describe("ApproveCommand", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptManager = &mocks.Manager{}
+		promptManager = &mocks.CmdPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		approveCmd = cmd.NewApproveCommand(

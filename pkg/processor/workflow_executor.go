@@ -68,7 +68,7 @@ type WorkflowExecutor interface {
 // need them.
 type WorkflowDeps struct {
 	ProjectName   string
-	PromptManager prompt.Manager
+	PromptManager PromptManager
 	AutoCompleter spec.AutoCompleter
 	Releaser      git.Releaser
 	VersionGetter version.Getter

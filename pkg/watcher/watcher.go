@@ -31,7 +31,7 @@ type Watcher interface {
 func NewWatcher(
 	inProgressDir string,
 	inboxDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	ready chan<- struct{},
 	debounce time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -50,7 +50,7 @@ func NewWatcher(
 type watcher struct {
 	inProgressDir         string
 	inboxDir              string
-	promptManager         prompt.Manager
+	promptManager         PromptManager
 	ready                 chan<- struct{}
 	debounce              time.Duration
 	currentDateTimeGetter libtime.CurrentDateTimeGetter

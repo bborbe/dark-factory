@@ -25,7 +25,7 @@ var _ = Describe("Runner", func() {
 		tempDir          string
 		promptsDir       string
 		specsDir         string
-		manager          *mocks.Manager
+		manager          *mocks.RunnerPromptManager
 		locker           *mocks.Locker
 		watcher          *mocks.Watcher
 		processor        *mocks.Processor
@@ -46,7 +46,7 @@ var _ = Describe("Runner", func() {
 
 		specsDir = filepath.Join(tempDir, "specs")
 
-		manager = &mocks.Manager{}
+		manager = &mocks.RunnerPromptManager{}
 		locker = &mocks.Locker{}
 		watcher = &mocks.Watcher{}
 		processor = &mocks.Processor{}

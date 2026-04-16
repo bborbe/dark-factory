@@ -27,7 +27,7 @@ type ApproveCommand interface {
 type approveCommand struct {
 	inboxDir              string
 	queueDir              string
-	promptManager         prompt.Manager
+	promptManager         PromptManager
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
@@ -35,7 +35,7 @@ type approveCommand struct {
 func NewApproveCommand(
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ApproveCommand {
 	return &approveCommand{

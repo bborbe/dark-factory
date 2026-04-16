@@ -21,7 +21,7 @@ func queueSingleFile(
 	ctx context.Context,
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	filename string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (QueuedFile, error) {
@@ -53,7 +53,7 @@ func queueAllFiles(
 	ctx context.Context,
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ([]QueuedFile, error) {
 	entries, err := os.ReadDir(inboxDir)
@@ -91,7 +91,7 @@ func moveToQueue(
 	ctx context.Context,
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	filename string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (string, error) {

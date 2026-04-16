@@ -29,7 +29,7 @@ type PromptCompleteCommand interface {
 type promptCompleteCommand struct {
 	queueDir              string
 	completedDir          string
-	promptManager         prompt.Manager
+	promptManager         PromptManager
 	releaser              git.Releaser
 	pr                    bool
 	brancher              git.Brancher
@@ -41,7 +41,7 @@ type promptCompleteCommand struct {
 func NewPromptCompleteCommand(
 	queueDir string,
 	completedDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	releaser git.Releaser,
 	pr bool,
 	brancher git.Brancher,

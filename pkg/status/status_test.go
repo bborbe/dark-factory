@@ -36,7 +36,7 @@ var _ = Describe("StatusChecker", func() {
 		queueDir      string
 		completedDir  string
 		lockFilePath  string
-		promptMgr     *mocks.Manager
+		promptMgr     *mocks.StatusPromptManager
 		statusChecker status.Checker
 	)
 
@@ -56,7 +56,7 @@ var _ = Describe("StatusChecker", func() {
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptMgr = &mocks.Manager{}
+		promptMgr = &mocks.StatusPromptManager{}
 		statusChecker = status.NewChecker(
 			"",
 			queueDir,

@@ -46,7 +46,7 @@ func NewRunner(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	specsLogDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	locker lock.Locker,
 	watcher watcher.Watcher,
 	processor processor.Processor,
@@ -101,7 +101,7 @@ type runner struct {
 	specsInProgressDir    string
 	specsCompletedDir     string
 	specsLogDir           string
-	promptManager         prompt.Manager
+	promptManager         PromptManager
 	locker                lock.Locker
 	watcher               watcher.Watcher
 	processor             processor.Processor

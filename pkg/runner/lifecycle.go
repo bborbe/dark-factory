@@ -56,8 +56,8 @@ func reindexAll(
 }
 
 // normalizeFilenames normalizes filenames in the given inProgressDir using the
-// provided prompt.Manager and logs each rename at debug level.
-func normalizeFilenames(ctx context.Context, mgr prompt.Manager, inProgressDir string) error {
+// provided PromptManager and logs each rename at debug level.
+func normalizeFilenames(ctx context.Context, mgr PromptManager, inProgressDir string) error {
 	renames, err := mgr.NormalizeFilenames(ctx, inProgressDir)
 	if err != nil {
 		return errors.Wrap(ctx, err, "normalize queue filenames")
@@ -108,7 +108,7 @@ func createDirectories(ctx context.Context, dirs []string) error {
 func resumeOrResetExecuting(
 	ctx context.Context,
 	inProgressDir string,
-	mgr prompt.Manager,
+	mgr PromptManager,
 	checker executor.ContainerChecker,
 	n notifier.Notifier,
 	projectName string,
@@ -200,7 +200,7 @@ func resumeOrResetExecutingEntry(
 	ctx context.Context,
 	inProgressDir string,
 	name string,
-	mgr prompt.Manager,
+	mgr PromptManager,
 	checker executor.ContainerChecker,
 	n notifier.Notifier,
 	projectName string,

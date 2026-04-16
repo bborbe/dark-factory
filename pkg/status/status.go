@@ -84,7 +84,7 @@ type checker struct {
 	logDir                string
 	lockFilePath          string
 	serverPort            int
-	promptMgr             prompt.Manager
+	promptMgr             PromptManager
 	containerCounter      executor.ContainerCounter
 	maxContainers         int
 	dirtyFileThreshold    int
@@ -100,7 +100,7 @@ func NewChecker(
 	logDir string,
 	lockFilePath string,
 	serverPort int,
-	promptMgr prompt.Manager,
+	promptMgr PromptManager,
 	containerCounter executor.ContainerCounter,
 	maxContainers int,
 	dirtyFileThreshold int,

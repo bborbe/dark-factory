@@ -15,8 +15,6 @@ import (
 	"github.com/bborbe/errors"
 	libhttp "github.com/bborbe/http"
 	libtime "github.com/bborbe/time"
-
-	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 // QueueRequest represents the request body for POST /api/v1/queue.
@@ -39,7 +37,7 @@ type QueueResponse struct {
 func NewQueueActionHandler(
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) libhttp.WithError {
 	return libhttp.WithErrorFunc(
@@ -82,7 +80,7 @@ func handleQueueAll(
 	resp http.ResponseWriter,
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager, currentDateTimeGetter)
@@ -100,7 +98,7 @@ func handleQueueSingle(
 	req *http.Request,
 	inboxDir string,
 	queueDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	// Limit request body size to 1MB

@@ -23,7 +23,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 		tempDir       string
 		queueDir      string
 		completedDir  string
-		promptManager *mocks.Manager
+		promptManager *mocks.CmdPromptManager
 		releaser      *mocks.Releaser
 		brancher      *mocks.Brancher
 		prCreator     *mocks.PRCreator
@@ -43,7 +43,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptManager = &mocks.Manager{}
+		promptManager = &mocks.CmdPromptManager{}
 		releaser = &mocks.Releaser{}
 		brancher = &mocks.Brancher{}
 		prCreator = &mocks.PRCreator{}

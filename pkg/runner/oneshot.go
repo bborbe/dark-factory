@@ -40,7 +40,7 @@ func NewOneShotRunner(
 	specsInProgressDir string,
 	specsCompletedDir string,
 	specsLogDir string,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	locker lock.Locker,
 	proc processor.Processor,
 	specGen generator.SpecGenerator,
@@ -83,7 +83,7 @@ type oneShotRunner struct {
 	specsInProgressDir    string
 	specsCompletedDir     string
 	specsLogDir           string
-	promptManager         prompt.Manager
+	promptManager         PromptManager
 	locker                lock.Locker
 	processor             processor.Processor
 	specGenerator         generator.SpecGenerator

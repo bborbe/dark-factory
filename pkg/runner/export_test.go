@@ -12,7 +12,6 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/notifier"
-	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 // CheckExecutingPromptsForTest exposes checkExecutingPrompts for external test packages.
@@ -20,7 +19,7 @@ func CheckExecutingPromptsForTest(
 	ctx context.Context,
 	inProgressDir string,
 	checker executor.ContainerChecker,
-	mgr prompt.Manager,
+	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	maxPromptDuration time.Duration,
@@ -57,7 +56,7 @@ func RunHealthCheckLoopForTest(
 	inProgressDir string,
 	specsInProgressDir string,
 	checker executor.ContainerChecker,
-	mgr prompt.Manager,
+	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,

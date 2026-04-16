@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.119.5
+
+- refactor: Wire narrow PromptManager interfaces into consumer packages (processor, runner, server, status, review, watcher, cmd)
+
 ## v0.119.4
 
 - refactor: inline single-caller factory helpers createDockerExecutor and createRunnerInstance

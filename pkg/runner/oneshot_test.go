@@ -23,7 +23,7 @@ var _ = Describe("OneShotRunner", func() {
 		tempDir          string
 		promptsDir       string
 		specsDir         string
-		manager          *mocks.Manager
+		manager          *mocks.RunnerPromptManager
 		locker           *mocks.Locker
 		processor        *mocks.Processor
 		containerChecker *mocks.ContainerChecker
@@ -42,7 +42,7 @@ var _ = Describe("OneShotRunner", func() {
 
 		specsDir = filepath.Join(tempDir, "specs")
 
-		manager = &mocks.Manager{}
+		manager = &mocks.RunnerPromptManager{}
 		locker = &mocks.Locker{}
 		processor = &mocks.Processor{}
 		containerChecker = &mocks.ContainerChecker{}
@@ -116,8 +116,7 @@ var _ = Describe("OneShotRunner", func() {
 		err := r.Run(ctx)
 		Expect(err).To(BeNil())
 
-		// ResetExecuting is no longer called — selective logic used instead
-		Expect(manager.ResetExecutingCallCount()).To(Equal(0))
+		// ResetExecuting is not in the narrow PromptManager interface; selective logic used instead
 		Expect(containerChecker.IsRunningCallCount()).To(Equal(0))
 	})
 

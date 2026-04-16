@@ -52,7 +52,7 @@ func NewProcessor(
 	logDir string,
 	projectName string,
 	exec executor.Executor,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	ready <-chan struct{},
@@ -115,7 +115,7 @@ type processor struct {
 	logDir                 string
 	projectName            string
 	executor               executor.Executor
-	promptManager          prompt.Manager
+	promptManager          PromptManager
 	releaser               git.Releaser
 	versionGetter          version.Getter
 	ready                  <-chan struct{}

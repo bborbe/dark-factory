@@ -37,7 +37,7 @@ import (
 func newTestProcessor(
 	queueDir, completedDir, logDir, projectName string,
 	exec *mocks.Executor,
-	mgr *mocks.Manager,
+	mgr *mocks.ProcessorPromptManager,
 	rel *mocks.Releaser,
 	vg *mocks.VersionGetter,
 	ready <-chan struct{},
@@ -112,7 +112,7 @@ var _ = Describe("Processor", func() {
 		ctx           context.Context
 		cancel        context.CancelFunc
 		executor      *mocks.Executor
-		manager       *mocks.Manager
+		manager       *mocks.ProcessorPromptManager
 		releaser      *mocks.Releaser
 		versionGet    *mocks.VersionGetter
 		brancher      *mocks.Brancher
@@ -137,7 +137,7 @@ var _ = Describe("Processor", func() {
 		ctx, cancel = context.WithCancel(context.Background())
 
 		executor = &mocks.Executor{}
-		manager = &mocks.Manager{}
+		manager = &mocks.ProcessorPromptManager{}
 		releaser = &mocks.Releaser{}
 		versionGet = &mocks.VersionGetter{}
 		brancher = &mocks.Brancher{}
@@ -246,10 +246,6 @@ var _ = Describe("Processor", func() {
 		// First call returns prompt, second call returns empty (processed)
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		manager.ContentReturns("# Test prompt", nil)
-		manager.TitleReturns("Test prompt", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -330,10 +326,6 @@ var _ = Describe("Processor", func() {
 
 		// Initially no prompts
 		manager.ListQueuedReturns([]prompt.Prompt{}, nil)
-		manager.ContentReturns("# Signal test", nil)
-		manager.TitleReturns("Signal test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -420,7 +412,6 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		manager.ContentReturns("", prompt.ErrEmptyPrompt)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
 
@@ -488,10 +479,6 @@ var _ = Describe("Processor", func() {
 		// Return queued once, then empty (so loop exits after failure)
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
-		manager.ContentReturns("# Fail test", nil)
-		manager.TitleReturns("Fail test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
 		executor.ExecuteReturns(stderrors.New("execution failed"))
@@ -556,10 +543,6 @@ var _ = Describe("Processor", func() {
 
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
-		manager.ContentReturns("# Fail notify test", nil)
-		manager.TitleReturns("Fail notify test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
 		executor.ExecuteReturns(stderrors.New("execution failed"))
@@ -628,10 +611,6 @@ var _ = Describe("Processor", func() {
 
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		manager.ContentReturns("# No changelog test", nil)
-		manager.TitleReturns("No changelog test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -703,10 +682,6 @@ var _ = Describe("Processor", func() {
 
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		manager.ContentReturns("# Fix bug", nil)
-		manager.TitleReturns("Fix bug", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -811,10 +786,6 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		manager.ContentReturns("# Add new feature", nil)
-		manager.TitleReturns("Add new feature", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -894,10 +865,6 @@ var _ = Describe("Processor", func() {
 		}, nil)
 		manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 
-		manager.ContentReturns("# Test", nil)
-		manager.TitleReturns("Test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -966,10 +933,6 @@ var _ = Describe("Processor", func() {
 
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		manager.ContentReturns("# Test", nil)
-		manager.TitleReturns("Test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -1043,10 +1006,6 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 		manager.SetStatusReturns(nil)
-		manager.ContentReturns("# Auto status test", nil)
-		manager.TitleReturns("Auto status test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
 		executor.ExecuteReturns(nil)
@@ -1243,10 +1202,6 @@ var _ = Describe("Processor", func() {
 
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-		manager.ContentReturns("# Version test", nil)
-		manager.TitleReturns("Version test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -1329,10 +1284,6 @@ var _ = Describe("Processor", func() {
 			),
 			nil,
 		)
-		manager.ContentReturns("# Test prompt content", nil)
-		manager.TitleReturns("Suffix test", nil)
-		manager.SetContainerReturns(nil)
-		manager.SetVersionReturns(nil)
 		manager.SetStatusReturns(nil)
 		manager.MoveToCompletedReturns(nil)
 		manager.AllPreviousCompletedReturns(true)
@@ -1886,10 +1837,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Worktree test", nil)
-			manager.TitleReturns("Add new feature", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2011,10 +1958,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Log path test", nil)
-			manager.TitleReturns("Log path test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2114,10 +2057,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Worktree automerge test", nil)
-			manager.TitleReturns("Add feature", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2224,10 +2163,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Fail test", nil)
-			manager.TitleReturns("Test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 			// Mock worktree.Add to create the actual directory
@@ -2314,10 +2249,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Test", nil)
-			manager.TitleReturns("Test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2414,10 +2345,6 @@ var _ = Describe("Processor", func() {
 				),
 				nil,
 			)
-			manager.ContentReturns("# Test", nil)
-			manager.TitleReturns("Test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2502,10 +2429,6 @@ var _ = Describe("Processor", func() {
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
-			manager.ContentReturns("# Worktree add error test", nil)
-			manager.TitleReturns("Test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 			cloner.CloneReturns(stderrors.New("clone failed"))
@@ -2595,8 +2518,6 @@ var _ = Describe("Processor", func() {
 				savedPromptFile = pf
 				return pf, nil
 			}
-			manager.ContentReturns("# Summary test", nil)
-			manager.TitleReturns("Summary test", nil)
 			manager.AllPreviousCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
@@ -2687,10 +2608,6 @@ DARK-FACTORY-REPORT -->
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			manager.ContentReturns("# Report success test", nil)
-			manager.TitleReturns("Report success test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -2777,10 +2694,6 @@ DARK-FACTORY-REPORT -->
 			// Return queued once, then empty (so loop exits)
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
-			manager.ContentReturns("# Report failed test", nil)
-			manager.TitleReturns("Report failed test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 
@@ -2864,10 +2777,6 @@ DARK-FACTORY-REPORT -->
 			// Return queued once, then empty (so loop exits)
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
-			manager.ContentReturns("# Report partial test", nil)
-			manager.TitleReturns("Report partial test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 
@@ -2950,10 +2859,6 @@ DARK-FACTORY-REPORT -->
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
-			manager.ContentReturns("# Report partial notify test", nil)
-			manager.TitleReturns("Report partial notify test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 
@@ -3035,10 +2940,6 @@ DARK-FACTORY-REPORT -->
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			manager.ContentReturns("# No report test", nil)
-			manager.TitleReturns("No report test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -3122,10 +3023,6 @@ more output
 			// Return queued once, then empty (so loop exits)
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
-			manager.ContentReturns("# Verification override test", nil)
-			manager.TitleReturns("Verification override test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
 
@@ -3208,10 +3105,6 @@ DARK-FACTORY-REPORT -->
 
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			manager.ContentReturns("# Malformed report test", nil)
-			manager.TitleReturns("Malformed report test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -6615,8 +6508,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			p := newProc()
 			err := p.ProcessQueue(ctx)
 			Expect(err).NotTo(HaveOccurred())
-
-			Expect(manager.ResetFailedCallCount()).To(Equal(0))
+			// ResetFailed is not in the narrow PromptManager interface; processor cannot call it
 		})
 
 		It("Process does not call ResetFailed on startup", func() {
@@ -6638,8 +6530,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			case <-time.After(2 * time.Second):
 				Fail("processor did not stop within timeout")
 			}
-
-			Expect(manager.ResetFailedCallCount()).To(Equal(0))
+			// ResetFailed is not in the narrow PromptManager interface; processor cannot call it
 		})
 
 		It("Process continues running after prompt failure (daemon mode)", func() {
@@ -6694,9 +6585,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				),
 				nil,
 			)
-			manager.TitleReturns("My prompt", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -6776,9 +6664,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				),
 				nil,
 			)
-			manager.TitleReturns("My prompt", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
@@ -7146,10 +7031,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
-			manager.ContentReturns("# Lock test", nil)
-			manager.TitleReturns("Lock test", nil)
-			manager.SetContainerReturns(nil)
-			manager.SetVersionReturns(nil)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)

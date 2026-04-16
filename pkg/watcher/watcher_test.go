@@ -54,7 +54,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should start and stop cleanly", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		w := watcher.NewWatcher(
@@ -87,7 +87,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should normalize filenames when a file is created", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{
 			{
 				OldPath: filepath.Join(promptsDir, "test.md"),
@@ -131,7 +131,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should debounce rapid file writes", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		w := watcher.NewWatcher(
@@ -169,7 +169,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should ignore non-markdown files", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		w := watcher.NewWatcher(
@@ -203,7 +203,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should handle normalization errors gracefully", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns(nil, os.ErrPermission)
 
 		w := watcher.NewWatcher(
@@ -252,7 +252,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should send ready signal after normalization", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{
 			{
 				OldPath: filepath.Join(promptsDir, "a.md"),
@@ -299,7 +299,7 @@ var _ = Describe("Watcher", func() {
 		err := os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use the absolute path directly (tempDir is already absolute)
@@ -338,7 +338,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should handle chmod events on markdown files", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		w := watcher.NewWatcher(
@@ -377,7 +377,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should stamp created timestamp on inbox file without one", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Write a prompt file with frontmatter but no created field
@@ -421,7 +421,7 @@ var _ = Describe("Watcher", func() {
 	})
 
 	It("should not overwrite existing created timestamp on inbox file", func() {
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		existingCreated := "2026-01-01T00:00:00Z"
@@ -485,7 +485,7 @@ var _ = Describe("Watcher", func() {
 		err = os.MkdirAll(relPromptDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptManager := &mocks.Manager{}
+		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 
 		// Use relative path

@@ -38,7 +38,7 @@ func NewReviewPoller(
 	pollInterval time.Duration,
 	fetcher git.ReviewFetcher,
 	prMerger git.PRMerger,
-	promptManager prompt.Manager,
+	promptManager PromptManager,
 	generator FixPromptGenerator,
 	projectName string,
 	n notifier.Notifier,
@@ -69,7 +69,7 @@ type reviewPoller struct {
 	pollInterval        time.Duration
 	fetcher             git.ReviewFetcher
 	prMerger            git.PRMerger
-	promptManager       prompt.Manager
+	promptManager       PromptManager
 	generator           FixPromptGenerator
 	projectName         string
 	notifier            notifier.Notifier

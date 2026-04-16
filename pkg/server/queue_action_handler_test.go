@@ -26,7 +26,7 @@ var _ = Describe("QueueActionHandler", func() {
 		tempDir       string
 		inboxDir      string
 		queueDir      string
-		promptManager *mocks.Manager
+		promptManager *mocks.ServerPromptManager
 	)
 
 	BeforeEach(func() {
@@ -41,7 +41,7 @@ var _ = Describe("QueueActionHandler", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		promptManager = &mocks.Manager{}
+		promptManager = &mocks.ServerPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
 	})
 

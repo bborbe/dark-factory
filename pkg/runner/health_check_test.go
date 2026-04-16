@@ -58,7 +58,7 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		tempDir         string
 		inProgressDir   string
 		checker         *mocks.ContainerChecker
-		mgr             *mocks.Manager
+		mgr             *mocks.RunnerPromptManager
 		n               *mocks.Notifier
 		ctx             context.Context
 		cancel          context.CancelFunc
@@ -74,7 +74,7 @@ var _ = Describe("CheckExecutingPrompts", func() {
 		Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
 
 		checker = &mocks.ContainerChecker{}
-		mgr = &mocks.Manager{}
+		mgr = &mocks.RunnerPromptManager{}
 		n = &mocks.Notifier{}
 		currentDateTime = libtime.NewCurrentDateTime()
 
@@ -643,7 +643,7 @@ var _ = Describe("RunHealthCheckLoop", func() {
 		inProgressDir   string
 		specsDir        string
 		checker         *mocks.ContainerChecker
-		mgr             *mocks.Manager
+		mgr             *mocks.RunnerPromptManager
 		ctx             context.Context
 		cancel          context.CancelFunc
 		currentDateTime libtime.CurrentDateTimeGetter
@@ -660,7 +660,7 @@ var _ = Describe("RunHealthCheckLoop", func() {
 		Expect(os.MkdirAll(specsDir, 0750)).To(Succeed())
 
 		checker = &mocks.ContainerChecker{}
-		mgr = &mocks.Manager{}
+		mgr = &mocks.RunnerPromptManager{}
 		currentDateTime = libtime.NewCurrentDateTime()
 
 		ctx, cancel = context.WithCancel(context.Background())

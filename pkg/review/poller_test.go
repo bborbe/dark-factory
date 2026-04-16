@@ -27,7 +27,7 @@ var _ = Describe("ReviewPoller", func() {
 		inboxDir            string
 		fetcher             *mocks.ReviewFetcher
 		prMerger            *mocks.PRMerger
-		manager             *mocks.Manager
+		manager             *mocks.ReviewPromptManager
 		generator           *mocks.FixPromptGenerator
 		collaboratorFetcher *mocks.CollaboratorFetcher
 		poller              review.ReviewPoller
@@ -49,7 +49,7 @@ var _ = Describe("ReviewPoller", func() {
 
 		fetcher = &mocks.ReviewFetcher{}
 		prMerger = &mocks.PRMerger{}
-		manager = &mocks.Manager{}
+		manager = &mocks.ReviewPromptManager{}
 		generator = &mocks.FixPromptGenerator{}
 		collaboratorFetcher = &mocks.CollaboratorFetcher{}
 		collaboratorFetcher.FetchReturns([]string{"trusted-reviewer"})

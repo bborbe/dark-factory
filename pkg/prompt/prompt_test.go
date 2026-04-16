@@ -2614,7 +2614,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		var (
 			inProgressDir string
 			completedDir  string
-			mgr           prompt.Manager
+			mgr           *prompt.Manager
 		)
 
 		BeforeEach(func() {

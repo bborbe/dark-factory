@@ -480,34 +480,6 @@ type FileMover interface {
 	MoveFile(ctx context.Context, oldPath string, newPath string) error
 }
 
-//counterfeiter:generate -o ../../mocks/prompt-manager.go --fake-name Manager . Manager
-
-// Manager manages prompt file operations.
-type Manager interface {
-	ResetExecuting(ctx context.Context) error
-	ResetFailed(ctx context.Context) error
-	HasExecuting(ctx context.Context) bool
-	ListQueued(ctx context.Context) ([]Prompt, error)
-	Load(ctx context.Context, path string) (*PromptFile, error)
-	ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error)
-	SetStatus(ctx context.Context, path string, status string) error
-	SetContainer(ctx context.Context, path string, name string) error
-	SetVersion(ctx context.Context, path string, version string) error
-	SetPRURL(ctx context.Context, path string, url string) error
-	SetBranch(ctx context.Context, path string, branch string) error
-	IncrementRetryCount(ctx context.Context, path string) error
-	Content(ctx context.Context, path string) (string, error)
-	Title(ctx context.Context, path string) (string, error)
-	MoveToCompleted(ctx context.Context, path string) error
-	NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error)
-	AllPreviousCompleted(ctx context.Context, n int) bool
-	FindMissingCompleted(ctx context.Context, n int) []int
-	FindPromptStatusInProgress(ctx context.Context, number int) string
-	// HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
-	// has the given branch value in its frontmatter.
-	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
-}
-
 // NewManager creates a new Manager.
 func NewManager(
 	inboxDir string,
@@ -515,8 +487,8 @@ func NewManager(
 	completedDir string,
 	mover FileMover,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) Manager {
-	return &manager{
+) *Manager {
+	return &Manager{
 		inboxDir:              inboxDir,
 		inProgressDir:         inProgressDir,
 		completedDir:          completedDir,
@@ -525,8 +497,8 @@ func NewManager(
 	}
 }
 
-// manager implements Manager.
-type manager struct {
+// Manager manages prompt file operations.
+type Manager struct {
 	inboxDir              string
 	inProgressDir         string
 	completedDir          string
@@ -535,104 +507,104 @@ type manager struct {
 }
 
 // ResetExecuting resets any prompts with status "executing" back to "approved".
-func (pm *manager) ResetExecuting(ctx context.Context) error {
+func (pm *Manager) ResetExecuting(ctx context.Context) error {
 	return ResetExecuting(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // ResetFailed resets any prompts with status "failed" back to "approved".
-func (pm *manager) ResetFailed(ctx context.Context) error {
+func (pm *Manager) ResetFailed(ctx context.Context) error {
 	return ResetFailed(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // HasExecuting returns true if any prompt in dir has status "executing".
-func (pm *manager) HasExecuting(ctx context.Context) bool {
+func (pm *Manager) HasExecuting(ctx context.Context) bool {
 	return HasExecuting(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // ListQueued scans a directory for .md files that should be picked up.
-func (pm *manager) ListQueued(ctx context.Context) ([]Prompt, error) {
+func (pm *Manager) ListQueued(ctx context.Context) ([]Prompt, error) {
 	return ListQueued(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
 // Load reads a prompt file from disk, parsing frontmatter and body.
-func (pm *manager) Load(ctx context.Context, path string) (*PromptFile, error) {
+func (pm *Manager) Load(ctx context.Context, path string) (*PromptFile, error) {
 	return Load(ctx, path, pm.currentDateTimeGetter)
 }
 
 // ReadFrontmatter reads frontmatter from a file.
-func (pm *manager) ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
+func (pm *Manager) ReadFrontmatter(ctx context.Context, path string) (*Frontmatter, error) {
 	return ReadFrontmatter(ctx, path, pm.currentDateTimeGetter)
 }
 
 // SetStatus updates the status field in a prompt file's frontmatter.
-func (pm *manager) SetStatus(ctx context.Context, path string, status string) error {
+func (pm *Manager) SetStatus(ctx context.Context, path string, status string) error {
 	return SetStatus(ctx, path, status, pm.currentDateTimeGetter)
 }
 
 // SetContainer updates the container field in a prompt file's frontmatter.
-func (pm *manager) SetContainer(ctx context.Context, path string, name string) error {
+func (pm *Manager) SetContainer(ctx context.Context, path string, name string) error {
 	return SetContainer(ctx, path, name, pm.currentDateTimeGetter)
 }
 
 // SetVersion updates the dark-factory-version field in a prompt file's frontmatter.
-func (pm *manager) SetVersion(ctx context.Context, path string, version string) error {
+func (pm *Manager) SetVersion(ctx context.Context, path string, version string) error {
 	return SetVersion(ctx, path, version, pm.currentDateTimeGetter)
 }
 
 // SetPRURL updates the pr-url field in a prompt file's frontmatter.
-func (pm *manager) SetPRURL(ctx context.Context, path string, url string) error {
+func (pm *Manager) SetPRURL(ctx context.Context, path string, url string) error {
 	return SetPRURL(ctx, path, url, pm.currentDateTimeGetter)
 }
 
 // SetBranch updates the branch field in a prompt file's frontmatter.
-func (pm *manager) SetBranch(ctx context.Context, path string, branch string) error {
+func (pm *Manager) SetBranch(ctx context.Context, path string, branch string) error {
 	return SetBranch(ctx, path, branch, pm.currentDateTimeGetter)
 }
 
 // IncrementRetryCount increments the retryCount field in a prompt file's frontmatter.
-func (pm *manager) IncrementRetryCount(ctx context.Context, path string) error {
+func (pm *Manager) IncrementRetryCount(ctx context.Context, path string) error {
 	return IncrementRetryCount(ctx, path, pm.currentDateTimeGetter)
 }
 
 // Content returns the prompt content (without frontmatter) for passing to Docker.
-func (pm *manager) Content(ctx context.Context, path string) (string, error) {
+func (pm *Manager) Content(ctx context.Context, path string) (string, error) {
 	return Content(ctx, path, pm.currentDateTimeGetter)
 }
 
 // Title extracts the first # heading from a prompt file.
-func (pm *manager) Title(ctx context.Context, path string) (string, error) {
+func (pm *Manager) Title(ctx context.Context, path string) (string, error) {
 	return Title(ctx, path, pm.currentDateTimeGetter)
 }
 
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed/ subdirectory.
-func (pm *manager) MoveToCompleted(ctx context.Context, path string) error {
+func (pm *Manager) MoveToCompleted(ctx context.Context, path string) error {
 	return MoveToCompleted(ctx, path, pm.completedDir, pm.mover, pm.currentDateTimeGetter)
 }
 
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
 // It also checks the completed directory for used numbers.
-func (pm *manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
+func (pm *Manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
 	return NormalizeFilenames(ctx, dir, pm.completedDir, pm.mover)
 }
 
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed/.
-func (pm *manager) AllPreviousCompleted(ctx context.Context, n int) bool {
+func (pm *Manager) AllPreviousCompleted(ctx context.Context, n int) bool {
 	return AllPreviousCompleted(ctx, pm.completedDir, n)
 }
 
 // FindMissingCompleted returns prompt numbers less than n that are NOT in completed/.
-func (pm *manager) FindMissingCompleted(ctx context.Context, n int) []int {
+func (pm *Manager) FindMissingCompleted(ctx context.Context, n int) []int {
 	return FindMissingCompleted(ctx, pm.completedDir, n)
 }
 
 // FindPromptStatusInProgress looks up a prompt by number in the in-progress directory and returns its frontmatter status.
-func (pm *manager) FindPromptStatusInProgress(ctx context.Context, number int) string {
+func (pm *Manager) FindPromptStatusInProgress(ctx context.Context, number int) string {
 	return FindPromptStatus(ctx, pm.inProgressDir, number)
 }
 
 // HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
 // has the given branch value in its frontmatter.
-func (pm *manager) HasQueuedPromptsOnBranch(
+func (pm *Manager) HasQueuedPromptsOnBranch(
 	ctx context.Context,
 	branch string,
 	excludePath string,

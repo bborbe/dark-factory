@@ -115,13 +115,13 @@ type errOneShotRunner struct{ err error }
 
 func (e *errOneShotRunner) Run(_ context.Context) error { return e.err }
 
-// createPromptManager creates shared prompt.Manager and git.Releaser dependencies.
+// createPromptManager creates shared *prompt.Manager and git.Releaser dependencies.
 func createPromptManager(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) (prompt.Manager, git.Releaser) {
+) (*prompt.Manager, git.Releaser) {
 	releaser := git.NewReleaser()
 	promptManager := prompt.NewManager(
 		inboxDir,
@@ -477,7 +477,7 @@ func CreateSpecWatcher(
 func CreateWatcher(
 	inProgressDir string,
 	inboxDir string,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	ready chan<- struct{},
 	debounce time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -503,7 +503,7 @@ func createStatusChecker(
 	ctx context.Context,
 	inProgressDir, completedDir, logDir string,
 	serverPort int,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	projectMax int,
 	dirtyFileThreshold int,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -568,7 +568,7 @@ func CreateWorkflowExecutor(
 	autoRelease bool,
 	autoReview bool,
 	projectName string,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
 ) processor.WorkflowExecutor {
@@ -607,7 +607,7 @@ func CreateProcessor(
 	completedDir string,
 	logDir string,
 	projectName string,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	ready <-chan struct{},
@@ -694,7 +694,7 @@ func CreateProcessor(
 func CreateReviewPoller(
 	ctx context.Context,
 	cfg config.Config,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	projectName string,
 	n notifier.Notifier,
 ) review.ReviewPoller {
@@ -749,7 +749,7 @@ func CreateServer(
 	inProgressDir string,
 	completedDir string,
 	logDir string,
-	promptManager prompt.Manager,
+	promptManager *prompt.Manager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectMaxContainers int,
 ) server.Server {

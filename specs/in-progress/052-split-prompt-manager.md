@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-04-16T19:30:10Z"
 generating: "2026-04-16T19:46:40Z"
 prompted: "2026-04-16T19:56:38Z"
+verifying: "2026-04-16T23:09:23Z"
 branch: dark-factory/split-prompt-manager
 ---
 

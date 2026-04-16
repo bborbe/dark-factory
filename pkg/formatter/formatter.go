@@ -139,6 +139,8 @@ func (f *streamFormatter) renderMessage(msg StreamMessage, toolNames map[string]
 		return renderUser(msg, toolNames)
 	case "result":
 		return renderResult(msg)
+	case "rate_limit_event":
+		return renderRateLimitEvent(msg)
 	default:
 		return formatTimestamp() + " [unknown type: " + msg.Type + "]\n"
 	}

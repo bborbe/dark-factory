@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 const (
@@ -394,6 +395,38 @@ func jsonString(inp map[string]json.RawMessage, key string) string {
 		return ""
 	}
 	return s
+}
+
+// renderRateLimitEvent formats a rate_limit_event message as a single human-readable line.
+//
+// Full render (rate_limit_info is present):
+//
+//	[HH:MM:SS] ⚠ rate-limit: <rateLimitType> <utilization>% [resets=<local-time>] status=<status>
+//
+// The reset clause is omitted when ResetsAt is zero.
+// Fallback (rate_limit_info is nil or missing):
+//
+//	[HH:MM:SS] ⚠ rate-limit event
+func renderRateLimitEvent(msg StreamMessage) string {
+	if msg.RateLimitInfo == nil {
+		return formatTimestamp() + " ⚠ rate-limit event\n"
+	}
+	info := msg.RateLimitInfo
+	utilPct := int(info.Utilization * 100)
+	var sb strings.Builder
+	sb.WriteString(formatTimestamp())
+	sb.WriteString(" ⚠ rate-limit: ")
+	sb.WriteString(info.RateLimitType)
+	fmt.Fprintf(&sb, " %d%%", utilPct)
+	if info.ResetsAt != 0 {
+		resetTime := time.Unix(info.ResetsAt, 0).Local().Format("15:04:05")
+		sb.WriteString(" resets=")
+		sb.WriteString(resetTime)
+	}
+	sb.WriteString(" status=")
+	sb.WriteString(info.Status)
+	sb.WriteString("\n")
+	return sb.String()
 }
 
 // jsonFirstQuestion extracts the first question from the questions array in AskUserQuestion input.

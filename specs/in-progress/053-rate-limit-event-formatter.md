@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-16T19:39:29Z"
 generating: "2026-04-16T19:56:39Z"
 prompted: "2026-04-16T19:58:46Z"
+verifying: "2026-04-16T23:25:59Z"
 branch: dark-factory/rate-limit-event-formatter
 ---
 

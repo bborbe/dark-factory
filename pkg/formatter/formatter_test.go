@@ -442,4 +442,51 @@ var _ = Describe("Formatter", func() {
 			Expect(formatted).To(ContainSubstring("→"))
 		})
 	})
+
+	Describe("rate_limit_event rendering", func() {
+		It("renders a rate_limit_event with full rate_limit_info", func() {
+			line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","resetsAt":1800000000,"rateLimitType":"seven_day","utilization":0.85,"isUsingOverage":false,"surpassedThreshold":true}}`
+			raw, formatted := processLine(line)
+			Expect(raw).To(Equal(line + "\n"))
+			Expect(formatted).To(ContainSubstring("⚠"))
+			Expect(formatted).To(ContainSubstring("rate-limit"))
+			Expect(formatted).To(ContainSubstring("seven_day"))
+			Expect(formatted).To(ContainSubstring("85%"))
+			Expect(formatted).To(ContainSubstring("resets="))
+			Expect(formatted).To(ContainSubstring("status=allowed_warning"))
+			Expect(formatted).NotTo(ContainSubstring("[unknown type: rate_limit_event]"))
+		})
+
+		It("renders a rate_limit_event with a different rateLimitType verbatim", func() {
+			line := `{"type":"rate_limit_event","rate_limit_info":{"status":"blocked","resetsAt":1800003600,"rateLimitType":"five_hour","utilization":1.0}}`
+			_, formatted := processLine(line)
+			Expect(formatted).To(ContainSubstring("five_hour"))
+			Expect(formatted).To(ContainSubstring("100%"))
+			Expect(formatted).To(ContainSubstring("status=blocked"))
+			Expect(formatted).NotTo(ContainSubstring("[unknown type: rate_limit_event]"))
+		})
+
+		It("renders a fallback line when rate_limit_info is absent", func() {
+			line := `{"type":"rate_limit_event"}`
+			_, formatted := processLine(line)
+			Expect(formatted).To(ContainSubstring("⚠"))
+			Expect(formatted).To(ContainSubstring("rate-limit"))
+			Expect(formatted).NotTo(ContainSubstring("[unknown type: rate_limit_event]"))
+			// Must not panic (Ginkgo recovers panics and marks the test failed)
+		})
+
+		It("omits the reset clause when resetsAt is zero", func() {
+			line := `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","resetsAt":0,"rateLimitType":"seven_day","utilization":0.50}}`
+			_, formatted := processLine(line)
+			Expect(formatted).To(ContainSubstring("seven_day"))
+			Expect(formatted).NotTo(ContainSubstring("resets="))
+		})
+
+		It("renders utilization outside 0..1 verbatim without clamping", func() {
+			line := `{"type":"rate_limit_event","rate_limit_info":{"status":"unknown","resetsAt":0,"rateLimitType":"seven_day","utilization":1.25}}`
+			_, formatted := processLine(line)
+			// int(1.25 * 100) = 125 — rendered as-is, not clamped to 100
+			Expect(formatted).To(ContainSubstring("125%"))
+		})
+	})
 })

@@ -17,11 +17,29 @@ type StreamMessage struct {
 	Usage        *Usage   `json:"usage"`
 	Result       *string  `json:"result"`
 	IsError      *bool    `json:"is_error"`
+	// RateLimitInfo is populated when Type == "rate_limit_event".
+	RateLimitInfo *RateLimitInfo `json:"rate_limit_info"`
 	// System init fields (type == "system", subtype == "init"):
 	SessionID string   `json:"session_id"`
 	Model     string   `json:"model"`
 	Cwd       string   `json:"cwd"`
 	Tools     []string `json:"tools"`
+}
+
+// RateLimitInfo contains the details of a rate_limit_event message.
+type RateLimitInfo struct {
+	// Status is the rate-limit status string, e.g. "allowed_warning" or "blocked".
+	Status string `json:"status"`
+	// ResetsAt is the unix epoch (seconds) when the bucket resets. Zero means unknown.
+	ResetsAt int64 `json:"resetsAt"`
+	// RateLimitType identifies the bucket, e.g. "seven_day" or "five_hour".
+	RateLimitType string `json:"rateLimitType"`
+	// Utilization is the fraction of the bucket consumed, 0.0–1.0.
+	Utilization float64 `json:"utilization"`
+	// IsUsingOverage indicates overage consumption.
+	IsUsingOverage bool `json:"isUsingOverage"`
+	// SurpassedThreshold indicates the threshold has been crossed.
+	SurpassedThreshold bool `json:"surpassedThreshold"`
 }
 
 // Usage captures the token counts from the final result event.

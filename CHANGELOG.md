@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.120.0
+
+- feat: render rate_limit_event as a human-readable warning line in the stream formatter (previously emitted [unknown type: rate_limit_event] noise)
+
 ## v0.119.7
 
 - refactor: extract shared startupSequence from runner and oneshot into pkg/runner/lifecycle.go

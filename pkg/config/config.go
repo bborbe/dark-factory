@@ -84,6 +84,7 @@ type Config struct {
 	Workflow               Workflow            `yaml:"workflow"`
 	PR                     bool                `yaml:"pr,omitempty"`
 	Worktree               bool                `yaml:"worktree,omitempty"`
+	HideGit                bool                `yaml:"hideGit,omitempty"`
 	DefaultBranch          string              `yaml:"defaultBranch"`
 	Prompts                PromptsConfig       `yaml:"prompts"`
 	Specs                  SpecsConfig         `yaml:"specs"`

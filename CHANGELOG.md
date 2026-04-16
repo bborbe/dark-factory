@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.117.0
+
+- feat: Add `hideGit` config field and plumb `hideGit bool` through `NewDockerExecutor` and `buildDockerCommand` to conditionally mask `/workspace/.git` in the container via anonymous volume (directory) or `/dev/null` bind (worktree pointer file)
+
 ## v0.116.1
 
 - fix: Remove broken `--tmpfs /workspace/.git` overlay from worktree-mode executor; the overlay caused a Docker mount error because a git worktree's `.git` is a file, not a directory

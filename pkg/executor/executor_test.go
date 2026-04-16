@@ -48,6 +48,7 @@ var _ = Describe("DockerExecutor", func() {
 			0,
 			libtime.NewCurrentDateTime(),
 			formatter.NewFormatter(),
+			false, // hideGit
 		)
 
 		var err error
@@ -176,6 +177,7 @@ More lines...`
 				0,
 				libtime.NewCurrentDateTime(),
 				formatter.NewFormatter(),
+				false, // hideGit
 			)
 			Expect(executor).NotTo(BeNil())
 		})
@@ -385,6 +387,7 @@ var _ = Describe("Internal helper functions", func() {
 					claudeConfigDir,
 					promptBaseName,
 					home,
+					false, // hideGit
 				)
 			}
 		}
@@ -1137,6 +1140,7 @@ var _ = Describe("Internal helper functions", func() {
 				libtime.NewCurrentDateTime(),
 				runner,
 				fakeFormatter,
+				false, // hideGit
 			)
 		}
 
@@ -1303,6 +1307,7 @@ This has frontmatter.`
 				libtime.NewCurrentDateTime(),
 				runner,
 				fakeFormatter,
+				false, // hideGit
 			)
 		}
 
@@ -1401,6 +1406,7 @@ This has frontmatter.`
 				libtime.NewCurrentDateTime(),
 				runner,
 				formatter.NewFormatter(),
+				false, // hideGit
 			)
 		}
 
@@ -1550,6 +1556,7 @@ This has frontmatter.`
 					"/home/user/.claude",
 					"test-prompt",
 					"/home/user",
+					false, // hideGit
 				)
 
 				args := cmd.Args
@@ -1582,6 +1589,7 @@ This has frontmatter.`
 				"/home/user/.claude",
 				"test-prompt",
 				"/home/user",
+				false, // hideGit
 			)
 			for _, arg := range cmd.Args {
 				Expect(arg).NotTo(Equal("--tmpfs"), "docker args must not contain --tmpfs")

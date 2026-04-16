@@ -1,5 +1,5 @@
 ---
-status: idea
+status: draft
 ---
 
 ## Summary

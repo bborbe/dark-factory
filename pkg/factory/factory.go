@@ -464,6 +464,7 @@ func CreateSpecGenerator(
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(),
+			false, // hideGit — spec generators never need .git masking
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
@@ -535,10 +536,12 @@ func createDockerExecutor(
 	claudeDir string,
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	hideGit bool,
 ) executor.Executor {
 	return executor.NewDockerExecutor(
 		containerImage, projectName, model, netrcFile, gitconfigFile, env, extraMounts, claudeDir,
 		maxPromptDuration, currentDateTimeGetter, formatter.NewFormatter(),
+		hideGit,
 	)
 }
 
@@ -606,6 +609,7 @@ func CreateProcessor(
 			containerImage, projectName, model, netrcFile,
 			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
 			currentDateTimeGetter,
+			false, // hideGit — wired correctly in prompt 2 (spec-048-factory-docs)
 		),
 		promptManager,
 		releaser,

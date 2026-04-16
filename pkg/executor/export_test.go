@@ -38,6 +38,7 @@ func NewDockerExecutorWithRunnerForTest(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	runner CommandRunnerForTest,
 	fmtr formatter.Formatter,
+	hideGit bool,
 ) Executor {
 	return &dockerExecutor{
 		containerImage:        containerImage,
@@ -52,6 +53,7 @@ func NewDockerExecutorWithRunnerForTest(
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
 		formatter:             fmtr,
+		hideGit:               hideGit,
 	}
 }
 
@@ -71,6 +73,7 @@ func BuildDockerCommandForTest(
 	claudeConfigDir string,
 	promptBaseName string,
 	home string,
+	hideGit bool,
 ) *exec.Cmd {
 	e := &dockerExecutor{
 		containerImage: containerImage,
@@ -80,6 +83,7 @@ func BuildDockerCommandForTest(
 		gitconfigFile:  gitconfigFile,
 		env:            env,
 		extraMounts:    extraMounts,
+		hideGit:        hideGit,
 	}
 	return e.buildDockerCommand(
 		ctx,

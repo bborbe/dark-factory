@@ -58,6 +58,7 @@ func NewDockerExecutor(
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	fmtr formatter.Formatter,
+	hideGit bool,
 ) Executor {
 	return &dockerExecutor{
 		containerImage:        containerImage,
@@ -72,6 +73,7 @@ func NewDockerExecutor(
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
 		formatter:             fmtr,
+		hideGit:               hideGit,
 	}
 }
 
@@ -89,6 +91,7 @@ type dockerExecutor struct {
 	maxPromptDuration     time.Duration // 0 = disabled
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	formatter             formatter.Formatter
+	hideGit               bool // mask /workspace/.git from the container
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -538,9 +541,36 @@ func (e *dockerExecutor) buildDockerCommand(
 		}
 		args = append(args, "-v", mount)
 	}
+	args = append(args, e.buildHideGitArgs(projectRoot)...)
 	args = append(args, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design
 	return exec.CommandContext(ctx, "docker", args...)
+}
+
+// buildHideGitArgs returns the Docker mount args needed to mask .git from the container.
+// When hideGit is false it returns nil (no args added). When true it inspects projectRoot/.git:
+//   - directory → anonymous volume ("-v /workspace/.git") hides host .git contents
+//   - file (worktree pointer) → /dev/null bind ("-v /dev/null:/workspace/.git")
+//   - missing → no args (nothing to hide)
+//   - stat error (non-ENOENT) → no args, logged at debug
+func (e *dockerExecutor) buildHideGitArgs(projectRoot string) []string {
+	if !e.hideGit {
+		return nil
+	}
+	gitPath := filepath.Join(projectRoot, ".git")
+	fi, statErr := os.Stat(gitPath)
+	if statErr != nil {
+		if !os.IsNotExist(statErr) {
+			slog.Debug("hideGit: stat .git failed, skipping mount mask", "error", statErr)
+		}
+		return nil
+	}
+	if fi.IsDir() {
+		// Normal repo or clone: mask host directory with an anonymous Docker volume.
+		return []string{"-v", "/workspace/.git"}
+	}
+	// Worktree pointer file or submodule: bind /dev/null over the pointer file.
+	return []string{"-v", "/dev/null:/workspace/.git"}
 }
 
 // validateClaudeAuth checks that the Claude config directory contains a valid OAuth token.

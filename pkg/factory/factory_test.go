@@ -5,7 +5,11 @@
 package factory_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
+	"strings"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -15,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/subproc"
@@ -156,6 +161,137 @@ var _ = Describe("Factory", func() {
 
 		It("returns project when project is 1", func() {
 			Expect(factory.EffectiveMaxContainers(1, 3)).To(Equal(1))
+		})
+	})
+
+	Describe("LogEffectiveConfig", func() {
+		var (
+			logBuf      bytes.Buffer
+			origDefault *slog.Logger
+		)
+
+		BeforeEach(func() {
+			logBuf.Reset()
+			origDefault = slog.Default()
+			slog.SetDefault(
+				slog.New(
+					slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}),
+				),
+			)
+		})
+
+		AfterEach(func() {
+			slog.SetDefault(origDefault)
+		})
+
+		fullTestConfig := func() config.Config {
+			return config.Config{
+				ContainerImage:    "ghcr.io/bborbe/yolo:test",
+				Model:             "claude-sonnet-4-6",
+				Worktree:          true,
+				PR:                true,
+				AutoRelease:       true,
+				AutoMerge:         true,
+				VerificationGate:  true,
+				ValidationCommand: "make precommit",
+				TestCommand:       "make test",
+				DebounceMs:        500,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "p",
+					InProgressDir: "p/ip",
+					CompletedDir:  "p/c",
+					LogDir:        "p/l",
+				},
+			}
+		}
+
+		assertRequiredFields := func(output string) {
+			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
+			Expect(output).To(ContainSubstring("containerImage="))
+			Expect(output).To(ContainSubstring("model="))
+			Expect(output).To(ContainSubstring("worktree="))
+			Expect(output).To(ContainSubstring("pr="))
+			Expect(output).To(ContainSubstring("autoRelease="))
+			Expect(output).To(ContainSubstring("autoMerge="))
+			Expect(output).To(ContainSubstring("verificationGate="))
+			Expect(output).To(ContainSubstring("validationCommand="))
+			Expect(output).To(ContainSubstring("testCommand="))
+			Expect(output).To(ContainSubstring("debounceMs="))
+			Expect(output).To(ContainSubstring("promptsInboxDir="))
+			Expect(output).To(ContainSubstring("promptsInProgressDir="))
+			Expect(output).To(ContainSubstring("promptsCompletedDir="))
+			Expect(output).To(ContainSubstring("promptsLogDir="))
+		}
+
+		assertNoSecrets := func(output string) {
+			Expect(output).NotTo(ContainSubstring("env="))
+			Expect(output).NotTo(ContainSubstring("extraMounts="))
+			Expect(output).NotTo(ContainSubstring("github="))
+			Expect(output).NotTo(ContainSubstring("netrcFile="))
+			Expect(output).NotTo(ContainSubstring("gitconfigFile="))
+			Expect(output).NotTo(ContainSubstring("notifications="))
+			Expect(output).NotTo(ContainSubstring("bitbucket="))
+		}
+
+		DescribeTable("maxContainers source and value",
+			func(cfgMaxContainers int, globalMaxContainers int, globalFilePresent bool,
+				expectedMax int, expectedSource string,
+			) {
+				c := fullTestConfig()
+				c.MaxContainers = cfgMaxContainers
+				globalCfg := globalconfig.GlobalConfig{MaxContainers: globalMaxContainers}
+
+				factory.LogEffectiveConfig(c, globalCfg, globalFilePresent)
+
+				output := logBuf.String()
+				assertRequiredFields(output)
+				assertNoSecrets(output)
+				Expect(output).To(ContainSubstring(fmt.Sprintf("maxContainers=%d", expectedMax)))
+				Expect(output).To(ContainSubstring("maxContainersSource=" + expectedSource))
+			},
+			Entry("defaults-only (no project, no global file)",
+				0, globalconfig.DefaultMaxContainers, false,
+				globalconfig.DefaultMaxContainers, "default",
+			),
+			Entry("global-only override",
+				0, 7, true,
+				7, "global",
+			),
+			Entry("project override beats global",
+				5, 3, true,
+				5, "project",
+			),
+			Entry("project override when global is default",
+				5, globalconfig.DefaultMaxContainers, false,
+				5, "project",
+			),
+			Entry("project override equals global (still project)",
+				3, 3, true,
+				3, "project",
+			),
+		)
+
+		It("does not log secrets or env maps", func() {
+			c := fullTestConfig()
+			c.Env = map[string]string{"SECRET": "token"}
+			c.NetrcFile = "/home/user/.netrc"
+			c.GitconfigFile = "/home/user/.gitconfig"
+			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
+
+			factory.LogEffectiveConfig(c, globalCfg, false)
+
+			output := logBuf.String()
+			assertNoSecrets(output)
+		})
+
+		It("emits exactly one log line", func() {
+			c := fullTestConfig()
+			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
+
+			factory.LogEffectiveConfig(c, globalCfg, false)
+
+			output := logBuf.String()
+			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
 		})
 	})
 })

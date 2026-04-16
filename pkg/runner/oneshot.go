@@ -29,6 +29,8 @@ type OneShotRunner interface {
 }
 
 // NewOneShotRunner creates a new OneShotRunner.
+// startupLogger is an optional func called after lock acquisition to emit the effective-config log line.
+// Pass nil to skip the startup log.
 func NewOneShotRunner(
 	inboxDir string,
 	inProgressDir string,
@@ -47,6 +49,7 @@ func NewOneShotRunner(
 	autoApprove bool,
 	slugMigrator slugmigrator.Migrator,
 	mover prompt.FileMover,
+	startupLogger func(),
 ) OneShotRunner {
 	return &oneShotRunner{
 		inboxDir:              inboxDir,
@@ -66,6 +69,7 @@ func NewOneShotRunner(
 		autoApprove:           autoApprove,
 		slugMigrator:          slugMigrator,
 		mover:                 mover,
+		startupLogger:         startupLogger,
 	}
 }
 
@@ -88,6 +92,7 @@ type oneShotRunner struct {
 	autoApprove           bool
 	slugMigrator          slugmigrator.Migrator
 	mover                 prompt.FileMover
+	startupLogger         func()
 }
 
 // Run acquires the lock, initializes directories, then loops: generate prompts from approved
@@ -104,6 +109,10 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	}()
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
+
+	if r.startupLogger != nil {
+		r.startupLogger()
+	}
 
 	// Migrate old prompts/queue/ → prompts/in-progress/ if needed
 	if err := r.migrateQueueDir(ctx); err != nil {

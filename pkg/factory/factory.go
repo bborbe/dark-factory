@@ -52,6 +52,58 @@ func EffectiveMaxContainers(projectMax, globalMax int) int {
 	return globalMax
 }
 
+// LogEffectiveConfig emits a single slog.Info "effective config" line describing
+// the resolved settings that drive daemon/run behavior. This is purely diagnostic;
+// no value is mutated.
+//
+// maxContainersSource is one of:
+//   - "project" when cfg.MaxContainers > 0 (project file override wins)
+//   - "global"  when cfg.MaxContainers <= 0 AND globalFilePresent is true
+//   - "default" when cfg.MaxContainers <= 0 AND globalFilePresent is false
+func LogEffectiveConfig(
+	cfg config.Config,
+	globalCfg globalconfig.GlobalConfig,
+	globalFilePresent bool,
+) {
+	effective := EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers)
+	source := "default"
+	if cfg.MaxContainers > 0 {
+		source = "project"
+	} else if globalFilePresent {
+		source = "global"
+	}
+	slog.Info("effective config",
+		"maxContainers", effective,
+		"maxContainersSource", source,
+		"containerImage", cfg.ContainerImage,
+		"model", cfg.Model,
+		"worktree", cfg.Worktree,
+		"pr", cfg.PR,
+		"autoRelease", cfg.AutoRelease,
+		"autoMerge", cfg.AutoMerge,
+		"verificationGate", cfg.VerificationGate,
+		"validationCommand", cfg.ValidationCommand,
+		"testCommand", cfg.TestCommand,
+		"debounceMs", cfg.DebounceMs,
+		"promptsInboxDir", cfg.Prompts.InboxDir,
+		"promptsInProgressDir", cfg.Prompts.InProgressDir,
+		"promptsCompletedDir", cfg.Prompts.CompletedDir,
+		"promptsLogDir", cfg.Prompts.LogDir,
+	)
+}
+
+// createStartupLogger builds the closure passed to NewRunner / NewOneShotRunner that
+// emits the effective-config log line immediately after the daemon lock is acquired.
+// Errors from FileExists are swallowed so logging never blocks startup.
+func createStartupLogger(
+	ctx context.Context,
+	cfg config.Config,
+	globalCfg globalconfig.GlobalConfig,
+) func() {
+	present, _ := globalconfig.FileExists(ctx)
+	return func() { LogEffectiveConfig(cfg, globalCfg, present) }
+}
+
 // errRunner is a Runner that immediately returns an error when Run is called.
 type errRunner struct{ err error }
 
@@ -271,7 +323,8 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	specWatcher := CreateSpecWatcher(cfg, specGen, currentDateTimeGetter)
 	return createRunnerInstance(cfg, inboxDir, inProgressDir, completedDir,
 		promptManager, releaser, watcher, proc, srv, poller, specWatcher,
-		projectName, containerChecker, n, migrator, currentDateTimeGetter)
+		projectName, containerChecker, n, migrator, currentDateTimeGetter,
+		createStartupLogger(ctx, cfg, globalCfg))
 }
 
 // createRunnerInstance wires the final runner.Runner from pre-built components.
@@ -290,6 +343,7 @@ func createRunnerInstance(
 	n notifier.Notifier,
 	migrator slugmigrator.Migrator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	startupLogger func(),
 ) runner.Runner {
 	return runner.NewRunner(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
@@ -301,6 +355,7 @@ func createRunnerInstance(
 		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
+		startupLogger,
 	)
 }
 
@@ -384,6 +439,7 @@ func CreateOneShotRunner(
 		autoApprove,
 		migrator,
 		releaser,
+		createStartupLogger(ctx, cfg, globalCfg),
 	)
 }
 

@@ -61,6 +61,28 @@ func NewLoader() Loader {
 // fileLoader implements Loader by reading ~/.dark-factory/config.yaml.
 type fileLoader struct{}
 
+// FileExists reports whether the global config file (~/.dark-factory/config.yaml) exists.
+// Callers use this only to distinguish "global file present" from "using built-in defaults"
+// in diagnostic logs.
+// - Config file missing → (false, nil)
+// - Home dir lookup fails → (false, wrapped error)
+// - Any other stat error → (false, wrapped error)
+// - File present (any size) → (true, nil)
+func FileExists(ctx context.Context) (bool, error) {
+	home, err := userHomeDir()
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "globalconfig: get home directory")
+	}
+	configPath := filepath.Join(home, ".dark-factory", "config.yaml")
+	if _, err := os.Stat(configPath); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrap(ctx, err, "globalconfig: stat config file")
+	}
+	return true, nil
+}
+
 // Load reads ~/.dark-factory/config.yaml, merges with defaults, validates, and returns the config.
 // If the file does not exist or is empty, defaults are returned without error.
 func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {

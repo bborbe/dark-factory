@@ -89,6 +89,7 @@ var _ = Describe("Runner", func() {
 			&mocks.FileMover{},
 			0,
 			nil,
+			nil,
 		)
 	}
 
@@ -382,6 +383,7 @@ var _ = Describe("Runner", func() {
 			&mocks.FileMover{},
 			0,
 			nil,
+			nil,
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -441,6 +443,7 @@ var _ = Describe("Runner", func() {
 			&mocks.FileMover{},
 			0,
 			nil,
+			nil,
 		)
 
 		go func() {
@@ -489,6 +492,7 @@ var _ = Describe("Runner", func() {
 			libtime.NewCurrentDateTime(),
 			&mocks.FileMover{},
 			0,
+			nil,
 			nil,
 		)
 
@@ -554,6 +558,7 @@ var _ = Describe("Runner", func() {
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
 				0,
+				nil,
 				nil,
 			)
 
@@ -770,6 +775,7 @@ var _ = Describe("Runner", func() {
 				&mocks.FileMover{},
 				0,
 				nil,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -849,6 +855,7 @@ var _ = Describe("Runner", func() {
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
 				0,
+				nil,
 				nil,
 			)
 
@@ -940,6 +947,7 @@ var _ = Describe("Runner", func() {
 					&mocks.FileMover{},
 					0,
 					nil,
+					nil,
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1026,6 +1034,7 @@ var _ = Describe("Runner", func() {
 				&mocks.FileMover{},
 				0,
 				nil,
+				nil,
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1085,6 +1094,7 @@ var _ = Describe("Runner", func() {
 				libtime.NewCurrentDateTime(),
 				&mocks.FileMover{},
 				0,
+				nil,
 				nil,
 			)
 		}

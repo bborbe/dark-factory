@@ -35,6 +35,8 @@ type Runner interface {
 }
 
 // NewRunner creates a new Runner.
+// startupLogger is an optional func called after lock acquisition to emit the effective-config log line.
+// Pass nil to skip the startup log.
 func NewRunner(
 	inboxDir string,
 	inProgressDir string,
@@ -59,6 +61,7 @@ func NewRunner(
 	mover prompt.FileMover,
 	maxPromptDuration time.Duration,
 	containerStopper executor.ContainerStopper,
+	startupLogger func(),
 ) Runner {
 	return &runner{
 		inboxDir:              inboxDir,
@@ -84,6 +87,7 @@ func NewRunner(
 		mover:                 mover,
 		maxPromptDuration:     maxPromptDuration,
 		containerStopper:      containerStopper,
+		startupLogger:         startupLogger,
 	}
 }
 
@@ -112,6 +116,7 @@ type runner struct {
 	mover                 prompt.FileMover
 	maxPromptDuration     time.Duration
 	containerStopper      executor.ContainerStopper
+	startupLogger         func()
 }
 
 // Run executes the main processing loop:
@@ -131,6 +136,10 @@ func (r *runner) Run(ctx context.Context) error {
 	}()
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
+
+	if r.startupLogger != nil {
+		r.startupLogger()
+	}
 
 	// Abort if .git/index.lock exists — all git operations will fail
 	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {

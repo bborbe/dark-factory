@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.111.0
+
+- feat: Log effective configuration at daemon and one-shot run startup — emits a single `msg="effective config"` slog line with `maxContainers`, `maxContainersSource` (project/global/default), container image, model, workflow flags, commands, debounce, and prompt lifecycle directories
+
 ## v0.110.2
 
 - fix: Detect claude CLI critical failures (auth error, API error) in container log when no completion report is present, marking prompt as failed instead of completed

@@ -76,6 +76,7 @@ var _ = Describe("OneShotRunner", func() {
 			false,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 	}
 
@@ -195,6 +196,7 @@ var _ = Describe("OneShotRunner", func() {
 			false,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		err := r.Run(ctx)
@@ -256,6 +258,7 @@ var _ = Describe("OneShotRunner", func() {
 			true,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		err := r.Run(ctx)
@@ -315,6 +318,7 @@ var _ = Describe("OneShotRunner", func() {
 			false,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		err := r.Run(ctx)
@@ -373,6 +377,7 @@ var _ = Describe("OneShotRunner", func() {
 			true,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		err := r.Run(ctx)
@@ -485,6 +490,7 @@ var _ = Describe("OneShotRunner", func() {
 			false,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		// Should succeed (createDirectories creates the dir, but generateFromApprovedSpecs
@@ -547,6 +553,7 @@ var _ = Describe("OneShotRunner", func() {
 				false,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				nil,
 			)
 
 			err := r.Run(ctx)
@@ -612,6 +619,7 @@ var _ = Describe("OneShotRunner", func() {
 			true,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			nil,
 		)
 
 		err := r.Run(ctx)
@@ -658,6 +666,7 @@ var _ = Describe("OneShotRunner", func() {
 				false,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				nil,
 			)
 
 			err := r.Run(ctx)
@@ -702,6 +711,7 @@ var _ = Describe("OneShotRunner", func() {
 				false,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				nil,
 			)
 
 			err := r.Run(ctx)
@@ -772,6 +782,7 @@ var _ = Describe("OneShotRunner", func() {
 				true,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				nil,
 			)
 
 			err := r.Run(ctx)
@@ -814,6 +825,7 @@ var _ = Describe("OneShotRunner", func() {
 					false,
 					&mocks.SpecSlugMigrator{},
 					&mocks.FileMover{},
+					nil,
 				)
 
 				err := r.Run(ctx)

@@ -742,25 +742,74 @@ func (p *processor) waitForContainerSlot(ctx context.Context) error {
 	}
 }
 
-// prepareContainerSlot acquires the global container lock and waits for a free slot.
-// Returns an idempotent release function to be deferred, and an error on failure.
-// When containerLock is nil the release function is a safe no-op.
+// hasFreeSlot returns true when maxContainers is unlimited (<=0) or when
+// the current system-wide running count is below maxContainers.
+// On counter error, the behaviour matches waitForContainerSlot's existing
+// tolerance: log a warning and return true so the daemon makes forward
+// progress — docker itself will reject a start if resources are truly absent.
+func (p *processor) hasFreeSlot(ctx context.Context) bool {
+	if p.maxContainers <= 0 {
+		return true
+	}
+	count, err := p.containerCounter.CountRunning(ctx)
+	if err != nil {
+		slog.Warn("failed to count running containers, proceeding anyway", "error", err)
+		return true
+	}
+	return count < p.maxContainers
+}
+
+// prepareContainerSlot acquires the global container lock only for the
+// check-and-start window. If the slot is full, it RELEASES the lock and
+// sleeps before retrying, so other daemons (possibly with higher limits)
+// are not blocked while this daemon waits.
+//
+// On success, returns with the lock held and an idempotent release function.
+// The caller is responsible for starting the container and calling
+// startContainerLockRelease, which releases the lock after the container is
+// confirmed running.
+//
+// When p.containerLock is nil, no locking is performed and the only wait is
+// the unlocked waitForContainerSlot poll (unchanged behaviour for nil-lock case).
 func (p *processor) prepareContainerSlot(ctx context.Context) (func(), error) {
-	releaseLock := func() {}
-	if p.containerLock != nil {
-		if err := p.containerLock.Acquire(ctx); err != nil {
-			return releaseLock, errors.Wrap(ctx, err, "acquire container lock")
+	if p.containerLock == nil {
+		if err := p.waitForContainerSlot(ctx); err != nil {
+			return func() {}, errors.Wrap(ctx, err, "wait for container slot")
 		}
+		return func() {}, nil
+	}
+
+	for {
+		if err := p.containerLock.Acquire(ctx); err != nil {
+			return func() {}, errors.Wrap(ctx, err, "acquire container lock")
+		}
+
+		// Idempotent release — the caller MAY call this early, the retry
+		// branch below WILL call this before sleeping, and startContainerLockRelease
+		// will call it after the container is confirmed running.
 		var once sync.Once
-		releaseLock = func() {
+		releaseLock := func() {
 			once.Do(func() { _ = p.containerLock.Release(ctx) })
 		}
-	}
-	if err := p.waitForContainerSlot(ctx); err != nil {
+
+		// Lock held — count must be stable for this daemon's decision.
+		if p.hasFreeSlot(ctx) {
+			// Lock stays held; caller does docker run + startContainerLockRelease.
+			return releaseLock, nil
+		}
+
+		// No slot — release before sleeping so other daemons can proceed.
 		releaseLock()
-		return func() {}, errors.Wrap(ctx, err, "wait for container slot")
+		slog.Info(
+			"waiting for container slot",
+			"limit", p.maxContainers,
+		)
+		select {
+		case <-ctx.Done():
+			return func() {}, errors.Wrapf(ctx, ctx.Err(), "wait for container slot cancelled")
+		case <-time.After(p.containerPollInterval):
+		}
 	}
-	return releaseLock, nil
 }
 
 // startContainerLockRelease spawns a goroutine that releases the container lock

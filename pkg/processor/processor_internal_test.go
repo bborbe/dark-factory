@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -848,6 +849,48 @@ func (s *stubContainerCounter) calls() int {
 	return int(atomic.LoadInt32(&s.callCount))
 }
 
+// fakeContainerLock is a local test fake for containerlock.ContainerLock.
+// It records Acquire/Release call counts and supports configurable stubs.
+type fakeContainerLock struct {
+	mu               sync.Mutex
+	acquireCallCount int32
+	releaseCallCount int32
+	acquireErr       error
+	acquireStub      func(context.Context) error
+	releaseStub      func(context.Context) error
+}
+
+func (f *fakeContainerLock) Acquire(ctx context.Context) error {
+	atomic.AddInt32(&f.acquireCallCount, 1)
+	f.mu.Lock()
+	stub := f.acquireStub
+	err := f.acquireErr
+	f.mu.Unlock()
+	if stub != nil {
+		return stub(ctx)
+	}
+	return err
+}
+
+func (f *fakeContainerLock) Release(ctx context.Context) error {
+	atomic.AddInt32(&f.releaseCallCount, 1)
+	f.mu.Lock()
+	stub := f.releaseStub
+	f.mu.Unlock()
+	if stub != nil {
+		return stub(ctx)
+	}
+	return nil
+}
+
+func (f *fakeContainerLock) AcquireCallCount() int {
+	return int(atomic.LoadInt32(&f.acquireCallCount))
+}
+
+func (f *fakeContainerLock) ReleaseCallCount() int {
+	return int(atomic.LoadInt32(&f.releaseCallCount))
+}
+
 var _ = Describe("waitForContainerSlot", func() {
 	var (
 		ctx    context.Context
@@ -917,6 +960,160 @@ var _ = Describe("waitForContainerSlot", func() {
 		err := p.waitForContainerSlot(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(counter.calls()).To(Equal(1))
+	})
+})
+
+var _ = Describe("prepareContainerSlot", func() {
+	var (
+		ctx    context.Context
+		cancel context.CancelFunc
+		p      *processor
+	)
+
+	BeforeEach(func() {
+		ctx, cancel = context.WithCancel(context.Background())
+		p = &processor{
+			maxContainers:         3,
+			containerPollInterval: 10 * time.Millisecond,
+			skippedPrompts:        make(map[string]libtime.DateTime),
+		}
+	})
+
+	AfterEach(func() {
+		cancel()
+	})
+
+	It("nil-lock fast path, slot free immediately", func() {
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 1, nil }}
+		p.containerLock = nil
+		p.containerCounter = counter
+		release, err := p.prepareContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(release).NotTo(BeNil())
+		Expect(counter.calls()).To(Equal(1))
+	})
+
+	It("nil-lock fast path, slot-wait then free", func() {
+		counter := &stubContainerCounter{fn: func(n int) (int, error) {
+			if n == 1 {
+				return 3, nil
+			}
+			return 2, nil
+		}}
+		p.containerLock = nil
+		p.containerCounter = counter
+		release, err := p.prepareContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(release).NotTo(BeNil())
+		Expect(counter.calls()).To(Equal(2))
+	})
+
+	It("lock held, slot free immediately", func() {
+		fakeLock := &fakeContainerLock{}
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 2, nil }}
+		p.containerLock = fakeLock
+		p.containerCounter = counter
+		release, err := p.prepareContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(release).NotTo(BeNil())
+		Expect(fakeLock.AcquireCallCount()).To(Equal(1))
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(0))
+		// Calling release once invokes Release exactly once.
+		release()
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(1))
+		// Calling release a second time is idempotent.
+		release()
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(1))
+	})
+
+	It("lock held, slot full then free — key regression test", func() {
+		counter := &stubContainerCounter{fn: func(n int) (int, error) {
+			if n <= 2 {
+				return 3, nil
+			}
+			return 2, nil
+		}}
+		p.containerCounter = counter
+		p.containerPollInterval = 10 * time.Millisecond
+
+		// Record event ordering: A=Acquire, R=Release.
+		var events []string
+		var eventsMu sync.Mutex
+		appendEvent := func(e string) {
+			eventsMu.Lock()
+			events = append(events, e)
+			eventsMu.Unlock()
+		}
+		fakeLock := &fakeContainerLock{
+			acquireStub: func(_ context.Context) error {
+				appendEvent("A")
+				return nil
+			},
+			releaseStub: func(_ context.Context) error {
+				appendEvent("R")
+				return nil
+			},
+		}
+		p.containerLock = fakeLock
+
+		release, err := p.prepareContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(release).NotTo(BeNil())
+		Expect(fakeLock.AcquireCallCount()).To(Equal(3))
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(2))
+		Expect(counter.calls()).To(Equal(3))
+
+		// Assert ordering before calling release: every slot-full Acquire is followed by
+		// a Release before the next Acquire. The returned lock is still held.
+		Expect(events).To(Equal([]string{"A", "R", "A", "R", "A"}))
+
+		// The returned release has not been called yet.
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(2))
+		release()
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(3))
+	})
+
+	It("ctx cancellation during slot-wait releases all acquired locks", func() {
+		fakeLock := &fakeContainerLock{}
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 3, nil }}
+		p.containerLock = fakeLock
+		p.containerCounter = counter
+		p.containerPollInterval = 50 * time.Millisecond
+
+		go func() {
+			time.Sleep(80 * time.Millisecond)
+			cancel()
+		}()
+
+		_, err := p.prepareContainerSlot(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(stderrors.Is(err, context.Canceled)).To(BeTrue())
+		// Every acquired lock was released — no leaked lock.
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(fakeLock.AcquireCallCount()))
+	})
+
+	It("acquire error is propagated", func() {
+		fakeLock := &fakeContainerLock{acquireErr: stderrors.New("flock denied")}
+		p.containerLock = fakeLock
+		// counter is not set — if it were called, test would panic.
+		_, err := p.prepareContainerSlot(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("flock denied"))
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(0))
+	})
+
+	It("counter error is tolerated and lock stays held", func() {
+		fakeLock := &fakeContainerLock{}
+		counter := &stubContainerCounter{fn: func(_ int) (int, error) {
+			return 0, stderrors.New("docker ls failed")
+		}}
+		p.containerLock = fakeLock
+		p.containerCounter = counter
+		release, err := p.prepareContainerSlot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(release).NotTo(BeNil())
+		Expect(fakeLock.AcquireCallCount()).To(Equal(1))
+		Expect(fakeLock.ReleaseCallCount()).To(Equal(0))
 	})
 })
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.111.2
+
+- fix: Release container flock between slot-wait polls so daemons with higher maxContainers limits are not blocked behind daemons waiting for a slot
+
 ## v0.111.1
 
 - fix: Wire 18 missing Config fields into partialConfig and mergePartial so YAML keys like `maxPromptDuration`, `dirtyFileThreshold`, and `autoRetryLimit` are no longer silently dropped by the loader

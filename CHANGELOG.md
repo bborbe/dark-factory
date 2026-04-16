@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.118.0
+
+- feat: mask /workspace/.git inside containers for worktree workflow and via hideGit config opt-in
+
 ## v0.117.0
 
 - feat: Add `hideGit` config field and plumb `hideGit bool` through `NewDockerExecutor` and `buildDockerCommand` to conditionally mask `/workspace/.git` in the container via anonymous volume (directory) or `/dev/null` bind (worktree pointer file)

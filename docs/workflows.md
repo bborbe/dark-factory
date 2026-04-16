@@ -42,6 +42,7 @@ Progressive isolation levels.
 - No object-store copy — worktree shares `.git/objects` with the parent (fast even for huge repos)
 - The worktree's `.git` is a FILE pointing at `<parentRepo>/.git/worktrees/<name>`, which is NOT accessible inside the container
 - Container mounts the worktree at `/workspace` — the worktree's `.git` pointer file is present but its target (`<parentRepo>/.git/worktrees/<name>`) is not mounted, so git commands inside the container fail naturally
+- **`.git` is always masked** inside the container: the worktree's `.git` pointer file is covered by a Docker volume overlay, preventing the dangling-pointer error (`fatal: not a git repository`) that previously crashed container startup
 - **Git does not work inside the container.** Prompts must not rely on `git status`, `git diff`, or `git commit` from inside
 - Parallel execution: each prompt gets its own worktree
 - Host-side commits: dark-factory runs `git add` / `commit` / `push` against the worktree path on the host, where the `.git` pointer resolves correctly
@@ -90,7 +91,7 @@ Invalid: `workflow: direct` with `pr: true` (no feature branch to open a PR for 
 | direct | parent repo | real `.git/` directory | yes |
 | branch | parent repo (new branch checked out) | real `.git/` directory | yes |
 | clone | fresh clone | real `.git/` directory (cloned) | yes |
-| worktree | worktree files | `.git` pointer file (target not mounted) | NO — prompts must avoid git |
+| worktree | worktree files | `.git` masked (anonymous volume or `/dev/null` bind — see hideGit) | NO — prompts must avoid git |
 
 ## Choosing a mode
 
@@ -158,3 +159,24 @@ defaultBranch: main
 - `workflow: clone` creates `/tmp/dark-factory/<project>-<prompt>/` on every prompt; cleaned after commit
 - `workflow: worktree` creates a worktree under the same `/tmp/dark-factory/` path but via `git worktree add`; cleaned via `git worktree remove`
 - All host-side git operations (fetch, branch create, commit, push, tag) use the parent repo for `direct`/`branch`, the clone for `clone`, the worktree path for `worktree`
+
+## `.git` masking (`hideGit`)
+
+By default, `workflow: worktree` always masks the worktree's `.git` pointer file inside the container. The mask prevents `git` from following a dangling gitdir pointer, so the container no longer crashes with `fatal: not a git repository`. For other workflows (`direct`, `branch`, `clone`), the container sees the host's real `.git` directory by default.
+
+To opt in to the same masking for non-worktree workflows, set `hideGit: true` in `.dark-factory.yaml`:
+
+```yaml
+workflow: direct
+hideGit: true
+```
+
+**Mount shape** — the mask is chosen by inspecting the project root's `.git` entry at container launch time:
+
+| `.git` on host | Docker flag added |
+|----------------|-------------------|
+| Directory (normal repo, clone) | `-v /workspace/.git` — anonymous volume hides host directory contents |
+| File (worktree pointer, submodule) | `-v /dev/null:/workspace/.git` — bind hides the pointer |
+| Missing | no flag — nothing to hide |
+
+`hideGit: true` is strictly additive isolation — it reduces what the container can see, never expands it. The host's `.git/config` (which may contain tokens) becomes invisible to the container.

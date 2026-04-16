@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-16T18:59:28Z"
 generating: "2026-04-16T18:59:28Z"
 prompted: "2026-04-16T19:05:26Z"
+verifying: "2026-04-16T19:40:56Z"
 branch: dark-factory/hide-git
 ---
 

@@ -318,6 +318,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		containerChecker,
 		cfg.DirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
+		cfg.HideGit,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -433,6 +434,7 @@ func CreateOneShotRunner(
 			containerChecker,
 			cfg.DirtyFileThreshold, processor.NewDirtyFileChecker("."),
 			processor.NewGitLockChecker("."), cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
+			cfg.HideGit,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -599,6 +601,7 @@ func CreateProcessor(
 	containerChecker executor.ContainerChecker,
 	dirtyFileThreshold int, dirtyFileChecker processor.DirtyFileChecker,
 	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
+	hideGit bool,
 ) processor.Processor {
 	return processor.NewProcessor(
 		inProgressDir,
@@ -609,7 +612,7 @@ func CreateProcessor(
 			containerImage, projectName, model, netrcFile,
 			gitconfigFile, env, extraMounts, claudeDir, maxPromptDuration,
 			currentDateTimeGetter,
-			false, // hideGit — wired correctly in prompt 2 (spec-048-factory-docs)
+			workflow == config.WorkflowWorktree || hideGit,
 		),
 		promptManager,
 		releaser,

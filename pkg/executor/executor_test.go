@@ -1016,6 +1016,81 @@ var _ = Describe("Internal helper functions", func() {
 		})
 	})
 
+	Describe("buildDockerCommand hideGit", func() {
+		buildCmd := func(projectRoot string, hideGit bool) *exec.Cmd {
+			return executor.BuildDockerCommandForTest(
+				ctx,
+				config.Defaults().ContainerImage,
+				"test-project",
+				"claude-sonnet-4-6",
+				"",  // netrcFile
+				"",  // gitconfigFile
+				nil, // env
+				nil, // extraMounts
+				"test-container",
+				"/tmp/prompt.md",
+				projectRoot,
+				"/home/user/.claude",
+				"test-prompt",
+				"/home/user",
+				hideGit,
+			)
+		}
+
+		It("does not add any masking flag when hideGit is false", func() {
+			dir := GinkgoT().TempDir()
+			cmd := buildCmd(dir, false)
+			Expect(cmd.Args).NotTo(ContainElement("/workspace/.git"))
+			Expect(cmd.Args).NotTo(ContainElement("/dev/null:/workspace/.git"))
+		})
+
+		It("does not add masking flag when hideGit is true but .git is missing", func() {
+			dir := GinkgoT().TempDir()
+			// No .git created — dir is empty
+			cmd := buildCmd(dir, true)
+			Expect(cmd.Args).NotTo(ContainElement("/workspace/.git"))
+			Expect(cmd.Args).NotTo(ContainElement("/dev/null:/workspace/.git"))
+		})
+
+		It("adds anonymous volume when hideGit is true and .git is a directory", func() {
+			dir := GinkgoT().TempDir()
+			Expect(os.Mkdir(filepath.Join(dir, ".git"), 0750)).To(Succeed())
+			cmd := buildCmd(dir, true)
+			Expect(cmd.Args).To(ContainElement("/workspace/.git"))
+			Expect(cmd.Args).NotTo(ContainElement("/dev/null:/workspace/.git"))
+		})
+
+		It("adds /dev/null bind when hideGit is true and .git is a file", func() {
+			dir := GinkgoT().TempDir()
+			Expect(
+				os.WriteFile(
+					filepath.Join(dir, ".git"),
+					[]byte("gitdir: ../.git/worktrees/foo"),
+					0600,
+				),
+			).To(Succeed())
+			cmd := buildCmd(dir, true)
+			Expect(cmd.Args).To(ContainElement("/dev/null:/workspace/.git"))
+			Expect(cmd.Args).NotTo(ContainElement("/workspace/.git"))
+		})
+
+		It(
+			"produces byte-identical args when hideGit is false regardless of .git presence",
+			func() {
+				dir := GinkgoT().TempDir()
+
+				// Capture args before .git exists
+				cmdWithout := buildCmd(dir, false)
+
+				// Create .git and capture args again with same dir
+				Expect(os.Mkdir(filepath.Join(dir, ".git"), 0750)).To(Succeed())
+				cmdWith := buildCmd(dir, false)
+
+				Expect(cmdWith.Args).To(Equal(cmdWithout.Args))
+			},
+		)
+	})
+
 	Describe("watchForCompletionReport", func() {
 		var (
 			fakeRunner    *mocks.CommandRunner

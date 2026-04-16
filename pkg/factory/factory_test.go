@@ -100,6 +100,7 @@ var _ = Describe("Factory", func() {
 				processor.NewGitLockChecker("."),
 				0,
 				0,
+				false,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"strings"
 
 	"github.com/bborbe/collection"
 	"github.com/bborbe/errors"
@@ -14,12 +15,20 @@ import (
 
 // Workflow defines how prompts are processed.
 const (
-	WorkflowDirect Workflow = "direct"
-	WorkflowPR     Workflow = "pr"
+	WorkflowDirect   Workflow = "direct"
+	WorkflowBranch   Workflow = "branch"
+	WorkflowWorktree Workflow = "worktree"
+	WorkflowClone    Workflow = "clone"
+
+	// WorkflowPR is the legacy enum value kept for parsing only.
+	// The loader maps it to WorkflowClone + pr: true before validation.
+	// Do not use this constant in new code.
+	WorkflowPR Workflow = "pr"
 )
 
-// AvailableWorkflows contains all valid workflow values.
-var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowPR}
+// AvailableWorkflows contains the four valid workflow values for new configs.
+// WorkflowPR ("pr") is intentionally excluded — it is legacy and mapped at load time.
+var AvailableWorkflows = Workflows{WorkflowDirect, WorkflowBranch, WorkflowWorktree, WorkflowClone}
 
 // Workflow is a string-based enum for workflow types.
 type Workflow string
@@ -31,12 +40,18 @@ func (w Workflow) String() string {
 
 // Validate checks that the Workflow is a known value.
 func (w Workflow) Validate(ctx context.Context) error {
-	if w == "worktree" {
-		return errors.Wrapf(ctx, validation.Error,
-			"workflow 'worktree' removed — use 'pr' instead")
-	}
 	if !AvailableWorkflows.Contains(w) {
-		return errors.Wrapf(ctx, validation.Error, "unknown workflow %q", w)
+		validValues := make([]string, len(AvailableWorkflows))
+		for i, v := range AvailableWorkflows {
+			validValues[i] = string(v)
+		}
+		return errors.Wrapf(
+			ctx,
+			validation.Error,
+			"unknown workflow %q, valid values: %s",
+			w,
+			strings.Join(validValues, ", "),
+		)
 	}
 	return nil
 }

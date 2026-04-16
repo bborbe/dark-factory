@@ -5,7 +5,9 @@
 package config_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -126,9 +128,9 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("fails for worktree workflow with migration error", func() {
+		It("succeeds for worktree workflow", func() {
 			cfg := config.Config{
-				Workflow: config.Workflow("worktree"),
+				Workflow: config.WorkflowWorktree,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
 					InProgressDir: "prompts/in-progress",
@@ -141,8 +143,7 @@ var _ = Describe("Config", func() {
 				ServerPort:     8080,
 			}
 			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("removed"))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("fails for invalid workflow", func() {
@@ -409,9 +410,9 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(ContainSubstring("serverPort"))
 		})
 
-		It("succeeds for autoMerge true with workflow pr", func() {
+		It("succeeds for autoMerge true with workflow clone and pr: true", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowPR,
+				Workflow: config.WorkflowClone,
 				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
@@ -429,45 +430,54 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("succeeds for autoMerge true with pr: true (no workflow field)", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowDirect,
-				PR:       true,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage: pkg.DefaultContainerImage,
-				Model:          "claude-sonnet-4-6",
-				DebounceMs:     500,
-				ServerPort:     8080,
-				AutoMerge:      true,
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).NotTo(HaveOccurred())
-		})
+		It(
+			"fails for autoMerge true with workflow direct and pr: true (direct incompatible with pr)",
+			func() {
+				cfg := config.Config{
+					Workflow: config.WorkflowDirect,
+					PR:       true,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+					ServerPort:     8080,
+					AutoMerge:      true,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("direct"))
+				Expect(err.Error()).To(ContainSubstring("pr: true"))
+			},
+		)
 
-		It("fails for autoMerge true with workflow worktree", func() {
-			cfg := config.Config{
-				Workflow: config.Workflow("worktree"),
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage: pkg.DefaultContainerImage,
-				Model:          "claude-sonnet-4-6",
-				DebounceMs:     500,
-				ServerPort:     8080,
-				AutoMerge:      true,
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("removed"))
-		})
+		It(
+			"fails for autoMerge true with workflow worktree and pr: false (autoMerge requires pr)",
+			func() {
+				cfg := config.Config{
+					Workflow: config.WorkflowWorktree,
+					PR:       false,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+					ServerPort:     8080,
+					AutoMerge:      true,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("autoMerge requires pr: true"))
+			},
+		)
 
 		It("fails for autoMerge true with workflow direct", func() {
 			cfg := config.Config{
@@ -514,7 +524,7 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoRelease true with autoMerge true", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowPR,
+				Workflow: config.WorkflowClone,
 				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
@@ -604,7 +614,7 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoReview true with autoMerge false", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowPR,
+				Workflow: config.WorkflowClone,
 				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
@@ -627,7 +637,7 @@ var _ = Describe("Config", func() {
 
 		It("fails for autoReview true with no reviewer source", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowPR,
+				Workflow: config.WorkflowClone,
 				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
@@ -651,7 +661,7 @@ var _ = Describe("Config", func() {
 
 		It("succeeds for autoReview true with all required fields", func() {
 			cfg := config.Config{
-				Workflow: config.WorkflowPR,
+				Workflow: config.WorkflowClone,
 				PR:       true,
 				Prompts: config.PromptsConfig{
 					InboxDir:      "prompts",
@@ -970,21 +980,35 @@ var _ = Describe("Config", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("succeeds for pr workflow", func() {
+			It("fails for legacy pr workflow (not in AvailableWorkflows)", func() {
 				err := config.WorkflowPR.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unknown workflow"))
+			})
+
+			It("succeeds for worktree workflow", func() {
+				err := config.WorkflowWorktree.Validate(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("returns removed error for worktree workflow", func() {
-				err := config.Workflow("worktree").Validate(ctx)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("removed"))
+			It("succeeds for branch workflow", func() {
+				err := config.WorkflowBranch.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("fails for unknown workflow", func() {
+			It("succeeds for clone workflow", func() {
+				err := config.WorkflowClone.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("fails for unknown workflow and lists valid values", func() {
 				err := config.Workflow("unknown").Validate(ctx)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("unknown workflow"))
+				Expect(err.Error()).To(ContainSubstring("direct"))
+				Expect(err.Error()).To(ContainSubstring("branch"))
+				Expect(err.Error()).To(ContainSubstring("worktree"))
+				Expect(err.Error()).To(ContainSubstring("clone"))
 			})
 
 			It("fails for empty string", func() {
@@ -997,8 +1021,10 @@ var _ = Describe("Config", func() {
 		Describe("String", func() {
 			It("returns string representation", func() {
 				Expect(config.WorkflowDirect.String()).To(Equal("direct"))
+				Expect(config.WorkflowBranch.String()).To(Equal("branch"))
+				Expect(config.WorkflowWorktree.String()).To(Equal("worktree"))
+				Expect(config.WorkflowClone.String()).To(Equal("clone"))
 				Expect(config.WorkflowPR.String()).To(Equal("pr"))
-				Expect(config.Workflow("worktree").String()).To(Equal("worktree"))
 			})
 		})
 
@@ -1013,12 +1039,15 @@ var _ = Describe("Config", func() {
 
 	Describe("Workflows", func() {
 		Describe("Contains", func() {
-			It("returns true for valid workflow", func() {
+			It("returns true for all four valid workflows", func() {
 				Expect(config.AvailableWorkflows.Contains(config.WorkflowDirect)).To(BeTrue())
-				Expect(config.AvailableWorkflows.Contains(config.WorkflowPR)).To(BeTrue())
-				Expect(
-					config.AvailableWorkflows.Contains(config.Workflow("worktree")),
-				).To(BeFalse())
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowBranch)).To(BeTrue())
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowWorktree)).To(BeTrue())
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowClone)).To(BeTrue())
+			})
+
+			It("returns false for legacy pr workflow", func() {
+				Expect(config.AvailableWorkflows.Contains(config.WorkflowPR)).To(BeFalse())
 			})
 
 			It("returns false for invalid workflow", func() {
@@ -1060,7 +1089,7 @@ var _ = Describe("Config", func() {
 				Expect(cfg).To(Equal(config.Defaults()))
 			})
 
-			It("loads full config from file", func() {
+			It("loads full config from file (workflow: pr maps to clone+pr)", func() {
 				configContent := `workflow: pr
 prompts:
   inboxDir: custom-prompts
@@ -1079,7 +1108,8 @@ debounceMs: 1000
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+				Expect(cfg.PR).To(BeTrue())
 				Expect(cfg.Prompts.InboxDir).To(Equal("custom-prompts"))
 				Expect(cfg.Prompts.InProgressDir).To(Equal("custom-prompts/in-progress"))
 				Expect(cfg.Prompts.CompletedDir).To(Equal("custom-prompts/done"))
@@ -1088,7 +1118,7 @@ debounceMs: 1000
 				Expect(cfg.DebounceMs).To(Equal(1000))
 			})
 
-			It("merges partial config with defaults", func() {
+			It("merges partial config with defaults (workflow: pr maps to clone+pr)", func() {
 				configContent := `workflow: pr
 `
 				err := os.WriteFile(
@@ -1100,7 +1130,8 @@ debounceMs: 1000
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+				Expect(cfg.PR).To(BeTrue())
 				Expect(cfg.Prompts.InboxDir).To(Equal("prompts"))
 				Expect(cfg.Prompts.InProgressDir).To(Equal("prompts/in-progress"))
 				Expect(cfg.Prompts.CompletedDir).To(Equal("prompts/completed"))
@@ -1271,7 +1302,8 @@ debounceMs: -100
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+				Expect(cfg.PR).To(BeTrue())
 			})
 
 			It("loads config with github token from env var", func() {
@@ -1364,12 +1396,13 @@ autoRelease: true
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.Workflow).To(Equal(config.WorkflowPR))
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+				Expect(cfg.PR).To(BeTrue())
 				Expect(cfg.AutoMerge).To(BeTrue())
 				Expect(cfg.AutoRelease).To(BeTrue())
 			})
 
-			It("maps workflow: pr to PR: true and Worktree: true via deprecation", func() {
+			It("maps workflow: pr to workflow: clone, PR: true, Worktree: false", func() {
 				configContent := `workflow: pr
 `
 				err := os.WriteFile(
@@ -1381,11 +1414,12 @@ autoRelease: true
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
 				Expect(cfg.PR).To(BeTrue())
-				Expect(cfg.Worktree).To(BeTrue())
+				Expect(cfg.Worktree).To(BeFalse())
 			})
 
-			It("maps workflow: direct to PR: false and Worktree: false via deprecation", func() {
+			It("maps workflow: direct to PR: false and Worktree: false", func() {
 				configContent := `workflow: direct
 `
 				err := os.WriteFile(
@@ -1397,28 +1431,33 @@ autoRelease: true
 
 				cfg, err := loader.Load(ctx)
 				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
 				Expect(cfg.PR).To(BeFalse())
 				Expect(cfg.Worktree).To(BeFalse())
 			})
 
-			It("loads pr: true and worktree: true without deprecation warning", func() {
-				configContent := `pr: true
+			It(
+				"maps legacy worktree: true, pr: true to workflow: clone, pr: true, worktree: false",
+				func() {
+					configContent := `pr: true
 worktree: true
 `
-				err := os.WriteFile(
-					filepath.Join(tmpDir, ".dark-factory.yaml"),
-					[]byte(configContent),
-					0600,
-				)
-				Expect(err).NotTo(HaveOccurred())
+					err := os.WriteFile(
+						filepath.Join(tmpDir, ".dark-factory.yaml"),
+						[]byte(configContent),
+						0600,
+					)
+					Expect(err).NotTo(HaveOccurred())
 
-				cfg, err := loader.Load(ctx)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(cfg.PR).To(BeTrue())
-				Expect(cfg.Worktree).To(BeTrue())
-			})
+					cfg, err := loader.Load(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+					Expect(cfg.PR).To(BeTrue())
+					Expect(cfg.Worktree).To(BeFalse())
+				},
+			)
 
-			It("returns error when both workflow and pr are set", func() {
+			It("fails when workflow: direct and pr: true (incompatible combination)", func() {
 				configContent := `workflow: direct
 pr: true
 `
@@ -1431,28 +1470,29 @@ pr: true
 
 				_, err = loader.Load(ctx)
 				Expect(err).To(HaveOccurred())
-				Expect(
-					err.Error(),
-				).To(ContainSubstring("cannot set both 'workflow' and 'pr'/'worktree'"))
+				Expect(err.Error()).To(ContainSubstring("direct"))
+				Expect(err.Error()).To(ContainSubstring("pr: true"))
 			})
 
-			It("returns error when both workflow and worktree are set", func() {
-				configContent := `workflow: direct
+			It(
+				"succeeds when workflow and worktree are both set (workflow wins, worktree ignored)",
+				func() {
+					configContent := `workflow: direct
 worktree: false
 `
-				err := os.WriteFile(
-					filepath.Join(tmpDir, ".dark-factory.yaml"),
-					[]byte(configContent),
-					0600,
-				)
-				Expect(err).NotTo(HaveOccurred())
+					err := os.WriteFile(
+						filepath.Join(tmpDir, ".dark-factory.yaml"),
+						[]byte(configContent),
+						0600,
+					)
+					Expect(err).NotTo(HaveOccurred())
 
-				_, err = loader.Load(ctx)
-				Expect(err).To(HaveOccurred())
-				Expect(
-					err.Error(),
-				).To(ContainSubstring("cannot set both 'workflow' and 'pr'/'worktree'"))
-			})
+					cfg, err := loader.Load(ctx)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
+					Expect(cfg.Worktree).To(BeFalse())
+				},
+			)
 
 			It(
 				"loads with PR: false and Worktree: false when neither workflow nor booleans set",
@@ -1632,11 +1672,11 @@ autoRetryLimit: 2
 				}
 
 				assertFullConfig := func(cfg config.Config, netrc, gitconfig string) {
-					// NOTE: Workflow is not tested in the full YAML because setting both
-					// workflow: and pr:/worktree: is a validation error. The deprecation
-					// path (workflow: pr → PR=true, Worktree=true) is tested separately.
+					// NOTE: Workflow is not tested in the full YAML because the legacy
+					// worktree: true, pr: true pair maps to WorkflowClone at load time.
+					// The legacy mapping (worktree: true, pr: true → workflow: clone) is tested separately.
 					Expect(cfg.PR).To(BeTrue())
-					Expect(cfg.Worktree).To(BeTrue())
+					Expect(cfg.Worktree).To(BeFalse())
 					Expect(cfg.ProjectName).To(Equal("test-projectname"))
 					Expect(cfg.DefaultBranch).To(Equal("test-branch"))
 					Expect(cfg.Prompts.InboxDir).To(Equal("test-prompts"))
@@ -2206,6 +2246,248 @@ autoRetryLimit: 3
 			err := cfg.Validate(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("autoRetryLimit"))
+		})
+	})
+
+	Describe("legacy worktree: bool mapping", func() {
+		var tmpDir string
+		var origDir string
+
+		BeforeEach(func() {
+			var err error
+			tmpDir, err = os.MkdirTemp("", "compat-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			err := os.Chdir(origDir)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.RemoveAll(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		writeConfig := func(yaml string) {
+			err := os.WriteFile(
+				filepath.Join(tmpDir, ".dark-factory.yaml"),
+				[]byte(yaml),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		DescribeTable(
+			"compatibility matrix",
+			func(yamlContent string, expectedWorkflow config.Workflow, expectedPR bool, expectedWorktree bool) {
+				writeConfig(yamlContent)
+				cfg, err := config.NewLoader().Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(expectedWorkflow), "workflow mismatch")
+				Expect(cfg.PR).To(Equal(expectedPR), "pr mismatch")
+				Expect(cfg.Worktree).To(BeFalse(), "worktree must always be zeroed after load")
+			},
+			Entry("worktree: false, pr: false → direct",
+				"worktree: false\npr: false\n",
+				config.WorkflowDirect, false, false,
+			),
+			Entry("worktree: false, pr: true → branch",
+				"worktree: false\npr: true\n",
+				config.WorkflowBranch, true, false,
+			),
+			Entry("worktree: true, pr: true → clone",
+				"worktree: true\npr: true\n",
+				config.WorkflowClone, true, false,
+			),
+			Entry("worktree: true, pr: false → clone (pr overridden to true)",
+				"worktree: true\npr: false\n",
+				config.WorkflowClone, true, false,
+			),
+			Entry("workflow: pr → clone, pr: true",
+				"workflow: pr\n",
+				config.WorkflowClone, true, false,
+			),
+			Entry("workflow: worktree + worktree: true → worktree wins, worktree field zeroed",
+				"workflow: worktree\nworktree: true\n",
+				config.WorkflowWorktree, false, false,
+			),
+		)
+
+		It("row 4 (worktree: true, pr: false) emits a slog.Warn about pr override", func() {
+			origDefault := slog.Default()
+			var logBuf bytes.Buffer
+			slog.SetDefault(
+				slog.New(
+					slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}),
+				),
+			)
+			defer slog.SetDefault(origDefault)
+
+			writeConfig("worktree: true\npr: false\n")
+			_, err := config.NewLoader().Load(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuf.String()).To(ContainSubstring("worktree: true, pr: false"))
+		})
+
+		It(
+			"workflow: worktree, pr: true (new-style, no legacy fields) emits no deprecation warning",
+			func() {
+				origDefault := slog.Default()
+				var logBuf bytes.Buffer
+				slog.SetDefault(
+					slog.New(
+						slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}),
+					),
+				)
+				defer slog.SetDefault(origDefault)
+
+				writeConfig("workflow: worktree\npr: true\n")
+				_, err := config.NewLoader().Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(logBuf.String()).NotTo(ContainSubstring("deprecated"))
+				Expect(logBuf.String()).NotTo(ContainSubstring("deprecated"))
+			},
+		)
+	})
+
+	Describe("Workflow.Validate enum coverage", func() {
+		DescribeTable("valid workflows",
+			func(w config.Workflow) {
+				err := w.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+			Entry("direct", config.WorkflowDirect),
+			Entry("branch", config.WorkflowBranch),
+			Entry("worktree", config.WorkflowWorktree),
+			Entry("clone", config.WorkflowClone),
+		)
+
+		It("typo returns error listing all four valid values", func() {
+			err := config.Workflow("typo").Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("typo"))
+			Expect(err.Error()).To(ContainSubstring("direct"))
+			Expect(err.Error()).To(ContainSubstring("branch"))
+			Expect(err.Error()).To(ContainSubstring("worktree"))
+			Expect(err.Error()).To(ContainSubstring("clone"))
+		})
+
+		It("empty string returns error", func() {
+			err := config.Workflow("").Validate(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Describe("Config.Validate workflow+pr combination", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+		}
+
+		It("workflow: direct, pr: false → valid", func() {
+			cfg := validBase()
+			cfg.Workflow = config.WorkflowDirect
+			cfg.PR = false
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("workflow: direct, pr: true → error mentioning 'direct' and 'pr: true'", func() {
+			cfg := validBase()
+			cfg.Workflow = config.WorkflowDirect
+			cfg.PR = true
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("direct"))
+			Expect(err.Error()).To(ContainSubstring("pr: true"))
+		})
+
+		It("workflow: branch, pr: true → valid", func() {
+			cfg := validBase()
+			cfg.Workflow = config.WorkflowBranch
+			cfg.PR = true
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("workflow: clone, pr: false → valid", func() {
+			cfg := validBase()
+			cfg.Workflow = config.WorkflowClone
+			cfg.PR = false
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("sibling project configs", func() {
+		var tmpDir string
+		var origDir string
+
+		BeforeEach(func() {
+			var err error
+			tmpDir, err = os.MkdirTemp("", "sibling-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			err = os.Chdir(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			err := os.Chdir(origDir)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.RemoveAll(tmpDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		writeConfig := func(yaml string) {
+			err := os.WriteFile(
+				filepath.Join(tmpDir, ".dark-factory.yaml"),
+				[]byte(yaml),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		It(
+			"billomat/mdm/commerce style (worktree: true, no explicit pr) → workflow: clone, pr: true",
+			func() {
+				writeConfig("worktree: true\n")
+				cfg, err := config.NewLoader().Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+				Expect(cfg.PR).To(BeTrue())
+				Expect(cfg.Worktree).To(BeFalse())
+			},
+		)
+
+		It(
+			"projects using direct mode (no workflow field at all) → workflow: direct, pr: false",
+			func() {
+				writeConfig("projectName: some-project\n")
+				cfg, err := config.NewLoader().Load(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
+				Expect(cfg.PR).To(BeFalse())
+				Expect(cfg.Worktree).To(BeFalse())
+			},
+		)
+
+		It("projects using workflow: direct explicitly → workflow: direct, pr: false", func() {
+			writeConfig("workflow: direct\n")
+			cfg, err := config.NewLoader().Load(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
+			Expect(cfg.PR).To(BeFalse())
+			Expect(cfg.Worktree).To(BeFalse())
 		})
 	})
 })

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.112.0
+
+- feat: Expand `workflow` enum from two values (`direct`/`pr`) to four (`direct`, `branch`, `worktree`, `clone`); invert deprecation so `workflow` is primary and `worktree: bool` is the legacy field; add `workflow: direct + pr: true` validation; map `workflow: pr` → `workflow: clone, pr: true` and legacy `worktree: bool` combos via Compatibility Matrix
+
 ## v0.111.2
 
 - fix: Release container flock between slot-wait polls so daemons with higher maxContainers limits are not blocked behind daemons waiting for a slot

@@ -195,6 +195,7 @@ func (c Config) Validate(ctx context.Context) error {
 				return nil
 			}),
 		),
+		validation.Name("workflow", validation.HasValidationFunc(c.validateWorkflowPR)),
 		validation.Name("autoMerge", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.AutoMerge && !c.PR {
 				return errors.Errorf(ctx, "autoMerge requires pr: true")
@@ -286,6 +287,17 @@ func (c Config) validateDirtyFileThreshold(ctx context.Context) error {
 			ctx,
 			"dirtyFileThreshold must not be negative, got %d",
 			c.DirtyFileThreshold,
+		)
+	}
+	return nil
+}
+
+// validateWorkflowPR rejects the combination of workflow: direct and pr: true.
+func (c Config) validateWorkflowPR(ctx context.Context) error {
+	if c.Workflow == WorkflowDirect && c.PR {
+		return errors.Errorf(
+			ctx,
+			"workflow 'direct' is incompatible with pr: true (no feature branch exists to open a PR from)",
 		)
 	}
 	return nil

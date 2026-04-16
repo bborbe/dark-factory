@@ -120,33 +120,61 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 		return Config{}, errors.Wrap(ctx, err, "parse config file")
 	}
 
-	// Conflict detection: cannot set both old workflow and new boolean flags
-	if partial.Workflow != nil && (partial.PR != nil || partial.Worktree != nil) {
-		return Config{}, errors.Errorf(
-			ctx,
-			"config cannot set both 'workflow' and 'pr'/'worktree'; remove 'workflow' and use 'pr' and 'worktree' booleans instead",
-		)
-	}
-
 	// Merge non-nil values onto defaults
 	mergePartial(&cfg, &partial)
 
-	// Deprecation mapping: if old workflow field is set, map to new booleans and warn
-	if partial.Workflow != nil {
-		slog.Warn(
-			"'workflow' is deprecated in .dark-factory.yaml; replace with 'pr' and 'worktree' booleans",
-			"workflow",
-			cfg.Workflow,
+	// Step A — workflow: pr legacy enum mapping
+	if partial.Workflow != nil && *partial.Workflow == WorkflowPR {
+		cfg.Workflow = WorkflowClone
+		cfg.PR = true
+		slog.Info(
+			"'workflow: pr' is deprecated; use 'workflow: clone' with 'pr: true' instead",
+			"resolved", "workflow: clone, pr: true",
 		)
-		switch cfg.Workflow {
-		case WorkflowDirect:
+	} else if partial.Workflow != nil && partial.Worktree != nil {
+		// Step B — new workflow value alongside legacy worktree: bool
+		slog.Warn(
+			"'worktree' is ignored when 'workflow' is set; remove 'worktree' from .dark-factory.yaml",
+			"workflow", cfg.Workflow,
+		)
+	} else if partial.Workflow == nil && partial.Worktree != nil {
+		// Step C — legacy worktree: bool mapping (no workflow field)
+		switch {
+		case !cfg.Worktree && !cfg.PR:
+			cfg.Workflow = WorkflowDirect
 			cfg.PR = false
-			cfg.Worktree = false
-		case WorkflowPR:
+			slog.Info(
+				"'worktree' is deprecated in .dark-factory.yaml; use 'workflow' instead",
+				"resolved_workflow", cfg.Workflow, "resolved_pr", cfg.PR,
+			)
+		case !cfg.Worktree && cfg.PR:
+			cfg.Workflow = WorkflowBranch
 			cfg.PR = true
-			cfg.Worktree = true
+			slog.Info(
+				"'worktree' is deprecated in .dark-factory.yaml; use 'workflow' instead",
+				"resolved_workflow", cfg.Workflow, "resolved_pr", cfg.PR,
+			)
+		case cfg.Worktree && cfg.PR:
+			cfg.Workflow = WorkflowClone
+			cfg.PR = true
+			slog.Info(
+				"'worktree' is deprecated in .dark-factory.yaml; use 'workflow' instead",
+				"resolved_workflow", cfg.Workflow, "resolved_pr", cfg.PR,
+			)
+		case cfg.Worktree && !cfg.PR:
+			cfg.Workflow = WorkflowClone
+			cfg.PR = true
+			slog.Info(
+				"'worktree' is deprecated in .dark-factory.yaml; use 'workflow' instead",
+				"resolved_workflow", cfg.Workflow, "resolved_pr", cfg.PR,
+			)
+			slog.Warn(
+				"'worktree: true, pr: false' overrides pr to true for compatibility; set 'pr: true' explicitly to silence this warning",
+			)
 		}
 	}
+	// Step D — zero out cfg.Worktree unconditionally
+	cfg.Worktree = false
 
 	// Validate merged config
 	if err := cfg.Validate(ctx); err != nil {

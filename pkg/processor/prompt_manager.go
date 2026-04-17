@@ -23,4 +23,5 @@ type PromptManager interface {
 	MoveToCompleted(ctx context.Context, path string) error
 	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
 	SetPRURL(ctx context.Context, path string, url string) error
+	FindCommitting(ctx context.Context) ([]string, error)
 }

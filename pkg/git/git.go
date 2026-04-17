@@ -12,9 +12,69 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
+	"github.com/bborbe/run"
 )
+
+// DefaultCommitBackoff defines the default retry backoff for git commit operations.
+// 3 retries with exponential backoff: ~2s, ~4s, ~8s.
+var DefaultCommitBackoff = run.Backoff{
+	Delay:   2 * time.Second,
+	Factor:  1.0,
+	Retries: 3,
+}
+
+// CommitWithRetry runs fn with retry logic using the given backoff configuration.
+// Logs WARN on each retry attempt. Pass DefaultCommitBackoff for production use;
+// tests can pass a Backoff with Delay: 0 and small Retries.
+func CommitWithRetry(
+	ctx context.Context,
+	backoff run.Backoff,
+	fn func(context.Context) error,
+) error {
+	return run.Retry(backoff, func(ctx context.Context) error {
+		err := fn(ctx)
+		if err != nil {
+			if _, lockErr := os.Stat(".git/index.lock"); lockErr == nil {
+				slog.Warn("retrying git commit, index.lock held", "error", err)
+			} else {
+				slog.Warn("retrying git commit after failure", "error", err)
+			}
+		}
+		return err
+	})(ctx)
+}
+
+// HasDirtyFiles returns true if there are any uncommitted changes in the working tree.
+func HasDirtyFiles(ctx context.Context) (bool, error) {
+	// #nosec G204 -- fixed command with no user input
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "git status")
+	}
+	return len(strings.TrimSpace(string(output))) > 0, nil
+}
+
+// CommitAll stages all changes and commits with the given message.
+// Used during committing recovery to commit work files left from a prior run.
+func CommitAll(ctx context.Context, message string) error {
+	if err := gitAddAll(ctx); err != nil {
+		return errors.Wrap(ctx, err, "git add")
+	}
+	// #nosec G204 -- fixed command with no user input
+	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	output, err := statusCmd.Output()
+	if err != nil {
+		return errors.Wrap(ctx, err, "git status")
+	}
+	if len(strings.TrimSpace(string(output))) == 0 {
+		return nil // nothing to commit
+	}
+	return gitCommit(ctx, message)
+}
 
 // VersionBump specifies the type of version bump to perform.
 type VersionBump int

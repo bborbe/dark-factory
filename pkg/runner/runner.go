@@ -195,6 +195,12 @@ func (r *runner) Run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "resume executing prompts")
 	}
 
+	// Daemon-only: retry git commits for any prompts left in "committing" state.
+	if err := r.processor.ResumeCommitting(ctx); err != nil {
+		slog.Warn("resume committing failed on startup, will retry on next cycle", "error", err)
+		// non-fatal — continue startup
+	}
+
 	// Run watcher, processor, server, and optional reviewPoller in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{

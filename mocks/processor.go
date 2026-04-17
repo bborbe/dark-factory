@@ -31,6 +31,17 @@ type Processor struct {
 	processQueueReturnsOnCall map[int]struct {
 		result1 error
 	}
+	ResumeCommittingStub        func(context.Context) error
+	resumeCommittingMutex       sync.RWMutex
+	resumeCommittingArgsForCall []struct {
+		arg1 context.Context
+	}
+	resumeCommittingReturns struct {
+		result1 error
+	}
+	resumeCommittingReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ResumeExecutingStub        func(context.Context) error
 	resumeExecutingMutex       sync.RWMutex
 	resumeExecutingArgsForCall []struct {
@@ -164,6 +175,67 @@ func (fake *Processor) ProcessQueueReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.processQueueReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Processor) ResumeCommitting(arg1 context.Context) error {
+	fake.resumeCommittingMutex.Lock()
+	ret, specificReturn := fake.resumeCommittingReturnsOnCall[len(fake.resumeCommittingArgsForCall)]
+	fake.resumeCommittingArgsForCall = append(fake.resumeCommittingArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.ResumeCommittingStub
+	fakeReturns := fake.resumeCommittingReturns
+	fake.recordInvocation("ResumeCommitting", []interface{}{arg1})
+	fake.resumeCommittingMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Processor) ResumeCommittingCallCount() int {
+	fake.resumeCommittingMutex.RLock()
+	defer fake.resumeCommittingMutex.RUnlock()
+	return len(fake.resumeCommittingArgsForCall)
+}
+
+func (fake *Processor) ResumeCommittingCalls(stub func(context.Context) error) {
+	fake.resumeCommittingMutex.Lock()
+	defer fake.resumeCommittingMutex.Unlock()
+	fake.ResumeCommittingStub = stub
+}
+
+func (fake *Processor) ResumeCommittingArgsForCall(i int) context.Context {
+	fake.resumeCommittingMutex.RLock()
+	defer fake.resumeCommittingMutex.RUnlock()
+	argsForCall := fake.resumeCommittingArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Processor) ResumeCommittingReturns(result1 error) {
+	fake.resumeCommittingMutex.Lock()
+	defer fake.resumeCommittingMutex.Unlock()
+	fake.ResumeCommittingStub = nil
+	fake.resumeCommittingReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Processor) ResumeCommittingReturnsOnCall(i int, result1 error) {
+	fake.resumeCommittingMutex.Lock()
+	defer fake.resumeCommittingMutex.Unlock()
+	fake.ResumeCommittingStub = nil
+	if fake.resumeCommittingReturnsOnCall == nil {
+		fake.resumeCommittingReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.resumeCommittingReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

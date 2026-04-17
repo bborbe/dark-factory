@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/bborbe/errors"
+	"github.com/bborbe/run"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -1604,5 +1606,66 @@ var _ = Describe("Git", func() {
 				Expect(err.Error()).To(ContainSubstring("git commit"))
 			})
 		})
+	})
+})
+
+var _ = Describe("CommitWithRetry", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	It("returns nil when fn succeeds on first attempt", func() {
+		callCount := 0
+		fn := func(_ context.Context) error {
+			callCount++
+			return nil
+		}
+		testBackoff := run.Backoff{Delay: 0, Factor: 0, Retries: 3}
+		err := git.CommitWithRetry(ctx, testBackoff, fn)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(callCount).To(Equal(1))
+	})
+
+	It("retries and returns nil when fn fails once then succeeds", func() {
+		callCount := 0
+		fn := func(ctx context.Context) error {
+			callCount++
+			if callCount < 2 {
+				return errors.Errorf(ctx, "simulated failure")
+			}
+			return nil
+		}
+		testBackoff := run.Backoff{Delay: 0, Factor: 0, Retries: 3}
+		err := git.CommitWithRetry(ctx, testBackoff, fn)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(callCount).To(Equal(2))
+	})
+
+	It("returns error when fn fails all retries", func() {
+		callCount := 0
+		fn := func(ctx context.Context) error {
+			callCount++
+			return errors.Errorf(ctx, "simulated failure")
+		}
+		testBackoff := run.Backoff{Delay: 0, Factor: 0, Retries: 3}
+		err := git.CommitWithRetry(ctx, testBackoff, fn)
+		Expect(err).To(HaveOccurred())
+		Expect(callCount).To(Equal(4)) // 1 initial + 3 retries
+	})
+
+	It("returns error when context is already cancelled", func() {
+		cancelledCtx, cancel := context.WithCancel(ctx)
+		cancel()
+		callCount := 0
+		fn := func(_ context.Context) error {
+			callCount++
+			return nil
+		}
+		testBackoff := run.Backoff{Delay: 0, Factor: 0, Retries: 3}
+		err := git.CommitWithRetry(cancelledCtx, testBackoff, fn)
+		Expect(err).To(HaveOccurred())
+		Expect(callCount).To(Equal(0))
 	})
 })

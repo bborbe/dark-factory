@@ -8,6 +8,7 @@ import (
 	"context"
 	stderrors "errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -297,7 +298,8 @@ var _ = Describe("autoSetQueuedStatus", func() {
 // stubManager is a minimal prompt.Manager stub for internal cancel-watcher tests.
 // It only implements Load; all other methods are no-ops.
 type stubManager struct {
-	loadFunc func(ctx context.Context, path string) (*prompt.PromptFile, error)
+	loadFunc           func(ctx context.Context, path string) (*prompt.PromptFile, error)
+	findCommittingFunc func(ctx context.Context) ([]string, error)
 }
 
 func (s *stubManager) Load(ctx context.Context, path string) (*prompt.PromptFile, error) {
@@ -356,6 +358,13 @@ func (s *stubManager) HasQueuedPromptsOnBranch(
 	_ string,
 ) (bool, error) {
 	return false, nil
+}
+
+func (s *stubManager) FindCommitting(ctx context.Context) ([]string, error) {
+	if s.findCommittingFunc != nil {
+		return s.findCommittingFunc(ctx)
+	}
+	return nil, nil //nolint:nilnil
 }
 
 // stubExecutor is a minimal executor.Executor stub for internal cancel-watcher tests.
@@ -1722,6 +1731,12 @@ func (s *stubWorkflowManager) FindPromptStatusInProgress(_ context.Context, _ in
 	return ""
 }
 
+func (s *stubWorkflowManager) FindCommitting(
+	_ context.Context,
+) ([]string, error) {
+	return nil, nil
+}
+
 var _ = Describe("processor workflow routing", func() {
 	var (
 		ctx           context.Context
@@ -2664,6 +2679,197 @@ var _ = Describe("processor workflow routing", func() {
 			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("wait and merge PR"))
+		})
+	})
+})
+
+var _ = Describe("ResumeCommitting", func() {
+	var (
+		ctx          context.Context
+		tempDir      string
+		queueDir     string
+		completedDir string
+		originalDir  string
+		mgr          *stubManager
+		rel          *stubWorkflowReleaser
+		proc         *processor
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		originalDir, err = os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+
+		tempDir, err = os.MkdirTemp("", "resume-committing-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		queueDir = filepath.Join(tempDir, "in-progress")
+		completedDir = filepath.Join(tempDir, "completed")
+		Expect(os.MkdirAll(queueDir, 0750)).To(Succeed())
+		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+
+		mgr = &stubManager{}
+		rel = &stubWorkflowReleaser{}
+
+		proc = &processor{
+			queueDir:       queueDir,
+			completedDir:   completedDir,
+			promptManager:  mgr,
+			releaser:       rel,
+			autoCompleter:  &stubAutoCompleter{},
+			skippedPrompts: make(map[string]libtime.DateTime),
+		}
+	})
+
+	AfterEach(func() {
+		_ = os.Chdir(originalDir)
+		if tempDir != "" {
+			_ = os.RemoveAll(tempDir)
+		}
+	})
+
+	Context("when there are no committing prompts", func() {
+		It("returns nil without any git operations", func() {
+			// findCommittingFunc not set → returns nil → no prompts processed
+			err := proc.ResumeCommitting(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitFileCount).To(Equal(0))
+		})
+	})
+
+	Context("when FindCommitting returns an error", func() {
+		BeforeEach(func() {
+			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
+				return nil, stderrors.New("scan failed")
+			}
+		})
+
+		It("returns nil (non-fatal, logs warn)", func() {
+			err := proc.ResumeCommitting(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitFileCount).To(Equal(0))
+		})
+	})
+
+	Context("when committing prompt exists and git repo is clean (no dirty files)", func() {
+		BeforeEach(func() {
+			// Set up a real git repo so HasDirtyFiles succeeds.
+			repoDir := filepath.Join(tempDir, "repo")
+			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
+
+			for _, args := range [][]string{
+				{"init"},
+				{"config", "user.email", "test@example.com"},
+				{"config", "user.name", "Test User"},
+			} {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = repoDir
+				Expect(cmd.Run()).To(Succeed())
+			}
+			// Initial commit so the repo is not empty
+			initFile := filepath.Join(repoDir, "README.md")
+			Expect(os.WriteFile(initFile, []byte("# test\n"), 0600)).To(Succeed())
+			for _, args := range [][]string{
+				{"add", "-A"},
+				{"commit", "-m", "initial"},
+			} {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = repoDir
+				Expect(cmd.Run()).To(Succeed())
+			}
+			Expect(os.Chdir(repoDir)).To(Succeed())
+
+			promptPath := filepath.Join(queueDir, "001-clean.md")
+			Expect(
+				os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: committing\n---\n# Clean prompt\n"),
+					0600,
+				),
+			).To(Succeed())
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Clean prompt\n"),
+				libtime.NewCurrentDateTime(),
+			)
+			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
+				return []string{promptPath}, nil
+			}
+			mgr.loadFunc = func(_ context.Context, _ string) (*prompt.PromptFile, error) {
+				return pf, nil
+			}
+		})
+
+		It("skips work commit, calls MoveToCompleted, calls CommitCompletedFile", func() {
+			err := proc.ResumeCommitting(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			// No dirty files means CommitAll was not called; CommitCompletedFile was called
+			Expect(rel.commitFileCount).To(Equal(1))
+		})
+	})
+
+	Context("when committing prompt exists and git repo has dirty files", func() {
+		BeforeEach(func() {
+			// Set up a real git repo with dirty files.
+			repoDir := filepath.Join(tempDir, "repo2")
+			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
+
+			for _, args := range [][]string{
+				{"init"},
+				{"config", "user.email", "test@example.com"},
+				{"config", "user.name", "Test User"},
+			} {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = repoDir
+				Expect(cmd.Run()).To(Succeed())
+			}
+			// Initial commit
+			initFile := filepath.Join(repoDir, "README.md")
+			Expect(os.WriteFile(initFile, []byte("# test\n"), 0600)).To(Succeed())
+			for _, args := range [][]string{
+				{"add", "-A"},
+				{"commit", "-m", "initial"},
+			} {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = repoDir
+				Expect(cmd.Run()).To(Succeed())
+			}
+			// Add dirty file
+			Expect(
+				os.WriteFile(filepath.Join(repoDir, "dirty.txt"), []byte("dirty\n"), 0600),
+			).To(Succeed())
+			Expect(os.Chdir(repoDir)).To(Succeed())
+
+			promptPath := filepath.Join(queueDir, "001-dirty.md")
+			Expect(
+				os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: committing\n---\n# Dirty prompt\n"),
+					0600,
+				),
+			).To(Succeed())
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Dirty prompt\n"),
+				libtime.NewCurrentDateTime(),
+			)
+			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
+				return []string{promptPath}, nil
+			}
+			mgr.loadFunc = func(_ context.Context, _ string) (*prompt.PromptFile, error) {
+				return pf, nil
+			}
+		})
+
+		It("commits dirty work files, calls MoveToCompleted, calls CommitCompletedFile", func() {
+			err := proc.ResumeCommitting(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.commitFileCount).To(Equal(1))
 		})
 	})
 })

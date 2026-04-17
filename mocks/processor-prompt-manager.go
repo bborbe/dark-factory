@@ -22,6 +22,19 @@ type ProcessorPromptManager struct {
 	allPreviousCompletedReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	FindCommittingStub        func(context.Context) ([]string, error)
+	findCommittingMutex       sync.RWMutex
+	findCommittingArgsForCall []struct {
+		arg1 context.Context
+	}
+	findCommittingReturns struct {
+		result1 []string
+		result2 error
+	}
+	findCommittingReturnsOnCall map[int]struct {
+		result1 []string
+		result2 error
+	}
 	FindMissingCompletedStub        func(context.Context, int) []int
 	findMissingCompletedMutex       sync.RWMutex
 	findMissingCompletedArgsForCall []struct {
@@ -190,6 +203,70 @@ func (fake *ProcessorPromptManager) AllPreviousCompletedReturnsOnCall(i int, res
 	fake.allPreviousCompletedReturnsOnCall[i] = struct {
 		result1 bool
 	}{result1}
+}
+
+func (fake *ProcessorPromptManager) FindCommitting(arg1 context.Context) ([]string, error) {
+	fake.findCommittingMutex.Lock()
+	ret, specificReturn := fake.findCommittingReturnsOnCall[len(fake.findCommittingArgsForCall)]
+	fake.findCommittingArgsForCall = append(fake.findCommittingArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.FindCommittingStub
+	fakeReturns := fake.findCommittingReturns
+	fake.recordInvocation("FindCommitting", []interface{}{arg1})
+	fake.findCommittingMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *ProcessorPromptManager) FindCommittingCallCount() int {
+	fake.findCommittingMutex.RLock()
+	defer fake.findCommittingMutex.RUnlock()
+	return len(fake.findCommittingArgsForCall)
+}
+
+func (fake *ProcessorPromptManager) FindCommittingCalls(stub func(context.Context) ([]string, error)) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = stub
+}
+
+func (fake *ProcessorPromptManager) FindCommittingArgsForCall(i int) context.Context {
+	fake.findCommittingMutex.RLock()
+	defer fake.findCommittingMutex.RUnlock()
+	argsForCall := fake.findCommittingArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ProcessorPromptManager) FindCommittingReturns(result1 []string, result2 error) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = nil
+	fake.findCommittingReturns = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *ProcessorPromptManager) FindCommittingReturnsOnCall(i int, result1 []string, result2 error) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = nil
+	if fake.findCommittingReturnsOnCall == nil {
+		fake.findCommittingReturnsOnCall = make(map[int]struct {
+			result1 []string
+			result2 error
+		})
+	}
+	fake.findCommittingReturnsOnCall[i] = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *ProcessorPromptManager) FindMissingCompleted(arg1 context.Context, arg2 int) []int {

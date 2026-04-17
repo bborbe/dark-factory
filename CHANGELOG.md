@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.124.0
+
+- feat: retry git commit with exponential backoff (3 retries, 2s/4s/8s) on index.lock or failure
+- feat: direct workflow sets `committing` status before git ops; daemon continues on commit failure
+- feat: startup and daemon-cycle recovery for `committing` prompts
+
 ## v0.123.0
 
 - feat: add `committing` prompt status for git-persistence phase between container exit and completed

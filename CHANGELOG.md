@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.121.1
+
+- bump default container image to claude-yolo v0.6.1 (includes updater v0.22.0 with --no-git support)
+
 ## v0.121.0
 
 - feat: skip push and PR creation in clone/worktree workflows when agent produces no code changes (CommitsAhead=0 guard in handleAfterIsolatedCommit)

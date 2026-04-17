@@ -6,6 +6,7 @@ package git_test
 
 import (
 	"context"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,12 +31,18 @@ var _ = Describe("Worktreer", func() {
 	})
 
 	Describe("Add", func() {
-		It("returns non-nil error when path is not a git repo", func() {
+		It("returns non-nil error when CWD is not a git repo", func() {
 			worktreer := git.NewWorktreer()
-			// Use a temp path that is not a git repo — Add must fail
 			tmpPath := GinkgoT().TempDir()
 			worktreePath := tmpPath + "/worktree"
-			err := worktreer.Add(ctx, worktreePath, "some-branch")
+
+			// Add runs git from CWD — chdir to non-repo dir so git fails.
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(os.Chdir(tmpPath)).To(Succeed())
+			DeferCleanup(func() { _ = os.Chdir(origDir) })
+
+			err = worktreer.Add(ctx, worktreePath, "some-branch")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("worktree add"))
 		})

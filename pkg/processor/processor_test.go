@@ -141,6 +141,7 @@ var _ = Describe("Processor", func() {
 		releaser = &mocks.Releaser{}
 		versionGet = &mocks.VersionGetter{}
 		brancher = &mocks.Brancher{}
+		brancher.CommitsAheadReturns(1, nil)
 		prCreator = &mocks.PRCreator{}
 		cloner = &mocks.Cloner{}
 		worktreer = &mocks.Worktreer{}

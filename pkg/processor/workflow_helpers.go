@@ -221,6 +221,14 @@ func handleAfterIsolatedCommit(
 	promptPath string,
 	completedPath string,
 ) error {
+	ahead, err := deps.Brancher.CommitsAhead(gitCtx, branchName)
+	if err != nil {
+		return errors.Wrap(ctx, err, "count commits ahead")
+	}
+	if ahead == 0 {
+		slog.Info("no new commits on branch — skipping push/PR", "branch", branchName)
+		return moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath)
+	}
 	if err := deps.Brancher.Push(gitCtx, branchName); err != nil {
 		return errors.Wrap(ctx, err, "push branch")
 	}

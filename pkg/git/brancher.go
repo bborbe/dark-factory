@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -28,6 +29,7 @@ type Brancher interface {
 	MergeOriginDefault(ctx context.Context) error
 	IsClean(ctx context.Context) (bool, error)
 	MergeToDefault(ctx context.Context, branch string) error
+	CommitsAhead(ctx context.Context, branch string) (int, error)
 }
 
 // BrancherOption is a functional option for configuring a brancher.
@@ -269,4 +271,32 @@ func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
 	}
 	slog.Info("merged feature branch to default", "branch", branch, "default", defaultBranch)
 	return nil
+}
+
+// CommitsAhead returns the number of commits on branch ahead of the default branch.
+func (b *brancher) CommitsAhead(ctx context.Context, branch string) (int, error) {
+	if err := ValidateBranchName(ctx, branch); err != nil {
+		return 0, errors.Wrap(ctx, err, "validate branch name")
+	}
+	defaultBranch, err := b.DefaultBranch(ctx)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, "get default branch for commit count")
+	}
+	// #nosec G204 -- branch name is derived from prompt filename and sanitized
+	cmd := exec.CommandContext(
+		ctx,
+		"git",
+		"rev-list",
+		"--count",
+		"origin/"+defaultBranch+".."+branch,
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, "count commits ahead")
+	}
+	count, err := strconv.Atoi(strings.TrimSpace(string(output)))
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, "parse commit count")
+	}
+	return count, nil
 }

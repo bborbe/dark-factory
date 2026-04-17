@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.121.0
+
+- feat: skip push and PR creation in clone/worktree workflows when agent produces no code changes (CommitsAhead=0 guard in handleAfterIsolatedCommit)
+
 ## v0.120.0
 
 - feat: render rate_limit_event as a human-readable warning line in the stream formatter (previously emitted [unknown type: rate_limit_event] noise)

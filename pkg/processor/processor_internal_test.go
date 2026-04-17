@@ -1505,6 +1505,8 @@ type stubBrancher struct {
 	mergeToDefaultCount   int
 	fetchErr              error
 	mergeOriginDefaultErr error
+	commitsAhead          int
+	commitsAheadErr       error
 }
 
 func (s *stubBrancher) Push(_ context.Context, _ string) error {
@@ -1549,6 +1551,10 @@ func (s *stubBrancher) MergeOriginDefault(
 	_ context.Context,
 ) error {
 	return s.mergeOriginDefaultErr
+}
+
+func (s *stubBrancher) CommitsAhead(_ context.Context, _ string) (int, error) {
+	return s.commitsAhead, s.commitsAheadErr
 }
 
 // stubPRCreator tracks FindOpenPR/Create calls.
@@ -1786,6 +1792,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11a: workflow: worktree, pr: true — Setup creates worktree, Complete removes it + pushes + creates PR
 	Describe("11a: workflow worktree, pr true", func() {
 		It("calls worktreer.Add, worktreer.Remove, brancher.Push, prCreator.Create", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(true)
 			executor := NewWorktreeWorkflowExecutor(deps)
 			pf := newPromptFile("feature/test-branch")
@@ -1827,6 +1834,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11b: workflow: worktree, pr: false — Complete removes worktree + pushes but NOT prCreator.Create
 	Describe("11b: workflow worktree, pr false", func() {
 		It("calls worktreer.Remove and brancher.Push but NOT prCreator.Create", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(false)
 			rawExec, ok := NewWorktreeWorkflowExecutor(deps).(*worktreeWorkflowExecutor)
 			Expect(ok).To(BeTrue())
@@ -1904,6 +1912,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11e: workflow: clone, pr: false — Complete removes clone + pushes but NOT prCreator.Create
 	Describe("11e: workflow clone, pr false", func() {
 		It("calls cloner.Remove, brancher.Push, but NOT prCreator.Create", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(false)
 			rawExec, ok := NewCloneWorkflowExecutor(deps).(*cloneWorkflowExecutor)
 			Expect(ok).To(BeTrue())
@@ -1936,6 +1945,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11f: workflow: clone, pr: true — Complete removes clone + pushes + creates PR
 	Describe("11f: workflow clone, pr true", func() {
 		It("calls cloner.Remove, brancher.Push, and prCreator.Create", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(true)
 			rawExec, ok := NewCloneWorkflowExecutor(deps).(*cloneWorkflowExecutor)
 			Expect(ok).To(BeTrue())
@@ -1966,6 +1976,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11g: handleAfterIsolatedCommit — pr false skips PR creation
 	Describe("11g: handleAfterIsolatedCommit — pr false skips PR creation", func() {
 		It("pushes branch and moves to completed without creating a PR", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(false)
 			pf := newPromptFile("")
 
@@ -1978,6 +1989,28 @@ var _ = Describe("processor workflow routing", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubPR.createCount).To(Equal(0))
+			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+			Expect(stubRel.commitFileCount).To(Equal(1))
+		})
+	})
+
+	// 11g2: handleAfterIsolatedCommit — zero commits skips push
+	Describe("11g2: handleAfterIsolatedCommit — zero commits skips push", func() {
+		It("skips push and PR, moves directly to completed", func() {
+			stubBr.commitsAhead = 0
+			deps := makeDeps(true) // pr=true to verify it's also skipped
+			pf := newPromptFile("")
+
+			err := handleAfterIsolatedCommit(
+				ctx, ctx, deps, pf,
+				"feature/no-changes",
+				"test title",
+				promptPath, completedPath,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(stubBr.pushCount).To(Equal(0))
 			Expect(stubPR.createCount).To(Equal(0))
 			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
 			Expect(stubRel.commitFileCount).To(Equal(1))
@@ -2215,6 +2248,7 @@ var _ = Describe("processor workflow routing", func() {
 	// 11n: worktreeWorkflowExecutor.Complete with pr=true — pushes and creates PR
 	Describe("11n: worktreeWorkflowExecutor Complete with pr=true", func() {
 		It("commits, removes worktree, pushes, and creates PR", func() {
+			stubBr.commitsAhead = 1
 			deps := makeDeps(true) // PR=true
 			rawExec, ok := NewWorktreeWorkflowExecutor(deps).(*worktreeWorkflowExecutor)
 			Expect(ok).To(BeTrue())

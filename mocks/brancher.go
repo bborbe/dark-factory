@@ -9,6 +9,20 @@ import (
 )
 
 type Brancher struct {
+	CommitsAheadStub        func(context.Context, string) (int, error)
+	commitsAheadMutex       sync.RWMutex
+	commitsAheadArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	commitsAheadReturns struct {
+		result1 int
+		result2 error
+	}
+	commitsAheadReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	CreateAndSwitchStub        func(context.Context, string) error
 	createAndSwitchMutex       sync.RWMutex
 	createAndSwitchArgsForCall []struct {
@@ -143,6 +157,71 @@ type Brancher struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Brancher) CommitsAhead(arg1 context.Context, arg2 string) (int, error) {
+	fake.commitsAheadMutex.Lock()
+	ret, specificReturn := fake.commitsAheadReturnsOnCall[len(fake.commitsAheadArgsForCall)]
+	fake.commitsAheadArgsForCall = append(fake.commitsAheadArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.CommitsAheadStub
+	fakeReturns := fake.commitsAheadReturns
+	fake.recordInvocation("CommitsAhead", []interface{}{arg1, arg2})
+	fake.commitsAheadMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Brancher) CommitsAheadCallCount() int {
+	fake.commitsAheadMutex.RLock()
+	defer fake.commitsAheadMutex.RUnlock()
+	return len(fake.commitsAheadArgsForCall)
+}
+
+func (fake *Brancher) CommitsAheadCalls(stub func(context.Context, string) (int, error)) {
+	fake.commitsAheadMutex.Lock()
+	defer fake.commitsAheadMutex.Unlock()
+	fake.CommitsAheadStub = stub
+}
+
+func (fake *Brancher) CommitsAheadArgsForCall(i int) (context.Context, string) {
+	fake.commitsAheadMutex.RLock()
+	defer fake.commitsAheadMutex.RUnlock()
+	argsForCall := fake.commitsAheadArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) CommitsAheadReturns(result1 int, result2 error) {
+	fake.commitsAheadMutex.Lock()
+	defer fake.commitsAheadMutex.Unlock()
+	fake.CommitsAheadStub = nil
+	fake.commitsAheadReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) CommitsAheadReturnsOnCall(i int, result1 int, result2 error) {
+	fake.commitsAheadMutex.Lock()
+	defer fake.commitsAheadMutex.Unlock()
+	fake.CommitsAheadStub = nil
+	if fake.commitsAheadReturnsOnCall == nil {
+		fake.commitsAheadReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.commitsAheadReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *Brancher) CreateAndSwitch(arg1 context.Context, arg2 string) error {

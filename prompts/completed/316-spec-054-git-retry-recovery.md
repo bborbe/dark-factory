@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [054-committing-status-git-retry]
+summary: 'Wired committing status into direct workflow executor and processor daemon loop: added CommitWithRetry/CommitAll/HasDirtyFiles to git package, refactored directWorkflowExecutor.Complete() to use committing checkpoint, added ResumeCommitting/processCommittingPrompts/recoverCommittingPrompt to processor, called ResumeCommitting in runner, updated all mocks and added tests.'
+container: dark-factory-316-spec-054-git-retry-recovery
+dark-factory-version: v0.122.0-6-g6b02e84
 created: "2026-04-17T14:00:00Z"
 queued: "2026-04-17T14:18:38Z"
+started: "2026-04-17T14:30:08Z"
+completed: "2026-04-17T14:49:37Z"
 branch: dark-factory/committing-status-git-retry
 ---
 

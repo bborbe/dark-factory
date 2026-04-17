@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-04-16T19:30:07Z"
 generating: "2026-04-16T19:30:07Z"
 prompted: "2026-04-16T19:38:24Z"
 verifying: "2026-04-16T22:30:11Z"
+completed: "2026-04-17T12:52:49Z"
 branch: dark-factory/split-processor-workflow
 ---
 

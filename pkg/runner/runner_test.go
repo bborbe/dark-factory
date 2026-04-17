@@ -91,6 +91,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // logWriter: no file in tests
 		)
 	}
 
@@ -386,6 +387,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // logWriter: no file in tests
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -447,6 +449,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // logWriter: no file in tests
 		)
 
 		go func() {
@@ -498,6 +501,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // logWriter: no file in tests
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -565,6 +569,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // logWriter: no file in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -782,6 +787,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // logWriter: no file in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -864,6 +870,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // logWriter: no file in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -956,6 +963,7 @@ var _ = Describe("Runner", func() {
 					nil,
 					nil,
 					false, // hideGit
+					nil,   // logWriter: no file in tests
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1044,6 +1052,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // logWriter: no file in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1106,6 +1115,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // logWriter: no file in tests
 			)
 		}
 

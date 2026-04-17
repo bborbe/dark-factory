@@ -7,6 +7,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -330,6 +331,12 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
 	specWatcher := CreateSpecWatcher(cfg, specGen, currentDateTimeGetter)
+	var logWriter io.Writer
+	if logFile, err := os.Create(".dark-factory.log"); err != nil {
+		slog.Warn("failed to create daemon log file, continuing without", "error", err)
+	} else {
+		logWriter = logFile
+	}
 	return runner.NewRunner(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
@@ -342,6 +349,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		executor.NewDockerContainerStopper(),
 		createStartupLogger(ctx, cfg, globalCfg),
 		cfg.HideGit,
+		logWriter,
 	)
 }
 

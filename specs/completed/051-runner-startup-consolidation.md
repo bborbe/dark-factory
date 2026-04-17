@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-04-16T19:30:10Z"
 generating: "2026-04-16T19:41:15Z"
 prompted: "2026-04-16T19:46:39Z"
 verifying: "2026-04-16T23:17:15Z"
+completed: "2026-04-17T12:52:50Z"
 branch: dark-factory/runner-startup-consolidation
 ---
 

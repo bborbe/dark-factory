@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.122.1
+
+- refactor: make daemon log writer injectable via io.Writer to prevent .dark-factory.log creation during tests
+
 ## v0.122.0
 
 - feat: daemon writes structured log output to `.dark-factory.log` (truncated on each start); `dark-factory status` shows `Daemon log:` path

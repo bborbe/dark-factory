@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [054-committing-status-git-retry]
+summary: Added CommittingPrompts/CommittingCount to Status struct, exposed FindCommitting on PromptManager interface, added populateCommittingPrompts method called from GetStatus, updated docs/prompt-writing.md and docs/architecture-flow.md lifecycle diagrams, added 4 new tests, and updated CHANGELOG.md.
+container: dark-factory-317-spec-054-status-and-docs
+dark-factory-version: v0.122.0-6-g6b02e84
 created: "2026-04-17T14:00:00Z"
 queued: "2026-04-17T14:18:44Z"
+started: "2026-04-17T14:49:41Z"
+completed: "2026-04-17T14:58:33Z"
 branch: dark-factory/committing-status-git-retry
 ---
 

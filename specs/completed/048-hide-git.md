@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-04-16T18:59:28Z"
 generating: "2026-04-16T18:59:28Z"
 prompted: "2026-04-16T19:05:26Z"
 verifying: "2026-04-16T19:40:56Z"
+completed: "2026-04-17T12:34:33Z"
 branch: dark-factory/hide-git
 ---
 

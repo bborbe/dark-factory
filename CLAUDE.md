@@ -61,6 +61,16 @@
 - Using different versions in the 3 JSON fields (must all match)
 - Not including binary changes (fetch timeout, lock fix) in the changelog when they're uncommitted
 
+## Useful Commands
+
+```bash
+# Find all dark-factory projects
+find ~/Documents/workspaces -maxdepth 3 -type f -name ".dark-factory.yaml" -not -path "*/vendor/*"
+
+# Add gitignore entry to all dark-factory projects
+~/Documents/workspaces/scripts/gitignore-add-exclude.sh '/<entry>'
+```
+
 ## Development Standards
 
 This project follows the [coding-guidelines](https://github.com/bborbe/coding-guidelines).

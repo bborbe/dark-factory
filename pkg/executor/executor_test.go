@@ -1052,11 +1052,12 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(cmd.Args).NotTo(ContainElement("/dev/null:/workspace/.git"))
 		})
 
-		It("adds anonymous volume when hideGit is true and .git is a directory", func() {
+		It("adds tmpfs overlay when hideGit is true and .git is a directory", func() {
 			dir := GinkgoT().TempDir()
 			Expect(os.Mkdir(filepath.Join(dir, ".git"), 0750)).To(Succeed())
 			cmd := buildCmd(dir, true)
-			Expect(cmd.Args).To(ContainElement("/workspace/.git"))
+			Expect(cmd.Args).To(ContainElement("--tmpfs"))
+			Expect(cmd.Args).To(ContainElement("/workspace/.git:rw,size=1k"))
 			Expect(cmd.Args).NotTo(ContainElement("/dev/null:/workspace/.git"))
 		})
 
@@ -1648,7 +1649,7 @@ This has frontmatter.`
 			})
 		})
 
-		It("never emits --tmpfs /workspace/.git", func() {
+		It("does not emit --tmpfs when hideGit is false", func() {
 			cmd := executor.BuildDockerCommandForTest(
 				ctx,
 				config.Defaults().ContainerImage,
@@ -1667,7 +1668,9 @@ This has frontmatter.`
 				false, // hideGit
 			)
 			for _, arg := range cmd.Args {
-				Expect(arg).NotTo(Equal("--tmpfs"), "docker args must not contain --tmpfs")
+				Expect(
+					arg,
+				).NotTo(Equal("--tmpfs"), "docker args must not contain --tmpfs when hideGit is false")
 			}
 		})
 	})

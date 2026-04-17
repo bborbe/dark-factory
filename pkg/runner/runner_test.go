@@ -90,6 +90,7 @@ var _ = Describe("Runner", func() {
 			0,
 			nil,
 			nil,
+			false, // hideGit
 		)
 	}
 
@@ -384,6 +385,7 @@ var _ = Describe("Runner", func() {
 			0,
 			nil,
 			nil,
+			false, // hideGit
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -444,6 +446,7 @@ var _ = Describe("Runner", func() {
 			0,
 			nil,
 			nil,
+			false, // hideGit
 		)
 
 		go func() {
@@ -494,6 +497,7 @@ var _ = Describe("Runner", func() {
 			0,
 			nil,
 			nil,
+			false, // hideGit
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -560,6 +564,7 @@ var _ = Describe("Runner", func() {
 				0,
 				nil,
 				nil,
+				false, // hideGit
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -776,6 +781,7 @@ var _ = Describe("Runner", func() {
 				0,
 				nil,
 				nil,
+				false, // hideGit
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -857,6 +863,7 @@ var _ = Describe("Runner", func() {
 				0,
 				nil,
 				nil,
+				false, // hideGit
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -948,6 +955,7 @@ var _ = Describe("Runner", func() {
 					0,
 					nil,
 					nil,
+					false, // hideGit
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1035,6 +1043,7 @@ var _ = Describe("Runner", func() {
 				0,
 				nil,
 				nil,
+				false, // hideGit
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -1096,6 +1105,7 @@ var _ = Describe("Runner", func() {
 				0,
 				nil,
 				nil,
+				false, // hideGit
 			)
 		}
 

@@ -804,7 +804,7 @@ func (p *processor) startContainerLockRelease(ctx context.Context, name string, 
 // because the working tree has too many dirty files. Returns (false, nil) when
 // the check is disabled or the count is within threshold.
 func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
-	if p.dirtyFileThreshold <= 0 {
+	if p.dirtyFileThreshold <= 0 || p.dirtyFileChecker == nil {
 		return false, nil
 	}
 	count, err := p.dirtyFileChecker.CountDirtyFiles(ctx)

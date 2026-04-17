@@ -88,6 +88,7 @@ type partialConfig struct {
 	DirtyFileThreshold     *int                  `yaml:"dirtyFileThreshold,omitempty"`
 	MaxPromptDuration      *string               `yaml:"maxPromptDuration"`
 	AutoRetryLimit         *int                  `yaml:"autoRetryLimit"`
+	HideGit                *bool                 `yaml:"hideGit"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -266,6 +267,9 @@ func mergePartialContainer(cfg *Config, partial *partialConfig) {
 	}
 	if partial.ExtraMounts != nil {
 		cfg.ExtraMounts = partial.ExtraMounts
+	}
+	if partial.HideGit != nil {
+		cfg.HideGit = *partial.HideGit
 	}
 }
 

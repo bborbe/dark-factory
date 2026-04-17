@@ -549,7 +549,7 @@ func (e *dockerExecutor) buildDockerCommand(
 
 // buildHideGitArgs returns the Docker mount args needed to mask .git from the container.
 // When hideGit is false it returns nil (no args added). When true it inspects projectRoot/.git:
-//   - directory → anonymous volume ("-v /workspace/.git") hides host .git contents
+//   - directory → tmpfs overlay hides host .git contents (anonymous volumes don't mask bind-mount subdirs)
 //   - file (worktree pointer) → /dev/null bind ("-v /dev/null:/workspace/.git")
 //   - missing → no args (nothing to hide)
 //   - stat error (non-ENOENT) → no args, logged at debug
@@ -566,8 +566,9 @@ func (e *dockerExecutor) buildHideGitArgs(projectRoot string) []string {
 		return nil
 	}
 	if fi.IsDir() {
-		// Normal repo or clone: mask host directory with an anonymous Docker volume.
-		return []string{"-v", "/workspace/.git"}
+		// Normal repo or clone: use tmpfs to overlay the .git directory.
+		// Anonymous volumes (-v /workspace/.git) cannot mask subdirectories of bind mounts.
+		return []string{"--tmpfs", "/workspace/.git:rw,size=1k"}
 	}
 	// Worktree pointer file or submodule: bind /dev/null over the pointer file.
 	return []string{"-v", "/dev/null:/workspace/.git"}

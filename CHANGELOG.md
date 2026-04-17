@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.121.2
+
+- fix: hideGit now works with workflow:direct by switching from anonymous volume to tmpfs overlay for .git directories
+- fix: HideGit field now parsed from .dark-factory.yaml via partialConfig
+- fix: skip host-side dirty-file and git-lock checks when hideGit is enabled (nil guard + nil checker injection)
+- fix: runner skips .git/index.lock startup check when hideGit is true
+
 ## v0.121.1
 
 - bump default container image to claude-yolo v0.6.1 (includes updater v0.22.0 with --no-git support)

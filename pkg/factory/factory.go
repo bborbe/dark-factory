@@ -86,6 +86,7 @@ func LogEffectiveConfig(
 		"validationCommand", cfg.ValidationCommand,
 		"testCommand", cfg.TestCommand,
 		"debounceMs", cfg.DebounceMs,
+		"hideGit", cfg.HideGit,
 		"promptsInboxDir", cfg.Prompts.InboxDir,
 		"promptsInProgressDir", cfg.Prompts.InProgressDir,
 		"promptsCompletedDir", cfg.Prompts.CompletedDir,
@@ -299,8 +300,12 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
 
-	dirtyFileChecker := processor.NewDirtyFileChecker(".")
-	gitLockChecker := processor.NewGitLockChecker(".")
+	var dirtyFileChecker processor.DirtyFileChecker
+	var gitLockChecker processor.GitLockChecker
+	if !cfg.HideGit {
+		dirtyFileChecker = processor.NewDirtyFileChecker(".")
+		gitLockChecker = processor.NewGitLockChecker(".")
+	}
 
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
@@ -336,10 +341,13 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
 		createStartupLogger(ctx, cfg, globalCfg),
+		cfg.HideGit,
 	)
 }
 
 // CreateOneShotRunner creates an OneShotRunner that drains the queue and exits.
+//
+//nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
 func CreateOneShotRunner(
 	ctx context.Context, cfg config.Config, ver string, autoApprove bool,
 ) runner.OneShotRunner {
@@ -360,6 +368,12 @@ func CreateOneShotRunner(
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
+	}
+	var osDirtyFileChecker processor.DirtyFileChecker
+	var osGitLockChecker processor.GitLockChecker
+	if !cfg.HideGit {
+		osDirtyFileChecker = processor.NewDirtyFileChecker(".")
+		osGitLockChecker = processor.NewGitLockChecker(".")
 	}
 	return runner.NewOneShotRunner(
 		inboxDir,
@@ -410,8 +424,8 @@ func CreateOneShotRunner(
 			cfg.AdditionalInstructions,
 			cl,
 			containerChecker,
-			cfg.DirtyFileThreshold, processor.NewDirtyFileChecker("."),
-			processor.NewGitLockChecker("."), cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
+			cfg.DirtyFileThreshold, osDirtyFileChecker,
+			osGitLockChecker, cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 			cfg.HideGit,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),

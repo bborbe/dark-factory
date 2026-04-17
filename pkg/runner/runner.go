@@ -62,6 +62,7 @@ func NewRunner(
 	maxPromptDuration time.Duration,
 	containerStopper executor.ContainerStopper,
 	startupLogger func(),
+	hideGit bool,
 ) Runner {
 	return &runner{
 		inboxDir:              inboxDir,
@@ -88,6 +89,7 @@ func NewRunner(
 		maxPromptDuration:     maxPromptDuration,
 		containerStopper:      containerStopper,
 		startupLogger:         startupLogger,
+		hideGit:               hideGit,
 	}
 }
 
@@ -117,6 +119,7 @@ type runner struct {
 	maxPromptDuration     time.Duration
 	containerStopper      executor.ContainerStopper
 	startupLogger         func()
+	hideGit               bool
 }
 
 // Run executes the main processing loop:
@@ -141,12 +144,15 @@ func (r *runner) Run(ctx context.Context) error {
 		r.startupLogger()
 	}
 
-	// Abort if .git/index.lock exists — all git operations will fail
-	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
-		return errors.Errorf(
-			ctx,
-			".git/index.lock exists — remove it before starting the daemon (another git process may be running)",
-		)
+	// Abort if .git/index.lock exists — all git operations will fail.
+	// Skip the check when hideGit is enabled (container won't use git).
+	if !r.hideGit {
+		if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
+			return errors.Errorf(
+				ctx,
+				".git/index.lock exists — remove it before starting the daemon (another git process may be running)",
+			)
+		}
 	}
 
 	// Set up signal handling

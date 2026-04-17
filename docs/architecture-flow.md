@@ -117,9 +117,9 @@ Dark-factory assembles the final prompt the agent receives by appending sections
 ### Prompt Status
 
 ```
-created → approved → executing → completed
-                         │            │
-                         └── failed   └── (moved to completed/)
+created → approved → executing → committing → completed
+                         │            │             │
+                         └── failed   └── (retry)   └── (moved to completed/)
                          │
                          └── partial (validationPrompt criteria unmet)
 ```
@@ -146,7 +146,7 @@ project/
 ├── prompts/
 │   ├── my-change.md            # Inbox (status: draft)
 │   ├── in-progress/
-│   │   └── 001-my-change.md    # Queue (status: approved/executing)
+│   │   └── 001-my-change.md    # Queue (status: approved/executing/committing)
 │   ├── completed/
 │   │   └── 001-my-change.md    # Done (status: completed)
 │   └── log/

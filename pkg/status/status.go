@@ -36,6 +36,8 @@ type Status struct {
 	GeneratingContainer string   `json:"generating_container,omitempty"`
 	QueueCount          int      `json:"queue_count"`
 	QueuedPrompts       []string `json:"queued_prompts"`
+	CommittingPrompts   []string `json:"committing_prompts,omitempty"`
+	CommittingCount     int      `json:"committing_count,omitempty"`
 	CompletedCount      int      `json:"completed_count"`
 	ContainerCount      int      `json:"container_count,omitempty"`
 	ContainerMax        int      `json:"container_max,omitempty"`
@@ -139,6 +141,11 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	// Check for executing prompt
 	if err := s.populateExecutingPrompt(ctx, status); err != nil {
 		return nil, errors.Wrap(ctx, err, "populate executing prompt")
+	}
+
+	// Check for committing prompts (container succeeded, git commit pending)
+	if err := s.populateCommittingPrompts(ctx, status); err != nil {
+		return nil, errors.Wrap(ctx, err, "populate committing prompts")
 	}
 
 	// Check for spec generation containers (only when no prompt is executing)
@@ -408,6 +415,19 @@ func (s *checker) populateExecutingPrompt(ctx context.Context, st *Status) error
 	st.ContainerRunning = running
 	st.ContainerRunningSkipped = skipped
 
+	return nil
+}
+
+// populateCommittingPrompts populates CommittingPrompts and CommittingCount in the status.
+func (s *checker) populateCommittingPrompts(ctx context.Context, st *Status) error {
+	paths, err := s.promptMgr.FindCommitting(ctx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "find committing prompts")
+	}
+	for _, p := range paths {
+		st.CommittingPrompts = append(st.CommittingPrompts, filepath.Base(p))
+	}
+	st.CommittingCount = len(paths)
 	return nil
 }
 

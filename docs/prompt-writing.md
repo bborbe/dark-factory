@@ -229,6 +229,7 @@ This moves the prompt from `prompts/` to `prompts/in-progress/`, assigns a numbe
 | `draft` | `prompts/` | Complete, ready for review and approval | Human/AI creates file |
 | `approved` | `prompts/in-progress/` | Queued for execution | `dark-factory prompt approve` |
 | `executing` | `prompts/in-progress/` | YOLO container running | Auto (dark-factory) |
+| `committing` | `prompts/in-progress/` | Container succeeded, git commit pending | Auto (dark-factory) |
 | `completed` | `prompts/completed/` | Done, archived | Auto (dark-factory) |
 | `failed` | `prompts/in-progress/` | Needs fix or retry | Auto (dark-factory) |
 | `cancelled` | `prompts/in-progress/` | Pulled before/during execution | `dark-factory prompt cancel <id>` |

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.125.0
+
+- feat: `dark-factory status` displays `committing` prompts with count and filenames
+- docs: add `committing` status to prompt-writing.md lifecycle table and architecture-flow.md diagram
+
 ## v0.124.0
 
 - feat: retry git commit with exponential backoff (3 retries, 2s/4s/8s) on index.lock or failure

@@ -18,4 +18,5 @@ type PromptManager interface {
 	Title(ctx context.Context, path string) (string, error)
 	ReadFrontmatter(ctx context.Context, path string) (*prompt.Frontmatter, error)
 	HasExecuting(ctx context.Context) bool
+	FindCommitting(ctx context.Context) ([]string, error)
 }

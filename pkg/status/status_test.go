@@ -462,6 +462,57 @@ container: dark-factory-nonexistent-container-xyz
 		})
 	})
 
+	Describe("GetStatus committing prompts", func() {
+		It("populates CommittingPrompts and CommittingCount when prompts are committing", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.FindCommittingReturns([]string{"/some/path/001-foo.md"}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.CommittingPrompts).To(Equal([]string{"001-foo.md"}))
+			Expect(st.CommittingCount).To(Equal(1))
+		})
+
+		It(
+			"leaves CommittingPrompts nil and CommittingCount zero when no committing prompts",
+			func() {
+				promptMgr.HasExecutingReturns(false)
+				promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+				promptMgr.FindCommittingReturns([]string{}, nil)
+
+				st, err := statusChecker.GetStatus(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(st.CommittingPrompts).To(BeNil())
+				Expect(st.CommittingCount).To(Equal(0))
+			},
+		)
+
+		It("returns error when FindCommitting fails", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.FindCommittingReturns(nil, stderrors.New("find committing failed"))
+
+			_, err := statusChecker.GetStatus(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("populate committing prompts"))
+		})
+
+		It("strips directory prefix from committing prompt paths", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.FindCommittingReturns([]string{
+				"/project/prompts/in-progress/001-foo.md",
+				"/project/prompts/in-progress/002-bar.md",
+			}, nil)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.CommittingPrompts).To(ConsistOf("001-foo.md", "002-bar.md"))
+			Expect(st.CommittingCount).To(Equal(2))
+		})
+	})
+
 	Describe("GetStatus container count", func() {
 		It("populates ContainerCount and ContainerMax when counter returns count", func() {
 			counter := &mocks.ContainerCounter{}

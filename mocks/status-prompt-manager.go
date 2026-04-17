@@ -10,6 +10,19 @@ import (
 )
 
 type StatusPromptManager struct {
+	FindCommittingStub        func(context.Context) ([]string, error)
+	findCommittingMutex       sync.RWMutex
+	findCommittingArgsForCall []struct {
+		arg1 context.Context
+	}
+	findCommittingReturns struct {
+		result1 []string
+		result2 error
+	}
+	findCommittingReturnsOnCall map[int]struct {
+		result1 []string
+		result2 error
+	}
 	HasExecutingStub        func(context.Context) bool
 	hasExecutingMutex       sync.RWMutex
 	hasExecutingArgsForCall []struct {
@@ -64,6 +77,70 @@ type StatusPromptManager struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *StatusPromptManager) FindCommitting(arg1 context.Context) ([]string, error) {
+	fake.findCommittingMutex.Lock()
+	ret, specificReturn := fake.findCommittingReturnsOnCall[len(fake.findCommittingArgsForCall)]
+	fake.findCommittingArgsForCall = append(fake.findCommittingArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.FindCommittingStub
+	fakeReturns := fake.findCommittingReturns
+	fake.recordInvocation("FindCommitting", []interface{}{arg1})
+	fake.findCommittingMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *StatusPromptManager) FindCommittingCallCount() int {
+	fake.findCommittingMutex.RLock()
+	defer fake.findCommittingMutex.RUnlock()
+	return len(fake.findCommittingArgsForCall)
+}
+
+func (fake *StatusPromptManager) FindCommittingCalls(stub func(context.Context) ([]string, error)) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = stub
+}
+
+func (fake *StatusPromptManager) FindCommittingArgsForCall(i int) context.Context {
+	fake.findCommittingMutex.RLock()
+	defer fake.findCommittingMutex.RUnlock()
+	argsForCall := fake.findCommittingArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *StatusPromptManager) FindCommittingReturns(result1 []string, result2 error) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = nil
+	fake.findCommittingReturns = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *StatusPromptManager) FindCommittingReturnsOnCall(i int, result1 []string, result2 error) {
+	fake.findCommittingMutex.Lock()
+	defer fake.findCommittingMutex.Unlock()
+	fake.FindCommittingStub = nil
+	if fake.findCommittingReturnsOnCall == nil {
+		fake.findCommittingReturnsOnCall = make(map[int]struct {
+			result1 []string
+			result2 error
+		})
+	}
+	fake.findCommittingReturnsOnCall[i] = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *StatusPromptManager) HasExecuting(arg1 context.Context) bool {

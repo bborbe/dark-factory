@@ -1,7 +1,11 @@
 ---
-status: draft
+status: executing
 spec: [054-committing-status-git-retry]
+container: dark-factory-315-spec-054-committing-model
+dark-factory-version: v0.122.0-6-g6b02e84
 created: "2026-04-17T14:00:00Z"
+queued: "2026-04-17T14:18:31Z"
+started: "2026-04-17T14:18:33Z"
 branch: dark-factory/committing-status-git-retry
 ---
 
@@ -163,13 +167,11 @@ It("CommittingPromptStatus is in AvailablePromptStatuses", func() {
 
 ```go
 It("MarkCommitting sets status to committing", func() {
-    pf := &prompt.PromptFile{}
+    pf := prompt.NewPromptFile("test.md", prompt.Frontmatter{Status: "executing"}, nil, libtime.NewCurrentDateTimeGetter())
     pf.MarkCommitting()
     Expect(pf.Frontmatter.Status).To(Equal("committing"))
 })
 ```
-
-(Check whether `PromptFile` and `Frontmatter` are exported with public field access in tests, and adjust if needed.)
 
 ### Test 7c: `ListQueued` skips committing files
 

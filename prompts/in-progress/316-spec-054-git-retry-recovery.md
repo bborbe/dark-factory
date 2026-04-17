@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [054-committing-status-git-retry]
 created: "2026-04-17T14:00:00Z"
+queued: "2026-04-17T14:18:38Z"
 branch: dark-factory/committing-status-git-retry
 ---
 
@@ -28,6 +29,8 @@ Read `go-error-wrapping-guide.md` in `~/.claude/plugins/marketplaces/coding/docs
 Read `go-context-cancellation-in-loops.md` in `~/.claude/plugins/marketplaces/coding/docs/`
 Read `go-testing-guide.md` in `~/.claude/plugins/marketplaces/coding/docs/`
 
+Read the `run.Retry` / `run.Backoff` API in `vendor/github.com/bborbe/run/run_retry.go` — it is the project's standard retry library.
+
 Key files to read before editing:
 - `pkg/git/git.go` — `CommitCompletedFile` (line ~145), `CommitOnly` (line ~72), `gitAddAll` (line ~197), `gitCommit` (line ~358)
 - `pkg/processor/workflow_executor_direct.go` — `Complete()` method and how it calls `moveToCompletedAndCommit` then `handleDirectWorkflow`
@@ -41,58 +44,36 @@ Key files to read before editing:
 
 ## 1. Add `CommitWithRetry` to `pkg/git/git.go`
 
-Add a package-level function that wraps any git operation with up to 3 retries and a 30-second overall timeout:
+Use the existing `github.com/bborbe/run` library (already in `go.mod`) for retry logic. Add a default backoff config and a thin wrapper:
 
 ```go
-// CommitWithRetry runs fn, retrying up to 3 times with exponential backoff (2s, 4s, 8s)
-// when the git operation fails. The entire operation is bounded by a 30-second timeout.
-// Logs WARN on each retry, INFO on success after retries, ERROR when all retries exhausted.
-func CommitWithRetry(ctx context.Context, fn func(context.Context) error) error {
-    const maxRetries = 3
-    backoffs := []time.Duration{2 * time.Second, 4 * time.Second, 8 * time.Second}
+// DefaultCommitBackoff defines the default retry backoff for git commit operations.
+// 3 retries with exponential backoff: ~2s, ~4s, ~8s.
+var DefaultCommitBackoff = run.Backoff{
+    Delay:   2 * time.Second,
+    Factor:  1.0,
+    Retries: 3,
+}
 
-    overallCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-    defer cancel()
-
-    var lastErr error
-    for attempt := 0; attempt <= maxRetries; attempt++ {
-        select {
-        case <-overallCtx.Done():
-            return errors.Wrapf(ctx, lastErr, "git commit timeout after %d attempt(s)", attempt)
-        default:
-        }
-
-        lastErr = fn(overallCtx)
-        if lastErr == nil {
-            if attempt > 0 {
-                slog.Info("git commit succeeded after retries", "attempts", attempt+1)
+// CommitWithRetry runs fn with retry logic using the given backoff configuration.
+// Logs WARN on each retry attempt. Pass DefaultCommitBackoff for production use;
+// tests can pass a Backoff with Delay: 0 and small Retries.
+func CommitWithRetry(ctx context.Context, backoff run.Backoff, fn func(context.Context) error) error {
+    return run.Retry(backoff, func(ctx context.Context) error {
+        err := fn(ctx)
+        if err != nil {
+            if _, lockErr := os.Stat(".git/index.lock"); lockErr == nil {
+                slog.Warn("retrying git commit, index.lock held", "error", err)
+            } else {
+                slog.Warn("retrying git commit after failure", "error", err)
             }
-            return nil
         }
-
-        if attempt == maxRetries {
-            break
-        }
-
-        // Log whether index.lock is the cause
-        if _, lockErr := os.Stat(".git/index.lock"); lockErr == nil {
-            slog.Warn("retrying git commit, index.lock held", "attempt", attempt+1, "backoff", backoffs[attempt])
-        } else {
-            slog.Warn("retrying git commit after failure", "attempt", attempt+1, "error", lastErr, "backoff", backoffs[attempt])
-        }
-
-        select {
-        case <-time.After(backoffs[attempt]):
-        case <-overallCtx.Done():
-            return errors.Wrapf(ctx, lastErr, "git commit timeout during backoff after %d attempt(s)", attempt+1)
-        }
-    }
-
-    return errors.Wrapf(ctx, lastErr, "git commit failed after %d retries", maxRetries)
+        return err
+    })(ctx)
 }
 ```
 
-Add required imports: `"os"` (already present), `"time"`, `"log/slog"`.
+Add required imports: `"log/slog"`, `"github.com/bborbe/run"` (already in `go.mod`).
 
 ## 2. Refactor `directWorkflowExecutor.Complete()` in `pkg/processor/workflow_executor_direct.go`
 
@@ -134,7 +115,7 @@ func (e *directWorkflowExecutor) completeCommit(
     title, promptPath, completedPath string,
 ) error {
     // Phase 1: commit all code changes (vendor, source, etc.) with retry.
-    if err := git.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
+    if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
         return handleDirectWorkflow(retryCtx, ctx, e.deps, title, "")
     }); err != nil {
         return errors.Wrap(ctx, err, "commit work files")
@@ -154,7 +135,7 @@ func (e *directWorkflowExecutor) completeCommit(
     slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
     // Phase 4: commit the prompt-file move with retry.
-    if err := git.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
+    if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
         return e.deps.Releaser.CommitCompletedFile(retryCtx, completedPath)
     }); err != nil {
         // The file is now in completed/ but the git commit failed.
@@ -241,7 +222,7 @@ func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath stri
 
     if hasDirty {
         // Commit all dirty work files (vendor, source, etc.) with retry.
-        if err := git.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
+        if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
             return git.CommitAll(retryCtx, title)
         }); err != nil {
             return errors.Wrap(ctx, err, "commit work files during recovery")
@@ -262,7 +243,7 @@ func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath stri
     }
 
     // Commit the prompt-file move with retry.
-    if err := git.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
+    if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
         return p.releaser.CommitCompletedFile(retryCtx, completedPath)
     }); err != nil {
         return errors.Wrap(ctx, err, "commit completed file during recovery")
@@ -300,11 +281,11 @@ func CommitAll(ctx context.Context, message string) error {
 }
 ```
 
-Also add the `hasDirtyFiles` helper (used in `recoverCommittingPrompt`). Add to `pkg/git/git.go` or a new file `pkg/git/dirty.go`:
+Also add `HasDirtyFiles` (exported, called from `processor`). Add to `pkg/git/git.go`:
 
 ```go
-// hasDirtyFiles returns true if there are any uncommitted changes in the working tree.
-func hasDirtyFiles(ctx context.Context) (bool, error) {
+// HasDirtyFiles returns true if there are any uncommitted changes in the working tree.
+func HasDirtyFiles(ctx context.Context) (bool, error) {
     // #nosec G204 -- fixed command with no user input
     cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
     output, err := cmd.Output()
@@ -314,12 +295,6 @@ func hasDirtyFiles(ctx context.Context) (bool, error) {
     return len(strings.TrimSpace(string(output))) > 0, nil
 }
 ```
-
-Since `hasDirtyFiles` is called from `processor`, either:
-a. Export it as `HasDirtyFiles` in `pkg/git/git.go` and call `git.HasDirtyFiles(gitCtx)` from the processor, or
-b. Keep it unexported and use it only within `pkg/git` via a wrapper
-
-Choose option (a) for testability: `HasDirtyFiles(ctx context.Context) (bool, error)`.
 
 ## 6. Implement `ResumeCommitting` on `processor`
 
@@ -402,7 +377,7 @@ Add a test suite for `CommitWithRetry` in the existing Ginkgo suite. Test scenar
 3. `fn` fails all 3 retries — returns error
 4. Context already cancelled — returns error immediately
 
-Use a counter to track call count instead of sleeping:
+Use a counter to track call count with zero-delay backoff:
 ```go
 callCount := 0
 fn := func(ctx context.Context) error {
@@ -412,14 +387,14 @@ fn := func(ctx context.Context) error {
     }
     return nil
 }
-err := git.CommitWithRetry(ctx, fn)
+// Zero delay in tests — no real sleeps.
+testBackoff := run.Backoff{Delay: 0, Factor: 0, Retries: 3}
+err := git.CommitWithRetry(ctx, testBackoff, fn)
 Expect(err).NotTo(HaveOccurred())
 Expect(callCount).To(Equal(3))
 ```
 
-For the actual retry tests, override the backoffs or use a very short timeout context to avoid 14+ seconds in tests. Either:
-- Accept the delay in tests (set retries to a minimal stub), or
-- Consider making `CommitWithRetry` accept `backoffs []time.Duration` as a parameter for testability
+Since `backoff` is a parameter, tests pass `Delay: 0` to avoid any real sleeps.
 
 ### `pkg/processor/processor_internal_test.go` — `ResumeCommitting`
 
@@ -461,7 +436,8 @@ Must pass before proceeding.
 - Use `errors.Wrapf` / `errors.Wrap` from `github.com/bborbe/errors` for all error wrapping (no `fmt.Errorf`)
 - Use `context.WithoutCancel(ctx)` for `gitCtx` in recovery (matches existing pattern in `resumePrompt`)
 - All existing tests must still pass
-- If `CommitWithRetry` tests take too long due to real sleep delays, consider accepting slightly longer test times or parameterizing backoffs
+- `CommitWithRetry` tests MUST use `run.Backoff{Delay: 0, Retries: 3}` — never real delays in tests
+- Production callers pass `git.DefaultCommitBackoff`; use the existing `github.com/bborbe/run` retry library, do NOT reimplement retry logic
 </constraints>
 
 <verification>

@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [054-committing-status-git-retry]
 created: "2026-04-17T14:00:00Z"
+queued: "2026-04-17T14:18:44Z"
 branch: dark-factory/committing-status-git-retry
 ---
 

@@ -29,6 +29,7 @@ Set up the current project for dark-factory. Read `docs/init-project.md` and `do
 5. **Update `.gitignore`** — add if missing:
    ```
    /.dark-factory.lock
+   /.dark-factory.log
    /prompts/log
    /specs/log
    ```
@@ -41,6 +42,7 @@ Set up the current project for dark-factory. Read `docs/init-project.md` and `do
    ls prompts/in-progress/.keep
    ls specs/in-progress/.keep
    grep dark-factory.lock .gitignore
+   grep dark-factory.log .gitignore
    grep "Dark Factory" CLAUDE.md
    ```
 

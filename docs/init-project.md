@@ -89,6 +89,7 @@ Add:
 
 ```
 /.dark-factory.lock
+/.dark-factory.log
 /prompts/log
 /specs/log
 ```
@@ -124,6 +125,7 @@ cat docs/dod.md                     # DoD exists
 ls prompts/in-progress/.keep        # dirs tracked
 ls specs/in-progress/.keep
 grep dark-factory.lock .gitignore   # lock ignored
+grep dark-factory.log .gitignore    # daemon log ignored
 grep prompts/log .gitignore         # logs ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```

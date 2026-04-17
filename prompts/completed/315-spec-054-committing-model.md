@@ -1,11 +1,13 @@
 ---
-status: executing
+status: completed
 spec: [054-committing-status-git-retry]
+summary: Added CommittingPromptStatus constant, MarkCommitting() method, FindCommitting() package function, Manager.FindCommitting() delegation method, updated ListQueued skip condition, added 4 tests, and updated CHANGELOG.md.
 container: dark-factory-315-spec-054-committing-model
 dark-factory-version: v0.122.0-6-g6b02e84
 created: "2026-04-17T14:00:00Z"
 queued: "2026-04-17T14:18:31Z"
 started: "2026-04-17T14:18:33Z"
+completed: "2026-04-17T14:30:03Z"
 branch: dark-factory/committing-status-git-retry
 ---
 

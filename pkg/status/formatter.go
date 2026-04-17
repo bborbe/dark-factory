@@ -76,6 +76,11 @@ func (f *formatter) Format(st *Status) string {
 	// Completed
 	fmt.Fprintf(&b, "  Completed:  %d prompts\n", st.CompletedCount)
 
+	// Daemon log file
+	if st.DaemonLogFile != "" {
+		fmt.Fprintf(&b, "  Daemon log: %s\n", st.DaemonLogFile)
+	}
+
 	// Last log
 	if st.LastLogFile != "" {
 		logInfo := st.LastLogFile

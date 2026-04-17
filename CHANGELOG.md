@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.122.0
+
+- feat: daemon writes structured log output to `.dark-factory.log` (truncated on each start); `dark-factory status` shows `Daemon log:` path
+
 ## v0.121.2
 
 - fix: hideGit now works with workflow:direct by switching from anonymous volume to tmpfs overlay for .git directories

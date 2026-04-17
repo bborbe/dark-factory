@@ -6,6 +6,7 @@ package runner
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -139,6 +140,18 @@ func (r *runner) Run(ctx context.Context) error {
 	}()
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
+
+	if logFile, err := os.Create(".dark-factory.log"); err != nil {
+		slog.Warn("failed to create daemon log file, continuing without", "error", err)
+	} else {
+		defer logFile.Close()
+		level := slog.LevelInfo
+		if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
+			level = slog.LevelDebug
+		}
+		w := io.MultiWriter(os.Stderr, logFile)
+		slog.SetDefault(slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: level})))
+	}
 
 	if r.startupLogger != nil {
 		r.startupLogger()

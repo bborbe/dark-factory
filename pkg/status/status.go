@@ -39,6 +39,7 @@ type Status struct {
 	CompletedCount      int      `json:"completed_count"`
 	ContainerCount      int      `json:"container_count,omitempty"`
 	ContainerMax        int      `json:"container_max,omitempty"`
+	DaemonLogFile       string   `json:"daemon_log_file,omitempty"`
 	LastLogFile         string   `json:"last_log_file,omitempty"`
 	LastLogSize         int64    `json:"last_log_size,omitempty"`
 	GitIndexLock        bool     `json:"git_index_lock,omitempty"`
@@ -128,6 +129,7 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 	status := &Status{
 		ProjectDir:    s.projectDir,
 		Daemon:        "not running",
+		DaemonLogFile: ".dark-factory.log",
 		QueuedPrompts: []string{},
 	}
 

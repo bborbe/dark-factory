@@ -180,3 +180,10 @@ hideGit: true
 | Missing | no flag — nothing to hide |
 
 `hideGit: true` is strictly additive isolation — it reduces what the container can see, never expands it. The host's `.git/config` (which may contain tokens) becomes invisible to the container.
+
+**Go projects** — without `.git`, Go 1.18+ prints `error obtaining VCS status` during builds. The build still succeeds, but the warning is noisy. Suppress it by adding to `.dark-factory.yaml`:
+
+```yaml
+env:
+  GOFLAGS: "-buildvcs=false"
+```

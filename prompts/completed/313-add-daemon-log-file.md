@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added .dark-factory.log daemon log file with MultiWriter to stderr+file, DaemonLogFile field in Status struct, and Daemon log display line in status formatter
+container: dark-factory-313-add-daemon-log-file
+dark-factory-version: v0.121.1-dirty
 created: "2026-04-17T10:32:25Z"
 queued: "2026-04-17T10:33:55Z"
+started: "2026-04-17T10:49:48Z"
+completed: "2026-04-17T10:55:34Z"
 ---
 
 <summary>

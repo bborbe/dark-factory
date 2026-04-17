@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.123.0
+
+- feat: add `committing` prompt status for git-persistence phase between container exit and completed
+
 ## v0.122.1
 
 - refactor: make daemon log writer injectable via io.Writer to prevent .dark-factory.log creation during tests

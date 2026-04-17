@@ -2793,4 +2793,69 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
 		})
 	})
+
+	Describe("CommittingPromptStatus", func() {
+		It("is in AvailablePromptStatuses", func() {
+			Expect(
+				prompt.AvailablePromptStatuses.Contains(prompt.CommittingPromptStatus),
+			).To(BeTrue())
+		})
+	})
+
+	Describe("MarkCommitting", func() {
+		It("sets status to committing", func() {
+			pf := prompt.NewPromptFile(
+				filepath.Join(tempDir, "001-test.md"),
+				prompt.Frontmatter{Status: "executing"},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+			pf.MarkCommitting()
+			Expect(pf.Frontmatter.Status).To(Equal("committing"))
+		})
+	})
+
+	Describe("ListQueued skips committing", func() {
+		It("does not return a file with status committing", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: committing\n---\n\n# Test\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(prompts).To(BeEmpty())
+		})
+	})
+
+	Describe("FindCommitting", func() {
+		It("returns only files with committing status", func() {
+			committingPath := filepath.Join(tempDir, "001-committing.md")
+			err := os.WriteFile(
+				committingPath,
+				[]byte("---\nstatus: committing\n---\n\n# Test\n"),
+				0600,
+			)
+			Expect(err).To(BeNil())
+
+			approvedPath := filepath.Join(tempDir, "002-approved.md")
+			err = os.WriteFile(approvedPath, []byte("---\nstatus: approved\n---\n\n# Test\n"), 0600)
+			Expect(err).To(BeNil())
+
+			paths, err := prompt.FindCommitting(ctx, tempDir, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+			Expect(paths).To(HaveLen(1))
+			Expect(paths[0]).To(Equal(committingPath))
+		})
+
+		It("returns nil for a non-existent directory", func() {
+			paths, err := prompt.FindCommitting(
+				ctx,
+				filepath.Join(tempDir, "nonexistent"),
+				libtime.NewCurrentDateTime(),
+			)
+			Expect(err).To(BeNil())
+			Expect(paths).To(BeNil())
+		})
+	})
 })

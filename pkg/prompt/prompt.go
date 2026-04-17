@@ -70,6 +70,9 @@ const (
 	PendingVerificationPromptStatus PromptStatus = "pending_verification"
 	// CancelledPromptStatus indicates the prompt was cancelled before or during execution.
 	CancelledPromptStatus PromptStatus = "cancelled"
+	// CommittingPromptStatus indicates the container succeeded but the git commit is still pending.
+	// The prompt stays in in-progress/ until the commit succeeds.
+	CommittingPromptStatus PromptStatus = "committing"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
@@ -83,6 +86,7 @@ var AvailablePromptStatuses = PromptStatuses{
 	InReviewPromptStatus,
 	PendingVerificationPromptStatus,
 	CancelledPromptStatus,
+	CommittingPromptStatus,
 }
 
 // PromptStatuses is a slice of PromptStatus values.
@@ -381,6 +385,11 @@ func (pf *PromptFile) MarkCancelled() {
 	pf.Frontmatter.Status = string(CancelledPromptStatus)
 }
 
+// MarkCommitting sets the status to "committing" — container succeeded, awaiting git commit.
+func (pf *PromptFile) MarkCommitting() {
+	pf.Frontmatter.Status = string(CommittingPromptStatus)
+}
+
 // MarkApproved sets status to approved and ensures created/queued timestamps exist.
 func (pf *PromptFile) MarkApproved() {
 	now := pf.now().UTC().Format(time.RFC3339)
@@ -526,6 +535,11 @@ func (pm *Manager) ListQueued(ctx context.Context) ([]Prompt, error) {
 	return ListQueued(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
 }
 
+// FindCommitting returns paths of all prompt files in in-progress/ with status "committing".
+func (pm *Manager) FindCommitting(ctx context.Context) ([]string, error) {
+	return FindCommitting(ctx, pm.inProgressDir, pm.currentDateTimeGetter)
+}
+
 // Load reads a prompt file from disk, parsing frontmatter and body.
 func (pm *Manager) Load(ctx context.Context, path string) (*PromptFile, error) {
 	return Load(ctx, path, pm.currentDateTimeGetter)
@@ -658,6 +672,7 @@ func ListQueued(
 
 		// Skip files with explicit skip status
 		if fm.Status == string(ExecutingPromptStatus) ||
+			fm.Status == string(CommittingPromptStatus) ||
 			fm.Status == string(CompletedPromptStatus) ||
 			fm.Status == string(FailedPromptStatus) ||
 			fm.Status == string(InReviewPromptStatus) ||
@@ -752,6 +767,39 @@ func ResetFailed(
 	}
 
 	return nil
+}
+
+// FindCommitting returns the paths of all .md files in dir whose status is "committing".
+// Files that cannot be read are skipped with a warning.
+func FindCommitting(
+	ctx context.Context,
+	dir string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, "read directory")
+	}
+
+	var paths []string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(dir, entry.Name())
+		fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
+		if err != nil {
+			slog.Warn("skipping prompt in FindCommitting", "file", entry.Name(), "error", err)
+			continue
+		}
+		if fm.Status == string(CommittingPromptStatus) {
+			paths = append(paths, path)
+		}
+	}
+	return paths, nil
 }
 
 // SetStatus updates the status field in a prompt file's frontmatter.

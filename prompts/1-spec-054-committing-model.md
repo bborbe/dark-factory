@@ -1,5 +1,5 @@
 ---
-status: created
+status: draft
 spec: [054-committing-status-git-retry]
 created: "2026-04-17T14:00:00Z"
 branch: dark-factory/committing-status-git-retry
@@ -185,7 +185,7 @@ Write a test that:
 
 ## 8. Write CHANGELOG entry
 
-Append to `CHANGELOG.md` under `## Unreleased` (create the section if absent):
+Add an `## Unreleased` section at the top of `CHANGELOG.md` (above the latest versioned section) if it does not exist, then append:
 
 ```
 - feat: add `committing` prompt status for git-persistence phase between container exit and completed
@@ -205,7 +205,7 @@ Must pass before proceeding to `make precommit`.
 - Do NOT commit — dark-factory handles git
 - Do not touch `go.mod` / `go.sum` / `vendor/`
 - `committing` is an internal status — do NOT add it to any user-facing CLI or documentation in this prompt (that is prompt 3's job)
-- All 20 existing prompt statuses must remain valid — this only ADDS a new one
+- All 9 existing prompt statuses must remain valid — this only ADDS a new one
 - Use `errors.Wrapf` / `errors.Wrap` from `github.com/bborbe/errors` for all error wrapping (no `fmt.Errorf`)
 - External test package (`package prompt_test`) — do not use internal test package
 - Follow the `go-enum-type-pattern.md` for the new status constant (GoDoc comment, `PromptStatus` type)

@@ -1,5 +1,5 @@
 ---
-status: created
+status: draft
 spec: [054-committing-status-git-retry]
 created: "2026-04-17T14:00:00Z"
 branch: dark-factory/committing-status-git-retry
@@ -29,7 +29,7 @@ Read `go-context-cancellation-in-loops.md` in `~/.claude/plugins/marketplaces/co
 Read `go-testing-guide.md` in `~/.claude/plugins/marketplaces/coding/docs/`
 
 Key files to read before editing:
-- `pkg/git/git.go` — `CommitCompletedFile` (line ~145), `CommitOnly` (line ~72), `gitAddAll` (line ~197), `gitCommit` (line ~200+)
+- `pkg/git/git.go` — `CommitCompletedFile` (line ~145), `CommitOnly` (line ~72), `gitAddAll` (line ~197), `gitCommit` (line ~358)
 - `pkg/processor/workflow_executor_direct.go` — `Complete()` method and how it calls `moveToCompletedAndCommit` then `handleDirectWorkflow`
 - `pkg/processor/workflow_helpers.go` — `moveToCompletedAndCommit()` (line 42), `handleDirectWorkflow()` (line 113)
 - `pkg/processor/processor.go` — `Processor` interface (lines 38–46), `ResumeExecuting()` (lines 219–239), `processExistingQueued()` (lines 398+), `Process()` loop (lines 147–190), `ProcessQueue()` (lines 192–216)
@@ -188,31 +188,9 @@ ResumeCommitting(ctx context.Context) error
 
 ## 4. Implement `processCommittingPrompts` on `processor`
 
-Add the following private method to `pkg/processor/processor.go`:
+Add `FindCommitting(ctx context.Context) ([]string, error)` to the `PromptManager` interface in `pkg/processor/prompt_manager.go` (search for `type PromptManager interface`). The `*prompt.Manager` concrete type already implements this method (added in prompt 1).
 
-```go
-// processCommittingPrompts retries the git commit for each prompt in "committing" state.
-// Called both on startup (via ResumeCommitting) and on each daemon tick.
-// Failures are non-fatal: the prompt stays "committing" for the next cycle.
-func (p *processor) processCommittingPrompts(ctx context.Context) error {
-    paths, err := prompt.FindCommitting(ctx, p.queueDir, p.promptManager.(interface {
-        CurrentDateTimeGetter() libtime.CurrentDateTimeGetter
-    }).CurrentDateTimeGetter())
-    ...
-}
-```
-
-Wait — looking at the codebase, `p.promptManager` is the `PromptManager` interface and `FindCommitting` is a package-level function that takes a `libtime.CurrentDateTimeGetter`. To avoid exposing the getter through an interface, call the `Manager.FindCommitting` method if the `PromptManager` interface exposes it, or use `prompt.FindCommitting` with a hardcoded getter reference.
-
-**Simpler approach**: add `FindCommitting(ctx context.Context) ([]string, error)` to the `PromptManager` interface in `pkg/processor/processor.go` (it has a large interface defined there), and implement it in `pkg/prompt/prompt.go` on `*Manager` (already done in prompt 1).
-
-First, find the `PromptManager` interface in `pkg/processor/processor.go` (search for `type PromptManager interface`). Add:
-
-```go
-FindCommitting(ctx context.Context) ([]string, error)
-```
-
-Then implement `processCommittingPrompts`:
+Then add `processCommittingPrompts` to `pkg/processor/processor.go`:
 
 ```go
 // processCommittingPrompts retries git commits for prompts in "committing" state.
@@ -256,7 +234,7 @@ func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath stri
     }
 
     // Check if dirty work files remain (i.e., code commit from phase 1 never happened).
-    hasDirty, err := hasDirtyFiles(gitCtx)
+    hasDirty, err := git.HasDirtyFiles(gitCtx)
     if err != nil {
         return errors.Wrap(ctx, err, "check dirty files")
     }
@@ -456,7 +434,7 @@ Use the existing mock infrastructure (`mocks.FakeProcessor`, etc.). Check existi
 
 ## 11. Write CHANGELOG entry
 
-Append to `CHANGELOG.md` under `## Unreleased`:
+Add an `## Unreleased` section at the top of `CHANGELOG.md` (above the latest versioned section) if it does not exist, then append:
 
 ```
 - feat: retry git commit with exponential backoff (3 retries, 2s/4s/8s) on index.lock or failure
@@ -479,7 +457,7 @@ Must pass before proceeding.
 - Do not touch `go.mod` / `go.sum` / `vendor/`
 - Only the direct workflow executor (`workflow_executor_direct.go`) is changed — do NOT touch clone, branch, or worktree executors
 - `moveToCompletedAndCommit` in `workflow_helpers.go` must NOT be deleted or changed — it is still used by non-direct executors
-- `recoverCommittingPrompt` must return nil on git failure (non-fatal) — the error is only logged
+- `processCommittingPrompts` must treat `recoverCommittingPrompt` errors as non-fatal — log and continue, never crash
 - Use `errors.Wrapf` / `errors.Wrap` from `github.com/bborbe/errors` for all error wrapping (no `fmt.Errorf`)
 - Use `context.WithoutCancel(ctx)` for `gitCtx` in recovery (matches existing pattern in `resumePrompt`)
 - All existing tests must still pass

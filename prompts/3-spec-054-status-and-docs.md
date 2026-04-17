@@ -1,15 +1,14 @@
 ---
-status: created
+status: draft
 spec: [054-committing-status-git-retry]
 created: "2026-04-17T14:00:00Z"
 branch: dark-factory/committing-status-git-retry
 ---
 
 <summary>
-- `dark-factory status` shows `committing` prompts with a distinct label, not as idle/queued/executing/completed
-- A new `CommittingPrompts` field in the `Status` struct lists prompt filenames in the `committing` state
-- The `docs/prompt-writing.md` status lifecycle table includes a `committing` row
-- The `docs/architecture-flow.md` prompt status diagram includes `committing` between `executing` and `completed`
+- The CLI status command shows prompts in the committing phase with a distinct label and count
+- The prompt-writing guide includes the new committing status in its lifecycle table
+- The architecture flow diagram reflects the new intermediate status between executing and completed
 </summary>
 
 <objective>
@@ -20,7 +19,8 @@ Make the `committing` status visible in `dark-factory status` output and update 
 
 <context>
 Read `CLAUDE.md` for project conventions.
-Read `go-testing-guide.md` in `~/.claude/plugins/marketplaces/coding/docs/`
+Read the `go-testing-guide.md` coding guideline
+Read the `go-error-wrapping-guide.md` coding guideline
 
 Key files to read before editing:
 - `pkg/status/status.go` — `Status` struct (lines 27–56), `GetStatus()` (lines 128–189), `populateExecutingPrompt()` (lines 383–412), `PromptManager` interface in the status package (search for `type PromptManager interface` in `pkg/status/`)
@@ -158,7 +158,7 @@ Follow the existing test patterns in the status package (check how `populateExec
 
 ## 9. Write CHANGELOG entry
 
-Append to `CHANGELOG.md` under `## Unreleased`:
+Add an `## Unreleased` section at the top of `CHANGELOG.md` (above the latest versioned section) if it does not exist, then append:
 
 ```
 - feat: `dark-factory status` displays `committing` prompts with count and filenames

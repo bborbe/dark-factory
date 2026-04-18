@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.125.1
+
+- fix: `dark-factory` with no args and `dark-factory help` now print usage and exit 0 instead of erroring
+- chore: update github.com/go-git/go-git/v5 to v5.18.0 to fix GHSA-3xc5-wrhm-f963
+
 ## v0.125.0
 
 - feat: `dark-factory status` displays `committing` prompts with count and filenames

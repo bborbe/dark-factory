@@ -53,8 +53,22 @@ func TestParseArgsDefaults(t *testing.T) {
 
 func TestParseArgsNoArgs(t *testing.T) {
 	t.Parallel()
-	// No args must return "unknown" — an explicit subcommand is required
-	assertParseArgs(t, []string{}, parseArgsResult{command: "unknown", args: []string{}})
+	// No args must return "help" — so running `dark-factory` with no args prints usage and exits 0
+	assertParseArgs(t, []string{}, parseArgsResult{command: "help", args: []string{}})
+}
+
+func TestParseArgsHelpWord(t *testing.T) {
+	t.Parallel()
+	// Bare `help` word must be treated exactly like `--help`
+	assertParseArgs(t, []string{"help"}, parseArgsResult{command: "help", args: []string{}})
+	// The -debug flag is still extracted when combined with help
+	assertParseArgs(
+		t,
+		[]string{"-debug", "help"},
+		parseArgsResult{debug: true, command: "help", args: []string{}},
+	)
+	// `--help` continues to work (regression guard)
+	assertParseArgs(t, []string{"--help"}, parseArgsResult{command: "help", args: []string{}})
 }
 
 func TestParseArgsPrompt(t *testing.T) {

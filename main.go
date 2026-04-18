@@ -543,7 +543,8 @@ func printSpecHelp() {
 // (debug, command, subcommand, args, autoApprove).
 // The -debug flag can appear anywhere and is extracted before parsing.
 // The --auto-approve flag is extracted for the "run" command.
-// No args → command="unknown" (an explicit subcommand is required)
+// No args → command="help" (prints usage, exits 0)
+// Bare "help" word → command="help" (same as --help)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
@@ -563,14 +564,14 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 	}
 
 	if len(filtered) == 0 {
-		return debug, "unknown", "", []string{}, autoApprove
+		return debug, "help", "", []string{}, autoApprove
 	}
 
 	command := filtered[0]
 	rest := filtered[1:]
 
 	switch command {
-	case "--help", "-help", "-h":
+	case "help", "--help", "-help", "-h":
 		return debug, "help", "", []string{}, autoApprove
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}, autoApprove

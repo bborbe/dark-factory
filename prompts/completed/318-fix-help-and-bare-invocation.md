@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Routed empty args and bare 'help' word to the help command in ParseArgs, updated tests, and updated go-git to v5.18.0 to fix a security vulnerability found during precommit.
+container: dark-factory-318-fix-help-and-bare-invocation
+dark-factory-version: v0.122.0-6-g6b02e84
 created: "2026-04-18T00:00:00Z"
 queued: "2026-04-18T15:06:08Z"
+started: "2026-04-18T15:07:45Z"
+completed: "2026-04-18T15:14:49Z"
 ---
 
 <summary>

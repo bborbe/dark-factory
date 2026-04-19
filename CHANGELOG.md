@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.128.4
+
+- test: add `Config`/`partialConfig` parity and round-trip invariant tests to `pkg/config` — catches silent field drops when new `Config` fields are added without updating `partialConfig` and merge helpers
+
 ## v0.128.3
 
 - refactor: remove dead Docker-execution helpers from `pkg/preflight` (`buildPreflightDockerArgs`, `resolveExtraMountSrc`, `resolveHostCacheDir`, `darwinCacheDir`, `linuxCacheDir`) and drop `containerImage`/`extraMounts` params from `NewChecker` — preflight runs on host via `sh -c`

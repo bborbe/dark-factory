@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.128.3
+
+- refactor: remove dead Docker-execution helpers from `pkg/preflight` (`buildPreflightDockerArgs`, `resolveExtraMountSrc`, `resolveHostCacheDir`, `darwinCacheDir`, `linuxCacheDir`) and drop `containerImage`/`extraMounts` params from `NewChecker` — preflight runs on host via `sh -c`
+
 ## v0.128.2
 
 - fix: stop preflight-failure busy-loop by returning `errPreflightSkip` sentinel from `checkPreflightConditions`, causing `processExistingQueued` to exit the scan loop and wait for the next 5s ticker instead of re-scanning immediately

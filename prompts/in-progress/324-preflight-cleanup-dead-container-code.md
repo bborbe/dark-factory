@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Removed dead Docker-execution helpers from pkg/preflight and dropped containerImage/extraMounts params from NewChecker and its call sites in factory.go
+container: dark-factory-324-preflight-cleanup-dead-container-code
+dark-factory-version: v0.128.1-3-gf1cfca3-dirty
 created: "2026-04-19T20:27:24Z"
 queued: "2026-04-19T20:27:24Z"
+started: "2026-04-19T20:28:44Z"
 ---
 
 <summary>

@@ -7,15 +7,12 @@ package preflight
 import (
 	"context"
 	"log/slog"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
 
@@ -46,42 +43,35 @@ type shaFetcherFn func(ctx context.Context) (string, error)
 
 // checker implements Checker.
 type checker struct {
-	command        string
-	interval       time.Duration
-	projectRoot    string
-	containerImage string
-	extraMounts    []config.ExtraMount
-	notifier       notifier.Notifier
-	projectName    string
-	cache          *cacheEntry
-	runner         runnerFn
-	shaFetcher     shaFetcherFn
+	command     string
+	interval    time.Duration
+	projectRoot string
+	notifier    notifier.Notifier
+	projectName string
+	cache       *cacheEntry
+	runner      runnerFn
+	shaFetcher  shaFetcherFn
 }
 
 // NewChecker creates a new preflight Checker.
 // command is the shell command to run (empty string disables preflight).
 // interval is how long a cached green result is valid for the same git SHA (0 disables caching).
-// projectRoot is the absolute path of the project directory mounted as /workspace.
-// containerImage is the Docker image to use (same as the YOLO executor).
-// extraMounts are additional volume mounts applied to the preflight container.
+// projectRoot is the absolute path of the project directory.
 // n is used to notify humans when the baseline is broken.
+// projectName is the project identifier used in notifications.
 func NewChecker(
 	command string,
 	interval time.Duration,
 	projectRoot string,
-	containerImage string,
-	extraMounts []config.ExtraMount,
 	n notifier.Notifier,
 	projectName string,
 ) Checker {
 	c := &checker{
-		command:        command,
-		interval:       interval,
-		projectRoot:    projectRoot,
-		containerImage: containerImage,
-		extraMounts:    extraMounts,
-		notifier:       n,
-		projectName:    projectName,
+		command:     command,
+		interval:    interval,
+		projectRoot: projectRoot,
+		notifier:    n,
+		projectName: projectName,
 	}
 	c.runner = c.runInContainer
 	c.shaFetcher = c.getHeadSHA
@@ -162,96 +152,6 @@ func (c *checker) runInContainer(ctx context.Context) (string, error) {
 		return string(output), errors.Wrap(ctx, err, "preflight command exited non-zero")
 	}
 	return string(output), nil
-}
-
-// buildPreflightDockerArgs constructs the docker run argument list for the preflight container.
-// Pure function: no I/O, no globals — all inputs are parameters.
-func buildPreflightDockerArgs(
-	projectRoot string,
-	containerImage string,
-	command string,
-	extraMounts []config.ExtraMount,
-	home string,
-	lookupEnv func(string) string,
-	goos string,
-) []string {
-	args := []string{
-		"run", "--rm",
-		"-v", projectRoot + ":/workspace",
-		"-w", "/workspace",
-	}
-
-	for _, m := range extraMounts {
-		src := resolveExtraMountSrc(m.Src, lookupEnv, goos)
-		if strings.HasPrefix(src, "~/") {
-			src = home + src[1:]
-		} else if !filepath.IsAbs(src) {
-			src = filepath.Join(projectRoot, src)
-		}
-		if _, statErr := os.Stat(src); statErr != nil {
-			slog.Warn(
-				"preflight: extraMounts src does not exist, skipping",
-				"src",
-				src,
-				"dst",
-				m.Dst,
-			)
-			continue
-		}
-		mount := src + ":" + m.Dst
-		if m.IsReadonly() {
-			mount += ":ro"
-		}
-		args = append(args, "-v", mount)
-	}
-
-	args = append(args, containerImage)
-	args = append(args, "sh", "-c", command)
-	return args
-}
-
-// resolveExtraMountSrc expands env vars in src using lookupEnv, with a
-// platform-appropriate default for HOST_CACHE_DIR when lookupEnv returns
-// empty for it. Copied from pkg/executor/executor.go — kept private to avoid coupling.
-func resolveExtraMountSrc(src string, lookupEnv func(string) string, goos string) string {
-	mapper := func(name string) string {
-		if name == "HOST_CACHE_DIR" {
-			return resolveHostCacheDir(lookupEnv, goos)
-		}
-		return lookupEnv(name)
-	}
-	return os.Expand(src, mapper)
-}
-
-// resolveHostCacheDir returns the value for HOST_CACHE_DIR using lookupEnv and goos.
-func resolveHostCacheDir(lookupEnv func(string) string, goos string) string {
-	if v := lookupEnv("HOST_CACHE_DIR"); v != "" {
-		return v
-	}
-	home := lookupEnv("HOME")
-	if goos == "darwin" {
-		return darwinCacheDir(home)
-	}
-	return linuxCacheDir(lookupEnv, home)
-}
-
-// darwinCacheDir returns the macOS user cache directory for the given home path.
-func darwinCacheDir(home string) string {
-	if home == "" {
-		return ""
-	}
-	return home + "/Library/Caches"
-}
-
-// linuxCacheDir returns the Linux/other user cache directory using XDG_CACHE_HOME or home fallback.
-func linuxCacheDir(lookupEnv func(string) string, home string) string {
-	if xdg := lookupEnv("XDG_CACHE_HOME"); xdg != "" {
-		return xdg
-	}
-	if home == "" {
-		return ""
-	}
-	return home + "/.cache"
 }
 
 // truncateSHA returns the first 12 characters of sha for logging, or the full sha if shorter.

@@ -326,8 +326,6 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 				cfg.PreflightCommand,
 				cfg.ParsedPreflightInterval(),
 				projectRoot,
-				cfg.ContainerImage,
-				cfg.ExtraMounts,
 				n,
 				projectName,
 			)
@@ -426,8 +424,6 @@ func CreateOneShotRunner(
 				cfg.PreflightCommand,
 				cfg.ParsedPreflightInterval(),
 				projectRoot,
-				cfg.ContainerImage,
-				cfg.ExtraMounts,
 				n,
 				projectName,
 			)

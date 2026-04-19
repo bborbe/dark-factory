@@ -8,19 +8,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
 
 // Exported wrappers for pure helpers — used in unit tests.
 var (
-	ResolveExtraMountSrc     = resolveExtraMountSrc
-	ResolveHostCacheDir      = resolveHostCacheDir
-	DarwinCacheDir           = darwinCacheDir
-	LinuxCacheDir            = linuxCacheDir
-	TruncateSHA              = truncateSHA
-	MinLen                   = minLen
-	BuildPreflightDockerArgs = buildPreflightDockerArgs
+	TruncateSHA = truncateSHA
+	MinLen      = minLen
 )
 
 // NewCheckerWithRunner creates a Checker for testing, replacing runInContainer with a fake runner.
@@ -65,24 +59,5 @@ func NewCheckerWithSHAError(
 		return "", shaErr
 	}
 	c.runner = runner
-	return c
-}
-
-// NewCheckerWithExtraMounts creates a Checker for testing buildPreflightDockerArgs with extra mounts.
-func NewCheckerWithExtraMounts(
-	projectRoot string,
-	containerImage string,
-	command string,
-	extraMounts []config.ExtraMount,
-) Checker {
-	c := &checker{
-		command:        command,
-		interval:       0,
-		projectRoot:    projectRoot,
-		containerImage: containerImage,
-		extraMounts:    extraMounts,
-	}
-	c.shaFetcher = func(_ context.Context) (string, error) { return "sha", nil }
-	c.runner = func(_ context.Context) (string, error) { return "", nil }
 	return c
 }

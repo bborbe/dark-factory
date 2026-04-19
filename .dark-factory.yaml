@@ -1,6 +1,8 @@
 autoRelease: true
 maxContainers: 5
 pr: false
+preflightCommand: "make precommit"
+preflightInterval: "8h"
 testCommand: "make test"
 validationPrompt: docs/dod.md
 workflow: direct

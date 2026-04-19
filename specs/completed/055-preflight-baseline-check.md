@@ -1,11 +1,13 @@
 ---
-status: prompted
+status: completed
 tags:
     - dark-factory
     - spec
 approved: "2026-04-19T11:36:25Z"
 generating: "2026-04-19T11:36:37Z"
 prompted: "2026-04-19T11:46:17Z"
+verifying: "2026-04-19T17:37:34Z"
+completed: "2026-04-19T17:37:43Z"
 branch: dark-factory/preflight-baseline-check
 ---
 

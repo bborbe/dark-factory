@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [055-preflight-baseline-check]
 summary: Added PreflightCommand and PreflightInterval config fields with defaults, validation, ParsedPreflightInterval helper, LogEffectiveConfig logging, docs/configuration.md section, and tests
 container: dark-factory-319-spec-055-config
@@ -7,6 +7,7 @@ dark-factory-version: v0.125.1
 created: "2026-04-19T12:00:00Z"
 queued: "2026-04-19T16:15:50Z"
 started: "2026-04-19T16:15:53Z"
+completed: "2026-04-19T16:22:28Z"
 branch: dark-factory/preflight-baseline-check
 ---
 

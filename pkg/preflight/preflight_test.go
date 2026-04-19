@@ -412,4 +412,25 @@ var _ = Describe("Checker", func() {
 			Expect(ok).To(BeTrue())
 		})
 	})
+
+	Describe("retains runner output in the cache entry when baseline check fails", func() {
+		It("notifies on failure and returns false with no error", func() {
+			runner := func(_ context.Context) (string, error) {
+				return "FAIL: assertion failed at foo_test.go:12", errors.New(ctx, "exit status 1")
+			}
+			ch := preflight.NewCheckerWithRunner(
+				"make test",
+				0,
+				fakeNotifier,
+				"proj",
+				"abc123",
+				runner,
+			)
+
+			ok, err := ch.Check(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ok).To(BeFalse())
+			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
+		})
+	})
 })

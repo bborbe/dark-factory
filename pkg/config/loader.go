@@ -89,6 +89,8 @@ type partialConfig struct {
 	MaxPromptDuration      *string               `yaml:"maxPromptDuration"`
 	AutoRetryLimit         *int                  `yaml:"autoRetryLimit"`
 	HideGit                *bool                 `yaml:"hideGit"`
+	PreflightCommand       *string               `yaml:"preflightCommand"`
+	PreflightInterval      *string               `yaml:"preflightInterval"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -270,6 +272,12 @@ func mergePartialContainer(cfg *Config, partial *partialConfig) {
 	}
 	if partial.HideGit != nil {
 		cfg.HideGit = *partial.HideGit
+	}
+	if partial.PreflightCommand != nil {
+		cfg.PreflightCommand = *partial.PreflightCommand
+	}
+	if partial.PreflightInterval != nil {
+		cfg.PreflightInterval = *partial.PreflightInterval
 	}
 }
 

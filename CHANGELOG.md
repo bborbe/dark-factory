@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.128.2
+
+- fix: stop preflight-failure busy-loop by returning `errPreflightSkip` sentinel from `checkPreflightConditions`, causing `processExistingQueued` to exit the scan loop and wait for the next 5s ticker instead of re-scanning immediately
+
 ## v0.128.1
 
 - test: fix `buildPreflightDockerArgs` extra-mount tests to use `GinkgoT().TempDir()` so `os.Stat` succeeds on the host

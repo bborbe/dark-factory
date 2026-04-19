@@ -25,11 +25,13 @@ import (
 
 // fakePreflightChecker is a test stub for preflight.Checker.
 type fakePreflightChecker struct {
-	ok  bool
-	err error
+	ok        bool
+	err       error
+	callCount int
 }
 
 func (f *fakePreflightChecker) Check(_ context.Context) (bool, error) {
+	f.callCount++
 	return f.ok, f.err
 }
 
@@ -1332,11 +1334,13 @@ var _ = Describe("checkPreflightConditions — preflight checker", func() {
 		proc.SetPreflightChecker(fakeChecker)
 	})
 
-	It("returns skip=true when preflight checker returns false", func() {
+	It("returns errPreflightSkip when preflight checker returns false", func() {
 		fakeChecker.ok = false
 		skip, err := proc.CheckPreflightConditions(ctx)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(skip).To(BeTrue())
+		Expect(err).To(HaveOccurred())
+		Expect(stderrors.Is(err, errPreflightSkip)).To(BeTrue())
+		Expect(skip).To(BeFalse())
+		Expect(fakeChecker.callCount).To(Equal(1))
 	})
 
 	It("returns skip=false when preflight checker returns true", func() {
@@ -1346,12 +1350,13 @@ var _ = Describe("checkPreflightConditions — preflight checker", func() {
 		Expect(skip).To(BeFalse())
 	})
 
-	It("returns skip=true when preflight checker returns an error (non-fatal)", func() {
+	It("returns errPreflightSkip when preflight checker returns an error", func() {
 		fakeChecker.ok = false
 		fakeChecker.err = stderrors.New("internal error")
 		skip, err := proc.CheckPreflightConditions(ctx)
-		Expect(err).NotTo(HaveOccurred()) // error is absorbed, not propagated
-		Expect(skip).To(BeTrue())
+		Expect(err).To(HaveOccurred())
+		Expect(stderrors.Is(err, errPreflightSkip)).To(BeTrue())
+		Expect(skip).To(BeFalse())
 	})
 
 	It("returns skip=false when no preflight checker is set (nil)", func() {

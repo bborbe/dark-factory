@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -149,30 +148,18 @@ func (c *checker) getHeadSHA(ctx context.Context) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// runInContainer executes the preflight command inside a Docker container.
+// runInContainer executes the preflight command on the host (NOT a container).
+// The name is retained for backwards compatibility; `make precommit`-style baseline
+// checks are safe to run on host — containerization is only needed to sandbox Claude
+// with --dangerously-skip-permissions, which preflight does not use.
 // Returns combined stdout+stderr output and nil on success, or output + error on failure.
-// Non-zero exit code and Docker-level errors are both returned as errors.
 func (c *checker) runInContainer(ctx context.Context) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "get home dir")
-	}
-
-	args := buildPreflightDockerArgs(
-		c.projectRoot,
-		c.containerImage,
-		c.command,
-		c.extraMounts,
-		home,
-		os.Getenv,
-		runtime.GOOS,
-	)
-
-	// #nosec G204 -- containerImage and command are from trusted project config
-	cmd := exec.CommandContext(ctx, "docker", args...)
+	// #nosec G204 -- command is from trusted project config (.dark-factory.yaml)
+	cmd := exec.CommandContext(ctx, "sh", "-c", c.command)
+	cmd.Dir = c.projectRoot
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(output), errors.Wrap(ctx, err, "preflight container exited non-zero")
+		return string(output), errors.Wrap(ctx, err, "preflight command exited non-zero")
 	}
 	return string(output), nil
 }

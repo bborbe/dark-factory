@@ -19,3 +19,6 @@ func (p *processor) SetPreflightChecker(c preflight.Checker) {
 func (p *processor) CheckPreflightConditions(ctx context.Context) (bool, error) {
 	return p.checkPreflightConditions(ctx)
 }
+
+// ErrPreflightSkip exposes errPreflightSkip for tests to assert sentinel identity.
+var ErrPreflightSkip = errPreflightSkip

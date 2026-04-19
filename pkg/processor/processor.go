@@ -33,6 +33,15 @@ import (
 
 var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
+// errPreflightSkip is returned by processPrompt when the baseline preflight check
+// failed and the prompt should NOT be retried within the same scan cycle.
+// The caller in processExistingQueued recognizes this sentinel and returns,
+// which gives control back to the 5s ticker in Process().
+//
+// Do NOT use this for the other skip conditions (git-index-lock, dirty-files) —
+// those are transient and it is safe to advance to the next prompt in the queue.
+var errPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
+
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
 
 // Processor processes queued prompts.
@@ -489,7 +498,6 @@ func (p *processor) computeReattachDuration(started string) (time.Duration, time
 
 // processExistingQueued scans for and processes any existing queued prompts.
 func (p *processor) processExistingQueued(ctx context.Context) error {
-	// Block if any prompt is pending human verification
 	if p.hasPendingVerification(ctx) {
 		slog.Info("queue blocked: prompt pending verification")
 		return nil
@@ -502,54 +510,64 @@ func (p *processor) processExistingQueued(ctx context.Context) error {
 		default:
 		}
 
-		// Scan for queued prompts
-		queued, err := p.promptManager.ListQueued(ctx)
+		done, err := p.processSingleQueued(ctx)
 		if err != nil {
-			return errors.Wrap(ctx, err, "list queued prompts")
+			return err
 		}
-
-		// No more queued prompts - done
-		if len(queued) == 0 {
-			slog.Debug("queue scan complete", "queuedCount", 0)
+		if done {
 			return nil
 		}
-
-		slog.Debug("queue scan complete", "queuedCount", len(queued))
-
-		// Pick first prompt (already sorted alphabetically)
-		pr := queued[0]
-
-		// Auto-set status to queued if empty or created (folder location is source of truth)
-		if err := p.autoSetQueuedStatus(ctx, &pr); err != nil {
-			return errors.Wrap(ctx, err, "auto-set queued status")
-		}
-
-		// Check if prompt should be skipped (validation or previously failed)
-		if p.shouldSkipPrompt(ctx, pr) {
-			continue
-		}
-
-		// Check ordering - all previous prompts must be completed
-		if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
-			p.logBlockedOnce(ctx, pr)
-			return nil // blocked — wait for watcher signal or periodic scan
-		}
-		p.lastBlockedMsg = ""
-
-		slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
-
-		// Process the prompt (includes moving to completed/ and committing)
-		if err := p.processPrompt(ctx, pr); err != nil {
-			if stopErr := p.handleProcessError(ctx, pr.Path, err); stopErr != nil {
-				return stopErr
-			}
-			continue // re-queued or permanently failed — process next prompt
-		}
-
-		slog.Info("watching for queued prompts", "dir", p.queueDir)
-
-		// Loop again to process next prompt
 	}
+}
+
+// processSingleQueued picks the next queued prompt and processes it.
+// Returns (true, nil) when the scan loop should stop (queue empty, blocked, or preflight broken).
+// Returns (false, nil) to continue scanning for the next prompt.
+// Returns (true, err) when a fatal error requires the daemon to stop.
+func (p *processor) processSingleQueued(ctx context.Context) (bool, error) {
+	queued, err := p.promptManager.ListQueued(ctx)
+	if err != nil {
+		return true, errors.Wrap(ctx, err, "list queued prompts")
+	}
+
+	if len(queued) == 0 {
+		slog.Debug("queue scan complete", "queuedCount", 0)
+		return true, nil
+	}
+
+	slog.Debug("queue scan complete", "queuedCount", len(queued))
+
+	pr := queued[0]
+
+	if err := p.autoSetQueuedStatus(ctx, &pr); err != nil {
+		return true, errors.Wrap(ctx, err, "auto-set queued status")
+	}
+
+	if p.shouldSkipPrompt(ctx, pr) {
+		return false, nil
+	}
+
+	if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
+		p.logBlockedOnce(ctx, pr)
+		return true, nil // blocked — wait for watcher signal or periodic scan
+	}
+	p.lastBlockedMsg = ""
+
+	slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
+
+	if err := p.processPrompt(ctx, pr); err != nil {
+		if stderrors.Is(err, errPreflightSkip) {
+			// Baseline is broken — exit scan loop and wait for next 5s tick.
+			return true, nil
+		}
+		if stopErr := p.handleProcessError(ctx, pr.Path, err); stopErr != nil {
+			return true, stopErr
+		}
+		return false, nil // re-queued or permanently failed — process next prompt
+	}
+
+	slog.Info("watching for queued prompts", "dir", p.queueDir)
+	return false, nil
 }
 
 // shouldSkipPrompt checks if a prompt should be skipped due to validation failure.
@@ -922,19 +940,20 @@ func (p *processor) checkGitIndexLock() bool {
 }
 
 // checkPreflightConditions runs all pre-execution skip checks in order.
-// Returns (true, nil) if the prompt should be skipped this cycle.
+// Returns (true, nil) if the prompt should be skipped this cycle (transient conditions).
+// Returns (false, errPreflightSkip) if the preflight baseline is broken — the caller
+// must exit the scan loop and wait for the next ticker/watcher event.
 func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) {
 	// Baseline preflight check — must pass before any container starts
 	if p.preflightChecker != nil {
 		ok, err := p.preflightChecker.Check(ctx)
 		if err != nil {
-			// Unexpected internal error: log and skip this cycle without failing the prompt
-			slog.Warn("preflight checker error, skipping prompt this cycle", "error", err)
-			return true, nil
+			slog.Warn("preflight checker error, skipping cycle", "error", err)
+			return false, errPreflightSkip
 		}
 		if !ok {
 			slog.Info("preflight: baseline broken — prompt stays queued until baseline is fixed")
-			return true, nil
+			return false, errPreflightSkip
 		}
 	}
 
@@ -948,9 +967,12 @@ func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) 
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.checkPreflightConditions(ctx); err != nil {
+		if stderrors.Is(err, errPreflightSkip) {
+			return err // propagate sentinel unwrapped so caller can recognize it
+		}
 		return errors.Wrap(ctx, err, "check preflight conditions")
 	} else if skip {
-		return nil // skip this cycle, re-check on next poll
+		return nil // transient skip (git lock / dirty files) — advance to next prompt
 	}
 
 	pf, err := p.promptManager.Load(ctx, pr.Path)

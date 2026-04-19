@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.127.0
+
+- feat: add `pkg/preflight` package — Docker-backed baseline checker with SHA-keyed in-memory cache and notification on failure
+
 ## v0.126.0
 
 - feat: add `preflightCommand` and `preflightInterval` config fields for baseline check before prompt execution

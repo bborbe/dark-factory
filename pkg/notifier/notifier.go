@@ -9,7 +9,7 @@ import "context"
 // Event holds the data for a single notification.
 type Event struct {
 	ProjectName string
-	EventType   string // "prompt_failed", "prompt_partial", "spec_verifying", "review_limit", "stuck_container"
+	EventType   string // "prompt_failed", "prompt_partial", "spec_verifying", "review_limit", "stuck_container", "preflight_failed"
 	PromptName  string // filename without path, empty if not applicable
 	PRURL       string // empty if not applicable
 }

@@ -27,8 +27,8 @@ git remote set-url origin "$WORK_DIR/remote.git"
 ## Action
 
 - [ ] Create `prompts/toggle-comment.md` with content that toggles `// dark-factory-sandbox: scenario test marker` in `math_abs.go` (add if missing, remove if present)
-- [ ] `dark-factory prompt approve toggle-comment`
-- [ ] Start dark-factory: `dark-factory run`
+- [ ] `go run ~/Documents/workspaces/dark-factory prompt approve toggle-comment`
+- [ ] Start dark-factory: `go run ~/Documents/workspaces/dark-factory run`
 
 ## Expected
 

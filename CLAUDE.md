@@ -25,6 +25,8 @@
 
 4. **After completing a spec or major refactor**, run the relevant scenario to verify end-to-end behavior. Scenarios live in `scenarios/` (numbered by complexity). Always use a temp copy of the sandbox — never run against the original.
 
+5. **Before `make install`**, run all scenarios in `scenarios/` against the current source via `go run ~/Documents/workspaces/dark-factory <cmd>` — NOT the bare `dark-factory` binary (that runs the previously-installed version and misses unshipped code). Unit tests + `make precommit` alone are not sufficient.
+
 ### Key rules (details in the guides)
 
 - Prompts go to **`prompts/`** (inbox) — never to `prompts/in-progress/` or `prompts/completed/`

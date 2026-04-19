@@ -63,6 +63,8 @@ Description line right after the title — one sentence starting with "Validates
 
 **2. Self-contained.** Each scenario sets up its own preconditions. No dependency on another scenario having run first.
 
+**2a. Test the code under change, not a stale binary.** When writing scenarios that cover dark-factory itself (meta-scenarios in the dark-factory repo), invoke it via `go run` against the source so scenarios exercise current, uninstalled code — otherwise a passing scenario proves nothing about the changes you're about to ship. When writing scenarios for an unrelated project that uses dark-factory, the installed `dark-factory` binary is the right target.
+
 **3. One journey per file.** Don't combine happy path and failure path — split them into separate scenarios.
 
 **4. Number files sequentially.** `001-workflow-direct.md`, `002-workflow-pr.md`, `003-smoke-test-container.md`. Numbers provide stable ordering and reference.

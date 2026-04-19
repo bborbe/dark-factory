@@ -63,8 +63,8 @@ grep -q "smoke-test-marker" math_abs.go
 PROMPT
 ```
 
-- [ ] `dark-factory prompt approve smoke-test`
-- [ ] Start dark-factory: `dark-factory run`
+- [ ] `go run ~/Documents/workspaces/dark-factory prompt approve smoke-test`
+- [ ] Start dark-factory: `go run ~/Documents/workspaces/dark-factory run`
 
 ## Expected
 

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.129.0
+
+- docs: replace "When to Write a Scenario" table in `docs/scenario-writing.md` with integration-seam criterion — triggers are orchestration/lifecycle, container boundary, git boundary, config→runtime, regression from missed bug; "could a unit-test-with-mocks pass while this silently breaks?"
+- docs: add rule 2a to `docs/scenario-writing.md` — meta-scenarios in the dark-factory repo must build a fresh binary (`go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .`) and invoke it, because `cd`-into-sandbox breaks `go run`
+- docs: add scenario-update line to `docs/dod.md` — new/changed integration seam → scenario added or updated
+- agent: add step 9 (scenario check) to `agents/prompt-creator.md` — during spec decomposition, apply the seam criterion and either add an update-scenario requirement or emit a dedicated write-scenario prompt
+- CLAUDE.md: add rule — run all `scenarios/` against a freshly built binary before `make install`; unit tests + `make precommit` alone are not sufficient
+- scenarios: all 4 active scenarios (`001-workflow-direct`, `002-workflow-pr`, `003-smoke-test-container`, `010-preflight-baseline-gate`) now build `/tmp/new-dark-factory` in Setup and invoke it — tests code under change, not stale installed binary
+- scenarios/001: add `autoRelease: true` to yaml so tag+push expected outcomes match configured workflow
+
 ## v0.128.4
 
 - test: add `Config`/`partialConfig` parity and round-trip invariant tests to `pkg/config` — catches silent field drops when new `Config` fields are added without updating `partialConfig` and merge helpers

@@ -11,6 +11,7 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 ## Setup
 
 ```bash
+go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
@@ -56,8 +57,8 @@ grep -q "preflight-canary" math_abs.go
 </verification>
 PROMPT
 
-go run ~/Documents/workspaces/dark-factory prompt approve preflight-canary
-timeout 30s go run ~/Documents/workspaces/dark-factory daemon > daemon.log 2>&1 || true
+/tmp/new-dark-factory prompt approve preflight-canary
+timeout 30s /tmp/new-dark-factory daemon > daemon.log 2>&1 || true
 ```
 
 - [ ] Daemon ran for ~30s then exited via timeout

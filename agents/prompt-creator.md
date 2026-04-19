@@ -44,7 +44,10 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 6. Extract **Security** section — include relevant checks (input validation, trust boundaries, access control) in requirements where applicable.
 7. Group coupled behaviors (can't verify independently → same prompt). Group failure handling with its happy path when they touch the same code.
 8. Sequence: most foundational first, postconditions = next prompt's preconditions
-9. Write 2-6 prompt files to `prompts/`
+9. **Scenario check** — apply `docs/scenario-writing.md` "When to Write a Scenario". If a new or changed integration seam is triggered:
+   - Existing scenario covers the area → add an "update `scenarios/NNN-*.md`" requirement to the relevant prompt
+   - No existing scenario covers it → emit a dedicated final prompt `write-scenario-<name>.md` that produces `scenarios/NNN-*.md` per `docs/scenario-writing.md`
+10. Write 2-6 prompt files to `prompts/`
 
 ## From Task Description
 

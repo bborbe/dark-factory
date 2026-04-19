@@ -13,6 +13,7 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 **Note:** PR workflow requires a real GitHub remote for `gh pr create`. This scenario pushes to the real sandbox repo — clean up the PR and branch after the run.
 
 ```bash
+go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
@@ -25,8 +26,8 @@ echo "workflow: pr" > .dark-factory.yaml
 ## Action
 
 - [ ] Create `prompts/toggle-comment.md` with content that toggles `// dark-factory-sandbox: scenario test marker` in `math_abs.go` (add if missing, remove if present)
-- [ ] `go run ~/Documents/workspaces/dark-factory prompt approve toggle-comment`
-- [ ] Start dark-factory: `go run ~/Documents/workspaces/dark-factory run`
+- [ ] `/tmp/new-dark-factory prompt approve toggle-comment`
+- [ ] Start dark-factory: `/tmp/new-dark-factory run`
 
 ## Expected
 

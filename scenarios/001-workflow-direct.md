@@ -11,10 +11,14 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 ## Setup
 
 ```bash
+go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
-echo "workflow: direct" > .dark-factory.yaml
+cat > .dark-factory.yaml << 'YAML'
+workflow: direct
+autoRelease: true
+YAML
 # Redirect push to local bare repo (avoid polluting real remote)
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"
@@ -27,8 +31,8 @@ git remote set-url origin "$WORK_DIR/remote.git"
 ## Action
 
 - [ ] Create `prompts/toggle-comment.md` with content that toggles `// dark-factory-sandbox: scenario test marker` in `math_abs.go` (add if missing, remove if present)
-- [ ] `go run ~/Documents/workspaces/dark-factory prompt approve toggle-comment`
-- [ ] Start dark-factory: `go run ~/Documents/workspaces/dark-factory run`
+- [ ] `/tmp/new-dark-factory prompt approve toggle-comment`
+- [ ] Start dark-factory: `/tmp/new-dark-factory run`
 
 ## Expected
 

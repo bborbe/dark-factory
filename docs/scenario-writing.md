@@ -19,13 +19,28 @@ All scenarios use explicit frontmatter: `status: idea`, `draft`, `active`, or `o
 
 ## When to Write a Scenario
 
-| Situation | Scenario needed? |
-|-----------|-----------------|
-| New workflow or mode | Yes |
-| Spec with 3+ acceptance criteria | Yes |
-| Bug fix for regression | Yes — prevents recurrence |
-| Config change, version bump | No |
-| Internal refactor (same behavior) | No — existing scenarios cover it |
+**Scenarios verify integration seams that unit tests can't prove.** Unit tests mock
+dependencies and pass green when each component works in isolation. Scenarios
+exercise the real wiring: config → runtime, host → container, process → git remote.
+
+| Triggers scenario | Why |
+|---|---|
+| Touches orchestration/lifecycle (processor, daemon loop, watcher) | Control-flow bugs (busy-loops, leaked goroutines) invisible to unit tests |
+| Crosses container boundary (Docker exec, mounts, host↔container I/O) | Unit tests mock runners; real container behavior differs |
+| Crosses git boundary (clone, commit, push, PR) | Git + remote side effects can't be faked reliably |
+| Config field → runtime behavior | Proves the field actually reaches execution, not dropped by loader |
+| Regression from a bug unit tests missed | The seam that failed must be locked down |
+
+| Does NOT trigger scenario | Why |
+|---|---|
+| Pure refactor inside a package | Existing scenarios cover the behavior |
+| Error message / log wording | No seam, no behavior change |
+| New struct field with no runtime consumer | No seam until something reads it |
+| Config / version bump | No new seam |
+| Doc / comment changes | No code seam |
+
+**If in doubt:** ask "could a unit test with mocks pass while this silently breaks?"
+If yes → scenario. That's exactly what happened with spec 055.
 
 ## Format
 
@@ -63,7 +78,7 @@ Description line right after the title — one sentence starting with "Validates
 
 **2. Self-contained.** Each scenario sets up its own preconditions. No dependency on another scenario having run first.
 
-**2a. Test the code under change, not a stale binary.** When writing scenarios that cover dark-factory itself (meta-scenarios in the dark-factory repo), invoke it via `go run` against the source so scenarios exercise current, uninstalled code — otherwise a passing scenario proves nothing about the changes you're about to ship. When writing scenarios for an unrelated project that uses dark-factory, the installed `dark-factory` binary is the right target.
+**2a. Test the code under change, not a stale binary.** When writing scenarios that cover dark-factory itself (meta-scenarios in the dark-factory repo), build a fresh binary in Setup — `go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .` — then invoke `/tmp/new-dark-factory <cmd>` throughout. Plain `go run` does not work because scenarios `cd` into a sandbox with a different go.mod. When writing scenarios for an unrelated project that uses dark-factory, the installed `dark-factory` binary is the right target.
 
 **3. One journey per file.** Don't combine happy path and failure path — split them into separate scenarios.
 

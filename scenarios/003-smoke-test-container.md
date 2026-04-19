@@ -11,6 +11,7 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 ## Setup
 
 ```bash
+go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
@@ -63,8 +64,8 @@ grep -q "smoke-test-marker" math_abs.go
 PROMPT
 ```
 
-- [ ] `go run ~/Documents/workspaces/dark-factory prompt approve smoke-test`
-- [ ] Start dark-factory: `go run ~/Documents/workspaces/dark-factory run`
+- [ ] `/tmp/new-dark-factory prompt approve smoke-test`
+- [ ] Start dark-factory: `/tmp/new-dark-factory run`
 
 ## Expected
 

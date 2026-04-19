@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [055-preflight-baseline-check]
 summary: Fixed preflight-failure busy-loop by returning errPreflightSkip sentinel from checkPreflightConditions and handling it in processExistingQueued (via extracted processSingleQueued helper), so the scan loop exits and waits for the next 5s ticker instead of re-scanning immediately
 container: dark-factory-323-fix-preflight-busy-loop-and-empty-output
@@ -7,6 +7,7 @@ dark-factory-version: v0.128.1-3-gf1cfca3-dirty
 created: "2026-04-19T00:00:00Z"
 queued: "2026-04-19T19:18:03Z"
 started: "2026-04-19T19:42:37Z"
+completed: "2026-04-19T19:51:57Z"
 ---
 
 <summary>

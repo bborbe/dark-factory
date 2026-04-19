@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Updated two buildPreflightDockerArgs extra-mount tests to use GinkgoT().TempDir() as mount source so os.Stat succeeds and mounts are emitted in args.
 container: dark-factory-322-fix-preflight-extra-mount-tests
 dark-factory-version: v0.125.1
 created: "2026-04-19T00:00:00Z"
 queued: "2026-04-19T17:27:40Z"
 started: "2026-04-19T17:29:05Z"
+completed: "2026-04-19T17:31:17Z"
 ---
 
 <summary>

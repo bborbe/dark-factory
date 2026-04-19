@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added pkg/config/roundtrip_test.go with reflection-based Config/partialConfig parity test and per-field yaml round-trip DescribeTable covering all scalar fields including preflightCommand and preflightInterval.
 container: dark-factory-325-config-roundtrip-invariant-test
 dark-factory-version: v0.128.1-3-gf1cfca3-dirty
 created: "2026-04-19T20:27:24Z"
 queued: "2026-04-19T20:27:27Z"
 started: "2026-04-19T20:35:17Z"
+completed: "2026-04-19T20:39:29Z"
 ---
 
 <summary>

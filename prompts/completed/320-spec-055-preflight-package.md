@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [055-preflight-baseline-check]
 summary: Created pkg/preflight package with Docker-backed Checker, SHA-keyed cache, notification on failure, and 81.8% test coverage
 container: dark-factory-320-spec-055-preflight-package
@@ -7,6 +7,7 @@ dark-factory-version: v0.125.1
 created: "2026-04-19T12:00:00Z"
 queued: "2026-04-19T16:15:50Z"
 started: "2026-04-19T16:22:30Z"
+completed: "2026-04-19T16:35:04Z"
 branch: dark-factory/preflight-baseline-check
 ---
 

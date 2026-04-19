@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-04-17T13:37:10Z"
 generating: "2026-04-17T13:37:11Z"
 prompted: "2026-04-17T13:49:21Z"
 verifying: "2026-04-17T14:58:33Z"
+completed: "2026-04-19T17:31:57Z"
 branch: dark-factory/committing-status-git-retry
 ---
 

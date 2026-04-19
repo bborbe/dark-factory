@@ -52,6 +52,8 @@ var _ = Describe("Config", func() {
 			Expect(cfg.PollIntervalSec).To(Equal(60))
 			Expect(cfg.UseCollaborators).To(BeFalse())
 			Expect(cfg.GitHub.Token).To(BeEmpty())
+			Expect(cfg.PreflightCommand).To(Equal("make precommit"))
+			Expect(cfg.PreflightInterval).To(Equal("8h"))
 		})
 	})
 
@@ -2488,6 +2490,37 @@ autoRetryLimit: 3
 			Expect(cfg.Workflow).To(Equal(config.WorkflowDirect))
 			Expect(cfg.PR).To(BeFalse())
 			Expect(cfg.Worktree).To(BeFalse())
+		})
+	})
+
+	Describe("validatePreflightInterval", func() {
+		It("rejects invalid preflightInterval", func() {
+			cfg := config.Defaults()
+			cfg.PreflightInterval = "2x"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("preflightInterval"))
+		})
+
+		It("allows empty preflightInterval (disables preflight)", func() {
+			cfg := config.Defaults()
+			cfg.PreflightInterval = ""
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("ParsedPreflightInterval", func() {
+		It("parses valid duration", func() {
+			cfg := config.Defaults()
+			cfg.PreflightInterval = "2h"
+			Expect(cfg.ParsedPreflightInterval()).To(Equal(2 * time.Hour))
+		})
+
+		It("returns 0 for empty", func() {
+			cfg := config.Defaults()
+			cfg.PreflightInterval = ""
+			Expect(cfg.ParsedPreflightInterval()).To(Equal(time.Duration(0)))
 		})
 	})
 })

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.126.0
+
+- feat: add `preflightCommand` and `preflightInterval` config fields for baseline check before prompt execution
+
 ## v0.125.1
 
 - fix: `dark-factory` with no args and `dark-factory help` now print usage and exit 0 instead of erroring

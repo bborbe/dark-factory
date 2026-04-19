@@ -245,6 +245,26 @@ autoRetryLimit: 3
 |-------|---------|---------|
 | `autoRetryLimit` | `0` (disabled) | Number of automatic retries after a prompt fails. `0` disables auto-retry. When the retry count is exhausted the prompt transitions to `failed` and stops being retried automatically. |
 
+### Preflight Baseline Check
+
+Run the project's baseline validation command on a clean tree before each prompt executes.
+Prompts only start on a known-green baseline. When the baseline is broken, queued prompts
+remain queued (no retry count increment, no status change), and the operator is notified.
+
+```yaml
+preflightCommand: "make precommit"
+preflightInterval: "8h"
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `preflightCommand` | `make precommit` | Shell command run inside the container before each prompt. Empty string disables preflight entirely. |
+| `preflightInterval` | `8h` | How long a cached green baseline result stays valid for the same git commit SHA. When the SHA advances or the interval elapses, preflight re-runs. Accepts Go duration strings: `"30m"`, `"2h"`, `"8h"`. Invalid strings are rejected at daemon startup. |
+
+**Caching:** Preflight runs at most once per git commit SHA within `preflightInterval`. Multiple queued prompts on the same baseline SHA reuse the cached result — no wasted container time.
+
+**On failure:** The daemon logs the command, its captured output, and the commit SHA that was checked. A notification is sent. The prompt remains queued.
+
 ### CLI Override
 
 Override the limit for a single run without editing config:

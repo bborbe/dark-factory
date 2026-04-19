@@ -92,6 +92,8 @@ func LogEffectiveConfig(
 		"promptsInProgressDir", cfg.Prompts.InProgressDir,
 		"promptsCompletedDir", cfg.Prompts.CompletedDir,
 		"promptsLogDir", cfg.Prompts.LogDir,
+		"preflightCommand", cfg.PreflightCommand,
+		"preflightInterval", cfg.PreflightInterval,
 	)
 }
 

@@ -118,6 +118,8 @@ type Config struct {
 	DirtyFileThreshold     int                 `yaml:"dirtyFileThreshold,omitempty"`
 	MaxPromptDuration      string              `yaml:"maxPromptDuration"`
 	AutoRetryLimit         int                 `yaml:"autoRetryLimit"`
+	PreflightCommand       string              `yaml:"preflightCommand"`
+	PreflightInterval      string              `yaml:"preflightInterval"`
 }
 
 // Defaults returns a Config with all default values.
@@ -155,6 +157,8 @@ func Defaults() Config {
 		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
 		ClaudeDir:         "~/.claude-yolo",
 		GenerateCommand:   "/dark-factory:generate-prompts-for-spec",
+		PreflightCommand:  "make precommit",
+		PreflightInterval: "8h",
 	}
 }
 
@@ -232,7 +236,25 @@ func (c Config) Validate(ctx context.Context) error {
 			validation.HasValidationFunc(c.validateMaxPromptDuration),
 		),
 		validation.Name("autoRetryLimit", validation.HasValidationFunc(c.validateAutoRetryLimit)),
+		validation.Name(
+			"preflightInterval",
+			validation.HasValidationFunc(c.validatePreflightInterval),
+		),
 	}.Validate(ctx)
+}
+
+// ParsedPreflightInterval returns the parsed duration from PreflightInterval.
+// Returns 0 when PreflightInterval is empty (disables interval-based caching).
+// Safe to call at any time — returns 0 on error, never panics.
+func (c Config) ParsedPreflightInterval() time.Duration {
+	if c.PreflightInterval == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(c.PreflightInterval)
+	if err != nil {
+		return 0
+	}
+	return d
 }
 
 // ParsedMaxPromptDuration returns the parsed duration from MaxPromptDuration.
@@ -267,6 +289,22 @@ func (c Config) validateMaxPromptDuration(ctx context.Context) error {
 			ctx,
 			"maxPromptDuration %q is not a valid duration: %v",
 			c.MaxPromptDuration,
+			err,
+		)
+	}
+	return nil
+}
+
+// validatePreflightInterval rejects unparseable duration strings for preflightInterval.
+func (c Config) validatePreflightInterval(ctx context.Context) error {
+	if c.PreflightInterval == "" {
+		return nil
+	}
+	if _, err := time.ParseDuration(c.PreflightInterval); err != nil {
+		return errors.Errorf(
+			ctx,
+			"preflightInterval %q is not a valid duration: %v",
+			c.PreflightInterval,
 			err,
 		)
 	}

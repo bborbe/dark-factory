@@ -49,6 +49,7 @@ This is the core loop. For each queued prompt, dark-factory runs these steps:
   1    Host         Git fetch + merge origin/default
   2    Host         Load prompt file, read body content
   3    Host         Assemble final prompt (see "Prompt Assembly" below)
+ 3.5  Host         Preflight baseline check (preflightCommand in container, cached by HEAD SHA)
   4    Host         Setup workflow (branch switch or clone)
   5    Host         Start Docker container with assembled prompt
   6    Container    YOLO agent reads prompt and implements changes
@@ -170,6 +171,7 @@ project/
 | dark-factory CLI | Host (interactive) | `approve`, `retry`, `status`, `list`, `complete` |
 | YOLO container | Docker (isolated) | Implement code changes, run tests, self-evaluate quality |
 | Git operations | Host only | Fetch, branch, commit, push, PR create/merge |
+| preflightCommand | Docker container | Verify baseline before prompt; same image as YOLO, cached by HEAD SHA |
 | validationCommand | Inside container | Agent runs shell command (e.g., `make precommit`) |
 | validationPrompt | Inside container | Agent self-reviews work against quality criteria |
 | Notifications | Host | Telegram/Discord via HTTPS from daemon |

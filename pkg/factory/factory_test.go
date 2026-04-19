@@ -101,6 +101,7 @@ var _ = Describe("Factory", func() {
 				0,
 				0,
 				false,
+				nil,
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.128.0
+
+- feat: wire preflight baseline checker into processor — prompts skip (not fail) when baseline is broken
+- docs: document preflight step in architecture-flow.md execution table and what-runs-where table
+
 ## v0.127.0
 
 - feat: add `pkg/preflight` package — Docker-backed baseline checker with SHA-keyed in-memory cache and notification on failure

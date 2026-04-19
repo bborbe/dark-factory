@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [055-preflight-baseline-check]
+summary: Wired preflight.Checker into processor struct, NewProcessor, CreateProcessor, CreateRunner, and CreateOneShotRunner; prompts skip when baseline is broken; added internal tests and architecture docs.
+container: dark-factory-321-spec-055-wire-and-docs
+dark-factory-version: v0.125.1
 created: "2026-04-19T12:00:00Z"
 queued: "2026-04-19T16:15:50Z"
+started: "2026-04-19T16:35:06Z"
 branch: dark-factory/preflight-baseline-check
 ---
 

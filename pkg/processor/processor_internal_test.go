@@ -23,6 +23,16 @@ import (
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
+// fakePreflightChecker is a test stub for preflight.Checker.
+type fakePreflightChecker struct {
+	ok  bool
+	err error
+}
+
+func (f *fakePreflightChecker) Check(_ context.Context) (bool, error) {
+	return f.ok, f.err
+}
+
 // fakeDirtyFileChecker is a test stub for DirtyFileChecker.
 type fakeDirtyFileChecker struct {
 	count     int
@@ -1305,6 +1315,50 @@ var _ = Describe("checkGitIndexLock", func() {
 		checker.exists = true
 		p.gitLockChecker = checker
 		Expect(p.checkGitIndexLock()).To(BeTrue())
+	})
+})
+
+var _ = Describe("checkPreflightConditions — preflight checker", func() {
+	var (
+		ctx         context.Context
+		proc        *processor
+		fakeChecker *fakePreflightChecker
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		fakeChecker = &fakePreflightChecker{}
+		proc = &processor{skippedPrompts: make(map[string]libtime.DateTime)}
+		proc.SetPreflightChecker(fakeChecker)
+	})
+
+	It("returns skip=true when preflight checker returns false", func() {
+		fakeChecker.ok = false
+		skip, err := proc.CheckPreflightConditions(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeTrue())
+	})
+
+	It("returns skip=false when preflight checker returns true", func() {
+		fakeChecker.ok = true
+		skip, err := proc.CheckPreflightConditions(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeFalse())
+	})
+
+	It("returns skip=true when preflight checker returns an error (non-fatal)", func() {
+		fakeChecker.ok = false
+		fakeChecker.err = stderrors.New("internal error")
+		skip, err := proc.CheckPreflightConditions(ctx)
+		Expect(err).NotTo(HaveOccurred()) // error is absorbed, not propagated
+		Expect(skip).To(BeTrue())
+	})
+
+	It("returns skip=false when no preflight checker is set (nil)", func() {
+		proc.SetPreflightChecker(nil)
+		skip, err := proc.CheckPreflightConditions(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(skip).To(BeFalse())
 	})
 })
 

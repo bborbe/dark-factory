@@ -24,6 +24,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -79,6 +80,7 @@ func NewProcessor(
 	gitLockChecker GitLockChecker,
 	autoRetryLimit int,
 	maxPromptDuration time.Duration,
+	preflightChecker preflight.Checker,
 ) Processor {
 	return &processor{
 		queueDir:               queueDir,
@@ -110,6 +112,7 @@ func NewProcessor(
 		gitLockChecker:         gitLockChecker,
 		autoRetryLimit:         autoRetryLimit,
 		maxPromptDuration:      maxPromptDuration,
+		preflightChecker:       preflightChecker,
 	}
 }
 
@@ -145,6 +148,7 @@ type processor struct {
 	lastBlockedMsg         string
 	autoRetryLimit         int
 	maxPromptDuration      time.Duration
+	preflightChecker       preflight.Checker // nil = disabled
 }
 
 // Process starts processing queued prompts.
@@ -920,6 +924,20 @@ func (p *processor) checkGitIndexLock() bool {
 // checkPreflightConditions runs all pre-execution skip checks in order.
 // Returns (true, nil) if the prompt should be skipped this cycle.
 func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) {
+	// Baseline preflight check — must pass before any container starts
+	if p.preflightChecker != nil {
+		ok, err := p.preflightChecker.Check(ctx)
+		if err != nil {
+			// Unexpected internal error: log and skip this cycle without failing the prompt
+			slog.Warn("preflight checker error, skipping prompt this cycle", "error", err)
+			return true, nil
+		}
+		if !ok {
+			slog.Info("preflight: baseline broken — prompt stays queued until baseline is fixed")
+			return true, nil
+		}
+	}
+
 	if p.checkGitIndexLock() {
 		slog.Warn("git index lock exists, skipping prompt — will retry next cycle")
 		return true, nil

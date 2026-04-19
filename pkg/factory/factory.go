@@ -27,6 +27,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -310,6 +311,29 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		gitLockChecker = processor.NewGitLockChecker(".")
 	}
 
+	// Create preflight checker from config. nil when preflightCommand is empty (disabled).
+	var preflightChecker preflight.Checker
+	if cfg.PreflightCommand != "" {
+		projectRoot, rootErr := os.Getwd()
+		if rootErr != nil {
+			slog.Warn(
+				"preflight: could not determine project root, preflight disabled",
+				"error",
+				rootErr,
+			)
+		} else {
+			preflightChecker = preflight.NewChecker(
+				cfg.PreflightCommand,
+				cfg.ParsedPreflightInterval(),
+				projectRoot,
+				cfg.ContainerImage,
+				cfg.ExtraMounts,
+				n,
+				projectName,
+			)
+		}
+	}
+
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
 		promptManager, releaser, versionGetter, ready,
@@ -329,6 +353,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		cfg.DirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 		cfg.HideGit,
+		preflightChecker,
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -385,6 +410,30 @@ func CreateOneShotRunner(
 		osDirtyFileChecker = processor.NewDirtyFileChecker(".")
 		osGitLockChecker = processor.NewGitLockChecker(".")
 	}
+
+	// Create preflight checker from config. nil when preflightCommand is empty (disabled).
+	var osPreflightChecker preflight.Checker
+	if cfg.PreflightCommand != "" {
+		projectRoot, rootErr := os.Getwd()
+		if rootErr != nil {
+			slog.Warn(
+				"preflight: could not determine project root, preflight disabled",
+				"error",
+				rootErr,
+			)
+		} else {
+			osPreflightChecker = preflight.NewChecker(
+				cfg.PreflightCommand,
+				cfg.ParsedPreflightInterval(),
+				projectRoot,
+				cfg.ContainerImage,
+				cfg.ExtraMounts,
+				n,
+				projectName,
+			)
+		}
+	}
+
 	return runner.NewOneShotRunner(
 		inboxDir,
 		inProgressDir,
@@ -437,6 +486,7 @@ func CreateOneShotRunner(
 			cfg.DirtyFileThreshold, osDirtyFileChecker,
 			osGitLockChecker, cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 			cfg.HideGit,
+			osPreflightChecker,
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -665,6 +715,7 @@ func CreateProcessor(
 	dirtyFileThreshold int, dirtyFileChecker processor.DirtyFileChecker,
 	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
 	hideGit bool,
+	preflightChecker preflight.Checker,
 ) processor.Processor {
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
@@ -711,6 +762,7 @@ func CreateProcessor(
 		containerLock, containerChecker,
 		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		autoRetryLimit, maxPromptDuration,
+		preflightChecker,
 	)
 }
 

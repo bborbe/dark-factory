@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.128.1
+
+- test: fix `buildPreflightDockerArgs` extra-mount tests to use `GinkgoT().TempDir()` so `os.Stat` succeeds on the host
+
 ## v0.128.0
 
 - feat: wire preflight baseline checker into processor — prompts skip (not fail) when baseline is broken

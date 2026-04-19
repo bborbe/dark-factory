@@ -150,8 +150,9 @@ var _ = Describe("buildPreflightDockerArgs", func() {
 	})
 
 	It("appends read-write extra mount when src exists", func() {
+		tempDir := GinkgoT().TempDir()
 		ro := false
-		mounts := []config.ExtraMount{{Src: "/workspace", Dst: "/host", ReadOnly: &ro}}
+		mounts := []config.ExtraMount{{Src: tempDir, Dst: "/host", ReadOnly: &ro}}
 		args := preflight.BuildPreflightDockerArgs(
 			projectRoot,
 			containerImage,
@@ -161,13 +162,14 @@ var _ = Describe("buildPreflightDockerArgs", func() {
 			lookup,
 			goos,
 		)
-		Expect(args).To(ContainElement("/workspace:/host"))
-		Expect(args).NotTo(ContainElement("/workspace:/host:ro"))
+		Expect(args).To(ContainElement(tempDir + ":/host"))
+		Expect(args).NotTo(ContainElement(tempDir + ":/host:ro"))
 	})
 
 	It("appends read-only extra mount when ReadOnly is true", func() {
+		tempDir := GinkgoT().TempDir()
 		ro := true
-		mounts := []config.ExtraMount{{Src: "/workspace", Dst: "/host", ReadOnly: &ro}}
+		mounts := []config.ExtraMount{{Src: tempDir, Dst: "/host", ReadOnly: &ro}}
 		args := preflight.BuildPreflightDockerArgs(
 			projectRoot,
 			containerImage,
@@ -177,7 +179,7 @@ var _ = Describe("buildPreflightDockerArgs", func() {
 			lookup,
 			goos,
 		)
-		Expect(args).To(ContainElement("/workspace:/host:ro"))
+		Expect(args).To(ContainElement(tempDir + ":/host:ro"))
 	})
 
 	It("skips extra mount when src does not exist", func() {

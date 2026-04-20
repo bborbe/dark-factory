@@ -33,6 +33,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
+	"github.com/bborbe/dark-factory/pkg/scenario"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -1094,6 +1095,23 @@ func CreateSpecShowCommand(cfg config.Config) cmd.SpecShowCommand {
 		counter,
 		currentDateTimeGetter,
 	)
+}
+
+const scenariosDir = "scenarios"
+
+// CreateScenarioListCommand creates a ScenarioListCommand.
+func CreateScenarioListCommand(_ config.Config) cmd.ScenarioListCommand {
+	return cmd.NewScenarioListCommand(scenario.NewLister(scenariosDir))
+}
+
+// CreateScenarioShowCommand creates a ScenarioShowCommand.
+func CreateScenarioShowCommand(_ config.Config) cmd.ScenarioShowCommand {
+	return cmd.NewScenarioShowCommand(scenario.NewLister(scenariosDir))
+}
+
+// CreateScenarioStatusCommand creates a ScenarioStatusCommand.
+func CreateScenarioStatusCommand(_ config.Config) cmd.ScenarioStatusCommand {
+	return cmd.NewScenarioStatusCommand(scenario.NewLister(scenariosDir))
 }
 
 // CreatePromptShowCommand creates a PromptShowCommand.

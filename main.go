@@ -101,6 +101,8 @@ func printCommandHelp(command string) {
 		printPromptHelp()
 	case "spec":
 		printSpecHelp()
+	case "scenario":
+		printScenarioHelp()
 	}
 }
 
@@ -116,6 +118,8 @@ func runCommand(
 		return runPromptCommand(ctx, cfg, subcommand, args)
 	case "spec":
 		return runSpecCommand(ctx, cfg, subcommand, args)
+	case "scenario":
+		return runScenarioCommand(ctx, cfg, subcommand, args)
 	case "status":
 		return runStatusCommand(ctx, cfg, args)
 	case "list":
@@ -289,6 +293,36 @@ func runSpecCommand(
 	}
 }
 
+func runScenarioCommand(
+	ctx context.Context,
+	cfg config.Config,
+	subcommand string,
+	args []string,
+) error {
+	switch subcommand {
+	case "", "--help", "-h", "help":
+		printScenarioHelp()
+		return nil
+	case "list":
+		if err := validateNoArgs(ctx, args, printScenarioHelp); err != nil {
+			return err
+		}
+		return factory.CreateScenarioListCommand(cfg).Run(ctx, args)
+	case "show":
+		if err := validateOneArg(ctx, args, printScenarioHelp); err != nil {
+			return err
+		}
+		return factory.CreateScenarioShowCommand(cfg).Run(ctx, args)
+	case "status":
+		if err := validateNoArgs(ctx, args, printScenarioHelp); err != nil {
+			return err
+		}
+		return factory.CreateScenarioStatusCommand(cfg).Run(ctx, args)
+	default:
+		return errors.Errorf(ctx, "unknown scenario subcommand: %s", subcommand)
+	}
+}
+
 // containsHelpFlag reports whether args contains --help, -help, or -h.
 func containsHelpFlag(args []string) bool {
 	for _, arg := range args {
@@ -442,6 +476,9 @@ func printHelp() {
 			"  spec unapprove <id>    Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  spec complete <id>     Mark a verified spec as completed\n"+
 			"  spec show <id>         Show details for a single spec\n\n"+
+			"  scenario list          List scenarios\n"+
+			"  scenario show <id>     Show full contents of a scenario\n"+
+			"  scenario status        Show scenario status counts\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+
 			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
 	)
@@ -539,6 +576,16 @@ func printSpecHelp() {
 	)
 }
 
+func printScenarioHelp() {
+	fmt.Fprintf(
+		os.Stdout,
+		"Usage: dark-factory scenario <subcommand>\n\nSubcommands:\n"+
+			"  list          List scenarios with their status\n"+
+			"  show <id>     Show full contents of a scenario\n"+
+			"  status        Show scenario status counts\n",
+	)
+}
+
 // ParseArgs parses command line arguments (without program name) and returns
 // (debug, command, subcommand, args, autoApprove).
 // The -debug flag can appear anywhere and is extracted before parsing.
@@ -577,7 +624,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 		return debug, "version", "", []string{}, autoApprove
 	case "run", "daemon", "kill", "status", "list", "config":
 		return debug, command, "", rest, autoApprove
-	case "prompt", "spec":
+	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {
 			return debug, command, "", []string{}, autoApprove
 		}

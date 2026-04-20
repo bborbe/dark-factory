@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.131.0
+
+- feat: add `scenario list`, `scenario show`, and `scenario status` CLI subcommands for read-only scenario inspection
+
 ## v0.130.0
 
 - feat: add `pkg/scenario` package with ScenarioFile model, Lister interface, and Find for scenario CLI support

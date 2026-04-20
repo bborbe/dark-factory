@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [056-scenario-cli-readonly]
 summary: Created pkg/scenario package with ScenarioFile model, Lister interface, Find method, counterfeiter mock, comprehensive tests at 87.5% coverage, and CHANGELOG entry
 container: dark-factory-326-spec-056-scenario-package
@@ -7,6 +7,7 @@ dark-factory-version: v0.129.0
 created: "2026-04-20T16:00:00Z"
 queued: "2026-04-20T16:26:08Z"
 started: "2026-04-20T16:28:36Z"
+completed: "2026-04-20T16:36:39Z"
 branch: dark-factory/scenario-cli-readonly
 ---
 

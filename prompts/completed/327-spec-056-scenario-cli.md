@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [056-scenario-cli-readonly]
 summary: Added scenario list, show, and status CLI subcommands with factory wiring, counterfeiter mocks, tests, and CHANGELOG entry
 container: dark-factory-327-spec-056-scenario-cli
@@ -7,6 +7,7 @@ dark-factory-version: v0.129.0
 created: "2026-04-20T16:00:00Z"
 queued: "2026-04-20T16:26:08Z"
 started: "2026-04-20T16:39:14Z"
+completed: "2026-04-20T16:47:44Z"
 branch: dark-factory/scenario-cli-readonly
 ---
 

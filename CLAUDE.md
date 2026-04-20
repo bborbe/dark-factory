@@ -27,6 +27,14 @@
 
 5. **Before `make install`**, run all scenarios in `scenarios/` against a freshly built binary. Build once with `go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .`, then scenarios invoke `/tmp/new-dark-factory <cmd>`. NEVER use the bare `dark-factory` binary — that runs the previously-installed version and misses unshipped code. Unit tests + `make precommit` alone are not sufficient.
 
+   **Scenario-skip rule (only exception):** Compare installed version to HEAD — if no binary-relevant files changed, the installed binary is byte-equivalent to what you'd install, so scenarios add no signal.
+   ```bash
+   INSTALLED=$(dark-factory --version | awk '{print $2}')
+   git diff $INSTALLED..HEAD --name-only | grep -E '\.(go|mod|sum)$|^Makefile$|^Dockerfile$'
+   # empty output → skip scenarios; any hit → run them
+   ```
+   Do NOT shortcut by "change type" intuition ("docs-only", "pipeline-only") — always run the diff.
+
 ### Key rules (details in the guides)
 
 - Prompts go to **`prompts/`** (inbox) — never to `prompts/in-progress/` or `prompts/completed/`

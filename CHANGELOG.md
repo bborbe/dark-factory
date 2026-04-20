@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.130.0
+
+- feat: add `pkg/scenario` package with ScenarioFile model, Lister interface, and Find for scenario CLI support
+
 ## v0.129.0
 
 - docs: replace "When to Write a Scenario" table in `docs/scenario-writing.md` with integration-seam criterion — triggers are orchestration/lifecycle, container boundary, git boundary, config→runtime, regression from missed bug; "could a unit-test-with-mocks pass while this silently breaks?"

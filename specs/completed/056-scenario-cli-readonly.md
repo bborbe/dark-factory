@@ -1,11 +1,13 @@
 ---
-status: prompted
+status: completed
 tags:
     - dark-factory
     - spec
 approved: "2026-04-20T15:52:38Z"
 generating: "2026-04-20T15:53:05Z"
 prompted: "2026-04-20T15:59:40Z"
+verifying: "2026-04-20T18:03:58Z"
+completed: "2026-04-20T18:06:18Z"
 branch: dark-factory/scenario-cli-readonly
 ---
 

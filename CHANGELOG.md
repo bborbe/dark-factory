@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.132.0
+
+- docs: add `docs/spec-verification.md` — human verification checklist for specs in `verifying` state covering three layers (technical, business, scenarios), six-step procedure, live-evidence requirement, and supersession hygiene
+- docs: cross-link spec-verification from `docs/running.md` (complete-spec section) and `docs/spec-writing.md` (next-steps)
+
 ## v0.131.0
 
 - feat: add `scenario list`, `scenario show`, and `scenario status` CLI subcommands for read-only scenario inspection

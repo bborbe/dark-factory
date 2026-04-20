@@ -110,6 +110,8 @@ Verify the acceptance criteria pass, then mark complete:
 dark-factory spec complete <spec-id>
 ```
 
+See [spec-verification.md](spec-verification.md) for the full verification procedure.
+
 ## Workflow: Direct
 
 Default workflow. Dark-factory commits, tags, and pushes to the current branch.

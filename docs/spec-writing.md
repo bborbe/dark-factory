@@ -137,3 +137,4 @@ Completed specs are immutable. If behavior changes later, create a new spec.
 - Prompts are auto-generated from the spec by the daemon
 - Or write prompts manually: [prompt-writing.md](prompt-writing.md)
 - Run the pipeline: [running.md](running.md)
+- Verify and complete: [spec-verification.md](spec-verification.md)

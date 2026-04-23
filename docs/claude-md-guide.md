@@ -102,6 +102,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 - Never number filenames -- dark-factory assigns numbers on approve
 - Never manually edit frontmatter status -- use CLI commands above
 - Always audit before approving (`/dark-factory:audit-prompt`, `/dark-factory:audit-spec`)
+- **Spec-linked prompts are daemon-generated.** After `dark-factory spec approve`, the daemon spawns a `dark-factory-gen-<spec>` container that creates the prompts automatically. **Never hand-write prompts for an approved spec.** Wait for the generation container to finish, then audit/approve the generated prompts. Hand-written prompts are only for standalone changes (no spec).
 - **BLOCKING: Never run `dark-factory prompt approve`, `dark-factory spec approve`, or `dark-factory daemon` without explicit user confirmation.** Write the prompt/spec, then STOP and ask the user to approve.
 - **Before starting daemon** -- run `dark-factory status` first to check if one is already running.
 - **Start daemon in background** -- use Bash tool with `run_in_background: true` (not foreground, not detached with `&`)
@@ -123,6 +124,10 @@ If the agent needs to know something to avoid breaking the project, it must be i
 **Bad:** Omitting that `GOPRIVATE` is required -> agent runs `go mod tidy` and fails on private modules.
 
 **Bad:** Not mentioning vendor mode -> agent runs `go test ./...` without `-mod=vendor`.
+
+### Hand-writing prompts for an approved spec
+
+When a spec is approved, the daemon spawns a `dark-factory-gen-<spec>` container that generates the prompts from the spec. Writing prompts by hand in parallel produces conflicts (duplicate numbers, mismatched content, broken spec→prompt traceability). Wait for generation to complete (`dark-factory status` shows `Current:` idle), then review the generated prompts with `/dark-factory:audit-prompt`. Hand-written prompts are only valid for standalone changes (no spec).
 
 ### Manually editing frontmatter
 

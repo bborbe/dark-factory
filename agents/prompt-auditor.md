@@ -109,6 +109,55 @@ Every prompt MUST have these XML sections:
 - Existing untested code does NOT need retroactive coverage
 - Flag as warning if requirements change code but mention no tests
 
+**Boundary-crossing contract tests:**
+
+A broad class of bug: new code passes every unit test because the tests verify the **shape** of what was added, but fails at runtime because it crosses a **boundary** (library, subprocess, network, serialization, registry, allowlist) and that boundary imposes a constraint the unit tests never exercise. Shape tests and contract tests are different; shape tests do not satisfy this rule.
+
+**Rule:** For every boundary the new code crosses, at least one test must traverse that boundary with the new value. Identify boundaries by asking: *what happens to this value after it leaves the code I just wrote?*
+
+**Common boundaries and their contracts:**
+
+- **Library validators / parsers** — `Validate()`, `Parse()`, `Check()`, `MustX()` on imported types impose regex / schema / range / format rules. Only a call to the validator exercises them.
+- **Registries and dispatch tables** — a new handler/operation/route must both be registered AND reachable through the production dispatch path. "The handler exists" ≠ "the dispatcher finds it."
+- **Serialization round-trips** — if the value is marshaled and unmarshaled (JSON, YAML, protobuf, YAML frontmatter), the round-trip must preserve semantics, including tag names, nested types, and zero-value handling.
+- **External service contracts** — Kafka topic/operation names, Prometheus label regex, DNS labels, URL schemes, HTTP route patterns, SQL identifier rules.
+- **Subprocess interfaces** — argv, env vars, stdin/stdout shape, exit codes. A subprocess with the wrong flag name silently fails at runtime.
+- **Build-time constraints** — build tags, `go:generate` directives, struct tags read by code generators.
+
+**Heuristics to detect the pattern in a prompt's `<requirements>`:**
+
+- A new constant or type alias uses a library-qualified type (e.g. `someLib.SomeType`)
+- A new string is declared that will be passed to a library function (not just the package's own accessors)
+- A new entry is added to a map, slice, or registry that is consumed by code outside this prompt
+- A new struct field carries a tag (`json:"..."`, `yaml:"..."`, `db:"..."`)
+- A new string will appear as a Prometheus label, Kafka operation, CRD field, or CLI flag
+- A new identifier string (UUID, slug, route pattern) is introduced
+
+**What satisfies this rule (two acceptable levels):**
+
+1. **Unit-level contract test** (cheap, mandatory when the boundary has a callable validator/parser): call the boundary function directly on the new value (e.g. `Validate(ctx)`, `Parse(...)`, marshal+unmarshal round-trip, subprocess invocation with the real flag). For grouped values, a table test enumerating all values of the boundary type in the package, asserting the contract for each, with a comment above the declarations reminding future authors to update the table.
+
+2. **Integration test through the real boundary** (more thorough, required when no single-function validator exists — e.g. dispatch registries, Kafka publish, HTTP round-trip, subprocess pipelines): drive the new value through the real production path in a test harness. The deeper defense, but costs more to write.
+
+For most library-typed constants, level 1 is sufficient and should be the default. For changes that introduce a new integration seam (publish path, registry, serialization round-trip the rest of the system depends on), level 2 is also required — a unit-level validator test alone does not prove the full path works.
+
+**What does NOT satisfy this rule:**
+
+- Struct equality tests (`Expect(cmd.TaskIdentifier).To(Equal("foo"))`)
+- Accessor-default tests (`Expect(fm.TriggerCount()).To(Equal(0))`)
+- Constant-value tests (`Expect(string(OpX)).To(Equal("op-x"))`) — these assert what you typed, not what the boundary accepts
+
+**Severity:**
+
+- Flag as **Critical Issue** when a prompt introduces a value that clearly crosses a boundary (detected via the heuristics above) without a matching contract test in `<requirements>`.
+- Flag as **Recommendation** when the boundary is ambiguous — instruct the author to check the downstream library and add a test if a validator/parser/registry exists.
+
+**Root cause framing:** the deeper problem is *missing integration tests* — tests that run the same boundary code the production path runs. The narrow "validator test" rule is a cheap subset of that principle that's mechanically auditable. When you can't tell whether a prompt needs level 1 or level 2, prefer level 2 (integration) because it also catches bugs in serialization, registry lookup, and subprocess interfaces that level 1 misses.
+
+**Scope note:** this rule covers prompt-level tests (unit + integration that ship as part of the change). End-to-end deployment verification (dev deploy + smoke tests) is a spec/scenario concern, not a prompt concern — do NOT audit for it here. Enforce it in spec acceptance criteria and scenario coverage instead.
+
+**Canonical example:** `const X base.CommandOperation = "increment_frontmatter"` (underscores) passed all shape tests but was rejected at publish time by the cqrs regex `^[a-z][a-z-]*$`, causing a silent message-retry loop in dev. A level 1 table test calling `.Validate(ctx)` would have caught it. A level 2 integration test publishing a real command through the cqrs layer would have also caught it, plus the factory-signature bug found in the same release, plus any future boundary violation on the same path.
+
 **Coding Guidelines Compliance:**
 - If the prompt contains Go code in `<requirements>`, cross-check patterns against coding guidelines
 - Read relevant guides from TWO locations:
@@ -198,6 +247,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] Spec failure modes addressed in requirements (or N/A if no spec)
 - [x/!] Security concerns from spec addressed (or N/A)
 - [x/!] External calls have timeout/cancellation behavior specified
+- [x/!] New constants / strings that flow through library validators have a test calling the validator (or N/A)
 
 ## Documentation Placement
 - [x/!] No inlined reusable patterns (>10 lines) that should be in a doc

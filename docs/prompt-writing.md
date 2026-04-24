@@ -151,6 +151,45 @@ If a prompt needs to reference code in a sibling repo (e.g., a library at `~/Doc
 
 Never leave a host-absolute path hoping the agent will figure it out — the agent will get a "file not found" and fail.
 
+### Test the boundaries the new code crosses
+
+A broad class of bug: new code passes every unit test because the tests verify the **shape** of what was added, but fails at runtime because it crosses a **boundary** (library validator, parser, dispatch registry, serialization, subprocess, external service) and that boundary imposes a constraint the shape tests never exercise.
+
+**Rule:** For every boundary the new code crosses, at least one test must traverse that boundary with the new value. Ask: *what happens to this value after it leaves the code I just wrote?*
+
+**Root cause framing:** the problem is *missing integration tests* — tests that exercise the same code path production traffic takes. The "validator test" pattern below is a cheap, mechanically-enforceable subset.
+
+**Common boundaries and their contracts:**
+
+- **Library validators / parsers** — `Validate()`, `Parse()`, `Check()`, `MustX()` enforce regex / schema / range / format at runtime. The Go compiler does not check the underlying string.
+- **Registries and dispatch tables** — adding a handler / operation / route is not enough; the dispatcher must find it via the production lookup path.
+- **Serialization round-trips** — JSON / YAML / protobuf tags, nested types, zero-value handling. A round-trip test is the contract.
+- **External service contracts** — Kafka operation names, Prometheus label regex, DNS labels, URL schemes, HTTP route patterns.
+- **Subprocess interfaces** — argv, env vars, stdin/stdout shape, exit codes. A wrong flag name silently fails.
+- **Build-time constraints** — build tags, `go:generate` directives, struct tags read by code generators.
+
+**Two acceptable levels:**
+
+1. **Unit-level contract test** (cheap; use this when a single-function validator/parser exists): call the boundary function directly on the new value — `Validate(ctx)`, `Parse(...)`, marshal+unmarshal. For grouped values of the same library type, a table test enumerating all values in the package is the canonical shape.
+
+   ```go
+   // IMPORTANT: every new <TypeName> below MUST also appear in the Validate-all
+   // test table in <matching_test.go>. The boundary contract is only enforced
+   // at runtime — the test is the only pre-deploy guard.
+   ```
+
+2. **Integration test through the real boundary** (more thorough; use this when no single-function validator exists, or when the change introduces a new integration seam — publish path, registry entry, new CLI flag): drive the new value through the real production path in a test harness.
+
+**Scope note:** E2E deployment verification (dev deploy + smoke tests) is a spec/scenario concern, not a prompt concern. Prompts cover unit and integration; specs cover acceptance; scenarios cover end-to-end.
+
+**What does NOT satisfy this rule:**
+
+- Struct equality tests (`Expect(cmd.TaskIdentifier).To(Equal("foo"))`)
+- Accessor-default tests (`Expect(fm.TriggerCount()).To(Equal(0))`)
+- Constant-value tests (`Expect(string(OpX)).To(Equal("op-x"))`) — these assert what you typed, not what the boundary accepts.
+
+**Why this rule exists:** in a real incident, `IncrementFrontmatterCommandOperation = "increment_frontmatter"` (underscores) passed every unit test but was rejected at runtime by the cqrs validator's regex `^[a-z][a-z-]*$`, causing a silent message-retry loop in dev that took a deploy cycle to diagnose. A six-line table test calling `.Validate(ctx)` on each declared operation would have caught it at `make precommit`.
+
 ### `make ensure` vs `make precommit` mid-implementation
 
 When a prompt says "add a new dependency" or "regenerate vendored code", the intermediate state cannot pass `make precommit` (test+check fail until the code is updated). Use `make ensure` for dependency-only preparation steps, then reserve `make precommit` for final verification.
@@ -200,6 +239,7 @@ A prompt is ready for approval when ALL checks pass:
 - [ ] Independently verifiable
 - [ ] Libraries specified with import paths
 - [ ] No duplicates with completed prompts
+- [ ] Every boundary the new code crosses (library validator, parser, registry, serialization, subprocess, external service) has a test that traverses it with the new value (see "Test the boundaries the new code crosses" above)
 
 ## Audit and Approve
 

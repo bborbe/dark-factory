@@ -60,6 +60,13 @@ Every scenario MUST have:
 - Never test internal structs, function calls, or in-memory state
 - Flag as critical if Expected items reference code internals
 
+**Real-seam traversal:**
+- A scenario must exercise the actual integration seam it claims to verify — same code path that runs in production, no mocks or stubs
+- If the scenario is marketed as "verifies the Kafka publish path" but the Action only calls an in-process function that's also exercised by unit tests, flag as critical: the scenario does not add coverage over unit tests
+- If the scenario is marketed as "verifies container behavior" but runs the code outside a container, flag as critical
+- If the scenario is marketed as "verifies library validator acceptance" but does not pass the new value through the library's real publish/parse function, flag as critical
+- The test: "What boundary does this scenario cross that a unit test cannot?" If none, it's not a scenario — it's a unit test in the wrong place
+
 **Self-contained:**
 - Each scenario sets up its own preconditions in Setup
 - No dependency on another scenario having run first

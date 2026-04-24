@@ -160,6 +160,32 @@ Add a top-level section **"Spec vs Prompt Fitness"** in the report. Example:
 - Covers all desired behaviors
 - Uses checkbox format `- [ ]`
 
+## Integration-seam scenario coverage
+
+Specs that introduce or modify an integration seam MUST have matching end-to-end scenario coverage. Prompt-level unit and integration tests cannot fake multi-service boundaries, real deployment configuration, or real dispatch tables.
+
+**Integration seams to watch for in the spec:**
+
+- New or changed Kafka topic / operation / schema
+- New or changed CRD field the operator consumes
+- New HTTP route or CLI flag exposed to callers
+- New subprocess interface (agent image, buca target, container entrypoint)
+- New external service integration
+- Changed behavior of an existing seam (e.g. modifying a validator's regex, changing a registry's dispatch rules)
+
+**What the spec must provide:**
+
+- An Acceptance Criterion that either (a) links to an existing scenario in `scenarios/` that already exercises the seam, or (b) requires a new scenario to be written as part of the change
+- If the spec generates prompts, one of the prompts must be a scenario-writing prompt (see `docs/scenario-writing.md`)
+
+**Severity:**
+
+- Flag as **Critical Issue** when the spec introduces a new integration seam (per heuristics above) with no scenario reference or scenario-writing acceptance criterion.
+- Flag as **Recommendation** when the seam is an extension of an already-covered area and an existing scenario plausibly covers it — instruct the author to confirm the existing scenario still passes.
+- No flag when the spec is a pure refactor, rename, or internal-only change with no integration-boundary impact.
+
+**Why this matters:** prompt-level tests (unit + integration) share the pattern "test the code near the change." They cannot reliably catch failures that only manifest when the change interacts with real deployment state — another service's expectations, a validator's live regex, a registered handler's dispatch behavior. Scenarios are the only layer that runs the real path. A spec that changes a seam without requiring scenario coverage has an unaddressed regression risk that later surfaces as an incident.
+
 ## Documentation Placement
 
 Knowledge lives in four locations: specs (behavioral, dies after implementation), prompts (one-off, dies after execution), project docs (project-specific, lives with the project), yolo docs (generic coding patterns, lives across projects). Specs should reference project docs for domain context and flag undocumented business logic.
@@ -190,6 +216,9 @@ Adjustments:
 **File**: `[path]`
 **Score**: X/10
 **Status**: [Excellent | Good | Needs Improvement | Significant Issues]
+
+## Integration-Seam Scenario Coverage
+- [x/!] If spec introduces/modifies an integration seam (new Kafka op/CRD field/HTTP route/subprocess interface/external service), Acceptance Criteria references an existing scenario or requires a new one (or N/A)
 
 ## Location & Frontmatter
 - [x/!] File in `specs/` inbox (not `specs/in-progress/`)

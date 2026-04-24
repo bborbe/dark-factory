@@ -100,8 +100,23 @@ Before approving, verify the spec answers all of these:
 - [ ] What could go wrong?
 - [ ] What must not regress?
 - [ ] How will we know it's done?
+- [ ] If the change introduces or modifies an integration seam (publish path, new Kafka operation, new CRD field, new HTTP route, new subprocess interface, new external service call), does Acceptance Criteria call for a scenario that exercises the real seam end-to-end? If yes, the scenario must either already exist (link it) or be listed as an acceptance criterion that ships with the spec.
 
 If the spec can't answer these in under a page, it's underdesigned or too large.
+
+## Test-layer responsibilities
+
+Specs drive three defense layers. Keep them scoped correctly:
+
+| Layer | Belongs to | Catches |
+|---|---|---|
+| Unit contract test | Prompt | Single-function library validator, parser, marshaller on a new value |
+| Integration test | Prompt | Dispatch-path round-trip, registry lookup, serialization through real code |
+| End-to-end scenario | Spec + scenario | Real deployment behavior, multi-service interactions, boundaries no test harness can fake |
+
+A spec that introduces a new integration seam MUST call for the matching E2E scenario in Acceptance Criteria. A spec that only refactors existing behavior (no new seam) does not need one. Use the scenario-writing guide to decide whether an existing scenario covers the change or a new one is required.
+
+**Example where a spec MUST require a scenario:** spec 015 introduced a new Kafka command kind `increment_frontmatter`. The prompt-level tests verified struct shape and called the cqrs validator. Neither caught a regex mismatch that rejected the operation at actual publish time in dev. A scenario that publishes a real `IncrementFrontmatterCommand` through the dev cluster and asserts the frontmatter update lands would have caught it before operators saw a retry loop.
 
 ## Audit and Approve
 
@@ -137,4 +152,3 @@ Completed specs are immutable. If behavior changes later, create a new spec.
 - Prompts are auto-generated from the spec by the daemon
 - Or write prompts manually: [prompt-writing.md](prompt-writing.md)
 - Run the pipeline: [running.md](running.md)
-- Verify and complete: [spec-verification.md](spec-verification.md)

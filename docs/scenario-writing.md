@@ -29,6 +29,8 @@ exercise the real wiring: config → runtime, host → container, process → gi
 | Crosses container boundary (Docker exec, mounts, host↔container I/O) | Unit tests mock runners; real container behavior differs |
 | Crosses git boundary (clone, commit, push, PR) | Git + remote side effects can't be faked reliably |
 | Config field → runtime behavior | Proves the field actually reaches execution, not dropped by loader |
+| New operation / schema / identifier published through a library validator | Library runtime validation (regex, schema, allowlist) only fires on the real publish path |
+| New registry entry / handler / route | Registration in code ≠ reachable via production dispatch |
 | Regression from a bug unit tests missed | The seam that failed must be locked down |
 
 | Does NOT trigger scenario | Why |
@@ -40,7 +42,10 @@ exercise the real wiring: config → runtime, host → container, process → gi
 | Doc / comment changes | No code seam |
 
 **If in doubt:** ask "could a unit test with mocks pass while this silently breaks?"
-If yes → scenario. That's exactly what happened with spec 055.
+If yes → scenario. Two canonical examples:
+
+- **Spec 055** — config field wiring that was dropped by the loader; unit tests passed, production didn't.
+- **Spec 015** — a new Kafka `CommandOperation` constant (`increment_frontmatter`, with underscores) passed struct-shape tests but was rejected at runtime by the cqrs regex `^[a-z][a-z-]*$`. A scenario that publishes a real command through the dev cluster and asserts the frontmatter update lands would have caught it before operators saw a retry loop.
 
 ## Format
 

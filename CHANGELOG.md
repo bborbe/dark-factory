@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.132.1
+
+- docs: add "Test the boundaries the new code crosses" section to `docs/prompt-writing.md` — mandates unit contract tests (level 1) and/or integration tests (level 2) for every boundary a new value crosses (library validators, parsers, registries, serialization, subprocess, external services); adds DoD checkbox
+- docs: add "Test-layer responsibilities" table and integration-seam preflight item to `docs/spec-writing.md` — specs must require scenario coverage for new integration seams
+- docs: add triggers for "new operation through library validator" and "new registry entry" to `docs/scenario-writing.md` "When to Write a Scenario"; cite spec 015 cqrs regex incident as canonical example
+- agent: add "Boundary-crossing contract tests" quality criterion + DoD checklist item to `agents/prompt-auditor.md` — flag as Critical when a prompt introduces a library-typed value without a validator/integration test
+- agent: add "Test the boundaries the new code crosses" quality rule to `agents/prompt-creator.md`
+- agent: add "Integration-seam scenario coverage" section + output-format checkbox to `agents/spec-auditor.md` — flag as Critical when a spec introduces a new seam without scenario coverage
+- agent: add mandatory scenario-coverage acceptance criterion to `agents/spec-creator.md` template
+- agent: add "Real-seam traversal" criterion to `agents/scenario-auditor.md` — scenarios must cross the actual boundary, not run in-process equivalents
+
 ## v0.132.0
 
 - docs: add `docs/spec-verification.md` — human verification checklist for specs in `verifying` state covering three layers (technical, business, scenarios), six-step procedure, live-evidence requirement, and supersession hygiene

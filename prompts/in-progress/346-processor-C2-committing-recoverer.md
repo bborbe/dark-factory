@@ -1,6 +1,7 @@
 ---
-status: idea
+status: approved
 created: "2026-04-25T14:36:00Z"
+queued: "2026-04-25T17:43:13Z"
 ---
 
 <summary>
@@ -48,13 +49,23 @@ type Recoverer interface {
     Recover(ctx context.Context, promptPath string) error
 }
 
+// Local minimal interface — defined here (not imported from pkg/processor) to avoid an import cycle.
+type PromptManager interface {
+    Load(ctx context.Context, path string) (*prompt.PromptFile, error)
+    FindCommitting(ctx context.Context) ([]string, error)
+    MoveToCompleted(ctx context.Context, path string) error
+    // ... add only the methods Recoverer actually calls
+}
+
 func NewRecoverer(
-    promptManager processor.PromptManager,
+    promptManager PromptManager,
     releaser git.Releaser,
     autoCompleter spec.AutoCompleter,
-    dirs processor.Dirs,
+    completedDir string,                 // primitive — unwrap processor.Dirs.Completed at boundary
 ) Recoverer { ... }
 ```
+
+**Avoid the import cycle:** `pkg/processor` imports `committingrecoverer`. Therefore `committingrecoverer` MUST NOT import `pkg/processor`. Use primitives in the public API and define a local minimal `PromptManager` interface — `processor.PromptManager` will satisfy it structurally.
 
 The package-level `git.*` calls (`HasDirtyFiles`, `CommitWithRetry`, `CommitAll`) stay as-is — extracting another git-wrapper is out of scope. Document the dependency in the constructor docstring.
 
@@ -73,13 +84,19 @@ func (p *processor) ResumeCommitting(ctx context.Context) error {
 
 - Add `committingRecoverer committingrecoverer.Recoverer` to `processor` struct
 - Add as constructor parameter (services group)
-- Replace internal calls to `p.processCommittingPrompts(ctx)` with `p.committingRecoverer.RecoverAll(ctx)` (3 call sites: line ~194, ~218, ~226)
+- Replace ALL internal calls to `p.processCommittingPrompts(ctx)` with `p.committingRecoverer.RecoverAll(ctx)`. Find them with `grep -n processCommittingPrompts pkg/processor/processor.go` (locate by symbol; line numbers churn between groups).
 - Delete `processCommittingPrompts` and `recoverCommittingPrompt`
-- Remove `releaser` and `autoCompleter` fields from processor IF they have no remaining users. Likely both can go after C3 — but keep them for now if anything still uses them.
+- Leave `releaser` and `autoCompleter` fields in place — C3 (queue scanner) is the next prompt and may reference them; if not, a follow-up cleanup prompt removes them.
 
-## 4. Wire from factory
+## 4. Wire from factory and update ALL `NewProcessor` call sites
 
-Construct `committingrecoverer.NewRecoverer(...)` in `pkg/factory/factory.go`, pass into `NewProcessor`.
+```bash
+grep -rn "processor\.NewProcessor(" --include="*.go"
+```
+
+Update every call site (factory + ALL test files — recurring lesson: a `newTestProcessor` helper does NOT cover all direct constructor calls in tests).
+
+Construct `committingrecoverer.NewRecoverer(...)` in `pkg/factory/factory.go`, unwrap `processor.Dirs.Completed` to a primitive at the boundary, pass into `NewProcessor`.
 
 ## 5. Tests
 
@@ -119,6 +136,15 @@ cd /workspace
 
 ls pkg/committingrecoverer/recoverer.go mocks/committing-recoverer.go
 grep -n "committingrecoverer.Recoverer" pkg/processor/processor.go
+
+# No reverse import — committingrecoverer MUST NOT import processor
+! grep -rn "github.com/bborbe/dark-factory/pkg/processor" pkg/committingrecoverer/
+
+# Factory wires the recoverer
+grep -n "committingrecoverer\." pkg/factory/factory.go
+
+# All NewProcessor call sites updated
+grep -rn "processor\.NewProcessor(" --include='*.go'
 
 make precommit
 ```

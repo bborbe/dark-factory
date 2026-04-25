@@ -1,6 +1,7 @@
 ---
-status: idea
+status: approved
 created: "2026-04-25T14:37:00Z"
+queued: "2026-04-25T17:43:13Z"
 ---
 
 <summary>
@@ -61,17 +62,33 @@ type PromptProcessor interface {
 
 // Scanner drives the queue-scan loop: list queued, validate, dispatch to PromptProcessor, handle blockers.
 type Scanner interface {
-    ScanAndProcess(ctx context.Context) error
+    // ScanAndProcess returns the count of prompts that completed during this scan,
+    // which `runQueueTick` feeds into the post-#337 NothingToDoCallback (no-progress
+    // detection in one-shot mode). DO NOT drop the count — it preserves the onIdle
+    // signal that caused us to delete ProcessQueue in the first place.
+    ScanAndProcess(ctx context.Context) (completed int, err error)
     HasPendingVerification(ctx context.Context) bool
 }
 
+// PromptManager is the minimal subset this package needs.
+// Defined locally to avoid an import cycle (pkg/processor imports queuescanner).
+type PromptManager interface {
+    ListQueued(ctx context.Context) ([]prompt.Prompt, error)
+    Load(ctx context.Context, path string) (*prompt.PromptFile, error)
+    SaveStatus(ctx context.Context, pf *prompt.PromptFile) error
+    AllPreviousCompleted(ctx context.Context, num int) bool
+    // ... add only the methods Scanner actually calls
+}
+
 func NewScanner(
-    promptManager processor.PromptManager,
+    promptManager PromptManager,
     promptProcessor PromptProcessor,
     failureHandler failurehandler.Handler,
-    dirs processor.Dirs,
+    completedDir string,             // primitive — unwrap processor.Dirs.Completed at boundary
 ) Scanner { ... }
 ```
+
+**Avoid the import cycle:** `pkg/processor` imports `queuescanner`. Therefore `queuescanner` MUST NOT import `pkg/processor` (don't reference `processor.PromptManager` / `processor.Dirs` / etc.). Use primitives in the public API and define a local minimal `PromptManager` interface — `processor.PromptManager` will satisfy it structurally.
 
 Move bodies of all 6 methods. `skippedPrompts` and `lastBlockedMsg` become fields on `*scanner`.
 
@@ -82,25 +99,29 @@ Make the per-prompt entrypoint exported on processor so `Scanner` can call it th
 ## 3. Wire into processor
 
 - Add `queueScanner queuescanner.Scanner` to `processor` struct
-- Add as constructor parameter (services group)
-- Replace `p.processExistingQueued(ctx)` → `p.queueScanner.ScanAndProcess(ctx)` (3 call sites: line ~188, ~219, ~227)
+- Replace ALL `p.processExistingQueued(ctx)` call sites with `p.queueScanner.ScanAndProcess(ctx)`. Find them with `grep -n processExistingQueued pkg/processor/processor.go`. The processor's `runReadyTick` and `runQueueTick` helpers must keep capturing the `completed int` return and feeding it into `tickResult{completedPrompts: completed}` — otherwise the no-progress detection (post-#337 onIdle) silently breaks.
 - Replace `p.hasPendingVerification(ctx)` → `p.queueScanner.HasPendingVerification(ctx)`
 - Delete the 6 methods listed above
 - Remove fields: `skippedPrompts`, `lastBlockedMsg` (live on scanner now)
 
-## 4. Wire from factory
+## 4. Wire from factory and update ALL `NewProcessor` call sites
+
+```bash
+grep -rn "processor\.NewProcessor(" --include="*.go"
+```
+
+Update every call site (factory + ALL test files — recurring lesson: a `newTestProcessor` helper does NOT cover all direct constructor calls in tests).
 
 Construct the scanner AFTER constructing the processor (since scanner needs `PromptProcessor`):
 
 ```go
-proc := processor.NewProcessor(...)  // without scanner yet — temporary
-scanner := queuescanner.NewScanner(promptManager, proc, failureHandler, dirs)
-proc.SetScanner(scanner)             // setter to break the cycle
+// CreateProcessor:
+proc := processor.NewProcessor(...)  // scanner is nil at this point — proc.SetScanner is required before Process is called
+scanner := queuescanner.NewScanner(promptManager, proc, failureHandler, cfg.Prompts.CompletedDir)
+proc.SetScanner(scanner)             // breaks the runtime cycle proc → scanner → proc.ProcessPrompt
 ```
 
-OR: change the construction to a two-phase pattern where processor exposes a setter for the scanner. Document the cycle-break in code comments.
-
-(Alternative: have processor expose a method-value bound to `ProcessPrompt` and pass it as a `func` instead of an interface — uglier, recommend setter.)
+Use the **setter** pattern (not the func-value alternative). The setter must be called by `CreateProcessor` before returning; processor should panic on `Process` if `queueScanner == nil` to catch wiring mistakes.
 
 ## 5. Tests
 
@@ -130,7 +151,8 @@ make precommit
 - Coverage ≥80% on new package
 - `errors.Wrap` / `errors.Wrapf` from `github.com/bborbe/errors`
 - Do not commit
-- Final `pkg/processor/processor.go` line count target: < 250 (verify in <verification>)
+- Final `pkg/processor/processor.go` line count target: < 600 (the file is currently ~895 lines; removing ~310 lines from this prompt's 6 methods lands ~585 — adjust if intermediate prompts shrunk it further)
+- `ScanAndProcess` MUST return `(int, error)` — dropping the count silently breaks the post-#337 onIdle no-progress detection
 </constraints>
 
 <verification>
@@ -141,6 +163,21 @@ cd /workspace
 
 ls pkg/queuescanner/scanner.go mocks/queue-scanner.go mocks/prompt-processor.go
 grep -n "queuescanner.Scanner" pkg/processor/processor.go
+
+# No reverse import — queuescanner MUST NOT import processor
+! grep -rn "github.com/bborbe/dark-factory/pkg/processor" pkg/queuescanner/
+
+# Factory wires the scanner via setter
+grep -n "queuescanner\.\|SetScanner" pkg/factory/factory.go
+
+# Progress signal preserved — runQueueTick / runReadyTick capture int from ScanAndProcess
+grep -n "completed.*ScanAndProcess\|p.queueScanner.ScanAndProcess" pkg/processor/processor.go
+
+# All NewProcessor call sites updated
+grep -rn "processor\.NewProcessor(" --include='*.go'
+
+# Line-count target
+wc -l pkg/processor/processor.go
 
 # ProcessPrompt is exported now
 grep -n "func (p \*processor) ProcessPrompt" pkg/processor/processor.go

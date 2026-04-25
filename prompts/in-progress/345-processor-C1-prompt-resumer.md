@@ -1,6 +1,10 @@
 ---
-status: idea
+status: executing
+container: dark-factory-345-processor-C1-prompt-resumer
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:35:00Z"
+queued: "2026-04-25T17:43:13Z"
+started: "2026-04-25T17:43:15Z"
 ---
 
 <summary>
@@ -47,17 +51,37 @@ type Resumer interface {
     ResumeAll(ctx context.Context) error
 }
 
+// Local minimal interfaces — defined here (not imported from pkg/processor) to avoid an import cycle.
+// Go interface satisfaction is structural, so processor.PromptManager / processor.WorkflowExecutor
+// satisfy these automatically.
+type PromptManager interface {
+    Load(ctx context.Context, path string) (*prompt.PromptFile, error)
+    SaveStatus(ctx context.Context, pf *prompt.PromptFile) error
+    MarkFailed(ctx context.Context, path string) error
+    // ... add only the methods Resumer actually calls
+}
+
+type WorkflowExecutor interface {
+    ReconstructState(ctx context.Context, base string, pf *prompt.PromptFile) (bool, error)
+    Complete(ctx context.Context, ...) error
+    // ... only what Resumer needs
+}
+
 func NewResumer(
-    promptManager processor.PromptManager,
+    promptManager PromptManager,
     executor executor.Executor,
-    workflowExecutor processor.WorkflowExecutor,
+    workflowExecutor WorkflowExecutor,
     completionReportValidator completionreport.Validator,
     failureHandler failurehandler.Handler,
-    dirs processor.Dirs,
-    projectName processor.ProjectName,
+    queueDir string,                     // primitive — unwrap processor.Dirs.Queue at boundary
+    completedDir string,                 // primitive — unwrap processor.Dirs.Completed at boundary
+    logDir string,                       // primitive — unwrap processor.Dirs.Log at boundary
+    projectName string,                  // primitive — unwrap processor.ProjectName at boundary
     maxPromptDuration time.Duration,
 ) Resumer { ... }
 ```
+
+**Avoid the import cycle:** `pkg/processor` imports `promptresumer`. Therefore `promptresumer` MUST NOT import `pkg/processor`. Use primitives in the public API and define local minimal interfaces.
 
 Move all 5 methods. `computeReattachDuration` stays unexported. `prepareResume`, `killTimedOutContainer` stay unexported.
 
@@ -80,9 +104,15 @@ Recommend **a**. Keep the daemon-runner's existing call shape unchanged.
 
 Keep `completedDir` on processor — still used by `recoverCommittingPrompt` (until C2 lands).
 
-## 4. Wire from factory
+## 4. Wire from factory and update ALL `NewProcessor` call sites
 
-Construct `promptresumer.NewResumer(...)` in `pkg/factory/factory.go`, pass into `NewProcessor`. Drop the now-redundant primitives.
+```bash
+grep -rn "processor\.NewProcessor(" --include="*.go"
+```
+
+Update every call site (factory + ALL test files — recurring lesson: a `newTestProcessor` helper does NOT cover all direct constructor calls in tests).
+
+Construct `promptresumer.NewResumer(...)` in `pkg/factory/factory.go`, unwrap `processor.Dirs.*` and `processor.ProjectName` to primitives at the boundary, pass into `NewProcessor`. Drop the now-redundant primitives that previously went directly to processor.
 
 ## 5. Tests
 
@@ -126,6 +156,19 @@ grep -n "promptresumer.Resumer" pkg/processor/processor.go
 
 # ResumeExecuting is now a one-liner
 grep -A2 "func (p \*processor) ResumeExecuting" pkg/processor/processor.go | head -5
+
+# No reverse import — promptresumer MUST NOT import processor
+! grep -rn "github.com/bborbe/dark-factory/pkg/processor" pkg/promptresumer/
+
+# Factory wires the resumer
+grep -n "promptresumer\." pkg/factory/factory.go
+
+# All NewProcessor call sites updated
+grep -rn "processor\.NewProcessor(" --include='*.go'
+
+# Removed fields gone from processor
+! grep -n "maxPromptDuration\b" pkg/processor/processor.go
+! grep -n "p\.logDir\b" pkg/processor/processor.go
 
 make precommit
 ```

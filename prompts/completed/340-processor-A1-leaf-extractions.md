@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted CompletionReportValidator (pkg/completionreport) and PromptEnricher (pkg/promptenricher) from processor god-object — both injected via constructor, mocks generated, tests at 91.7% and 92.0% coverage, processor.go reduced by 133 lines, make precommit exits 0
 container: dark-factory-340-processor-A1-leaf-extractions
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:30:00Z"
 queued: "2026-04-25T15:41:25Z"
 started: "2026-04-25T15:41:27Z"
+completed: "2026-04-25T16:07:26Z"
 ---
 
 <summary>

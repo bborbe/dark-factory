@@ -40,6 +40,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
+	"github.com/bborbe/dark-factory/pkg/validationprompt"
 )
 
 // newTestWorkflowExecutor builds a WorkflowExecutor from the given mocks and workflow type.
@@ -140,6 +141,7 @@ func newTestProcessor(
 			testCommand,
 			validationCommand,
 			validationPrompt,
+			validationprompt.NewResolver(),
 		),
 		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir),
 		0,
@@ -7403,7 +7405,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 				sweepResumer,
 				processor.VerificationGate(false),
 				completionreport.NewValidator(),
-				promptenricher.NewEnricher(releaser, "", "", "", ""),
+				promptenricher.NewEnricher(
+					releaser,
+					"",
+					"",
+					"",
+					"",
+					validationprompt.NewResolver(),
+				),
 				committingrecoverer.NewRecoverer(
 					manager,
 					releaser,

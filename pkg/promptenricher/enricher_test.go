@@ -6,8 +6,7 @@ package promptenricher_test
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,128 +18,116 @@ import (
 
 var _ = Describe("Enricher", func() {
 	var (
-		ctx      context.Context
-		releaser *mocks.Releaser
+		ctx          context.Context
+		releaser     *mocks.Releaser
+		resolverMock *mocks.Resolver
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		releaser = &mocks.Releaser{}
 		releaser.HasChangelogReturns(false)
+		resolverMock = &mocks.Resolver{}
+		resolverMock.ResolveReturns("", false, nil)
 	})
+
+	newEnricher := func(additionalInstructions, testCommand, validationCommand, validationPromptCriteria string) promptenricher.Enricher {
+		return promptenricher.NewEnricher(
+			releaser,
+			additionalInstructions,
+			testCommand,
+			validationCommand,
+			validationPromptCriteria,
+			resolverMock,
+		)
+	}
 
 	Describe("Enrich", func() {
 		It("appends completion report suffix to content", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("base content"))
 			Expect(result).To(ContainSubstring(report.MarkerStart))
 		})
 
 		It("prepends additionalInstructions when non-empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "extra instructions", "", "", "")
+			enricher := newEnricher("extra instructions", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(HavePrefix("extra instructions\n\nbase content"))
 		})
 
 		It("does not prepend additionalInstructions when empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(HavePrefix("base content"))
 		})
 
 		It("appends changelog suffix when HasChangelog returns true", func() {
 			releaser.HasChangelogReturns(true)
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("Update CHANGELOG.md"))
 		})
 
 		It("does not append changelog suffix when HasChangelog returns false", func() {
 			releaser.HasChangelogReturns(false)
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Update CHANGELOG.md"))
 		})
 
 		It("appends test command suffix when testCommand is non-empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "make test", "", "")
+			enricher := newEnricher("", "make test", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("make test"))
 			Expect(result).To(ContainSubstring("Fast Feedback Command"))
 		})
 
 		It("does not append test command suffix when testCommand is empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Fast Feedback Command"))
 		})
 
 		It("appends validation suffix when validationCommand is non-empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "make precommit", "")
+			enricher := newEnricher("", "", "make precommit", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("make precommit"))
 			Expect(result).To(ContainSubstring("Project Validation Command"))
 		})
 
 		It("does not append validation suffix when validationCommand is empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Validation Command"))
 		})
 
-		It("appends validation prompt suffix when criteria is inline text", func() {
-			enricher := promptenricher.NewEnricher(
-				releaser,
-				"",
-				"",
-				"",
-				"# My Criteria\n- item one",
-			)
+		It("appends validation prompt suffix when resolver returns criteria", func() {
+			resolverMock.ResolveReturns("# My Criteria\n- item one", true, nil)
+			enricher := newEnricher("", "", "", "some-criteria-value")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("My Criteria"))
 			Expect(result).To(ContainSubstring("Project Quality Criteria"))
 		})
 
-		It("does not append validation prompt suffix when criteria is empty", func() {
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", "")
+		It("does not append validation prompt suffix when resolver returns false", func() {
+			resolverMock.ResolveReturns("", false, nil)
+			enricher := newEnricher("", "", "", "")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Quality Criteria"))
 		})
 
-		It("appends validation prompt suffix from file when path exists", func() {
-			tempDir, err := os.MkdirTemp("", "enricher-test-*")
-			Expect(err).NotTo(HaveOccurred())
-			defer func() { _ = os.RemoveAll(tempDir) }()
-
-			criteriaPath := filepath.Join(tempDir, "criteria.md")
-			Expect(
-				os.WriteFile(criteriaPath, []byte("# File Criteria\n- check this"), 0600),
-			).To(Succeed())
-
-			enricher := promptenricher.NewEnricher(releaser, "", "", "", criteriaPath)
-			result := enricher.Enrich(ctx, "base content")
-			Expect(result).To(ContainSubstring("File Criteria"))
-			Expect(result).To(ContainSubstring("Project Quality Criteria"))
-		})
-
-		It("does not append validation prompt suffix when file path does not exist", func() {
-			enricher := promptenricher.NewEnricher(
-				releaser,
-				"",
-				"",
-				"",
-				"/nonexistent/path/criteria.md",
-			)
+		It("does not append validation prompt suffix when resolver returns error", func() {
+			resolverMock.ResolveReturns("", false, fmt.Errorf("read error"))
+			enricher := newEnricher("", "", "", "bad-path")
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Quality Criteria"))
 		})
 
 		It("preserves suffix ordering: report, changelog, test, validation, criteria", func() {
 			releaser.HasChangelogReturns(true)
-			enricher := promptenricher.NewEnricher(
-				releaser, "", "make test", "make precommit", "my criteria",
-			)
+			resolverMock.ResolveReturns("my criteria", true, nil)
+			enricher := newEnricher("", "make test", "make precommit", "my criteria")
 			result := enricher.Enrich(ctx, "base content")
 
 			reportIdx := indexOf(result, report.MarkerStart)

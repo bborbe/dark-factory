@@ -50,6 +50,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/status"
 	"github.com/bborbe/dark-factory/pkg/subproc"
+	"github.com/bborbe/dark-factory/pkg/validationprompt"
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
@@ -855,6 +856,7 @@ func CreateProcessor(
 			testCommand,
 			validationCommand,
 			validationPrompt,
+			validationprompt.NewResolver(),
 		),
 		committingrecoverer.NewRecoverer(promptManager, releaser, autoCompleter, dirs.Completed),
 		queueInterval,

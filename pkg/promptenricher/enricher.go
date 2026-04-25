@@ -7,12 +7,10 @@ package promptenricher
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/report"
+	"github.com/bborbe/dark-factory/pkg/validationprompt"
 )
 
 //counterfeiter:generate -o ../../mocks/prompt-enricher.go --fake-name PromptEnricher . Enricher
@@ -32,6 +30,7 @@ func NewEnricher(
 	testCommand string,
 	validationCommand string,
 	validationPromptCriteria string,
+	validationPromptResolver validationprompt.Resolver,
 ) Enricher {
 	return &enricher{
 		releaser:                 releaser,
@@ -39,6 +38,7 @@ func NewEnricher(
 		testCommand:              testCommand,
 		validationCommand:        validationCommand,
 		validationPromptCriteria: validationPromptCriteria,
+		validationPromptResolver: validationPromptResolver,
 	}
 }
 
@@ -48,6 +48,7 @@ type enricher struct {
 	testCommand              string
 	validationCommand        string
 	validationPromptCriteria string
+	validationPromptResolver validationprompt.Resolver
 }
 
 // Enrich prepends additionalInstructions and appends machine-parseable suffixes.
@@ -70,50 +71,12 @@ func (e *enricher) Enrich(ctx context.Context, content string) string {
 		content = content + report.ValidationSuffix(e.validationCommand)
 	}
 	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
-	if criteria, ok := resolveValidationPrompt(ctx, e.validationPromptCriteria); ok {
+	criteria, ok, err := e.validationPromptResolver.Resolve(ctx, e.validationPromptCriteria)
+	if err != nil {
+		slog.WarnContext(ctx, "failed to resolve validationPrompt",
+			"value", e.validationPromptCriteria, "error", err)
+	} else if ok {
 		content = content + report.ValidationPromptSuffix(criteria)
 	}
 	return content
-}
-
-// resolveValidationPrompt resolves the validationPrompt config value.
-// If value is a relative path to an existing file, the file contents are returned.
-// If value is non-empty but the file does not exist, ("", false) is returned (caller logs warning).
-// If value is empty, ("", false) is returned silently.
-// The resolved result is the criteria text to inject, or empty string to skip injection.
-func resolveValidationPrompt(ctx context.Context, value string) (string, bool) {
-	if value == "" {
-		return "", false
-	}
-	// Check if value is a path to an existing file
-	if _, err := os.Stat(value); err == nil {
-		data, readErr := os.ReadFile(
-			value,
-		) // #nosec G304 -- path is validated by config (no absolute path, no .. traversal)
-		if readErr != nil {
-			slog.WarnContext(
-				ctx,
-				"failed to read validationPrompt file",
-				"path",
-				value,
-				"error",
-				readErr,
-			)
-			return "", false
-		}
-		return string(data), true
-	}
-	// Check if value looks like a file path (contains path separator or .md extension)
-	// and the file doesn't exist — log a warning
-	if strings.Contains(value, string(filepath.Separator)) || strings.HasSuffix(value, ".md") {
-		slog.WarnContext(
-			ctx,
-			"validationPrompt file not found, skipping criteria evaluation",
-			"path",
-			value,
-		)
-		return "", false
-	}
-	// Value is inline criteria text
-	return value, true
 }

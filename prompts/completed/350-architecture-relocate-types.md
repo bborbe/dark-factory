@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: 'Pure architectural refactor: moved BaseName/ContainerName types from pkg/processor to pkg/prompt; introduced project.Name named-string type with Resolve() function replacing Name(); removed processor.ProjectName type; injected queuescanner.Scanner via NewProcessor constructor eliminating SetScanner two-phase init; deleted workflowExecutorResumerAdapter from factory by using lazyPromptProcessor forwarder for circular wiring. All 42 packages pass tests, make precommit exits 0.'
 container: dark-factory-350-architecture-relocate-types
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T22:00:00Z"
 queued: "2026-04-25T20:08:34Z"
 started: "2026-04-25T20:08:35Z"
+completed: "2026-04-25T20:35:06Z"
 ---
 
 <summary>

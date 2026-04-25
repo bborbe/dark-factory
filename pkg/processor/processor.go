@@ -21,12 +21,11 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
-	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
-	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -76,14 +75,13 @@ func NewProcessor(
 	workflowExecutor WorkflowExecutor,
 	autoCompleter spec.AutoCompleter,
 	specSweeper specsweeper.Sweeper,
-	n notifier.Notifier,
 	preflightConditions preflightconditions.Conditions,
 	containerSlotManager containerslot.Manager,
 	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
 	projectName ProjectName,
-	autoRetryLimit AutoRetryLimit,
+	failureHandler failurehandler.Handler,
 	maxPromptDuration time.Duration,
 	verificationGate VerificationGate,
 	completionReportValidator completionreport.Validator,
@@ -116,14 +114,13 @@ func NewProcessor(
 		workflowExecutor:          workflowExecutor,
 		autoCompleter:             autoCompleter,
 		specSweeper:               specSweeper,
-		notifier:                  n,
+		failureHandler:            failureHandler,
 		preflightConditions:       preflightConditions,
 		containerSlotManager:      containerSlotManager,
 		cancellationWatcher:       cancellationWatcher,
 		wakeup:                    wakeup,
 		dirs:                      dirs,
 		projectName:               projectName,
-		autoRetryLimit:            autoRetryLimit,
 		maxPromptDuration:         maxPromptDuration,
 		verificationGate:          verificationGate,
 		skippedPrompts:            make(map[string]libtime.DateTime),
@@ -144,7 +141,7 @@ type processor struct {
 	workflowExecutor          WorkflowExecutor
 	autoCompleter             spec.AutoCompleter
 	specSweeper               specsweeper.Sweeper
-	notifier                  notifier.Notifier
+	failureHandler            failurehandler.Handler
 	preflightConditions       preflightconditions.Conditions
 	containerSlotManager      containerslot.Manager
 	cancellationWatcher       cancellationwatcher.Watcher
@@ -152,7 +149,6 @@ type processor struct {
 	dirs                      Dirs
 	projectName               ProjectName
 	lastBlockedMsg            string
-	autoRetryLimit            AutoRetryLimit
 	maxPromptDuration         time.Duration
 	verificationGate          VerificationGate
 	skippedPrompts            map[string]libtime.DateTime // filename → mod time when skipped
@@ -407,7 +403,7 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 
 	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
 	if err != nil {
-		p.notifyFromReport(ctx, logFile, promptPath)
+		p.failureHandler.NotifyFromReport(ctx, logFile, promptPath)
 		return errors.Wrap(ctx, err, "validate completion report")
 	}
 	if completionReport != nil && completionReport.Summary != "" {
@@ -576,7 +572,7 @@ func (p *processor) processSingleQueued(ctx context.Context) (bool, error) {
 			// Baseline is broken — exit scan loop and wait for next 5s tick.
 			return true, nil
 		}
-		if stopErr := p.handleProcessError(ctx, pr.Path, err); stopErr != nil {
+		if stopErr := p.failureHandler.Handle(ctx, pr.Path, err); stopErr != nil {
 			return true, stopErr
 		}
 		return false, nil // re-queued or permanently failed — process next prompt
@@ -678,115 +674,6 @@ func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) 
 	return nil
 }
 
-// handleProcessError is called when processPrompt returns an error.
-// If the context is cancelled it returns an error to propagate shutdown.
-// If the prompt was already moved to completed/ (post-execution failure) it stops the daemon.
-// Otherwise it calls handlePromptFailure and returns nil so the loop continues.
-func (p *processor) handleProcessError(ctx context.Context, path string, err error) error {
-	if ctx.Err() != nil {
-		slog.Info("daemon shutting down, prompt stays executing", "file", filepath.Base(path))
-		return errors.Wrap(ctx, err, "prompt failed")
-	}
-	if stopErr := p.checkPostExecutionFailure(ctx, path, err); stopErr != nil {
-		return stopErr
-	}
-	p.handlePromptFailure(ctx, path, err)
-	return nil
-}
-
-// checkPostExecutionFailure returns a non-nil error when the prompt file is gone from its
-// in-progress path but found in completed/ — indicating the container succeeded yet a
-// post-execution git step failed. Returning an error stops the daemon loop so uncommitted
-// code changes are not overwritten by the next prompt's git fetch/merge.
-// Returns nil when the file still exists at path (normal pre-execution failure).
-func (p *processor) checkPostExecutionFailure(
-	ctx context.Context,
-	path string,
-	origErr error,
-) error {
-	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
-		return nil
-	}
-	completedFilePath := filepath.Join(p.dirs.Completed, filepath.Base(path))
-	if _, cStatErr := os.Stat(completedFilePath); cStatErr != nil {
-		return nil
-	}
-	slog.Error(
-		"post-execution failure, prompt already moved to completed — stopping daemon",
-		"file", filepath.Base(path),
-		"error", origErr,
-	)
-	return errors.Wrap(ctx, origErr, "post-execution git failure, manual intervention required")
-}
-
-// handlePromptFailure decides whether to retry or fail the prompt.
-// Re-queuing increments retryCount and calls MarkApproved; exhausted retries call MarkFailed.
-func (p *processor) handlePromptFailure(ctx context.Context, path string, err error) {
-	slog.Error("prompt failed", "file", filepath.Base(path), "error", err)
-
-	pf, loadErr := p.promptManager.Load(ctx, path)
-	if loadErr != nil {
-		slog.Error("failed to load prompt for failure handling", "error", loadErr)
-		return
-	}
-
-	reason := err.Error()
-	pf.SetLastFailReason(reason)
-
-	if p.autoRetryLimit > 0 && pf.RetryCount() < int(p.autoRetryLimit) {
-		// Re-queue with incremented retry count
-		pf.Frontmatter.RetryCount++
-		pf.MarkApproved()
-		if saveErr := pf.Save(ctx); saveErr != nil {
-			slog.Error("failed to save prompt for retry", "error", saveErr)
-			// Fall through to MarkFailed
-			pf.MarkFailed()
-			if saveErr2 := pf.Save(ctx); saveErr2 != nil {
-				slog.Error("failed to save failed prompt", "error", saveErr2)
-			}
-			p.notifyFailed(ctx, path)
-			return
-		}
-		slog.Info("prompt re-queued for retry",
-			"file", filepath.Base(path),
-			"retryCount", pf.RetryCount(),
-			"autoRetryLimit", p.autoRetryLimit)
-		return
-	}
-
-	// Retries exhausted or autoRetryLimit == 0 — mark failed
-	pf.MarkFailed()
-	if saveErr := pf.Save(ctx); saveErr != nil {
-		slog.Error("failed to set failed status", "error", saveErr)
-	}
-	p.notifyFailed(ctx, path)
-}
-
-// notifyFailed fires a notification for a failed prompt.
-func (p *processor) notifyFailed(ctx context.Context, path string) {
-	_ = p.notifier.Notify(ctx, notifier.Event{
-		ProjectName: p.projectName.String(),
-		EventType:   "prompt_failed",
-		PromptName:  filepath.Base(path),
-	})
-}
-
-// notifyFromReport checks the completion report in logFile and fires a partial notification
-// if the report status is "partial".
-func (p *processor) notifyFromReport(ctx context.Context, logFile string, promptPath string) {
-	completionReport, err := report.ParseFromLog(ctx, logFile)
-	if err != nil || completionReport == nil {
-		return
-	}
-	if completionReport.Status == "partial" {
-		_ = p.notifier.Notify(ctx, notifier.Event{
-			ProjectName: p.projectName.String(),
-			EventType:   "prompt_partial",
-			PromptName:  filepath.Base(promptPath),
-		})
-	}
-}
-
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.preflightConditions.ShouldSkip(ctx); err != nil {
@@ -865,7 +752,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
 	if err != nil {
-		p.notifyFromReport(ctx, logFile, pr.Path)
+		p.failureHandler.NotifyFromReport(ctx, logFile, pr.Path)
 		return errors.Wrap(ctx, err, "validate completion report")
 	}
 	if completionReport != nil && completionReport.Summary != "" {

@@ -26,6 +26,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
@@ -86,6 +87,7 @@ func newTestProcessor(
 		workflow, pr, autoMerge, autoRelease, autoReview,
 		projectName, mgr, rel, autoCompleter, brancher, prCreator, cloner, worktreer, prMerger,
 	)
+	fh := failurehandler.NewHandler(mgr, n, completedDir, projectName, autoRetryLimit)
 	return processor.NewProcessor(
 		exec,
 		mgr,
@@ -94,7 +96,6 @@ func newTestProcessor(
 		we,
 		autoCompleter,
 		specsweeper.NewSweeper(specLister, autoCompleter),
-		n,
 		preflightconditions.NewConditions(
 			preflightChecker,
 			gitLockChecker,
@@ -112,7 +113,7 @@ func newTestProcessor(
 		wakeup,
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
 		processor.ProjectName(projectName),
-		processor.AutoRetryLimit(autoRetryLimit),
+		fh,
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),
 		completionreport.NewValidator(),
@@ -7319,6 +7320,13 @@ DARK-FACTORY-REPORT -->`), 0600)
 				Worktreer:     worktreer,
 				PRMerger:      prMerger,
 			})
+			sweepFH := failurehandler.NewHandler(
+				manager,
+				notifier.NewMultiNotifier(),
+				sweepCompletedDir,
+				"sweep-test",
+				0,
+			)
 			p := processor.NewProcessor(
 				executor,
 				manager,
@@ -7327,7 +7335,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				we,
 				realAutoCompleter,
 				specsweeper.NewSweeper(realLister, realAutoCompleter),
-				notifier.NewMultiNotifier(),
 				preflightconditions.NewConditions(nil, nil, nil, 0),
 				containerslot.NewManager(nil, nil, nil, 0, 10*time.Second),
 				cancellationwatcher.NewWatcher(executor, manager),
@@ -7338,7 +7345,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 					Log:       filepath.Join(sweepTempDir, "log"),
 				},
 				processor.ProjectName("sweep-test"),
-				processor.AutoRetryLimit(0),
+				sweepFH,
 				0,
 				processor.VerificationGate(false),
 				completionreport.NewValidator(),

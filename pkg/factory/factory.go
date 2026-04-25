@@ -24,6 +24,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -764,6 +765,13 @@ func CreateProcessor(
 		formatter.NewFormatter(),
 		workflow == config.WorkflowWorktree || hideGit,
 	)
+	fh := failurehandler.NewHandler(
+		promptManager,
+		n,
+		dirs.Completed,
+		projectName.String(),
+		int(autoRetryLimit),
+	)
 	return processor.NewProcessor(
 		exec,
 		promptManager,
@@ -781,7 +789,6 @@ func CreateProcessor(
 			),
 			autoCompleter,
 		),
-		n,
 		preflightconditions.NewConditions(
 			preflightChecker,
 			gitLockChecker,
@@ -799,7 +806,7 @@ func CreateProcessor(
 		wakeup,
 		dirs,
 		projectName,
-		processor.AutoRetryLimit(autoRetryLimit),
+		fh,
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),
 		completionreport.NewValidator(),

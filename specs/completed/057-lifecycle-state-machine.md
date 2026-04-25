@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-04-25T09:23:14Z"
 generating: "2026-04-25T09:23:26Z"
 prompted: "2026-04-25T09:29:59Z"
+verifying: "2026-04-25T10:19:38Z"
+completed: "2026-04-25T10:19:58Z"
 branch: dark-factory/lifecycle-state-machine
 ---
 

@@ -65,7 +65,7 @@ func (s *specCompleteCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if sf.Frontmatter.Status != string(spec.StatusVerifying) {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusCompleted); err != nil {
 		return errors.Errorf(
 			ctx,
 			"spec is not in verifying state (current: %s)",

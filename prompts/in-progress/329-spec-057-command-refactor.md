@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [057-lifecycle-state-machine]
+summary: Replaced ad-hoc status string comparisons in pkg/cmd/ with CanTransitionTo() calls and typed constant checks; all grep checks pass and make precommit exits 0.
+container: dark-factory-329-spec-057-command-refactor
+dark-factory-version: v0.132.0
 created: "2026-04-25T09:27:35Z"
 queued: "2026-04-25T09:35:25Z"
+started: "2026-04-25T10:12:19Z"
 ---
 
 <summary>

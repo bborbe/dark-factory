@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.132.3
+
+- refactor: replace ad-hoc status string comparisons in pkg/cmd/ with CanTransitionTo() and typed constant checks
+
 ## v0.132.2
 
 - refactor: add SpecStatuses/CanTransitionTo/predicates to spec.Status and CanTransitionTo/predicates to prompt.PromptStatus (Load() stays permissive — strict checks at transition boundary)

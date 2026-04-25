@@ -89,7 +89,7 @@ func outputSpecListTable(entries []SpecEntry) error {
 	for _, e := range entries {
 		prompts := fmt.Sprintf("%d/%d", e.PromptsCompleted, e.PromptsTotal)
 		status := e.Status
-		if e.Status == "verifying" {
+		if specpkg.Status(e.Status) == specpkg.StatusVerifying {
 			status = "!" + e.Status
 		}
 		fmt.Printf("%-11s %-8s %s\n", status, prompts, e.File)

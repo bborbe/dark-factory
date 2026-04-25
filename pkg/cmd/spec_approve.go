@@ -63,7 +63,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if sf.Frontmatter.Status == string(spec.StatusApproved) {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusApproved); err != nil {
 		return errors.Errorf(ctx, "spec is already approved")
 	}
 

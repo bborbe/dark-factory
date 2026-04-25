@@ -68,7 +68,7 @@ func (s *specUnapproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if sf.Frontmatter.Status != string(spec.StatusApproved) {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusDraft); err != nil {
 		return errors.Errorf(
 			ctx,
 			"cannot unapprove spec with status %q: only approved specs can be unapproved",

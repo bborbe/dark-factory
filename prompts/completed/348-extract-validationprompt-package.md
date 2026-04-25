@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted resolveValidationPrompt into pkg/validationprompt.Resolver interface, injected into promptenricher.NewEnricher, updated all call sites, generated counterfeiter mock, and replaced disk-touching enricher tests with mock-based tests.
 container: dark-factory-348-extract-validationprompt-package
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:20:00Z"
 queued: "2026-04-25T19:02:56Z"
 started: "2026-04-25T19:02:57Z"
+completed: "2026-04-25T19:14:55Z"
 ---
 
 <summary>

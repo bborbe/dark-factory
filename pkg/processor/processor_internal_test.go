@@ -1311,11 +1311,11 @@ var _ = Describe("checkPreflightConditions — preflight checker", func() {
 		proc.SetPreflightChecker(fakeChecker)
 	})
 
-	It("returns errPreflightSkip when preflight checker returns false", func() {
+	It("returns ErrPreflightSkip when preflight checker returns false", func() {
 		fakeChecker.ok = false
 		skip, err := proc.CheckPreflightConditions(ctx)
 		Expect(err).To(HaveOccurred())
-		Expect(stderrors.Is(err, errPreflightSkip)).To(BeTrue())
+		Expect(stderrors.Is(err, ErrPreflightSkip)).To(BeTrue())
 		Expect(skip).To(BeFalse())
 		Expect(fakeChecker.callCount).To(Equal(1))
 	})
@@ -1327,12 +1327,12 @@ var _ = Describe("checkPreflightConditions — preflight checker", func() {
 		Expect(skip).To(BeFalse())
 	})
 
-	It("returns errPreflightSkip when preflight checker returns an error", func() {
+	It("returns ErrPreflightSkip when preflight checker returns an error", func() {
 		fakeChecker.ok = false
 		fakeChecker.err = stderrors.New("internal error")
 		skip, err := proc.CheckPreflightConditions(ctx)
 		Expect(err).To(HaveOccurred())
-		Expect(stderrors.Is(err, errPreflightSkip)).To(BeTrue())
+		Expect(stderrors.Is(err, ErrPreflightSkip)).To(BeTrue())
 		Expect(skip).To(BeFalse())
 	})
 

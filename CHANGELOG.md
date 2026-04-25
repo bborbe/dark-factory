@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.6
+
+- refactor: NewProcessor argument order — services/interfaces first, typed config second; renamed ready→wakeup; exported ErrPreflightSkip for external test packages
+
 ## v0.135.5
 
 - refactor: NewProcessor primitive parameters replaced with named types (ProjectName, ContainerName, Dirs, Commands, MaxContainers, DirtyFileThreshold, AutoRetryLimit, AdditionalInstructions, VerificationGate) — purely internal, no behaviour change

@@ -274,7 +274,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	)
 	versionGetter := version.NewGetter(ver)
 	projectName := processor.ProjectName(project.Name(cfg.ProjectName))
-	ready := make(chan struct{}, 10)
+	wakeup := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
@@ -335,7 +335,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 
 	proc := CreateProcessor(
 		inProgressDir, completedDir, cfg.Prompts.LogDir, projectName,
-		promptManager, releaser, versionGetter, ready,
+		promptManager, releaser, versionGetter, wakeup,
 		cfg.ContainerImage, cfg.Model, cfg.NetrcFile, cfg.GitconfigFile,
 		cfg.Workflow, cfg.PR,
 		deps.brancher, deps.prCreator, deps.prMerger,
@@ -359,7 +359,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 			slog.Info("nothing to do, waiting for changes")
 		},
 	)
-	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
+	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, wakeup,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
 	specWatcher := CreateSpecWatcher(cfg, specGen, currentDateTimeGetter)
 	var logWriter io.Writer
@@ -561,7 +561,7 @@ func CreateWatcher(
 	inProgressDir string,
 	inboxDir string,
 	promptManager *prompt.Manager,
-	ready chan<- struct{},
+	wakeup chan<- struct{},
 	debounce time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) watcher.Watcher {
@@ -569,7 +569,7 @@ func CreateWatcher(
 		inProgressDir,
 		inboxDir,
 		promptManager,
-		ready,
+		wakeup,
 		debounce,
 		currentDateTimeGetter,
 	)
@@ -693,7 +693,7 @@ func CreateProcessor(
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
-	ready <-chan struct{},
+	wakeup <-chan struct{},
 	containerImage string,
 	model string,
 	netrcFile string,
@@ -750,8 +750,6 @@ func CreateProcessor(
 		projectName, promptManager, releaser, autoCompleter,
 	)
 	return processor.NewProcessor(
-		dirs,
-		projectName,
 		executor.NewDockerExecutor(
 			containerImage,
 			projectName.String(),
@@ -769,7 +767,6 @@ func CreateProcessor(
 		promptManager,
 		releaser,
 		versionGetter,
-		ready,
 		workflowExecutor,
 		autoCompleter,
 		spec.NewLister(
@@ -779,22 +776,25 @@ func CreateProcessor(
 			specsCompletedDir,
 			specsRejectedDir,
 		),
-		cmds,
-		processor.VerificationGate(verificationGate),
 		n,
 		containerCounter,
-		processor.MaxContainers(maxContainers),
-		processor.AdditionalInstructions(additionalInstructions),
 		containerLock,
 		containerChecker,
-		processor.DirtyFileThreshold(dirtyFileThreshold),
 		dirtyFileChecker,
 		gitLockChecker,
+		preflightChecker,
+		wakeup,
+		dirs,
+		cmds,
+		projectName,
+		processor.MaxContainers(maxContainers),
+		processor.AdditionalInstructions(additionalInstructions),
+		processor.DirtyFileThreshold(dirtyFileThreshold),
 		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
+		processor.VerificationGate(verificationGate),
 		queueInterval,
 		sweepInterval,
-		preflightChecker,
 		onIdle,
 	)
 }

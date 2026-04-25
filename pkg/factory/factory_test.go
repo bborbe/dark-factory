@@ -41,12 +41,12 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateWatcher", func() {
 		It("should return a non-nil watcher", func() {
-			ready := make(chan struct{}, 10)
+			wakeup := make(chan struct{}, 10)
 			watcher := factory.CreateWatcher(
 				cfg.Prompts.InProgressDir,
 				cfg.Prompts.InboxDir,
 				nil, // promptManager not needed for nil check
-				ready,
+				wakeup,
 				100,
 				libtime.NewCurrentDateTime(),
 			)
@@ -56,7 +56,7 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateProcessor", func() {
 		It("should return a non-nil processor", func() {
-			ready := make(chan struct{}, 10)
+			wakeup := make(chan struct{}, 10)
 			processor := factory.CreateProcessor(
 				cfg.Prompts.InProgressDir,
 				cfg.Prompts.CompletedDir,
@@ -65,7 +65,7 @@ var _ = Describe("Factory", func() {
 				nil, // promptManager not needed for nil check
 				nil, // releaser not needed for nil check
 				nil, // versionGetter not needed for nil check
-				ready,
+				wakeup,
 				cfg.ContainerImage,
 				cfg.Model,
 				cfg.NetrcFile,

@@ -30,14 +30,14 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
-// errPreflightSkip is returned by processPrompt when the baseline preflight check
+// ErrPreflightSkip is returned by processPrompt when the baseline preflight check
 // failed and the prompt should NOT be retried within the same scan cycle.
 // The caller in processExistingQueued recognizes this sentinel and returns,
 // which gives control back to the 5s ticker in Process().
 //
 // Do NOT use this for the other skip conditions (git-index-lock, dirty-files) —
 // those are transient and it is safe to advance to the next prompt in the queue.
-var errPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
+var ErrPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
 
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
 
@@ -72,36 +72,36 @@ func (r tickResult) madeProgress() bool {
 
 // NewProcessor creates a new Processor.
 func NewProcessor(
-	dirs Dirs,
-	projectName ProjectName,
 	exec executor.Executor,
 	promptManager PromptManager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
-	ready <-chan struct{},
 	workflowExecutor WorkflowExecutor,
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
-	cmds Commands,
-	verificationGate VerificationGate,
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
-	maxContainers MaxContainers,
-	additionalInstructions AdditionalInstructions,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
-	dirtyFileThreshold DirtyFileThreshold,
 	dirtyFileChecker DirtyFileChecker,
 	gitLockChecker GitLockChecker,
+	preflightChecker preflight.Checker,
+	wakeup <-chan struct{},
+	dirs Dirs,
+	cmds Commands,
+	projectName ProjectName,
+	maxContainers MaxContainers,
+	additionalInstructions AdditionalInstructions,
+	dirtyFileThreshold DirtyFileThreshold,
 	autoRetryLimit AutoRetryLimit,
 	maxPromptDuration time.Duration,
+	verificationGate VerificationGate,
 	// queueInterval controls how often the daemon polls for queued prompts.
 	// Pass 0 to use the default of 5s.
 	queueInterval time.Duration,
 	// sweepInterval controls the auto-complete sweep cadence.
 	// Pass 0 to use the default of 60s.
 	sweepInterval time.Duration,
-	preflightChecker preflight.Checker,
 	// onIdle is invoked at the end of any tick that made no progress.
 	// Pass a log-only callback for daemon mode, or one that calls cancel() for one-shot mode.
 	// If nil, a no-op callback is used (safe for tests that do not need idle detection).
@@ -117,69 +117,69 @@ func NewProcessor(
 		onIdle = func(_ context.Context, _ context.CancelFunc) {}
 	}
 	return &processor{
-		dirs:                   dirs,
-		projectName:            projectName,
 		executor:               exec,
 		promptManager:          promptManager,
 		releaser:               releaser,
 		versionGetter:          versionGetter,
-		ready:                  ready,
 		workflowExecutor:       workflowExecutor,
 		autoCompleter:          autoCompleter,
 		specLister:             specLister,
-		cmds:                   cmds,
-		verificationGate:       verificationGate,
-		skippedPrompts:         make(map[string]libtime.DateTime),
 		notifier:               n,
 		containerCounter:       containerCounter,
+		containerLock:          containerLock,
+		containerChecker:       containerChecker,
+		dirtyFileChecker:       dirtyFileChecker,
+		gitLockChecker:         gitLockChecker,
+		preflightChecker:       preflightChecker,
+		wakeup:                 wakeup,
+		dirs:                   dirs,
+		cmds:                   cmds,
+		projectName:            projectName,
 		maxContainers:          maxContainers,
 		containerPollInterval:  10 * time.Second,
 		additionalInstructions: additionalInstructions,
-		containerLock:          containerLock,
-		containerChecker:       containerChecker,
 		dirtyFileThreshold:     dirtyFileThreshold,
-		dirtyFileChecker:       dirtyFileChecker,
-		gitLockChecker:         gitLockChecker,
 		autoRetryLimit:         autoRetryLimit,
 		maxPromptDuration:      maxPromptDuration,
+		verificationGate:       verificationGate,
+		skippedPrompts:         make(map[string]libtime.DateTime),
 		queueInterval:          queueInterval,
 		sweepInterval:          sweepInterval,
-		preflightChecker:       preflightChecker,
 		onIdle:                 onIdle,
 	}
 }
 
 // processor implements Processor.
 type processor struct {
-	dirs                   Dirs
-	projectName            ProjectName
 	executor               executor.Executor
 	promptManager          PromptManager
 	releaser               git.Releaser
 	versionGetter          version.Getter
-	ready                  <-chan struct{}
 	workflowExecutor       WorkflowExecutor
 	autoCompleter          spec.AutoCompleter
 	specLister             spec.Lister
-	cmds                   Commands
-	verificationGate       VerificationGate
-	skippedPrompts         map[string]libtime.DateTime // filename → mod time when skipped
 	notifier               notifier.Notifier
 	containerCounter       executor.ContainerCounter
+	containerLock          containerlock.ContainerLock
+	containerChecker       executor.ContainerChecker
+	dirtyFileChecker       DirtyFileChecker
+	gitLockChecker         GitLockChecker
+	preflightChecker       preflight.Checker // nil = disabled
+	wakeup                 <-chan struct{}
+	dirs                   Dirs
+	cmds                   Commands
+	projectName            ProjectName
 	maxContainers          MaxContainers
 	containerPollInterval  time.Duration
 	additionalInstructions AdditionalInstructions
-	containerLock          containerlock.ContainerLock
-	containerChecker       executor.ContainerChecker
 	dirtyFileThreshold     DirtyFileThreshold
-	dirtyFileChecker       DirtyFileChecker
-	gitLockChecker         GitLockChecker
 	lastBlockedMsg         string
 	autoRetryLimit         AutoRetryLimit
 	maxPromptDuration      time.Duration
+	verificationGate       VerificationGate
+	skippedPrompts         map[string]libtime.DateTime // filename → mod time when skipped
 	queueInterval          time.Duration
 	sweepInterval          time.Duration
-	preflightChecker       preflight.Checker // nil = disabled
 	onIdle                 NothingToDoCallback
 }
 
@@ -223,7 +223,7 @@ func (p *processor) Process(ctx context.Context) error {
 			slog.Info("processor shutting down")
 			return nil
 
-		case <-p.ready:
+		case <-p.wakeup:
 			if !p.runReadyTick(ctx) {
 				p.onIdle(ctx, cancel)
 			}
@@ -592,7 +592,7 @@ func (p *processor) processSingleQueued(ctx context.Context) (bool, error) {
 	slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
 
 	if err := p.processPrompt(ctx, pr); err != nil {
-		if stderrors.Is(err, errPreflightSkip) {
+		if stderrors.Is(err, ErrPreflightSkip) {
 			// Baseline is broken — exit scan loop and wait for next 5s tick.
 			return true, nil
 		}
@@ -984,7 +984,7 @@ func (p *processor) checkGitIndexLock() bool {
 
 // checkPreflightConditions runs all pre-execution skip checks in order.
 // Returns (true, nil) if the prompt should be skipped this cycle (transient conditions).
-// Returns (false, errPreflightSkip) if the preflight baseline is broken — the caller
+// Returns (false, ErrPreflightSkip) if the preflight baseline is broken — the caller
 // must exit the scan loop and wait for the next ticker/watcher event.
 func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) {
 	// Baseline preflight check — must pass before any container starts
@@ -992,11 +992,11 @@ func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) 
 		ok, err := p.preflightChecker.Check(ctx)
 		if err != nil {
 			slog.Warn("preflight checker error, skipping cycle", "error", err)
-			return false, errPreflightSkip
+			return false, ErrPreflightSkip
 		}
 		if !ok {
 			slog.Info("preflight: baseline broken — prompt stays queued until baseline is fixed")
-			return false, errPreflightSkip
+			return false, ErrPreflightSkip
 		}
 	}
 
@@ -1010,7 +1010,7 @@ func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) 
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.checkPreflightConditions(ctx); err != nil {
-		if stderrors.Is(err, errPreflightSkip) {
+		if stderrors.Is(err, ErrPreflightSkip) {
 			return err // propagate sentinel unwrapped so caller can recognize it
 		}
 		return errors.Wrap(ctx, err, "check preflight conditions")

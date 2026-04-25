@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Dropped 4 noise typed primitives from pkg/processor/types.go, moved ~190 lines of filename normalization out of prompt.go into pkg/prompt/normalize.go, and injected currentDateTimeGetter once at run() in main.go threading through all 21 factory functions instead of instantiating libtime.NewCurrentDateTime() 21 times
 container: dark-factory-352-architecture-factory-polish
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T23:45:00Z"
 queued: "2026-04-25T22:09:46Z"
 started: "2026-04-25T22:13:49Z"
+completed: "2026-04-25T22:27:25Z"
 ---
 
 <summary>

@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Renamed ready→wakeup channel, exported ErrPreflightSkip, and reordered NewProcessor arguments (services/interfaces first, typed config second) across processor.go, factory.go, and all test files
 container: dark-factory-339-processor-rename-and-reorder
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:22:00Z"
 queued: "2026-04-25T14:50:10Z"
 started: "2026-04-25T15:19:25Z"
+completed: "2026-04-25T15:30:47Z"
 ---
 
 <summary>

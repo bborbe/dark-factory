@@ -34,6 +34,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
+	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
@@ -88,6 +89,20 @@ func newTestProcessor(
 		projectName, mgr, rel, autoCompleter, brancher, prCreator, cloner, worktreer, prMerger,
 	)
 	fh := failurehandler.NewHandler(mgr, n, completedDir, projectName, autoRetryLimit)
+	// Build a real resumer using a no-op workflow adapter so existing tests
+	// that don't exercise ResumeExecuting are not affected.
+	resumer := promptresumer.NewResumer(
+		mgr,
+		exec,
+		&noOpWorkflowExecutorAdapter{},
+		completionreport.NewValidator(),
+		fh,
+		queueDir,
+		completedDir,
+		logDir,
+		projectName,
+		maxPromptDuration,
+	)
 	return processor.NewProcessor(
 		exec,
 		mgr,
@@ -114,7 +129,7 @@ func newTestProcessor(
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
 		processor.ProjectName(projectName),
 		fh,
-		maxPromptDuration,
+		resumer,
 		processor.VerificationGate(verificationGate),
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(
@@ -128,6 +143,27 @@ func newTestProcessor(
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		nil, // onIdle: no-op for tests
 	)
+}
+
+// noOpWorkflowExecutorAdapter satisfies promptresumer.WorkflowExecutor with no-ops for tests
+// that don't exercise the resume path.
+type noOpWorkflowExecutorAdapter struct{}
+
+func (noOpWorkflowExecutorAdapter) ReconstructState(
+	_ context.Context,
+	_ string,
+	_ *prompt.PromptFile,
+) (bool, error) {
+	return true, nil
+}
+
+func (noOpWorkflowExecutorAdapter) Complete(
+	_ context.Context,
+	_ context.Context,
+	_ *prompt.PromptFile,
+	_, _, _ string,
+) error {
+	return nil
 }
 
 var _ = Describe("Processor", func() {
@@ -7327,6 +7363,18 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"sweep-test",
 				0,
 			)
+			sweepResumer := promptresumer.NewResumer(
+				manager,
+				executor,
+				&noOpWorkflowExecutorAdapter{},
+				completionreport.NewValidator(),
+				sweepFH,
+				sweepQueueDir,
+				sweepCompletedDir,
+				filepath.Join(sweepTempDir, "log"),
+				"sweep-test",
+				0,
+			)
 			p := processor.NewProcessor(
 				executor,
 				manager,
@@ -7346,7 +7394,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				},
 				processor.ProjectName("sweep-test"),
 				sweepFH,
-				0,
+				sweepResumer,
 				processor.VerificationGate(false),
 				completionreport.NewValidator(),
 				promptenricher.NewEnricher(releaser, "", "", "", ""),

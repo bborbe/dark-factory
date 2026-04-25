@@ -37,6 +37,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
+	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/scenario"
@@ -50,6 +51,30 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
+
+// workflowExecutorResumerAdapter adapts processor.WorkflowExecutor to promptresumer.WorkflowExecutor.
+// processor.WorkflowExecutor uses processor.BaseName (a named string type); promptresumer.WorkflowExecutor
+// uses plain string to avoid an import cycle. The cast is safe since BaseName is type BaseName string.
+type workflowExecutorResumerAdapter struct {
+	we processor.WorkflowExecutor
+}
+
+func (a *workflowExecutorResumerAdapter) ReconstructState(
+	ctx context.Context,
+	baseName string,
+	pf *prompt.PromptFile,
+) (bool, error) {
+	return a.we.ReconstructState(ctx, processor.BaseName(baseName), pf)
+}
+
+func (a *workflowExecutorResumerAdapter) Complete(
+	gitCtx context.Context,
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	title, promptPath, completedPath string,
+) error {
+	return a.we.Complete(gitCtx, ctx, pf, title, promptPath, completedPath)
+}
 
 // EffectiveMaxContainers returns the per-project limit when set (> 0),
 // otherwise falls back to the global limit.
@@ -772,6 +797,18 @@ func CreateProcessor(
 		projectName.String(),
 		int(autoRetryLimit),
 	)
+	resumer := promptresumer.NewResumer(
+		promptManager,
+		exec,
+		&workflowExecutorResumerAdapter{we: workflowExecutor},
+		completionreport.NewValidator(),
+		fh,
+		dirs.Queue,
+		dirs.Completed,
+		dirs.Log,
+		projectName.String(),
+		maxPromptDuration,
+	)
 	return processor.NewProcessor(
 		exec,
 		promptManager,
@@ -807,7 +844,7 @@ func CreateProcessor(
 		dirs,
 		projectName,
 		fh,
-		maxPromptDuration,
+		resumer,
 		processor.VerificationGate(verificationGate),
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(

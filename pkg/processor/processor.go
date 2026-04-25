@@ -26,6 +26,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
+	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -82,7 +83,7 @@ func NewProcessor(
 	dirs Dirs,
 	projectName ProjectName,
 	failureHandler failurehandler.Handler,
-	maxPromptDuration time.Duration,
+	resumer promptresumer.Resumer,
 	verificationGate VerificationGate,
 	completionReportValidator completionreport.Validator,
 	promptEnricher promptenricher.Enricher,
@@ -121,7 +122,7 @@ func NewProcessor(
 		wakeup:                    wakeup,
 		dirs:                      dirs,
 		projectName:               projectName,
-		maxPromptDuration:         maxPromptDuration,
+		resumer:                   resumer,
 		verificationGate:          verificationGate,
 		skippedPrompts:            make(map[string]libtime.DateTime),
 		queueInterval:             queueInterval,
@@ -149,7 +150,7 @@ type processor struct {
 	dirs                      Dirs
 	projectName               ProjectName
 	lastBlockedMsg            string
-	maxPromptDuration         time.Duration
+	resumer                   promptresumer.Resumer
 	verificationGate          VerificationGate
 	skippedPrompts            map[string]libtime.DateTime // filename → mod time when skipped
 	queueInterval             time.Duration
@@ -251,23 +252,7 @@ func (p *processor) runSweepTick(ctx context.Context) bool {
 // ResumeExecuting resumes any prompts still in "executing" state on startup.
 // Called once by the runner before the normal event loop begins.
 func (p *processor) ResumeExecuting(ctx context.Context) error {
-	entries, err := os.ReadDir(p.dirs.Queue)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return errors.Wrap(ctx, err, "read queue dir for resume")
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		promptPath := filepath.Join(p.dirs.Queue, entry.Name())
-		if err := p.resumePrompt(ctx, promptPath); err != nil {
-			return errors.Wrap(ctx, err, "resume prompt")
-		}
-	}
-	return nil
+	return p.resumer.ResumeAll(ctx)
 }
 
 // ResumeCommitting retries git commits for any prompts still in "committing" state on startup.
@@ -347,162 +332,6 @@ func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath stri
 
 	slog.Info("git commit recovery succeeded", "file", filepath.Base(completedPath))
 	return nil
-}
-
-// resumePrompt resumes a single prompt that is in "executing" state.
-func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
-	pf, containerName, baseName, logFile, title, err := p.prepareResume(ctx, promptPath)
-	if err != nil || pf == nil {
-		return err
-	}
-
-	// Reconstruct workflow state via executor
-	canResume, err := p.workflowExecutor.ReconstructState(ctx, baseName, pf)
-	if err != nil {
-		return errors.Wrap(ctx, err, "reconstruct workflow state for resume")
-	}
-	if !canResume {
-		slog.Warn(
-			"cannot resume prompt: isolation directory missing; resetting to approved",
-			"file", filepath.Base(promptPath),
-		)
-		pf.MarkApproved()
-		if err := pf.Save(ctx); err != nil {
-			return errors.Wrap(ctx, err, "save prompt after failed resume")
-		}
-		return nil
-	}
-
-	slog.Info(
-		"resuming executing prompt",
-		"file",
-		filepath.Base(promptPath),
-		"container",
-		containerName,
-	)
-
-	remainingDuration, elapsed, exceeded := p.computeReattachDuration(pf.Frontmatter.Started)
-	if exceeded {
-		return p.killTimedOutContainer(ctx, pf, containerName, elapsed)
-	}
-
-	if err := p.executor.Reattach(ctx, logFile, containerName.String(), remainingDuration); err != nil {
-		return errors.Wrap(ctx, err, "reattach to container")
-	}
-
-	slog.Info("reattached container exited", "file", filepath.Base(promptPath))
-
-	// Reload prompt file (state may have changed)
-	pf, err = p.promptManager.Load(ctx, promptPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, "reload prompt after reattach")
-	}
-
-	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
-
-	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
-	if err != nil {
-		p.failureHandler.NotifyFromReport(ctx, logFile, promptPath)
-		return errors.Wrap(ctx, err, "validate completion report")
-	}
-	if completionReport != nil && completionReport.Summary != "" {
-		pf.SetSummary(completionReport.Summary)
-		if err := pf.Save(ctx); err != nil {
-			return errors.Wrap(ctx, err, "save summary")
-		}
-	}
-
-	return p.workflowExecutor.Complete(gitCtx, ctx, pf, title, promptPath, completedPath)
-}
-
-// prepareResume loads and validates the prompt for resume, returning nil pf when the prompt
-// should not be resumed (not executing, or missing container — caller should return err).
-func (p *processor) prepareResume(
-	ctx context.Context,
-	promptPath string,
-) (*prompt.PromptFile, ContainerName, BaseName, string, string, error) {
-	pf, err := p.promptManager.Load(ctx, promptPath)
-	if err != nil {
-		return nil, "", "", "", "", errors.Wrap(ctx, err, "load prompt for resume")
-	}
-	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
-		return nil, "", "", "", "", nil // not executing — skip
-	}
-
-	containerName := ContainerName(pf.Frontmatter.Container)
-	if containerName == "" {
-		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
-			"file", filepath.Base(promptPath))
-		pf.MarkApproved()
-		if err := pf.Save(ctx); err != nil {
-			return nil, "", "", "", "", errors.Wrap(ctx, err, "save prompt after failed resume")
-		}
-		return nil, "", "", "", "", nil
-	}
-
-	baseName, _ := computePromptMetadata(promptPath, p.projectName)
-	logFile, err := filepath.Abs(filepath.Join(p.dirs.Log, string(baseName)+".log"))
-	if err != nil {
-		return nil, "", "", "", "", errors.Wrap(ctx, err, "resolve log file path for resume")
-	}
-	title := pf.Title()
-	if title == "" {
-		title = string(baseName)
-	}
-	return pf, containerName, baseName, logFile, title, nil
-}
-
-// killTimedOutContainer stops a container that has already exceeded its timeout on reattach,
-// marks the prompt as failed, and saves it.
-func (p *processor) killTimedOutContainer(
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	containerName ContainerName,
-	elapsed time.Duration,
-) error {
-	slog.Warn("container exceeded maxPromptDuration, killing without reattach",
-		"container", containerName,
-		"started", pf.Frontmatter.Started,
-		"elapsed", elapsed)
-	p.executor.StopAndRemoveContainer(ctx, containerName.String())
-	pf.SetLastFailReason(fmt.Sprintf("prompt timed out after %s (detected on reattach)", elapsed))
-	pf.MarkFailed()
-	if saveErr := pf.Save(ctx); saveErr != nil {
-		return errors.Wrap(ctx, saveErr, "save prompt after timeout on reattach")
-	}
-	return nil
-}
-
-// computeReattachDuration computes the remaining allowed run time for a reattached container.
-// Returns (remaining, elapsed, exceeded) where exceeded=true means the container has already
-// run past maxPromptDuration and should be killed without reattaching.
-// When maxPromptDuration is 0 or started is empty, remaining equals maxPromptDuration and exceeded is false.
-func (p *processor) computeReattachDuration(started string) (time.Duration, time.Duration, bool) {
-	if p.maxPromptDuration == 0 || started == "" {
-		return p.maxPromptDuration, 0, false
-	}
-	t, err := time.Parse(time.RFC3339, started)
-	if err != nil {
-		slog.Warn(
-			"cannot parse started timestamp, using full timeout",
-			"started",
-			started,
-			"error",
-			err,
-		)
-		return p.maxPromptDuration, 0, false
-	}
-	elapsed := time.Since(t)
-	remaining := p.maxPromptDuration - elapsed
-	if remaining <= 0 {
-		return 0, elapsed, true
-	}
-	slog.Info("computed remaining timeout for reattach",
-		"remaining", remaining,
-		"elapsed", elapsed,
-		"maxPromptDuration", p.maxPromptDuration)
-	return remaining, elapsed, false
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.

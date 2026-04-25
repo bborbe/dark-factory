@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
@@ -97,6 +98,7 @@ func newTestProcessor(
 		dirtyFileChecker,
 		gitLockChecker,
 		preflightChecker,
+		cancellationwatcher.NewWatcher(exec, mgr),
 		wakeup,
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
 		processor.ProjectName(projectName),
@@ -7324,6 +7326,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 				nil,
 				nil,
+				cancellationwatcher.NewWatcher(executor, manager),
 				wakeup,
 				processor.Dirs{
 					Queue:     sweepQueueDir,

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.8
+
+- refactor: extracted CancellationWatcher from processor — replaces *bool out-parameter with a closed-on-cancel channel; pure refactor
+
 ## v0.135.7
 
 - refactor: extracted CompletionReportValidator and PromptEnricher from processor — pure refactor, no behaviour change

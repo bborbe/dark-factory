@@ -17,6 +17,7 @@ import (
 	libhttp "github.com/bborbe/http"
 	libtime "github.com/bborbe/time"
 
+	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -746,21 +747,22 @@ func CreateProcessor(
 		autoMerge, autoRelease, autoReview,
 		projectName, promptManager, releaser, autoCompleter,
 	)
+	exec := executor.NewDockerExecutor(
+		containerImage,
+		projectName.String(),
+		model,
+		netrcFile,
+		gitconfigFile,
+		env,
+		extraMounts,
+		claudeDir,
+		maxPromptDuration,
+		currentDateTimeGetter,
+		formatter.NewFormatter(),
+		workflow == config.WorkflowWorktree || hideGit,
+	)
 	return processor.NewProcessor(
-		executor.NewDockerExecutor(
-			containerImage,
-			projectName.String(),
-			model,
-			netrcFile,
-			gitconfigFile,
-			env,
-			extraMounts,
-			claudeDir,
-			maxPromptDuration,
-			currentDateTimeGetter,
-			formatter.NewFormatter(),
-			workflow == config.WorkflowWorktree || hideGit,
-		),
+		exec,
 		promptManager,
 		releaser,
 		versionGetter,
@@ -780,6 +782,7 @@ func CreateProcessor(
 		dirtyFileChecker,
 		gitLockChecker,
 		preflightChecker,
+		cancellationwatcher.NewWatcher(exec, promptManager),
 		wakeup,
 		dirs,
 		projectName,

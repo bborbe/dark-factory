@@ -17,8 +17,8 @@ import (
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
-	"github.com/fsnotify/fsnotify"
 
+	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
@@ -88,6 +88,7 @@ func NewProcessor(
 	dirtyFileChecker DirtyFileChecker,
 	gitLockChecker GitLockChecker,
 	preflightChecker preflight.Checker,
+	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
 	projectName ProjectName,
@@ -133,6 +134,7 @@ func NewProcessor(
 		dirtyFileChecker:          dirtyFileChecker,
 		gitLockChecker:            gitLockChecker,
 		preflightChecker:          preflightChecker,
+		cancellationWatcher:       cancellationWatcher,
 		wakeup:                    wakeup,
 		dirs:                      dirs,
 		projectName:               projectName,
@@ -167,6 +169,7 @@ type processor struct {
 	dirtyFileChecker          DirtyFileChecker
 	gitLockChecker            GitLockChecker
 	preflightChecker          preflight.Checker // nil = disabled
+	cancellationWatcher       cancellationwatcher.Watcher
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
 	projectName               ProjectName
@@ -1109,11 +1112,24 @@ func (p *processor) runContainer(
 	promptPath string,
 ) (cancelled bool, err error) {
 	execCtx, execCancel := context.WithCancel(ctx)
-	var cancelledByUser bool
-	go p.watchForCancellation(execCtx, execCancel, promptPath, containerName, &cancelledByUser)
+	defer execCancel()
+
+	cancelledCh := p.cancellationWatcher.Watch(execCtx, promptPath, containerName.String())
+
+	// Track whether cancellation closed before Execute returned.
+	// A bool written by the select goroutine and read after Execute blocks — no overlap.
+	cancelledByUser := false
+	go func() {
+		select {
+		case <-execCtx.Done():
+			return
+		case <-cancelledCh:
+			cancelledByUser = true
+			execCancel()
+		}
+	}()
 
 	execErr := p.executor.Execute(execCtx, content, logFile, containerName.String())
-	execCancel() // always stop the watcher goroutine
 
 	if cancelledByUser {
 		slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
@@ -1133,62 +1149,6 @@ func (p *processor) runContainer(
 	}
 	slog.Info("docker container exited", "exitCode", 0)
 	return false, nil
-}
-
-// watchForCancellation watches the prompt file for changes using fsnotify.
-// When the status changes to cancelled, it stops and removes the Docker container,
-// then cancels execCancel to unblock the executor.
-func (p *processor) watchForCancellation(
-	ctx context.Context,
-	execCancel context.CancelFunc,
-	promptPath string,
-	containerName ContainerName,
-	cancelled *bool,
-) {
-	fsWatcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		slog.Warn("failed to create cancel watcher", "error", err)
-		return
-	}
-	defer fsWatcher.Close()
-
-	if err := fsWatcher.Add(promptPath); err != nil {
-		slog.Warn("failed to watch prompt file", "path", promptPath, "error", err)
-		return
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case err, ok := <-fsWatcher.Errors:
-			if !ok {
-				return
-			}
-			slog.Debug("cancel watcher error", "error", err)
-		case event, ok := <-fsWatcher.Events:
-			if !ok {
-				return
-			}
-			if !event.Has(fsnotify.Write) {
-				continue
-			}
-			pf, err := p.promptManager.Load(ctx, promptPath)
-			if err != nil {
-				continue
-			}
-			if pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
-				*cancelled = true
-				slog.Info("prompt cancelled, stopping container",
-					"file", filepath.Base(promptPath),
-					"container", containerName,
-				)
-				p.executor.StopAndRemoveContainer(ctx, containerName.String())
-				execCancel()
-				return
-			}
-		}
-	}
 }
 
 // hasPendingVerification returns true if any prompt in queueDir has pending_verification status.

@@ -1,6 +1,11 @@
 ---
-status: idea
+status: committing
+summary: Replaced NewProcessor primitive parameters with named types (ProjectName, ContainerName, BaseName, Dirs, Commands, MaxContainers, DirtyFileThreshold, AutoRetryLimit, AdditionalInstructions, VerificationGate); moved sanitizeContainerName to ContainerName.Sanitize() method; updated WorkflowExecutor interface and all implementations; updated factory.go, tests, and mocks.
+container: dark-factory-338-processor-typed-primitives
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:21:00Z"
+queued: "2026-04-25T14:50:10Z"
+started: "2026-04-25T14:50:11Z"
 ---
 
 <summary>
@@ -20,7 +25,7 @@ Make the processor's many same-typed arguments self-documenting and swap-resista
 Read `CLAUDE.md` for project conventions.
 Read `go-composition.md` in `~/.claude/plugins/marketplaces/coding/docs/`.
 
-Current `NewProcessor` signature (`pkg/processor/processor.go` line 78) takes 25+ raw `string` / `int` / `bool` parameters. Adjacent same-typed args mean the compiler can't catch swapped order. Example:
+Current `NewProcessor` (`pkg/processor/processor.go`, near the top of the file) takes 25+ raw `string` / `int` / `bool` parameters. Adjacent same-typed args mean the compiler can't catch swapped order:
 
 ```go
 queueDir string,
@@ -30,7 +35,9 @@ projectName string,
 // ... swap any two and it compiles fine
 ```
 
-Current `sanitizeContainerName` is a package-level free function (line ~1349) called only from `computePromptMetadata` (line ~1274).
+Current `sanitizeContainerName` is a package-level free function called only from `computePromptMetadata`. Both live in `pkg/processor/processor.go` — locate by symbol name, not line number, since the file changes frequently.
+
+`sanitizeContainerNameRegexp` is a package-level `var` — keep it package-private; do not introduce test hooks that swap it (see `go-composition.md` "Test-Only Package-Level Mutable State").
 
 Naming conventions (Go community + this codebase): named types are PascalCase, singular, in the package they belong to. Group structs use named-field initialization at construction so positional swaps are impossible.
 </context>
@@ -59,7 +66,7 @@ Choose the package per type ownership:
   }
   ```
 
-- `pkg/container/name.go` (NEW package + file) OR `pkg/processor/container_name.go` (NEW file in processor pkg, your call — pick the location that keeps `ContainerName` reusable):
+- `pkg/processor/container_name.go` (NEW file in processor pkg — keeps the type internal until a second consumer needs it):
   ```go
   type ContainerName string
   type BaseName string
@@ -118,7 +125,10 @@ Pass typed values into `NewProcessor`.
 
 - All tests constructing `NewProcessor` directly need updating to the new types
 - Mocks regenerated via `make generate`
-- Add a small `pkg/processor/types_test.go` (or wherever ContainerName lives) covering `ContainerName.Sanitize()` behaviour previously tested via `sanitizeContainerName`
+- Add `pkg/processor/container_name_test.go` covering `ContainerName.Sanitize()`. Boundary tests required (per dod.md "Test the boundaries"):
+  - Behaviour previously tested via `sanitizeContainerName` (slashes, spaces, unicode → all replaced)
+  - **Docker name regex contract**: `Sanitize()` output matches `^[a-zA-Z0-9][a-zA-Z0-9_.-]*$` (Docker's container-name rule). Test pathological inputs: leading dash, leading dot, leading underscore, empty, all-special-chars. If `Sanitize()` can produce a leading dash or dot (current sanitizer only filters chars), explicitly assert that — and either fix sanitizer to prepend a safe prefix or document the contract limitation.
+- Existing tests for `computePromptMetadata` keep passing (signature changed but behaviour is identical).
 
 ## 6. CHANGELOG
 
@@ -144,6 +154,8 @@ Must exit 0.
 - Argument REORDERING is OUT OF SCOPE — separate prompt handles that
 - Types must be used everywhere — no unwrapping to raw strings inside processor
 - At boundaries (exec, docker, log fields), explicit `.String()` or conversions are fine
+- **No `Validate()` / `Parse()` methods on the new types** — sanitization happens in `ContainerName.Sanitize()` only; other types are zero-validation alias types. If validation is needed later, add it in a follow-up prompt with a clear contract.
+- `sanitizeContainerNameRegexp` stays package-private; do NOT add a test setter or swap helper (anti-pattern per `go-composition.md`)
 - External test packages where applicable
 - Coverage ≥80% on changed packages
 - `errors.Wrap` / `errors.Wrapf` from `github.com/bborbe/errors` for any new errors
@@ -161,7 +173,7 @@ cd /workspace
 grep -n "ProjectName\|ContainerName\|processor\.Dirs\|processor\.Commands" pkg/processor/processor.go
 
 # Factory passes typed values
-grep -n "processor.Dirs{\|processor.Commands{" pkg/factory/
+grep -rn "processor.Dirs{\|processor.Commands{" pkg/factory/
 
 # Sanitize method exists
 grep -rn "func (.*ContainerName) Sanitize" pkg/

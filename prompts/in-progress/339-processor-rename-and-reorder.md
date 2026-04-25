@@ -1,6 +1,7 @@
 ---
-status: idea
+status: approved
 created: "2026-04-25T14:22:00Z"
+queued: "2026-04-25T14:50:10Z"
 ---
 
 <summary>
@@ -19,10 +20,12 @@ Final polish pass on `NewProcessor` signature and internal naming after the type
 
 Read `CLAUDE.md` for project conventions.
 
-Current shape (`pkg/processor/processor.go`):
-- `ready <-chan struct{}` at line 87 — fed by the watcher, consumed in the `Process` event loop at line 214 (`case <-p.ready:`). Recurring signal, not a one-shot.
-- `var errPreflightSkip = stderrors.New(...)` at line 57 — sentinel matched by `stderrors.Is(err, errPreflightSkip)` in `processSingleQueued` at line 585. Tests cannot match this from an external test package.
+Current shape (`pkg/processor/processor.go` — locate by symbol name, not line number, since the file changes frequently):
+- `ready <-chan struct{}` parameter on `NewProcessor` and `ready` field on the `processor` struct — fed by the watcher, consumed in the `Process` event loop's `case <-p.ready:`. Recurring signal, not a one-shot.
+- `var errPreflightSkip = stderrors.New(...)` — package-private sentinel matched by `stderrors.Is(err, errPreflightSkip)` at multiple call sites. Returned from `runPreflight` (or whichever helper checks the preflight gate; locate by `return errPreflightSkip`). Tests cannot match this from an external test package.
 - Constructor argument order intermixes services and configuration values — convention is services / interfaces FIRST, primitive / config types SECOND.
+
+Producer side of the `ready` channel lives in `pkg/factory/factory.go`: search for `ready := make(chan struct{}` and pass-through wiring through `CreateProcessor`, `CreateRunner`, `CreateOneShotRunner`, watcher constructors, etc. ALL of these need the rename.
 </context>
 
 <requirements>
@@ -48,8 +51,8 @@ The semantic is unchanged: a producer signals on the channel; the daemon loop wa
 In `pkg/processor/processor.go`:
 - `var errPreflightSkip` → `var ErrPreflightSkip`
 - Update the doc comment to start with `ErrPreflightSkip is returned …`
-- Update both internal `stderrors.Is(err, errPreflightSkip)` call sites to use the exported name
-- Update the `return errPreflightSkip` statement in `checkPreflightConditions`
+- Update ALL `stderrors.Is(err, errPreflightSkip)` call sites to use the exported name (find via `grep -n errPreflightSkip pkg/processor/processor.go`)
+- Update ALL `return errPreflightSkip` statements (multiple — find via the same grep)
 
 ## 3. Reorder `NewProcessor` arguments
 
@@ -83,6 +86,10 @@ Typed config / values (group B):
 - `AutoRetryLimit`
 - `MaxPromptDuration` (`time.Duration`)
 - `VerificationGate`
+- `queueInterval`, `sweepInterval` (`time.Duration`)
+- `onIdle NothingToDoCallback`
+
+**Fallback rule**: if the typed-primitives prompt did NOT introduce any of these named types (e.g., `MaxContainers` is still a plain `int`), KEEP the parameter as its current primitive type and place it in group B anyway. Do not invent types here — that work belongs in the previous prompt.
 
 Update:
 - `NewProcessor` parameter list
@@ -122,13 +129,20 @@ Must exit 0.
 ```bash
 cd /workspace
 
-# Rename complete
-! grep -n "p\.ready\|ready <-chan struct{}\|ready:" pkg/processor/processor.go
-grep -n "p\.wakeup\|wakeup <-chan struct{}" pkg/processor/processor.go
+# Rename complete in processor pkg AND its tests
+! grep -rn "p\.ready\b\|\bready <-chan struct{}" pkg/processor/
+grep -rn "p\.wakeup\b\|wakeup <-chan struct{}" pkg/processor/
 
-# Export complete
-! grep -n "errPreflightSkip" pkg/processor/processor.go
-grep -n "ErrPreflightSkip" pkg/processor/processor.go
+# Rename complete in factory + producer side
+! grep -n "\\bready\\b" pkg/factory/factory.go
+grep -n "\\bwakeup\\b" pkg/factory/factory.go
+
+# No straggler ready references project-wide (excluding generated mocks and unrelated identifiers)
+! grep -rn "ready <-chan struct{}\|wakeup chan" pkg/ main.go | grep -v _test.go | grep -v mocks/
+
+# Export complete (lowercase form gone everywhere in processor)
+! grep -rn "errPreflightSkip" pkg/processor/
+grep -rn "ErrPreflightSkip" pkg/processor/
 
 # Constructor order: first interface-typed param appears before first primitive-typed param
 # (manual eyeball — automated check is fragile; rely on reviewer reading NewProcessor signature)

@@ -33,7 +33,7 @@ func NewWorktreeWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 // Setup syncs with remote, creates a worktree, and chdirs into it.
 func (e *worktreeWorkflowExecutor) Setup(
 	ctx context.Context,
-	baseName string,
+	baseName BaseName,
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
@@ -42,10 +42,14 @@ func (e *worktreeWorkflowExecutor) Setup(
 
 	branch := pf.Branch()
 	if branch == "" {
-		branch = "dark-factory/" + baseName
+		branch = "dark-factory/" + string(baseName)
 	}
 	e.branchName = branch
-	e.worktreePath = filepath.Join(os.TempDir(), "dark-factory", e.deps.ProjectName+"-"+baseName)
+	e.worktreePath = filepath.Join(
+		os.TempDir(),
+		"dark-factory",
+		string(e.deps.ProjectName)+"-"+string(baseName),
+	)
 
 	originalDir, err := os.Getwd()
 	if err != nil {
@@ -125,16 +129,20 @@ func (e *worktreeWorkflowExecutor) Complete(
 // ReconstructState checks if the worktree directory still exists for resume.
 func (e *worktreeWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	baseName string,
+	baseName BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
-	worktreePath := filepath.Join(os.TempDir(), "dark-factory", e.deps.ProjectName+"-"+baseName)
+	worktreePath := filepath.Join(
+		os.TempDir(),
+		"dark-factory",
+		string(e.deps.ProjectName)+"-"+string(baseName),
+	)
 	if _, err := os.Stat(worktreePath); err != nil {
 		return false, nil // worktree missing — signal reset-to-approved
 	}
 	branch := pf.Branch()
 	if branch == "" {
-		branch = "dark-factory/" + baseName
+		branch = "dark-factory/" + string(baseName)
 	}
 	e.branchName = branch
 	e.worktreePath = worktreePath

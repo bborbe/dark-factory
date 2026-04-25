@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.5
+
+- refactor: NewProcessor primitive parameters replaced with named types (ProjectName, ContainerName, Dirs, Commands, MaxContainers, DirtyFileThreshold, AutoRetryLimit, AdditionalInstructions, VerificationGate) — purely internal, no behaviour change
+
 ## v0.135.4
 
 - refactor: unify daemon and one-shot processor loops via `NothingToDoCallback` constructor parameter; `processor.ProcessQueue` removed from interface and implementation; one-shot mode's manual loop in `pkg/runner/oneshot.go` replaced by `processor.Process` with a cancel-on-idle callback; daemon mode logs "nothing to do, waiting for changes" on idle ticks

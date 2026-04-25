@@ -251,28 +251,6 @@ var _ = Describe("DetermineBumpFromChangelog", func() {
 	})
 })
 
-var _ = Describe("sanitizeContainerName", func() {
-	It("keeps valid characters", func() {
-		name := sanitizeContainerName("abc-123_XYZ")
-		Expect(name).To(Equal("abc-123_XYZ"))
-	})
-
-	It("replaces special characters with hyphens", func() {
-		name := sanitizeContainerName("test@file#name")
-		Expect(name).To(Equal("test-file-name"))
-	})
-
-	It("handles spaces", func() {
-		name := sanitizeContainerName("hello world")
-		Expect(name).To(Equal("hello-world"))
-	})
-
-	It("handles multiple consecutive special characters", func() {
-		name := sanitizeContainerName("test@@##name")
-		Expect(name).To(Equal("test----name"))
-	})
-})
-
 var _ = Describe("autoSetQueuedStatus", func() {
 	var (
 		ctx context.Context
@@ -531,8 +509,7 @@ var _ = Describe("ResumeExecuting", func() {
 		mgr = &stubManager{}
 
 		proc = &processor{
-			queueDir:         queueDir,
-			logDir:           logDir,
+			dirs:             Dirs{Queue: queueDir, Log: logDir},
 			projectName:      "test-project",
 			executor:         fakeExec,
 			promptManager:    mgr,
@@ -549,7 +526,7 @@ var _ = Describe("ResumeExecuting", func() {
 
 	Context("when queueDir does not exist", func() {
 		It("returns nil without error", func() {
-			proc.queueDir = filepath.Join(tempDir, "nonexistent")
+			proc.dirs.Queue = filepath.Join(tempDir, "nonexistent")
 			err := proc.ResumeExecuting(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeExec.reattachCallCount).To(Equal(0))
@@ -2772,8 +2749,7 @@ var _ = Describe("ResumeCommitting", func() {
 		rel = &stubWorkflowReleaser{}
 
 		proc = &processor{
-			queueDir:       queueDir,
-			completedDir:   completedDir,
+			dirs:           Dirs{Queue: queueDir, Completed: completedDir},
 			promptManager:  mgr,
 			releaser:       rel,
 			autoCompleter:  &stubAutoCompleter{},

@@ -28,7 +28,7 @@ type WorkflowExecutor interface {
 	// For branch: creates or switches to the feature branch in-place.
 	// For direct: no-op.
 	// Returns a wrapped error on failure; partial setup is cleaned up before returning.
-	Setup(ctx context.Context, baseName string, pf *prompt.PromptFile) error
+	Setup(ctx context.Context, baseName BaseName, pf *prompt.PromptFile) error
 
 	// CleanupOnError undoes any environment setup performed by Setup when
 	// execution or post-execution fails. Idempotent — safe to call if Setup was
@@ -57,7 +57,7 @@ type WorkflowExecutor interface {
 	// unexpected filesystem failures.
 	ReconstructState(
 		ctx context.Context,
-		baseName string,
+		baseName BaseName,
 		pf *prompt.PromptFile,
 	) (canResume bool, err error)
 }
@@ -67,7 +67,7 @@ type WorkflowExecutor interface {
 // unused fields are nil and must not be dereferenced by implementations that do not
 // need them.
 type WorkflowDeps struct {
-	ProjectName   string
+	ProjectName   ProjectName
 	PromptManager PromptManager
 	AutoCompleter spec.AutoCompleter
 	Releaser      git.Releaser

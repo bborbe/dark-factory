@@ -33,7 +33,7 @@ func NewCloneWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 // Setup syncs with remote, creates a clone, and chdirs into it.
 func (e *cloneWorkflowExecutor) Setup(
 	ctx context.Context,
-	baseName string,
+	baseName BaseName,
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
@@ -43,9 +43,13 @@ func (e *cloneWorkflowExecutor) Setup(
 	if branch := pf.Branch(); branch != "" {
 		e.branchName = branch
 	} else {
-		e.branchName = "dark-factory/" + baseName
+		e.branchName = "dark-factory/" + string(baseName)
 	}
-	e.clonePath = filepath.Join(os.TempDir(), "dark-factory", e.deps.ProjectName+"-"+baseName)
+	e.clonePath = filepath.Join(
+		os.TempDir(),
+		"dark-factory",
+		string(e.deps.ProjectName)+"-"+string(baseName),
+	)
 
 	originalDir, err := os.Getwd()
 	if err != nil {
@@ -125,17 +129,21 @@ func (e *cloneWorkflowExecutor) Complete(
 // ReconstructState checks if the clone directory still exists for resume.
 func (e *cloneWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	baseName string,
+	baseName BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
-	clonePath := filepath.Join(os.TempDir(), "dark-factory", e.deps.ProjectName+"-"+baseName)
+	clonePath := filepath.Join(
+		os.TempDir(),
+		"dark-factory",
+		string(e.deps.ProjectName)+"-"+string(baseName),
+	)
 	if _, err := os.Stat(clonePath); err != nil {
 		return false, nil // clone missing — signal reset-to-approved
 	}
 	if branch := pf.Branch(); branch != "" {
 		e.branchName = branch
 	} else {
-		e.branchName = "dark-factory/" + baseName
+		e.branchName = "dark-factory/" + string(baseName)
 	}
 	e.clonePath = clonePath
 	originalDir, err := os.Getwd()

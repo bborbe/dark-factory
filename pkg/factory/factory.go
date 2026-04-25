@@ -273,7 +273,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		currentDateTimeGetter,
 	)
 	versionGetter := version.NewGetter(ver)
-	projectName := project.Name(cfg.ProjectName)
+	projectName := processor.ProjectName(project.Name(cfg.ProjectName))
 	ready := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
@@ -297,7 +297,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 
 	var poller review.ReviewPoller
 	if cfg.AutoReview {
-		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n)
+		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName.String(), n)
 	}
 
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -328,7 +328,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 				cfg.ParsedPreflightInterval(),
 				projectRoot,
 				n,
-				projectName,
+				projectName.String(),
 			)
 		}
 	}
@@ -372,7 +372,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
-		specWatcher, projectName,
+		specWatcher, projectName.String(),
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
 		releaser,
@@ -401,7 +401,7 @@ func CreateOneShotRunner(
 	promptManager, releaser := createPromptManager(
 		inboxDir, inProgressDir, completedDir, currentDateTimeGetter)
 	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
-	projectName := project.Name(cfg.ProjectName)
+	projectName := processor.ProjectName(project.Name(cfg.ProjectName))
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -431,7 +431,7 @@ func CreateOneShotRunner(
 				cfg.ParsedPreflightInterval(),
 				projectRoot,
 				n,
-				projectName,
+				projectName.String(),
 			)
 		}
 	}
@@ -630,13 +630,13 @@ func createAutoCompleter(
 	inProgressDir, completedDir string,
 	specsInboxDir, specsInProgressDir, specsCompletedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	projectName string,
+	projectName processor.ProjectName,
 	n notifier.Notifier,
 ) spec.AutoCompleter {
 	return spec.NewAutoCompleter(
 		inProgressDir, completedDir,
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
-		currentDateTimeGetter, projectName, n,
+		currentDateTimeGetter, projectName.String(), n,
 	)
 }
 
@@ -650,7 +650,7 @@ func CreateWorkflowExecutor(
 	autoMerge bool,
 	autoRelease bool,
 	autoReview bool,
-	projectName string,
+	projectName processor.ProjectName,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
@@ -689,7 +689,7 @@ func CreateProcessor(
 	inProgressDir string,
 	completedDir string,
 	logDir string,
-	projectName string,
+	projectName processor.ProjectName,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
@@ -729,6 +729,16 @@ func CreateProcessor(
 	sweepInterval time.Duration,
 	onIdle processor.NothingToDoCallback,
 ) processor.Processor {
+	dirs := processor.Dirs{
+		Queue:     inProgressDir,
+		Completed: completedDir,
+		Log:       logDir,
+	}
+	cmds := processor.Commands{
+		Validation:       validationCommand,
+		ValidationPrompt: validationPrompt,
+		Test:             testCommand,
+	}
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
@@ -740,13 +750,11 @@ func CreateProcessor(
 		projectName, promptManager, releaser, autoCompleter,
 	)
 	return processor.NewProcessor(
-		inProgressDir,
-		completedDir,
-		logDir,
+		dirs,
 		projectName,
 		executor.NewDockerExecutor(
 			containerImage,
-			projectName,
+			projectName.String(),
 			model,
 			netrcFile,
 			gitconfigFile,
@@ -771,20 +779,18 @@ func CreateProcessor(
 			specsCompletedDir,
 			specsRejectedDir,
 		),
-		validationCommand,
-		validationPrompt,
-		testCommand,
-		verificationGate,
+		cmds,
+		processor.VerificationGate(verificationGate),
 		n,
 		containerCounter,
-		maxContainers,
-		additionalInstructions,
+		processor.MaxContainers(maxContainers),
+		processor.AdditionalInstructions(additionalInstructions),
 		containerLock,
 		containerChecker,
-		dirtyFileThreshold,
+		processor.DirtyFileThreshold(dirtyFileThreshold),
 		dirtyFileChecker,
 		gitLockChecker,
-		autoRetryLimit,
+		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
 		queueInterval,
 		sweepInterval,

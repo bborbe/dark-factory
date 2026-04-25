@@ -32,78 +32,86 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
+// newTestWorkflowExecutor builds a WorkflowExecutor from the given mocks and workflow type.
+func newTestWorkflowExecutor(
+	workflow config.Workflow, pr, autoMerge, autoRelease, autoReview bool,
+	projectName string, mgr *mocks.ProcessorPromptManager, rel *mocks.Releaser,
+	autoCompleter spec.AutoCompleter, brancher *mocks.Brancher, prCreator *mocks.PRCreator,
+	cloner *mocks.Cloner, worktreer *mocks.Worktreer, prMerger *mocks.PRMerger,
+) processor.WorkflowExecutor {
+	deps := processor.WorkflowDeps{
+		ProjectName: processor.ProjectName(projectName), PromptManager: mgr,
+		AutoCompleter: autoCompleter, Releaser: rel, Brancher: brancher,
+		PRCreator: prCreator, Cloner: cloner, Worktreer: worktreer, PRMerger: prMerger,
+		PR: pr, AutoMerge: autoMerge, AutoReview: autoReview, AutoRelease: autoRelease,
+	}
+	switch workflow {
+	case config.WorkflowClone:
+		return processor.NewCloneWorkflowExecutor(deps)
+	case config.WorkflowWorktree:
+		return processor.NewWorktreeWorkflowExecutor(deps)
+	case config.WorkflowBranch:
+		return processor.NewBranchWorkflowExecutor(deps)
+	default:
+		return processor.NewDirectWorkflowExecutor(deps)
+	}
+}
+
 // newTestProcessor creates a Processor using the legacy parameter style, building
 // a real WorkflowExecutor from the supplied git mocks. This keeps existing tests
 // working after the WorkflowExecutor refactoring without rewriting every call site.
 func newTestProcessor(
 	queueDir, completedDir, logDir, projectName string,
-	exec *mocks.Executor,
-	mgr *mocks.ProcessorPromptManager,
-	rel *mocks.Releaser,
-	vg *mocks.VersionGetter,
-	ready <-chan struct{},
-	pr bool,
-	workflow config.Workflow,
-	brancher *mocks.Brancher,
-	prCreator *mocks.PRCreator,
-	cloner *mocks.Cloner,
-	worktreer *mocks.Worktreer,
-	prMerger *mocks.PRMerger,
+	exec *mocks.Executor, mgr *mocks.ProcessorPromptManager, rel *mocks.Releaser,
+	vg *mocks.VersionGetter, ready <-chan struct{}, pr bool, workflow config.Workflow,
+	brancher *mocks.Brancher, prCreator *mocks.PRCreator, cloner *mocks.Cloner,
+	worktreer *mocks.Worktreer, prMerger *mocks.PRMerger,
 	autoMerge, autoRelease, autoReview bool,
-	autoCompleter spec.AutoCompleter,
-	specLister spec.Lister,
+	autoCompleter spec.AutoCompleter, specLister spec.Lister,
 	validationCommand, validationPrompt, testCommand string,
-	verificationGate bool,
-	n notifier.Notifier,
-	containerCounter executor.ContainerCounter,
-	maxContainers int,
-	additionalInstructions string,
-	containerLock containerlock.ContainerLock,
-	containerChecker executor.ContainerChecker,
-	dirtyFileThreshold int,
-	dirtyFileChecker processor.DirtyFileChecker,
-	gitLockChecker processor.GitLockChecker,
-	autoRetryLimit int,
-	maxPromptDuration time.Duration,
-	preflightChecker preflight.Checker,
+	verificationGate bool, n notifier.Notifier,
+	containerCounter executor.ContainerCounter, maxContainers int,
+	additionalInstructions string, containerLock containerlock.ContainerLock,
+	containerChecker executor.ContainerChecker, dirtyFileThreshold int,
+	dirtyFileChecker processor.DirtyFileChecker, gitLockChecker processor.GitLockChecker,
+	autoRetryLimit int, maxPromptDuration time.Duration, preflightChecker preflight.Checker,
 ) processor.Processor {
-	deps := processor.WorkflowDeps{
-		ProjectName:   projectName,
-		PromptManager: mgr,
-		AutoCompleter: autoCompleter,
-		Releaser:      rel,
-		Brancher:      brancher,
-		PRCreator:     prCreator,
-		Cloner:        cloner,
-		Worktreer:     worktreer,
-		PRMerger:      prMerger,
-		PR:            pr,
-		AutoMerge:     autoMerge,
-		AutoReview:    autoReview,
-		AutoRelease:   autoRelease,
-	}
-	var we processor.WorkflowExecutor
-	switch workflow {
-	case config.WorkflowClone:
-		we = processor.NewCloneWorkflowExecutor(deps)
-	case config.WorkflowWorktree:
-		we = processor.NewWorktreeWorkflowExecutor(deps)
-	case config.WorkflowBranch:
-		we = processor.NewBranchWorkflowExecutor(deps)
-	default:
-		we = processor.NewDirectWorkflowExecutor(deps)
-	}
+	we := newTestWorkflowExecutor(
+		workflow, pr, autoMerge, autoRelease, autoReview,
+		projectName, mgr, rel, autoCompleter, brancher, prCreator, cloner, worktreer, prMerger,
+	)
 	return processor.NewProcessor(
-		queueDir, completedDir, logDir, projectName,
-		exec, mgr, rel, vg, ready,
-		we, autoCompleter, specLister,
-		validationCommand, validationPrompt, testCommand,
-		verificationGate,
-		n, containerCounter, maxContainers, additionalInstructions,
-		containerLock, containerChecker,
-		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
-		autoRetryLimit, maxPromptDuration,
-		0, 0, // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
+		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
+		processor.ProjectName(projectName),
+		exec,
+		mgr,
+		rel,
+		vg,
+		ready,
+		we,
+		autoCompleter,
+		specLister,
+		processor.Commands{
+			Validation:       validationCommand,
+			ValidationPrompt: validationPrompt,
+			Test:             testCommand,
+		},
+		processor.VerificationGate(verificationGate),
+		n,
+		containerCounter,
+		processor.MaxContainers(
+			maxContainers,
+		),
+		processor.AdditionalInstructions(additionalInstructions),
+		containerLock,
+		containerChecker,
+		processor.DirtyFileThreshold(dirtyFileThreshold),
+		dirtyFileChecker,
+		gitLockChecker,
+		processor.AutoRetryLimit(autoRetryLimit),
+		maxPromptDuration,
+		0,
+		0, // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		preflightChecker,
 		nil, // onIdle: no-op for tests
 	)
@@ -7289,7 +7297,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			manager.FindCommittingReturns(nil, nil)
 
 			we := processor.NewDirectWorkflowExecutor(processor.WorkflowDeps{
-				ProjectName:   "sweep-test",
+				ProjectName:   processor.ProjectName("sweep-test"),
 				PromptManager: manager,
 				AutoCompleter: realAutoCompleter,
 				Releaser:      releaser,
@@ -7300,22 +7308,37 @@ DARK-FACTORY-REPORT -->`), 0600)
 				PRMerger:      prMerger,
 			})
 			p := processor.NewProcessor(
-				sweepQueueDir,
-				sweepCompletedDir,
-				filepath.Join(sweepTempDir, "log"),
-				"sweep-test",
-				executor, manager, releaser, versionGet, ready,
-				we, realAutoCompleter, realLister,
-				"", "", "",
-				false,
+				processor.Dirs{
+					Queue:     sweepQueueDir,
+					Completed: sweepCompletedDir,
+					Log:       filepath.Join(sweepTempDir, "log"),
+				},
+				processor.ProjectName("sweep-test"),
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				we,
+				realAutoCompleter,
+				realLister,
+				processor.Commands{},
+				processor.VerificationGate(false),
 				notifier.NewMultiNotifier(),
-				nil, 0, "",
-				nil, nil,
-				0, nil, nil,
-				0, 0,
-				0, 20*time.Millisecond, // queueInterval default, sweepInterval 20ms for test speed
-				nil, // preflightChecker
-				nil, // onIdle: no-op for tests
+				nil,
+				processor.MaxContainers(0),
+				processor.AdditionalInstructions(""),
+				nil,
+				nil,
+				processor.DirtyFileThreshold(0),
+				nil,
+				nil,
+				processor.AutoRetryLimit(0),
+				0,
+				0,
+				20*time.Millisecond, // queueInterval default, sweepInterval 20ms for test speed
+				nil,                 // preflightChecker
+				nil,                 // onIdle: no-op for tests
 			)
 
 			sweepCtx, sweepCancel := context.WithCancel(context.Background())

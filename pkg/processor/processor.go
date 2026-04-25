@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -30,8 +29,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
-
-var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
 // errPreflightSkip is returned by processPrompt when the baseline preflight check
 // failed and the prompt should NOT be retried within the same scan cycle.
@@ -75,10 +72,8 @@ func (r tickResult) madeProgress() bool {
 
 // NewProcessor creates a new Processor.
 func NewProcessor(
-	queueDir string,
-	completedDir string,
-	logDir string,
-	projectName string,
+	dirs Dirs,
+	projectName ProjectName,
 	exec executor.Executor,
 	promptManager PromptManager,
 	releaser git.Releaser,
@@ -87,20 +82,18 @@ func NewProcessor(
 	workflowExecutor WorkflowExecutor,
 	autoCompleter spec.AutoCompleter,
 	specLister spec.Lister,
-	validationCommand string,
-	validationPrompt string,
-	testCommand string,
-	verificationGate bool,
+	cmds Commands,
+	verificationGate VerificationGate,
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
-	maxContainers int,
-	additionalInstructions string,
+	maxContainers MaxContainers,
+	additionalInstructions AdditionalInstructions,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
-	dirtyFileThreshold int,
+	dirtyFileThreshold DirtyFileThreshold,
 	dirtyFileChecker DirtyFileChecker,
 	gitLockChecker GitLockChecker,
-	autoRetryLimit int,
+	autoRetryLimit AutoRetryLimit,
 	maxPromptDuration time.Duration,
 	// queueInterval controls how often the daemon polls for queued prompts.
 	// Pass 0 to use the default of 5s.
@@ -124,9 +117,7 @@ func NewProcessor(
 		onIdle = func(_ context.Context, _ context.CancelFunc) {}
 	}
 	return &processor{
-		queueDir:               queueDir,
-		completedDir:           completedDir,
-		logDir:                 logDir,
+		dirs:                   dirs,
 		projectName:            projectName,
 		executor:               exec,
 		promptManager:          promptManager,
@@ -136,9 +127,7 @@ func NewProcessor(
 		workflowExecutor:       workflowExecutor,
 		autoCompleter:          autoCompleter,
 		specLister:             specLister,
-		validationCommand:      validationCommand,
-		validationPrompt:       validationPrompt,
-		testCommand:            testCommand,
+		cmds:                   cmds,
 		verificationGate:       verificationGate,
 		skippedPrompts:         make(map[string]libtime.DateTime),
 		notifier:               n,
@@ -162,10 +151,8 @@ func NewProcessor(
 
 // processor implements Processor.
 type processor struct {
-	queueDir               string
-	completedDir           string
-	logDir                 string
-	projectName            string
+	dirs                   Dirs
+	projectName            ProjectName
 	executor               executor.Executor
 	promptManager          PromptManager
 	releaser               git.Releaser
@@ -174,23 +161,21 @@ type processor struct {
 	workflowExecutor       WorkflowExecutor
 	autoCompleter          spec.AutoCompleter
 	specLister             spec.Lister
-	validationCommand      string
-	validationPrompt       string
-	testCommand            string
-	verificationGate       bool
+	cmds                   Commands
+	verificationGate       VerificationGate
 	skippedPrompts         map[string]libtime.DateTime // filename → mod time when skipped
 	notifier               notifier.Notifier
 	containerCounter       executor.ContainerCounter
-	maxContainers          int
+	maxContainers          MaxContainers
 	containerPollInterval  time.Duration
-	additionalInstructions string
+	additionalInstructions AdditionalInstructions
 	containerLock          containerlock.ContainerLock
 	containerChecker       executor.ContainerChecker
-	dirtyFileThreshold     int
+	dirtyFileThreshold     DirtyFileThreshold
 	dirtyFileChecker       DirtyFileChecker
 	gitLockChecker         GitLockChecker
 	lastBlockedMsg         string
-	autoRetryLimit         int
+	autoRetryLimit         AutoRetryLimit
 	maxPromptDuration      time.Duration
 	queueInterval          time.Duration
 	sweepInterval          time.Duration
@@ -290,7 +275,7 @@ func (p *processor) runSweepTick(ctx context.Context) bool {
 // ResumeExecuting resumes any prompts still in "executing" state on startup.
 // Called once by the runner before the normal event loop begins.
 func (p *processor) ResumeExecuting(ctx context.Context) error {
-	entries, err := os.ReadDir(p.queueDir)
+	entries, err := os.ReadDir(p.dirs.Queue)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -301,7 +286,7 @@ func (p *processor) ResumeExecuting(ctx context.Context) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		promptPath := filepath.Join(p.queueDir, entry.Name())
+		promptPath := filepath.Join(p.dirs.Queue, entry.Name())
 		if err := p.resumePrompt(ctx, promptPath); err != nil {
 			return errors.Wrap(ctx, err, "resume prompt")
 		}
@@ -339,7 +324,7 @@ func (p *processor) processCommittingPrompts(ctx context.Context) {
 // If no dirty files exist, the code was already committed — only the prompt move is needed.
 func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath string) error {
 	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
+	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
 
 	pf, err := p.promptManager.Load(ctx, promptPath)
 	if err != nil {
@@ -425,7 +410,7 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 		return p.killTimedOutContainer(ctx, pf, containerName, elapsed)
 	}
 
-	if err := p.executor.Reattach(ctx, logFile, containerName, remainingDuration); err != nil {
+	if err := p.executor.Reattach(ctx, logFile, containerName.String(), remainingDuration); err != nil {
 		return errors.Wrap(ctx, err, "reattach to container")
 	}
 
@@ -438,7 +423,7 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 	}
 
 	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.completedDir, filepath.Base(promptPath))
+	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
 
 	completionReport, err := validateCompletionReport(ctx, logFile)
 	if err != nil {
@@ -460,7 +445,7 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 func (p *processor) prepareResume(
 	ctx context.Context,
 	promptPath string,
-) (*prompt.PromptFile, string, string, string, string, error) {
+) (*prompt.PromptFile, ContainerName, BaseName, string, string, error) {
 	pf, err := p.promptManager.Load(ctx, promptPath)
 	if err != nil {
 		return nil, "", "", "", "", errors.Wrap(ctx, err, "load prompt for resume")
@@ -469,7 +454,7 @@ func (p *processor) prepareResume(
 		return nil, "", "", "", "", nil // not executing — skip
 	}
 
-	containerName := pf.Frontmatter.Container
+	containerName := ContainerName(pf.Frontmatter.Container)
 	if containerName == "" {
 		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
 			"file", filepath.Base(promptPath))
@@ -481,13 +466,13 @@ func (p *processor) prepareResume(
 	}
 
 	baseName, _ := computePromptMetadata(promptPath, p.projectName)
-	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
+	logFile, err := filepath.Abs(filepath.Join(p.dirs.Log, string(baseName)+".log"))
 	if err != nil {
 		return nil, "", "", "", "", errors.Wrap(ctx, err, "resolve log file path for resume")
 	}
 	title := pf.Title()
 	if title == "" {
-		title = baseName
+		title = string(baseName)
 	}
 	return pf, containerName, baseName, logFile, title, nil
 }
@@ -497,14 +482,14 @@ func (p *processor) prepareResume(
 func (p *processor) killTimedOutContainer(
 	ctx context.Context,
 	pf *prompt.PromptFile,
-	containerName string,
+	containerName ContainerName,
 	elapsed time.Duration,
 ) error {
 	slog.Warn("container exceeded maxPromptDuration, killing without reattach",
 		"container", containerName,
 		"started", pf.Frontmatter.Started,
 		"elapsed", elapsed)
-	p.executor.StopAndRemoveContainer(ctx, containerName)
+	p.executor.StopAndRemoveContainer(ctx, containerName.String())
 	pf.SetLastFailReason(fmt.Sprintf("prompt timed out after %s (detected on reattach)", elapsed))
 	pf.MarkFailed()
 	if saveErr := pf.Save(ctx); saveErr != nil {
@@ -617,7 +602,7 @@ func (p *processor) processSingleQueued(ctx context.Context) (bool, error) {
 		return false, nil // re-queued or permanently failed — process next prompt
 	}
 
-	slog.Info("watching for queued prompts", "dir", p.queueDir)
+	slog.Info("watching for queued prompts", "dir", p.dirs.Queue)
 	return false, nil
 }
 
@@ -742,7 +727,7 @@ func (p *processor) checkPostExecutionFailure(
 	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
 		return nil
 	}
-	completedFilePath := filepath.Join(p.completedDir, filepath.Base(path))
+	completedFilePath := filepath.Join(p.dirs.Completed, filepath.Base(path))
 	if _, cStatErr := os.Stat(completedFilePath); cStatErr != nil {
 		return nil
 	}
@@ -768,7 +753,7 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 	reason := err.Error()
 	pf.SetLastFailReason(reason)
 
-	if p.autoRetryLimit > 0 && pf.RetryCount() < p.autoRetryLimit {
+	if p.autoRetryLimit > 0 && pf.RetryCount() < int(p.autoRetryLimit) {
 		// Re-queue with incremented retry count
 		pf.Frontmatter.RetryCount++
 		pf.MarkApproved()
@@ -800,7 +785,7 @@ func (p *processor) handlePromptFailure(ctx context.Context, path string, err er
 // notifyFailed fires a notification for a failed prompt.
 func (p *processor) notifyFailed(ctx context.Context, path string) {
 	_ = p.notifier.Notify(ctx, notifier.Event{
-		ProjectName: p.projectName,
+		ProjectName: p.projectName.String(),
 		EventType:   "prompt_failed",
 		PromptName:  filepath.Base(path),
 	})
@@ -815,7 +800,7 @@ func (p *processor) notifyFromReport(ctx context.Context, logFile string, prompt
 	}
 	if completionReport.Status == "partial" {
 		_ = p.notifier.Notify(ctx, notifier.Event{
-			ProjectName: p.projectName,
+			ProjectName: p.projectName.String(),
 			EventType:   "prompt_partial",
 			PromptName:  filepath.Base(promptPath),
 		})
@@ -860,7 +845,7 @@ func (p *processor) waitForContainerSlot(ctx context.Context) error {
 			slog.Warn("failed to count running containers, proceeding anyway", "error", err)
 			return nil
 		}
-		if count < p.maxContainers {
+		if count < int(p.maxContainers) {
 			return nil
 		}
 		slog.Info(
@@ -890,7 +875,7 @@ func (p *processor) hasFreeSlot(ctx context.Context) bool {
 		slog.Warn("failed to count running containers, proceeding anyway", "error", err)
 		return true
 	}
-	return count < p.maxContainers
+	return count < int(p.maxContainers)
 }
 
 // prepareContainerSlot acquires the global container lock only for the
@@ -954,14 +939,18 @@ func (p *processor) prepareContainerSlot(ctx context.Context) (func(), error) {
 // while the caller continues with prompt execution. release() is deferred to
 // guarantee the lock is always freed, even if ctx is cancelled before
 // WaitUntilRunning returns (e.g. on shutdown).
-func (p *processor) startContainerLockRelease(ctx context.Context, name string, release func()) {
+func (p *processor) startContainerLockRelease(
+	ctx context.Context,
+	name ContainerName,
+	release func(),
+) {
 	if p.containerChecker == nil {
 		return
 	}
 	cc := p.containerChecker
 	go func() {
 		defer release()
-		_ = cc.WaitUntilRunning(ctx, name, 30*time.Second)
+		_ = cc.WaitUntilRunning(ctx, name.String(), 30*time.Second)
 	}()
 }
 
@@ -976,7 +965,7 @@ func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(ctx, err, "count dirty files")
 	}
-	if count > p.dirtyFileThreshold {
+	if count > int(p.dirtyFileThreshold) {
 		slog.Warn(
 			"dirty file threshold exceeded, skipping prompt",
 			"dirtyFiles", count,
@@ -1048,7 +1037,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	slog.Info("executing prompt", "title", title)
 
 	// Derive log file path before Setup, which may os.Chdir to clone/worktree dir.
-	logFile, err := filepath.Abs(filepath.Join(p.logDir, baseName+".log"))
+	logFile, err := filepath.Abs(filepath.Join(p.dirs.Log, string(baseName)+".log"))
 	if err != nil {
 		return errors.Wrap(ctx, err, "resolve log file path")
 	}
@@ -1063,7 +1052,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	defer p.workflowExecutor.CleanupOnError(ctx)
 
 	// Persist container name and version AFTER sync succeeds (so resume can find the container).
-	pf.PrepareForExecution(containerName, p.versionGetter.Get())
+	pf.PrepareForExecution(containerName.String(), p.versionGetter.Get())
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt metadata")
 	}
@@ -1087,7 +1076,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.completedDir, filepath.Base(pr.Path))
+	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(pr.Path))
 
 	// Verification gate: pause before git operations if enabled
 	if p.verificationGate {
@@ -1113,13 +1102,15 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 // the prompt was cancelled by the user and any execution error.
 func (p *processor) runContainer(
 	ctx context.Context,
-	content, logFile, containerName, promptPath string,
+	content, logFile string,
+	containerName ContainerName,
+	promptPath string,
 ) (cancelled bool, err error) {
 	execCtx, execCancel := context.WithCancel(ctx)
 	var cancelledByUser bool
 	go p.watchForCancellation(execCtx, execCancel, promptPath, containerName, &cancelledByUser)
 
-	execErr := p.executor.Execute(execCtx, content, logFile, containerName)
+	execErr := p.executor.Execute(execCtx, content, logFile, containerName.String())
 	execCancel() // always stop the watcher goroutine
 
 	if cancelledByUser {
@@ -1145,7 +1136,7 @@ func (p *processor) runContainer(
 // enrichPromptContent prepends additionalInstructions and appends machine-parseable suffixes and project-level validation to prompt content.
 func (p *processor) enrichPromptContent(ctx context.Context, content string) string {
 	if p.additionalInstructions != "" {
-		content = p.additionalInstructions + "\n\n" + content
+		content = p.additionalInstructions.String() + "\n\n" + content
 	}
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
@@ -1154,15 +1145,15 @@ func (p *processor) enrichPromptContent(ctx context.Context, content string) str
 		content = content + report.ChangelogSuffix()
 	}
 	// Inject project-level test command for fast iteration feedback
-	if p.testCommand != "" {
-		content = content + report.TestCommandSuffix(p.testCommand)
+	if p.cmds.Test != "" {
+		content = content + report.TestCommandSuffix(p.cmds.Test)
 	}
 	// Inject project-level validation command (overrides prompt-level <verification>)
-	if p.validationCommand != "" {
-		content = content + report.ValidationSuffix(p.validationCommand)
+	if p.cmds.Validation != "" {
+		content = content + report.ValidationSuffix(p.cmds.Validation)
 	}
 	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
-	if criteria, ok := resolveValidationPrompt(ctx, p.validationPrompt); ok {
+	if criteria, ok := resolveValidationPrompt(ctx, p.cmds.ValidationPrompt); ok {
 		content = content + report.ValidationPromptSuffix(criteria)
 	}
 	return content
@@ -1175,7 +1166,7 @@ func (p *processor) watchForCancellation(
 	ctx context.Context,
 	execCancel context.CancelFunc,
 	promptPath string,
-	containerName string,
+	containerName ContainerName,
 	cancelled *bool,
 ) {
 	fsWatcher, err := fsnotify.NewWatcher()
@@ -1216,7 +1207,7 @@ func (p *processor) watchForCancellation(
 					"file", filepath.Base(promptPath),
 					"container", containerName,
 				)
-				p.executor.StopAndRemoveContainer(ctx, containerName)
+				p.executor.StopAndRemoveContainer(ctx, containerName.String())
 				execCancel()
 				return
 			}
@@ -1226,7 +1217,7 @@ func (p *processor) watchForCancellation(
 
 // hasPendingVerification returns true if any prompt in queueDir has pending_verification status.
 func (p *processor) hasPendingVerification(ctx context.Context) bool {
-	entries, err := os.ReadDir(p.queueDir)
+	entries, err := os.ReadDir(p.dirs.Queue)
 	if err != nil {
 		return false
 	}
@@ -1234,7 +1225,7 @@ func (p *processor) hasPendingVerification(ctx context.Context) bool {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		pf, err := p.promptManager.Load(ctx, filepath.Join(p.queueDir, entry.Name()))
+		pf, err := p.promptManager.Load(ctx, filepath.Join(p.dirs.Queue, entry.Name()))
 		if err != nil {
 			continue
 		}
@@ -1299,11 +1290,10 @@ func (p *processor) handleEmptyPrompt(
 
 // computePromptMetadata derives the baseName and containerName from the prompt path and project name.
 // It does NOT save to disk — call pf.PrepareForExecution + pf.Save separately after sync succeeds.
-func computePromptMetadata(promptPath, projectName string) (string, string) {
-	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
-	baseName = sanitizeContainerName(baseName)
-	containerName := projectName + "-" + baseName
-	return baseName, containerName
+func computePromptMetadata(promptPath string, projectName ProjectName) (BaseName, ContainerName) {
+	base := BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
+	name := ContainerName(string(projectName) + "-" + string(base)).Sanitize()
+	return base, name
 }
 
 // validateCompletionReport parses the completion report from the log and detects claude-CLI-level failures.
@@ -1371,12 +1361,6 @@ func validateCompletionReport(
 	}
 
 	return completionReport, nil
-}
-
-// sanitizeContainerName ensures the name only contains Docker-safe characters [a-zA-Z0-9_-]
-func sanitizeContainerName(name string) string {
-	// Replace any character that is not alphanumeric, underscore, or hyphen with hyphen
-	return sanitizeContainerNameRegexp.ReplaceAllString(name, "-")
 }
 
 // resolveValidationPrompt resolves the validationPrompt config value.

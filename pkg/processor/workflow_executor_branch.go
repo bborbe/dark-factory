@@ -27,7 +27,11 @@ func NewBranchWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 }
 
 // Setup syncs with remote, then optionally switches to the feature branch from the prompt frontmatter.
-func (e *branchWorkflowExecutor) Setup(ctx context.Context, _ string, pf *prompt.PromptFile) error {
+func (e *branchWorkflowExecutor) Setup(
+	ctx context.Context,
+	_ BaseName,
+	pf *prompt.PromptFile,
+) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
 		return err
 	}
@@ -103,7 +107,7 @@ func (e *branchWorkflowExecutor) Complete(
 // ReconstructState always returns true for the branch workflow (no isolated directory).
 func (e *branchWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	_ string,
+	_ BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
 	// Restore in-place branch state from frontmatter if branch was set.

@@ -1,10 +1,11 @@
 ---
-status: committing
+status: completed
 container: dark-factory-337-unify-oneshot-with-callback
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T15:15:00Z"
 queued: "2026-04-25T14:02:32Z"
 started: "2026-04-25T14:02:34Z"
+completed: "2026-04-25T14:28:27Z"
 ---
 
 <summary>

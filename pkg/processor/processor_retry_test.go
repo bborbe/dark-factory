@@ -684,7 +684,7 @@ var _ = Describe("Processor", func() {
 				project.Name("sweep-test"),
 				sweepFH,
 				sweepResumer,
-				processor.VerificationGate(false),
+				false,
 				completionreport.NewValidator(),
 				promptenricher.NewEnricher(
 					releaser,

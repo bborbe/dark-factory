@@ -34,7 +34,12 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateRunner", func() {
 		It("should return a non-nil runner", func() {
-			runner := factory.CreateRunner(context.Background(), cfg, "v0.0.1")
+			runner := factory.CreateRunner(
+				context.Background(),
+				cfg,
+				"v0.0.1",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(runner).NotTo(BeNil())
 		})
 	})
@@ -137,21 +142,29 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreateStatusCommand", func() {
 		It("should return a non-nil status command", func() {
-			cmd := factory.CreateStatusCommand(context.Background(), cfg)
+			cmd := factory.CreateStatusCommand(
+				context.Background(),
+				cfg,
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(cmd).NotTo(BeNil())
 		})
 	})
 
 	Describe("CreateCombinedStatusCommand", func() {
 		It("should return a non-nil combined status command", func() {
-			cmd := factory.CreateCombinedStatusCommand(context.Background(), cfg)
+			cmd := factory.CreateCombinedStatusCommand(
+				context.Background(),
+				cfg,
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(cmd).NotTo(BeNil())
 		})
 	})
 
 	Describe("CreateCombinedListCommand", func() {
 		It("should return a non-nil combined list command", func() {
-			cmd := factory.CreateCombinedListCommand(cfg)
+			cmd := factory.CreateCombinedListCommand(cfg, libtime.NewCurrentDateTime())
 			Expect(cmd).NotTo(BeNil())
 		})
 	})

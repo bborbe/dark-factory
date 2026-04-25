@@ -4,18 +4,6 @@
 
 package processor
 
-// MaxContainers is the maximum number of concurrently running containers allowed.
-type MaxContainers int
-
-// VerificationGate controls whether execution pauses for manual verification before git operations.
-type VerificationGate bool
-
-// DirtyFileThreshold is the maximum number of dirty (modified) files before execution is blocked.
-type DirtyFileThreshold int
-
-// AutoRetryLimit is the maximum number of automatic retries for a failed prompt (0 = disabled).
-type AutoRetryLimit int
-
 // Dirs groups the three prompt directory paths used by the processor.
 type Dirs struct {
 	Queue, Completed, Log string

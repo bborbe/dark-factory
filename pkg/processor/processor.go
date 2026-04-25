@@ -84,7 +84,7 @@ func NewProcessor(
 	projectName project.Name,
 	failureHandler failurehandler.Handler,
 	resumer promptresumer.Resumer,
-	verificationGate VerificationGate,
+	verificationGate bool,
 	completionReportValidator completionreport.Validator,
 	promptEnricher promptenricher.Enricher,
 	committingRecoverer committingrecoverer.Recoverer,
@@ -153,7 +153,7 @@ type processor struct {
 	dirs                      Dirs
 	projectName               project.Name
 	resumer                   promptresumer.Resumer
-	verificationGate          VerificationGate
+	verificationGate          bool
 	queueInterval             time.Duration
 	sweepInterval             time.Duration
 	onIdle                    NothingToDoCallback

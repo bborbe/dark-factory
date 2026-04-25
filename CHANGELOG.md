@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.19
+
+- refactor: drop noise typed primitives MaxContainers/VerificationGate/DirtyFileThreshold/AutoRetryLimit (no methods, immediately unwrapped); split filename-normalization logic out of prompt.go into pkg/prompt/normalize.go; inject currentDateTimeGetter once at CreateRunner/CreateOneShotRunner entry instead of 21 separate libtime.NewCurrentDateTime() instantiations
+
 ## v0.135.18
 
 - refactor: unexport ~20 free functions in `pkg/prompt` (Load, SetStatus, HasExecuting, etc.) and make `prompt.Manager` the sole public mutation API; extend `PromptManager` interfaces in consumer packages (cmd, generator, spec, watcher, reindex, runner) to include `Load`; update all callers and tests

@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -80,7 +81,8 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	return runCommand(ctx, cfg, command, subcommand, args, autoApprove)
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	return runCommand(ctx, cfg, command, subcommand, args, autoApprove, currentDateTimeGetter)
 }
 
 func printCommandHelp(command string) {
@@ -112,21 +114,22 @@ func runCommand(
 	command, subcommand string,
 	args []string,
 	autoApprove bool,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	switch command {
 	case "prompt":
-		return runPromptCommand(ctx, cfg, subcommand, args)
+		return runPromptCommand(ctx, cfg, subcommand, args, currentDateTimeGetter)
 	case "spec":
-		return runSpecCommand(ctx, cfg, subcommand, args)
+		return runSpecCommand(ctx, cfg, subcommand, args, currentDateTimeGetter)
 	case "scenario":
 		return runScenarioCommand(ctx, cfg, subcommand, args)
 	case "status":
-		return runStatusCommand(ctx, cfg, args)
+		return runStatusCommand(ctx, cfg, args, currentDateTimeGetter)
 	case "list":
 		if err := validateListArgs(ctx, args, printListHelp); err != nil {
 			return err
 		}
-		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
+		return factory.CreateCombinedListCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "config":
 		if err := validateNoArgs(ctx, args, printConfigHelp); err != nil {
 			return err
@@ -138,15 +141,20 @@ func runCommand(
 		}
 		return factory.CreateKillCommand(cfg).Run(ctx, args)
 	case "run":
-		return runRunCommand(ctx, cfg, args, autoApprove)
+		return runRunCommand(ctx, cfg, args, autoApprove, currentDateTimeGetter)
 	case "daemon":
-		return runDaemonCommand(ctx, cfg, args)
+		return runDaemonCommand(ctx, cfg, args, currentDateTimeGetter)
 	default:
 		return errors.Errorf(ctx, "unknown command: %s", command)
 	}
 }
 
-func runStatusCommand(ctx context.Context, cfg config.Config, args []string) error {
+func runStatusCommand(
+	ctx context.Context,
+	cfg config.Config,
+	args []string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
 	if err != nil {
 		return err
@@ -157,10 +165,16 @@ func runStatusCommand(ctx context.Context, cfg config.Config, args []string) err
 	if err := validateNoArgs(ctx, remaining, printStatusHelp); err != nil {
 		return err
 	}
-	return factory.CreateCombinedStatusCommand(ctx, cfg).Run(ctx, remaining)
+	return factory.CreateCombinedStatusCommand(ctx, cfg, currentDateTimeGetter).Run(ctx, remaining)
 }
 
-func runRunCommand(ctx context.Context, cfg config.Config, args []string, autoApprove bool) error {
+func runRunCommand(
+	ctx context.Context,
+	cfg config.Config,
+	args []string,
+	autoApprove bool,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
 	if err != nil {
 		return err
@@ -171,10 +185,16 @@ func runRunCommand(ctx context.Context, cfg config.Config, args []string, autoAp
 	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
 		return err
 	}
-	return factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove).Run(ctx)
+	return factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, currentDateTimeGetter).
+		Run(ctx)
 }
 
-func runDaemonCommand(ctx context.Context, cfg config.Config, args []string) error {
+func runDaemonCommand(
+	ctx context.Context,
+	cfg config.Config,
+	args []string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
 	if err != nil {
 		return err
@@ -185,7 +205,7 @@ func runDaemonCommand(ctx context.Context, cfg config.Config, args []string) err
 	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
 		return err
 	}
-	return factory.CreateRunner(ctx, cfg, version.Version).Run(ctx)
+	return factory.CreateRunner(ctx, cfg, version.Version, currentDateTimeGetter).Run(ctx)
 }
 
 func runPromptCommand(
@@ -193,6 +213,7 @@ func runPromptCommand(
 	cfg config.Config,
 	subcommand string,
 	args []string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	switch subcommand {
 	case "", "--help", "-h", "help":
@@ -202,49 +223,50 @@ func runPromptCommand(
 		if err := validateNoArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateStatusCommand(ctx, cfg).Run(ctx, args)
+		return factory.CreateStatusCommand(ctx, cfg, currentDateTimeGetter).Run(ctx, args)
 	case "list":
 		if err := validateListArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateListCommand(cfg).Run(ctx, args)
+		return factory.CreateListCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "approve":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateApproveCommand(cfg).Run(ctx, args)
+		return factory.CreateApproveCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "requeue":
 		if err := validateRequeueArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateRequeueCommand(cfg).Run(ctx, args)
+		return factory.CreateRequeueCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "cancel":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateCancelCommand(cfg).Run(ctx, args)
+		return factory.CreateCancelCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "retry":
 		if err := validateNoArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateRequeueCommand(cfg).Run(ctx, []string{"--failed"})
+		return factory.CreateRequeueCommand(cfg, currentDateTimeGetter).
+			Run(ctx, []string{"--failed"})
 	case "complete":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreatePromptCompleteCommand(ctx, cfg).Run(ctx, args)
+		return factory.CreatePromptCompleteCommand(ctx, cfg, currentDateTimeGetter).Run(ctx, args)
 	case "unapprove":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreateUnapproveCommand(cfg).Run(ctx, args)
+		return factory.CreateUnapproveCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "reject":
-		return factory.CreateRejectCommand(cfg).Run(ctx, args)
+		return factory.CreateRejectCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "show":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreatePromptShowCommand(cfg).Run(ctx, args)
+		return factory.CreatePromptShowCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown prompt subcommand: %s", subcommand)
 	}
@@ -255,6 +277,7 @@ func runSpecCommand(
 	cfg config.Config,
 	subcommand string,
 	args []string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	switch subcommand {
 	case "", "--help", "-h", "help":
@@ -264,34 +287,34 @@ func runSpecCommand(
 		if err := validateListArgs(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecListCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecListCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "status":
 		if err := validateNoArgs(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecStatusCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecStatusCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "approve":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecApproveCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecApproveCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "unapprove":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecUnapproveCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecUnapproveCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "reject":
-		return factory.CreateSpecRejectCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecRejectCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "complete":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecCompleteCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecCompleteCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "show":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
-		return factory.CreateSpecShowCommand(cfg).Run(ctx, args)
+		return factory.CreateSpecShowCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	default:
 		return errors.Errorf(ctx, "unknown spec subcommand: %s", subcommand)
 	}

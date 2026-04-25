@@ -8,7 +8,6 @@ import (
 	"context"
 	stderrors "errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	libtime "github.com/bborbe/time"
@@ -247,78 +246,6 @@ var _ = Describe("autoSetQueuedStatus", func() {
 		Expect(pr.Status).To(Equal(prompt.ApprovedPromptStatus))
 	})
 })
-
-// stubManager is a minimal prompt.Manager stub for internal cancel-watcher tests.
-// It only implements Load; all other methods are no-ops.
-type stubManager struct {
-	loadFunc           func(ctx context.Context, path string) (*prompt.PromptFile, error)
-	findCommittingFunc func(ctx context.Context) ([]string, error)
-}
-
-func (s *stubManager) Load(ctx context.Context, path string) (*prompt.PromptFile, error) {
-	if s.loadFunc != nil {
-		return s.loadFunc(ctx, path)
-	}
-	return nil, nil //nolint:nilnil
-}
-
-func (s *stubManager) ResetExecuting(_ context.Context) error { return nil }
-
-func (s *stubManager) ResetFailed(_ context.Context) error { return nil }
-
-func (s *stubManager) HasExecuting(_ context.Context) bool { return false }
-
-func (s *stubManager) ListQueued(
-	_ context.Context,
-) ([]prompt.Prompt, error) {
-	return nil, nil
-} //nolint:nilnil
-func (s *stubManager) ReadFrontmatter(_ context.Context, _ string) (*prompt.Frontmatter, error) {
-	return nil, nil //nolint:nilnil
-}
-
-func (s *stubManager) SetStatus(_ context.Context, _ string, _ string) error { return nil }
-
-func (s *stubManager) SetContainer(_ context.Context, _ string, _ string) error { return nil }
-
-func (s *stubManager) SetVersion(_ context.Context, _ string, _ string) error { return nil }
-
-func (s *stubManager) SetPRURL(_ context.Context, _ string, _ string) error { return nil }
-
-func (s *stubManager) SetBranch(_ context.Context, _ string, _ string) error { return nil }
-
-func (s *stubManager) IncrementRetryCount(_ context.Context, _ string) error { return nil }
-
-func (s *stubManager) Content(_ context.Context, _ string) (string, error) { return "", nil }
-
-func (s *stubManager) Title(_ context.Context, _ string) (string, error) { return "", nil }
-
-func (s *stubManager) MoveToCompleted(_ context.Context, _ string) error { return nil }
-
-func (s *stubManager) NormalizeFilenames(_ context.Context, _ string) ([]prompt.Rename, error) {
-	return nil, nil //nolint:nilnil
-}
-
-func (s *stubManager) AllPreviousCompleted(_ context.Context, _ int) bool { return false }
-
-func (s *stubManager) FindMissingCompleted(_ context.Context, _ int) []int { return nil }
-
-func (s *stubManager) FindPromptStatusInProgress(_ context.Context, _ int) string { return "" }
-
-func (s *stubManager) HasQueuedPromptsOnBranch(
-	_ context.Context,
-	_ string,
-	_ string,
-) (bool, error) {
-	return false, nil
-}
-
-func (s *stubManager) FindCommitting(ctx context.Context) ([]string, error) {
-	if s.findCommittingFunc != nil {
-		return s.findCommittingFunc(ctx)
-	}
-	return nil, nil //nolint:nilnil
-}
 
 var _ = Describe("ResumeExecuting delegates to Resumer", func() {
 	It("calls resumer.ResumeAll and returns its result", func() {
@@ -1671,192 +1598,29 @@ var _ = Describe("processor workflow routing", func() {
 	})
 })
 
-var _ = Describe("ResumeCommitting", func() {
-	var (
-		ctx          context.Context
-		tempDir      string
-		queueDir     string
-		completedDir string
-		originalDir  string
-		mgr          *stubManager
-		rel          *stubWorkflowReleaser
-		proc         *processor
-	)
-
-	BeforeEach(func() {
-		ctx = context.Background()
-		var err error
-		originalDir, err = os.Getwd()
-		Expect(err).NotTo(HaveOccurred())
-
-		tempDir, err = os.MkdirTemp("", "resume-committing-test-*")
-		Expect(err).NotTo(HaveOccurred())
-
-		queueDir = filepath.Join(tempDir, "in-progress")
-		completedDir = filepath.Join(tempDir, "completed")
-		Expect(os.MkdirAll(queueDir, 0750)).To(Succeed())
-		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
-
-		mgr = &stubManager{}
-		rel = &stubWorkflowReleaser{}
-
-		proc = &processor{
-			dirs:           Dirs{Queue: queueDir, Completed: completedDir},
-			promptManager:  mgr,
-			releaser:       rel,
-			autoCompleter:  &stubAutoCompleter{},
-			skippedPrompts: make(map[string]libtime.DateTime),
+var _ = Describe("ResumeCommitting delegates to CommittingRecoverer", func() {
+	It("calls committingRecoverer.RecoverAll and always returns nil", func() {
+		ctx := context.Background()
+		fakeRecoverer := &stubCommittingRecoverer{}
+		p := &processor{
+			committingRecoverer: fakeRecoverer,
+			skippedPrompts:      make(map[string]libtime.DateTime),
 		}
-	})
-
-	AfterEach(func() {
-		_ = os.Chdir(originalDir)
-		if tempDir != "" {
-			_ = os.RemoveAll(tempDir)
-		}
-	})
-
-	Context("when there are no committing prompts", func() {
-		It("returns nil without any git operations", func() {
-			// findCommittingFunc not set → returns nil → no prompts processed
-			err := proc.ResumeCommitting(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rel.commitFileCount).To(Equal(0))
-		})
-	})
-
-	Context("when FindCommitting returns an error", func() {
-		BeforeEach(func() {
-			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
-				return nil, stderrors.New("scan failed")
-			}
-		})
-
-		It("returns nil (non-fatal, logs warn)", func() {
-			err := proc.ResumeCommitting(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rel.commitFileCount).To(Equal(0))
-		})
-	})
-
-	Context("when committing prompt exists and git repo is clean (no dirty files)", func() {
-		BeforeEach(func() {
-			// Set up a real git repo so HasDirtyFiles succeeds.
-			repoDir := filepath.Join(tempDir, "repo")
-			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
-
-			for _, args := range [][]string{
-				{"init"},
-				{"config", "user.email", "test@example.com"},
-				{"config", "user.name", "Test User"},
-			} {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = repoDir
-				Expect(cmd.Run()).To(Succeed())
-			}
-			// Initial commit so the repo is not empty
-			initFile := filepath.Join(repoDir, "README.md")
-			Expect(os.WriteFile(initFile, []byte("# test\n"), 0600)).To(Succeed())
-			for _, args := range [][]string{
-				{"add", "-A"},
-				{"commit", "-m", "initial"},
-			} {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = repoDir
-				Expect(cmd.Run()).To(Succeed())
-			}
-			Expect(os.Chdir(repoDir)).To(Succeed())
-
-			promptPath := filepath.Join(queueDir, "001-clean.md")
-			Expect(
-				os.WriteFile(
-					promptPath,
-					[]byte("---\nstatus: committing\n---\n# Clean prompt\n"),
-					0600,
-				),
-			).To(Succeed())
-
-			pf := prompt.NewPromptFile(
-				promptPath,
-				prompt.Frontmatter{Status: "committing"},
-				[]byte("# Clean prompt\n"),
-				libtime.NewCurrentDateTime(),
-			)
-			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
-				return []string{promptPath}, nil
-			}
-			mgr.loadFunc = func(_ context.Context, _ string) (*prompt.PromptFile, error) {
-				return pf, nil
-			}
-		})
-
-		It("skips work commit, calls MoveToCompleted, calls CommitCompletedFile", func() {
-			err := proc.ResumeCommitting(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			// No dirty files means CommitAll was not called; CommitCompletedFile was called
-			Expect(rel.commitFileCount).To(Equal(1))
-		})
-	})
-
-	Context("when committing prompt exists and git repo has dirty files", func() {
-		BeforeEach(func() {
-			// Set up a real git repo with dirty files.
-			repoDir := filepath.Join(tempDir, "repo2")
-			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
-
-			for _, args := range [][]string{
-				{"init"},
-				{"config", "user.email", "test@example.com"},
-				{"config", "user.name", "Test User"},
-			} {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = repoDir
-				Expect(cmd.Run()).To(Succeed())
-			}
-			// Initial commit
-			initFile := filepath.Join(repoDir, "README.md")
-			Expect(os.WriteFile(initFile, []byte("# test\n"), 0600)).To(Succeed())
-			for _, args := range [][]string{
-				{"add", "-A"},
-				{"commit", "-m", "initial"},
-			} {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = repoDir
-				Expect(cmd.Run()).To(Succeed())
-			}
-			// Add dirty file
-			Expect(
-				os.WriteFile(filepath.Join(repoDir, "dirty.txt"), []byte("dirty\n"), 0600),
-			).To(Succeed())
-			Expect(os.Chdir(repoDir)).To(Succeed())
-
-			promptPath := filepath.Join(queueDir, "001-dirty.md")
-			Expect(
-				os.WriteFile(
-					promptPath,
-					[]byte("---\nstatus: committing\n---\n# Dirty prompt\n"),
-					0600,
-				),
-			).To(Succeed())
-
-			pf := prompt.NewPromptFile(
-				promptPath,
-				prompt.Frontmatter{Status: "committing"},
-				[]byte("# Dirty prompt\n"),
-				libtime.NewCurrentDateTime(),
-			)
-			mgr.findCommittingFunc = func(_ context.Context) ([]string, error) {
-				return []string{promptPath}, nil
-			}
-			mgr.loadFunc = func(_ context.Context, _ string) (*prompt.PromptFile, error) {
-				return pf, nil
-			}
-		})
-
-		It("commits dirty work files, calls MoveToCompleted, calls CommitCompletedFile", func() {
-			err := proc.ResumeCommitting(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rel.commitFileCount).To(Equal(1))
-		})
+		err := p.ResumeCommitting(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fakeRecoverer.recoverAllCalled).To(Equal(1))
 	})
 })
+
+// stubCommittingRecoverer is a minimal committingrecoverer.Recoverer stub for delegation tests.
+type stubCommittingRecoverer struct {
+	recoverAllCalled int
+}
+
+func (s *stubCommittingRecoverer) RecoverAll(_ context.Context) {
+	s.recoverAllCalled++
+}
+
+func (s *stubCommittingRecoverer) Recover(_ context.Context, _ string) error {
+	return nil
+}

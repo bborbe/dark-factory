@@ -21,6 +21,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
+	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
@@ -139,6 +140,7 @@ func newTestProcessor(
 			validationCommand,
 			validationPrompt,
 		),
+		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir),
 		0,
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		nil, // onIdle: no-op for tests
@@ -7398,6 +7400,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 				processor.VerificationGate(false),
 				completionreport.NewValidator(),
 				promptenricher.NewEnricher(releaser, "", "", "", ""),
+				committingrecoverer.NewRecoverer(
+					manager,
+					releaser,
+					realAutoCompleter,
+					sweepCompletedDir,
+				),
 				0,
 				20*time.Millisecond, // sweepInterval 20ms for test speed
 				nil,                 // onIdle: no-op for tests

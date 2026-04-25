@@ -8,6 +8,7 @@ tools:
   - Bash
   - AskUserQuestion
 model: opus
+effort: high
 ---
 
 <role>

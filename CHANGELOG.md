@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.13
+
+- refactor: extracted CommittingRecoverer from processor — pure refactor, no behaviour change
+
 ## v0.135.12
 
 - refactor: extracted PromptResumer from processor — pure refactor, no behaviour change

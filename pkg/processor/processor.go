@@ -18,6 +18,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
+	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
@@ -87,6 +88,7 @@ func NewProcessor(
 	verificationGate VerificationGate,
 	completionReportValidator completionreport.Validator,
 	promptEnricher promptenricher.Enricher,
+	committingRecoverer committingrecoverer.Recoverer,
 	// queueInterval controls how often the daemon polls for queued prompts.
 	// Pass 0 to use the default of 5s.
 	queueInterval time.Duration,
@@ -130,6 +132,7 @@ func NewProcessor(
 		onIdle:                    onIdle,
 		completionReportValidator: completionReportValidator,
 		promptEnricher:            promptEnricher,
+		committingRecoverer:       committingRecoverer,
 	}
 }
 
@@ -158,6 +161,7 @@ type processor struct {
 	onIdle                    NothingToDoCallback
 	completionReportValidator completionreport.Validator
 	promptEnricher            promptenricher.Enricher
+	committingRecoverer       committingrecoverer.Recoverer
 }
 
 // Process starts processing queued prompts.
@@ -180,7 +184,7 @@ func (p *processor) Process(ctx context.Context) error {
 	}
 
 	// After startup scan, also retry any committing prompts.
-	p.processCommittingPrompts(ctx)
+	p.committingRecoverer.RecoverAll(ctx)
 
 	slog.Info("waiting for changes")
 
@@ -222,7 +226,7 @@ func (p *processor) Process(ctx context.Context) error {
 func (p *processor) runReadyTick(ctx context.Context) bool {
 	// Clear skipped prompts so all files get re-evaluated after fsnotify event.
 	p.skippedPrompts = make(map[string]libtime.DateTime)
-	p.processCommittingPrompts(ctx)
+	p.committingRecoverer.RecoverAll(ctx)
 	completed, err := p.processExistingQueued(ctx)
 	if err != nil {
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
@@ -232,7 +236,7 @@ func (p *processor) runReadyTick(ctx context.Context) bool {
 
 // runQueueTick handles a periodic queue poll. Returns true if the tick made progress.
 func (p *processor) runQueueTick(ctx context.Context) bool {
-	p.processCommittingPrompts(ctx)
+	p.committingRecoverer.RecoverAll(ctx)
 	completed, err := p.processExistingQueued(ctx)
 	if err != nil {
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
@@ -257,81 +261,8 @@ func (p *processor) ResumeExecuting(ctx context.Context) error {
 
 // ResumeCommitting retries git commits for any prompts still in "committing" state on startup.
 func (p *processor) ResumeCommitting(ctx context.Context) error {
-	p.processCommittingPrompts(ctx)
+	p.committingRecoverer.RecoverAll(ctx)
 	return nil // always non-fatal
-}
-
-// processCommittingPrompts retries git commits for prompts in "committing" state.
-// Used on startup and on each daemon cycle. Failures are non-fatal.
-func (p *processor) processCommittingPrompts(ctx context.Context) {
-	paths, err := p.promptManager.FindCommitting(ctx)
-	if err != nil {
-		slog.Warn("failed to scan for committing prompts", "error", err)
-		return
-	}
-	for _, promptPath := range paths {
-		if ctx.Err() != nil {
-			return
-		}
-		if err := p.recoverCommittingPrompt(ctx, promptPath); err != nil {
-			slog.Error("git commit failed after all retries, will retry next cycle",
-				"file", filepath.Base(promptPath), "error", err)
-		}
-	}
-}
-
-// recoverCommittingPrompt attempts to commit dirty work files and move the prompt to completed/.
-// If dirty work files exist, they are committed first (the container's code changes).
-// If no dirty files exist, the code was already committed — only the prompt move is needed.
-func (p *processor) recoverCommittingPrompt(ctx context.Context, promptPath string) error {
-	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
-
-	pf, err := p.promptManager.Load(ctx, promptPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, "load committing prompt")
-	}
-	title := pf.Title()
-	if title == "" {
-		title = strings.TrimSuffix(filepath.Base(promptPath), ".md")
-	}
-
-	hasDirty, err := git.HasDirtyFiles(gitCtx)
-	if err != nil {
-		return errors.Wrap(ctx, err, "check dirty files")
-	}
-
-	if hasDirty {
-		if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
-			return git.CommitAll(retryCtx, title)
-		}); err != nil {
-			return errors.Wrap(ctx, err, "commit work files during recovery")
-		}
-		slog.Info(
-			"committed work files during committing recovery",
-			"file",
-			filepath.Base(promptPath),
-		)
-	}
-
-	for _, specID := range pf.Specs() {
-		if err := p.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
-		}
-	}
-
-	if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed during recovery")
-	}
-
-	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
-		return p.releaser.CommitCompletedFile(retryCtx, completedPath)
-	}); err != nil {
-		return errors.Wrap(ctx, err, "commit completed file during recovery")
-	}
-
-	slog.Info("git commit recovery succeeded", "file", filepath.Base(completedPath))
-	return nil
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.

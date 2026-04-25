@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Extracted CommittingRecoverer from processor into pkg/committingrecoverer — pure refactor with no behaviour change, 94.4% test coverage on new package.
+container: dark-factory-346-processor-C2-committing-recoverer
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:36:00Z"
 queued: "2026-04-25T17:43:13Z"
+started: "2026-04-25T18:05:16Z"
 ---
 
 <summary>

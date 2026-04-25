@@ -19,6 +19,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
@@ -854,6 +855,7 @@ func CreateProcessor(
 			validationCommand,
 			validationPrompt,
 		),
+		committingrecoverer.NewRecoverer(promptManager, releaser, autoCompleter, dirs.Completed),
 		queueInterval,
 		sweepInterval,
 		onIdle,

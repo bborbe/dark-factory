@@ -6,6 +6,7 @@ tools:
   - Bash
   - Glob
 model: opus
+effort: high
 ---
 
 <role>

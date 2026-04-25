@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.16
+
+- refactor: split oversized Go test files (`processor_test.go` 7450→<1915/file, `prompt_test.go` 3067→<1500/file, `config_test.go` 2648→<1000/file) into per-concern files; no behavior changes, all tests pass; eliminates Read-tool token-limit friction and reduces merge-conflict surface
+
 ## v0.135.15
 
 - refactor: extract `validationprompt.Resolver` interface into `pkg/validationprompt/` and inject into `promptenricher.NewEnricher`, removing disk I/O from promptenricher

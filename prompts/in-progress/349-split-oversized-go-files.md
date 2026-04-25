@@ -1,5 +1,6 @@
 ---
-status: executing
+status: committing
+summary: 'Split 3 oversized Go test files into 13+ per-concern files: processor_test.go 7450→1913 lines (+9 new files), prompt_test.go 3067→1317 lines (+3 new files), config_test.go 2648→976 lines (+2 new files); make precommit exited 0, no file exceeds 2000 lines, no behavior changes.'
 container: dark-factory-349-split-oversized-go-files
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T16:25:00Z"

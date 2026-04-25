@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.1
+
+- fix: preflight cache is now time-based instead of SHA-based — sequential prompts within preflightInterval reuse the cached green result, saving ~1 minute per prompt; failed preflights are not cached so operator fixes are picked up immediately
+
 ## v0.135.0
 
 - feat: dark-factory prompt list and spec list hide rejected items by default; --all shows them; rejected/ dirs are scanned for display

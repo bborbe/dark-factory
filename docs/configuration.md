@@ -259,9 +259,9 @@ preflightInterval: "8h"
 | Field | Default | Purpose |
 |-------|---------|---------|
 | `preflightCommand` | `make precommit` | Shell command run inside the container before each prompt. Empty string disables preflight entirely. |
-| `preflightInterval` | `8h` | How long a cached green baseline result stays valid for the same git commit SHA. When the SHA advances or the interval elapses, preflight re-runs. Accepts Go duration strings: `"30m"`, `"2h"`, `"8h"`. Invalid strings are rejected at daemon startup. |
+| `preflightInterval` | `8h` | How long a successful preflight result is cached. After the daemon runs preflight once and it passes, prompts within the interval reuse that result — git commits between prompts do NOT invalidate the cache. Re-runs happen when the interval elapses, when the daemon restarts, or after a failed preflight (failures are never cached, so an operator fix is picked up on the next prompt). Accepts Go duration strings: `"30m"`, `"2h"`, `"8h"`. Invalid strings are rejected at daemon startup. |
 
-**Caching:** Preflight runs at most once per git commit SHA within `preflightInterval`. Multiple queued prompts on the same baseline SHA reuse the cached result — no wasted container time.
+**Caching:** Preflight runs at most once per `preflightInterval` after a successful check. Sequential prompts within the interval reuse the cached result without re-running the command.
 
 **On failure:** The daemon logs the command, its captured output, and the commit SHA that was checked. A notification is sent. The prompt remains queued.
 

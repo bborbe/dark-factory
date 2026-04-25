@@ -8,7 +8,6 @@ import (
 	"context"
 	"log/slog"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -27,19 +26,13 @@ type Checker interface {
 	Check(ctx context.Context) (bool, error)
 }
 
-// cacheEntry stores the result of the last preflight run.
+// cacheEntry stores the result of the last successful preflight run.
 type cacheEntry struct {
-	sha       string
 	checkedAt time.Time
-	ok        bool
-	output    string
 }
 
 // runnerFn is a function that executes a command and returns its combined output.
 type runnerFn func(ctx context.Context) (string, error)
-
-// shaFetcherFn is a function that returns the current HEAD commit SHA.
-type shaFetcherFn func(ctx context.Context) (string, error)
 
 // checker implements Checker.
 type checker struct {
@@ -50,12 +43,11 @@ type checker struct {
 	projectName string
 	cache       *cacheEntry
 	runner      runnerFn
-	shaFetcher  shaFetcherFn
 }
 
 // NewChecker creates a new preflight Checker.
 // command is the shell command to run (empty string disables preflight).
-// interval is how long a cached green result is valid for the same git SHA (0 disables caching).
+// interval is how long a cached green result is valid (0 disables caching).
 // projectRoot is the absolute path of the project directory.
 // n is used to notify humans when the baseline is broken.
 // projectName is the project identifier used in notifications.
@@ -74,7 +66,6 @@ func NewChecker(
 		projectName: projectName,
 	}
 	c.runner = c.runInContainer
-	c.shaFetcher = c.getHeadSHA
 	return c
 }
 
@@ -84,39 +75,35 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 
-	sha, err := c.shaFetcher(ctx)
-	if err != nil {
-		slog.Warn("preflight: could not get HEAD SHA, skipping cache", "error", err)
-		sha = ""
+	// Cache hit: a successful preflight is reused for `interval` after it ran,
+	// regardless of git activity. Failed results are not cached — operator fixes
+	// must be picked up on the next Check call.
+	if c.cache != nil && c.interval > 0 &&
+		time.Since(c.cache.checkedAt) < c.interval {
+		slog.Debug("preflight: cache hit (time-based)",
+			"age", time.Since(c.cache.checkedAt).Round(time.Second),
+			"interval", c.interval,
+		)
+		return true, nil
 	}
 
-	// Cache hit: same SHA and within interval
-	if c.cache != nil && sha != "" && c.cache.sha == sha &&
-		c.interval > 0 && time.Since(c.cache.checkedAt) < c.interval {
-		slog.Debug("preflight: cache hit", "sha", sha[:minLen(sha, 12)], "ok", c.cache.ok)
-		return c.cache.ok, nil
-	}
-
-	slog.Info("preflight: running baseline check", "command", c.command, "sha", truncateSHA(sha))
+	slog.Info("preflight: running baseline check", "command", c.command)
 
 	output, runErr := c.runner(ctx)
 	ok := runErr == nil
 
-	c.cache = &cacheEntry{
-		sha:       sha,
-		checkedAt: time.Now(),
-		ok:        ok,
-		output:    output,
-	}
-
 	if ok {
-		slog.Info("preflight: baseline check passed", "sha", truncateSHA(sha))
+		c.cache = &cacheEntry{
+			checkedAt: time.Now(),
+		}
+		slog.Info("preflight: baseline check passed")
 		return true, nil
 	}
 
+	// Failure: do not cache — operator may fix the issue between calls,
+	// and we want the next Check to re-run the command.
 	slog.Error("preflight: baseline check FAILED — prompts will not start until baseline is fixed",
 		"command", c.command,
-		"sha", truncateSHA(sha),
 		"output", output,
 		"error", runErr,
 	)
@@ -125,17 +112,6 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 		EventType:   "preflight_failed",
 	})
 	return false, nil
-}
-
-// getHeadSHA returns the current HEAD commit SHA using git rev-parse.
-func (c *checker) getHeadSHA(ctx context.Context) (string, error) {
-	// #nosec G204 -- fixed args; projectRoot is from trusted config
-	cmd := exec.CommandContext(ctx, "git", "-C", c.projectRoot, "rev-parse", "HEAD")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "git rev-parse HEAD")
-	}
-	return strings.TrimSpace(string(output)), nil
 }
 
 // runInContainer executes the preflight command on the host (NOT a container).
@@ -152,17 +128,4 @@ func (c *checker) runInContainer(ctx context.Context) (string, error) {
 		return string(output), errors.Wrap(ctx, err, "preflight command exited non-zero")
 	}
 	return string(output), nil
-}
-
-// truncateSHA returns the first 12 characters of sha for logging, or the full sha if shorter.
-func truncateSHA(sha string) string {
-	return sha[:minLen(sha, 12)]
-}
-
-// minLen returns the minimum of len(s) and n.
-func minLen(s string, n int) int {
-	if len(s) < n {
-		return len(s)
-	}
-	return n
 }

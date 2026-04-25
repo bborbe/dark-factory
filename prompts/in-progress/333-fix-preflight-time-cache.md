@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Replaced SHA-keyed preflight cache with time-only caching — sequential prompts within preflightInterval reuse the cached green result; failed preflights are not cached so operator fixes are picked up immediately.
+container: dark-factory-333-fix-preflight-time-cache
+dark-factory-version: v0.132.0
 created: "2026-04-25T13:10:00Z"
 queued: "2026-04-25T11:23:12Z"
+started: "2026-04-25T11:28:24Z"
 ---
 
 <summary>

@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted PreflightConditions (pkg/preflightconditions) and ContainerSlotManager (pkg/containerslot) from processor god-object; re-exported ErrPreflightSkip sentinel; wired both services in factory; all call sites updated; 98.4% coverage on new packages; make precommit passed with exit code 0
 container: dark-factory-343-processor-B1-preflight-and-slot
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:33:00Z"
 queued: "2026-04-25T16:57:11Z"
 started: "2026-04-25T16:57:13Z"
+completed: "2026-04-25T17:15:36Z"
 ---
 
 <summary>

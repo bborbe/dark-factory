@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted FailureHandler from processor into pkg/failurehandler — pure refactor with identical retry/shutdown semantics, no behaviour change
 container: dark-factory-344-processor-B2-failure-handler
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:34:00Z"
 queued: "2026-04-25T16:57:11Z"
 started: "2026-04-25T17:15:37Z"
+completed: "2026-04-25T17:35:17Z"
 ---
 
 <summary>

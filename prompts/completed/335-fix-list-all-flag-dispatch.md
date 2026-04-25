@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added validateListArgs helper in main.go and switched the combined list, prompt list, and spec list dispatchers to use it, so --all passes through to the list commands' own flag parsers; scenario list retains validateNoArgs since it does not support --all; four unit tests added to main_internal_test.go; CHANGELOG updated.
 container: dark-factory-335-fix-list-all-flag-dispatch
 dark-factory-version: v0.132.0
 created: "2026-04-25T14:50:00Z"
 queued: "2026-04-25T12:44:50Z"
 started: "2026-04-25T12:45:58Z"
+completed: "2026-04-25T12:50:48Z"
 ---
 
 <summary>

@@ -110,6 +110,54 @@ func (s PromptStatus) Validate(ctx context.Context) error {
 	return nil
 }
 
+// promptTransitions defines the valid state transitions for prompt lifecycle.
+// This is the single source of truth — add one row here to enable a new transition.
+var promptTransitions = map[PromptStatus][]PromptStatus{
+	IdeaPromptStatus:  {DraftPromptStatus},
+	DraftPromptStatus: {ApprovedPromptStatus},
+	ApprovedPromptStatus: {
+		ExecutingPromptStatus,
+		CancelledPromptStatus,
+		DraftPromptStatus,
+	}, // unapprove: approved → draft
+	ExecutingPromptStatus: {
+		CommittingPromptStatus,
+		FailedPromptStatus,
+		CancelledPromptStatus,
+	},
+	CommittingPromptStatus:          {CompletedPromptStatus, FailedPromptStatus},
+	FailedPromptStatus:              {ApprovedPromptStatus, CancelledPromptStatus},
+	InReviewPromptStatus:            {PendingVerificationPromptStatus, FailedPromptStatus},
+	PendingVerificationPromptStatus: {CompletedPromptStatus, FailedPromptStatus},
+}
+
+// CanTransitionTo returns nil if transitioning from s to target is valid,
+// or an error naming both states if the transition is not in the table.
+func (s PromptStatus) CanTransitionTo(target PromptStatus) error {
+	for _, allowed := range promptTransitions[s] {
+		if allowed == target {
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot transition prompt from %q to %q", s, target)
+}
+
+// IsTerminal returns true if the prompt has reached a final, non-actionable state.
+func (s PromptStatus) IsTerminal() bool {
+	return s == CompletedPromptStatus || s == CancelledPromptStatus
+}
+
+// IsPreExecution returns true if the prompt has not yet entered active execution.
+func (s PromptStatus) IsPreExecution() bool {
+	return s == IdeaPromptStatus || s == DraftPromptStatus || s == ApprovedPromptStatus
+}
+
+// IsActive returns true if the prompt is in active processing (neither pre-execution nor terminal).
+// Note: FailedPromptStatus is intentionally Active — failed prompts can be re-approved for retry.
+func (s PromptStatus) IsActive() bool {
+	return !s.IsPreExecution() && !s.IsTerminal()
+}
+
 // Rename represents a file rename operation.
 type Rename struct {
 	OldPath string

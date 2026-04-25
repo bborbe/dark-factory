@@ -2858,4 +2858,107 @@ var _ = Describe("Frontmatter spec field", func() {
 			Expect(paths).To(BeNil())
 		})
 	})
+
+	Describe("PromptStatus lifecycle model", func() {
+		Describe("CanTransitionTo", func() {
+			It("allows valid forward transitions", func() {
+				Expect(
+					prompt.IdeaPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+				).To(Succeed())
+				Expect(
+					prompt.DraftPromptStatus.CanTransitionTo(prompt.ApprovedPromptStatus),
+				).To(Succeed())
+				Expect(
+					prompt.ApprovedPromptStatus.CanTransitionTo(prompt.ExecutingPromptStatus),
+				).To(Succeed())
+				Expect(
+					prompt.FailedPromptStatus.CanTransitionTo(prompt.ApprovedPromptStatus),
+				).To(Succeed())
+				Expect(
+					prompt.PendingVerificationPromptStatus.CanTransitionTo(
+						prompt.CompletedPromptStatus,
+					),
+				).To(Succeed())
+			})
+			It("allows unapprove edge: approved → draft", func() {
+				Expect(
+					prompt.ApprovedPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+				).To(Succeed())
+			})
+			It("rejects invalid transition", func() {
+				err := prompt.DraftPromptStatus.CanTransitionTo(prompt.CompletedPromptStatus)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("draft")))
+				Expect(err).To(MatchError(ContainSubstring("completed")))
+			})
+		})
+
+		Describe("IsTerminal", func() {
+			It("returns true for terminal statuses", func() {
+				Expect(prompt.CompletedPromptStatus.IsTerminal()).To(BeTrue())
+				Expect(prompt.CancelledPromptStatus.IsTerminal()).To(BeTrue())
+			})
+			It("returns false for non-terminal statuses", func() {
+				Expect(prompt.FailedPromptStatus.IsTerminal()).To(BeFalse())
+				Expect(prompt.ApprovedPromptStatus.IsTerminal()).To(BeFalse())
+			})
+		})
+
+		Describe("IsPreExecution", func() {
+			It("returns true for pre-execution statuses", func() {
+				Expect(prompt.IdeaPromptStatus.IsPreExecution()).To(BeTrue())
+				Expect(prompt.DraftPromptStatus.IsPreExecution()).To(BeTrue())
+				Expect(prompt.ApprovedPromptStatus.IsPreExecution()).To(BeTrue())
+			})
+			It("returns false for active statuses", func() {
+				Expect(prompt.ExecutingPromptStatus.IsPreExecution()).To(BeFalse())
+				Expect(prompt.FailedPromptStatus.IsPreExecution()).To(BeFalse())
+			})
+		})
+
+		Describe("IsActive", func() {
+			It("returns true for active statuses", func() {
+				Expect(prompt.ExecutingPromptStatus.IsActive()).To(BeTrue())
+				Expect(prompt.FailedPromptStatus.IsActive()).To(BeTrue())
+				Expect(prompt.CommittingPromptStatus.IsActive()).To(BeTrue())
+				Expect(prompt.InReviewPromptStatus.IsActive()).To(BeTrue())
+				Expect(prompt.PendingVerificationPromptStatus.IsActive()).To(BeTrue())
+			})
+			It("returns false for pre-execution and terminal statuses", func() {
+				Expect(prompt.ApprovedPromptStatus.IsActive()).To(BeFalse())
+				Expect(prompt.CompletedPromptStatus.IsActive()).To(BeFalse())
+				Expect(prompt.CancelledPromptStatus.IsActive()).To(BeFalse())
+			})
+		})
+
+		Describe("Load permissiveness", func() {
+			It("accepts legacy queued status without error", func() {
+				path := filepath.Join(tempDir, "001-legacy.md")
+				Expect(
+					os.WriteFile(path, []byte("---\nstatus: queued\n---\n# Prompt\n"), 0600),
+				).To(Succeed())
+				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal("queued"))
+			})
+			It("accepts valid status string", func() {
+				path := filepath.Join(tempDir, "002-valid.md")
+				Expect(
+					os.WriteFile(path, []byte("---\nstatus: approved\n---\n# Prompt\n"), 0600),
+				).To(Succeed())
+				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal("approved"))
+			})
+			It("accepts file with no frontmatter", func() {
+				path := filepath.Join(tempDir, "003-no-fm.md")
+				Expect(
+					os.WriteFile(path, []byte("# No frontmatter\n\nJust content.\n"), 0600),
+				).To(Succeed())
+				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal(""))
+			})
+		})
+	})
 })

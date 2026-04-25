@@ -334,6 +334,140 @@ var _ = Describe("Lister", func() {
 	})
 })
 
+var _ = Describe("Status lifecycle model", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	Describe("AvailableSpecStatuses.Contains", func() {
+		It("returns true for known status", func() {
+			Expect(spec.AvailableSpecStatuses.Contains(spec.StatusApproved)).To(BeTrue())
+		})
+		It("returns false for unknown status", func() {
+			Expect(spec.AvailableSpecStatuses.Contains(spec.Status("bogus"))).To(BeFalse())
+		})
+	})
+
+	Describe("String", func() {
+		It("returns string value", func() {
+			Expect(spec.StatusApproved.String()).To(Equal("approved"))
+			Expect(spec.StatusCompleted.String()).To(Equal("completed"))
+		})
+	})
+
+	Describe("Validate", func() {
+		It("accepts valid status", func() {
+			Expect(spec.StatusApproved.Validate(ctx)).To(Succeed())
+		})
+		It("rejects unknown status", func() {
+			Expect(spec.Status("bogus").Validate(ctx)).To(MatchError(ContainSubstring("invalid")))
+		})
+	})
+
+	Describe("CanTransitionTo", func() {
+		It("allows valid forward transitions", func() {
+			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusDraft)).To(Succeed())
+			Expect(spec.StatusDraft.CanTransitionTo(spec.StatusApproved)).To(Succeed())
+			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusGenerating)).To(Succeed())
+			Expect(spec.StatusGenerating.CanTransitionTo(spec.StatusPrompted)).To(Succeed())
+			Expect(spec.StatusPrompted.CanTransitionTo(spec.StatusVerifying)).To(Succeed())
+			Expect(spec.StatusVerifying.CanTransitionTo(spec.StatusCompleted)).To(Succeed())
+		})
+		It("allows unapprove edge: approved → draft", func() {
+			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusDraft)).To(Succeed())
+		})
+		It("rejects invalid transition", func() {
+			err := spec.StatusDraft.CanTransitionTo(spec.StatusCompleted)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("draft")))
+			Expect(err).To(MatchError(ContainSubstring("completed")))
+		})
+		It("rejects idea → completed", func() {
+			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusCompleted)).To(HaveOccurred())
+		})
+	})
+
+	Describe("IsTerminal", func() {
+		It("returns true for completed", func() {
+			Expect(spec.StatusCompleted.IsTerminal()).To(BeTrue())
+		})
+		It("returns false for non-terminal statuses", func() {
+			Expect(spec.StatusVerifying.IsTerminal()).To(BeFalse())
+			Expect(spec.StatusApproved.IsTerminal()).To(BeFalse())
+		})
+	})
+
+	Describe("IsPreExecution", func() {
+		It("returns true for pre-execution statuses", func() {
+			Expect(spec.StatusIdea.IsPreExecution()).To(BeTrue())
+			Expect(spec.StatusDraft.IsPreExecution()).To(BeTrue())
+			Expect(spec.StatusApproved.IsPreExecution()).To(BeTrue())
+			Expect(spec.StatusGenerating.IsPreExecution()).To(BeTrue())
+		})
+		It("returns false for active and terminal statuses", func() {
+			Expect(spec.StatusPrompted.IsPreExecution()).To(BeFalse())
+			Expect(spec.StatusCompleted.IsPreExecution()).To(BeFalse())
+		})
+	})
+
+	Describe("IsActive", func() {
+		It("returns true for active statuses", func() {
+			Expect(spec.StatusPrompted.IsActive()).To(BeTrue())
+			Expect(spec.StatusVerifying.IsActive()).To(BeTrue())
+		})
+		It("returns false for pre-execution and terminal statuses", func() {
+			Expect(spec.StatusApproved.IsActive()).To(BeFalse())
+			Expect(spec.StatusCompleted.IsActive()).To(BeFalse())
+		})
+	})
+
+	Describe("Load permissiveness", func() {
+		var dir string
+
+		BeforeEach(func() {
+			var err error
+			dir, err = os.MkdirTemp("", "spec-lifecycle-*")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			_ = os.RemoveAll(dir)
+		})
+
+		It("accepts legacy queued status without error", func() {
+			path := filepath.Join(dir, "001-legacy.md")
+			Expect(
+				os.WriteFile(path, []byte("---\nstatus: queued\n---\n# Spec\n"), 0600),
+			).To(Succeed())
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("queued"))
+		})
+
+		It("accepts valid status string", func() {
+			path := filepath.Join(dir, "002-valid.md")
+			Expect(
+				os.WriteFile(path, []byte("---\nstatus: approved\n---\n# Spec\n"), 0600),
+			).To(Succeed())
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("approved"))
+		})
+
+		It("accepts file with no frontmatter", func() {
+			path := filepath.Join(dir, "003-no-fm.md")
+			Expect(
+				os.WriteFile(path, []byte("# No frontmatter\n\nJust content.\n"), 0600),
+			).To(Succeed())
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal(""))
+		})
+	})
+})
+
 var _ = Describe("AutoBranchName", func() {
 	DescribeTable("generates canonical branch names",
 		func(input, expected string) {

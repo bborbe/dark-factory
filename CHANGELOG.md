@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.132.2
+
+- refactor: add SpecStatuses/CanTransitionTo/predicates to spec.Status and CanTransitionTo/predicates to prompt.PromptStatus (Load() stays permissive — strict checks at transition boundary)
+
 ## v0.132.1
 
 - docs: add "Test the boundaries the new code crosses" section to `docs/prompt-writing.md` — mandates unit contract tests (level 1) and/or integration tests (level 2) for every boundary a new value crosses (library validators, parsers, registries, serialization, subprocess, external services); adds DoD checkbox

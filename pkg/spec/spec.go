@@ -16,8 +16,10 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
+	"github.com/bborbe/collection"
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
+	"github.com/bborbe/validation"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/notifier"
@@ -44,6 +46,75 @@ const (
 	// StatusCompleted indicates human verified all acceptance criteria are met.
 	StatusCompleted Status = "completed"
 )
+
+// SpecStatuses is a slice of Status values.
+//
+//nolint:revive // SpecStatuses is the intended name per go-enum-type-pattern
+type SpecStatuses []Status
+
+// Contains returns true if the given status is in the collection.
+func (s SpecStatuses) Contains(status Status) bool {
+	return collection.Contains(s, status)
+}
+
+// AvailableSpecStatuses is the collection of all valid spec Status values.
+var AvailableSpecStatuses = SpecStatuses{
+	StatusIdea,
+	StatusDraft,
+	StatusApproved,
+	StatusGenerating,
+	StatusPrompted,
+	StatusVerifying,
+	StatusCompleted,
+}
+
+// String returns the string representation of the Status.
+func (s Status) String() string { return string(s) }
+
+// Validate validates the Status value.
+func (s Status) Validate(ctx context.Context) error {
+	if !AvailableSpecStatuses.Contains(s) {
+		return errors.Wrapf(ctx, validation.Error, "status(%s) is invalid", s)
+	}
+	return nil
+}
+
+// specTransitions defines the valid state transitions for spec lifecycle.
+// This is the single source of truth — add one row here to enable a new transition.
+var specTransitions = map[Status][]Status{
+	StatusIdea:       {StatusDraft},
+	StatusDraft:      {StatusApproved},
+	StatusApproved:   {StatusGenerating, StatusDraft}, // unapprove edge: approved → draft
+	StatusGenerating: {StatusPrompted},
+	StatusPrompted:   {StatusVerifying},
+	StatusVerifying:  {StatusCompleted},
+}
+
+// CanTransitionTo returns nil if transitioning from s to target is valid,
+// or an error naming both states if the transition is not in the table.
+func (s Status) CanTransitionTo(target Status) error {
+	for _, allowed := range specTransitions[s] {
+		if allowed == target {
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot transition spec from %q to %q", s, target)
+}
+
+// IsTerminal returns true if the spec has reached a final, non-actionable state.
+func (s Status) IsTerminal() bool {
+	return s == StatusCompleted
+}
+
+// IsPreExecution returns true if the spec has not yet entered active processing.
+func (s Status) IsPreExecution() bool {
+	return s == StatusIdea || s == StatusDraft || s == StatusApproved || s == StatusGenerating
+}
+
+// IsActive returns true if the spec is in active processing (neither pre-execution nor terminal).
+func (s Status) IsActive() bool {
+	return !s.IsPreExecution() && !s.IsTerminal()
+}
 
 // Frontmatter represents the YAML frontmatter in a spec file.
 type Frontmatter struct {

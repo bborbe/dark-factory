@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted watchForCancellation from processor into pkg/cancellationwatcher with a Watcher interface — replaces *bool out-parameter with a closed-on-cancel channel; counterfeiter mock generated; all NewProcessor call sites updated; make precommit exited 0
 container: dark-factory-341-processor-A2-cancellation-watcher
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:31:00Z"
 queued: "2026-04-25T15:41:25Z"
 started: "2026-04-25T16:07:27Z"
+completed: "2026-04-25T16:22:54Z"
 ---
 
 <summary>

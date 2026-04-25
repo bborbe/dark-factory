@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.3
+
+- fix: `list --all`, `prompt list --all`, and `spec list --all` no longer fail with "unexpected argument" — new `validateListArgs` helper passes `--all` through to the list commands' own flag parsers
+
 ## v0.135.2
 
 - fix: spec auto-complete now fires AFTER the last prompt is moved to prompts/completed/, not before — specs transition to `verifying` immediately on prompt completion without requiring a daemon restart (regression: workflow_executor_direct.go phase ordering); the daemon also runs a separate 60-second auto-complete sweep, self-healing any future stuck specs within ~1 minute

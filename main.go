@@ -123,7 +123,7 @@ func runCommand(
 	case "status":
 		return runStatusCommand(ctx, cfg, args)
 	case "list":
-		if err := validateNoArgs(ctx, args, printListHelp); err != nil {
+		if err := validateListArgs(ctx, args, printListHelp); err != nil {
 			return err
 		}
 		return factory.CreateCombinedListCommand(cfg).Run(ctx, args)
@@ -204,7 +204,7 @@ func runPromptCommand(
 		}
 		return factory.CreateStatusCommand(ctx, cfg).Run(ctx, args)
 	case "list":
-		if err := validateNoArgs(ctx, args, printPromptHelp); err != nil {
+		if err := validateListArgs(ctx, args, printPromptHelp); err != nil {
 			return err
 		}
 		return factory.CreateListCommand(cfg).Run(ctx, args)
@@ -261,7 +261,7 @@ func runSpecCommand(
 		printSpecHelp()
 		return nil
 	case "list":
-		if err := validateNoArgs(ctx, args, printSpecHelp); err != nil {
+		if err := validateListArgs(ctx, args, printSpecHelp); err != nil {
 			return err
 		}
 		return factory.CreateSpecListCommand(cfg).Run(ctx, args)
@@ -335,6 +335,24 @@ func containsHelpFlag(args []string) bool {
 		}
 	}
 	return false
+}
+
+// validateListArgs returns an error if args contains anything other than the
+// optional "--all" flag. Used by the list command dispatchers in main.go.
+func validateListArgs(ctx context.Context, args []string, helpFn func()) error {
+	for _, arg := range args {
+		if arg == "--all" {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			fmt.Fprintf(os.Stderr, "unknown flag: %q\n", arg)
+		} else {
+			fmt.Fprintf(os.Stderr, "unknown argument: %q\n", arg)
+		}
+		helpFn()
+		return errors.Errorf(ctx, "unexpected argument: %q", arg)
+	}
+	return nil
 }
 
 // validateNoArgs returns an error if args is non-empty.

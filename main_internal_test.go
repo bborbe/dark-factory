@@ -119,6 +119,27 @@ var _ = Describe("validateNoArgs", func() {
 	})
 })
 
+var _ = Describe("validateListArgs", func() {
+	ctx := context.Background()
+	noop := func() {}
+
+	It("accepts no args", func() {
+		Expect(validateListArgs(ctx, []string{}, noop)).To(Succeed())
+	})
+
+	It("accepts --all", func() {
+		Expect(validateListArgs(ctx, []string{"--all"}, noop)).To(Succeed())
+	})
+
+	It("returns error for unknown flag", func() {
+		Expect(validateListArgs(ctx, []string{"--foo"}, noop)).To(HaveOccurred())
+	})
+
+	It("returns error for positional argument", func() {
+		Expect(validateListArgs(ctx, []string{"spec-name"}, noop)).To(HaveOccurred())
+	})
+})
+
 var _ = Describe("validateOneArg", func() {
 	ctx := context.Background()
 	noop := func() {}

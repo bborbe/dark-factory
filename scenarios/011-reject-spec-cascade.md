@@ -38,7 +38,7 @@ SPEC
 cat > prompts/in-progress/990-throwaway-feature-a.md << 'EOF'
 ---
 status: approved
-spec: [throwaway-feature]
+spec: [099-throwaway-feature]
 created: "2026-04-25T12:00:00Z"
 ---
 
@@ -50,7 +50,7 @@ EOF
 cat > prompts/in-progress/991-throwaway-feature-b.md << 'EOF'
 ---
 status: approved
-spec: [throwaway-feature]
+spec: [099-throwaway-feature]
 created: "2026-04-25T12:00:00Z"
 ---
 
@@ -61,14 +61,14 @@ EOF
 ```
 
 - [ ] `specs/in-progress/099-throwaway-feature.md` exists with `status: approved`
-- [ ] `prompts/in-progress/990-throwaway-feature-a.md` and `991-throwaway-feature-b.md` exist with `status: approved` and `spec: [throwaway-feature]`
+- [ ] `prompts/in-progress/990-throwaway-feature-a.md` and `991-throwaway-feature-b.md` exist with `status: approved` and `spec: [099-throwaway-feature]` (note: daemon migrates `spec:` references to the full-slug form on prompt generation; cascading reject finds prompts via this exact slug)
 - [ ] No daemon is running
 
 ## Action
 
 ```bash
 cd "$WORK_DIR/sandbox"
-/tmp/new-dark-factory spec reject throwaway-feature --reason "scenario regression test"
+/tmp/new-dark-factory spec reject 099 --reason "scenario regression test"
 ```
 
 - [ ] Command exits 0 and prints a confirmation referencing both linked prompts

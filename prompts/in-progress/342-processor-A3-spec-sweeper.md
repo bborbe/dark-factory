@@ -1,7 +1,11 @@
 ---
-status: approved
+status: committing
+summary: Extracted checkPromptedSpecs into pkg/specsweeper.Sweeper interface with NewSweeper constructor, wired into processor via specSweeper field replacing specLister, updated all three NewProcessor call sites (factory.go + two test locations), generated counterfeiter mock, added 100%-coverage tests, and updated CHANGELOG.md.
+container: dark-factory-342-processor-A3-spec-sweeper
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:32:00Z"
 queued: "2026-04-25T15:41:25Z"
+started: "2026-04-25T16:22:55Z"
 ---
 
 <summary>

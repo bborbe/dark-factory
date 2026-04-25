@@ -40,6 +40,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
+	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
 	"github.com/bborbe/dark-factory/pkg/status"
 	"github.com/bborbe/dark-factory/pkg/subproc"
@@ -768,12 +769,15 @@ func CreateProcessor(
 		versionGetter,
 		workflowExecutor,
 		autoCompleter,
-		spec.NewLister(
-			currentDateTimeGetter,
-			specsInboxDir,
-			specsInProgressDir,
-			specsCompletedDir,
-			specsRejectedDir,
+		specsweeper.NewSweeper(
+			spec.NewLister(
+				currentDateTimeGetter,
+				specsInboxDir,
+				specsInProgressDir,
+				specsCompletedDir,
+				specsRejectedDir,
+			),
+			autoCompleter,
 		),
 		n,
 		containerCounter,

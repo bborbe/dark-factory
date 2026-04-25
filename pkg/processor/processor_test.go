@@ -33,6 +33,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
+	"github.com/bborbe/dark-factory/pkg/specsweeper"
 )
 
 // newTestWorkflowExecutor builds a WorkflowExecutor from the given mocks and workflow type.
@@ -90,7 +91,7 @@ func newTestProcessor(
 		vg,
 		we,
 		autoCompleter,
-		specLister,
+		specsweeper.NewSweeper(specLister, autoCompleter),
 		n,
 		containerCounter,
 		containerLock,
@@ -7318,7 +7319,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				versionGet,
 				we,
 				realAutoCompleter,
-				realLister,
+				specsweeper.NewSweeper(realLister, realAutoCompleter),
 				notifier.NewMultiNotifier(),
 				nil,
 				nil,

@@ -29,6 +29,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
+	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -80,7 +81,7 @@ func NewProcessor(
 	versionGetter version.Getter,
 	workflowExecutor WorkflowExecutor,
 	autoCompleter spec.AutoCompleter,
-	specLister spec.Lister,
+	specSweeper specsweeper.Sweeper,
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
 	containerLock containerlock.ContainerLock,
@@ -126,7 +127,7 @@ func NewProcessor(
 		versionGetter:             versionGetter,
 		workflowExecutor:          workflowExecutor,
 		autoCompleter:             autoCompleter,
-		specLister:                specLister,
+		specSweeper:               specSweeper,
 		notifier:                  n,
 		containerCounter:          containerCounter,
 		containerLock:             containerLock,
@@ -161,7 +162,7 @@ type processor struct {
 	versionGetter             version.Getter
 	workflowExecutor          WorkflowExecutor
 	autoCompleter             spec.AutoCompleter
-	specLister                spec.Lister
+	specSweeper               specsweeper.Sweeper
 	notifier                  notifier.Notifier
 	containerCounter          executor.ContainerCounter
 	containerLock             containerlock.ContainerLock
@@ -198,7 +199,7 @@ func (p *processor) Process(ctx context.Context) error {
 	slog.Info("processor started")
 
 	// Startup scans — do NOT fire onIdle here; that would cancel one-shot before work starts.
-	if _, err := p.checkPromptedSpecs(ctx); err != nil {
+	if _, err := p.specSweeper.Sweep(ctx); err != nil {
 		return errors.Wrap(ctx, err, "check prompted specs on startup")
 	}
 
@@ -270,9 +271,9 @@ func (p *processor) runQueueTick(ctx context.Context) bool {
 
 // runSweepTick handles a periodic spec sweep. Returns true if the tick made progress.
 func (p *processor) runSweepTick(ctx context.Context) bool {
-	transitioned, err := p.checkPromptedSpecs(ctx)
+	transitioned, err := p.specSweeper.Sweep(ctx)
 	if err != nil {
-		slog.Warn("periodic checkPromptedSpecs failed", "error", err)
+		slog.Warn("periodic spec sweep failed", "error", err)
 	}
 	return (tickResult{transitionedSpecs: transitioned}).madeProgress()
 }
@@ -810,30 +811,6 @@ func (p *processor) notifyFromReport(ctx context.Context, logFile string, prompt
 			PromptName:  filepath.Base(promptPath),
 		})
 	}
-}
-
-// checkPromptedSpecs scans all specs and calls CheckAndComplete for any in "prompted" status.
-// Returns the count of specs checked and any fatal error.
-// This catches specs that were stuck in prompted state across daemon restarts.
-func (p *processor) checkPromptedSpecs(ctx context.Context) (int, error) {
-	specs, err := p.specLister.List(ctx)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, "list specs")
-	}
-
-	count := 0
-	for _, sf := range specs {
-		if sf.Frontmatter.Status != string(spec.StatusPrompted) {
-			continue
-		}
-		slog.Info("startup: checking prompted spec", "spec", sf.Name)
-		if err := p.autoCompleter.CheckAndComplete(ctx, sf.Name); err != nil {
-			return count, errors.Wrap(ctx, err, "check and complete spec")
-		}
-		count++
-	}
-
-	return count, nil
 }
 
 // waitForContainerSlot blocks until the system-wide running container count

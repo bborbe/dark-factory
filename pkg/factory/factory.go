@@ -22,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
+	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/generator"
@@ -30,6 +31,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
+	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -780,18 +782,23 @@ func CreateProcessor(
 			autoCompleter,
 		),
 		n,
-		containerCounter,
-		containerLock,
-		containerChecker,
-		dirtyFileChecker,
-		gitLockChecker,
-		preflightChecker,
+		preflightconditions.NewConditions(
+			preflightChecker,
+			gitLockChecker,
+			dirtyFileChecker,
+			dirtyFileThreshold,
+		),
+		containerslot.NewManager(
+			containerLock,
+			containerCounter,
+			containerChecker,
+			maxContainers,
+			10*time.Second,
+		),
 		cancellationwatcher.NewWatcher(exec, promptManager),
 		wakeup,
 		dirs,
 		projectName,
-		processor.MaxContainers(maxContainers),
-		processor.DirtyFileThreshold(dirtyFileThreshold),
 		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),

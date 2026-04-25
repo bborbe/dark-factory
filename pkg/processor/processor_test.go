@@ -24,10 +24,12 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
+	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
+	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
@@ -93,18 +95,23 @@ func newTestProcessor(
 		autoCompleter,
 		specsweeper.NewSweeper(specLister, autoCompleter),
 		n,
-		containerCounter,
-		containerLock,
-		containerChecker,
-		dirtyFileChecker,
-		gitLockChecker,
-		preflightChecker,
+		preflightconditions.NewConditions(
+			preflightChecker,
+			gitLockChecker,
+			dirtyFileChecker,
+			dirtyFileThreshold,
+		),
+		containerslot.NewManager(
+			containerLock,
+			containerCounter,
+			containerChecker,
+			maxContainers,
+			10*time.Second,
+		),
 		cancellationwatcher.NewWatcher(exec, mgr),
 		wakeup,
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
 		processor.ProjectName(projectName),
-		processor.MaxContainers(maxContainers),
-		processor.DirtyFileThreshold(dirtyFileThreshold),
 		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),
@@ -7321,12 +7328,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				realAutoCompleter,
 				specsweeper.NewSweeper(realLister, realAutoCompleter),
 				notifier.NewMultiNotifier(),
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
-				nil,
+				preflightconditions.NewConditions(nil, nil, nil, 0),
+				containerslot.NewManager(nil, nil, nil, 0, 10*time.Second),
 				cancellationwatcher.NewWatcher(executor, manager),
 				wakeup,
 				processor.Dirs{
@@ -7335,8 +7338,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 					Log:       filepath.Join(sweepTempDir, "log"),
 				},
 				processor.ProjectName("sweep-test"),
-				processor.MaxContainers(0),
-				processor.DirtyFileThreshold(0),
 				processor.AutoRetryLimit(0),
 				0,
 				processor.VerificationGate(false),

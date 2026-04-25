@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -20,11 +19,11 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
-	"github.com/bborbe/dark-factory/pkg/containerlock"
+	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
-	"github.com/bborbe/dark-factory/pkg/preflight"
+	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/report"
@@ -33,14 +32,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
-// ErrPreflightSkip is returned by processPrompt when the baseline preflight check
-// failed and the prompt should NOT be retried within the same scan cycle.
-// The caller in processExistingQueued recognizes this sentinel and returns,
-// which gives control back to the 5s ticker in Process().
-//
-// Do NOT use this for the other skip conditions (git-index-lock, dirty-files) —
-// those are transient and it is safe to advance to the next prompt in the queue.
-var ErrPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
+// ErrPreflightSkip re-exports preflightconditions.ErrPreflightSkip so existing
+// stderrors.Is(err, processor.ErrPreflightSkip) callers continue to match without rewriting.
+var ErrPreflightSkip = preflightconditions.ErrPreflightSkip
 
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
 
@@ -83,18 +77,12 @@ func NewProcessor(
 	autoCompleter spec.AutoCompleter,
 	specSweeper specsweeper.Sweeper,
 	n notifier.Notifier,
-	containerCounter executor.ContainerCounter,
-	containerLock containerlock.ContainerLock,
-	containerChecker executor.ContainerChecker,
-	dirtyFileChecker DirtyFileChecker,
-	gitLockChecker GitLockChecker,
-	preflightChecker preflight.Checker,
+	preflightConditions preflightconditions.Conditions,
+	containerSlotManager containerslot.Manager,
 	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
 	projectName ProjectName,
-	maxContainers MaxContainers,
-	dirtyFileThreshold DirtyFileThreshold,
 	autoRetryLimit AutoRetryLimit,
 	maxPromptDuration time.Duration,
 	verificationGate VerificationGate,
@@ -129,19 +117,12 @@ func NewProcessor(
 		autoCompleter:             autoCompleter,
 		specSweeper:               specSweeper,
 		notifier:                  n,
-		containerCounter:          containerCounter,
-		containerLock:             containerLock,
-		containerChecker:          containerChecker,
-		dirtyFileChecker:          dirtyFileChecker,
-		gitLockChecker:            gitLockChecker,
-		preflightChecker:          preflightChecker,
+		preflightConditions:       preflightConditions,
+		containerSlotManager:      containerSlotManager,
 		cancellationWatcher:       cancellationWatcher,
 		wakeup:                    wakeup,
 		dirs:                      dirs,
 		projectName:               projectName,
-		maxContainers:             maxContainers,
-		containerPollInterval:     10 * time.Second,
-		dirtyFileThreshold:        dirtyFileThreshold,
 		autoRetryLimit:            autoRetryLimit,
 		maxPromptDuration:         maxPromptDuration,
 		verificationGate:          verificationGate,
@@ -164,19 +145,12 @@ type processor struct {
 	autoCompleter             spec.AutoCompleter
 	specSweeper               specsweeper.Sweeper
 	notifier                  notifier.Notifier
-	containerCounter          executor.ContainerCounter
-	containerLock             containerlock.ContainerLock
-	containerChecker          executor.ContainerChecker
-	dirtyFileChecker          DirtyFileChecker
-	gitLockChecker            GitLockChecker
-	preflightChecker          preflight.Checker // nil = disabled
+	preflightConditions       preflightconditions.Conditions
+	containerSlotManager      containerslot.Manager
 	cancellationWatcher       cancellationwatcher.Watcher
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
 	projectName               ProjectName
-	maxContainers             MaxContainers
-	containerPollInterval     time.Duration
-	dirtyFileThreshold        DirtyFileThreshold
 	lastBlockedMsg            string
 	autoRetryLimit            AutoRetryLimit
 	maxPromptDuration         time.Duration
@@ -813,185 +787,9 @@ func (p *processor) notifyFromReport(ctx context.Context, logFile string, prompt
 	}
 }
 
-// waitForContainerSlot blocks until the system-wide running container count
-// is below maxContainers, then returns. Checks every 10 seconds.
-// Returns immediately if maxContainers <= 0 (no limit).
-// Returns ctx.Err() if context is cancelled while waiting.
-func (p *processor) waitForContainerSlot(ctx context.Context) error {
-	if p.maxContainers <= 0 {
-		return nil
-	}
-	for {
-		count, err := p.containerCounter.CountRunning(ctx)
-		if err != nil {
-			slog.Warn("failed to count running containers, proceeding anyway", "error", err)
-			return nil
-		}
-		if count < int(p.maxContainers) {
-			return nil
-		}
-		slog.Info(
-			"waiting for container slot",
-			"running", count,
-			"limit", p.maxContainers,
-		)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(p.containerPollInterval):
-		}
-	}
-}
-
-// hasFreeSlot returns true when maxContainers is unlimited (<=0) or when
-// the current system-wide running count is below maxContainers.
-// On counter error, the behaviour matches waitForContainerSlot's existing
-// tolerance: log a warning and return true so the daemon makes forward
-// progress — docker itself will reject a start if resources are truly absent.
-func (p *processor) hasFreeSlot(ctx context.Context) bool {
-	if p.maxContainers <= 0 {
-		return true
-	}
-	count, err := p.containerCounter.CountRunning(ctx)
-	if err != nil {
-		slog.Warn("failed to count running containers, proceeding anyway", "error", err)
-		return true
-	}
-	return count < int(p.maxContainers)
-}
-
-// prepareContainerSlot acquires the global container lock only for the
-// check-and-start window. If the slot is full, it RELEASES the lock and
-// sleeps before retrying, so other daemons (possibly with higher limits)
-// are not blocked while this daemon waits.
-//
-// On success, returns with the lock held and an idempotent release function.
-// The caller is responsible for starting the container and calling
-// startContainerLockRelease, which releases the lock after the container is
-// confirmed running.
-//
-// When p.containerLock is nil, no locking is performed and the only wait is
-// the unlocked waitForContainerSlot poll (unchanged behaviour for nil-lock case).
-func (p *processor) prepareContainerSlot(ctx context.Context) (func(), error) {
-	if p.containerLock == nil {
-		if err := p.waitForContainerSlot(ctx); err != nil {
-			return func() {}, errors.Wrap(ctx, err, "wait for container slot")
-		}
-		return func() {}, nil
-	}
-
-	for {
-		if err := p.containerLock.Acquire(ctx); err != nil {
-			return func() {}, errors.Wrap(ctx, err, "acquire container lock")
-		}
-
-		// Idempotent release — the caller MAY call this early, the retry
-		// branch below WILL call this before sleeping, and startContainerLockRelease
-		// will call it after the container is confirmed running.
-		var once sync.Once
-		releaseLock := func() {
-			once.Do(func() { _ = p.containerLock.Release(ctx) })
-		}
-
-		// Lock held — count must be stable for this daemon's decision.
-		if p.hasFreeSlot(ctx) {
-			// Lock stays held; caller does docker run + startContainerLockRelease.
-			return releaseLock, nil
-		}
-
-		// No slot — release before sleeping so other daemons can proceed.
-		releaseLock()
-		slog.Info(
-			"waiting for container slot",
-			"limit", p.maxContainers,
-		)
-		select {
-		case <-ctx.Done():
-			return func() {}, errors.Wrapf(ctx, ctx.Err(), "wait for container slot cancelled")
-		case <-time.After(p.containerPollInterval):
-		}
-	}
-}
-
-// startContainerLockRelease spawns a goroutine that releases the container lock
-// as soon as the named container is confirmed running (or after a 30 s timeout).
-// This limits how long the lock is held to the check-and-start window only.
-//
-// A goroutine is required here because lock release must happen asynchronously
-// while the caller continues with prompt execution. release() is deferred to
-// guarantee the lock is always freed, even if ctx is cancelled before
-// WaitUntilRunning returns (e.g. on shutdown).
-func (p *processor) startContainerLockRelease(
-	ctx context.Context,
-	name ContainerName,
-	release func(),
-) {
-	if p.containerChecker == nil {
-		return
-	}
-	cc := p.containerChecker
-	go func() {
-		defer release()
-		_ = cc.WaitUntilRunning(ctx, name.String(), 30*time.Second)
-	}()
-}
-
-// checkDirtyFileThreshold returns (true, nil) when the prompt should be skipped
-// because the working tree has too many dirty files. Returns (false, nil) when
-// the check is disabled or the count is within threshold.
-func (p *processor) checkDirtyFileThreshold(ctx context.Context) (bool, error) {
-	if p.dirtyFileThreshold <= 0 || p.dirtyFileChecker == nil {
-		return false, nil
-	}
-	count, err := p.dirtyFileChecker.CountDirtyFiles(ctx)
-	if err != nil {
-		return false, errors.Wrap(ctx, err, "count dirty files")
-	}
-	if count > int(p.dirtyFileThreshold) {
-		slog.Warn(
-			"dirty file threshold exceeded, skipping prompt",
-			"dirtyFiles", count,
-			"threshold", p.dirtyFileThreshold,
-		)
-		return true, nil
-	}
-	return false, nil
-}
-
-// checkGitIndexLock returns true when the prompt should be skipped
-// because .git/index.lock exists, false otherwise.
-func (p *processor) checkGitIndexLock() bool {
-	return p.gitLockChecker != nil && p.gitLockChecker.Exists()
-}
-
-// checkPreflightConditions runs all pre-execution skip checks in order.
-// Returns (true, nil) if the prompt should be skipped this cycle (transient conditions).
-// Returns (false, ErrPreflightSkip) if the preflight baseline is broken — the caller
-// must exit the scan loop and wait for the next ticker/watcher event.
-func (p *processor) checkPreflightConditions(ctx context.Context) (bool, error) {
-	// Baseline preflight check — must pass before any container starts
-	if p.preflightChecker != nil {
-		ok, err := p.preflightChecker.Check(ctx)
-		if err != nil {
-			slog.Warn("preflight checker error, skipping cycle", "error", err)
-			return false, ErrPreflightSkip
-		}
-		if !ok {
-			slog.Info("preflight: baseline broken — prompt stays queued until baseline is fixed")
-			return false, ErrPreflightSkip
-		}
-	}
-
-	if p.checkGitIndexLock() {
-		slog.Warn("git index lock exists, skipping prompt — will retry next cycle")
-		return true, nil
-	}
-	return p.checkDirtyFileThreshold(ctx)
-}
-
 // processPrompt executes a single prompt and commits the result.
 func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
-	if skip, err := p.checkPreflightConditions(ctx); err != nil {
+	if skip, err := p.preflightConditions.ShouldSkip(ctx); err != nil {
 		if stderrors.Is(err, ErrPreflightSkip) {
 			return err // propagate sentinel unwrapped so caller can recognize it
 		}
@@ -1040,14 +838,14 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 
 	// Acquire container lock only for the check-and-start window, not during prep work above.
-	releaseLock, err := p.prepareContainerSlot(ctx)
+	releaseLock, err := p.containerSlotManager.Acquire(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare container slot")
 	}
 	defer releaseLock()
 
 	// Release the container lock once the container has started (not after it exits).
-	p.startContainerLockRelease(ctx, containerName, releaseLock)
+	p.containerSlotManager.ReleaseAfterStart(ctx, containerName.String(), releaseLock)
 
 	cancelled, execErr := p.runContainer(ctx, content, logFile, containerName, pr.Path)
 	if cancelled {

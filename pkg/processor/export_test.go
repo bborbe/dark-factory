@@ -3,19 +3,3 @@
 // license that can be found in the LICENSE file.
 
 package processor
-
-import (
-	"context"
-
-	"github.com/bborbe/dark-factory/pkg/preflight"
-)
-
-// SetPreflightChecker injects a preflight.Checker for internal processor tests.
-func (p *processor) SetPreflightChecker(c preflight.Checker) {
-	p.preflightChecker = c
-}
-
-// CheckPreflightConditions exposes checkPreflightConditions for internal tests.
-func (p *processor) CheckPreflightConditions(ctx context.Context) (bool, error) {
-	return p.checkPreflightConditions(ctx)
-}

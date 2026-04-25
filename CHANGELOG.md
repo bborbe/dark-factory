@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.10
+
+- refactor: extracted PreflightConditions and ContainerSlotManager from processor — pure refactor, no behaviour change
+
 ## v0.135.9
 
 - refactor: extracted SpecSweeper from processor — pure refactor, no behaviour change

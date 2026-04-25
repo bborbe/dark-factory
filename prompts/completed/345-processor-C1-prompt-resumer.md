@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extracted executing-prompt resume logic from processor into a new pkg/promptresumer package with ResumeAll interface, wired via workflowExecutorResumerAdapter in factory, updated all NewProcessor call sites, and replaced processor internal ResumeExecuting tests with a delegation test using a stub resumer
 container: dark-factory-345-processor-C1-prompt-resumer
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:35:00Z"
 queued: "2026-04-25T17:43:13Z"
 started: "2026-04-25T17:43:15Z"
+completed: "2026-04-25T18:05:15Z"
 ---
 
 <summary>

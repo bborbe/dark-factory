@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Replaced NewProcessor primitive parameters with named types (ProjectName, ContainerName, BaseName, Dirs, Commands, MaxContainers, DirtyFileThreshold, AutoRetryLimit, AdditionalInstructions, VerificationGate); moved sanitizeContainerName to ContainerName.Sanitize() method; updated WorkflowExecutor interface and all implementations; updated factory.go, tests, and mocks.
 container: dark-factory-338-processor-typed-primitives
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:21:00Z"
 queued: "2026-04-25T14:50:10Z"
 started: "2026-04-25T14:50:11Z"
+completed: "2026-04-25T15:19:23Z"
 ---
 
 <summary>

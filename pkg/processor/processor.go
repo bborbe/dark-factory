@@ -33,20 +33,6 @@ import (
 
 var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
-// sweepIntervalMu protects sweepInterval from concurrent read/write (test overrides).
-var sweepIntervalMu sync.Mutex
-
-// sweepInterval controls the auto-complete sweep cadence. Variable (not const)
-// so tests can override via SetSweepInterval (export_test.go).
-var sweepInterval = 60 * time.Second
-
-// getSweepInterval returns the current sweep interval under the mutex.
-func getSweepInterval() time.Duration {
-	sweepIntervalMu.Lock()
-	defer sweepIntervalMu.Unlock()
-	return sweepInterval
-}
-
 // errPreflightSkip is returned by processPrompt when the baseline preflight check
 // failed and the prompt should NOT be retried within the same scan cycle.
 // The caller in processExistingQueued recognizes this sentinel and returns,
@@ -103,8 +89,20 @@ func NewProcessor(
 	gitLockChecker GitLockChecker,
 	autoRetryLimit int,
 	maxPromptDuration time.Duration,
+	// queueInterval controls how often the daemon polls for queued prompts.
+	// Pass 0 to use the default of 5s.
+	queueInterval time.Duration,
+	// sweepInterval controls the auto-complete sweep cadence.
+	// Pass 0 to use the default of 60s.
+	sweepInterval time.Duration,
 	preflightChecker preflight.Checker,
 ) Processor {
+	if queueInterval <= 0 {
+		queueInterval = 5 * time.Second
+	}
+	if sweepInterval <= 0 {
+		sweepInterval = 60 * time.Second
+	}
 	return &processor{
 		queueDir:               queueDir,
 		completedDir:           completedDir,
@@ -135,6 +133,8 @@ func NewProcessor(
 		gitLockChecker:         gitLockChecker,
 		autoRetryLimit:         autoRetryLimit,
 		maxPromptDuration:      maxPromptDuration,
+		queueInterval:          queueInterval,
+		sweepInterval:          sweepInterval,
 		preflightChecker:       preflightChecker,
 	}
 }
@@ -171,6 +171,8 @@ type processor struct {
 	lastBlockedMsg         string
 	autoRetryLimit         int
 	maxPromptDuration      time.Duration
+	queueInterval          time.Duration
+	sweepInterval          time.Duration
 	preflightChecker       preflight.Checker // nil = disabled
 }
 
@@ -196,13 +198,13 @@ func (p *processor) Process(ctx context.Context) error {
 	slog.Info("waiting for changes")
 
 	// Listen for ready signals from watcher
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(p.queueInterval)
 	defer ticker.Stop()
 
 	// Slow self-healing sweep: catches specs stuck in `prompted` if the per-prompt
 	// CheckAndComplete missed (daemon crash mid-completion, race, future regression).
 	// Cadence kept slower than the queue ticker because the sweep is more expensive.
-	sweepTicker := time.NewTicker(getSweepInterval())
+	sweepTicker := time.NewTicker(p.sweepInterval)
 	defer sweepTicker.Stop()
 
 	for {

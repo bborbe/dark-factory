@@ -91,6 +91,8 @@ type partialConfig struct {
 	HideGit                *bool                 `yaml:"hideGit"`
 	PreflightCommand       *string               `yaml:"preflightCommand"`
 	PreflightInterval      *string               `yaml:"preflightInterval"`
+	QueueInterval          *string               `yaml:"queueInterval"`
+	SweepInterval          *string               `yaml:"sweepInterval"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -329,6 +331,12 @@ func mergePartialLimits(cfg *Config, partial *partialConfig) {
 	}
 	if partial.AutoRetryLimit != nil {
 		cfg.AutoRetryLimit = *partial.AutoRetryLimit
+	}
+	if partial.QueueInterval != nil {
+		cfg.QueueInterval = *partial.QueueInterval
+	}
+	if partial.SweepInterval != nil {
+		cfg.SweepInterval = *partial.SweepInterval
 	}
 }
 

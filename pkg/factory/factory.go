@@ -353,6 +353,8 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 		cfg.HideGit,
 		preflightChecker,
+		cfg.ParsedQueueInterval(),
+		cfg.ParsedSweepInterval(),
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -485,6 +487,8 @@ func CreateOneShotRunner(
 			osGitLockChecker, cfg.ParsedMaxPromptDuration(), cfg.AutoRetryLimit,
 			cfg.HideGit,
 			osPreflightChecker,
+			cfg.ParsedQueueInterval(),
+			cfg.ParsedSweepInterval(),
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -714,6 +718,8 @@ func CreateProcessor(
 	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
 	hideGit bool,
 	preflightChecker preflight.Checker,
+	queueInterval time.Duration,
+	sweepInterval time.Duration,
 ) processor.Processor {
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
@@ -772,6 +778,8 @@ func CreateProcessor(
 		gitLockChecker,
 		autoRetryLimit,
 		maxPromptDuration,
+		queueInterval,
+		sweepInterval,
 		preflightChecker,
 	)
 }

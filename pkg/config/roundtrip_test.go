@@ -152,6 +152,10 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.MaxPromptDuration).To(Equal("7h")) }),
 			Entry("preflightInterval", "preflightInterval", "3h",
 				func(cfg Config) { Expect(cfg.PreflightInterval).To(Equal("3h")) }),
+			Entry("queueInterval", "queueInterval", "10s",
+				func(cfg Config) { Expect(cfg.QueueInterval).To(Equal("10s")) }),
+			Entry("sweepInterval", "sweepInterval", "2m",
+				func(cfg Config) { Expect(cfg.SweepInterval).To(Equal("2m")) }),
 			// Int fields
 			Entry("debounceMs", "debounceMs", "42",
 				func(cfg Config) { Expect(cfg.DebounceMs).To(Equal(42)) }),

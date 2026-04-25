@@ -6,7 +6,6 @@ package processor
 
 import (
 	"context"
-	"time"
 
 	"github.com/bborbe/dark-factory/pkg/preflight"
 )
@@ -23,16 +22,3 @@ func (p *processor) CheckPreflightConditions(ctx context.Context) (bool, error) 
 
 // ErrPreflightSkip exposes errPreflightSkip for tests to assert sentinel identity.
 var ErrPreflightSkip = errPreflightSkip
-
-// SetSweepInterval is for tests only — overrides the auto-complete sweep ticker interval.
-func SetSweepInterval(d time.Duration) (restore func()) {
-	sweepIntervalMu.Lock()
-	prev := sweepInterval
-	sweepInterval = d
-	sweepIntervalMu.Unlock()
-	return func() {
-		sweepIntervalMu.Lock()
-		sweepInterval = prev
-		sweepIntervalMu.Unlock()
-	}
-}

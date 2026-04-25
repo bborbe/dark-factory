@@ -103,6 +103,8 @@ var _ = Describe("Factory", func() {
 				0,
 				false,
 				nil,
+				0, // queueInterval: 0 → default 5s
+				0, // sweepInterval: 0 → default 60s
 			)
 			Expect(processor).NotTo(BeNil())
 		})

@@ -122,6 +122,8 @@ type Config struct {
 	AutoRetryLimit         int                 `yaml:"autoRetryLimit"`
 	PreflightCommand       string              `yaml:"preflightCommand"`
 	PreflightInterval      string              `yaml:"preflightInterval"`
+	QueueInterval          string              `yaml:"queueInterval"`
+	SweepInterval          string              `yaml:"sweepInterval"`
 }
 
 // Defaults returns a Config with all default values.
@@ -163,6 +165,8 @@ func Defaults() Config {
 		GenerateCommand:   "/dark-factory:generate-prompts-for-spec",
 		PreflightCommand:  "make precommit",
 		PreflightInterval: "8h",
+		QueueInterval:     "5s",
+		SweepInterval:     "60s",
 	}
 }
 
@@ -244,6 +248,8 @@ func (c Config) Validate(ctx context.Context) error {
 			"preflightInterval",
 			validation.HasValidationFunc(c.validatePreflightInterval),
 		),
+		validation.Name("queueInterval", validation.HasValidationFunc(c.validateQueueInterval)),
+		validation.Name("sweepInterval", validation.HasValidationFunc(c.validateSweepInterval)),
 	}.Validate(ctx)
 }
 
@@ -311,6 +317,74 @@ func (c Config) validatePreflightInterval(ctx context.Context) error {
 			c.PreflightInterval,
 			err,
 		)
+	}
+	return nil
+}
+
+// ParsedQueueInterval returns the parsed duration from QueueInterval.
+// Returns 5 * time.Second when QueueInterval is empty or unparseable (preserves default behaviour).
+// Safe to call at any time — never panics.
+func (c Config) ParsedQueueInterval() time.Duration {
+	if c.QueueInterval == "" {
+		return 5 * time.Second
+	}
+	d, err := time.ParseDuration(c.QueueInterval)
+	if err != nil {
+		return 5 * time.Second
+	}
+	return d
+}
+
+// ParsedSweepInterval returns the parsed duration from SweepInterval.
+// Returns 60 * time.Second when SweepInterval is empty or unparseable (preserves default behaviour).
+// Safe to call at any time — never panics.
+func (c Config) ParsedSweepInterval() time.Duration {
+	if c.SweepInterval == "" {
+		return 60 * time.Second
+	}
+	d, err := time.ParseDuration(c.SweepInterval)
+	if err != nil {
+		return 60 * time.Second
+	}
+	return d
+}
+
+// validateQueueInterval rejects unparseable or non-positive duration strings for queueInterval.
+func (c Config) validateQueueInterval(ctx context.Context) error {
+	if c.QueueInterval == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(c.QueueInterval)
+	if err != nil {
+		return errors.Errorf(
+			ctx,
+			"queueInterval %q is not a valid duration: %v",
+			c.QueueInterval,
+			err,
+		)
+	}
+	if d <= 0 {
+		return errors.Errorf(ctx, "queueInterval must be positive, got %s", c.QueueInterval)
+	}
+	return nil
+}
+
+// validateSweepInterval rejects unparseable or non-positive duration strings for sweepInterval.
+func (c Config) validateSweepInterval(ctx context.Context) error {
+	if c.SweepInterval == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(c.SweepInterval)
+	if err != nil {
+		return errors.Errorf(
+			ctx,
+			"sweepInterval %q is not a valid duration: %v",
+			c.SweepInterval,
+			err,
+		)
+	}
+	if d <= 0 {
+		return errors.Errorf(ctx, "sweepInterval must be positive, got %s", c.SweepInterval)
 	}
 	return nil
 }

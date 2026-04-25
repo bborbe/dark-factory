@@ -103,6 +103,7 @@ func newTestProcessor(
 		containerLock, containerChecker,
 		dirtyFileThreshold, dirtyFileChecker, gitLockChecker,
 		autoRetryLimit, maxPromptDuration,
+		0, 0, // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		preflightChecker,
 	)
 }
@@ -7268,9 +7269,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 	Describe("periodic auto-complete sweep", func() {
 		It("self-heals a stuck prompted spec via the periodic sweep", func() {
-			restore := processor.SetSweepInterval(20 * time.Millisecond)
-			defer restore()
-
 			// Directories for this sub-test
 			sweepTempDir, err := os.MkdirTemp("", "sweep-test-*")
 			Expect(err).NotTo(HaveOccurred())
@@ -7323,43 +7321,32 @@ DARK-FACTORY-REPORT -->`), 0600)
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 			manager.FindCommittingReturns(nil, nil)
 
-			p := newTestProcessor(
+			we := processor.NewDirectWorkflowExecutor(processor.WorkflowDeps{
+				ProjectName:   "sweep-test",
+				PromptManager: manager,
+				AutoCompleter: realAutoCompleter,
+				Releaser:      releaser,
+				Brancher:      brancher,
+				PRCreator:     prCreator,
+				Cloner:        cloner,
+				Worktreer:     worktreer,
+				PRMerger:      prMerger,
+			})
+			p := processor.NewProcessor(
 				sweepQueueDir,
 				sweepCompletedDir,
 				filepath.Join(sweepTempDir, "log"),
 				"sweep-test",
-				executor,
-				manager,
-				releaser,
-				versionGet,
-				ready,
-				false,
-				config.WorkflowDirect,
-				brancher,
-				prCreator,
-				cloner,
-				worktreer,
-				prMerger,
-				false,
-				false,
-				false,
-				realAutoCompleter,
-				realLister,
-				"",
-				"",
-				"",
+				executor, manager, releaser, versionGet, ready,
+				we, realAutoCompleter, realLister,
+				"", "", "",
 				false,
 				notifier.NewMultiNotifier(),
-				nil,
-				0,
-				"",
-				nil,
-				nil,
-				0,
-				nil,
-				nil,
-				0,
-				0,
+				nil, 0, "",
+				nil, nil,
+				0, nil, nil,
+				0, 0,
+				0, 20*time.Millisecond, // queueInterval default, sweepInterval 20ms for test speed
 				nil,
 			)
 

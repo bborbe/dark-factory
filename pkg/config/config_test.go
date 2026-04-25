@@ -54,6 +54,8 @@ var _ = Describe("Config", func() {
 			Expect(cfg.GitHub.Token).To(BeEmpty())
 			Expect(cfg.PreflightCommand).To(Equal("make precommit"))
 			Expect(cfg.PreflightInterval).To(Equal("8h"))
+			Expect(cfg.QueueInterval).To(Equal("5s"))
+			Expect(cfg.SweepInterval).To(Equal("60s"))
 		})
 	})
 
@@ -2521,6 +2523,126 @@ autoRetryLimit: 3
 			cfg := config.Defaults()
 			cfg.PreflightInterval = ""
 			Expect(cfg.ParsedPreflightInterval()).To(Equal(time.Duration(0)))
+		})
+	})
+
+	Describe("validateQueueInterval", func() {
+		It("rejects invalid duration string", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "bad"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("queueInterval"))
+		})
+
+		It("rejects zero duration", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "0s"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("queueInterval"))
+		})
+
+		It("rejects negative duration", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "-1s"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("queueInterval"))
+		})
+
+		It("allows empty queueInterval (uses default)", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = ""
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("allows valid positive duration", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "10s"
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("validateSweepInterval", func() {
+		It("rejects invalid duration string", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "bad"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("sweepInterval"))
+		})
+
+		It("rejects zero duration", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "0s"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("sweepInterval"))
+		})
+
+		It("rejects negative duration", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "-1s"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("sweepInterval"))
+		})
+
+		It("allows empty sweepInterval (uses default)", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = ""
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("allows valid positive duration", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "2m"
+			err := cfg.Validate(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("ParsedQueueInterval", func() {
+		It("parses valid duration", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "10s"
+			Expect(cfg.ParsedQueueInterval()).To(Equal(10 * time.Second))
+		})
+
+		It("returns 5s for empty", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = ""
+			Expect(cfg.ParsedQueueInterval()).To(Equal(5 * time.Second))
+		})
+
+		It("returns 5s for unparseable string", func() {
+			cfg := config.Defaults()
+			cfg.QueueInterval = "bad"
+			Expect(cfg.ParsedQueueInterval()).To(Equal(5 * time.Second))
+		})
+	})
+
+	Describe("ParsedSweepInterval", func() {
+		It("parses valid duration", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "2m"
+			Expect(cfg.ParsedSweepInterval()).To(Equal(2 * time.Minute))
+		})
+
+		It("returns 60s for empty", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = ""
+			Expect(cfg.ParsedSweepInterval()).To(Equal(60 * time.Second))
+		})
+
+		It("returns 60s for unparseable string", func() {
+			cfg := config.Defaults()
+			cfg.SweepInterval = "bad"
+			Expect(cfg.ParsedSweepInterval()).To(Equal(60 * time.Second))
 		})
 	})
 })

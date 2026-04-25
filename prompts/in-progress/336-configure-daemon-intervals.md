@@ -1,5 +1,6 @@
 ---
-status: executing
+status: committing
+summary: Added queueInterval and sweepInterval config fields with defaults (5s/60s), validation, Parsed*() methods, wired through factory to processor constructor, removed package-level sweep vars in favor of struct fields, and documented in docs/configuration.md.
 container: dark-factory-336-configure-daemon-intervals
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T13:55:00Z"

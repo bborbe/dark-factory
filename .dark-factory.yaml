@@ -10,6 +10,7 @@ env:
   GOPATH: /home/node/go
   GOCACHE: /home/node/.cache/go-build
   GOLANGCI_LINT_CACHE: /home/node/.cache/golangci-lint
+  GO_TEST_PARALLEL: "4"
 extraMounts:
   - src: ${GOPATH}/pkg
     dst: /home/node/go/pkg

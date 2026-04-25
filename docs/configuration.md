@@ -245,6 +245,20 @@ autoRetryLimit: 3
 |-------|---------|---------|
 | `autoRetryLimit` | `0` (disabled) | Number of automatic retries after a prompt fails. `0` disables auto-retry. When the retry count is exhausted the prompt transitions to `failed` and stops being retried automatically. |
 
+### Queue and Sweep Intervals
+
+```yaml
+queueInterval: "5s"
+sweepInterval: "60s"
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `queueInterval` | `5s` | How often the daemon polls for queued prompts and re-checks committing prompts. Lower values give faster response to fsnotify-missed events at the cost of more frequent file scans. |
+| `sweepInterval` | `60s` | How often the daemon scans `specs/in-progress/` for prompted specs whose linked prompts have all completed and transitions them to `verifying`. Self-healing safety net for the per-prompt auto-complete path; lower values give faster recovery from missed transitions. |
+
+Both accept Go duration strings (`"5s"`, `"60s"`, `"5m"`, `"1h"`). Invalid strings or non-positive durations are rejected at daemon startup.
+
 ### Preflight Baseline Check
 
 Run the project's baseline validation command on a clean tree before each prompt executes.

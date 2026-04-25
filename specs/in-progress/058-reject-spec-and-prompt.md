@@ -1,7 +1,8 @@
 ---
-status: generating
+status: prompted
 approved: "2026-04-25T10:23:23Z"
 generating: "2026-04-25T10:23:23Z"
+prompted: "2026-04-25T10:31:08Z"
 branch: dark-factory/reject-spec-and-prompt
 ---
 

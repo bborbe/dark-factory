@@ -47,7 +47,6 @@ var errPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
 // Processor processes queued prompts.
 type Processor interface {
 	Process(ctx context.Context) error
-	ProcessQueue(ctx context.Context) error
 	// ResumeExecuting resumes any prompts still in "executing" state on startup.
 	// Called once by the runner before the normal event loop begins.
 	// For each executing prompt, it reattaches to the running container and drives
@@ -58,6 +57,20 @@ type Processor interface {
 	// Unlike ResumeExecuting, failures are non-fatal: the prompt stays committing and is
 	// retried on the next daemon cycle.
 	ResumeCommitting(ctx context.Context) error
+}
+
+// NothingToDoCallback fires when a Process tick ends with no progress made.
+// Daemon mode passes a log-only callback. One-shot mode passes one that calls cancel().
+type NothingToDoCallback func(ctx context.Context, cancel context.CancelFunc)
+
+// tickResult aggregates progress signals from a single Process tick.
+type tickResult struct {
+	completedPrompts  int
+	transitionedSpecs int
+}
+
+func (r tickResult) madeProgress() bool {
+	return r.completedPrompts > 0 || r.transitionedSpecs > 0
 }
 
 // NewProcessor creates a new Processor.
@@ -96,12 +109,19 @@ func NewProcessor(
 	// Pass 0 to use the default of 60s.
 	sweepInterval time.Duration,
 	preflightChecker preflight.Checker,
+	// onIdle is invoked at the end of any tick that made no progress.
+	// Pass a log-only callback for daemon mode, or one that calls cancel() for one-shot mode.
+	// If nil, a no-op callback is used (safe for tests that do not need idle detection).
+	onIdle NothingToDoCallback,
 ) Processor {
 	if queueInterval <= 0 {
 		queueInterval = 5 * time.Second
 	}
 	if sweepInterval <= 0 {
 		sweepInterval = 60 * time.Second
+	}
+	if onIdle == nil {
+		onIdle = func(_ context.Context, _ context.CancelFunc) {}
 	}
 	return &processor{
 		queueDir:               queueDir,
@@ -136,6 +156,7 @@ func NewProcessor(
 		queueInterval:          queueInterval,
 		sweepInterval:          sweepInterval,
 		preflightChecker:       preflightChecker,
+		onIdle:                 onIdle,
 	}
 }
 
@@ -174,20 +195,24 @@ type processor struct {
 	queueInterval          time.Duration
 	sweepInterval          time.Duration
 	preflightChecker       preflight.Checker // nil = disabled
+	onIdle                 NothingToDoCallback
 }
 
 // Process starts processing queued prompts.
 // It processes existing queued prompts on startup, then listens for signals from the watcher.
+// When a tick ends with no progress, onIdle is called. Daemon mode logs; one-shot mode cancels.
 func (p *processor) Process(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	slog.Info("processor started")
 
-	// Transition prompted specs with all prompts completed to verifying
-	if err := p.checkPromptedSpecs(ctx); err != nil {
+	// Startup scans — do NOT fire onIdle here; that would cancel one-shot before work starts.
+	if _, err := p.checkPromptedSpecs(ctx); err != nil {
 		return errors.Wrap(ctx, err, "check prompted specs on startup")
 	}
 
-	// Process any existing queued prompts first
-	if err := p.processExistingQueued(ctx); err != nil {
+	if _, err := p.processExistingQueued(ctx); err != nil {
 		slog.Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
 		// do NOT return — daemon continues running
 	}
@@ -214,57 +239,52 @@ func (p *processor) Process(ctx context.Context) error {
 			return nil
 
 		case <-p.ready:
-			// Watcher normalized files, check for new queued prompts
-			// Clear skipped prompts so all files get re-evaluated after fsnotify event
-			p.skippedPrompts = make(map[string]libtime.DateTime)
-			p.processCommittingPrompts(ctx)
-			if err := p.processExistingQueued(ctx); err != nil {
-				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
-				// do NOT return — daemon continues running
+			if !p.runReadyTick(ctx) {
+				p.onIdle(ctx, cancel)
 			}
 
 		case <-ticker.C:
-			// Periodic scan for queued prompts (in case we missed a signal)
-			p.processCommittingPrompts(ctx)
-			if err := p.processExistingQueued(ctx); err != nil {
-				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
-				// do NOT return — daemon continues running
+			if !p.runQueueTick(ctx) {
+				p.onIdle(ctx, cancel)
 			}
 
 		case <-sweepTicker.C:
-			if err := p.checkPromptedSpecs(ctx); err != nil {
-				slog.Warn("periodic checkPromptedSpecs failed", "error", err)
-				// do NOT return — daemon continues running
+			if !p.runSweepTick(ctx) {
+				p.onIdle(ctx, cancel)
 			}
 		}
 	}
 }
 
-// ProcessQueue runs the startup sequence and drains all queued prompts, then returns.
-// Unlike Process, it does not enter the event loop — suitable for one-shot / CI usage.
-func (p *processor) ProcessQueue(ctx context.Context) error {
-	slog.Info("processor started (one-shot)")
-
-	// Transition prompted specs with all prompts completed to verifying
-	if err := p.checkPromptedSpecs(ctx); err != nil {
-		return errors.Wrap(ctx, err, "check prompted specs on startup")
-	}
-
-	// Process all existing queued prompts and return
-	if err := p.processExistingQueued(ctx); err != nil {
-		return errors.Wrap(ctx, err, "process existing queued prompts")
-	}
-
-	// Log once when the queue is empty (one-shot mode only)
-	queued, err := p.promptManager.ListQueued(ctx)
+// runReadyTick handles a watcher-ready event. Returns true if the tick made progress.
+func (p *processor) runReadyTick(ctx context.Context) bool {
+	// Clear skipped prompts so all files get re-evaluated after fsnotify event.
+	p.skippedPrompts = make(map[string]libtime.DateTime)
+	p.processCommittingPrompts(ctx)
+	completed, err := p.processExistingQueued(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, "list queued prompts")
+		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
-	if len(queued) == 0 {
-		slog.Info("no queued prompts")
-	}
+	return (tickResult{completedPrompts: completed}).madeProgress()
+}
 
-	return nil
+// runQueueTick handles a periodic queue poll. Returns true if the tick made progress.
+func (p *processor) runQueueTick(ctx context.Context) bool {
+	p.processCommittingPrompts(ctx)
+	completed, err := p.processExistingQueued(ctx)
+	if err != nil {
+		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+	}
+	return (tickResult{completedPrompts: completed}).madeProgress()
+}
+
+// runSweepTick handles a periodic spec sweep. Returns true if the tick made progress.
+func (p *processor) runSweepTick(ctx context.Context) bool {
+	transitioned, err := p.checkPromptedSpecs(ctx)
+	if err != nil {
+		slog.Warn("periodic checkPromptedSpecs failed", "error", err)
+	}
+	return (tickResult{transitionedSpecs: transitioned}).madeProgress()
 }
 
 // ResumeExecuting resumes any prompts still in "executing" state on startup.
@@ -525,26 +545,29 @@ func (p *processor) computeReattachDuration(started string) (time.Duration, time
 }
 
 // processExistingQueued scans for and processes any existing queued prompts.
-func (p *processor) processExistingQueued(ctx context.Context) error {
+// Returns the count of prompts successfully processed (moved to completed) and any fatal error.
+func (p *processor) processExistingQueued(ctx context.Context) (int, error) {
 	if p.hasPendingVerification(ctx) {
 		slog.Info("queue blocked: prompt pending verification")
-		return nil
+		return 0, nil
 	}
 
+	completed := 0
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return completed, nil
 		default:
 		}
 
 		done, err := p.processSingleQueued(ctx)
 		if err != nil {
-			return err
+			return completed, err
 		}
 		if done {
-			return nil
+			return completed, nil
 		}
+		completed++
 	}
 }
 
@@ -800,24 +823,27 @@ func (p *processor) notifyFromReport(ctx context.Context, logFile string, prompt
 }
 
 // checkPromptedSpecs scans all specs and calls CheckAndComplete for any in "prompted" status.
+// Returns the count of specs checked and any fatal error.
 // This catches specs that were stuck in prompted state across daemon restarts.
-func (p *processor) checkPromptedSpecs(ctx context.Context) error {
+func (p *processor) checkPromptedSpecs(ctx context.Context) (int, error) {
 	specs, err := p.specLister.List(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, "list specs")
+		return 0, errors.Wrap(ctx, err, "list specs")
 	}
 
+	count := 0
 	for _, sf := range specs {
 		if sf.Frontmatter.Status != string(spec.StatusPrompted) {
 			continue
 		}
 		slog.Info("startup: checking prompted spec", "spec", sf.Name)
 		if err := p.autoCompleter.CheckAndComplete(ctx, sf.Name); err != nil {
-			return errors.Wrap(ctx, err, "check and complete spec")
+			return count, errors.Wrap(ctx, err, "check and complete spec")
 		}
+		count++
 	}
 
-	return nil
+	return count, nil
 }
 
 // waitForContainerSlot blocks until the system-wide running container count

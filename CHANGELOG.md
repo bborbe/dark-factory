@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.4
+
+- refactor: unify daemon and one-shot processor loops via `NothingToDoCallback` constructor parameter; `processor.ProcessQueue` removed from interface and implementation; one-shot mode's manual loop in `pkg/runner/oneshot.go` replaced by `processor.Process` with a cancel-on-idle callback; daemon mode logs "nothing to do, waiting for changes" on idle ticks
+
 ## v0.135.3
 
 - fix: `list --all`, `prompt list --all`, and `spec list --all` no longer fail with "unexpected argument" — new `validateListArgs` helper passes `--all` through to the list commands' own flag parsers

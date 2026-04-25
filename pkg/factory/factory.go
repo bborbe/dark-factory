@@ -355,6 +355,9 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		preflightChecker,
 		cfg.ParsedQueueInterval(),
 		cfg.ParsedSweepInterval(),
+		func(_ context.Context, _ context.CancelFunc) {
+			slog.Info("nothing to do, waiting for changes")
+		},
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, ready,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -452,7 +455,7 @@ func CreateOneShotRunner(
 			promptManager,
 			releaser,
 			versionGetter,
-			make(chan struct{}, 10), // ProcessQueue never reads from it in one-shot mode
+			make(chan struct{}, 10),
 			cfg.ContainerImage,
 			cfg.Model,
 			cfg.NetrcFile,
@@ -489,6 +492,10 @@ func CreateOneShotRunner(
 			osPreflightChecker,
 			cfg.ParsedQueueInterval(),
 			cfg.ParsedSweepInterval(),
+			func(_ context.Context, cancel context.CancelFunc) {
+				slog.Info("queue idle, exiting one-shot mode")
+				cancel()
+			},
 		),
 		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
 		currentDateTimeGetter,
@@ -720,6 +727,7 @@ func CreateProcessor(
 	preflightChecker preflight.Checker,
 	queueInterval time.Duration,
 	sweepInterval time.Duration,
+	onIdle processor.NothingToDoCallback,
 ) processor.Processor {
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
@@ -781,6 +789,7 @@ func CreateProcessor(
 		queueInterval,
 		sweepInterval,
 		preflightChecker,
+		onIdle,
 	)
 }
 

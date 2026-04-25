@@ -105,6 +105,7 @@ func newTestProcessor(
 		autoRetryLimit, maxPromptDuration,
 		0, 0, // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		preflightChecker,
+		nil, // onIdle: no-op for tests
 	)
 }
 
@@ -5570,7 +5571,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 	})
 
-	Describe("ProcessQueue log output", func() {
+	Describe("Process log output", func() {
 		var (
 			logBuf      bytes.Buffer
 			origDefault *slog.Logger
@@ -5631,27 +5632,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				nil,
 			)
 		}
-
-		It("ProcessQueue logs 'no queued prompts' once when queue is empty", func() {
-			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
-
-			p := newProc()
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
-
-			output := logBuf.String()
-			Expect(strings.Count(output, "no queued prompts")).To(Equal(1))
-		})
-
-		It("ProcessQueue does not log 'no queued prompts, exiting'", func() {
-			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
-
-			p := newProc()
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(logBuf.String()).NotTo(ContainSubstring("no queued prompts, exiting"))
-		})
 
 		It("daemon Process logs 'waiting for changes' once after startup scan", func() {
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
@@ -5811,12 +5791,16 @@ DARK-FACTORY-REPORT -->`), 0600)
 				autoCompleter.CheckAndCompleteReturns(nil)
 
 				p := newProcWithWorkflow(false, config.WorkflowDirect)
-				err := p.ProcessQueue(ctx)
-				Expect(err).NotTo(HaveOccurred())
+				go func() { _ = p.Process(ctx) }()
+
+				Eventually(func() int {
+					return executor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				Expect(brancher.IsCleanCallCount()).To(Equal(0))
 				Expect(brancher.SwitchCallCount()).To(Equal(0))
 				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
+				cancel()
 			})
 		})
 
@@ -6561,31 +6545,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 			)
 		}
 
-		It("ProcessQueue continues after a prompt fails and returns nil", func() {
-			promptPath := filepath.Join(promptsDir, "001-fail.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			manager.ListQueuedReturnsOnCall(0, queued, nil)
-			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			manager.AllPreviousCompletedReturns(true)
-			executor.ExecuteReturns(stderrors.New("execution failed"))
-
-			p := newProc()
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		It("ProcessQueue does not call ResetFailed on startup", func() {
-			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
-
-			p := newProc()
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
-			// ResetFailed is not in the narrow PromptManager interface; processor cannot call it
-		})
-
 		It("Process does not call ResetFailed on startup", func() {
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
@@ -6876,14 +6835,18 @@ DARK-FACTORY-REPORT -->`), 0600)
 				executor.ExecuteReturns(stderrors.New("execution failed"))
 
 				p := newProcWithNotifierAndRetryLimit(notifier.NewMultiNotifier(), 3)
-				err := p.ProcessQueue(ctx)
-				Expect(err).NotTo(HaveOccurred())
+				go func() { _ = p.Process(ctx) }()
 
 				// Read the file back and verify it was re-queued with incremented retryCount
+				Eventually(func() string {
+					content, _ := os.ReadFile(promptPath)
+					return string(content)
+				}, 2*time.Second, 50*time.Millisecond).Should(ContainSubstring("retryCount: 1"))
+
 				content, readErr := os.ReadFile(promptPath)
 				Expect(readErr).NotTo(HaveOccurred())
 				Expect(string(content)).To(ContainSubstring("status: approved"))
-				Expect(string(content)).To(ContainSubstring("retryCount: 1"))
+				cancel()
 			},
 		)
 
@@ -6911,11 +6874,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 				n,
 				2,
 			) // autoRetryLimit=2, retryCount=2 → exhausted
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
+			go func() { _ = p.Process(ctx) }()
 
 			// Verify prompt_failed notification was fired
-			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
+			Eventually(func() int {
+				return n.NotifyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 			found := false
 			for i := 0; i < n.NotifyCallCount(); i++ {
 				_, evt := n.NotifyArgsForCall(i)
@@ -6929,6 +6893,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			content, readErr := os.ReadFile(promptPath)
 			Expect(readErr).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: failed"))
+			cancel()
 		})
 
 		It("marks failed (standard) when autoRetryLimit is 0", func() {
@@ -6952,11 +6917,12 @@ DARK-FACTORY-REPORT -->`), 0600)
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProcWithNotifierAndRetryLimit(n, 0) // autoRetryLimit=0 → standard failure
-			err := p.ProcessQueue(ctx)
-			Expect(err).NotTo(HaveOccurred())
+			go func() { _ = p.Process(ctx) }()
 
 			// Verify prompt_failed was notified
-			Expect(n.NotifyCallCount()).To(BeNumerically(">=", 1))
+			Eventually(func() int {
+				return n.NotifyCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
 			found := false
 			for i := 0; i < n.NotifyCallCount(); i++ {
 				_, evt := n.NotifyArgsForCall(i)
@@ -6970,6 +6936,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 			content, readErr := os.ReadFile(promptPath)
 			Expect(readErr).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: failed"))
+			cancel()
 		})
 
 	})
@@ -7347,7 +7314,8 @@ DARK-FACTORY-REPORT -->`), 0600)
 				0, nil, nil,
 				0, 0,
 				0, 20*time.Millisecond, // queueInterval default, sweepInterval 20ms for test speed
-				nil,
+				nil, // preflightChecker
+				nil, // onIdle: no-op for tests
 			)
 
 			sweepCtx, sweepCancel := context.WithCancel(context.Background())

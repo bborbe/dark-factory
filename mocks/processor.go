@@ -20,17 +20,6 @@ type Processor struct {
 	processReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ProcessQueueStub        func(context.Context) error
-	processQueueMutex       sync.RWMutex
-	processQueueArgsForCall []struct {
-		arg1 context.Context
-	}
-	processQueueReturns struct {
-		result1 error
-	}
-	processQueueReturnsOnCall map[int]struct {
-		result1 error
-	}
 	ResumeCommittingStub        func(context.Context) error
 	resumeCommittingMutex       sync.RWMutex
 	resumeCommittingArgsForCall []struct {
@@ -114,67 +103,6 @@ func (fake *Processor) ProcessReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.processReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Processor) ProcessQueue(arg1 context.Context) error {
-	fake.processQueueMutex.Lock()
-	ret, specificReturn := fake.processQueueReturnsOnCall[len(fake.processQueueArgsForCall)]
-	fake.processQueueArgsForCall = append(fake.processQueueArgsForCall, struct {
-		arg1 context.Context
-	}{arg1})
-	stub := fake.ProcessQueueStub
-	fakeReturns := fake.processQueueReturns
-	fake.recordInvocation("ProcessQueue", []interface{}{arg1})
-	fake.processQueueMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *Processor) ProcessQueueCallCount() int {
-	fake.processQueueMutex.RLock()
-	defer fake.processQueueMutex.RUnlock()
-	return len(fake.processQueueArgsForCall)
-}
-
-func (fake *Processor) ProcessQueueCalls(stub func(context.Context) error) {
-	fake.processQueueMutex.Lock()
-	defer fake.processQueueMutex.Unlock()
-	fake.ProcessQueueStub = stub
-}
-
-func (fake *Processor) ProcessQueueArgsForCall(i int) context.Context {
-	fake.processQueueMutex.RLock()
-	defer fake.processQueueMutex.RUnlock()
-	argsForCall := fake.processQueueArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *Processor) ProcessQueueReturns(result1 error) {
-	fake.processQueueMutex.Lock()
-	defer fake.processQueueMutex.Unlock()
-	fake.ProcessQueueStub = nil
-	fake.processQueueReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *Processor) ProcessQueueReturnsOnCall(i int, result1 error) {
-	fake.processQueueMutex.Lock()
-	defer fake.processQueueMutex.Unlock()
-	fake.ProcessQueueStub = nil
-	if fake.processQueueReturnsOnCall == nil {
-		fake.processQueueReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.processQueueReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

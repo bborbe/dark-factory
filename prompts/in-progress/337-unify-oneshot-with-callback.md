@@ -1,5 +1,5 @@
 ---
-status: executing
+status: committing
 container: dark-factory-337-unify-oneshot-with-callback
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T15:15:00Z"

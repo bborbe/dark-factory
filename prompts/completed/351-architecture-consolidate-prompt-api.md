@@ -1,10 +1,11 @@
 ---
-status: committing
+status: completed
 container: dark-factory-351-architecture-consolidate-prompt-api
 dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T22:42:00Z"
 queued: "2026-04-25T20:40:48Z"
 started: "2026-04-25T20:40:50Z"
+completed: "2026-04-25T21:37:23Z"
 ---
 
 <summary>

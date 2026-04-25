@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.2
+
+- fix: spec auto-complete now fires AFTER the last prompt is moved to prompts/completed/, not before — specs transition to `verifying` immediately on prompt completion without requiring a daemon restart (regression: workflow_executor_direct.go phase ordering); the daemon also runs a separate 60-second auto-complete sweep, self-healing any future stuck specs within ~1 minute
+
 ## v0.135.1
 
 - fix: preflight cache is now time-based instead of SHA-based — sequential prompts within preflightInterval reuse the cached green result, saving ~1 minute per prompt; failed preflights are not cached so operator fixes are picked up immediately

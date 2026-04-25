@@ -7265,4 +7265,121 @@ DARK-FACTORY-REPORT -->`), 0600)
 			cancel()
 		})
 	})
+
+	Describe("periodic auto-complete sweep", func() {
+		It("self-heals a stuck prompted spec via the periodic sweep", func() {
+			restore := processor.SetSweepInterval(20 * time.Millisecond)
+			defer restore()
+
+			// Directories for this sub-test
+			sweepTempDir, err := os.MkdirTemp("", "sweep-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(sweepTempDir) }()
+
+			sweepQueueDir := filepath.Join(sweepTempDir, "prompts", "in-progress")
+			sweepCompletedDir := filepath.Join(sweepTempDir, "prompts", "completed")
+			sweepSpecsInboxDir := filepath.Join(sweepTempDir, "specs", "inbox")
+			sweepSpecsInProgressDir := filepath.Join(sweepTempDir, "specs", "in-progress")
+			sweepSpecsCompletedDir := filepath.Join(sweepTempDir, "specs", "completed")
+
+			for _, dir := range []string{
+				sweepQueueDir,
+				sweepCompletedDir,
+				sweepSpecsInboxDir,
+				sweepSpecsInProgressDir,
+				sweepSpecsCompletedDir,
+			} {
+				Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+			}
+
+			// A spec stuck in "prompted" state
+			specPath := filepath.Join(sweepSpecsInProgressDir, "spec-sweep.md")
+			Expect(
+				os.WriteFile(specPath, []byte("---\nstatus: prompted\n---\n# Sweep spec\n"), 0600),
+			).To(Succeed())
+
+			// All linked prompts already in completed dir (simulating previous run that crashed
+			// before CheckAndComplete, leaving the spec stuck in "prompted").
+			Expect(os.WriteFile(
+				filepath.Join(sweepCompletedDir, "099-linked.md"),
+				[]byte("---\nstatus: completed\nspec: spec-sweep\n---\n# Linked prompt\n"),
+				0600,
+			)).To(Succeed())
+
+			// Real lister and autoCompleter for the sweep dirs
+			realLister := spec.NewLister(libtime.NewCurrentDateTime(), sweepSpecsInProgressDir)
+			realAutoCompleter := spec.NewAutoCompleter(
+				sweepQueueDir,
+				sweepCompletedDir,
+				sweepSpecsInboxDir,
+				sweepSpecsInProgressDir,
+				sweepSpecsCompletedDir,
+				libtime.NewCurrentDateTime(),
+				"",
+				notifier.NewMultiNotifier(),
+			)
+
+			// Manager returns empty queue so the processor doesn't try to run any prompts
+			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
+			manager.FindCommittingReturns(nil, nil)
+
+			p := newTestProcessor(
+				sweepQueueDir,
+				sweepCompletedDir,
+				filepath.Join(sweepTempDir, "log"),
+				"sweep-test",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				ready,
+				false,
+				config.WorkflowDirect,
+				brancher,
+				prCreator,
+				cloner,
+				worktreer,
+				prMerger,
+				false,
+				false,
+				false,
+				realAutoCompleter,
+				realLister,
+				"",
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+				nil,
+				nil,
+				0,
+				nil,
+				nil,
+				0,
+				0,
+				nil,
+			)
+
+			sweepCtx, sweepCancel := context.WithCancel(context.Background())
+			defer sweepCancel()
+			go func() {
+				_ = p.Process(sweepCtx)
+			}()
+
+			// Wait for the sweep ticker to fire and transition the spec to verifying
+			Eventually(func() string {
+				sf, loadErr := spec.Load(sweepCtx, specPath, libtime.NewCurrentDateTime())
+				if loadErr != nil {
+					return ""
+				}
+				return sf.Frontmatter.Status
+			}, 2*time.Second, 10*time.Millisecond).Should(Equal("verifying"),
+				"periodic sweep should self-heal stuck prompted spec within sweep interval")
+
+			sweepCancel()
+		})
+	})
 })

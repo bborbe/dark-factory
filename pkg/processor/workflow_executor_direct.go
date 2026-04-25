@@ -70,18 +70,20 @@ func (e *directWorkflowExecutor) completeCommit(
 		return errors.Wrap(ctx, err, "commit work files")
 	}
 
-	// Phase 2: auto-complete specs (best-effort, non-blocking).
+	// Phase 2: move prompt to completed/ (sets status: completed, physically moves the file).
+	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
+		return errors.Wrap(ctx, err, "move to completed")
+	}
+	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+
+	// Phase 3: auto-complete specs (best-effort, non-blocking).
+	// Must run AFTER MoveToCompleted so allLinkedPromptsCompleted can see this
+	// prompt in the completed dir.
 	for _, specID := range pf.Specs() {
 		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
 			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
 		}
 	}
-
-	// Phase 3: move prompt to completed/ (sets status: completed, physically moves the file).
-	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed")
-	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
 	// Phase 4: commit the prompt-file move with retry.
 	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {

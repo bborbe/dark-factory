@@ -33,6 +33,20 @@ import (
 
 var sanitizeContainerNameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 
+// sweepIntervalMu protects sweepInterval from concurrent read/write (test overrides).
+var sweepIntervalMu sync.Mutex
+
+// sweepInterval controls the auto-complete sweep cadence. Variable (not const)
+// so tests can override via SetSweepInterval (export_test.go).
+var sweepInterval = 60 * time.Second
+
+// getSweepInterval returns the current sweep interval under the mutex.
+func getSweepInterval() time.Duration {
+	sweepIntervalMu.Lock()
+	defer sweepIntervalMu.Unlock()
+	return sweepInterval
+}
+
 // errPreflightSkip is returned by processPrompt when the baseline preflight check
 // failed and the prompt should NOT be retried within the same scan cycle.
 // The caller in processExistingQueued recognizes this sentinel and returns,
@@ -185,6 +199,12 @@ func (p *processor) Process(ctx context.Context) error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	// Slow self-healing sweep: catches specs stuck in `prompted` if the per-prompt
+	// CheckAndComplete missed (daemon crash mid-completion, race, future regression).
+	// Cadence kept slower than the queue ticker because the sweep is more expensive.
+	sweepTicker := time.NewTicker(getSweepInterval())
+	defer sweepTicker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -206,6 +226,12 @@ func (p *processor) Process(ctx context.Context) error {
 			p.processCommittingPrompts(ctx)
 			if err := p.processExistingQueued(ctx); err != nil {
 				slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+				// do NOT return — daemon continues running
+			}
+
+		case <-sweepTicker.C:
+			if err := p.checkPromptedSpecs(ctx); err != nil {
+				slog.Warn("periodic checkPromptedSpecs failed", "error", err)
 				// do NOT return — daemon continues running
 			}
 		}

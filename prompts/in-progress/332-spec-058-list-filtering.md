@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [058-reject-spec-and-prompt]
 created: "2026-04-25T10:30:00Z"
+queued: "2026-04-25T10:49:09Z"
 ---
 
 <summary>

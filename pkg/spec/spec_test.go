@@ -468,6 +468,101 @@ var _ = Describe("Status lifecycle model", func() {
 	})
 })
 
+var _ = Describe("rejected status", func() {
+	var ctx context.Context
+	var dir string
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		dir, err = os.MkdirTemp("", "spec-rejected-*")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	It("StatusRejected is in AvailableSpecStatuses", func() {
+		Expect(spec.AvailableSpecStatuses.Contains(spec.StatusRejected)).To(BeTrue())
+	})
+
+	Describe("IsRejectable returns true from rejectable states", func() {
+		It("returns true for idea", func() {
+			Expect(spec.StatusIdea.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for draft", func() {
+			Expect(spec.StatusDraft.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for approved", func() {
+			Expect(spec.StatusApproved.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for generating", func() {
+			Expect(spec.StatusGenerating.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for prompted", func() {
+			Expect(spec.StatusPrompted.IsRejectable()).To(BeTrue())
+		})
+	})
+
+	Describe("IsRejectable returns false from non-rejectable states", func() {
+		It("returns false for verifying", func() {
+			Expect(spec.StatusVerifying.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for completed", func() {
+			Expect(spec.StatusCompleted.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for rejected", func() {
+			Expect(spec.StatusRejected.IsRejectable()).To(BeFalse())
+		})
+	})
+
+	Describe("valid reject transitions succeed", func() {
+		It("idea → rejected", func() {
+			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+		})
+		It("draft → rejected", func() {
+			Expect(spec.StatusDraft.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+		})
+		It("approved → rejected", func() {
+			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+		})
+		It("generating → rejected", func() {
+			Expect(spec.StatusGenerating.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+		})
+		It("prompted → rejected", func() {
+			Expect(spec.StatusPrompted.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+		})
+	})
+
+	Describe("no outgoing edges from rejected and non-pre-execution cannot be rejected", func() {
+		It("rejected cannot transition to draft", func() {
+			Expect(spec.StatusRejected.CanTransitionTo(spec.StatusDraft)).To(HaveOccurred())
+		})
+		It("verifying cannot transition to rejected", func() {
+			Expect(spec.StatusVerifying.CanTransitionTo(spec.StatusRejected)).To(HaveOccurred())
+		})
+		It("completed cannot transition to rejected", func() {
+			Expect(spec.StatusCompleted.CanTransitionTo(spec.StatusRejected)).To(HaveOccurred())
+		})
+	})
+
+	Describe("StampRejected sets all three fields", func() {
+		It("sets status, reason, and timestamp", func() {
+			path := filepath.Join(dir, "001-spec.md")
+			writeSpec(path, "draft")
+			sf, err := spec.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).NotTo(HaveOccurred())
+
+			sf.StampRejected("manual smoke")
+
+			Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusRejected)))
+			Expect(sf.Frontmatter.RejectedReason).To(Equal("manual smoke"))
+			Expect(sf.Frontmatter.Rejected).NotTo(BeEmpty())
+		})
+	})
+})
+
 var _ = Describe("AutoBranchName", func() {
 	DescribeTable("generates canonical branch names",
 		func(input, expected string) {

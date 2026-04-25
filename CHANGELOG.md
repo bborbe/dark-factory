@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.133.0
+
+- feat: add rejected status, IsRejectable() predicate, and Rejected/RejectedReason frontmatter fields to spec and prompt lifecycle model
+
 ## v0.132.3
 
 - refactor: replace ad-hoc status string comparisons in pkg/cmd/ with CanTransitionTo() and typed constant checks

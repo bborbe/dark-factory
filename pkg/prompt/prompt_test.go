@@ -2258,6 +2258,109 @@ Content here.
 	})
 })
 
+var _ = Describe("rejected status", func() {
+	var (
+		ctx     context.Context
+		tempDir string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		var err error
+		tempDir, err = os.MkdirTemp("", "prompt-rejected-*")
+		Expect(err).To(BeNil())
+	})
+
+	AfterEach(func() {
+		_ = os.RemoveAll(tempDir)
+	})
+
+	It("RejectedPromptStatus is in AvailablePromptStatuses", func() {
+		Expect(prompt.AvailablePromptStatuses.Contains(prompt.RejectedPromptStatus)).To(BeTrue())
+	})
+
+	Describe("IsRejectable returns true from pre-execution states only", func() {
+		It("returns true for idea", func() {
+			Expect(prompt.IdeaPromptStatus.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for draft", func() {
+			Expect(prompt.DraftPromptStatus.IsRejectable()).To(BeTrue())
+		})
+		It("returns true for approved", func() {
+			Expect(prompt.ApprovedPromptStatus.IsRejectable()).To(BeTrue())
+		})
+		It("returns false for executing", func() {
+			Expect(prompt.ExecutingPromptStatus.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for failed", func() {
+			Expect(prompt.FailedPromptStatus.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for completed", func() {
+			Expect(prompt.CompletedPromptStatus.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for cancelled", func() {
+			Expect(prompt.CancelledPromptStatus.IsRejectable()).To(BeFalse())
+		})
+		It("returns false for rejected", func() {
+			Expect(prompt.RejectedPromptStatus.IsRejectable()).To(BeFalse())
+		})
+	})
+
+	Describe("valid reject transitions succeed", func() {
+		It("idea → rejected", func() {
+			Expect(
+				prompt.IdeaPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+			).To(Succeed())
+		})
+		It("draft → rejected", func() {
+			Expect(
+				prompt.DraftPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+			).To(Succeed())
+		})
+		It("approved → rejected", func() {
+			Expect(
+				prompt.ApprovedPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+			).To(Succeed())
+		})
+	})
+
+	Describe("no outgoing edges from rejected; non-pre-execution cannot be rejected", func() {
+		It("rejected cannot transition to draft", func() {
+			Expect(
+				prompt.RejectedPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+			).To(HaveOccurred())
+		})
+		It("executing cannot transition to rejected", func() {
+			Expect(
+				prompt.ExecutingPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+			).To(HaveOccurred())
+		})
+		It("completed cannot transition to rejected", func() {
+			Expect(
+				prompt.CompletedPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+			).To(HaveOccurred())
+		})
+	})
+
+	Describe("StampRejected sets all three fields", func() {
+		It("sets status, reason, and timestamp", func() {
+			path := filepath.Join(tempDir, "001-test.md")
+			content := "---\nstatus: approved\n---\n\n# Test\n\nContent.\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			Expect(err).To(BeNil())
+
+			pf.StampRejected("abandoned work")
+
+			Expect(pf.Frontmatter.Status).To(Equal(string(prompt.RejectedPromptStatus)))
+			Expect(pf.Frontmatter.RejectedReason).To(Equal("abandoned work"))
+			Expect(pf.Frontmatter.Rejected).NotTo(BeEmpty())
+		})
+	})
+})
+
 // Helper function to create a prompt file with given status
 func createPromptFile(dir, filename, status string) string {
 	content := "---\n"

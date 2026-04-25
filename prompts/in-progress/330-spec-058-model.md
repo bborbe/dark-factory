@@ -1,7 +1,12 @@
 ---
-status: draft
+status: committing
 spec: [058-reject-spec-and-prompt]
+summary: Added StatusRejected/RejectedPromptStatus constants, IsRejectable() predicates, Rejected/RejectedReason frontmatter fields, StampRejected() helpers, lister.Summary.Rejected counter, and Ginkgo tests for both packages
+container: dark-factory-330-spec-058-model
+dark-factory-version: v0.132.0
 created: "2026-04-25T10:30:00Z"
+queued: "2026-04-25T10:49:09Z"
+started: "2026-04-25T10:50:19Z"
 ---
 
 <summary>

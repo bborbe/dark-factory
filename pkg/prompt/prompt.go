@@ -73,6 +73,9 @@ const (
 	// CommittingPromptStatus indicates the container succeeded but the git commit is still pending.
 	// The prompt stays in in-progress/ until the commit succeeds.
 	CommittingPromptStatus PromptStatus = "committing"
+	// RejectedPromptStatus indicates the prompt was deliberately abandoned before execution.
+	// This is a terminal state — rejected prompts are moved to prompts/rejected/ and never executed.
+	RejectedPromptStatus PromptStatus = "rejected"
 )
 
 // AvailablePromptStatuses is the collection of all valid PromptStatus values.
@@ -87,6 +90,7 @@ var AvailablePromptStatuses = PromptStatuses{
 	PendingVerificationPromptStatus,
 	CancelledPromptStatus,
 	CommittingPromptStatus,
+	RejectedPromptStatus,
 }
 
 // PromptStatuses is a slice of PromptStatus values.
@@ -113,12 +117,13 @@ func (s PromptStatus) Validate(ctx context.Context) error {
 // promptTransitions defines the valid state transitions for prompt lifecycle.
 // This is the single source of truth — add one row here to enable a new transition.
 var promptTransitions = map[PromptStatus][]PromptStatus{
-	IdeaPromptStatus:  {DraftPromptStatus},
-	DraftPromptStatus: {ApprovedPromptStatus},
+	IdeaPromptStatus:  {DraftPromptStatus, RejectedPromptStatus},
+	DraftPromptStatus: {ApprovedPromptStatus, RejectedPromptStatus},
 	ApprovedPromptStatus: {
 		ExecutingPromptStatus,
 		CancelledPromptStatus,
 		DraftPromptStatus,
+		RejectedPromptStatus,
 	}, // unapprove: approved → draft
 	ExecutingPromptStatus: {
 		CommittingPromptStatus,
@@ -156,6 +161,12 @@ func (s PromptStatus) IsPreExecution() bool {
 // Note: FailedPromptStatus is intentionally Active — failed prompts can be re-approved for retry.
 func (s PromptStatus) IsActive() bool {
 	return !s.IsPreExecution() && !s.IsTerminal()
+}
+
+// IsRejectable returns true if the prompt may be rejected from its current state.
+// Rejection is only allowed from pre-execution states (idea, draft, approved).
+func (s PromptStatus) IsRejectable() bool {
+	return s.IsPreExecution()
 }
 
 // Rename represents a file rename operation.
@@ -244,6 +255,8 @@ type Frontmatter struct {
 	Issue              string   `yaml:"issue,omitempty"`
 	RetryCount         int      `yaml:"retryCount,omitempty"`
 	LastFailReason     string   `yaml:"lastFailReason,omitempty"`
+	Rejected           string   `yaml:"rejected,omitempty"`
+	RejectedReason     string   `yaml:"rejected_reason,omitempty"`
 }
 
 // HasSpec returns true if the given spec ID is in the Specs list.
@@ -421,6 +434,15 @@ func (pf *PromptFile) MarkFailed() {
 // SetLastFailReason records the human-readable reason for the last failure.
 func (pf *PromptFile) SetLastFailReason(reason string) {
 	pf.Frontmatter.LastFailReason = reason
+}
+
+// StampRejected sets the rejected timestamp and reason, then marks status as rejected.
+func (pf *PromptFile) StampRejected(reason string) {
+	if pf.Frontmatter.Rejected == "" {
+		pf.Frontmatter.Rejected = pf.now().UTC().Format(time.RFC3339)
+	}
+	pf.Frontmatter.RejectedReason = reason
+	pf.Frontmatter.Status = string(RejectedPromptStatus)
 }
 
 // MarkPendingVerification sets status to pending_verification.

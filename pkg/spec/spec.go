@@ -45,6 +45,9 @@ const (
 	StatusVerifying Status = "verifying"
 	// StatusCompleted indicates human verified all acceptance criteria are met.
 	StatusCompleted Status = "completed"
+	// StatusRejected indicates the spec was deliberately abandoned before execution.
+	// This is a terminal state — rejected specs are moved to specs/rejected/ and never processed again.
+	StatusRejected Status = "rejected"
 )
 
 // SpecStatuses is a slice of Status values.
@@ -66,6 +69,7 @@ var AvailableSpecStatuses = SpecStatuses{
 	StatusPrompted,
 	StatusVerifying,
 	StatusCompleted,
+	StatusRejected,
 }
 
 // String returns the string representation of the Status.
@@ -82,11 +86,15 @@ func (s Status) Validate(ctx context.Context) error {
 // specTransitions defines the valid state transitions for spec lifecycle.
 // This is the single source of truth — add one row here to enable a new transition.
 var specTransitions = map[Status][]Status{
-	StatusIdea:       {StatusDraft},
-	StatusDraft:      {StatusApproved},
-	StatusApproved:   {StatusGenerating, StatusDraft}, // unapprove edge: approved → draft
-	StatusGenerating: {StatusPrompted},
-	StatusPrompted:   {StatusVerifying},
+	StatusIdea:  {StatusDraft, StatusRejected},
+	StatusDraft: {StatusApproved, StatusRejected},
+	StatusApproved: {
+		StatusGenerating,
+		StatusDraft,
+		StatusRejected,
+	}, // unapprove edge: approved → draft
+	StatusGenerating: {StatusPrompted, StatusRejected},
+	StatusPrompted:   {StatusVerifying, StatusRejected},
 	StatusVerifying:  {StatusCompleted},
 }
 
@@ -116,17 +124,26 @@ func (s Status) IsActive() bool {
 	return !s.IsPreExecution() && !s.IsTerminal()
 }
 
+// IsRejectable returns true if the spec may be rejected from its current state.
+// Rejection is allowed from all pre-execution states and from prompted (when all linked
+// prompts are themselves rejectable — that additional check is performed by the command).
+func (s Status) IsRejectable() bool {
+	return s.IsPreExecution() || s == StatusPrompted
+}
+
 // Frontmatter represents the YAML frontmatter in a spec file.
 type Frontmatter struct {
-	Status     string   `yaml:"status"`
-	Tags       []string `yaml:"tags,omitempty"`
-	Approved   string   `yaml:"approved,omitempty"`
-	Generating string   `yaml:"generating,omitempty"`
-	Prompted   string   `yaml:"prompted,omitempty"`
-	Verifying  string   `yaml:"verifying,omitempty"`
-	Completed  string   `yaml:"completed,omitempty"`
-	Branch     string   `yaml:"branch,omitempty"`
-	Issue      string   `yaml:"issue,omitempty"`
+	Status         string   `yaml:"status"`
+	Tags           []string `yaml:"tags,omitempty"`
+	Approved       string   `yaml:"approved,omitempty"`
+	Generating     string   `yaml:"generating,omitempty"`
+	Prompted       string   `yaml:"prompted,omitempty"`
+	Verifying      string   `yaml:"verifying,omitempty"`
+	Completed      string   `yaml:"completed,omitempty"`
+	Rejected       string   `yaml:"rejected,omitempty"`
+	RejectedReason string   `yaml:"rejected_reason,omitempty"`
+	Branch         string   `yaml:"branch,omitempty"`
+	Issue          string   `yaml:"issue,omitempty"`
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.
@@ -155,6 +172,13 @@ func (s *SpecFile) stampOnce(field *string) {
 	if *field == "" {
 		*field = s.now().UTC().Format(time.RFC3339)
 	}
+}
+
+// StampRejected sets the rejected timestamp and reason, then marks status as rejected.
+func (s *SpecFile) StampRejected(reason string) {
+	s.stampOnce(&s.Frontmatter.Rejected)
+	s.Frontmatter.RejectedReason = reason
+	s.Frontmatter.Status = string(StatusRejected)
 }
 
 // Load reads a spec file from disk, parsing frontmatter and body.

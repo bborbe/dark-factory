@@ -18,6 +18,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
@@ -31,6 +32,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/scenario"
@@ -734,11 +736,6 @@ func CreateProcessor(
 		Completed: completedDir,
 		Log:       logDir,
 	}
-	cmds := processor.Commands{
-		Validation:       validationCommand,
-		ValidationPrompt: validationPrompt,
-		Test:             testCommand,
-	}
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
@@ -785,14 +782,20 @@ func CreateProcessor(
 		preflightChecker,
 		wakeup,
 		dirs,
-		cmds,
 		projectName,
 		processor.MaxContainers(maxContainers),
-		processor.AdditionalInstructions(additionalInstructions),
 		processor.DirtyFileThreshold(dirtyFileThreshold),
 		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),
+		completionreport.NewValidator(),
+		promptenricher.NewEnricher(
+			releaser,
+			additionalInstructions,
+			testCommand,
+			validationCommand,
+			validationPrompt,
+		),
 		queueInterval,
 		sweepInterval,
 		onIdle,

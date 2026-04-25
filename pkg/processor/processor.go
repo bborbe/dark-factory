@@ -19,12 +19,14 @@ import (
 	libtime "github.com/bborbe/time"
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -88,14 +90,14 @@ func NewProcessor(
 	preflightChecker preflight.Checker,
 	wakeup <-chan struct{},
 	dirs Dirs,
-	cmds Commands,
 	projectName ProjectName,
 	maxContainers MaxContainers,
-	additionalInstructions AdditionalInstructions,
 	dirtyFileThreshold DirtyFileThreshold,
 	autoRetryLimit AutoRetryLimit,
 	maxPromptDuration time.Duration,
 	verificationGate VerificationGate,
+	completionReportValidator completionreport.Validator,
+	promptEnricher promptenricher.Enricher,
 	// queueInterval controls how often the daemon polls for queued prompts.
 	// Pass 0 to use the default of 5s.
 	queueInterval time.Duration,
@@ -117,70 +119,70 @@ func NewProcessor(
 		onIdle = func(_ context.Context, _ context.CancelFunc) {}
 	}
 	return &processor{
-		executor:               exec,
-		promptManager:          promptManager,
-		releaser:               releaser,
-		versionGetter:          versionGetter,
-		workflowExecutor:       workflowExecutor,
-		autoCompleter:          autoCompleter,
-		specLister:             specLister,
-		notifier:               n,
-		containerCounter:       containerCounter,
-		containerLock:          containerLock,
-		containerChecker:       containerChecker,
-		dirtyFileChecker:       dirtyFileChecker,
-		gitLockChecker:         gitLockChecker,
-		preflightChecker:       preflightChecker,
-		wakeup:                 wakeup,
-		dirs:                   dirs,
-		cmds:                   cmds,
-		projectName:            projectName,
-		maxContainers:          maxContainers,
-		containerPollInterval:  10 * time.Second,
-		additionalInstructions: additionalInstructions,
-		dirtyFileThreshold:     dirtyFileThreshold,
-		autoRetryLimit:         autoRetryLimit,
-		maxPromptDuration:      maxPromptDuration,
-		verificationGate:       verificationGate,
-		skippedPrompts:         make(map[string]libtime.DateTime),
-		queueInterval:          queueInterval,
-		sweepInterval:          sweepInterval,
-		onIdle:                 onIdle,
+		executor:                  exec,
+		promptManager:             promptManager,
+		releaser:                  releaser,
+		versionGetter:             versionGetter,
+		workflowExecutor:          workflowExecutor,
+		autoCompleter:             autoCompleter,
+		specLister:                specLister,
+		notifier:                  n,
+		containerCounter:          containerCounter,
+		containerLock:             containerLock,
+		containerChecker:          containerChecker,
+		dirtyFileChecker:          dirtyFileChecker,
+		gitLockChecker:            gitLockChecker,
+		preflightChecker:          preflightChecker,
+		wakeup:                    wakeup,
+		dirs:                      dirs,
+		projectName:               projectName,
+		maxContainers:             maxContainers,
+		containerPollInterval:     10 * time.Second,
+		dirtyFileThreshold:        dirtyFileThreshold,
+		autoRetryLimit:            autoRetryLimit,
+		maxPromptDuration:         maxPromptDuration,
+		verificationGate:          verificationGate,
+		skippedPrompts:            make(map[string]libtime.DateTime),
+		queueInterval:             queueInterval,
+		sweepInterval:             sweepInterval,
+		onIdle:                    onIdle,
+		completionReportValidator: completionReportValidator,
+		promptEnricher:            promptEnricher,
 	}
 }
 
 // processor implements Processor.
 type processor struct {
-	executor               executor.Executor
-	promptManager          PromptManager
-	releaser               git.Releaser
-	versionGetter          version.Getter
-	workflowExecutor       WorkflowExecutor
-	autoCompleter          spec.AutoCompleter
-	specLister             spec.Lister
-	notifier               notifier.Notifier
-	containerCounter       executor.ContainerCounter
-	containerLock          containerlock.ContainerLock
-	containerChecker       executor.ContainerChecker
-	dirtyFileChecker       DirtyFileChecker
-	gitLockChecker         GitLockChecker
-	preflightChecker       preflight.Checker // nil = disabled
-	wakeup                 <-chan struct{}
-	dirs                   Dirs
-	cmds                   Commands
-	projectName            ProjectName
-	maxContainers          MaxContainers
-	containerPollInterval  time.Duration
-	additionalInstructions AdditionalInstructions
-	dirtyFileThreshold     DirtyFileThreshold
-	lastBlockedMsg         string
-	autoRetryLimit         AutoRetryLimit
-	maxPromptDuration      time.Duration
-	verificationGate       VerificationGate
-	skippedPrompts         map[string]libtime.DateTime // filename → mod time when skipped
-	queueInterval          time.Duration
-	sweepInterval          time.Duration
-	onIdle                 NothingToDoCallback
+	executor                  executor.Executor
+	promptManager             PromptManager
+	releaser                  git.Releaser
+	versionGetter             version.Getter
+	workflowExecutor          WorkflowExecutor
+	autoCompleter             spec.AutoCompleter
+	specLister                spec.Lister
+	notifier                  notifier.Notifier
+	containerCounter          executor.ContainerCounter
+	containerLock             containerlock.ContainerLock
+	containerChecker          executor.ContainerChecker
+	dirtyFileChecker          DirtyFileChecker
+	gitLockChecker            GitLockChecker
+	preflightChecker          preflight.Checker // nil = disabled
+	wakeup                    <-chan struct{}
+	dirs                      Dirs
+	projectName               ProjectName
+	maxContainers             MaxContainers
+	containerPollInterval     time.Duration
+	dirtyFileThreshold        DirtyFileThreshold
+	lastBlockedMsg            string
+	autoRetryLimit            AutoRetryLimit
+	maxPromptDuration         time.Duration
+	verificationGate          VerificationGate
+	skippedPrompts            map[string]libtime.DateTime // filename → mod time when skipped
+	queueInterval             time.Duration
+	sweepInterval             time.Duration
+	onIdle                    NothingToDoCallback
+	completionReportValidator completionreport.Validator
+	promptEnricher            promptenricher.Enricher
 }
 
 // Process starts processing queued prompts.
@@ -425,7 +427,7 @@ func (p *processor) resumePrompt(ctx context.Context, promptPath string) error {
 	gitCtx := context.WithoutCancel(ctx)
 	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
 
-	completionReport, err := validateCompletionReport(ctx, logFile)
+	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
 	if err != nil {
 		p.notifyFromReport(ctx, logFile, promptPath)
 		return errors.Wrap(ctx, err, "validate completion report")
@@ -1032,7 +1034,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if title == "" {
 		title = strings.TrimSuffix(filepath.Base(pr.Path), ".md")
 	}
-	content = p.enrichPromptContent(ctx, content)
+	content = p.promptEnricher.Enrich(ctx, content)
 
 	slog.Info("executing prompt", "title", title)
 
@@ -1083,7 +1085,7 @@ func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return p.enterPendingVerification(ctx, pf, pr.Path)
 	}
 
-	completionReport, err := validateCompletionReport(ctx, logFile)
+	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
 	if err != nil {
 		p.notifyFromReport(ctx, logFile, pr.Path)
 		return errors.Wrap(ctx, err, "validate completion report")
@@ -1131,32 +1133,6 @@ func (p *processor) runContainer(
 	}
 	slog.Info("docker container exited", "exitCode", 0)
 	return false, nil
-}
-
-// enrichPromptContent prepends additionalInstructions and appends machine-parseable suffixes and project-level validation to prompt content.
-func (p *processor) enrichPromptContent(ctx context.Context, content string) string {
-	if p.additionalInstructions != "" {
-		content = p.additionalInstructions.String() + "\n\n" + content
-	}
-	// Append completion report suffix to make output machine-parseable
-	content = content + report.Suffix()
-	// Append changelog instructions when the project has a CHANGELOG.md
-	if p.releaser.HasChangelog(ctx) {
-		content = content + report.ChangelogSuffix()
-	}
-	// Inject project-level test command for fast iteration feedback
-	if p.cmds.Test != "" {
-		content = content + report.TestCommandSuffix(p.cmds.Test)
-	}
-	// Inject project-level validation command (overrides prompt-level <verification>)
-	if p.cmds.Validation != "" {
-		content = content + report.ValidationSuffix(p.cmds.Validation)
-	}
-	// Inject project-level validation prompt criteria (AI-judged, runs after validationCommand)
-	if criteria, ok := resolveValidationPrompt(ctx, p.cmds.ValidationPrompt); ok {
-		content = content + report.ValidationPromptSuffix(criteria)
-	}
-	return content
 }
 
 // watchForCancellation watches the prompt file for changes using fsnotify.
@@ -1294,113 +1270,4 @@ func computePromptMetadata(promptPath string, projectName ProjectName) (BaseName
 	base := BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
 	name := ContainerName(string(projectName) + "-" + string(base)).Sanitize()
 	return base, name
-}
-
-// validateCompletionReport parses the completion report from the log and detects claude-CLI-level failures.
-// Returns (report, nil) when a report is present and indicates success.
-// Returns (nil, nil) when no report is present AND no critical failure is detected in the log
-// (backwards compatible — old prompts without reports are treated as successful).
-// Returns (nil, error) when:
-//   - the log shows a claude-CLI critical failure (auth error, API error) even without a report
-//   - a parseable report indicates non-success status (after consistency check)
-//   - the report exists but is malformed
-func validateCompletionReport(
-	ctx context.Context,
-	logFile string,
-) (*report.CompletionReport, error) {
-	completionReport, err := report.ParseFromLog(ctx, logFile)
-	if err != nil {
-		slog.Debug("failed to parse completion report", "error", err)
-		// Parse error — downgrade to "no report" and fall through to critical failure scan.
-		completionReport = nil
-	}
-
-	if completionReport == nil {
-		// No report found (or parse error) — scan for claude-CLI-level critical failures.
-		reason, scanErr := report.ScanForCriticalFailures(ctx, logFile)
-		if scanErr != nil {
-			slog.Debug("failed to scan for critical failures", "error", scanErr)
-			// I/O error during scan — treat as no failure detected (don't block backwards compat).
-			return nil, nil //nolint:nilnil
-		}
-		if reason != "" {
-			return nil, errors.Errorf(ctx, "claude CLI critical failure: %s", reason)
-		}
-		// No report, no critical failure — backwards compatible success.
-		return nil, nil //nolint:nilnil
-	}
-
-	slog.Info(
-		"completion report",
-		"status",
-		completionReport.Status,
-		"summary",
-		completionReport.Summary,
-	)
-
-	// Validate consistency between status and verification results.
-	correctedStatus, overridden := completionReport.ValidateConsistency()
-	if overridden {
-		slog.Warn(
-			"overriding self-reported status",
-			"reported", completionReport.Status,
-			"corrected", correctedStatus,
-			"verificationCommand", completionReport.Verification.Command,
-			"verificationExitCode", completionReport.Verification.ExitCode,
-		)
-		completionReport.Status = correctedStatus
-	}
-
-	if completionReport.Status != "success" {
-		// Report says not success — treat as failure.
-		slog.Info("completion report indicates failure", "status", completionReport.Status)
-		if len(completionReport.Blockers) > 0 {
-			slog.Info("blockers reported", "blockers", completionReport.Blockers)
-		}
-		return nil, errors.Errorf(ctx, "completion report status: %s", completionReport.Status)
-	}
-
-	return completionReport, nil
-}
-
-// resolveValidationPrompt resolves the validationPrompt config value.
-// If value is a relative path to an existing file, the file contents are returned.
-// If value is non-empty but the file does not exist, ("", false) is returned (caller logs warning).
-// If value is empty, ("", false) is returned silently.
-// The resolved result is the criteria text to inject, or empty string to skip injection.
-func resolveValidationPrompt(ctx context.Context, value string) (string, bool) {
-	if value == "" {
-		return "", false
-	}
-	// Check if value is a path to an existing file
-	if _, err := os.Stat(value); err == nil {
-		data, readErr := os.ReadFile(
-			value,
-		) // #nosec G304 -- path is validated by config (no absolute path, no .. traversal)
-		if readErr != nil {
-			slog.WarnContext(
-				ctx,
-				"failed to read validationPrompt file",
-				"path",
-				value,
-				"error",
-				readErr,
-			)
-			return "", false
-		}
-		return string(data), true
-	}
-	// Check if value looks like a file path (contains path separator or .md extension)
-	// and the file doesn't exist — log a warning
-	if strings.Contains(value, string(filepath.Separator)) || strings.HasSuffix(value, ".md") {
-		slog.WarnContext(
-			ctx,
-			"validationPrompt file not found, skipping criteria evaluation",
-			"path",
-			value,
-		)
-		return "", false
-	}
-	// Value is inline criteria text
-	return value, true
 }

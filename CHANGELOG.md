@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.7
+
+- refactor: extracted CompletionReportValidator and PromptEnricher from processor — pure refactor, no behaviour change
+
 ## v0.135.6
 
 - refactor: NewProcessor argument order — services/interfaces first, typed config second; renamed ready→wakeup; exported ErrPreflightSkip for external test packages

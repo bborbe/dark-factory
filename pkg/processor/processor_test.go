@@ -20,6 +20,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/executor"
@@ -28,6 +29,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -97,18 +99,20 @@ func newTestProcessor(
 		preflightChecker,
 		wakeup,
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
-		processor.Commands{
-			Validation:       validationCommand,
-			ValidationPrompt: validationPrompt,
-			Test:             testCommand,
-		},
 		processor.ProjectName(projectName),
 		processor.MaxContainers(maxContainers),
-		processor.AdditionalInstructions(additionalInstructions),
 		processor.DirtyFileThreshold(dirtyFileThreshold),
 		processor.AutoRetryLimit(autoRetryLimit),
 		maxPromptDuration,
 		processor.VerificationGate(verificationGate),
+		completionreport.NewValidator(),
+		promptenricher.NewEnricher(
+			rel,
+			additionalInstructions,
+			testCommand,
+			validationCommand,
+			validationPrompt,
+		),
 		0,
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		nil, // onIdle: no-op for tests
@@ -7326,14 +7330,14 @@ DARK-FACTORY-REPORT -->`), 0600)
 					Completed: sweepCompletedDir,
 					Log:       filepath.Join(sweepTempDir, "log"),
 				},
-				processor.Commands{},
 				processor.ProjectName("sweep-test"),
 				processor.MaxContainers(0),
-				processor.AdditionalInstructions(""),
 				processor.DirtyFileThreshold(0),
 				processor.AutoRetryLimit(0),
 				0,
 				processor.VerificationGate(false),
+				completionreport.NewValidator(),
+				promptenricher.NewEnricher(releaser, "", "", "", ""),
 				0,
 				20*time.Millisecond, // sweepInterval 20ms for test speed
 				nil,                 // onIdle: no-op for tests

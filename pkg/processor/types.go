@@ -10,12 +10,6 @@ type ProjectName string
 // String returns the underlying string value.
 func (p ProjectName) String() string { return string(p) }
 
-// AdditionalInstructions is extra text prepended to every prompt before execution.
-type AdditionalInstructions string
-
-// String returns the underlying string value.
-func (a AdditionalInstructions) String() string { return string(a) }
-
 // MaxContainers is the maximum number of concurrently running containers allowed.
 type MaxContainers int
 
@@ -31,9 +25,4 @@ type AutoRetryLimit int
 // Dirs groups the three prompt directory paths used by the processor.
 type Dirs struct {
 	Queue, Completed, Log string
-}
-
-// Commands groups the three shell commands used during prompt validation.
-type Commands struct {
-	Validation, ValidationPrompt, Test string
 }

@@ -1,6 +1,11 @@
 ---
-status: idea
+status: committing
+summary: Extracted CompletionReportValidator (pkg/completionreport) and PromptEnricher (pkg/promptenricher) from processor god-object — both injected via constructor, mocks generated, tests at 91.7% and 92.0% coverage, processor.go reduced by 133 lines, make precommit exits 0
+container: dark-factory-340-processor-A1-leaf-extractions
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:30:00Z"
+queued: "2026-04-25T15:41:25Z"
+started: "2026-04-25T15:41:27Z"
 ---
 
 <summary>
@@ -21,9 +26,13 @@ Extract two leaf helpers from the processor god-object into small injected servi
 Read `CLAUDE.md` for project conventions.
 Read `go-composition.md` in `~/.claude/plugins/marketplaces/coding/docs/` — small interfaces (1–2 methods), all deps via constructor, package functions wrapped behind interfaces.
 
-Targets in `pkg/processor/processor.go`:
-- `validateCompletionReport(ctx, logFile) (*report.CompletionReport, error)` — free function at line ~1289. Calls `report.ParseFromLog`, `report.ScanForCriticalFailures`. Used in two places (`resumePrompt` line ~421 and `processPrompt` line ~1069).
-- `enrichPromptContent(ctx, content)` — method on `processor` at line ~1118. Reads `p.additionalInstructions`, `p.releaser.HasChangelog`, `p.testCommand`, `p.validationCommand`, `p.validationPromptResolver`. Used once (line ~1018).
+Targets in `pkg/processor/processor.go` (locate by symbol name; line numbers churn):
+- `validateCompletionReport(ctx, logFile) (*report.CompletionReport, error)` — free function. Calls `report.ParseFromLog`, `report.ScanForCriticalFailures`. Used in two places (`resumePrompt` and `processPrompt`).
+- `enrichPromptContent(ctx, content)` — method on `processor`. Reads `p.additionalInstructions`, `p.releaser.HasChangelog`, `p.cmds.Test`, `p.cmds.Validation`, `p.cmds.ValidationPrompt`, and calls the free function `resolveValidationPrompt(ctx, p.cmds.ValidationPrompt)`. Used once (in `runPrompt`).
+
+Note: there is **no** `validationPromptResolver` field on `processor` — `resolveValidationPrompt` is a free function in `processor.go`. The enricher needs to either (a) take the resolver as a function-typed parameter, (b) call the free function directly (after we re-home it), or (c) accept a `validationprompt.Resolver` interface only if `extract-validationprompt-package.md` actually introduced one. Verify the prerequisite first; pick (b) if no interface exists yet.
+
+Note: `p.testCommand` / `p.validationCommand` fields do **not** exist — those values live on `p.cmds` (a `Commands` struct) after `processor-typed-primitives.md`.
 
 Reference shape: `pkg/preflight/preflight.go` — small package, single-method interface, `New*` constructor, mock under `mocks/`.
 </context>
@@ -68,13 +77,19 @@ type Enricher interface {
     Enrich(ctx context.Context, content string) string
 }
 
+// Use primitive types in the constructor signature to avoid an import cycle
+// (pkg/processor imports promptenricher; promptenricher cannot import processor).
+// The factory unwraps processor.Commands into individual strings before calling NewEnricher.
 func NewEnricher(
     releaser git.Releaser,
-    validationPromptResolver validationprompt.Resolver,
-    additionalInstructions processor.AdditionalInstructions,
-    commands processor.Commands,
+    additionalInstructions string,
+    testCommand string,
+    validationCommand string,
+    validationPromptCriteria string, // raw value from cfg; resolver runs inside Enrich
 ) Enricher { ... }
 ```
+
+If `extract-validationprompt-package.md` actually introduced a `validationprompt.Resolver` interface in a neutral package (no processor dependency), prefer accepting that interface here; otherwise inline the `resolveValidationPrompt` body into `enricher.go` so the resolver logic moves with it.
 
 Move the body of `enrichPromptContent` into `(*enricher).Enrich`. Carry forward the same suffixes in the same order.
 
@@ -86,9 +101,16 @@ In `pkg/processor/processor.go`:
 - Replace both call sites of `validateCompletionReport` with `p.completionReportValidator.Validate(ctx, logFile)`
 - Replace `p.enrichPromptContent(ctx, content)` with `p.promptEnricher.Enrich(ctx, content)`
 - Delete `validateCompletionReport` (free) and `enrichPromptContent` (method)
-- Remove the now-unused fields: `additionalInstructions`, `testCommand`, `validationCommand`, `validationPromptResolver` (they live on the enricher now). Keep `releaser` — still used elsewhere (`recoverCommittingPrompt`, workflow commits).
+- Move the `resolveValidationPrompt` free function into `pkg/promptenricher/` (it's only used by the enricher) and delete it from `processor.go`
+- Remove the now-unused fields: `additionalInstructions`, the relevant fields on `p.cmds` (or the whole `Commands` struct field if nothing else reads it). Verify with `grep -n "p\.cmds\|p\.additionalInstructions" pkg/processor/processor.go` after deletion. Keep `releaser` — still used elsewhere (`recoverCommittingPrompt`, workflow commits).
 
-## 4. Wire from factory
+## 4. Wire from factory and update ALL `NewProcessor` call sites
+
+```bash
+grep -rn "processor\.NewProcessor(" --include="*.go"
+```
+
+This finds every call site. Update ALL of them — typically: `pkg/factory/factory.go`, `pkg/processor/processor_test.go` (helper `newTestProcessor`), and any direct `processor.NewProcessor(...)` calls inside test files (recurring lesson from 337/338/339: the helper does NOT cover all test call sites). Each site needs the new service params.
 
 `pkg/factory/factory.go`: construct both services and pass into `NewProcessor`. Remove the now-redundant primitive parameters from the call.
 
@@ -140,6 +162,12 @@ ls mocks/completion-report-validator.go mocks/prompt-enricher.go
 
 # Processor uses interfaces
 grep -n "completionreport.Validator\|promptenricher.Enricher" pkg/processor/processor.go
+
+# Factory + tests updated for the new constructor params
+grep -rn "promptenricher\.\|completionreport\." pkg/factory/factory.go pkg/processor/processor_test.go
+
+# All NewProcessor call sites pass the new services (zero compile errors)
+grep -rn "processor\.NewProcessor(" --include='*.go'
 
 make precommit
 ```

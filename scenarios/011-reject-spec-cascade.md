@@ -1,5 +1,5 @@
 ---
-status: draft
+status: active
 ---
 
 # Spec reject cascades to linked prompts and is excluded from default lists

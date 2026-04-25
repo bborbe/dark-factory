@@ -1,6 +1,10 @@
 ---
-status: idea
+status: executing
+container: dark-factory-336-configure-daemon-intervals
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T13:55:00Z"
+queued: "2026-04-25T13:05:02Z"
+started: "2026-04-25T13:06:20Z"
 ---
 
 <summary>
@@ -60,13 +64,33 @@ QueueInterval:     "5s",
 SweepInterval:     "60s",
 ```
 
-Add validation entries that mirror the `MaxPromptDuration` / `PreflightInterval` pattern:
+Add `validateQueueInterval` and `validateSweepInterval` methods alongside `validateMaxPromptDuration` (config.go:287) and `validatePreflightInterval` (config.go:303). Mirror those exactly:
 
-- Parse as `time.Duration` via `time.ParseDuration`
-- On parse error: return `errors.Errorf(ctx, "queueInterval must be a valid Go duration string, got %q", c.QueueInterval)` (and analogous for sweepInterval)
-- On non-positive parsed duration: return `errors.Errorf(ctx, "queueInterval must be positive, got %s", c.QueueInterval)`
+- Empty string → `return nil` (treats empty as "use default" — matches existing pattern)
+- Parse via `time.ParseDuration`; on error → `errors.Errorf(ctx, "queueInterval %q is not a valid duration: %v", c.QueueInterval, err)` (analogous for sweep)
+- ADDITIONAL check (not in existing siblings): non-positive parsed duration → `errors.Errorf(ctx, "queueInterval must be positive, got %s", c.QueueInterval)`. Reason: `time.NewTicker(d)` panics on `d <= 0`, so unlike `maxPromptDuration` (where 0 disables timeout), here zero/negative is invalid.
 
-Add `validateQueueInterval` and `validateSweepInterval` methods alongside `validateMaxPromptDuration` if that's the existing structural pattern.
+Register both new validators in the `validation.All{}` slice in `Validate(ctx)` (config.go:171–247) — without registration, the methods are dead code. Add right after the `preflightInterval` entry.
+
+Add `ParsedQueueInterval()` and `ParsedSweepInterval()` methods on `Config` mirroring `ParsedMaxPromptDuration()` (config.go:267) and `ParsedPreflightInterval()` (config.go:253):
+
+```go
+// ParsedQueueInterval returns the parsed duration from QueueInterval.
+// Returns 5 * time.Second when QueueInterval is empty or unparseable (preserves default behaviour).
+// Safe to call at any time — never panics.
+func (c Config) ParsedQueueInterval() time.Duration {
+    if c.QueueInterval == "" {
+        return 5 * time.Second
+    }
+    d, err := time.ParseDuration(c.QueueInterval)
+    if err != nil {
+        return 5 * time.Second
+    }
+    return d
+}
+```
+
+Analogous for `ParsedSweepInterval()` with default `60 * time.Second`. (Defaults preserve current behavior even if validation is bypassed somehow — defense in depth.)
 
 ## 2. Wire intervals through to the processor
 
@@ -74,7 +98,7 @@ In `pkg/processor/processor.go`:
 
 ### 2a. Constructor
 
-`NewProcessor(...)` currently takes `maxPromptDuration time.Duration`. Add two new positional parameters: `queueInterval time.Duration` and `sweepInterval time.Duration`. Place them adjacent to `maxPromptDuration` for grouping.
+`NewProcessor(...)` currently takes `maxPromptDuration time.Duration` (line ~105). Add two new positional parameters: `queueInterval time.Duration` and `sweepInterval time.Duration`. Place them adjacent to `maxPromptDuration` for grouping — three identically-typed `time.Duration` parameters in a row is a known footgun, so update the GoDoc on `NewProcessor` to document the ordering explicitly.
 
 Store both on the `processor` struct (alongside `maxPromptDuration`):
 
@@ -83,31 +107,45 @@ queueInterval  time.Duration
 sweepInterval  time.Duration
 ```
 
+Update the struct initialization block in `NewProcessor` (line ~108) to populate both new fields.
+
 ### 2b. Use the fields in `Process()`
 
-Replace the hard-coded literals:
+Replace the hard-coded literals at lines 199 and 205:
 
 ```go
+// before (line ~199)
 ticker := time.NewTicker(5 * time.Second)
-// ...
-sweepTicker := time.NewTicker(sweepInterval)
-```
-
-with:
-
-```go
+// after
 ticker := time.NewTicker(p.queueInterval)
-// ...
+
+// before (line ~205)
+sweepTicker := time.NewTicker(getSweepInterval())
+// after
 sweepTicker := time.NewTicker(p.sweepInterval)
 ```
 
-### 2c. Remove the package-level `var sweepInterval` and `SetSweepInterval` test helper
+### 2c. Remove the entire package-var test-seam
 
-Delete from `processor.go`:
+Delete ALL of the following from `pkg/processor/processor.go` (lines 36–48):
 
 ```go
+// sweepIntervalMu protects sweepInterval from concurrent read/write (test overrides).
+var sweepIntervalMu sync.Mutex
+
+// sweepInterval controls the auto-complete sweep cadence. Variable (not const)
+// so tests can override via SetSweepInterval (export_test.go).
 var sweepInterval = 60 * time.Second
+
+// getSweepInterval returns the current sweep interval under the mutex.
+func getSweepInterval() time.Duration {
+    sweepIntervalMu.Lock()
+    defer sweepIntervalMu.Unlock()
+    return sweepInterval
+}
 ```
+
+Also remove the now-unused `"sync"` import from processor.go IF nothing else in the file still uses it (search before deleting).
 
 Delete from `pkg/processor/export_test.go`:
 
@@ -115,24 +153,24 @@ Delete from `pkg/processor/export_test.go`:
 func SetSweepInterval(d time.Duration) (restore func()) { ... }
 ```
 
-Update any test that called `SetSweepInterval` to instead pass a small interval (e.g. `20 * time.Millisecond`) directly to `NewProcessor` via the new constructor parameter.
+Update the single test call site at `pkg/processor/processor_test.go:7271` (only one call to `SetSweepInterval` exists) to instead pass `20 * time.Millisecond` directly to `NewProcessor` via the new `sweepInterval` constructor parameter.
 
 ## 3. Wire from config to constructor
 
-Find the call site that constructs the processor (likely in `pkg/factory/factory.go`). Currently it passes `maxPromptDuration` parsed from `cfg.MaxPromptDuration`. Add two more parsed durations:
+Use the `Parsed*()` method convention — DO NOT call `time.ParseDuration` inline in factory.go. The factory currently calls `cfg.ParsedMaxPromptDuration()` at 5 call sites (`pkg/factory/factory.go:353, 374, 485, 516, 530`). Mirror that pattern:
 
 ```go
-queueInterval, err := time.ParseDuration(cfg.QueueInterval)
-if err != nil {
-    return nil, errors.Wrapf(ctx, err, "parse queueInterval %q", cfg.QueueInterval)
-}
-sweepInterval, err := time.ParseDuration(cfg.SweepInterval)
-if err != nil {
-    return nil, errors.Wrapf(ctx, err, "parse sweepInterval %q", cfg.SweepInterval)
-}
+processor.NewProcessor(
+    // ... existing args ...
+    cfg.ParsedQueueInterval(),
+    cfg.ParsedSweepInterval(),
+    // ... rest ...
+)
 ```
 
-Pass both into `NewProcessor(...)`.
+Update all 5 `processor.NewProcessor(...)` call sites in factory.go to pass the two new parsed values adjacent to `cfg.ParsedMaxPromptDuration()`.
+
+Validation already rejects bad values at startup via `Validate(ctx)`, so `Parsed*()` returning a default on parse error is safe — the daemon never starts with a broken config.
 
 ## 4. Update `docs/configuration.md`
 
@@ -171,11 +209,7 @@ The existing self-healing test added by `fix-stuck-prompted-specs.md` used `SetS
 
 ## 6. CHANGELOG entry
 
-Append to `## Unreleased` in `CHANGELOG.md`:
-
-```
-- feat: queueInterval and sweepInterval are now configurable in .dark-factory.yaml (defaults 5s / 60s — no behavior change unless overridden); rejects invalid duration strings at startup
-```
+Skip — `CHANGELOG.md` uses dated version headers (`## v0.135.x`); the dark-factory release flow creates the next version section automatically. Do not add an `## Unreleased` block; it is not the project convention.
 
 ## 7. Run verification
 
@@ -213,11 +247,23 @@ grep -n "QueueInterval\|SweepInterval" pkg/config/config.go
 # Defaults are set
 grep -n '"5s"\|"60s"' pkg/config/config.go
 
-# No more package-level sweepInterval var
-! grep -n "^var sweepInterval" pkg/processor/processor.go
+# Parsed*() methods exist
+grep -n "ParsedQueueInterval\|ParsedSweepInterval" pkg/config/config.go
+
+# Validators registered in validation.All
+grep -n "queueInterval\|sweepInterval" pkg/config/config.go | grep -i "validation.Name"
+
+# Package-level sweep state fully removed
+! grep -n "^var sweepInterval\|^var sweepIntervalMu\|^func getSweepInterval" pkg/processor/processor.go
+
+# SetSweepInterval helper removed
+! grep -n "SetSweepInterval" pkg/processor/
 
 # Processor uses the struct fields, not literals
 grep -n "p.queueInterval\|p.sweepInterval" pkg/processor/processor.go
+
+# Factory uses Parsed*() methods (not inline ParseDuration)
+grep -n "ParsedQueueInterval\|ParsedSweepInterval" pkg/factory/factory.go
 
 # Doc updated
 grep -n "queueInterval\|sweepInterval" docs/configuration.md

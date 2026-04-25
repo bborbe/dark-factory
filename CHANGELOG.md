@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- chore: enable revive `file-length-limit` rule (max 2000 total lines, including blank lines and comments) in `.golangci.yml` to prevent file-size regressions; matches the CLAUDE.md rule and `wc -l`-based survey
+
 ## v0.135.16
 
 - refactor: split oversized Go test files (`processor_test.go` 7450→<1915/file, `prompt_test.go` 3067→<1500/file, `config_test.go` 2648→<1000/file) into per-concern files; no behavior changes, all tests pass; eliminates Read-tool token-limit friction and reduces merge-conflict surface

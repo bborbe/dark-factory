@@ -60,6 +60,17 @@ linters:
 
     maintidx:
       min-maintainability-index: 20
+
+    revive:
+      rules:
+        # Total-line limit matches the CLAUDE.md rule (file > 2000 lines = smell).
+        # skipBlankLines and skipComments are explicitly false so the count matches
+        # what `wc -l` reports and what readers see in editor scrollbars.
+        - name: file-length-limit
+          arguments:
+            - max: 2000
+              skipBlankLines: false
+              skipComments: false
   exclusions:
     presets:
       - comments

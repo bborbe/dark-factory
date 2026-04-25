@@ -238,6 +238,8 @@ func runPromptCommand(
 			return err
 		}
 		return factory.CreateUnapproveCommand(cfg).Run(ctx, args)
+	case "reject":
+		return factory.CreateRejectCommand(cfg).Run(ctx, args)
 	case "show":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
@@ -278,6 +280,8 @@ func runSpecCommand(
 			return err
 		}
 		return factory.CreateSpecUnapproveCommand(cfg).Run(ctx, args)
+	case "reject":
+		return factory.CreateSpecRejectCommand(cfg).Run(ctx, args)
 	case "complete":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
@@ -469,12 +473,14 @@ func printHelp() {
 			"  prompt retry           Shorthand for prompt requeue --failed\n"+
 			"  prompt complete <id>   Complete a prompt (triggers commit/push)\n"+
 			"  prompt unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
+			"  prompt reject <id> --reason <text>  Reject a prompt (move to rejected/, terminal state)\n"+
 			"  prompt show <id>       Show details for a single prompt\n\n"+
 			"  spec list              List specs\n"+
 			"  spec status            Show spec status\n"+
 			"  spec approve <id>      Approve a spec\n"+
 			"  spec unapprove <id>    Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  spec complete <id>     Mark a verified spec as completed\n"+
+			"  spec reject <id> --reason <text>    Reject a spec and all linked prompts (move to rejected/, terminal state)\n"+
 			"  spec show <id>         Show details for a single spec\n\n"+
 			"  scenario list          List scenarios\n"+
 			"  scenario show <id>     Show full contents of a scenario\n"+
@@ -559,6 +565,7 @@ func printPromptHelp() {
 			"  retry           Shorthand for prompt requeue --failed\n"+
 			"  complete <id>   Complete a prompt (triggers commit/push)\n"+
 			"  unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
+			"  reject <id> --reason <text>  Reject a prompt (move to rejected/, terminal state)\n"+
 			"  show <id>       Show details for a single prompt\n",
 	)
 }
@@ -572,6 +579,7 @@ func printSpecHelp() {
 			"  approve <id>    Approve a spec\n"+
 			"  unapprove <id>  Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  complete <id>   Mark a verified spec as completed\n"+
+			"  reject <id> --reason <text>  Reject a spec and all linked prompts (move to rejected/, terminal state)\n"+
 			"  show <id>       Show details for a single spec\n",
 	)
 }

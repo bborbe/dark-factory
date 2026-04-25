@@ -13,6 +13,24 @@ import (
 	"github.com/bborbe/errors"
 )
 
+// FindPromptFileInDirs searches dirs in order and returns the first match.
+func FindPromptFileInDirs(ctx context.Context, id string, dirs ...string) (string, error) {
+	// Try as a direct path first (absolute or relative with directory component)
+	if filepath.IsAbs(id) || strings.ContainsRune(id, '/') {
+		if _, err := os.Stat(id); err == nil {
+			return id, nil
+		}
+	}
+
+	for _, dir := range dirs {
+		path, err := FindPromptFile(ctx, dir, id)
+		if err == nil {
+			return path, nil
+		}
+	}
+	return "", errors.Errorf(ctx, "prompt not found: %s", id)
+}
+
 // FindPromptFile finds a prompt file by id in dir, supporting:
 // - absolute or relative path with directory component (checked directly)
 // - exact filename with .md extension

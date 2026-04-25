@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.134.0
+
+- feat: add dark-factory prompt reject and dark-factory spec reject commands with --reason flag, cascade, and preflight
+
 ## v0.133.0
 
 - feat: add rejected status, IsRejectable() predicate, and Rejected/RejectedReason frontmatter fields to spec and prompt lifecycle model

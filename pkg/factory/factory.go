@@ -1027,6 +1027,30 @@ func CreateSpecUnapproveCommand(cfg config.Config) cmd.SpecUnapproveCommand {
 	)
 }
 
+// CreateRejectCommand creates a RejectCommand.
+func CreateRejectCommand(cfg config.Config) cmd.RejectCommand {
+	return cmd.NewRejectCommand(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.RejectedDir,
+		libtime.NewCurrentDateTime(),
+	)
+}
+
+// CreateSpecRejectCommand creates a SpecRejectCommand.
+func CreateSpecRejectCommand(cfg config.Config) cmd.SpecRejectCommand {
+	return cmd.NewSpecRejectCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.RejectedDir,
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		cfg.Prompts.RejectedDir,
+		libtime.NewCurrentDateTime(),
+	)
+}
+
 // CreateSpecCompleteCommand creates a SpecCompleteCommand.
 func CreateSpecCompleteCommand(cfg config.Config) cmd.SpecCompleteCommand {
 	return cmd.NewSpecCompleteCommand(

@@ -1,6 +1,7 @@
 ---
-status: draft
+status: approved
 created: "2026-04-25T13:10:00Z"
+queued: "2026-04-25T11:23:12Z"
 ---
 
 <summary>
@@ -75,9 +76,10 @@ if c.cache != nil && c.cache.ok && c.interval > 0 &&
 
 After 1a the SHA is no longer needed for caching. Drop:
 
-- The `sha` field on `cacheEntry` (the struct can be simplified or kept with only `checkedAt` and `ok`; remove `output` only if no other callers read it)
+- The `sha` field on `cacheEntry`
+- The `output` field on `cacheEntry` (verified to have no remaining consumer — drop it)
 - The `shaFetcher` field on `checker`
-- The `shaFetcherFn` type alias (if it has no remaining consumer)
+- The `shaFetcherFn` type alias
 - The `getHeadSHA` method
 
 The `slog.Info("preflight: running baseline check", ...)` line should drop the `sha` field, e.g.:
@@ -135,7 +137,7 @@ Tests to update (do NOT delete existing test names — rewrite their bodies):
 
 - `It("reuses cached result within interval for same SHA", ...)` (line 102) → rename to `It("reuses cached result within interval", ...)`. Body: call Check twice with a 1-hour interval and a small synthetic clock advance via `time.Sleep` is not acceptable — use a configurable clock. If no clock injection exists, set `interval = 1 * time.Hour` and call Check twice; assert runner called once.
 
-- The `It("re-runs when SHA advances", ...)` test (line 124) is no longer meaningful. Replace with `It("re-runs after interval elapses", ...)`. Body: pick a tiny interval (`10 * time.Millisecond`), call Check, sleep 50ms, call Check again, assert runner called twice.
+- The `It("re-runs when SHA changes", ...)` test (line 122) is no longer meaningful. Replace with `It("re-runs after interval elapses", ...)`. Body: pick a tiny interval (`10 * time.Millisecond`), call Check, sleep 50ms, call Check again, assert runner called twice. (Clock injection would be cleaner if a clock abstraction exists in this package; a real-time interval + sleep is acceptable here for a small fix because the elapsed time is bounded and deterministic.)
 
 ### 2b. Add new test: failures are NOT cached
 
@@ -162,9 +164,12 @@ It("does not cache a failed preflight — next call re-runs the command", func()
 })
 ```
 
-### 2c. Remove SHA fetch tests if they exist
+### 2c. Remove SHA fetch tests
 
-Tests like `It("re-runs when SHA fetcher returns empty (cache miss)", ...)` (line 164) are no longer relevant. Delete them.
+Both of these tests assume a SHA fetcher exists. Delete them entirely:
+
+- `It("re-runs when SHA fetcher returns empty (cache miss)", ...)` at `preflight_test.go:164`
+- The whole `Describe("SHA fetcher error", ...)` block at `preflight_test.go:183` (it calls `preflight.NewCheckerWithSHAError`, which is removed in step 3)
 
 ### 2d. Drop `truncateSHA` tests (if `truncateSHA` is removed)
 
@@ -172,9 +177,12 @@ The `Describe("truncateSHA", ...)` block at line 19–31 should be removed if `t
 
 ## 3. Update `pkg/preflight/export_test.go`
 
-If `NewCheckerWithRunner` accepted a `shaFetcher` argument, remove it from the helper signature. Update all test call sites accordingly.
+Two helpers exist today:
 
-If the helper still needs to exist at all (it does — to inject the runner), keep it but simplify.
+- `NewCheckerWithRunner` (line 22) — accepts a `headSHA` string and a runner fn. **Remove the `headSHA` argument** since the SHA is no longer used; keep the runner injection. Update its body so it constructs the simplified `checker` (no `shaFetcher`).
+- `NewCheckerWithSHAError` (line 43) — exists only to test the SHA-fetch error path. **Delete this helper entirely.**
+
+Update every call site of `NewCheckerWithRunner` in `preflight_test.go` to drop the now-removed `headSHA` argument (search the file for the helper name).
 
 ## 4. Update `docs/configuration.md`
 

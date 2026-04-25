@@ -125,3 +125,49 @@ var _ = Describe("SpecListCommand", func() {
 		})
 	})
 })
+
+// NOTE: The daemon's specwatcher and processor only scan in-progress/ directories and therefore
+// naturally exclude rejected/ items — no code change needed in those packages.
+
+var _ = Describe("spec list command with rejected", func() {
+	var (
+		lister      *mocks.Lister
+		counter     *mocks.PromptCounter
+		specListCmd cmd.SpecListCommand
+		ctx         context.Context
+	)
+
+	BeforeEach(func() {
+		lister = &mocks.Lister{}
+		counter = &mocks.PromptCounter{}
+		specListCmd = cmd.NewSpecListCommand(lister, counter)
+		ctx = context.Background()
+	})
+
+	It("rejected spec hidden by default", func() {
+		lister.ListReturns([]*spec.SpecFile{
+			{
+				Name:        "020-rejected-spec",
+				Frontmatter: spec.Frontmatter{Status: string(spec.StatusRejected)},
+			},
+		}, nil)
+
+		err := specListCmd.Run(ctx, []string{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.CountBySpecCallCount()).To(Equal(0))
+	})
+
+	It("rejected spec shown with --all", func() {
+		lister.ListReturns([]*spec.SpecFile{
+			{
+				Name:        "020-rejected-spec",
+				Frontmatter: spec.Frontmatter{Status: string(spec.StatusRejected)},
+			},
+		}, nil)
+		counter.CountBySpecReturnsOnCall(0, 0, 2, nil)
+
+		err := specListCmd.Run(ctx, []string{"--all"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(counter.CountBySpecCallCount()).To(Equal(1))
+	})
+})

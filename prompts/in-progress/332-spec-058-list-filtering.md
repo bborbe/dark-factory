@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [058-reject-spec-and-prompt]
+summary: 'Wired rejected status into list display layer: prompt list, spec list, and combined list now hide rejected items by default and show them with --all; all 5 spec.NewLister and CreateProcessor call sites updated with RejectedDir; new Ginkgo tests added for all cases.'
+container: dark-factory-332-spec-058-list-filtering
+dark-factory-version: v0.132.0
 created: "2026-04-25T10:30:00Z"
 queued: "2026-04-25T10:49:09Z"
+started: "2026-04-25T11:18:37Z"
 ---
 
 <summary>

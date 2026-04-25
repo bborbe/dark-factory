@@ -62,7 +62,8 @@ func (s *specListCommand) Run(ctx context.Context, args []string) error {
 
 	entries := make([]SpecEntry, 0, len(specs))
 	for _, sf := range specs {
-		if !showAll && sf.Frontmatter.Status == string(specpkg.StatusCompleted) {
+		if !showAll && (sf.Frontmatter.Status == string(specpkg.StatusCompleted) ||
+			sf.Frontmatter.Status == string(specpkg.StatusRejected)) {
 			continue
 		}
 		completed, total, err := s.counter.CountBySpec(ctx, sf.Name)

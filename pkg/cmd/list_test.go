@@ -42,7 +42,13 @@ var _ = Describe("ListCommand", func() {
 		err = os.MkdirAll(completedDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		listCmd = cmd.NewListCommand(inboxDir, queueDir, completedDir, libtime.NewCurrentDateTime())
+		listCmd = cmd.NewListCommand(
+			inboxDir,
+			queueDir,
+			completedDir,
+			"",
+			libtime.NewCurrentDateTime(),
+		)
 		ctx = context.Background()
 	})
 
@@ -169,6 +175,7 @@ var _ = Describe("ListCommand", func() {
 				"/nonexistent/inbox",
 				queueDir,
 				completedDir,
+				"",
 				libtime.NewCurrentDateTime(),
 			)
 			err := listCmd.Run(ctx, []string{})
@@ -180,8 +187,70 @@ var _ = Describe("ListCommand", func() {
 				inboxDir,
 				queueDir,
 				"/nonexistent/completed",
+				"",
 				libtime.NewCurrentDateTime(),
 			)
+			err := listCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("list command with rejected dir", func() {
+		var rejectedDir string
+
+		BeforeEach(func() {
+			rejectedDir = filepath.Join(tempDir, "rejected")
+			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
+			listCmd = cmd.NewListCommand(
+				inboxDir,
+				queueDir,
+				completedDir,
+				rejectedDir,
+				libtime.NewCurrentDateTime(),
+			)
+		})
+
+		It("rejected hidden by default", func() {
+			Expect(os.WriteFile(
+				filepath.Join(rejectedDir, "042-test-prompt.md"),
+				[]byte("---\nstatus: rejected\n---\n# Test"),
+				0600,
+			)).To(Succeed())
+
+			err := listCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejected shown with --all", func() {
+			Expect(os.WriteFile(
+				filepath.Join(rejectedDir, "042-test-prompt.md"),
+				[]byte("---\nstatus: rejected\n---\n# Test"),
+				0600,
+			)).To(Succeed())
+
+			err := listCmd.Run(ctx, []string{"--all"})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejected dir missing is OK", func() {
+			listCmd = cmd.NewListCommand(
+				inboxDir,
+				queueDir,
+				completedDir,
+				"/nonexistent/rejected",
+				libtime.NewCurrentDateTime(),
+			)
+			err := listCmd.Run(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("non-rejected items still shown by default", func() {
+			Expect(os.WriteFile(
+				filepath.Join(inboxDir, "draft-prompt.md"),
+				[]byte("---\nstatus: draft\n---\n# Draft"),
+				0600,
+			)).To(Succeed())
+
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
 		})

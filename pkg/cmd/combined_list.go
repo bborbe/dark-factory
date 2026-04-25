@@ -37,6 +37,7 @@ type combinedListCommand struct {
 	inboxDir              string
 	queueDir              string
 	completedDir          string
+	rejectedDir           string
 	lister                spec.Lister
 	counter               prompt.Counter
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
@@ -47,6 +48,7 @@ func NewCombinedListCommand(
 	inboxDir string,
 	queueDir string,
 	completedDir string,
+	rejectedDir string,
 	lister spec.Lister,
 	counter prompt.Counter,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -55,6 +57,7 @@ func NewCombinedListCommand(
 		inboxDir:              inboxDir,
 		queueDir:              queueDir,
 		completedDir:          completedDir,
+		rejectedDir:           rejectedDir,
 		lister:                lister,
 		counter:               counter,
 		currentDateTimeGetter: currentDateTimeGetter,
@@ -94,7 +97,7 @@ func (c *combinedListCommand) collectPromptEntries(
 	ctx context.Context,
 	showAll bool,
 ) ([]PromptEntry, error) {
-	dirs := []string{c.inboxDir, c.queueDir, c.completedDir}
+	dirs := []string{c.inboxDir, c.queueDir, c.completedDir, c.rejectedDir}
 	entries := make([]PromptEntry, 0, len(dirs))
 	for _, dir := range dirs {
 		dirEntries, err := c.collectPromptEntriesFromDir(ctx, dir, showAll)
@@ -132,7 +135,8 @@ func (c *combinedListCommand) collectPromptEntriesFromDir(
 		if st == "" {
 			st = "created"
 		}
-		if !showAll && st == string(prompt.CompletedPromptStatus) {
+		if !showAll &&
+			(st == string(prompt.CompletedPromptStatus) || st == string(prompt.RejectedPromptStatus)) {
 			continue
 		}
 		entries = append(entries, PromptEntry{Status: st, File: entry.Name()})
@@ -151,7 +155,8 @@ func (c *combinedListCommand) collectSpecEntries(
 
 	entries := make([]SpecEntry, 0, len(specs))
 	for _, sf := range specs {
-		if !showAll && sf.Frontmatter.Status == string(spec.StatusCompleted) {
+		if !showAll && (sf.Frontmatter.Status == string(spec.StatusCompleted) ||
+			sf.Frontmatter.Status == string(spec.StatusRejected)) {
 			continue
 		}
 		completed, total, err := c.counter.CountBySpec(ctx, sf.Name)

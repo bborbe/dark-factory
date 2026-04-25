@@ -36,6 +36,7 @@ type listCommand struct {
 	inboxDir              string
 	queueDir              string
 	completedDir          string
+	rejectedDir           string
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
@@ -44,12 +45,14 @@ func NewListCommand(
 	inboxDir string,
 	queueDir string,
 	completedDir string,
+	rejectedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ListCommand {
 	return &listCommand{
 		inboxDir:              inboxDir,
 		queueDir:              queueDir,
 		completedDir:          completedDir,
+		rejectedDir:           rejectedDir,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
@@ -94,6 +97,12 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 	}
 	entries = append(entries, completedEntries...)
 
+	rejectedEntries, err := l.scanDir(ctx, l.rejectedDir)
+	if err != nil {
+		return errors.Wrap(ctx, err, "scan rejected")
+	}
+	entries = append(entries, rejectedEntries...)
+
 	switch {
 	case queueOnly:
 		entries = filterPromptsByStatus(
@@ -108,6 +117,7 @@ func (l *listCommand) Run(ctx context.Context, args []string) error {
 		)
 	case !showAll:
 		entries = excludePromptStatus(entries, string(prompt.CompletedPromptStatus))
+		entries = excludePromptStatus(entries, string(prompt.RejectedPromptStatus))
 	}
 
 	if jsonOutput {

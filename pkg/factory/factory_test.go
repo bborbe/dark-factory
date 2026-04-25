@@ -84,6 +84,7 @@ var _ = Describe("Factory", func() {
 				"specs/inbox",
 				"specs/in-progress",
 				"specs/completed",
+				"specs/rejected",
 				false,
 				nil,
 				nil,

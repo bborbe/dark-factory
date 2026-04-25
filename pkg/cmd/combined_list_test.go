@@ -34,6 +34,7 @@ var _ = Describe("CombinedListCommand", func() {
 			"/nonexistent/inbox",
 			"/nonexistent/queue",
 			"/nonexistent/completed",
+			"",
 			lister,
 			counter,
 			libtime.NewCurrentDateTime(),

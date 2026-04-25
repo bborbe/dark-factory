@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.0
+
+- feat: dark-factory prompt list and spec list hide rejected items by default; --all shows them; rejected/ dirs are scanned for display
+
 ## v0.134.0
 
 - feat: add dark-factory prompt reject and dark-factory spec reject commands with --reason flag, cascade, and preflight

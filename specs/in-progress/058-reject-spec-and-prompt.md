@@ -1,5 +1,8 @@
 ---
-status: draft
+status: generating
+approved: "2026-04-25T10:23:23Z"
+generating: "2026-04-25T10:23:23Z"
+branch: dark-factory/reject-spec-and-prompt
 ---
 
 ## Summary
@@ -46,25 +49,32 @@ After this spec lands:
 
 - `lifecycle-state-machine.md` — this spec consumes `IsPreExecution()` from the state machine. Land that spec first.
 
-This spec **extends** the state machine in two ways:
+### Definitions
+
+- **Linked prompts** (of a spec): all prompts whose YAML frontmatter `spec:` array contains this spec's identifier. Discovered by scanning `prompts/` (inbox), `prompts/in-progress/`, and `prompts/completed/` for matching frontmatter — not by directory location.
+
+### Extensions to the state machine
+
+This spec **extends** spec 057's state machine in three ways:
 
 1. **Adds `rejected` status** to `AvailablePromptStatuses` and `AvailableSpecStatuses` (terminal — no outgoing edges).
 2. **Adds edges to the transition tables**:
    - Prompt: `idea → rejected`, `draft → rejected`, `approved → rejected`
    - Spec: `idea → rejected`, `draft → rejected`, `approved → rejected`, `generating → rejected`, `prompted → rejected`
-3. **Adds `IsRejectable()` predicate** to both lifecycles:
-   - Prompt: `IsRejectable() bool { return s.IsPreExecution() }`
-   - Spec: `IsRejectable() bool { return s.IsPreExecution() || s == StatusPrompted }`
-   The `prompted` case for specs is allowed by the predicate, but the command additionally requires every linked prompt to be `IsRejectable()` (a runtime check, not part of the predicate).
+3. **Adds `IsRejectable()` predicate** to both lifecycles. Predicate semantics is **state-only** — it answers "is this state ever a candidate for rejection?":
+   - Prompt: `IsRejectable() bool { return s.IsPreExecution() }` — covers idea, draft, approved
+   - Spec: `IsRejectable() bool { return s.IsPreExecution() || s == StatusPrompted }` — covers idea, draft, approved, generating, prompted
+
+   The predicate is **necessary but not sufficient** for spec rejection in the `prompted` state. The reject command performs an **additional runtime check** (every linked prompt must itself satisfy `IsRejectable()`). This split keeps the predicate pure (no I/O) while letting the command do the cross-entity validation.
 
 ## Desired Behavior
 
 1. `dark-factory spec reject <name> --reason "<text>"` rejects the spec.
 2. `dark-factory prompt reject <name> --reason "<text>"` rejects the prompt.
 3. `--reason` is required. Stored verbatim in `rejected_reason` frontmatter field.
-4. Rejection is allowed iff the entity's status is in the rejectable set (predicate from state-machine spec):
-   - Prompt: `idea`, `draft`, `approved`
-   - Spec: `idea`, `draft`, `approved`, `generating`, plus `prompted` iff every linked prompt is rejectable
+4. Rejection is allowed when both checks pass:
+   - **State check** (the `IsRejectable()` predicate, state-only): prompt status must be in `{idea, draft, approved}`; spec status must be in `{idea, draft, approved, generating, prompted}`.
+   - **Cross-entity check** (only for specs in `prompted`): every linked prompt must additionally satisfy `IsRejectable()`. Performed by the command, not the predicate.
 5. On reject:
    - Status set to `rejected`, `rejected: <RFC3339 UTC timestamp>` set, `rejected_reason: <text>` set
    - File moved to `specs/rejected/` or `prompts/rejected/` (numeric prefix preserved — no renumber)
@@ -77,7 +87,10 @@ This spec **extends** the state machine in two ways:
 
 - The `rejected/` directories are auto-created on first reject — no setup step needed.
 - Rejected files keep their numeric prefix; rejection does not renumber surviving items in `in-progress/` or `inbox/`. (Distinct from `unapprove`, which renumbers.)
-- The cascade is best-effort transactional within a single command run: if any linked prompt fails the rejectable check, the spec reject errors out and no changes are made (to anything).
+- **Cascade atomicity** — pre-flight + serial commit, no rollback:
+  1. **Pre-flight**: load every linked prompt; verify each is `IsRejectable()`. If any prompt fails the check, the command errors out before mutating any file. Zero side effects on validation failure.
+  2. **Commit**: after pre-flight passes, perform mutations serially: each linked prompt's frontmatter is updated and the file moved to `prompts/rejected/`; finally the spec's frontmatter is updated and moved to `specs/rejected/`.
+  3. **Mid-cascade FS error**: if a move or write fails mid-cascade (e.g., disk full, permission error), the command stops, leaves partial state on disk, and surfaces a clear error listing which items succeeded and which did not. The operator is responsible for cleanup. (Justification: implementing real two-phase commit on the file system is disproportionate to the failure rate — pre-flight catches the common "some prompt is already executing" case, and the residual FS-error path is rare and operator-recoverable.)
 - Frontmatter wire format is additive: new fields `rejected`, `rejected_reason` are optional and ignored by older tooling.
 
 ## Failure Modes
@@ -88,7 +101,7 @@ This spec **extends** the state machine in two ways:
 | Reject a spec with one or more linked prompts past `approved` | Error listing the offending prompts and their statuses; no changes made | Cancel or complete the linked prompts first |
 | Reject already-rejected item | Error: "X is already rejected" | No-op |
 | Reject without `--reason` | Error: "--reason is required" | Add the flag |
-| Daemon races: spec is being approved while reject runs | File-system locking via existing dark-factory mechanisms; reject errors if the spec was just transitioned out of a rejectable state | Retry |
+| Daemon races: spec is being approved while reject runs | The `.dark-factory.lock` flock-based daemon lock + per-command file load+write sequence makes the race extremely narrow; if it occurs, reject errors when re-loading the spec finds it past a rejectable state | Retry |
 | `rejected/` directory missing | Created on demand | n/a |
 
 ## Do-Nothing Option
@@ -108,11 +121,12 @@ The cost of doing nothing is small per occurrence but recurring. The state-machi
 - [ ] `--reason` is required; missing flag errors out
 - [ ] Rejected entities have `status: rejected`, `rejected: <timestamp>`, `rejected_reason: <text>` in frontmatter
 - [ ] Rejected files land in `specs/rejected/` or `prompts/rejected/` with numeric prefix preserved
-- [ ] Spec reject cascades to all linked prompts; cascade is atomic (all-or-nothing)
+- [ ] Spec reject cascades to all linked prompts; pre-flight catches non-rejectable prompts and aborts before any mutation
 - [ ] Daemon (specwatcher + processor) skips rejected files
 - [ ] `spec list` and `prompt list` hide rejected by default; `--all` shows them
 - [ ] Rejecting an already-rejected, in-flight, or completed item errors with a clear message naming the current status
-- [ ] Existing tests still pass; new Ginkgo tests cover reject flow + cascade + daemon-skip
+- [ ] All existing Ginkgo tests pass unchanged
+- [ ] New Ginkgo tests cover: prompt reject from each rejectable state, spec reject without prompts, spec reject with cascade, spec reject pre-flight failure (one bad prompt), daemon skips files in `rejected/` directories
 - [ ] `make precommit` exits 0
 
 ## Verification

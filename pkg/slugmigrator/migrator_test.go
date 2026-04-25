@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 )
@@ -23,6 +24,7 @@ var _ = Describe("Migrator", func() {
 		specsDir              string
 		promptsDir            string
 		currentDateTimeGetter libtime.CurrentDateTimeGetter
+		promptManager         *prompt.Manager
 		migrator              slugmigrator.Migrator
 	)
 
@@ -37,7 +39,19 @@ var _ = Describe("Migrator", func() {
 		promptsDir, err = os.MkdirTemp("", "slugmigrator-prompts-*")
 		Expect(err).To(BeNil())
 
-		migrator = slugmigrator.NewMigrator([]string{specsDir}, currentDateTimeGetter)
+		mover := &mocks.FileMover{}
+		mover.MoveFileStub = func(ctx context.Context, src, dst string) error {
+			return os.Rename(src, dst)
+		}
+		promptManager = prompt.NewManager(
+			promptsDir,
+			promptsDir,
+			promptsDir,
+			mover,
+			currentDateTimeGetter,
+		)
+
+		migrator = slugmigrator.NewMigrator([]string{specsDir}, promptManager)
 	})
 
 	AfterEach(func() {
@@ -69,7 +83,7 @@ var _ = Describe("Migrator", func() {
 	}
 
 	loadSpecs := func(dir, name string) []string {
-		pf, err := prompt.Load(ctx, filepath.Join(dir, name), currentDateTimeGetter)
+		pf, err := promptManager.Load(ctx, filepath.Join(dir, name))
 		Expect(err).To(BeNil())
 		return []string(pf.Frontmatter.Specs)
 	}
@@ -138,9 +152,20 @@ var _ = Describe("Migrator", func() {
 				writeSpec(specsDir, "036-version-one.md")
 				writeSpec(extraSpecsDir, "036-version-two.md")
 
+				ambiguousMover := &mocks.FileMover{}
+				ambiguousMover.MoveFileStub = func(ctx context.Context, src, dst string) error {
+					return os.Rename(src, dst)
+				}
+				ambiguousManager := prompt.NewManager(
+					promptsDir,
+					promptsDir,
+					promptsDir,
+					ambiguousMover,
+					currentDateTimeGetter,
+				)
 				ambiguousMigrator := slugmigrator.NewMigrator(
 					[]string{specsDir, extraSpecsDir},
-					currentDateTimeGetter,
+					ambiguousManager,
 				)
 
 				writePrompt(promptsDir, "100-my-prompt.md", []string{"036"})

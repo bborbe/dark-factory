@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -25,10 +24,10 @@ type RejectCommand interface {
 
 // rejectCommand implements RejectCommand.
 type rejectCommand struct {
-	inboxDir              string
-	inProgressDir         string
-	rejectedDir           string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	inboxDir      string
+	inProgressDir string
+	rejectedDir   string
+	promptManager PromptManager
 }
 
 // NewRejectCommand creates a new RejectCommand.
@@ -36,13 +35,13 @@ func NewRejectCommand(
 	inboxDir string,
 	inProgressDir string,
 	rejectedDir string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	promptManager PromptManager,
 ) RejectCommand {
 	return &rejectCommand{
-		inboxDir:              inboxDir,
-		inProgressDir:         inProgressDir,
-		rejectedDir:           rejectedDir,
-		currentDateTimeGetter: currentDateTimeGetter,
+		inboxDir:      inboxDir,
+		inProgressDir: inProgressDir,
+		rejectedDir:   rejectedDir,
+		promptManager: promptManager,
 	}
 }
 
@@ -65,7 +64,7 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 		return errors.Errorf(ctx, "prompt not found: %s", id)
 	}
 
-	pf, err := prompt.Load(ctx, path, r.currentDateTimeGetter)
+	pf, err := r.promptManager.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

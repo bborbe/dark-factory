@@ -15,9 +15,7 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
-	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/specnum"
 )
 
@@ -30,14 +28,14 @@ var specFilenamePatternRegexp = regexp.MustCompile(`spec-(\d{3})`)
 //  2. Renames any prompt file whose filename contains `spec-NNN` where NNN matches the old spec number.
 //
 // promptDirs are scanned for .md files. mover is used for file renames.
-// currentDateTimeGetter is required to load prompt files.
+// pm is used to load prompt files.
 // Returns the list of prompt file renames performed.
 func UpdateSpecRefs(
 	ctx context.Context,
 	specRenames []Rename,
 	promptDirs []string,
 	mover FileMover,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) ([]Rename, error) {
 	oldNumToNew := buildOldNumToNew(specRenames)
 	if len(oldNumToNew) == 0 {
@@ -57,7 +55,7 @@ func UpdateSpecRefs(
 			entry.name,
 			oldNumToNew,
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		if err != nil {
 			return nil, err
@@ -112,11 +110,11 @@ func processPromptFileForSpecRefs(
 	name string,
 	oldNumToNew map[int]int,
 	mover FileMover,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) (*Rename, error) {
 	path := filepath.Join(dir, name)
 
-	if err := updateFrontmatterSpecRefs(ctx, path, oldNumToNew, currentDateTimeGetter); err != nil {
+	if err := updateFrontmatterSpecRefs(ctx, path, oldNumToNew, pm); err != nil {
 		return nil, err
 	}
 
@@ -127,9 +125,9 @@ func updateFrontmatterSpecRefs(
 	ctx context.Context,
 	path string,
 	oldNumToNew map[int]int,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) error {
-	pf, err := prompt.Load(ctx, path, currentDateTimeGetter)
+	pf, err := pm.Load(ctx, path)
 	if err != nil {
 		slog.Warn(
 			"reindex: failed to load prompt for spec ref update",

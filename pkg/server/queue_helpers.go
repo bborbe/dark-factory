@@ -11,9 +11,6 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
-
-	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 // queueSingleFile moves a single file from inbox to queue.
@@ -23,7 +20,6 @@ func queueSingleFile(
 	queueDir string,
 	promptManager PromptManager,
 	filename string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (QueuedFile, error) {
 	oldPath := filepath.Join(inboxDir, filename)
 
@@ -39,7 +35,6 @@ func queueSingleFile(
 		queueDir,
 		promptManager,
 		filename,
-		currentDateTimeGetter,
 	)
 	if err != nil {
 		return QueuedFile{}, errors.Wrap(ctx, err, "move to queue")
@@ -54,7 +49,6 @@ func queueAllFiles(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ([]QueuedFile, error) {
 	entries, err := os.ReadDir(inboxDir)
 	if err != nil {
@@ -74,7 +68,6 @@ func queueAllFiles(
 			queueDir,
 			promptManager,
 			entry.Name(),
-			currentDateTimeGetter,
 		)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, "move to queue")
@@ -93,7 +86,6 @@ func moveToQueue(
 	queueDir string,
 	promptManager PromptManager,
 	filename string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (string, error) {
 	oldPath := filepath.Join(inboxDir, filename)
 
@@ -104,7 +96,7 @@ func moveToQueue(
 	}
 
 	// Set status to approved using Load/Save
-	pf, err := prompt.Load(ctx, newPath, currentDateTimeGetter)
+	pf, err := promptManager.Load(ctx, newPath)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "load prompt")
 	}

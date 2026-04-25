@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.18
+
+- refactor: unexport ~20 free functions in `pkg/prompt` (Load, SetStatus, HasExecuting, etc.) and make `prompt.Manager` the sole public mutation API; extend `PromptManager` interfaces in consumer packages (cmd, generator, spec, watcher, reindex, runner) to include `Load`; update all callers and tests
+
 ## v0.135.17
 
 - chore: enable revive `file-length-limit` rule (max 2000 total lines, including blank lines and comments) in `.golangci.yml` to prevent file-size regressions; matches the CLAUDE.md rule and `wc -l`-based survey

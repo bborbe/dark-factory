@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -31,18 +30,18 @@ type Migrator interface {
 
 // specSlugMigrator implements Migrator.
 type specSlugMigrator struct {
-	specsDirs             []string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	specsDirs     []string
+	promptManager PromptManager
 }
 
 // NewMigrator creates a new Migrator that resolves bare spec number refs using specs found in specsDirs.
 func NewMigrator(
 	specsDirs []string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	promptManager PromptManager,
 ) Migrator {
 	return &specSlugMigrator{
-		specsDirs:             specsDirs,
-		currentDateTimeGetter: currentDateTimeGetter,
+		specsDirs:     specsDirs,
+		promptManager: promptManager,
 	}
 }
 
@@ -126,7 +125,7 @@ func (m *specSlugMigrator) MigrateDirs(ctx context.Context, promptDirs []string)
 				continue
 			}
 			path := filepath.Join(dir, e.Name())
-			if err := migrateFile(ctx, path, slugMap, m.currentDateTimeGetter); err != nil {
+			if err := m.migrateFile(ctx, path, slugMap); err != nil {
 				slog.WarnContext(ctx, "failed to migrate prompt file", "file", path, "error", err)
 			}
 		}
@@ -136,13 +135,12 @@ func (m *specSlugMigrator) MigrateDirs(ctx context.Context, promptDirs []string)
 
 // migrateFile loads a prompt file and replaces bare spec number refs with full slugs.
 // Returns nil if nothing changed or the file has no spec refs.
-func migrateFile(
+func (m *specSlugMigrator) migrateFile(
 	ctx context.Context,
 	path string,
 	slugMap map[int]string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	pf, err := prompt.Load(ctx, path, currentDateTimeGetter)
+	pf, err := m.promptManager.Load(ctx, path)
 	if err != nil {
 		slog.WarnContext(ctx, "skipping prompt file: failed to load", "file", path, "error", err)
 		return nil

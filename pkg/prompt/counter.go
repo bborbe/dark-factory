@@ -69,7 +69,7 @@ func countInDir(
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		pf, err := Load(ctx, path, currentDateTimeGetter)
+		pf, err := load(ctx, path, currentDateTimeGetter)
 		if err != nil {
 			slog.Warn("skipping prompt during count", "file", entry.Name(), "error", err)
 			continue

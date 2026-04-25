@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -24,18 +23,18 @@ type CancelCommand interface {
 
 // cancelCommand implements CancelCommand.
 type cancelCommand struct {
-	queueDir              string
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	queueDir      string
+	promptManager PromptManager
 }
 
 // NewCancelCommand creates a new CancelCommand.
 func NewCancelCommand(
 	queueDir string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	promptManager PromptManager,
 ) CancelCommand {
 	return &cancelCommand{
-		queueDir:              queueDir,
-		currentDateTimeGetter: currentDateTimeGetter,
+		queueDir:      queueDir,
+		promptManager: promptManager,
 	}
 }
 
@@ -51,7 +50,7 @@ func (a *cancelCommand) Run(ctx context.Context, args []string) error {
 		return errors.Errorf(ctx, "prompt not found: %s", id)
 	}
 
-	pf, err := prompt.Load(ctx, path, a.currentDateTimeGetter)
+	pf, err := a.promptManager.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

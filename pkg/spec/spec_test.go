@@ -17,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -622,6 +623,7 @@ var _ = Describe("AutoCompleter", func() {
 		specsDir, err = os.MkdirTemp("", "spec-test-specs-*")
 		Expect(err).NotTo(HaveOccurred())
 
+		pm := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
 		ac = spec.NewAutoCompleter(
 			queueDir,
 			completedDir,
@@ -631,6 +633,7 @@ var _ = Describe("AutoCompleter", func() {
 			libtime.NewCurrentDateTime(),
 			"",
 			notifier.NewMultiNotifier(),
+			pm,
 		)
 	})
 
@@ -672,6 +675,7 @@ var _ = Describe("AutoCompleter", func() {
 		It("fires spec_verifying notification when transitioning to verifying", func() {
 			fakeNotifier := &mocks.Notifier{}
 
+			pm := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
 			acWithNotifier := spec.NewAutoCompleter(
 				queueDir,
 				completedDir,
@@ -681,6 +685,7 @@ var _ = Describe("AutoCompleter", func() {
 				libtime.NewCurrentDateTime(),
 				"test-project",
 				fakeNotifier,
+				pm,
 			)
 
 			writePrompt(filepath.Join(completedDir, "001-first.md"), "completed", "spec-notify")

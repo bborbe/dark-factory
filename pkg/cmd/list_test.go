@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("ListCommand", func() {
@@ -47,7 +48,7 @@ var _ = Describe("ListCommand", func() {
 			queueDir,
 			completedDir,
 			"",
-			libtime.NewCurrentDateTime(),
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})
@@ -176,7 +177,7 @@ var _ = Describe("ListCommand", func() {
 				queueDir,
 				completedDir,
 				"",
-				libtime.NewCurrentDateTime(),
+				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
@@ -188,7 +189,7 @@ var _ = Describe("ListCommand", func() {
 				queueDir,
 				"/nonexistent/completed",
 				"",
-				libtime.NewCurrentDateTime(),
+				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
@@ -206,7 +207,7 @@ var _ = Describe("ListCommand", func() {
 				queueDir,
 				completedDir,
 				rejectedDir,
-				libtime.NewCurrentDateTime(),
+				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 		})
 
@@ -238,7 +239,7 @@ var _ = Describe("ListCommand", func() {
 				queueDir,
 				completedDir,
 				"/nonexistent/rejected",
-				libtime.NewCurrentDateTime(),
+				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 			err := listCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())

@@ -10,6 +10,20 @@ import (
 )
 
 type CmdPromptManager struct {
+	LoadStub        func(context.Context, string) (*prompt.PromptFile, error)
+	loadMutex       sync.RWMutex
+	loadArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	loadReturns struct {
+		result1 *prompt.PromptFile
+		result2 error
+	}
+	loadReturnsOnCall map[int]struct {
+		result1 *prompt.PromptFile
+		result2 error
+	}
 	MoveToCompletedStub        func(context.Context, string) error
 	moveToCompletedMutex       sync.RWMutex
 	moveToCompletedArgsForCall []struct {
@@ -38,6 +52,71 @@ type CmdPromptManager struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *CmdPromptManager) Load(arg1 context.Context, arg2 string) (*prompt.PromptFile, error) {
+	fake.loadMutex.Lock()
+	ret, specificReturn := fake.loadReturnsOnCall[len(fake.loadArgsForCall)]
+	fake.loadArgsForCall = append(fake.loadArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.LoadStub
+	fakeReturns := fake.loadReturns
+	fake.recordInvocation("Load", []interface{}{arg1, arg2})
+	fake.loadMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *CmdPromptManager) LoadCallCount() int {
+	fake.loadMutex.RLock()
+	defer fake.loadMutex.RUnlock()
+	return len(fake.loadArgsForCall)
+}
+
+func (fake *CmdPromptManager) LoadCalls(stub func(context.Context, string) (*prompt.PromptFile, error)) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
+	fake.LoadStub = stub
+}
+
+func (fake *CmdPromptManager) LoadArgsForCall(i int) (context.Context, string) {
+	fake.loadMutex.RLock()
+	defer fake.loadMutex.RUnlock()
+	argsForCall := fake.loadArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *CmdPromptManager) LoadReturns(result1 *prompt.PromptFile, result2 error) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
+	fake.LoadStub = nil
+	fake.loadReturns = struct {
+		result1 *prompt.PromptFile
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *CmdPromptManager) LoadReturnsOnCall(i int, result1 *prompt.PromptFile, result2 error) {
+	fake.loadMutex.Lock()
+	defer fake.loadMutex.Unlock()
+	fake.LoadStub = nil
+	if fake.loadReturnsOnCall == nil {
+		fake.loadReturnsOnCall = make(map[int]struct {
+			result1 *prompt.PromptFile
+			result2 error
+		})
+	}
+	fake.loadReturnsOnCall[i] = struct {
+		result1 *prompt.PromptFile
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *CmdPromptManager) MoveToCompleted(arg1 context.Context, arg2 string) error {

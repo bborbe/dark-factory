@@ -17,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/generator"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -25,6 +26,7 @@ var _ = Describe("SpecGenerator", func() {
 		ctx              context.Context
 		executor         *mocks.Executor
 		containerChecker *mocks.ContainerChecker
+		promptMgr        *mocks.GeneratorPromptManager
 		inboxDir         string
 		completedDir     string
 		specsDir         string
@@ -52,6 +54,12 @@ var _ = Describe("SpecGenerator", func() {
 		logDir, err = os.MkdirTemp("", "generator-logs-*")
 		Expect(err).NotTo(HaveOccurred())
 
+		promptMgr = &mocks.GeneratorPromptManager{}
+		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		promptMgr.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
+			return realPM.Load(ctx, path)
+		}
+
 		sg = generator.NewSpecGenerator(
 			executor,
 			containerChecker,
@@ -64,6 +72,7 @@ var _ = Describe("SpecGenerator", func() {
 			"/dark-factory:generate-prompts-for-spec",
 			"",
 			0,
+			promptMgr,
 		)
 
 		// Write a spec file with status "approved"
@@ -561,6 +570,7 @@ var _ = Describe("SpecGenerator", func() {
 					"/dark-factory:generate-prompts-for-spec",
 					"Read /docs/guidelines.md before starting.",
 					0,
+					promptMgr,
 				)
 				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(

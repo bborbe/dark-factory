@@ -43,7 +43,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns prompts sorted alphabetically", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(2))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-first.md"))
@@ -61,7 +62,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("picks up the file", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-plain.md"))
@@ -78,7 +80,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("picks up the file", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-no-status.md"))
@@ -93,7 +96,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("does not return files with skip status", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(0))
 			})
@@ -112,7 +116,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns queued and plain files only", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(2))
 				Expect(filepath.Base(prompts[0].Path)).To(Equal("001-queued.md"))
@@ -129,7 +134,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("ignores non-markdown files", func() {
-				prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+				prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ListQueued(ctx)
 				Expect(err).To(BeNil())
 				Expect(prompts).To(HaveLen(1))
 			})
@@ -145,7 +151,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("updates status field", func() {
-				err := prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetStatus(ctx, path, "executing")
 				Expect(err).To(BeNil())
 
 				content, err := os.ReadFile(path)
@@ -166,7 +173,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds frontmatter with status", func() {
-				err := prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetStatus(ctx, path, "executing")
 				Expect(err).To(BeNil())
 
 				content, err := os.ReadFile(path)
@@ -188,15 +196,12 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds container field", func() {
-				err := prompt.SetContainer(
-					ctx,
-					path,
-					"dark-factory-001-test",
-					libtime.NewCurrentDateTime(),
-				)
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetContainer(ctx, path, "dark-factory-001-test")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("dark-factory-001-test"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -215,15 +220,12 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("adds frontmatter with container field", func() {
-				err := prompt.SetContainer(
-					ctx,
-					path,
-					"dark-factory-001-plain",
-					libtime.NewCurrentDateTime(),
-				)
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetContainer(ctx, path, "dark-factory-001-plain")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("dark-factory-001-plain"))
 			})
@@ -248,10 +250,12 @@ Content here.
 			})
 
 			It("updates container field", func() {
-				err := prompt.SetContainer(ctx, path, "new-container", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetContainer(ctx, path, "new-container")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Container).To(Equal("new-container"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -268,10 +272,12 @@ Content here.
 			})
 
 			It("adds version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.2.37", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetVersion(ctx, path, "v0.2.37")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.37"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -290,10 +296,12 @@ Content here.
 			})
 
 			It("adds frontmatter with version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.1.0", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetVersion(ctx, path, "v0.1.0")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.1.0"))
 			})
@@ -318,10 +326,12 @@ Content here.
 			})
 
 			It("updates version field", func() {
-				err := prompt.SetVersion(ctx, path, "v0.2.0", libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetVersion(ctx, path, "v0.2.0")
 				Expect(err).To(BeNil())
 
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.DarkFactoryVersion).To(Equal("v0.2.0"))
 				Expect(fm.Status).To(Equal("approved")) // Status should be preserved
@@ -337,31 +347,24 @@ Content here.
 
 			It("preserves version when moved to completed", func() {
 				// Set container and version
-				err := prompt.SetContainer(
-					ctx,
-					path,
-					"dark-factory-001-test",
-					libtime.NewCurrentDateTime(),
-				)
+				err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetContainer(ctx, path, "dark-factory-001-test")
 				Expect(err).To(BeNil())
 
-				err = prompt.SetVersion(ctx, path, "v0.5.0", libtime.NewCurrentDateTime())
+				err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetVersion(ctx, path, "v0.5.0")
 				Expect(err).To(BeNil())
 
 				// Move to completed
 				completedDir := filepath.Join(tempDir, "completed")
-				err = prompt.MoveToCompleted(
-					ctx,
-					path,
-					completedDir,
-					mover,
-					libtime.NewCurrentDateTime(),
-				)
+				err = prompt.NewManager("", "", completedDir, mover, libtime.NewCurrentDateTime()).
+					MoveToCompleted(ctx, path)
 				Expect(err).To(BeNil())
 
 				// Verify version is preserved in completed file
 				completedPath := filepath.Join(tempDir, "completed", "001-test.md")
-				fm, err := prompt.ReadFrontmatter(ctx, completedPath, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, completedPath)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 				Expect(fm.Container).To(Equal("dark-factory-001-test"))

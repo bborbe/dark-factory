@@ -16,7 +16,6 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
-	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -42,6 +41,7 @@ func NewSpecGenerator(
 	generateCommand string,
 	additionalInstructions string,
 	maxPromptDuration time.Duration,
+	pm PromptManager,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:               executor,
@@ -55,6 +55,7 @@ func NewSpecGenerator(
 		generateCommand:        generateCommand,
 		additionalInstructions: additionalInstructions,
 		maxPromptDuration:      maxPromptDuration,
+		promptManager:          pm,
 	}
 }
 
@@ -71,6 +72,7 @@ type dockerSpecGenerator struct {
 	generateCommand        string
 	additionalInstructions string
 	maxPromptDuration      time.Duration
+	promptManager          PromptManager
 }
 
 // buildPromptContent assembles the full prompt content for spec generation,
@@ -206,7 +208,7 @@ func (g *dockerSpecGenerator) handleNoNewFiles(ctx context.Context, specBasename
 		ctx,
 		g.completedDir,
 		specBasename,
-		g.currentDateTimeGetter,
+		g.promptManager,
 	)
 	if err != nil {
 		return errors.Wrap(ctx, err, "count completed prompts for spec")
@@ -233,7 +235,7 @@ func (g *dockerSpecGenerator) finalizePrompted(
 	specBranch := sf.Frontmatter.Branch
 	specIssue := sf.Frontmatter.Issue
 	if specBranch != "" || specIssue != "" {
-		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.currentDateTimeGetter); err != nil {
+		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.promptManager); err != nil {
 			return errors.Wrap(ctx, err, "inherit spec metadata to prompts")
 		}
 	}
@@ -249,10 +251,10 @@ func inheritFromSpec(
 	paths []string,
 	specBranch string,
 	specIssue string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) error {
 	for _, p := range paths {
-		pf, err := prompt.Load(ctx, p, currentDateTimeGetter)
+		pf, err := pm.Load(ctx, p)
 		if err != nil {
 			return errors.Wrap(ctx, err, "load prompt for inheritance")
 		}
@@ -270,7 +272,7 @@ func countCompletedPromptsForSpec(
 	ctx context.Context,
 	completedDir string,
 	specID string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) (int, error) {
 	entries, err := os.ReadDir(completedDir)
 	if err != nil {
@@ -285,8 +287,8 @@ func countCompletedPromptsForSpec(
 			continue
 		}
 		path := filepath.Join(completedDir, entry.Name())
-		pf, err := prompt.Load(ctx, path, currentDateTimeGetter)
-		if err != nil {
+		pf, err := pm.Load(ctx, path)
+		if err != nil || pf == nil {
 			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
 			continue
 		}
@@ -352,7 +354,7 @@ func (g *dockerSpecGenerator) reattachAndFinalize(
 	specBranch := sf.Frontmatter.Branch
 	specIssue := sf.Frontmatter.Issue
 	if specBranch != "" || specIssue != "" {
-		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.currentDateTimeGetter); err != nil {
+		if err := inheritFromSpec(ctx, newFiles, specBranch, specIssue, g.promptManager); err != nil {
 			return errors.Wrap(ctx, err, "inherit spec metadata to prompts after reattach")
 		}
 	}
@@ -384,7 +386,7 @@ func (g *dockerSpecGenerator) listPromptsForSpec(
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		pf, err := prompt.Load(ctx, path, g.currentDateTimeGetter)
+		pf, err := g.promptManager.Load(ctx, path)
 		if err != nil {
 			slog.Debug(
 				"listPromptsForSpec: skipping unparseable file",

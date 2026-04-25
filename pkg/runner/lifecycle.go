@@ -86,7 +86,7 @@ func startupSequence(ctx context.Context, deps StartupDeps) error {
 		deps.SpecsLogDir,
 	}
 	promptDirs := []string{deps.InboxDir, deps.InProgressDir, deps.CompletedDir, deps.LogDir}
-	if err := reindexAll(ctx, specDirs, promptDirs, deps.Mover, deps.CurrentDateTimeGetter); err != nil {
+	if err := reindexAll(ctx, specDirs, promptDirs, deps.Mover, deps.PromptManager); err != nil {
 		return errors.Wrap(ctx, err, "reindex files")
 	}
 
@@ -112,7 +112,7 @@ func reindexAll(
 	specDirs []string,
 	promptDirs []string,
 	mover prompt.FileMover,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	pm PromptManager,
 ) error {
 	// Step 1: Reindex spec files
 	specReindexer := reindex.NewReindexer(specDirs, mover)
@@ -123,7 +123,7 @@ func reindexAll(
 
 	// Step 2: Propagate spec renames to prompt cross-references
 	if len(specRenames) > 0 {
-		if _, err := reindex.UpdateSpecRefs(ctx, specRenames, promptDirs, mover, currentDateTimeGetter); err != nil {
+		if _, err := reindex.UpdateSpecRefs(ctx, specRenames, promptDirs, mover, pm); err != nil {
 			return errors.Wrap(ctx, err, "update spec refs")
 		}
 	}

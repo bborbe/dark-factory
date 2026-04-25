@@ -16,6 +16,7 @@ import (
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("PromptCompleteCommand", func() {
@@ -44,6 +45,10 @@ var _ = Describe("PromptCompleteCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		promptManager = &mocks.CmdPromptManager{}
+		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		promptManager.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
+			return realPM.Load(ctx, path)
+		}
 		releaser = &mocks.Releaser{}
 		brancher = &mocks.Brancher{}
 		prCreator = &mocks.PRCreator{}
@@ -64,7 +69,6 @@ var _ = Describe("PromptCompleteCommand", func() {
 			pr,
 			brancher,
 			prCreator,
-			libtime.NewCurrentDateTime(),
 		)
 	}
 

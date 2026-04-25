@@ -14,6 +14,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -37,7 +38,7 @@ var _ = Describe("CombinedListCommand", func() {
 			"",
 			lister,
 			counter,
-			libtime.NewCurrentDateTime(),
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 	})
 

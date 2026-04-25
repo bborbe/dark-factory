@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("RejectCommand", func() {
@@ -40,7 +41,7 @@ var _ = Describe("RejectCommand", func() {
 			inboxDir,
 			inProgressDir,
 			rejectedDir,
-			libtime.NewCurrentDateTime(),
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

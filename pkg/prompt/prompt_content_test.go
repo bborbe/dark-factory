@@ -52,7 +52,8 @@ This is the content.
 			})
 
 			It("extracts first heading", func() {
-				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
+				title, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Title(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("Implement Feature X"))
 			})
@@ -72,7 +73,8 @@ This is the content.
 			})
 
 			It("extracts first heading from start of file", func() {
-				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
+				title, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Title(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("Implement Feature Y"))
 			})
@@ -89,7 +91,8 @@ This is the content.
 			})
 
 			It("returns filename without extension", func() {
-				title, err := prompt.Title(ctx, path, libtime.NewCurrentDateTime())
+				title, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Title(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(title).To(Equal("004-test"))
 			})
@@ -105,7 +108,8 @@ This is the content.
 			})
 
 			It("returns content without frontmatter", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("# Test Prompt"))
@@ -122,7 +126,8 @@ This is the content.
 			})
 
 			It("returns ErrEmptyPrompt", func() {
-				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				_, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -137,7 +142,8 @@ This is the content.
 			})
 
 			It("returns ErrEmptyPrompt", func() {
-				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				_, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -165,7 +171,8 @@ Prompt content here.
 			})
 
 			It("strips the empty frontmatter block from content", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -197,7 +204,8 @@ Content here.
 			})
 
 			It("strips the whitespace-only frontmatter block", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -229,7 +237,8 @@ Content here.
 			})
 
 			It("strips all empty frontmatter blocks", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).NotTo(HavePrefix("---"))
@@ -259,7 +268,8 @@ Content here.
 			})
 
 			It("preserves non-empty frontmatter in content", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).NotTo(ContainSubstring("status: approved"))
 				Expect(content).To(ContainSubstring("---"))
@@ -284,7 +294,8 @@ status: approved
 			})
 
 			It("returns body as-is (body is preserved exactly as loaded)", func() {
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				// Body contains the text after frontmatter, including the "---\n---"
 				Expect(content).To(ContainSubstring("---"))

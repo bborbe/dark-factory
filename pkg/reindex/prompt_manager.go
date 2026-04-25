@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package watcher
+package reindex
 
 import (
 	"context"
@@ -10,10 +10,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
-//counterfeiter:generate -o ../../mocks/watcher-prompt-manager.go --fake-name WatcherPromptManager . PromptManager
+//counterfeiter:generate -o ../../mocks/reindex-prompt-manager.go --fake-name ReindexPromptManager . PromptManager
 
-// PromptManager is the subset of prompt.Manager that the watcher package uses.
+// PromptManager is the subset of prompt.Manager that the reindex package uses.
 type PromptManager interface {
 	Load(ctx context.Context, path string) (*prompt.PromptFile, error)
-	NormalizeFilenames(ctx context.Context, dir string) ([]prompt.Rename, error)
 }

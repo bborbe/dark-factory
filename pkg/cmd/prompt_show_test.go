@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("PromptShowCommand", func() {
@@ -47,7 +48,7 @@ var _ = Describe("PromptShowCommand", func() {
 			inProgressDir,
 			completedDir,
 			logDir,
-			libtime.NewCurrentDateTime(),
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

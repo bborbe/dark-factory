@@ -6,6 +6,7 @@ package server_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"os"
@@ -43,6 +44,10 @@ var _ = Describe("QueueActionHandler", func() {
 
 		promptManager = &mocks.ServerPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+		currentDateTimeGetter := libtime.NewCurrentDateTime()
+		promptManager.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
+			return prompt.NewPromptFile(path, prompt.Frontmatter{}, nil, currentDateTimeGetter), nil
+		}
 	})
 
 	AfterEach(func() {
@@ -68,7 +73,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -105,7 +109,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -126,7 +129,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -147,7 +149,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -164,7 +165,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -185,7 +185,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -219,7 +218,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -253,7 +251,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -290,7 +287,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -317,7 +313,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)
@@ -339,7 +334,6 @@ var _ = Describe("QueueActionHandler", func() {
 					inboxDir,
 					queueDir,
 					promptManager,
-					libtime.NewCurrentDateTime(),
 				),
 			)
 			handler.ServeHTTP(w, req)

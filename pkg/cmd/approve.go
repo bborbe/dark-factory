@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -25,10 +24,9 @@ type ApproveCommand interface {
 
 // approveCommand implements ApproveCommand.
 type approveCommand struct {
-	inboxDir              string
-	queueDir              string
-	promptManager         PromptManager
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	inboxDir      string
+	queueDir      string
+	promptManager PromptManager
 }
 
 // NewApproveCommand creates a new ApproveCommand.
@@ -36,13 +34,11 @@ func NewApproveCommand(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) ApproveCommand {
 	return &approveCommand{
-		inboxDir:              inboxDir,
-		queueDir:              queueDir,
-		promptManager:         promptManager,
-		currentDateTimeGetter: currentDateTimeGetter,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
+		promptManager: promptManager,
 	}
 }
 
@@ -79,7 +75,7 @@ func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) e
 		return errors.Wrap(ctx, err, "move file to queue")
 	}
 
-	pf, err := prompt.Load(ctx, newPath, a.currentDateTimeGetter)
+	pf, err := a.promptManager.Load(ctx, newPath)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -98,7 +94,7 @@ func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) e
 
 // approveInQueue sets a prompt already in the queue to approved status.
 func (a *approveCommand) approveInQueue(ctx context.Context, path string) error {
-	pf, err := prompt.Load(ctx, path, a.currentDateTimeGetter)
+	pf, err := a.promptManager.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

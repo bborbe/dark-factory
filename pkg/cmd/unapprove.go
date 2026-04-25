@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -25,10 +24,9 @@ type UnapproveCommand interface {
 
 // unapproveCommand implements UnapproveCommand.
 type unapproveCommand struct {
-	inboxDir              string
-	queueDir              string
-	promptManager         PromptManager
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	inboxDir      string
+	queueDir      string
+	promptManager PromptManager
 }
 
 // NewUnapproveCommand creates a new UnapproveCommand.
@@ -36,13 +34,11 @@ func NewUnapproveCommand(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) UnapproveCommand {
 	return &unapproveCommand{
-		inboxDir:              inboxDir,
-		queueDir:              queueDir,
-		promptManager:         promptManager,
-		currentDateTimeGetter: currentDateTimeGetter,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
+		promptManager: promptManager,
 	}
 }
 
@@ -66,7 +62,7 @@ func (u *unapproveCommand) unapproveByID(ctx context.Context, id string) error {
 // unapproveFromQueue moves a file from queue back to inbox and sets status to draft.
 // Only approved prompts may be unapproved (not executing, completed, etc.).
 func (u *unapproveCommand) unapproveFromQueue(ctx context.Context, oldPath string) error {
-	pf, err := prompt.Load(ctx, oldPath, u.currentDateTimeGetter)
+	pf, err := u.promptManager.Load(ctx, oldPath)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}
@@ -86,7 +82,7 @@ func (u *unapproveCommand) unapproveFromQueue(ctx context.Context, oldPath strin
 		return errors.Wrap(ctx, err, "move file to inbox")
 	}
 
-	pf2, err := prompt.Load(ctx, newPath, u.currentDateTimeGetter)
+	pf2, err := u.promptManager.Load(ctx, newPath)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt from inbox")
 	}

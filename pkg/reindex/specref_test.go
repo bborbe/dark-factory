@@ -31,8 +31,8 @@ func writePromptFile(path string, spec string, extraFrontmatter string) {
 	Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 }
 
-func loadPromptFrontmatter(path string) prompt.Frontmatter {
-	pf, err := prompt.Load(context.Background(), path, libtime.NewCurrentDateTime())
+func loadPromptFrontmatter(path string, pm reindex.PromptManager) prompt.Frontmatter {
+	pf, err := pm.Load(context.Background(), path)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(pf).NotTo(BeNil())
 	return pf.Frontmatter
@@ -40,15 +40,15 @@ func loadPromptFrontmatter(path string) prompt.Frontmatter {
 
 var _ = Describe("UpdateSpecRefs", func() {
 	var (
-		ctx                   context.Context
-		mover                 reindex.FileMover
-		currentDateTimeGetter libtime.CurrentDateTimeGetter
+		ctx   context.Context
+		mover reindex.FileMover
+		pm    *prompt.Manager
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		mover = &osFileMover{}
-		currentDateTimeGetter = libtime.NewCurrentDateTime()
+		pm = prompt.NewManager("", "", "", mover, libtime.NewCurrentDateTime())
 	})
 
 	It("no spec renames returns nil, nil", func() {
@@ -60,13 +60,13 @@ var _ = Describe("UpdateSpecRefs", func() {
 			nil,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(renames).To(BeNil())
 
 		// File unchanged
-		fm := loadPromptFrontmatter(filepath.Join(dir, "001-prompt.md"))
+		fm := loadPromptFrontmatter(filepath.Join(dir, "001-prompt.md"), pm)
 		Expect([]string(fm.Specs)).To(Equal([]string{"035"}))
 	})
 
@@ -87,11 +87,11 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 
-		fm := loadPromptFrontmatter(promptPath)
+		fm := loadPromptFrontmatter(promptPath, pm)
 		Expect([]string(fm.Specs)).To(Equal([]string{"043"}))
 	})
 
@@ -113,7 +113,7 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(renames).To(HaveLen(1))
@@ -142,7 +142,7 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(renames).To(HaveLen(1))
@@ -150,7 +150,7 @@ var _ = Describe("UpdateSpecRefs", func() {
 		newPath := filepath.Join(dir, newName)
 		Expect(newPath).To(BeAnExistingFile())
 
-		fm := loadPromptFrontmatter(newPath)
+		fm := loadPromptFrontmatter(newPath, pm)
 		Expect([]string(fm.Specs)).To(Equal([]string{"043"}))
 	})
 
@@ -171,12 +171,12 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 
 		// Spec ref unchanged
-		fm := loadPromptFrontmatter(promptPath)
+		fm := loadPromptFrontmatter(promptPath, pm)
 		Expect([]string(fm.Specs)).To(Equal([]string{"020"}))
 	})
 
@@ -195,7 +195,7 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{nonExistent},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(renames).To(BeNil())
@@ -223,21 +223,21 @@ var _ = Describe("UpdateSpecRefs", func() {
 			specRenames,
 			[]string{dir},
 			mover,
-			currentDateTimeGetter,
+			pm,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(renames).To(HaveLen(2))
 
 		// Check alpha rename
-		fm1 := loadPromptFrontmatter(filepath.Join(dir, "001-spec-043-alpha.md"))
+		fm1 := loadPromptFrontmatter(filepath.Join(dir, "001-spec-043-alpha.md"), pm)
 		Expect([]string(fm1.Specs)).To(Equal([]string{"043"}))
 
 		// Check beta rename
-		fm2 := loadPromptFrontmatter(filepath.Join(dir, "002-spec-050-beta.md"))
+		fm2 := loadPromptFrontmatter(filepath.Join(dir, "002-spec-050-beta.md"), pm)
 		Expect([]string(fm2.Specs)).To(Equal([]string{"050"}))
 
 		// Unrelated unchanged
-		fm3 := loadPromptFrontmatter(filepath.Join(dir, "003-unrelated.md"))
+		fm3 := loadPromptFrontmatter(filepath.Join(dir, "003-unrelated.md"), pm)
 		Expect([]string(fm3.Specs)).To(Equal([]string{"010"}))
 	})
 })

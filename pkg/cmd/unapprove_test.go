@@ -43,12 +43,15 @@ var _ = Describe("UnapproveCommand", func() {
 
 		promptManager = &mocks.CmdPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
+		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		promptManager.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
+			return realPM.Load(ctx, path)
+		}
 
 		unapproveCmd = cmd.NewUnapproveCommand(
 			inboxDir,
 			queueDir,
 			promptManager,
-			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()
 	})

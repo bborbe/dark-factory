@@ -311,6 +311,7 @@ func NewAutoCompleter(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
 	n notifier.Notifier,
+	pm PromptManager,
 ) AutoCompleter {
 	return &autoCompleter{
 		queueDir:              queueDir,
@@ -321,6 +322,7 @@ func NewAutoCompleter(
 		currentDateTimeGetter: currentDateTimeGetter,
 		projectName:           projectName,
 		notifier:              n,
+		promptManager:         pm,
 	}
 }
 
@@ -334,6 +336,7 @@ type autoCompleter struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	projectName           string
 	notifier              notifier.Notifier
+	promptManager         PromptManager
 }
 
 // findSpecFile searches dirs for a spec file matching specID.
@@ -483,7 +486,7 @@ func (a *autoCompleter) scanDirForSpec(
 		}
 
 		path := filepath.Join(dir, entry.Name())
-		pf, err := prompt.Load(ctx, path, a.currentDateTimeGetter)
+		pf, err := a.promptManager.Load(ctx, path)
 		if err != nil {
 			slog.Warn("skipping prompt during spec scan", "file", entry.Name(), "error", err)
 			continue

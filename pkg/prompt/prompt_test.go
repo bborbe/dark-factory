@@ -244,7 +244,8 @@ var _ = Describe("Prompt", func() {
 	Describe("AllPreviousCompleted", func() {
 		Context("with no previous prompts", func() {
 			It("returns true for n=1", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 1)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -260,12 +261,14 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns true for n=4", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 4)
 				Expect(result).To(BeTrue())
 			})
 
 			It("returns true for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 2)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -281,29 +284,34 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns false for n=3", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 3)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns false for n=4", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 4)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns true for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 2)
 				Expect(result).To(BeTrue())
 			})
 		})
 
 		Context("with no completed directory", func() {
 			It("returns false for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 2)
 				Expect(result).To(BeFalse())
 			})
 
 			It("returns true for n=1", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 1)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -316,7 +324,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns false for n=2", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 2)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -335,7 +344,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("counts files without frontmatter as completed", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 3)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -351,7 +361,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("counts all files in completed/ as completed regardless of status field", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 3)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -373,7 +384,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("counts all files as completed", func() {
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 5)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 5)
 				Expect(result).To(BeTrue())
 			})
 
@@ -383,7 +395,8 @@ var _ = Describe("Prompt", func() {
 				err := os.Remove(filepath.Join(completedDir, "003-empty-fm.md"))
 				Expect(err).To(BeNil())
 
-				result := prompt.AllPreviousCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					AllPreviousCompleted(ctx, 4)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -392,7 +405,8 @@ var _ = Describe("Prompt", func() {
 	Describe("FindMissingCompleted", func() {
 		Context("with no previous prompts", func() {
 			It("returns nil for n=1", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 1)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 1)
 				Expect(result).To(BeNil())
 			})
 		})
@@ -408,12 +422,14 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns nil for n=4", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 4)
 				Expect(result).To(BeNil())
 			})
 
 			It("returns nil for n=2", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 2)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 2)
 				Expect(result).To(BeNil())
 			})
 		})
@@ -429,12 +445,14 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns missing numbers for n=4", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 4)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 4)
 				Expect(result).To(Equal([]int{2}))
 			})
 
 			It("returns sorted missing numbers when multiple are missing", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 5)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 5)
 				Expect(result).To(Equal([]int{2, 4}))
 			})
 		})
@@ -447,14 +465,16 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns all missing for n=3", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 3)
 				Expect(result).To(Equal([]int{1, 2}))
 			})
 		})
 
 		Context("with no completed directory", func() {
 			It("returns all missing for n=3", func() {
-				result := prompt.FindMissingCompleted(ctx, filepath.Join(tempDir, "completed"), 3)
+				result := prompt.NewManager("", "", filepath.Join(tempDir, "completed"), nil, nil).
+					FindMissingCompleted(ctx, 3)
 				Expect(result).To(Equal([]int{1, 2}))
 			})
 		})
@@ -475,7 +495,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns the status", func() {
-				result := prompt.FindPromptStatus(ctx, inProgressDir, 83)
+				result := prompt.NewManager("", inProgressDir, "", nil, nil).
+					FindPromptStatusInProgress(ctx, 83)
 				Expect(result).To(Equal("failed"))
 			})
 		})
@@ -486,21 +507,24 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns executing", func() {
-				result := prompt.FindPromptStatus(ctx, inProgressDir, 42)
+				result := prompt.NewManager("", inProgressDir, "", nil, nil).
+					FindPromptStatusInProgress(ctx, 42)
 				Expect(result).To(Equal("executing"))
 			})
 		})
 
 		Context("when prompt is not found", func() {
 			It("returns empty string", func() {
-				result := prompt.FindPromptStatus(ctx, inProgressDir, 99)
+				result := prompt.NewManager("", inProgressDir, "", nil, nil).
+					FindPromptStatusInProgress(ctx, 99)
 				Expect(result).To(Equal(""))
 			})
 		})
 
 		Context("when directory does not exist", func() {
 			It("returns empty string", func() {
-				result := prompt.FindPromptStatus(ctx, filepath.Join(tempDir, "nonexistent"), 1)
+				result := prompt.NewManager("", filepath.Join(tempDir, "nonexistent"), "", nil, nil).
+					FindPromptStatusInProgress(ctx, 1)
 				Expect(result).To(Equal(""))
 			})
 		})
@@ -599,7 +623,8 @@ var _ = Describe("rejected status", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.StampRejected("abandoned work")
@@ -649,7 +674,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: \"017\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(Equal([]string{"017"}))
 		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
@@ -661,7 +686,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: [\"017\", \"019\"]\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(Equal([]string{"017", "019"}))
 		Expect(pf.Frontmatter.HasSpec("017")).To(BeTrue())
@@ -674,14 +699,14 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
 
 		pf.Frontmatter.Status = "completed"
 		Expect(pf.Save(ctx)).To(Succeed())
 
-		pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf2, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf2.Frontmatter.HasSpec("019")).To(BeTrue())
 		Expect(pf2.Frontmatter.Status).To(Equal("completed"))
@@ -692,7 +717,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Specs()).To(BeEmpty())
 		Expect(pf.Frontmatter.Status).To(Equal("approved"))
@@ -703,7 +728,7 @@ var _ = Describe("Frontmatter spec field", func() {
 		content := "---\nstatus: approved\n---\n\n# No spec\n"
 		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-		pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+		pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).Load(ctx, path)
 		Expect(err).To(BeNil())
 		Expect(pf.Save(ctx)).To(Succeed())
 
@@ -720,7 +745,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nspec: \"019\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.HasSpec("019-review-fix-loop")).To(BeTrue())
 			Expect(pf.Frontmatter.HasSpec("019")).To(BeTrue())
@@ -734,7 +760,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nspec: \"notifications\"\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.HasSpec("notifications")).To(BeTrue())
 			Expect(pf.Frontmatter.HasSpec("other")).To(BeFalse())
@@ -748,7 +775,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(2))
 		})
@@ -759,7 +787,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(0))
 		})
@@ -772,10 +801,12 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.IncrementRetryCount(ctx, path, libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				IncrementRetryCount(ctx, path)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(1))
 		})
@@ -786,10 +817,12 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.IncrementRetryCount(ctx, path, libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				IncrementRetryCount(ctx, path)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.RetryCount()).To(Equal(3))
 		})
@@ -849,7 +882,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+			prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+				ListQueued(ctx)
 			Expect(err).To(BeNil())
 			Expect(prompts).To(BeEmpty())
 		})
@@ -867,7 +901,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nissue: BRO-19476\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, cdt)
+			pf, err := prompt.NewManager("", "", "", nil, cdt).Load(ctx, path)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Frontmatter.Issue).To(Equal("BRO-19476"))
 		})
@@ -877,7 +911,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, cdt)
+			pf, err := prompt.NewManager("", "", "", nil, cdt).Load(ctx, path)
 			Expect(err).NotTo(HaveOccurred())
 			pf.SetIssue("BRO-99")
 			Expect(pf.Save(ctx)).To(Succeed())
@@ -936,7 +970,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, cdt)
+			pf, err := prompt.NewManager("", "", "", nil, cdt).Load(ctx, path)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Frontmatter.Issue).To(Equal(""))
 			Expect(pf.Save(ctx)).To(Succeed())
@@ -947,7 +981,7 @@ var _ = Describe("Frontmatter spec field", func() {
 			content := "---\nstatus: approved\nissue: BRO-42\n---\n\n# Test\n"
 			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
 
-			pf, err := prompt.Load(ctx, path, cdt)
+			pf, err := prompt.NewManager("", "", "", nil, cdt).Load(ctx, path)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Issue()).To(Equal("BRO-42"))
 		})
@@ -1034,7 +1068,8 @@ var _ = Describe("Frontmatter spec field", func() {
 				err := os.WriteFile(path, []byte(content), 0600)
 				Expect(err).To(BeNil())
 
-				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(pf.Frontmatter.LastFailReason).NotTo(BeEmpty())
 
@@ -1042,7 +1077,8 @@ var _ = Describe("Frontmatter spec field", func() {
 				err = pf.Save(ctx)
 				Expect(err).To(BeNil())
 
-				pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				pf2, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(pf2.Frontmatter.Status).To(Equal("completed"))
 				Expect(pf2.Frontmatter.LastFailReason).To(BeEmpty())
@@ -1059,7 +1095,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
 
@@ -1067,7 +1104,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err = pf.Save(ctx)
 			Expect(err).To(BeNil())
 
-			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf2, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf2.Frontmatter.Status).To(Equal("completed"))
 			Expect(pf2.Frontmatter.LastFailReason).To(BeEmpty())
@@ -1083,7 +1121,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.SetLastFailReason("second reason")
@@ -1091,7 +1130,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err = pf.Save(ctx)
 			Expect(err).To(BeNil())
 
-			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf2, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf2.Frontmatter.Status).To(Equal("failed"))
 			Expect(pf2.Frontmatter.LastFailReason).To(Equal("second reason"))
@@ -1126,7 +1166,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.SetLastFailReason("msg")
@@ -1141,7 +1182,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.LastFailReason).To(BeEmpty())
 		})
@@ -1175,7 +1217,8 @@ var _ = Describe("Frontmatter spec field", func() {
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			prompts, err := prompt.ListQueued(ctx, tempDir, libtime.NewCurrentDateTime())
+			prompts, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+				ListQueued(ctx)
 			Expect(err).To(BeNil())
 			Expect(prompts).To(BeEmpty())
 		})
@@ -1195,18 +1238,16 @@ var _ = Describe("Frontmatter spec field", func() {
 			err = os.WriteFile(approvedPath, []byte("---\nstatus: approved\n---\n\n# Test\n"), 0600)
 			Expect(err).To(BeNil())
 
-			paths, err := prompt.FindCommitting(ctx, tempDir, libtime.NewCurrentDateTime())
+			paths, err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+				FindCommitting(ctx)
 			Expect(err).To(BeNil())
 			Expect(paths).To(HaveLen(1))
 			Expect(paths[0]).To(Equal(committingPath))
 		})
 
 		It("returns nil for a non-existent directory", func() {
-			paths, err := prompt.FindCommitting(
-				ctx,
-				filepath.Join(tempDir, "nonexistent"),
-				libtime.NewCurrentDateTime(),
-			)
+			paths, err := prompt.NewManager("", filepath.Join(tempDir, "nonexistent"), "", nil, libtime.NewCurrentDateTime()).
+				FindCommitting(ctx)
 			Expect(err).To(BeNil())
 			Expect(paths).To(BeNil())
 		})
@@ -1290,7 +1331,8 @@ var _ = Describe("Frontmatter spec field", func() {
 				Expect(
 					os.WriteFile(path, []byte("---\nstatus: queued\n---\n# Prompt\n"), 0600),
 				).To(Succeed())
-				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pf.Frontmatter.Status).To(Equal("queued"))
 			})
@@ -1299,7 +1341,8 @@ var _ = Describe("Frontmatter spec field", func() {
 				Expect(
 					os.WriteFile(path, []byte("---\nstatus: approved\n---\n# Prompt\n"), 0600),
 				).To(Succeed())
-				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pf.Frontmatter.Status).To(Equal("approved"))
 			})
@@ -1308,7 +1351,8 @@ var _ = Describe("Frontmatter spec field", func() {
 				Expect(
 					os.WriteFile(path, []byte("# No frontmatter\n\nJust content.\n"), 0600),
 				).To(Succeed())
-				pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(pf.Frontmatter.Status).To(Equal(""))
 			})

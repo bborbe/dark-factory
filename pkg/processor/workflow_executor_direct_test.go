@@ -78,6 +78,7 @@ var _ = Describe("directWorkflowExecutor order-of-operations", func() {
 				libtime.NewCurrentDateTime(),
 				"",
 				notifier.NewMultiNotifier(),
+				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 
 			// Build directWorkflowExecutor with real promptMgr and autoCompleter;

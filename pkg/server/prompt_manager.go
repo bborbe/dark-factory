@@ -14,5 +14,6 @@ import (
 
 // PromptManager is the subset of prompt.Manager that the server package uses.
 type PromptManager interface {
+	Load(ctx context.Context, path string) (*prompt.PromptFile, error)
 	NormalizeFilenames(ctx context.Context, dir string) ([]prompt.Rename, error)
 }

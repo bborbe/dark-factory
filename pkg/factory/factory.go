@@ -270,9 +270,15 @@ func createSpecSlugMigrator(
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) slugmigrator.Migrator {
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return slugmigrator.NewMigrator(
 		[]string{cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir},
-		currentDateTimeGetter,
+		promptManager,
 	)
 }
 
@@ -298,7 +304,13 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 	projectName := project.Resolve(cfg.ProjectName)
 	wakeup := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
+	specGen := CreateSpecGenerator(
+		cfg,
+		cfg.ContainerImage,
+		currentDateTimeGetter,
+		migrator,
+		promptManager,
+	)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 
 	n := CreateNotifier(cfg)
@@ -519,7 +531,13 @@ func CreateOneShotRunner(
 				cancel()
 			},
 		),
-		CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator),
+		CreateSpecGenerator(
+			cfg,
+			cfg.ContainerImage,
+			currentDateTimeGetter,
+			migrator,
+			promptManager,
+		),
 		currentDateTimeGetter,
 		containerChecker,
 		autoApprove,
@@ -535,6 +553,7 @@ func CreateSpecGenerator(
 	containerImage string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	slugMigrator slugmigrator.Migrator,
+	promptManager *prompt.Manager,
 ) generator.SpecGenerator {
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
@@ -561,6 +580,7 @@ func CreateSpecGenerator(
 		cfg.GenerateCommand,
 		cfg.AdditionalInstructions,
 		cfg.ParsedMaxPromptDuration(),
+		promptManager,
 	)
 }
 
@@ -654,11 +674,12 @@ func createAutoCompleter(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName project.Name,
 	n notifier.Notifier,
+	pm *prompt.Manager,
 ) spec.AutoCompleter {
 	return spec.NewAutoCompleter(
 		inProgressDir, completedDir,
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
-		currentDateTimeGetter, projectName.String(), n,
+		currentDateTimeGetter, projectName.String(), n, pm,
 	)
 }
 
@@ -759,7 +780,7 @@ func CreateProcessor(
 	autoCompleter := createAutoCompleter(
 		inProgressDir, completedDir,
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
-		currentDateTimeGetter, projectName, n,
+		currentDateTimeGetter, projectName, n, promptManager,
 	)
 	workflowExecutor := CreateWorkflowExecutor(
 		workflow, pr, brancher, prCreator, prMerger,
@@ -943,7 +964,7 @@ func CreateServer(
 	// Both routes share a single handler instance. The handler inspects the URL path
 	// suffix to distinguish single-file (/api/v1/queue/action) from all-files (/api/v1/queue/action/all) operations.
 	queueActionHandler := libhttp.NewErrorHandler(
-		server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager, currentDateTimeGetter),
+		server.NewQueueActionHandler(inboxDir, inProgressDir, promptManager),
 	)
 	mux.Handle("/api/v1/queue/action", queueActionHandler)
 	mux.Handle("/api/v1/queue/action/all", queueActionHandler)
@@ -986,23 +1007,44 @@ func CreateStatusCommand(ctx context.Context, cfg config.Config) cmd.StatusComma
 
 // CreateListCommand creates a ListCommand.
 func CreateListCommand(cfg config.Config) cmd.ListCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return cmd.NewListCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.RejectedDir,
-		libtime.NewCurrentDateTime(),
+		promptManager,
 	)
 }
 
 // CreateRequeueCommand creates a RequeueCommand.
 func CreateRequeueCommand(cfg config.Config) cmd.RequeueCommand {
-	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
+	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir, promptManager)
 }
 
 // CreateCancelCommand creates a CancelCommand.
 func CreateCancelCommand(cfg config.Config) cmd.CancelCommand {
-	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, libtime.NewCurrentDateTime())
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
+	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, promptManager)
 }
 
 // CreatePromptCompleteCommand creates a PromptCompleteCommand.
@@ -1023,7 +1065,6 @@ func CreatePromptCompleteCommand(ctx context.Context, cfg config.Config) cmd.Pro
 		cfg.PR,
 		deps.brancher,
 		deps.prCreator,
-		currentDateTimeGetter,
 	)
 }
 
@@ -1041,7 +1082,6 @@ func CreateUnapproveCommand(cfg config.Config) cmd.UnapproveCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		promptManager,
-		currentDateTimeGetter,
 	)
 }
 
@@ -1059,7 +1099,6 @@ func CreateApproveCommand(cfg config.Config) cmd.ApproveCommand {
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		promptManager,
-		currentDateTimeGetter,
 	)
 }
 
@@ -1117,27 +1156,49 @@ func CreateSpecApproveCommand(cfg config.Config) cmd.SpecApproveCommand {
 
 // CreateSpecUnapproveCommand creates a SpecUnapproveCommand.
 func CreateSpecUnapproveCommand(cfg config.Config) cmd.SpecUnapproveCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return cmd.NewSpecUnapproveCommand(
 		cfg.Specs.InboxDir,
 		cfg.Specs.InProgressDir,
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
-		libtime.NewCurrentDateTime(),
+		promptManager,
+		currentDateTimeGetter,
 	)
 }
 
 // CreateRejectCommand creates a RejectCommand.
 func CreateRejectCommand(cfg config.Config) cmd.RejectCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return cmd.NewRejectCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.RejectedDir,
-		libtime.NewCurrentDateTime(),
+		promptManager,
 	)
 }
 
 // CreateSpecRejectCommand creates a SpecRejectCommand.
 func CreateSpecRejectCommand(cfg config.Config) cmd.SpecRejectCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return cmd.NewSpecRejectCommand(
 		cfg.Specs.InboxDir,
 		cfg.Specs.InProgressDir,
@@ -1146,7 +1207,8 @@ func CreateSpecRejectCommand(cfg config.Config) cmd.SpecRejectCommand {
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.RejectedDir,
-		libtime.NewCurrentDateTime(),
+		promptManager,
+		currentDateTimeGetter,
 	)
 }
 
@@ -1240,18 +1302,31 @@ func CreateScenarioStatusCommand(_ config.Config) cmd.ScenarioStatusCommand {
 
 // CreatePromptShowCommand creates a PromptShowCommand.
 func CreatePromptShowCommand(cfg config.Config) cmd.PromptShowCommand {
+	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	return cmd.NewPromptShowCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Prompts.LogDir,
-		libtime.NewCurrentDateTime(),
+		promptManager,
 	)
 }
 
 // CreateCombinedListCommand creates a CombinedListCommand.
 func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
+	promptManager, _ := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		currentDateTimeGetter,
+	)
 	counter := prompt.NewCounter(
 		currentDateTimeGetter,
 		cfg.Prompts.InboxDir,
@@ -1271,6 +1346,6 @@ func CreateCombinedListCommand(cfg config.Config) cmd.CombinedListCommand {
 			cfg.Specs.RejectedDir,
 		),
 		counter,
-		currentDateTimeGetter,
+		promptManager,
 	)
 }

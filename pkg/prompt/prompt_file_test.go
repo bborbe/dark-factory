@@ -45,13 +45,8 @@ var _ = Describe("Prompt", func() {
 
 		It("moves file to completed subdirectory", func() {
 			completedDir := filepath.Join(tempDir, "completed")
-			err := prompt.MoveToCompleted(
-				ctx,
-				path,
-				completedDir,
-				mover,
-				libtime.NewCurrentDateTime(),
-			)
+			err := prompt.NewManager("", "", completedDir, mover, libtime.NewCurrentDateTime()).
+				MoveToCompleted(ctx, path)
 			Expect(err).To(BeNil())
 
 			// Original file should not exist
@@ -66,18 +61,14 @@ var _ = Describe("Prompt", func() {
 
 		It("sets status to completed before moving", func() {
 			completedDir := filepath.Join(tempDir, "completed")
-			err := prompt.MoveToCompleted(
-				ctx,
-				path,
-				completedDir,
-				mover,
-				libtime.NewCurrentDateTime(),
-			)
+			err := prompt.NewManager("", "", completedDir, mover, libtime.NewCurrentDateTime()).
+				MoveToCompleted(ctx, path)
 			Expect(err).To(BeNil())
 
 			// Read completed file and verify status
 			completedPath := filepath.Join(tempDir, "completed", "001-test.md")
-			fm, err := prompt.ReadFrontmatter(ctx, completedPath, libtime.NewCurrentDateTime())
+			fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				ReadFrontmatter(ctx, completedPath)
 			Expect(err).To(BeNil())
 			Expect(fm.Status).To(Equal("completed"))
 		})
@@ -92,7 +83,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns true", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -104,7 +96,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns true", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeTrue())
 			})
 		})
@@ -117,14 +110,16 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeFalse())
 			})
 		})
 
 		Context("with empty directory", func() {
 			It("returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -138,7 +133,8 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("ignores non-markdown files and returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -157,18 +153,16 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("skips files with errors and returns false", func() {
-				result := prompt.HasExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				result := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeFalse())
 			})
 		})
 
 		Context("with nonexistent directory", func() {
 			It("returns false", func() {
-				result := prompt.HasExecuting(
-					ctx,
-					"/nonexistent/path",
-					libtime.NewCurrentDateTime(),
-				)
+				result := prompt.NewManager("", "/nonexistent/path", "", nil, libtime.NewCurrentDateTime()).
+					HasExecuting(ctx)
 				Expect(result).To(BeFalse())
 			})
 		})
@@ -185,48 +179,34 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("resets only executing prompts to queued", func() {
-				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetExecuting(ctx)
 				Expect(err).To(BeNil())
 
 				// Check that executing prompts are now queued
-				fm, err := prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "002-executing.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "004-executing.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "004-executing.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "001-queued.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "003-completed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "005-failed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("failed"))
 			})
@@ -239,23 +219,18 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("does nothing", func() {
-				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetExecuting(ctx)
 				Expect(err).To(BeNil())
 
 				// Verify statuses are unchanged
-				fm, err := prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "001-queued.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "002-completed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -263,7 +238,8 @@ var _ = Describe("Prompt", func() {
 
 		Context("with empty directory", func() {
 			It("does nothing", func() {
-				err := prompt.ResetExecuting(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetExecuting(ctx)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -280,48 +256,34 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("resets only failed prompts to queued", func() {
-				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetFailed(ctx)
 				Expect(err).To(BeNil())
 
 				// Check that failed prompts are now queued
-				fm, err := prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "004-failed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "004-failed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "005-failed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "005-failed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
 				// Check that other statuses are unchanged
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "001-queued.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "002-executing.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "002-executing.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("executing"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "003-completed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "003-completed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -334,23 +296,18 @@ var _ = Describe("Prompt", func() {
 			})
 
 			It("does nothing", func() {
-				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetFailed(ctx)
 				Expect(err).To(BeNil())
 
 				// Verify statuses are unchanged
-				fm, err := prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "001-queued.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "001-queued.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				fm, err = prompt.ReadFrontmatter(
-					ctx,
-					filepath.Join(tempDir, "002-completed.md"),
-					libtime.NewCurrentDateTime(),
-				)
+				fm, err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, filepath.Join(tempDir, "002-completed.md"))
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("completed"))
 			})
@@ -358,7 +315,8 @@ var _ = Describe("Prompt", func() {
 
 		Context("with empty directory", func() {
 			It("does nothing", func() {
-				err := prompt.ResetFailed(ctx, tempDir, libtime.NewCurrentDateTime())
+				err := prompt.NewManager("", tempDir, "", nil, libtime.NewCurrentDateTime()).
+					ResetFailed(ctx)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -385,11 +343,13 @@ More content here.
 			})
 
 			It("correctly extracts frontmatter and content", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("# Test Prompt"))
 				Expect(content).To(ContainSubstring("This content has --- inline"))
@@ -410,13 +370,15 @@ status: approved
 			})
 
 			It("correctly parses frontmatter", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("approved"))
 			})
 
 			It("returns empty content error", func() {
-				_, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				_, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(Equal(prompt.ErrEmptyPrompt))
 			})
 		})
@@ -438,7 +400,8 @@ Content here.
 			})
 
 			It("parses in_review status from frontmatter", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal(string(prompt.InReviewPromptStatus)))
 			})
@@ -460,11 +423,13 @@ Content here.
 			})
 
 			It("treats entire file as content (no frontmatter)", func() {
-				fm, err := prompt.ReadFrontmatter(ctx, path, libtime.NewCurrentDateTime())
+				fm, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					ReadFrontmatter(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(fm.Status).To(Equal("")) // No frontmatter parsed
 
-				content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+				content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Content(ctx, path)
 				Expect(err).To(BeNil())
 				Expect(content).To(ContainSubstring("---"))
 				Expect(content).To(ContainSubstring("status: approved"))
@@ -480,19 +445,25 @@ Content here.
 			Expect(err).To(BeNil())
 
 			// Simulate full lifecycle: created, queued, container, version, executing, completed
-			err = prompt.SetStatus(ctx, path, "approved", libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetStatus(ctx, path, "approved")
 			Expect(err).To(BeNil())
-			err = prompt.SetContainer(ctx, path, "test-container", libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetContainer(ctx, path, "test-container")
 			Expect(err).To(BeNil())
-			err = prompt.SetVersion(ctx, path, "v1.0.0", libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetVersion(ctx, path, "v1.0.0")
 			Expect(err).To(BeNil())
-			err = prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetStatus(ctx, path, "executing")
 			Expect(err).To(BeNil())
-			err = prompt.SetStatus(ctx, path, "completed", libtime.NewCurrentDateTime())
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetStatus(ctx, path, "completed")
 			Expect(err).To(BeNil())
 
 			// Read content — should have no leading blank lines
-			content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+			content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Content(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(content).To(HavePrefix("# My Prompt"))
 		})
@@ -510,9 +481,11 @@ Content here.
 
 			// Run 20 setField cycles (simulates retries)
 			for i := 0; i < 20; i++ {
-				err = prompt.SetStatus(ctx, path, "executing", libtime.NewCurrentDateTime())
+				err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetStatus(ctx, path, "executing")
 				Expect(err).To(BeNil())
-				err = prompt.SetStatus(ctx, path, "approved", libtime.NewCurrentDateTime())
+				err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					SetStatus(ctx, path, "approved")
 				Expect(err).To(BeNil())
 			}
 
@@ -525,7 +498,8 @@ Content here.
 			Expect(len(finalData)).To(BeNumerically("<", initialSize+200))
 
 			// Content should still start correctly
-			content, err := prompt.Content(ctx, path, libtime.NewCurrentDateTime())
+			content, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Content(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(content).To(HavePrefix("# Prompt"))
 		})
@@ -554,12 +528,8 @@ Content here.
 
 			It("assigns next available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("fix-something.md"))
@@ -581,12 +551,8 @@ Content here.
 
 			It("renames later file to next available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// First file alphabetically (009-bar.md) is kept, second (009-foo.md) is renamed
@@ -610,12 +576,8 @@ Content here.
 
 			It("normalizes to zero-padded 3-digit format", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("9-foo.md"))
@@ -636,12 +598,8 @@ Content here.
 
 			It("normalizes to zero-padded 3-digit format", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("42-answer.md"))
@@ -658,12 +616,8 @@ Content here.
 
 			It("does not rename any files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -686,12 +640,8 @@ Content here.
 
 			It("renames only invalid files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(2))
 
@@ -721,12 +671,8 @@ Content here.
 
 			It("does not rename files in subdirectories", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -753,12 +699,8 @@ Content here.
 
 			It("assigns next number above completed/ maximum", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
@@ -789,12 +731,8 @@ Content here.
 
 			It("scans completed/ without errors and avoids used numbers", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				// Should assign 004 (not 001-003 which are used in completed/)
@@ -813,12 +751,8 @@ Content here.
 
 			It("ignores non-markdown files", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 
@@ -831,12 +765,8 @@ Content here.
 		Context("with empty directory", func() {
 			It("returns no renames", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 			})
@@ -852,12 +782,8 @@ Content here.
 
 			It("assigns smallest available number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].NewPath)).To(Equal("002-new-file.md"))
@@ -876,12 +802,8 @@ Content here.
 
 			It("renames to next available number instead of conflicting 001", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -904,12 +826,8 @@ Content here.
 
 			It("renames to first number above completed/ maximum", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -924,12 +842,8 @@ Content here.
 
 			It("reformats to 3-digit prefix keeping same number", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("01-foo.md"))
@@ -944,12 +858,8 @@ Content here.
 
 			It("does not rename the file", func() {
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(0))
 			})
@@ -970,12 +880,8 @@ Content here.
 				createPromptFile(tempDir, "new-feature.md", "approved")
 
 				completedDir := filepath.Join(tempDir, "completed")
-				renames, err := prompt.NormalizeFilenames(
-					ctx,
-					tempDir,
-					completedDir,
-					mover,
-				)
+				renames, err := prompt.NewManager("", "", completedDir, mover, nil).
+					NormalizeFilenames(ctx, tempDir)
 				Expect(err).To(BeNil())
 				Expect(renames).To(HaveLen(1))
 				Expect(filepath.Base(renames[0].OldPath)).To(Equal("new-feature.md"))
@@ -992,7 +898,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.SetPRURL("https://github.com/user/repo/pull/42")
@@ -1006,14 +913,16 @@ Content here.
 			Expect(err).To(BeNil())
 
 			// Load, set PR URL, and save
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			pf.SetPRURL("https://github.com/user/repo/pull/99")
 			err = pf.Save(ctx)
 			Expect(err).To(BeNil())
 
 			// Load again and verify
-			pf2, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf2, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf2.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/99"))
 		})
@@ -1024,7 +933,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal(""))
 		})
@@ -1037,16 +947,13 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetPRURL(
-				ctx,
-				path,
-				"https://github.com/user/repo/pull/123",
-				libtime.NewCurrentDateTime(),
-			)
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetPRURL(ctx, path, "https://github.com/user/repo/pull/123")
 			Expect(err).To(BeNil())
 
 			// Verify the file was updated
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/123"))
 		})
@@ -1057,16 +964,13 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetPRURL(
-				ctx,
-				path,
-				"https://github.com/user/repo/pull/1",
-				libtime.NewCurrentDateTime(),
-			)
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetPRURL(ctx, path, "https://github.com/user/repo/pull/1")
 			Expect(err).To(BeNil())
 
 			// Verify frontmatter was added with pr-url
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Frontmatter.PRURL).To(Equal("https://github.com/user/repo/pull/1"))
 		})
@@ -1079,7 +983,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.PRURL()).To(Equal("https://github.com/user/repo/pull/42"))
 		})
@@ -1090,7 +995,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.PRURL()).To(Equal(""))
 		})
@@ -1103,7 +1009,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.MarkFailed()
@@ -1119,7 +1026,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 
 			pf.SetBranch("dark-factory/042-add-feature")
@@ -1134,7 +1042,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})
@@ -1145,7 +1054,8 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal(""))
 		})
@@ -1158,15 +1068,12 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetBranch(
-				ctx,
-				path,
-				"dark-factory/042-add-feature",
-				libtime.NewCurrentDateTime(),
-			)
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetBranch(ctx, path, "dark-factory/042-add-feature")
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})
@@ -1177,15 +1084,12 @@ Content here.
 			err := os.WriteFile(path, []byte(content), 0600)
 			Expect(err).To(BeNil())
 
-			err = prompt.SetBranch(
-				ctx,
-				path,
-				"dark-factory/042-add-feature",
-				libtime.NewCurrentDateTime(),
-			)
+			err = prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				SetBranch(ctx, path, "dark-factory/042-add-feature")
 			Expect(err).To(BeNil())
 
-			pf, err := prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
 			Expect(err).To(BeNil())
 			Expect(pf.Branch()).To(Equal("dark-factory/042-add-feature"))
 		})

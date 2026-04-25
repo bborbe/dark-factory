@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("CancelCommand", func() {
@@ -33,7 +34,10 @@ var _ = Describe("CancelCommand", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		cancelCmd = cmd.NewCancelCommand(queueDir, libtime.NewCurrentDateTime())
+		cancelCmd = cmd.NewCancelCommand(
+			queueDir,
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+		)
 		ctx = context.Background()
 	})
 

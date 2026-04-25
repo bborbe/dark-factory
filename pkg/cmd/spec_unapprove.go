@@ -31,6 +31,7 @@ type specUnapproveCommand struct {
 	inProgressDir         string
 	promptsInboxDir       string
 	promptsInProgressDir  string
+	promptManager         PromptManager
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
@@ -40,6 +41,7 @@ func NewSpecUnapproveCommand(
 	inProgressDir string,
 	promptsInboxDir string,
 	promptsInProgressDir string,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecUnapproveCommand {
 	return &specUnapproveCommand{
@@ -47,6 +49,7 @@ func NewSpecUnapproveCommand(
 		inProgressDir:         inProgressDir,
 		promptsInboxDir:       promptsInboxDir,
 		promptsInProgressDir:  promptsInProgressDir,
+		promptManager:         promptManager,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
@@ -126,7 +129,7 @@ func (s *specUnapproveCommand) checkLinkedPrompts(ctx context.Context, specName 
 				continue
 			}
 			ppath := filepath.Join(dir, entry.Name())
-			pf, err := prompt.Load(ctx, ppath, s.currentDateTimeGetter)
+			pf, err := s.promptManager.Load(ctx, ppath)
 			if err != nil {
 				continue
 			}

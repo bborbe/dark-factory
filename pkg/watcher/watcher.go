@@ -16,8 +16,6 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	"github.com/fsnotify/fsnotify"
-
-	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 //counterfeiter:generate -o ../../mocks/watcher.go --fake-name Watcher . Watcher
@@ -183,8 +181,8 @@ func (w *watcher) stampCreatedTimestamps(ctx context.Context) {
 			continue
 		}
 		path := filepath.Join(w.inboxDir, entry.Name())
-		pf, err := prompt.Load(ctx, path, w.currentDateTimeGetter)
-		if err != nil {
+		pf, err := w.promptManager.Load(ctx, path)
+		if err != nil || pf == nil {
 			continue
 		}
 		if pf.Frontmatter.Created != "" {

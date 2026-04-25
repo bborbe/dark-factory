@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -34,13 +33,13 @@ type combinedListOutput struct {
 
 // combinedListCommand implements CombinedListCommand.
 type combinedListCommand struct {
-	inboxDir              string
-	queueDir              string
-	completedDir          string
-	rejectedDir           string
-	lister                spec.Lister
-	counter               prompt.Counter
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	inboxDir      string
+	queueDir      string
+	completedDir  string
+	rejectedDir   string
+	lister        spec.Lister
+	counter       prompt.Counter
+	promptManager PromptManager
 }
 
 // NewCombinedListCommand creates a new CombinedListCommand.
@@ -51,16 +50,16 @@ func NewCombinedListCommand(
 	rejectedDir string,
 	lister spec.Lister,
 	counter prompt.Counter,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	promptManager PromptManager,
 ) CombinedListCommand {
 	return &combinedListCommand{
-		inboxDir:              inboxDir,
-		queueDir:              queueDir,
-		completedDir:          completedDir,
-		rejectedDir:           rejectedDir,
-		lister:                lister,
-		counter:               counter,
-		currentDateTimeGetter: currentDateTimeGetter,
+		inboxDir:      inboxDir,
+		queueDir:      queueDir,
+		completedDir:  completedDir,
+		rejectedDir:   rejectedDir,
+		lister:        lister,
+		counter:       counter,
+		promptManager: promptManager,
 	}
 }
 
@@ -127,7 +126,7 @@ func (c *combinedListCommand) collectPromptEntriesFromDir(
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		pf, err := prompt.Load(ctx, path, c.currentDateTimeGetter)
+		pf, err := c.promptManager.Load(ctx, path)
 		if err != nil {
 			continue
 		}

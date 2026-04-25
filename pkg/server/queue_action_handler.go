@@ -14,7 +14,6 @@ import (
 
 	"github.com/bborbe/errors"
 	libhttp "github.com/bborbe/http"
-	libtime "github.com/bborbe/time"
 )
 
 // QueueRequest represents the request body for POST /api/v1/queue.
@@ -38,7 +37,6 @@ func NewQueueActionHandler(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) libhttp.WithError {
 	return libhttp.WithErrorFunc(
 		func(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
@@ -57,7 +55,6 @@ func NewQueueActionHandler(
 					inboxDir,
 					queueDir,
 					promptManager,
-					currentDateTimeGetter,
 				)
 			}
 
@@ -68,7 +65,6 @@ func NewQueueActionHandler(
 				inboxDir,
 				queueDir,
 				promptManager,
-				currentDateTimeGetter,
 			)
 		},
 	)
@@ -81,9 +77,8 @@ func handleQueueAll(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager, currentDateTimeGetter)
+	queuedFiles, err := queueAllFiles(ctx, inboxDir, queueDir, promptManager)
 	if err != nil {
 		return errors.Wrap(ctx, err, "queue all files")
 	}
@@ -99,7 +94,6 @@ func handleQueueSingle(
 	inboxDir string,
 	queueDir string,
 	promptManager PromptManager,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	// Limit request body size to 1MB
 	req.Body = http.MaxBytesReader(resp, req.Body, 1024*1024)
@@ -144,7 +138,6 @@ func handleQueueSingle(
 		queueDir,
 		promptManager,
 		filename,
-		currentDateTimeGetter,
 	)
 	if err != nil {
 		return handleQueueError(err)

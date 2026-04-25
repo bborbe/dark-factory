@@ -94,7 +94,8 @@ var _ = Describe("Processor", func() {
 			promptPath = filepath.Join(promptsDir, "001-gate-test.md")
 			// Override Load stub to use real file I/O so pf.Save works
 			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-				return prompt.Load(ctx, path, libtime.NewCurrentDateTime())
+				return prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
 			}
 		})
 
@@ -171,7 +172,8 @@ var _ = Describe("Processor", func() {
 				// Use Eventually to avoid a race: enterPendingVerification runs
 				// asynchronously after Execute returns in the processor goroutine.
 				Eventually(func() string {
-					pf, loadErr := prompt.Load(ctx, promptPath, libtime.NewCurrentDateTime())
+					pf, loadErr := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+						Load(ctx, promptPath)
 					if loadErr != nil {
 						return ""
 					}
@@ -251,7 +253,8 @@ var _ = Describe("Processor", func() {
 				Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
 				// Status must be failed — gate does not apply to failed executions
-				pf, loadErr := prompt.Load(ctx, promptPath, libtime.NewCurrentDateTime())
+				pf, loadErr := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, promptPath)
 				Expect(loadErr).NotTo(HaveOccurred())
 				Expect(pf.Frontmatter.Status).To(Equal(string(prompt.FailedPromptStatus)))
 

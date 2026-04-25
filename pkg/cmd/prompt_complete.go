@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -27,14 +26,13 @@ type PromptCompleteCommand interface {
 
 // promptCompleteCommand implements PromptCompleteCommand.
 type promptCompleteCommand struct {
-	queueDir              string
-	completedDir          string
-	promptManager         PromptManager
-	releaser              git.Releaser
-	pr                    bool
-	brancher              git.Brancher
-	prCreator             git.PRCreator
-	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	queueDir      string
+	completedDir  string
+	promptManager PromptManager
+	releaser      git.Releaser
+	pr            bool
+	brancher      git.Brancher
+	prCreator     git.PRCreator
 }
 
 // NewPromptCompleteCommand creates a new PromptCompleteCommand.
@@ -46,17 +44,15 @@ func NewPromptCompleteCommand(
 	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) PromptCompleteCommand {
 	return &promptCompleteCommand{
-		queueDir:              queueDir,
-		completedDir:          completedDir,
-		promptManager:         promptManager,
-		releaser:              releaser,
-		pr:                    pr,
-		brancher:              brancher,
-		prCreator:             prCreator,
-		currentDateTimeGetter: currentDateTimeGetter,
+		queueDir:      queueDir,
+		completedDir:  completedDir,
+		promptManager: promptManager,
+		releaser:      releaser,
+		pr:            pr,
+		brancher:      brancher,
+		prCreator:     prCreator,
 	}
 }
 
@@ -71,7 +67,7 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	pf, err := prompt.Load(ctx, path, c.currentDateTimeGetter)
+	pf, err := c.promptManager.Load(ctx, path)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

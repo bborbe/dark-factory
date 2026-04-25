@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("RequeueCommand", func() {
@@ -33,7 +34,10 @@ var _ = Describe("RequeueCommand", func() {
 		err = os.MkdirAll(queueDir, 0750)
 		Expect(err).NotTo(HaveOccurred())
 
-		requeueCmd = cmd.NewRequeueCommand(queueDir, libtime.NewCurrentDateTime())
+		requeueCmd = cmd.NewRequeueCommand(
+			queueDir,
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+		)
 		ctx = context.Background()
 	})
 

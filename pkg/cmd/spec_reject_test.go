@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 var _ = Describe("SpecRejectCommand", func() {
@@ -55,6 +56,7 @@ var _ = Describe("SpecRejectCommand", func() {
 			promptsInProgressDir,
 			promptsCompletedDir,
 			promptsRejectedDir,
+			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
 			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()

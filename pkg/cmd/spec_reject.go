@@ -34,6 +34,7 @@ type specRejectCommand struct {
 	promptsInProgressDir  string
 	promptsCompletedDir   string
 	promptsRejectedDir    string
+	promptManager         PromptManager
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
@@ -46,6 +47,7 @@ func NewSpecRejectCommand(
 	promptsInProgressDir string,
 	promptsCompletedDir string,
 	promptsRejectedDir string,
+	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) SpecRejectCommand {
 	return &specRejectCommand{
@@ -56,6 +58,7 @@ func NewSpecRejectCommand(
 		promptsInProgressDir:  promptsInProgressDir,
 		promptsCompletedDir:   promptsCompletedDir,
 		promptsRejectedDir:    promptsRejectedDir,
+		promptManager:         promptManager,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
 }
@@ -149,7 +152,7 @@ func (s *specRejectCommand) findLinkedPrompts(
 				continue
 			}
 			ppath := filepath.Join(dir, entry.Name())
-			pf, err := prompt.Load(ctx, ppath, s.currentDateTimeGetter)
+			pf, err := s.promptManager.Load(ctx, ppath)
 			if err != nil {
 				continue
 			}
@@ -167,7 +170,7 @@ func (s *specRejectCommand) findLinkedPrompts(
 func (s *specRejectCommand) preflight(ctx context.Context, linkedPaths []string) error {
 	var offenders []string
 	for _, ppath := range linkedPaths {
-		pf, err := prompt.Load(ctx, ppath, s.currentDateTimeGetter)
+		pf, err := s.promptManager.Load(ctx, ppath)
 		if err != nil {
 			return errors.Wrapf(ctx, err, "load prompt %s for preflight", filepath.Base(ppath))
 		}
@@ -190,7 +193,7 @@ func (s *specRejectCommand) preflight(ctx context.Context, linkedPaths []string)
 }
 
 func (s *specRejectCommand) rejectLinkedPrompt(ctx context.Context, ppath, reason string) error {
-	pf, err := prompt.Load(ctx, ppath, s.currentDateTimeGetter)
+	pf, err := s.promptManager.Load(ctx, ppath)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load prompt")
 	}

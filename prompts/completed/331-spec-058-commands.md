@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [058-reject-spec-and-prompt]
 summary: Implemented prompt reject and spec reject CLI commands with --reason flag, cascade, preflight, RejectedDir config fields, FindPromptFileInDirs helper, factory wiring, main.go dispatch, Ginkgo tests, and counterfeiter mocks.
 container: dark-factory-331-spec-058-commands
@@ -7,6 +7,7 @@ dark-factory-version: v0.132.0
 created: "2026-04-25T10:30:00Z"
 queued: "2026-04-25T10:49:09Z"
 started: "2026-04-25T11:03:52Z"
+completed: "2026-04-25T11:16:09Z"
 ---
 
 <summary>

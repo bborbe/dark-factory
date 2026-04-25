@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.135.14
+
+- refactor: extracted QueueScanner from processor — final pass; processor.go reduced from 655 to 472 lines
+
 ## v0.135.13
 
 - refactor: extracted CommittingRecoverer from processor — pure refactor, no behaviour change

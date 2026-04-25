@@ -7,15 +7,12 @@ package processor
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
@@ -28,6 +25,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
+	"github.com/bborbe/dark-factory/pkg/queuescanner"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -69,6 +67,7 @@ func (r tickResult) madeProgress() bool {
 }
 
 // NewProcessor creates a new Processor.
+// Call SetScanner before invoking Process — the processor panics if queueScanner is nil.
 func NewProcessor(
 	exec executor.Executor,
 	promptManager PromptManager,
@@ -99,7 +98,7 @@ func NewProcessor(
 	// Pass a log-only callback for daemon mode, or one that calls cancel() for one-shot mode.
 	// If nil, a no-op callback is used (safe for tests that do not need idle detection).
 	onIdle NothingToDoCallback,
-) Processor {
+) *processor {
 	if queueInterval <= 0 {
 		queueInterval = 5 * time.Second
 	}
@@ -126,7 +125,6 @@ func NewProcessor(
 		projectName:               projectName,
 		resumer:                   resumer,
 		verificationGate:          verificationGate,
-		skippedPrompts:            make(map[string]libtime.DateTime),
 		queueInterval:             queueInterval,
 		sweepInterval:             sweepInterval,
 		onIdle:                    onIdle,
@@ -134,6 +132,12 @@ func NewProcessor(
 		promptEnricher:            promptEnricher,
 		committingRecoverer:       committingRecoverer,
 	}
+}
+
+// SetScanner injects the QueueScanner after construction (breaks the runtime cycle
+// proc → scanner → proc.ProcessPrompt).
+func (p *processor) SetScanner(s queuescanner.Scanner) {
+	p.queueScanner = s
 }
 
 // processor implements Processor.
@@ -152,22 +156,25 @@ type processor struct {
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
 	projectName               ProjectName
-	lastBlockedMsg            string
 	resumer                   promptresumer.Resumer
 	verificationGate          VerificationGate
-	skippedPrompts            map[string]libtime.DateTime // filename → mod time when skipped
 	queueInterval             time.Duration
 	sweepInterval             time.Duration
 	onIdle                    NothingToDoCallback
 	completionReportValidator completionreport.Validator
 	promptEnricher            promptenricher.Enricher
 	committingRecoverer       committingrecoverer.Recoverer
+	queueScanner              queuescanner.Scanner
 }
 
 // Process starts processing queued prompts.
 // It processes existing queued prompts on startup, then listens for signals from the watcher.
 // When a tick ends with no progress, onIdle is called. Daemon mode logs; one-shot mode cancels.
 func (p *processor) Process(ctx context.Context) error {
+	if p.queueScanner == nil {
+		panic("processor: queueScanner is nil — call SetScanner before Process")
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -178,7 +185,7 @@ func (p *processor) Process(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "check prompted specs on startup")
 	}
 
-	if _, err := p.processExistingQueued(ctx); err != nil {
+	if _, err := p.queueScanner.ScanAndProcess(ctx); err != nil {
 		slog.Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
 		// do NOT return — daemon continues running
 	}
@@ -225,9 +232,9 @@ func (p *processor) Process(ctx context.Context) error {
 // runReadyTick handles a watcher-ready event. Returns true if the tick made progress.
 func (p *processor) runReadyTick(ctx context.Context) bool {
 	// Clear skipped prompts so all files get re-evaluated after fsnotify event.
-	p.skippedPrompts = make(map[string]libtime.DateTime)
+	p.queueScanner.ClearSkippedCache()
 	p.committingRecoverer.RecoverAll(ctx)
-	completed, err := p.processExistingQueued(ctx)
+	completed, err := p.queueScanner.ScanAndProcess(ctx)
 	if err != nil {
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
@@ -237,7 +244,7 @@ func (p *processor) runReadyTick(ctx context.Context) bool {
 // runQueueTick handles a periodic queue poll. Returns true if the tick made progress.
 func (p *processor) runQueueTick(ctx context.Context) bool {
 	p.committingRecoverer.RecoverAll(ctx)
-	completed, err := p.processExistingQueued(ctx)
+	completed, err := p.queueScanner.ScanAndProcess(ctx)
 	if err != nil {
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
@@ -265,177 +272,8 @@ func (p *processor) ResumeCommitting(ctx context.Context) error {
 	return nil // always non-fatal
 }
 
-// processExistingQueued scans for and processes any existing queued prompts.
-// Returns the count of prompts successfully processed (moved to completed) and any fatal error.
-func (p *processor) processExistingQueued(ctx context.Context) (int, error) {
-	if p.hasPendingVerification(ctx) {
-		slog.Info("queue blocked: prompt pending verification")
-		return 0, nil
-	}
-
-	completed := 0
-	for {
-		select {
-		case <-ctx.Done():
-			return completed, nil
-		default:
-		}
-
-		done, err := p.processSingleQueued(ctx)
-		if err != nil {
-			return completed, err
-		}
-		if done {
-			return completed, nil
-		}
-		completed++
-	}
-}
-
-// processSingleQueued picks the next queued prompt and processes it.
-// Returns (true, nil) when the scan loop should stop (queue empty, blocked, or preflight broken).
-// Returns (false, nil) to continue scanning for the next prompt.
-// Returns (true, err) when a fatal error requires the daemon to stop.
-func (p *processor) processSingleQueued(ctx context.Context) (bool, error) {
-	queued, err := p.promptManager.ListQueued(ctx)
-	if err != nil {
-		return true, errors.Wrap(ctx, err, "list queued prompts")
-	}
-
-	if len(queued) == 0 {
-		slog.Debug("queue scan complete", "queuedCount", 0)
-		return true, nil
-	}
-
-	slog.Debug("queue scan complete", "queuedCount", len(queued))
-
-	pr := queued[0]
-
-	if err := p.autoSetQueuedStatus(ctx, &pr); err != nil {
-		return true, errors.Wrap(ctx, err, "auto-set queued status")
-	}
-
-	if p.shouldSkipPrompt(ctx, pr) {
-		return false, nil
-	}
-
-	if !p.promptManager.AllPreviousCompleted(ctx, pr.Number()) {
-		p.logBlockedOnce(ctx, pr)
-		return true, nil // blocked — wait for watcher signal or periodic scan
-	}
-	p.lastBlockedMsg = ""
-
-	slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
-
-	if err := p.processPrompt(ctx, pr); err != nil {
-		if stderrors.Is(err, ErrPreflightSkip) {
-			// Baseline is broken — exit scan loop and wait for next 5s tick.
-			return true, nil
-		}
-		if stopErr := p.failureHandler.Handle(ctx, pr.Path, err); stopErr != nil {
-			return true, stopErr
-		}
-		return false, nil // re-queued or permanently failed — process next prompt
-	}
-
-	slog.Info("watching for queued prompts", "dir", p.dirs.Queue)
-	return false, nil
-}
-
-// shouldSkipPrompt checks if a prompt should be skipped due to validation failure.
-// Returns true if the prompt should be skipped, false if it's ready to process.
-// Handles both previously-failed prompts (silent skip) and new validation failures (logged).
-func (p *processor) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool {
-	// Check if this prompt was previously skipped and hasn't been modified
-	fileInfo, err := os.Stat(pr.Path)
-	if err == nil {
-		if lastSkipped, wasSkipped := p.skippedPrompts[pr.Path]; wasSkipped {
-			if fileInfo.ModTime().Equal(time.Time(lastSkipped)) {
-				// File hasn't changed since we last skipped it - skip silently
-				slog.Debug(
-					"skipping previously-failed prompt (unchanged)",
-					"file",
-					filepath.Base(pr.Path),
-				)
-				return true
-			}
-			// File was modified - remove from skipped list and re-validate
-			delete(p.skippedPrompts, pr.Path)
-		}
-	}
-
-	// Validate prompt before execution
-	if err := pr.ValidateForExecution(ctx); err != nil {
-		slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
-		// Record this prompt as skipped so we don't spam logs on next cycle
-		if fileInfo != nil {
-			p.skippedPrompts[pr.Path] = libtime.DateTime(fileInfo.ModTime())
-		}
-		return true
-	}
-
-	return false
-}
-
-// logBlockedOnce logs the "prompt blocked" message only when the missing-prompt details change,
-// suppressing repeated identical messages on every poll cycle.
-func (p *processor) logBlockedOnce(ctx context.Context, pr prompt.Prompt) {
-	missing := p.promptManager.FindMissingCompleted(ctx, pr.Number())
-	details := make([]string, 0, len(missing))
-	for _, num := range missing {
-		status := p.promptManager.FindPromptStatusInProgress(ctx, num)
-		if status != "" {
-			details = append(details, fmt.Sprintf("%03d(%s)", num, status))
-		} else {
-			details = append(details, fmt.Sprintf("%03d(not found)", num))
-		}
-	}
-	msg := strings.Join(details, ", ")
-	if msg == p.lastBlockedMsg {
-		return
-	}
-	slog.Info(
-		"prompt blocked",
-		"file", filepath.Base(pr.Path),
-		"reason", "previous prompt not completed",
-		"missing", msg,
-	)
-	p.lastBlockedMsg = msg
-}
-
-// autoSetQueuedStatus sets status to "queued" for any non-terminal status.
-// This makes the folder location the source of truth - if a file is in queue/, it should be queued.
-func (p *processor) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) error {
-	switch pr.Status {
-	case prompt.ApprovedPromptStatus,
-		prompt.ExecutingPromptStatus,
-		prompt.CompletedPromptStatus,
-		prompt.FailedPromptStatus,
-		prompt.PendingVerificationPromptStatus,
-		prompt.CancelledPromptStatus:
-		// Already in a valid processing state — don't override
-		return nil
-	}
-	// Any other status (empty, "created", "draft", etc.) → auto-set to approved
-	baseName := filepath.Base(pr.Path)
-	previousStatus := pr.Status
-	slog.Info(
-		"auto-setting status to approved",
-		"file",
-		baseName,
-		"previousStatus",
-		previousStatus,
-	)
-	if err := p.promptManager.SetStatus(ctx, pr.Path, string(prompt.ApprovedPromptStatus)); err != nil {
-		return errors.Wrap(ctx, err, "set status to approved")
-	}
-	// Update local status so ValidateForExecution passes
-	pr.Status = prompt.ApprovedPromptStatus
-	return nil
-}
-
-// processPrompt executes a single prompt and commits the result.
-func (p *processor) processPrompt(ctx context.Context, pr prompt.Prompt) error {
+// ProcessPrompt executes a single prompt and commits the result.
+func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.preflightConditions.ShouldSkip(ctx); err != nil {
 		if stderrors.Is(err, ErrPreflightSkip) {
 			return err // propagate sentinel unwrapped so caller can recognize it
@@ -571,27 +409,6 @@ func (p *processor) runContainer(
 	}
 	slog.Info("docker container exited", "exitCode", 0)
 	return false, nil
-}
-
-// hasPendingVerification returns true if any prompt in queueDir has pending_verification status.
-func (p *processor) hasPendingVerification(ctx context.Context) bool {
-	entries, err := os.ReadDir(p.dirs.Queue)
-	if err != nil {
-		return false
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		pf, err := p.promptManager.Load(ctx, filepath.Join(p.dirs.Queue, entry.Name()))
-		if err != nil {
-			continue
-		}
-		if pf.Frontmatter.Status == string(prompt.PendingVerificationPromptStatus) {
-			return true
-		}
-	}
-	return false
 }
 
 // enterPendingVerification transitions a prompt to pending_verification state and logs the verification hint.

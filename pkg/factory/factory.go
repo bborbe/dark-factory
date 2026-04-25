@@ -39,6 +39,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
+	"github.com/bborbe/dark-factory/pkg/queuescanner"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/scenario"
@@ -810,7 +811,7 @@ func CreateProcessor(
 		projectName.String(),
 		maxPromptDuration,
 	)
-	return processor.NewProcessor(
+	proc := processor.NewProcessor(
 		exec,
 		promptManager,
 		releaser,
@@ -860,6 +861,9 @@ func CreateProcessor(
 		sweepInterval,
 		onIdle,
 	)
+	scanner := queuescanner.NewScanner(promptManager, proc, fh, dirs.Queue)
+	proc.SetScanner(scanner)
+	return proc
 }
 
 // CreateReviewPoller creates a ReviewPoller that watches in_review prompts and handles approvals/changes.

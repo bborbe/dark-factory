@@ -1,7 +1,10 @@
 ---
-status: approved
+status: committing
+container: dark-factory-347-processor-C3-queue-scanner
+dark-factory-version: v0.135.3-1-gf3b7a3f
 created: "2026-04-25T14:37:00Z"
 queued: "2026-04-25T17:43:13Z"
+started: "2026-04-25T18:22:20Z"
 ---
 
 <summary>

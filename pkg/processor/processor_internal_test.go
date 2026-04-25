@@ -213,47 +213,12 @@ var _ = Describe("DetermineBumpFromChangelog", func() {
 	})
 })
 
-var _ = Describe("autoSetQueuedStatus", func() {
-	var (
-		ctx context.Context
-		p   *processor
-	)
-
-	BeforeEach(func() {
-		ctx = context.Background()
-		p = &processor{
-			skippedPrompts: make(map[string]libtime.DateTime),
-		}
-	})
-
-	It("does not change status for cancelled prompt (no auto-promote)", func() {
-		pr := &prompt.Prompt{
-			Path:   "/queue/080-some-prompt.md",
-			Status: prompt.CancelledPromptStatus,
-		}
-		err := p.autoSetQueuedStatus(ctx, pr)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(pr.Status).To(Equal(prompt.CancelledPromptStatus))
-	})
-
-	It("does not change status for approved prompt", func() {
-		pr := &prompt.Prompt{
-			Path:   "/queue/080-some-prompt.md",
-			Status: prompt.ApprovedPromptStatus,
-		}
-		err := p.autoSetQueuedStatus(ctx, pr)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(pr.Status).To(Equal(prompt.ApprovedPromptStatus))
-	})
-})
-
 var _ = Describe("ResumeExecuting delegates to Resumer", func() {
 	It("calls resumer.ResumeAll and returns its result", func() {
 		ctx := context.Background()
 		fakeResumer := &stubResumer{err: stderrors.New("resumer error")}
 		p := &processor{
-			resumer:        fakeResumer,
-			skippedPrompts: make(map[string]libtime.DateTime),
+			resumer: fakeResumer,
 		}
 		err := p.ResumeExecuting(ctx)
 		Expect(err).To(HaveOccurred())
@@ -1604,7 +1569,6 @@ var _ = Describe("ResumeCommitting delegates to CommittingRecoverer", func() {
 		fakeRecoverer := &stubCommittingRecoverer{}
 		p := &processor{
 			committingRecoverer: fakeRecoverer,
-			skippedPrompts:      make(map[string]libtime.DateTime),
 		}
 		err := p.ResumeCommitting(ctx)
 		Expect(err).NotTo(HaveOccurred())

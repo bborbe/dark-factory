@@ -36,6 +36,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
+	"github.com/bborbe/dark-factory/pkg/queuescanner"
 	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
@@ -104,7 +105,7 @@ func newTestProcessor(
 		projectName,
 		maxPromptDuration,
 	)
-	return processor.NewProcessor(
+	proc := processor.NewProcessor(
 		exec,
 		mgr,
 		rel,
@@ -145,6 +146,9 @@ func newTestProcessor(
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		nil, // onIdle: no-op for tests
 	)
+	scanner := queuescanner.NewScanner(mgr, proc, fh, queueDir)
+	proc.SetScanner(scanner)
+	return proc
 }
 
 // noOpWorkflowExecutorAdapter satisfies promptresumer.WorkflowExecutor with no-ops for tests
@@ -7377,7 +7381,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 				"sweep-test",
 				0,
 			)
-			p := processor.NewProcessor(
+			sweepProc := processor.NewProcessor(
 				executor,
 				manager,
 				releaser,
@@ -7410,6 +7414,10 @@ DARK-FACTORY-REPORT -->`), 0600)
 				20*time.Millisecond, // sweepInterval 20ms for test speed
 				nil,                 // onIdle: no-op for tests
 			)
+			sweepProc.SetScanner(
+				queuescanner.NewScanner(manager, sweepProc, sweepFH, sweepQueueDir),
+			)
+			p := sweepProc
 
 			sweepCtx, sweepCancel := context.WithCancel(context.Background())
 			defer sweepCancel()

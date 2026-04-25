@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Fixed spec auto-complete phase ordering in workflow_executor_direct.go (MoveToCompleted now runs before CheckAndComplete), added a 60-second self-healing sweep ticker in processor.go, added regression tests for both fixes, and updated CHANGELOG.md.
 container: dark-factory-334-fix-stuck-prompted-specs
 dark-factory-version: v0.132.0
 created: "2026-04-25T13:42:00Z"
 queued: "2026-04-25T11:49:27Z"
 started: "2026-04-25T11:53:01Z"
+completed: "2026-04-25T12:08:29Z"
 ---
 
 <summary>

@@ -15,6 +15,7 @@ import (
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
@@ -45,7 +46,7 @@ func NewHandler(
 	promptManager PromptManager,
 	n notifier.Notifier,
 	completedDir string,
-	projectName string,
+	projectName project.Name,
 	autoRetryLimit int,
 ) Handler {
 	return &handler{
@@ -61,7 +62,7 @@ type handler struct {
 	promptManager  PromptManager
 	notifier       notifier.Notifier
 	completedDir   string
-	projectName    string
+	projectName    project.Name
 	autoRetryLimit int
 }
 
@@ -149,7 +150,7 @@ func (h *handler) handlePromptFailure(ctx context.Context, path string, err erro
 // notifyFailed fires a notification for a failed prompt.
 func (h *handler) notifyFailed(ctx context.Context, path string) {
 	_ = h.notifier.Notify(ctx, notifier.Event{
-		ProjectName: h.projectName,
+		ProjectName: h.projectName.String(),
 		EventType:   "prompt_failed",
 		PromptName:  filepath.Base(path),
 	})
@@ -164,7 +165,7 @@ func (h *handler) NotifyFromReport(ctx context.Context, logFile string, promptPa
 	}
 	if completionReport.Status == "partial" {
 		_ = h.notifier.Notify(ctx, notifier.Event{
-			ProjectName: h.projectName,
+			ProjectName: h.projectName.String(),
 			EventType:   "prompt_partial",
 			PromptName:  filepath.Base(promptPath),
 		})

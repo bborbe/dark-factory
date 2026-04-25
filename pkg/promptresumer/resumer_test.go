@@ -14,6 +14,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/report"
@@ -33,7 +34,7 @@ func (s *stubPromptManager) Load(ctx context.Context, path string) (*prompt.Prom
 }
 
 type stubWorkflowExecutor struct {
-	reconstructStateFunc func(ctx context.Context, baseName string, pf *prompt.PromptFile) (bool, error)
+	reconstructStateFunc func(ctx context.Context, baseName prompt.BaseName, pf *prompt.PromptFile) (bool, error)
 	completeFunc         func(gitCtx context.Context, ctx context.Context, pf *prompt.PromptFile, title, promptPath, completedPath string) error
 	reconstructCallCount int
 	completeCallCount    int
@@ -41,7 +42,7 @@ type stubWorkflowExecutor struct {
 
 func (s *stubWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	baseName string,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
 	s.reconstructCallCount++
@@ -184,7 +185,7 @@ var _ = Describe("Resumer", func() {
 	newResumer := func(maxDur time.Duration) promptresumer.Resumer {
 		return promptresumer.NewResumer(
 			mgr, fakeExec, we, noOpValidator{}, notifier,
-			queueDir, completedDir, logDir, "test-project", maxDur,
+			queueDir, completedDir, logDir, project.Name("test-project"), maxDur,
 		)
 	}
 
@@ -193,7 +194,7 @@ var _ = Describe("Resumer", func() {
 			r := promptresumer.NewResumer(
 				mgr, fakeExec, we, noOpValidator{}, notifier,
 				filepath.Join(tempDir, "nonexistent"),
-				completedDir, logDir, "test-project", 0,
+				completedDir, logDir, project.Name("test-project"), 0,
 			)
 			Expect(r.ResumeAll(ctx)).To(Succeed())
 			Expect(fakeExec.reattachCallCount).To(Equal(0))
@@ -292,7 +293,7 @@ var _ = Describe("Resumer", func() {
 			mgr.loadFunc = func(_ context.Context, path string) (*prompt.PromptFile, error) {
 				return newExecutingPromptFile(path, "test-project-001-norecon"), nil
 			}
-			we.reconstructStateFunc = func(_ context.Context, _ string, _ *prompt.PromptFile) (bool, error) {
+			we.reconstructStateFunc = func(_ context.Context, _ prompt.BaseName, _ *prompt.PromptFile) (bool, error) {
 				return false, nil
 			}
 		})
@@ -414,7 +415,7 @@ var _ = Describe("Resumer", func() {
 		It("notifies failure and returns error wrapping validate completion report", func() {
 			r := promptresumer.NewResumer(
 				mgr, fakeExec, we, errValidator{}, notifier,
-				queueDir, completedDir, logDir, "test-project", 0,
+				queueDir, completedDir, logDir, project.Name("test-project"), 0,
 			)
 			err := r.ResumeAll(ctx)
 			Expect(err).To(HaveOccurred())
@@ -502,7 +503,7 @@ var _ = Describe("computeReattachDuration (via ResumeAll timeout path)", func() 
 		return promptresumer.NewResumer(
 			mgr, fakeExec, we, noOpValidator{}, &stubFailureNotifier{},
 			queueDir, filepath.Join(tempDir, "completed"), logDir,
-			"proj", maxDur,
+			project.Name("proj"), maxDur,
 		)
 	}
 

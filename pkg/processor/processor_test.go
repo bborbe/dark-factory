@@ -30,6 +30,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
@@ -48,7 +49,7 @@ func newTestWorkflowExecutor(
 	cloner *mocks.Cloner, worktreer *mocks.Worktreer, prMerger *mocks.PRMerger,
 ) processor.WorkflowExecutor {
 	deps := processor.WorkflowDeps{
-		ProjectName: processor.ProjectName(projectName), PromptManager: mgr,
+		ProjectName: project.Name(projectName), PromptManager: mgr,
 		AutoCompleter: autoCompleter, Releaser: rel, Brancher: brancher,
 		PRCreator: prCreator, Cloner: cloner, Worktreer: worktreer, PRMerger: prMerger,
 		PR: pr, AutoMerge: autoMerge, AutoReview: autoReview, AutoRelease: autoRelease,
@@ -88,7 +89,7 @@ func newTestProcessor(
 		workflow, pr, autoMerge, autoRelease, autoReview,
 		projectName, mgr, rel, autoCompleter, brancher, prCreator, cloner, worktreer, prMerger,
 	)
-	fh := failurehandler.NewHandler(mgr, n, completedDir, projectName, autoRetryLimit)
+	fh := failurehandler.NewHandler(mgr, n, completedDir, project.Name(projectName), autoRetryLimit)
 	// Build a real resumer using a no-op workflow adapter so existing tests
 	// that don't exercise ResumeExecuting are not affected.
 	resumer := promptresumer.NewResumer(
@@ -100,9 +101,11 @@ func newTestProcessor(
 		queueDir,
 		completedDir,
 		logDir,
-		projectName,
+		project.Name(projectName),
 		maxPromptDuration,
 	)
+	ppForwarder := &lazyProcessorForwarder{}
+	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, queueDir)
 	proc := processor.NewProcessor(
 		exec,
 		mgr,
@@ -127,7 +130,7 @@ func newTestProcessor(
 		cancellationwatcher.NewWatcher(exec, mgr),
 		wakeup,
 		processor.Dirs{Queue: queueDir, Completed: completedDir, Log: logDir},
-		processor.ProjectName(projectName),
+		project.Name(projectName),
 		fh,
 		resumer,
 		processor.VerificationGate(verificationGate),
@@ -141,13 +144,22 @@ func newTestProcessor(
 			validationprompt.NewResolver(),
 		),
 		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir),
+		scanner,
 		0,
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)
 		nil, // onIdle: no-op for tests
 	)
-	scanner := queuescanner.NewScanner(mgr, proc, fh, queueDir)
-	proc.SetScanner(scanner)
+	ppForwarder.inner = proc
 	return proc
+}
+
+// lazyProcessorForwarder mirrors the factory's lazyPromptProcessor for tests.
+type lazyProcessorForwarder struct {
+	inner queuescanner.PromptProcessor
+}
+
+func (l *lazyProcessorForwarder) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
+	return l.inner.ProcessPrompt(ctx, pr)
 }
 
 // newProcessorTestPromptFile creates a PromptFile with approved status for use in processor tests.
@@ -167,7 +179,7 @@ type noOpWorkflowExecutorAdapter struct{}
 
 func (noOpWorkflowExecutorAdapter) ReconstructState(
 	_ context.Context,
-	_ string,
+	_ prompt.BaseName,
 	_ *prompt.PromptFile,
 ) (bool, error) {
 	return true, nil

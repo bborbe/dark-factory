@@ -31,11 +31,11 @@ type WorkflowExecutor struct {
 	completeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ReconstructStateStub        func(context.Context, processor.BaseName, *prompt.PromptFile) (bool, error)
+	ReconstructStateStub        func(context.Context, prompt.BaseName, *prompt.PromptFile) (bool, error)
 	reconstructStateMutex       sync.RWMutex
 	reconstructStateArgsForCall []struct {
 		arg1 context.Context
-		arg2 processor.BaseName
+		arg2 prompt.BaseName
 		arg3 *prompt.PromptFile
 	}
 	reconstructStateReturns struct {
@@ -46,11 +46,11 @@ type WorkflowExecutor struct {
 		result1 bool
 		result2 error
 	}
-	SetupStub        func(context.Context, processor.BaseName, *prompt.PromptFile) error
+	SetupStub        func(context.Context, prompt.BaseName, *prompt.PromptFile) error
 	setupMutex       sync.RWMutex
 	setupArgsForCall []struct {
 		arg1 context.Context
-		arg2 processor.BaseName
+		arg2 prompt.BaseName
 		arg3 *prompt.PromptFile
 	}
 	setupReturns struct {
@@ -161,12 +161,12 @@ func (fake *WorkflowExecutor) CompleteReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *WorkflowExecutor) ReconstructState(arg1 context.Context, arg2 processor.BaseName, arg3 *prompt.PromptFile) (bool, error) {
+func (fake *WorkflowExecutor) ReconstructState(arg1 context.Context, arg2 prompt.BaseName, arg3 *prompt.PromptFile) (bool, error) {
 	fake.reconstructStateMutex.Lock()
 	ret, specificReturn := fake.reconstructStateReturnsOnCall[len(fake.reconstructStateArgsForCall)]
 	fake.reconstructStateArgsForCall = append(fake.reconstructStateArgsForCall, struct {
 		arg1 context.Context
-		arg2 processor.BaseName
+		arg2 prompt.BaseName
 		arg3 *prompt.PromptFile
 	}{arg1, arg2, arg3})
 	stub := fake.ReconstructStateStub
@@ -188,13 +188,13 @@ func (fake *WorkflowExecutor) ReconstructStateCallCount() int {
 	return len(fake.reconstructStateArgsForCall)
 }
 
-func (fake *WorkflowExecutor) ReconstructStateCalls(stub func(context.Context, processor.BaseName, *prompt.PromptFile) (bool, error)) {
+func (fake *WorkflowExecutor) ReconstructStateCalls(stub func(context.Context, prompt.BaseName, *prompt.PromptFile) (bool, error)) {
 	fake.reconstructStateMutex.Lock()
 	defer fake.reconstructStateMutex.Unlock()
 	fake.ReconstructStateStub = stub
 }
 
-func (fake *WorkflowExecutor) ReconstructStateArgsForCall(i int) (context.Context, processor.BaseName, *prompt.PromptFile) {
+func (fake *WorkflowExecutor) ReconstructStateArgsForCall(i int) (context.Context, prompt.BaseName, *prompt.PromptFile) {
 	fake.reconstructStateMutex.RLock()
 	defer fake.reconstructStateMutex.RUnlock()
 	argsForCall := fake.reconstructStateArgsForCall[i]
@@ -227,12 +227,12 @@ func (fake *WorkflowExecutor) ReconstructStateReturnsOnCall(i int, result1 bool,
 	}{result1, result2}
 }
 
-func (fake *WorkflowExecutor) Setup(arg1 context.Context, arg2 processor.BaseName, arg3 *prompt.PromptFile) error {
+func (fake *WorkflowExecutor) Setup(arg1 context.Context, arg2 prompt.BaseName, arg3 *prompt.PromptFile) error {
 	fake.setupMutex.Lock()
 	ret, specificReturn := fake.setupReturnsOnCall[len(fake.setupArgsForCall)]
 	fake.setupArgsForCall = append(fake.setupArgsForCall, struct {
 		arg1 context.Context
-		arg2 processor.BaseName
+		arg2 prompt.BaseName
 		arg3 *prompt.PromptFile
 	}{arg1, arg2, arg3})
 	stub := fake.SetupStub
@@ -254,13 +254,13 @@ func (fake *WorkflowExecutor) SetupCallCount() int {
 	return len(fake.setupArgsForCall)
 }
 
-func (fake *WorkflowExecutor) SetupCalls(stub func(context.Context, processor.BaseName, *prompt.PromptFile) error) {
+func (fake *WorkflowExecutor) SetupCalls(stub func(context.Context, prompt.BaseName, *prompt.PromptFile) error) {
 	fake.setupMutex.Lock()
 	defer fake.setupMutex.Unlock()
 	fake.SetupStub = stub
 }
 
-func (fake *WorkflowExecutor) SetupArgsForCall(i int) (context.Context, processor.BaseName, *prompt.PromptFile) {
+func (fake *WorkflowExecutor) SetupArgsForCall(i int) (context.Context, prompt.BaseName, *prompt.PromptFile) {
 	fake.setupMutex.RLock()
 	defer fake.setupMutex.RUnlock()
 	argsForCall := fake.setupArgsForCall[i]

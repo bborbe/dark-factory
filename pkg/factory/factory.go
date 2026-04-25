@@ -55,28 +55,15 @@ import (
 	"github.com/bborbe/dark-factory/pkg/watcher"
 )
 
-// workflowExecutorResumerAdapter adapts processor.WorkflowExecutor to promptresumer.WorkflowExecutor.
-// processor.WorkflowExecutor uses processor.BaseName (a named string type); promptresumer.WorkflowExecutor
-// uses plain string to avoid an import cycle. The cast is safe since BaseName is type BaseName string.
-type workflowExecutorResumerAdapter struct {
-	we processor.WorkflowExecutor
+// lazyPromptProcessor forwards ProcessPrompt to a back-reference set after the processor is constructed.
+// This breaks the circular wiring: scanner → processor.ProcessPrompt → scanner (via queueScanner field).
+// The forwarder lives in factory (where wiring concerns belong) and is invisible to processor's public API.
+type lazyPromptProcessor struct {
+	inner queuescanner.PromptProcessor
 }
 
-func (a *workflowExecutorResumerAdapter) ReconstructState(
-	ctx context.Context,
-	baseName string,
-	pf *prompt.PromptFile,
-) (bool, error) {
-	return a.we.ReconstructState(ctx, processor.BaseName(baseName), pf)
-}
-
-func (a *workflowExecutorResumerAdapter) Complete(
-	gitCtx context.Context,
-	ctx context.Context,
-	pf *prompt.PromptFile,
-	title, promptPath, completedPath string,
-) error {
-	return a.we.Complete(gitCtx, ctx, pf, title, promptPath, completedPath)
+func (l *lazyPromptProcessor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
+	return l.inner.ProcessPrompt(ctx, pr)
 }
 
 // EffectiveMaxContainers returns the per-project limit when set (> 0),
@@ -308,7 +295,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		currentDateTimeGetter,
 	)
 	versionGetter := version.NewGetter(ver)
-	projectName := processor.ProjectName(project.Name(cfg.ProjectName))
+	projectName := project.Resolve(cfg.ProjectName)
 	wakeup := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(cfg, cfg.ContainerImage, currentDateTimeGetter, migrator)
@@ -332,7 +319,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 
 	var poller review.ReviewPoller
 	if cfg.AutoReview {
-		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName.String(), n)
+		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n)
 	}
 
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -407,7 +394,7 @@ func CreateRunner(ctx context.Context, cfg config.Config, ver string) runner.Run
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv, poller,
-		specWatcher, projectName.String(),
+		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
 		releaser,
@@ -436,7 +423,7 @@ func CreateOneShotRunner(
 	promptManager, releaser := createPromptManager(
 		inboxDir, inProgressDir, completedDir, currentDateTimeGetter)
 	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
-	projectName := processor.ProjectName(project.Name(cfg.ProjectName))
+	projectName := project.Resolve(cfg.ProjectName)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -552,7 +539,7 @@ func CreateSpecGenerator(
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
 			containerImage,
-			project.Name(cfg.ProjectName),
+			project.Resolve(cfg.ProjectName).String(),
 			cfg.Model,
 			cfg.NetrcFile,
 			cfg.GitconfigFile,
@@ -665,7 +652,7 @@ func createAutoCompleter(
 	inProgressDir, completedDir string,
 	specsInboxDir, specsInProgressDir, specsCompletedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	projectName processor.ProjectName,
+	projectName project.Name,
 	n notifier.Notifier,
 ) spec.AutoCompleter {
 	return spec.NewAutoCompleter(
@@ -685,7 +672,7 @@ func CreateWorkflowExecutor(
 	autoMerge bool,
 	autoRelease bool,
 	autoReview bool,
-	projectName processor.ProjectName,
+	projectName project.Name,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
@@ -724,7 +711,7 @@ func CreateProcessor(
 	inProgressDir string,
 	completedDir string,
 	logDir string,
-	projectName processor.ProjectName,
+	projectName project.Name,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
@@ -797,21 +784,25 @@ func CreateProcessor(
 		promptManager,
 		n,
 		dirs.Completed,
-		projectName.String(),
+		projectName,
 		int(autoRetryLimit),
 	)
 	resumer := promptresumer.NewResumer(
 		promptManager,
 		exec,
-		&workflowExecutorResumerAdapter{we: workflowExecutor},
+		workflowExecutor,
 		completionreport.NewValidator(),
 		fh,
 		dirs.Queue,
 		dirs.Completed,
 		dirs.Log,
-		projectName.String(),
+		projectName,
 		maxPromptDuration,
 	)
+	// Two-phase wiring: scanner → proc.ProcessPrompt → scanner.
+	// The lazyPromptProcessor closes the loop inside factory where wiring belongs.
+	ppForwarder := &lazyPromptProcessor{}
+	scanner := queuescanner.NewScanner(promptManager, ppForwarder, fh, dirs.Queue)
 	proc := processor.NewProcessor(
 		exec,
 		promptManager,
@@ -859,12 +850,12 @@ func CreateProcessor(
 			validationprompt.NewResolver(),
 		),
 		committingrecoverer.NewRecoverer(promptManager, releaser, autoCompleter, dirs.Completed),
+		scanner,
 		queueInterval,
 		sweepInterval,
 		onIdle,
 	)
-	scanner := queuescanner.NewScanner(promptManager, proc, fh, dirs.Queue)
-	proc.SetScanner(scanner)
+	ppForwarder.inner = proc
 	return proc
 }
 
@@ -873,7 +864,7 @@ func CreateReviewPoller(
 	ctx context.Context,
 	cfg config.Config,
 	promptManager *prompt.Manager,
-	projectName string,
+	projectName project.Name,
 	n notifier.Notifier,
 ) review.ReviewPoller {
 	currentDateTimeGetter := libtime.NewCurrentDateTime()

@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -40,7 +41,7 @@ func NewReviewPoller(
 	prMerger git.PRMerger,
 	promptManager PromptManager,
 	generator FixPromptGenerator,
-	projectName string,
+	projectName project.Name,
 	n notifier.Notifier,
 ) ReviewPoller {
 	return &reviewPoller{
@@ -71,7 +72,7 @@ type reviewPoller struct {
 	prMerger            git.PRMerger
 	promptManager       PromptManager
 	generator           FixPromptGenerator
-	projectName         string
+	projectName         project.Name
 	notifier            notifier.Notifier
 }
 
@@ -232,7 +233,7 @@ func (p *reviewPoller) handleChangesRequested(
 			slog.Warn("failed to set failed status", "file", filepath.Base(path), "error", err)
 		}
 		_ = p.notifier.Notify(ctx, notifier.Event{
-			ProjectName: p.projectName,
+			ProjectName: p.projectName.String(),
 			EventType:   "review_limit",
 			PromptName:  filepath.Base(path),
 			PRURL:       prURL,

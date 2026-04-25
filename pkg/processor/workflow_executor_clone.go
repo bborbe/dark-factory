@@ -33,7 +33,7 @@ func NewCloneWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 // Setup syncs with remote, creates a clone, and chdirs into it.
 func (e *cloneWorkflowExecutor) Setup(
 	ctx context.Context,
-	baseName BaseName,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
@@ -129,7 +129,7 @@ func (e *cloneWorkflowExecutor) Complete(
 // ReconstructState checks if the clone directory still exists for resume.
 func (e *cloneWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	baseName BaseName,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
 	clonePath := filepath.Join(

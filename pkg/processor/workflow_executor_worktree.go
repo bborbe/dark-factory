@@ -33,7 +33,7 @@ func NewWorktreeWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 // Setup syncs with remote, creates a worktree, and chdirs into it.
 func (e *worktreeWorkflowExecutor) Setup(
 	ctx context.Context,
-	baseName BaseName,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
@@ -129,7 +129,7 @@ func (e *worktreeWorkflowExecutor) Complete(
 // ReconstructState checks if the worktree directory still exists for resume.
 func (e *worktreeWorkflowExecutor) ReconstructState(
 	ctx context.Context,
-	baseName BaseName,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) (bool, error) {
 	worktreePath := filepath.Join(

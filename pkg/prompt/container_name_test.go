@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package processor_test
+package prompt_test
 
 import (
 	"regexp"
@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 // dockerNameRegexp is the Docker container name validation regex.
@@ -20,44 +20,44 @@ var dockerNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_./-]*$`)
 var _ = Describe("ContainerName", func() {
 	Describe("Sanitize", func() {
 		It("keeps valid characters", func() {
-			name := processor.ContainerName("abc-123_XYZ").Sanitize()
+			name := prompt.ContainerName("abc-123_XYZ").Sanitize()
 			Expect(name.String()).To(Equal("abc-123_XYZ"))
 		})
 
 		It("replaces special characters with hyphens", func() {
-			name := processor.ContainerName("test@file#name").Sanitize()
+			name := prompt.ContainerName("test@file#name").Sanitize()
 			Expect(name.String()).To(Equal("test-file-name"))
 		})
 
 		It("handles spaces", func() {
-			name := processor.ContainerName("hello world").Sanitize()
+			name := prompt.ContainerName("hello world").Sanitize()
 			Expect(name.String()).To(Equal("hello-world"))
 		})
 
 		It("handles multiple consecutive special characters", func() {
-			name := processor.ContainerName("test@@##name").Sanitize()
+			name := prompt.ContainerName("test@@##name").Sanitize()
 			Expect(name.String()).To(Equal("test----name"))
 		})
 
 		It("handles slashes", func() {
-			name := processor.ContainerName("dark-factory/123-fix-bug").Sanitize()
+			name := prompt.ContainerName("dark-factory/123-fix-bug").Sanitize()
 			Expect(name.String()).To(Equal("dark-factory-123-fix-bug"))
 		})
 
 		It("handles unicode characters", func() {
-			name := processor.ContainerName("héllo-wörld").Sanitize()
+			name := prompt.ContainerName("héllo-wörld").Sanitize()
 			Expect(name.String()).To(Equal("h-llo-w-rld"))
 		})
 
 		It("handles dots", func() {
-			name := processor.ContainerName("some.prompt.md").Sanitize()
+			name := prompt.ContainerName("some.prompt.md").Sanitize()
 			Expect(name.String()).To(Equal("some-prompt-md"))
 		})
 	})
 
 	Describe("String", func() {
 		It("returns the underlying string", func() {
-			name := processor.ContainerName("my-container")
+			name := prompt.ContainerName("my-container")
 			Expect(name.String()).To(Equal("my-container"))
 		})
 	})
@@ -70,7 +70,7 @@ var _ = Describe("ContainerName", func() {
 				"project_name-456-refactor",
 			}
 			for _, input := range inputs {
-				sanitized := processor.ContainerName(input).Sanitize()
+				sanitized := prompt.ContainerName(input).Sanitize()
 				Expect(dockerNameRegexp.MatchString(sanitized.String())).To(BeTrue(),
 					"expected %q to match docker name regex", sanitized.String())
 			}
@@ -79,7 +79,7 @@ var _ = Describe("ContainerName", func() {
 		It("produces leading hyphen when input starts with a special character", func() {
 			// Document the current behavior: Sanitize() does not add a prefix.
 			// If the input starts with a special char, the result starts with '-'.
-			name := processor.ContainerName("@leading-special").Sanitize()
+			name := prompt.ContainerName("@leading-special").Sanitize()
 			Expect(name.String()).To(Equal("-leading-special"))
 			// Note: this does NOT pass Docker's name regex (requires [a-zA-Z0-9] start).
 			// Callers should ensure the prefix (e.g. project name) starts with an
@@ -87,7 +87,7 @@ var _ = Describe("ContainerName", func() {
 		})
 
 		It("produces empty string for all-special input", func() {
-			name := processor.ContainerName("@@@").Sanitize()
+			name := prompt.ContainerName("@@@").Sanitize()
 			Expect(name.String()).To(Equal("---"))
 		})
 	})
@@ -96,7 +96,7 @@ var _ = Describe("ContainerName", func() {
 var _ = Describe("BaseName", func() {
 	Describe("String", func() {
 		It("returns the underlying string", func() {
-			base := processor.BaseName("001-fix-bug")
+			base := prompt.BaseName("001-fix-bug")
 			Expect(base.String()).To(Equal("001-fix-bug"))
 		})
 	})

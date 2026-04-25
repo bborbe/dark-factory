@@ -11,32 +11,32 @@ import (
 	"github.com/bborbe/dark-factory/pkg/project"
 )
 
-var _ = Describe("Name", func() {
+var _ = Describe("Resolve", func() {
 	Context("with config override", func() {
 		It("returns the override value", func() {
-			result := project.Name("my-custom-project")
-			Expect(result).To(Equal("my-custom-project"))
+			result := project.Resolve("my-custom-project")
+			Expect(result).To(Equal(project.Name("my-custom-project")))
 		})
 	})
 
 	Context("without config override", func() {
 		It("returns a non-empty string", func() {
-			result := project.Name("")
+			result := project.Resolve("")
 			Expect(result).NotTo(BeEmpty())
 		})
 
 		It("returns a valid container name prefix", func() {
-			result := project.Name("")
+			result := project.Resolve("")
 			// Should not contain invalid Docker name characters
-			Expect(result).To(MatchRegexp(`^[a-zA-Z0-9._-]+$`))
+			Expect(result.String()).To(MatchRegexp(`^[a-zA-Z0-9._-]+$`))
 		})
 	})
 
 	Context("edge cases", func() {
 		It("handles empty override by auto-detecting", func() {
-			result := project.Name("")
+			result := project.Resolve("")
 			Expect(result).NotTo(BeEmpty())
-			Expect(result).NotTo(Equal(""))
+			Expect(result).NotTo(Equal(project.Name("")))
 		})
 	})
 })

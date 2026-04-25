@@ -22,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/server"
@@ -54,7 +55,7 @@ func NewRunner(
 	server server.Server,
 	reviewPoller review.ReviewPoller,
 	specWatcher specwatcher.SpecWatcher,
-	projectName string,
+	projectName project.Name,
 	containerChecker executor.ContainerChecker,
 	n notifier.Notifier,
 	slugMigrator slugmigrator.Migrator,
@@ -113,7 +114,7 @@ type runner struct {
 	server                server.Server
 	reviewPoller          review.ReviewPoller
 	specWatcher           specwatcher.SpecWatcher
-	projectName           string
+	projectName           project.Name
 	containerChecker      executor.ContainerChecker
 	notifier              notifier.Notifier
 	slugMigrator          slugmigrator.Migrator
@@ -234,7 +235,7 @@ func (r *runner) startupDeps() StartupDeps {
 		PromptManager:         r.promptManager,
 		ContainerChecker:      r.containerChecker,
 		Notifier:              r.notifier,
-		ProjectName:           r.projectName,
+		ProjectName:           r.projectName.String(),
 		SlugMigrator:          r.slugMigrator,
 		Mover:                 r.mover,
 		CurrentDateTimeGetter: r.currentDateTimeGetter,
@@ -251,7 +252,7 @@ func (r *runner) healthCheckLoop(ctx context.Context) error {
 		r.containerChecker,
 		r.promptManager,
 		r.notifier,
-		r.projectName,
+		r.projectName.String(),
 		r.currentDateTimeGetter,
 		r.maxPromptDuration,
 		r.containerStopper,

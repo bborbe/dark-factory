@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/version"
@@ -28,7 +29,7 @@ type WorkflowExecutor interface {
 	// For branch: creates or switches to the feature branch in-place.
 	// For direct: no-op.
 	// Returns a wrapped error on failure; partial setup is cleaned up before returning.
-	Setup(ctx context.Context, baseName BaseName, pf *prompt.PromptFile) error
+	Setup(ctx context.Context, baseName prompt.BaseName, pf *prompt.PromptFile) error
 
 	// CleanupOnError undoes any environment setup performed by Setup when
 	// execution or post-execution fails. Idempotent — safe to call if Setup was
@@ -57,7 +58,7 @@ type WorkflowExecutor interface {
 	// unexpected filesystem failures.
 	ReconstructState(
 		ctx context.Context,
-		baseName BaseName,
+		baseName prompt.BaseName,
 		pf *prompt.PromptFile,
 	) (canResume bool, err error)
 }
@@ -67,7 +68,7 @@ type WorkflowExecutor interface {
 // unused fields are nil and must not be dereferenced by implementations that do not
 // need them.
 type WorkflowDeps struct {
-	ProjectName   ProjectName
+	ProjectName   project.Name
 	PromptManager PromptManager
 	AutoCompleter spec.AutoCompleter
 	Releaser      git.Releaser

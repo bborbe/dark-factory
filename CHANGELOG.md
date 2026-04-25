@@ -2,9 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## v0.135.17
 
 - chore: enable revive `file-length-limit` rule (max 2000 total lines, including blank lines and comments) in `.golangci.yml` to prevent file-size regressions; matches the CLAUDE.md rule and `wc -l`-based survey
+- refactor: relocate BaseName/ContainerName from pkg/processor to pkg/prompt; consolidate ProjectName as pkg/project.Name; inject queuescanner.Scanner via NewProcessor constructor (eliminates SetScanner two-phase init); delete workflowExecutorResumerAdapter from factory (no longer needed once BaseName lives in pkg/prompt)
 
 ## v0.135.16
 

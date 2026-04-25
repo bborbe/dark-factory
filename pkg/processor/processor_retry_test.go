@@ -26,6 +26,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
@@ -623,7 +624,7 @@ var _ = Describe("Processor", func() {
 			manager.FindCommittingReturns(nil, nil)
 
 			we := processor.NewDirectWorkflowExecutor(processor.WorkflowDeps{
-				ProjectName:   processor.ProjectName("sweep-test"),
+				ProjectName:   project.Name("sweep-test"),
 				PromptManager: manager,
 				AutoCompleter: realAutoCompleter,
 				Releaser:      releaser,
@@ -637,7 +638,7 @@ var _ = Describe("Processor", func() {
 				manager,
 				notifier.NewMultiNotifier(),
 				sweepCompletedDir,
-				"sweep-test",
+				project.Name("sweep-test"),
 				0,
 			)
 			sweepResumer := promptresumer.NewResumer(
@@ -649,8 +650,15 @@ var _ = Describe("Processor", func() {
 				sweepQueueDir,
 				sweepCompletedDir,
 				filepath.Join(sweepTempDir, "log"),
-				"sweep-test",
+				project.Name("sweep-test"),
 				0,
+			)
+			sweepPPForwarder := &lazyProcessorForwarder{}
+			sweepScanner := queuescanner.NewScanner(
+				manager,
+				sweepPPForwarder,
+				sweepFH,
+				sweepQueueDir,
 			)
 			sweepProc := processor.NewProcessor(
 				executor,
@@ -669,7 +677,7 @@ var _ = Describe("Processor", func() {
 					Completed: sweepCompletedDir,
 					Log:       filepath.Join(sweepTempDir, "log"),
 				},
-				processor.ProjectName("sweep-test"),
+				project.Name("sweep-test"),
 				sweepFH,
 				sweepResumer,
 				processor.VerificationGate(false),
@@ -688,13 +696,12 @@ var _ = Describe("Processor", func() {
 					realAutoCompleter,
 					sweepCompletedDir,
 				),
+				sweepScanner,
 				0,
 				20*time.Millisecond, // sweepInterval 20ms for test speed
 				nil,                 // onIdle: no-op for tests
 			)
-			sweepProc.SetScanner(
-				queuescanner.NewScanner(manager, sweepProc, sweepFH, sweepQueueDir),
-			)
+			sweepPPForwarder.inner = sweepProc
 			p := sweepProc
 
 			sweepCtx, sweepCancel := context.WithCancel(context.Background())

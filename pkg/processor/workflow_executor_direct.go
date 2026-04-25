@@ -28,7 +28,7 @@ func NewDirectWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 // Setup syncs with remote before execution.
 func (e *directWorkflowExecutor) Setup(
 	ctx context.Context,
-	_ BaseName,
+	_ prompt.BaseName,
 	_ *prompt.PromptFile,
 ) error {
 	return syncWithRemoteViaDeps(ctx, e.deps)
@@ -105,7 +105,7 @@ func (e *directWorkflowExecutor) completeCommit(
 // ReconstructState always returns true for the direct workflow (no isolated directory).
 func (e *directWorkflowExecutor) ReconstructState(
 	_ context.Context,
-	_ BaseName,
+	_ prompt.BaseName,
 	_ *prompt.PromptFile,
 ) (bool, error) {
 	return true, nil

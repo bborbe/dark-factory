@@ -17,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -34,10 +35,12 @@ type PromptManager interface {
 }
 
 // WorkflowExecutor is the subset of processor.WorkflowExecutor used by Resumer.
-// Uses plain string for baseName to avoid importing pkg/processor and creating a cycle.
-// Go interface satisfaction is structural: wrap processor.WorkflowExecutor in an adapter at the factory boundary.
 type WorkflowExecutor interface {
-	ReconstructState(ctx context.Context, baseName string, pf *prompt.PromptFile) (bool, error)
+	ReconstructState(
+		ctx context.Context,
+		baseName prompt.BaseName,
+		pf *prompt.PromptFile,
+	) (bool, error)
 	Complete(
 		gitCtx context.Context,
 		ctx context.Context,
@@ -61,7 +64,7 @@ func NewResumer(
 	queueDir string,
 	completedDir string,
 	logDir string,
-	projectName string,
+	projectName project.Name,
 	maxPromptDuration time.Duration,
 ) Resumer {
 	return &resumer{
@@ -87,7 +90,7 @@ type resumer struct {
 	queueDir                  string
 	completedDir              string
 	logDir                    string
-	projectName               string
+	projectName               project.Name
 	maxPromptDuration         time.Duration
 }
 
@@ -181,7 +184,7 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 func (r *resumer) prepareResume(
 	ctx context.Context,
 	promptPath string,
-) (*prompt.PromptFile, string, string, string, string, error) {
+) (*prompt.PromptFile, string, prompt.BaseName, string, string, error) {
 	pf, err := r.promptManager.Load(ctx, promptPath)
 	if err != nil {
 		return nil, "", "", "", "", errors.Wrap(ctx, err, "load prompt for resume")
@@ -201,14 +204,14 @@ func (r *resumer) prepareResume(
 		return nil, "", "", "", "", nil
 	}
 
-	baseName := strings.TrimSuffix(filepath.Base(promptPath), ".md")
-	logFile, err := filepath.Abs(filepath.Join(r.logDir, baseName+".log"))
+	baseName := prompt.BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
+	logFile, err := filepath.Abs(filepath.Join(r.logDir, string(baseName)+".log"))
 	if err != nil {
 		return nil, "", "", "", "", errors.Wrap(ctx, err, "resolve log file path for resume")
 	}
 	title := pf.Title()
 	if title == "" {
-		title = baseName
+		title = baseName.String()
 	}
 	return pf, containerName, baseName, logFile, title, nil
 }

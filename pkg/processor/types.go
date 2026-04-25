@@ -4,12 +4,6 @@
 
 package processor
 
-// ProjectName is the name identifying a dark-factory project.
-type ProjectName string
-
-// String returns the underlying string value.
-func (p ProjectName) String() string { return string(p) }
-
 // MaxContainers is the maximum number of concurrently running containers allowed.
 type MaxContainers int
 

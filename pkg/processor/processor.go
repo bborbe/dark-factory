@@ -22,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
@@ -67,7 +68,6 @@ func (r tickResult) madeProgress() bool {
 }
 
 // NewProcessor creates a new Processor.
-// Call SetScanner before invoking Process — the processor panics if queueScanner is nil.
 func NewProcessor(
 	exec executor.Executor,
 	promptManager PromptManager,
@@ -81,13 +81,14 @@ func NewProcessor(
 	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
-	projectName ProjectName,
+	projectName project.Name,
 	failureHandler failurehandler.Handler,
 	resumer promptresumer.Resumer,
 	verificationGate VerificationGate,
 	completionReportValidator completionreport.Validator,
 	promptEnricher promptenricher.Enricher,
 	committingRecoverer committingrecoverer.Recoverer,
+	queueScanner queuescanner.Scanner,
 	// queueInterval controls how often the daemon polls for queued prompts.
 	// Pass 0 to use the default of 5s.
 	queueInterval time.Duration,
@@ -131,13 +132,8 @@ func NewProcessor(
 		completionReportValidator: completionReportValidator,
 		promptEnricher:            promptEnricher,
 		committingRecoverer:       committingRecoverer,
+		queueScanner:              queueScanner,
 	}
-}
-
-// SetScanner injects the QueueScanner after construction (breaks the runtime cycle
-// proc → scanner → proc.ProcessPrompt).
-func (p *processor) SetScanner(s queuescanner.Scanner) {
-	p.queueScanner = s
 }
 
 // processor implements Processor.
@@ -155,7 +151,7 @@ type processor struct {
 	cancellationWatcher       cancellationwatcher.Watcher
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
-	projectName               ProjectName
+	projectName               project.Name
 	resumer                   promptresumer.Resumer
 	verificationGate          VerificationGate
 	queueInterval             time.Duration
@@ -171,10 +167,6 @@ type processor struct {
 // It processes existing queued prompts on startup, then listens for signals from the watcher.
 // When a tick ends with no progress, onIdle is called. Daemon mode logs; one-shot mode cancels.
 func (p *processor) Process(ctx context.Context) error {
-	if p.queueScanner == nil {
-		panic("processor: queueScanner is nil — call SetScanner before Process")
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -368,7 +360,7 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 func (p *processor) runContainer(
 	ctx context.Context,
 	content, logFile string,
-	containerName ContainerName,
+	containerName prompt.ContainerName,
 	promptPath string,
 ) (cancelled bool, err error) {
 	execCtx, execCancel := context.WithCancel(ctx)
@@ -465,8 +457,11 @@ func (p *processor) handleEmptyPrompt(
 
 // computePromptMetadata derives the baseName and containerName from the prompt path and project name.
 // It does NOT save to disk — call pf.PrepareForExecution + pf.Save separately after sync succeeds.
-func computePromptMetadata(promptPath string, projectName ProjectName) (BaseName, ContainerName) {
-	base := BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
-	name := ContainerName(string(projectName) + "-" + string(base)).Sanitize()
+func computePromptMetadata(
+	promptPath string,
+	projectName project.Name,
+) (prompt.BaseName, prompt.ContainerName) {
+	base := prompt.BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
+	name := prompt.ContainerName(string(projectName) + "-" + string(base)).Sanitize()
 	return base, name
 }

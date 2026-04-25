@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [057-lifecycle-state-machine]
 summary: Added SpecStatuses/AvailableSpecStatuses/String/Validate/CanTransitionTo/IsTerminal/IsPreExecution/IsActive to spec.Status and CanTransitionTo/IsTerminal/IsPreExecution/IsActive to prompt.PromptStatus, with Ginkgo tests in both packages; Load() stays permissive; make precommit exited 0.
 container: dark-factory-328-spec-057-lifecycle-model
@@ -7,6 +7,7 @@ dark-factory-version: v0.132.0
 created: "2026-04-25T09:27:35Z"
 queued: "2026-04-25T09:35:25Z"
 started: "2026-04-25T09:58:56Z"
+completed: "2026-04-25T10:08:46Z"
 ---
 
 <summary>

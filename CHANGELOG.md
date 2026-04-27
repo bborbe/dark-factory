@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.136.0
+
+- audit: prompt-auditor now checks `go-time-injection.md` and flags test-only package-level mutable state anti-pattern (`var X = default` + `SetX()` setter pair)
+- fix: spec-derived prompts now generated with `status: draft` instead of invalid `status: created` (matches prompt-writing guide inbox-status rule)
+
 ## v0.135.19
 
 - refactor: drop noise typed primitives MaxContainers/VerificationGate/DirtyFileThreshold/AutoRetryLimit (no methods, immediately unwrapped); split filename-normalization logic out of prompt.go into pkg/prompt/normalize.go; inject currentDateTimeGetter once at CreateRunner/CreateOneShotRunner entry instead of 21 separate libtime.NewCurrentDateTime() instantiations

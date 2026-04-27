@@ -42,7 +42,7 @@ Each file must start with this exact frontmatter:
 ```
 ---
 spec: ["NNN"]
-status: created
+status: draft
 created: "<current UTC timestamp in ISO8601 format>"
 ---
 ```

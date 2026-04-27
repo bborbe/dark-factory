@@ -176,9 +176,12 @@ Exception: if the target repo commits `vendor/` and the prompt declares that dev
   - `go-factory-pattern.md`: zero business logic in factories
   - `go-error-wrapping.md`: use `errors.Wrapf(ctx, err, ...)` not `fmt.Errorf`
   - `go-testing.md`: external test packages, Ginkgo/Gomega patterns
+  - `go-time-injection.md`: never create dependencies inside factory/service — always receive as constructor parameter
 - Only check guides relevant to the code in the prompt (e.g., skip `go-concurrency-patterns.md` if no goroutines)
 - Flag violations as **Critical Issues** if the prompt instructs the agent to write code that violates a guideline
 - Flag as **Recommendation** if the prompt doesn't specify and the agent might choose a non-compliant pattern
+
+**Test-only package-level mutable state:** flag any `var X = default` + `SetX()` test-helper pair (often paired with a `sync.Mutex` for `-race`). Production deps belong in the constructor, not package scope. See `go-composition.md` "Anti-Pattern: Test-Only Package-Level Mutable State". Critical if introduced by this prompt; Recommendation if extending existing usage.
 
 **Filename-content alignment:**
 - Filename should describe the primary change, not a secondary or defensive addition
@@ -272,6 +275,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 | Guideline | File | Status |
 |-----------|------|--------|
 | e.g. Handler returns WithError | `go-http-handler.md` | Compliant / Violation |
+| Test-only package-level mutable state (no `var X` + `SetX` setter pair where constructor injection would work) | `go-time-injection.md` | Compliant / Violation |
 
 ## Critical Issues
 [MUST fix before approving — includes guideline violations]

@@ -72,6 +72,12 @@ Branch workflow:     commit → push branch → (last prompt?) → merge to defa
 PR workflow:         commit → push branch → create/update PR → (autoMerge?) → merge
 ```
 
+## Preflight Failure Policy
+
+Dark-factory is the **sole writer** of the working tree while it runs. It cannot repair its own preflight failure (formatter errors, missing mocks, build breaks, dep bumps all need a human or external tool). A parallel fix while the daemon loops is unsafe: the daemon may catch the tree in a transient-green state mid-edit and start executing prompts against files the human is still changing — a clobbering race.
+
+**Rule:** preflight failure is terminal. Daemon and one-shot `run` exit non-zero with a clear cause. No retry, no skip-and-continue. Human fixes the tree, then explicitly restarts dark-factory. This preserves the sole-writer invariant.
+
 ## Prompt Assembly
 
 Dark-factory assembles the final prompt the agent receives by appending sections to the original prompt body. This happens on the host **before** the container starts.

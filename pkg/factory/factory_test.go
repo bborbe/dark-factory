@@ -7,9 +7,13 @@ package factory_test
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,6 +25,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
@@ -311,6 +316,87 @@ var _ = Describe("Factory", func() {
 
 			output := logBuf.String()
 			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
+		})
+	})
+
+	Describe("preflight failure terminates runners", func() {
+		var (
+			tempDir string
+			origDir string
+		)
+
+		BeforeEach(func() {
+			var err error
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			tempDir, err = os.MkdirTemp("", "factory-preflight-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, dir := range []string{
+				"prompts/inbox", "prompts/in-progress", "prompts/completed",
+				"prompts/log", "prompts/rejected",
+				"specs/inbox", "specs/in-progress", "specs/completed",
+				"specs/log", "specs/rejected",
+			} {
+				Expect(os.MkdirAll(filepath.Join(tempDir, dir), 0750)).To(Succeed())
+			}
+
+			// A single queued prompt so the preflight check runs.
+			Expect(os.WriteFile(
+				filepath.Join(tempDir, "prompts/in-progress/001-preflight-test.md"),
+				[]byte("---\nstatus: approved\n---\n# Test\n\nTest content\n"),
+				0600,
+			)).To(Succeed())
+
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			_ = os.Chdir(origDir)
+			if tempDir != "" {
+				_ = os.RemoveAll(tempDir)
+			}
+		})
+
+		buildPreflightConfig := func() config.Config {
+			c := config.Defaults()
+			c.PreflightCommand = "false"
+			c.HideGit = true
+			c.Prompts = config.PromptsConfig{
+				InboxDir:      filepath.Join(tempDir, "prompts/inbox"),
+				InProgressDir: filepath.Join(tempDir, "prompts/in-progress"),
+				CompletedDir:  filepath.Join(tempDir, "prompts/completed"),
+				LogDir:        filepath.Join(tempDir, "prompts/log"),
+				RejectedDir:   filepath.Join(tempDir, "prompts/rejected"),
+			}
+			c.Specs = config.SpecsConfig{
+				InboxDir:      filepath.Join(tempDir, "specs/inbox"),
+				InProgressDir: filepath.Join(tempDir, "specs/in-progress"),
+				CompletedDir:  filepath.Join(tempDir, "specs/completed"),
+				LogDir:        filepath.Join(tempDir, "specs/log"),
+				RejectedDir:   filepath.Join(tempDir, "specs/rejected"),
+			}
+			return c
+		}
+
+		It("CreateRunner.Run returns ErrPreflightFailed", func() {
+			c := buildPreflightConfig()
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			err := factory.CreateRunner(ctx, c, "v0.0.1", libtime.NewCurrentDateTime()).Run(ctx)
+			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
+		})
+
+		It("CreateOneShotRunner.Run returns ErrPreflightFailed", func() {
+			c := buildPreflightConfig()
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			err := factory.CreateOneShotRunner(
+				ctx, c, "v0.0.1", false, libtime.NewCurrentDateTime(),
+			).Run(ctx)
+			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
 	})
 })

@@ -149,9 +149,9 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 	slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
 
 	if err := s.promptProcessor.ProcessPrompt(ctx, pr); err != nil {
-		if stderrors.Is(err, preflightconditions.ErrPreflightSkip) {
-			// Baseline is broken — exit scan loop and wait for next 5s tick.
-			return true, nil
+		if stderrors.Is(err, preflightconditions.ErrPreflightFailed) {
+			// Baseline is broken — propagate so the runner terminates dark-factory.
+			return false, err
 		}
 		if stopErr := s.failureHandler.Handle(ctx, pr.Path, err); stopErr != nil {
 			return true, stopErr

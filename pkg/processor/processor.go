@@ -32,9 +32,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
-// ErrPreflightSkip re-exports preflightconditions.ErrPreflightSkip so existing
-// stderrors.Is(err, processor.ErrPreflightSkip) callers continue to match without rewriting.
-var ErrPreflightSkip = preflightconditions.ErrPreflightSkip
+// ErrPreflightFailed re-exports preflightconditions.ErrPreflightFailed so callers
+// can use stderrors.Is(err, processor.ErrPreflightFailed) without importing preflightconditions.
+var ErrPreflightFailed = preflightconditions.ErrPreflightFailed
 
 //counterfeiter:generate -o ../../mocks/processor.go --fake-name Processor . Processor
 
@@ -178,6 +178,9 @@ func (p *processor) Process(ctx context.Context) error {
 	}
 
 	if _, err := p.queueScanner.ScanAndProcess(ctx); err != nil {
+		if stderrors.Is(err, ErrPreflightFailed) {
+			return err
+		}
 		slog.Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
 		// do NOT return — daemon continues running
 	}
@@ -204,13 +207,13 @@ func (p *processor) Process(ctx context.Context) error {
 			return nil
 
 		case <-p.wakeup:
-			if !p.runReadyTick(ctx) {
-				p.onIdle(ctx, cancel)
+			if err := p.runReadyTick(ctx, cancel); err != nil {
+				return err
 			}
 
 		case <-ticker.C:
-			if !p.runQueueTick(ctx) {
-				p.onIdle(ctx, cancel)
+			if err := p.runQueueTick(ctx, cancel); err != nil {
+				return err
 			}
 
 		case <-sweepTicker.C:
@@ -221,26 +224,40 @@ func (p *processor) Process(ctx context.Context) error {
 	}
 }
 
-// runReadyTick handles a watcher-ready event. Returns true if the tick made progress.
-func (p *processor) runReadyTick(ctx context.Context) bool {
+// runReadyTick handles a watcher-ready event.
+// Returns ErrPreflightFailed if the baseline is broken; fires onIdle if no progress; otherwise nil.
+func (p *processor) runReadyTick(ctx context.Context, cancel context.CancelFunc) error {
 	// Clear skipped prompts so all files get re-evaluated after fsnotify event.
 	p.queueScanner.ClearSkippedCache()
 	p.committingRecoverer.RecoverAll(ctx)
 	completed, err := p.queueScanner.ScanAndProcess(ctx)
 	if err != nil {
+		if stderrors.Is(err, ErrPreflightFailed) {
+			return err
+		}
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
-	return (tickResult{completedPrompts: completed}).madeProgress()
+	if !(tickResult{completedPrompts: completed}).madeProgress() {
+		p.onIdle(ctx, cancel)
+	}
+	return nil
 }
 
-// runQueueTick handles a periodic queue poll. Returns true if the tick made progress.
-func (p *processor) runQueueTick(ctx context.Context) bool {
+// runQueueTick handles a periodic queue poll.
+// Returns ErrPreflightFailed if the baseline is broken; fires onIdle if no progress; otherwise nil.
+func (p *processor) runQueueTick(ctx context.Context, cancel context.CancelFunc) error {
 	p.committingRecoverer.RecoverAll(ctx)
 	completed, err := p.queueScanner.ScanAndProcess(ctx)
 	if err != nil {
+		if stderrors.Is(err, ErrPreflightFailed) {
+			return err
+		}
 		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
-	return (tickResult{completedPrompts: completed}).madeProgress()
+	if !(tickResult{completedPrompts: completed}).madeProgress() {
+		p.onIdle(ctx, cancel)
+	}
+	return nil
 }
 
 // runSweepTick handles a periodic spec sweep. Returns true if the tick made progress.
@@ -267,7 +284,7 @@ func (p *processor) ResumeCommitting(ctx context.Context) error {
 // ProcessPrompt executes a single prompt and commits the result.
 func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 	if skip, err := p.preflightConditions.ShouldSkip(ctx); err != nil {
-		if stderrors.Is(err, ErrPreflightSkip) {
+		if stderrors.Is(err, ErrPreflightFailed) {
 			return err // propagate sentinel unwrapped so caller can recognize it
 		}
 		return errors.Wrap(ctx, err, "check preflight conditions")

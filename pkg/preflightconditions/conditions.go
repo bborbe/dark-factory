@@ -17,15 +17,18 @@ import (
 //counterfeiter:generate -o ../../mocks/preflight-conditions.go --fake-name Conditions . Conditions
 
 // Conditions runs all pre-execution skip checks in order: baseline preflight, git index lock,
-// dirty-file threshold. Returns ErrPreflightSkip for the baseline-broken case.
+// dirty-file threshold. Returns ErrPreflightFailed for the baseline-broken case, which causes
+// the caller to terminate dark-factory rather than skip a cycle.
 type Conditions interface {
+	// ShouldSkip runs all pre-execution skip checks.
+	// Returns (true, nil) for transient conditions (git lock, dirty files) — caller skips this cycle.
+	// Returns (false, ErrPreflightFailed) when the preflight baseline is broken — caller must terminate.
 	ShouldSkip(ctx context.Context) (skip bool, err error)
 }
 
-// ErrPreflightSkip is the canonical sentinel for the preflight-baseline-broken case.
-// pkg/processor re-exports this value so existing stderrors.Is(err, processor.ErrPreflightSkip)
-// call sites continue to match without rewriting.
-var ErrPreflightSkip = stderrors.New("preflight baseline broken — skip cycle")
+// ErrPreflightFailed is the canonical sentinel for the preflight-baseline-broken case.
+// When returned by ShouldSkip, the caller must terminate dark-factory — it does not skip a cycle.
+var ErrPreflightFailed = stderrors.New("preflight baseline broken — dark-factory exiting")
 
 // GitLockChecker checks whether .git/index.lock exists in the working tree.
 type GitLockChecker interface {
@@ -62,17 +65,17 @@ type conditions struct {
 
 // ShouldSkip runs all pre-execution skip checks in order.
 // Returns (true, nil) if the prompt should be skipped this cycle (transient conditions).
-// Returns (false, ErrPreflightSkip) if the preflight baseline is broken.
+// Returns (false, ErrPreflightFailed) if the preflight baseline is broken — caller must terminate.
 func (c *conditions) ShouldSkip(ctx context.Context) (bool, error) {
 	if c.preflightChecker != nil {
 		ok, err := c.preflightChecker.Check(ctx)
 		if err != nil {
-			slog.Warn("preflight checker error, skipping cycle", "error", err)
-			return false, ErrPreflightSkip
+			slog.Warn("preflight checker error", "error", err)
+			return false, ErrPreflightFailed
 		}
 		if !ok {
-			slog.Info("preflight: baseline broken — prompt stays queued until baseline is fixed")
-			return false, ErrPreflightSkip
+			slog.Info("preflight: baseline broken — dark-factory will exit")
+			return false, ErrPreflightFailed
 		}
 	}
 

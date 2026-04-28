@@ -77,21 +77,21 @@ var _ = Describe("Conditions", func() {
 			Expect(preflightChecker.callCount).To(Equal(1))
 		})
 
-		It("returns (false, ErrPreflightSkip) when preflight returns false", func() {
+		It("returns (false, ErrPreflightFailed) when preflight returns false", func() {
 			preflightChecker.ok = false
 			c := preflightconditions.NewConditions(preflightChecker, nil, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).To(HaveOccurred())
-			Expect(stderrors.Is(err, preflightconditions.ErrPreflightSkip)).To(BeTrue())
+			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 			Expect(skip).To(BeFalse())
 		})
 
-		It("returns (false, ErrPreflightSkip) when preflight returns an error", func() {
+		It("returns (false, ErrPreflightFailed) when preflight returns an error", func() {
 			preflightChecker.err = stderrors.New("internal error")
 			c := preflightconditions.NewConditions(preflightChecker, nil, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).To(HaveOccurred())
-			Expect(stderrors.Is(err, preflightconditions.ErrPreflightSkip)).To(BeTrue())
+			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 			Expect(skip).To(BeFalse())
 		})
 	})
@@ -180,7 +180,7 @@ var _ = Describe("Conditions", func() {
 	})
 
 	Context("check ordering", func() {
-		It("returns ErrPreflightSkip before checking git lock when preflight fails", func() {
+		It("returns ErrPreflightFailed before checking git lock when preflight fails", func() {
 			preflightChecker.ok = false
 			gitLockChecker.exists = true
 			c := preflightconditions.NewConditions(
@@ -190,7 +190,7 @@ var _ = Describe("Conditions", func() {
 				10,
 			)
 			_, err := c.ShouldSkip(ctx)
-			Expect(stderrors.Is(err, preflightconditions.ErrPreflightSkip)).To(BeTrue())
+			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 			Expect(dirtyChecker.callCount).To(Equal(0))
 		})
 

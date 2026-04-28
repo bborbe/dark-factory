@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.137.0
+
+- feat: preflight baseline failure is now terminal — dark-factory exits non-zero instead of waiting for the next tick; rename `ErrPreflightSkip` → `ErrPreflightFailed`; propagate error through scanner, processor tick methods, and runner; log clear exit message at `slog.Error` level
+
 ## v0.136.0
 
 - audit: prompt-auditor now checks `go-time-injection.md` and flags test-only package-level mutable state anti-pattern (`var X = default` + `SetX()` setter pair)

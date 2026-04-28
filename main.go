@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -22,6 +23,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
+	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -185,8 +187,14 @@ func runRunCommand(
 	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
 		return err
 	}
-	return factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, currentDateTimeGetter).
+	runErr := factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, currentDateTimeGetter).
 		Run(ctx)
+	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
+		slog.Error(
+			"preflight baseline broken — dark-factory exiting. Fix the tree (e.g. run the failing command manually), then restart dark-factory.",
+		)
+	}
+	return runErr
 }
 
 func runDaemonCommand(
@@ -205,7 +213,13 @@ func runDaemonCommand(
 	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
 		return err
 	}
-	return factory.CreateRunner(ctx, cfg, version.Version, currentDateTimeGetter).Run(ctx)
+	runErr := factory.CreateRunner(ctx, cfg, version.Version, currentDateTimeGetter).Run(ctx)
+	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
+		slog.Error(
+			"preflight baseline broken — dark-factory exiting. Fix the tree (e.g. run the failing command manually), then restart dark-factory.",
+		)
+	}
+	return runErr
 }
 
 func runPromptCommand(

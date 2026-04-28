@@ -279,18 +279,19 @@ var _ = Describe("Scanner", func() {
 			})
 		})
 
-		Context("preflight skip propagates and stops scan", func() {
+		Context("preflight failure propagates as error and stops scan", func() {
 			BeforeEach(func() {
 				writeFile("001-preflight.md", "---\nstatus: approved\n---\n# Preflight\ncontent\n")
 				pr := makeApprovedPrompt("001-preflight.md")
 				mgr.ListQueuedReturns([]prompt.Prompt{pr}, nil)
 				mgr.AllPreviousCompletedReturns(true)
-				pp.ProcessPromptReturns(preflightconditions.ErrPreflightSkip)
+				pp.ProcessPromptReturns(preflightconditions.ErrPreflightFailed)
 			})
 
-			It("stops scan loop without error, does not call failureHandler", func() {
+			It("returns ErrPreflightFailed without calling failureHandler", func() {
 				completed, err := s.ScanAndProcess(ctx)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(HaveOccurred())
+				Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 				Expect(completed).To(Equal(0))
 				Expect(pp.ProcessPromptCallCount()).To(Equal(1))
 				Expect(failureHandler.HandleCallCount()).To(Equal(0))

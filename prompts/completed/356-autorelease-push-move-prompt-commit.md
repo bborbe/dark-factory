@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added PushBranch to Releaser interface, implemented push at workflow boundary in direct executor and recovery path, threaded autoRelease into NewRecoverer, regenerated mocks, and added 4-row matrix tests for both direct executor and recoverer
 container: dark-factory-356-autorelease-push-move-prompt-commit
 dark-factory-version: v0.137.0-1-g310a15c6
 created: "2026-04-30T19:39:12Z"
 queued: "2026-04-30T19:42:47Z"
 started: "2026-04-30T19:42:49Z"
+completed: "2026-04-30T19:59:37Z"
 ---
 
 # autoRelease: push every commit, not just the release

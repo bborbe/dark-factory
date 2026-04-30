@@ -289,6 +289,7 @@ func CreateRunner(
 	ctx context.Context,
 	cfg config.Config,
 	ver string,
+	skipPreflight bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.Runner {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -350,9 +351,9 @@ func CreateRunner(
 		gitLockChecker = processor.NewGitLockChecker(".")
 	}
 
-	// Create preflight checker from config. nil when preflightCommand is empty (disabled).
+	// Create preflight checker from config. nil when preflightCommand is empty (disabled) or skipped.
 	var preflightChecker preflight.Checker
-	if cfg.PreflightCommand != "" {
+	if cfg.PreflightCommand != "" && !skipPreflight {
 		projectRoot, rootErr := os.Getwd()
 		if rootErr != nil {
 			slog.Warn(
@@ -430,6 +431,7 @@ func CreateOneShotRunner(
 	cfg config.Config,
 	ver string,
 	autoApprove bool,
+	skipPreflight bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.OneShotRunner {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -456,9 +458,9 @@ func CreateOneShotRunner(
 		osGitLockChecker = processor.NewGitLockChecker(".")
 	}
 
-	// Create preflight checker from config. nil when preflightCommand is empty (disabled).
+	// Create preflight checker from config. nil when preflightCommand is empty (disabled) or skipped.
 	var osPreflightChecker preflight.Checker
-	if cfg.PreflightCommand != "" {
+	if cfg.PreflightCommand != "" && !skipPreflight {
 		projectRoot, rootErr := os.Getwd()
 		if rootErr != nil {
 			slog.Warn(

@@ -9,16 +9,17 @@ import (
 )
 
 type parseArgsResult struct {
-	debug       bool
-	command     string
-	subcommand  string
-	args        []string
-	autoApprove bool
+	debug         bool
+	command       string
+	subcommand    string
+	args          []string
+	autoApprove   bool
+	skipPreflight bool
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove := ParseArgs(input)
+	debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(input)
 	if debug != want.debug {
 		t.Errorf("debug: got %v, want %v", debug, want.debug)
 	}
@@ -39,6 +40,9 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if autoApprove != want.autoApprove {
 		t.Errorf("autoApprove: got %v, want %v", autoApprove, want.autoApprove)
+	}
+	if skipPreflight != want.skipPreflight {
+		t.Errorf("skipPreflight: got %v, want %v", skipPreflight, want.skipPreflight)
 	}
 }
 
@@ -210,5 +214,46 @@ func TestParseArgsAutoApprove(t *testing.T) {
 		t,
 		[]string{"-debug", "run", "--auto-approve"},
 		parseArgsResult{debug: true, command: "run", args: []string{}, autoApprove: true},
+	)
+}
+
+func TestParseArgsSkipPreflight(t *testing.T) {
+	t.Parallel()
+	// flag after command
+	assertParseArgs(t,
+		[]string{"run", "--skip-preflight"},
+		parseArgsResult{command: "run", args: []string{}, skipPreflight: true},
+	)
+	// flag before command (position-agnostic)
+	assertParseArgs(t,
+		[]string{"--skip-preflight", "run"},
+		parseArgsResult{command: "run", args: []string{}, skipPreflight: true},
+	)
+	// flag for daemon
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-preflight"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPreflight: true},
+	)
+	// without flag, skipPreflight defaults to false
+	assertParseArgs(t,
+		[]string{"run"},
+		parseArgsResult{command: "run", args: []string{}, skipPreflight: false},
+	)
+	// combined with other flags
+	assertParseArgs(
+		t,
+		[]string{"-debug", "run", "--auto-approve", "--skip-preflight"},
+		parseArgsResult{
+			debug:         true,
+			command:       "run",
+			args:          []string{},
+			autoApprove:   true,
+			skipPreflight: true,
+		},
+	)
+	// idempotent: flag passed twice
+	assertParseArgs(t,
+		[]string{"run", "--skip-preflight", "--skip-preflight"},
+		parseArgsResult{command: "run", args: []string{}, skipPreflight: true},
 	)
 }

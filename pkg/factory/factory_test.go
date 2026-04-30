@@ -43,6 +43,7 @@ var _ = Describe("Factory", func() {
 				context.Background(),
 				cfg,
 				"v0.0.1",
+				false,
 				libtime.NewCurrentDateTime(),
 			)
 			Expect(runner).NotTo(BeNil())
@@ -385,7 +386,8 @@ var _ = Describe("Factory", func() {
 			c := buildPreflightConfig()
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err := factory.CreateRunner(ctx, c, "v0.0.1", libtime.NewCurrentDateTime()).Run(ctx)
+			err := factory.CreateRunner(ctx, c, "v0.0.1", false, libtime.NewCurrentDateTime()).
+				Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
 
@@ -394,9 +396,22 @@ var _ = Describe("Factory", func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			err := factory.CreateOneShotRunner(
-				ctx, c, "v0.0.1", false, libtime.NewCurrentDateTime(),
+				ctx, c, "v0.0.1", false, false, libtime.NewCurrentDateTime(),
 			).Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
+
+		It(
+			"CreateOneShotRunner.Run returns nil when skip-preflight bypasses failing preflight",
+			func() {
+				c := buildPreflightConfig()
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				// skipPreflight=true — preflight checker not created, queue is empty → exits with nil
+				err := factory.CreateOneShotRunner(ctx, c, "v0.0.1", false, true, libtime.NewCurrentDateTime()).
+					Run(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
 	})
 })

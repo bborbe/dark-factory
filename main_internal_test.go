@@ -7,8 +7,11 @@ package main
 import (
 	"context"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/bborbe/dark-factory/pkg/config"
 )
 
 var _ = Describe("extractMaxContainers", func() {
@@ -65,15 +68,16 @@ var _ = Describe("extractMaxContainers", func() {
 
 var _ = Describe("ParseArgs", func() {
 	type result struct {
-		debug       bool
-		command     string
-		subcommand  string
-		args        []string
-		autoApprove bool
+		debug         bool
+		command       string
+		subcommand    string
+		args          []string
+		autoApprove   bool
+		skipPreflight bool
 	}
 	parse := func(rawArgs []string) result {
-		debug, command, subcommand, args, autoApprove := ParseArgs(rawArgs)
-		return result{debug, command, subcommand, args, autoApprove}
+		debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(rawArgs)
+		return result{debug, command, subcommand, args, autoApprove, skipPreflight}
 	}
 
 	It("returns run command with --help in args (validation at dispatch)", func() {
@@ -159,4 +163,23 @@ var _ = Describe("validateOneArg", func() {
 	It("returns error for unknown flag", func() {
 		Expect(validateOneArg(ctx, []string{"--foo"}, noop)).To(HaveOccurred())
 	})
+})
+
+var _ = Describe("runCommand --skip-preflight rejection", func() {
+	ctx := context.Background()
+	dt := libtime.NewCurrentDateTime()
+
+	DescribeTable("rejects --skip-preflight on unsupported commands",
+		func(command string) {
+			err := runCommand(ctx, config.Config{}, command, "", []string{}, false, true, dt)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unknown flag: --skip-preflight"))
+		},
+		Entry("status", "status"),
+		Entry("list", "list"),
+		Entry("prompt", "prompt"),
+		Entry("spec", "spec"),
+		Entry("scenario", "scenario"),
+		Entry("config", "config"),
+	)
 })

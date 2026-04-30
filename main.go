@@ -37,7 +37,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	debug, command, subcommand, args, autoApprove := ParseArgs(os.Args[1:])
+	debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(os.Args[1:])
 
 	switch command {
 	case "help":
@@ -84,7 +84,16 @@ func run(ctx context.Context) error {
 	}
 
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
-	return runCommand(ctx, cfg, command, subcommand, args, autoApprove, currentDateTimeGetter)
+	return runCommand(
+		ctx,
+		cfg,
+		command,
+		subcommand,
+		args,
+		autoApprove,
+		skipPreflight,
+		currentDateTimeGetter,
+	)
 }
 
 func printCommandHelp(command string) {
@@ -116,8 +125,17 @@ func runCommand(
 	command, subcommand string,
 	args []string,
 	autoApprove bool,
+	skipPreflight bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
+	if skipPreflight {
+		switch command {
+		case "run", "daemon":
+			// valid
+		default:
+			return errors.Errorf(ctx, "unknown flag: --skip-preflight")
+		}
+	}
 	switch command {
 	case "prompt":
 		return runPromptCommand(ctx, cfg, subcommand, args, currentDateTimeGetter)
@@ -143,9 +161,9 @@ func runCommand(
 		}
 		return factory.CreateKillCommand(cfg).Run(ctx, args)
 	case "run":
-		return runRunCommand(ctx, cfg, args, autoApprove, currentDateTimeGetter)
+		return runRunCommand(ctx, cfg, args, autoApprove, skipPreflight, currentDateTimeGetter)
 	case "daemon":
-		return runDaemonCommand(ctx, cfg, args, currentDateTimeGetter)
+		return runDaemonCommand(ctx, cfg, args, skipPreflight, currentDateTimeGetter)
 	default:
 		return errors.Errorf(ctx, "unknown command: %s", command)
 	}
@@ -175,6 +193,7 @@ func runRunCommand(
 	cfg config.Config,
 	args []string,
 	autoApprove bool,
+	skipPreflight bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
@@ -187,7 +206,10 @@ func runRunCommand(
 	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
 		return err
 	}
-	runErr := factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, currentDateTimeGetter).
+	if skipPreflight {
+		slog.Info("preflight: baseline check disabled for this invocation (--skip-preflight flag)")
+	}
+	runErr := factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, skipPreflight, currentDateTimeGetter).
 		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
 		slog.Error(
@@ -201,6 +223,7 @@ func runDaemonCommand(
 	ctx context.Context,
 	cfg config.Config,
 	args []string,
+	skipPreflight bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
@@ -213,7 +236,11 @@ func runDaemonCommand(
 	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
 		return err
 	}
-	runErr := factory.CreateRunner(ctx, cfg, version.Version, currentDateTimeGetter).Run(ctx)
+	if skipPreflight {
+		slog.Info("preflight: baseline check disabled for this invocation (--skip-preflight flag)")
+	}
+	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, currentDateTimeGetter).
+		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
 		slog.Error(
 			"preflight baseline broken — dark-factory exiting. Fix the tree (e.g. run the failing command manually), then restart dark-factory.",
@@ -514,8 +541,8 @@ func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
-			"  run [--max-containers N]    Process all queued prompts and exit\n"+
-			"  daemon [--max-containers N] Watch for queued prompts and execute them (long-running)\n"+
+			"  run [--max-containers N] [--skip-preflight]    Process all queued prompts and exit\n"+
+			"  daemon [--max-containers N] [--skip-preflight] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
@@ -548,11 +575,13 @@ func printHelp() {
 func printRunHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory run [--max-containers N] [--auto-approve]\n\n"+
+		"Usage: dark-factory run [--max-containers N] [--auto-approve] [--skip-preflight]\n\n"+
 			"Process all queued prompts and exit.\n\n"+
 			"Flags:\n"+
 			"  --max-containers N  Override the container limit for this run\n"+
 			"  --auto-approve      Automatically approve new prompts found during run\n"+
+			"  --skip-preflight    Skip preflight baseline check for this invocation.\n"+
+			"                      Prompts may run on a broken baseline — use with caution.\n"+
 			"  --help, -h          Show this help\n",
 	)
 }
@@ -560,10 +589,12 @@ func printRunHelp() {
 func printDaemonHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory daemon [--max-containers N]\n\n"+
+		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight]\n\n"+
 			"Watch for queued prompts and execute them (long-running).\n\n"+
 			"Flags:\n"+
 			"  --max-containers N  Override the container limit for this run\n"+
+			"  --skip-preflight    Skip preflight baseline check for this invocation.\n"+
+			"                      Prompts may run on a broken baseline — use with caution.\n"+
 			"  --help, -h          Show this help\n",
 	)
 }
@@ -650,17 +681,19 @@ func printScenarioHelp() {
 }
 
 // ParseArgs parses command line arguments (without program name) and returns
-// (debug, command, subcommand, args, autoApprove).
+// (debug, command, subcommand, args, autoApprove, skipPreflight).
 // The -debug flag can appear anywhere and is extracted before parsing.
 // The --auto-approve flag is extracted for the "run" command.
+// The --skip-preflight flag is extracted for the "run" and "daemon" commands.
 // No args → command="help" (prints usage, exits 0)
 // Bare "help" word → command="help" (same as --help)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
-func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
+func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool) {
 	debug := false
 	autoApprove := false
+	skipPreflight := false
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
 		switch arg {
@@ -668,13 +701,15 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 			debug = true
 		case "--auto-approve":
 			autoApprove = true
+		case "--skip-preflight":
+			skipPreflight = true
 		default:
 			filtered = append(filtered, arg)
 		}
 	}
 
 	if len(filtered) == 0 {
-		return debug, "help", "", []string{}, autoApprove
+		return debug, "help", "", []string{}, autoApprove, skipPreflight
 	}
 
 	command := filtered[0]
@@ -682,17 +717,17 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool) {
 
 	switch command {
 	case "help", "--help", "-help", "-h":
-		return debug, "help", "", []string{}, autoApprove
+		return debug, "help", "", []string{}, autoApprove, skipPreflight
 	case "--version", "-version", "-v":
-		return debug, "version", "", []string{}, autoApprove
+		return debug, "version", "", []string{}, autoApprove, skipPreflight
 	case "run", "daemon", "kill", "status", "list", "config":
-		return debug, command, "", rest, autoApprove
+		return debug, command, "", rest, autoApprove, skipPreflight
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {
-			return debug, command, "", []string{}, autoApprove
+			return debug, command, "", []string{}, autoApprove, skipPreflight
 		}
-		return debug, command, rest[0], rest[1:], autoApprove
+		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight
 	}
 
-	return debug, "unknown", "", filtered, autoApprove
+	return debug, "unknown", "", filtered, autoApprove, skipPreflight
 }

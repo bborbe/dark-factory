@@ -62,10 +62,10 @@ vulncheck:
 osv-scanner:
 	@if [ -f .osv-scanner.toml ]; then \
 		echo "Using .osv-scanner.toml"; \
-		go run -mod=mod github.com/google/osv-scanner/v2/cmd/osv-scanner --config .osv-scanner.toml --recursive .; \
+		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.1 --config .osv-scanner.toml --recursive .; \
 	else \
 		echo "No config found, running default scan"; \
-		go run -mod=mod github.com/google/osv-scanner/v2/cmd/osv-scanner --recursive .; \
+		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.1 --recursive .; \
 	fi
 
 .PHONY: gosec

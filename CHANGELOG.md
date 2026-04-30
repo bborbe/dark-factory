@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- fix: pin `osv-scanner` to `@v2.3.1` in `Makefile` — newer versions (v2.3.2+) are broken upstream due to a `github.com/bazelbuild/buildtools/build` package resolution bug in osv-scalibr's transitive deps. Switching from `go run -mod=mod ...` to `go run pkg@v2.3.1` bypasses the project's go.mod and uses a fresh temp module with the last working version.
+
 ## v0.137.0
 
 - feat: preflight baseline failure is now terminal — dark-factory exits non-zero instead of waiting for the next tick; rename `ErrPreflightSkip` → `ErrPreflightFailed`; propagate error through scanner, processor tick methods, and runner; log clear exit message at `slog.Error` level

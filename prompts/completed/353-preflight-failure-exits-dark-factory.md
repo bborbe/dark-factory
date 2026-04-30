@@ -1,13 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Renamed ErrPreflightSkip to ErrPreflightFailed throughout codebase, updated scanner to propagate error terminating dark-factory instead of looping, added slog.Error messages in main.go for both daemon and run commands, updated all tests and docs to reflect new terminal contract
 container: dark-factory-353-preflight-failure-exits-dark-factory
 dark-factory-version: v0.135.19-1-gc08c946
 created: "2026-04-28T15:34:21Z"
 queued: "2026-04-28T15:34:21Z"
 started: "2026-04-28T16:21:13Z"
-completed: "2026-04-28T15:59:01Z"
-lastFailReason: 'execute prompt: docker run failed: wait command: exit status 125'
+completed: "2026-04-28T16:25:27Z"
 ---
 
 # Preflight failure exits dark-factory

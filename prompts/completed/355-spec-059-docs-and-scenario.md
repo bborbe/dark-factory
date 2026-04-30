@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [059-skip-preflight-cli-flag]
 summary: Added --skip-preflight documentation to docs/configuration.md (cross-reference in Preflight section, new CLI Flags subsection replacing CLI Override) and created scenarios/012-skip-preflight-flag.md scenario file
 container: dark-factory-355-spec-059-docs-and-scenario
@@ -7,6 +7,7 @@ dark-factory-version: v0.137.0-1-g310a15c6
 created: "2026-04-30T19:30:00Z"
 queued: "2026-04-30T19:31:53Z"
 started: "2026-04-30T19:39:17Z"
+completed: "2026-04-30T19:42:10Z"
 branch: dark-factory/skip-preflight-cli-flag
 ---
 

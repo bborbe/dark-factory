@@ -18,6 +18,7 @@ cd "$WORK_DIR/dark-factory-sandbox"
 cat > .dark-factory.yaml << 'YAML'
 workflow: direct
 autoRelease: true
+maxContainers: 999
 YAML
 # Redirect push to local bare repo (avoid polluting real remote)
 git init --bare "$WORK_DIR/remote.git"

@@ -15,7 +15,7 @@ go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
-printf 'pr: false\nworktree: false\n' > .dark-factory.yaml
+printf 'pr: false\nworktree: false\nmaxContainers: 999\n' > .dark-factory.yaml
 # Redirect push to local bare repo (avoid polluting real remote)
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"

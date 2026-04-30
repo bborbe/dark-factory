@@ -17,7 +17,10 @@ go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
-echo "workflow: pr" > .dark-factory.yaml
+cat > .dark-factory.yaml << 'YAML'
+workflow: pr
+maxContainers: 999
+YAML
 ```
 
 - [ ] Repo has `workflow: pr` in `.dark-factory.yaml`

@@ -18,6 +18,7 @@ cd "$WORK_DIR/sandbox"
 cat > .dark-factory.yaml << 'YAML'
 workflow: direct
 autoRelease: false
+maxContainers: 999
 YAML
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"

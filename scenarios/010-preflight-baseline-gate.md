@@ -20,6 +20,7 @@ pr: false
 worktree: false
 preflightCommand: "sh -c 'echo BASELINE_BROKEN_MARKER >&2; exit 1'"
 preflightInterval: "0s"
+maxContainers: 999
 YAML
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"

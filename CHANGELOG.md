@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.139.0
+
+- docs: clarify `autoRelease` vs `CHANGELOG.md` semantics across `configuration.md`, `workflows.md`, `running.md`, `architecture-flow.md`, and `README.md` — push is gated on `autoRelease`, tag is gated on `CHANGELOG.md` presence (orthogonal concerns)
+- docs: add `release-process.md` documenting the binary auto-release path (with mandatory pre-release scenario gate) and the manual plugin release procedure
+
 ## v0.138.1
 
 - fix: autoRelease now pushes the branch on every prompt completion, not only on the release path. Previously, the post-release "move prompt to completed" commit and the no-CHANGELOG work commit stayed local.

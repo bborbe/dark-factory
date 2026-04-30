@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [059-skip-preflight-cli-flag]
 summary: Added --skip-preflight CLI flag to dark-factory run and daemon commands, threading it through ParseArgs, runCommand, runRunCommand, runDaemonCommand, and factory CreateRunner/CreateOneShotRunner with conditional preflight checker suppression
 container: dark-factory-354-spec-059-flag-and-factory
@@ -7,6 +7,7 @@ dark-factory-version: v0.137.0-1-g310a15c6
 created: "2026-04-30T19:30:00Z"
 queued: "2026-04-30T19:31:53Z"
 started: "2026-04-30T19:32:45Z"
+completed: "2026-04-30T19:39:15Z"
 branch: dark-factory/skip-preflight-cli-flag
 ---
 

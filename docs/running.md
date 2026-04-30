@@ -114,10 +114,10 @@ See [spec-verification.md](spec-verification.md) for the full verification proce
 
 ## Workflow: Direct
 
-Default workflow. Dark-factory commits, tags, and pushes to the current branch.
+Default workflow. Dark-factory commits to the current branch. Push and tag are gated by `autoRelease` and `CHANGELOG.md` (see [Versioning](#versioning) below and [configuration.md](configuration.md)).
 
 ```
-approve prompt → daemon executes → commit + tag + push → done
+approve prompt → daemon executes → commit → (push if autoRelease) → (tag if CHANGELOG.md) → done
 ```
 
 - Queue multiple prompts at once — they execute sequentially
@@ -136,13 +136,21 @@ approve prompt → daemon executes → feature branch + PR → review → merge
 
 ## Versioning
 
-If your project has a `CHANGELOG.md`, dark-factory automatically:
-- Determines version bump (patch/minor) from changes
-- Updates CHANGELOG.md with new version
+Two orthogonal switches:
+
+| `autoRelease` | `CHANGELOG.md` | Behavior |
+|---------------|----------------|----------|
+| `false` (default) | * | commits stay local — no push, no tag |
+| `true` | absent | commit + push (no version, no tag) |
+| `true` | present | commit + push + bump `## Unreleased` → `## vX.Y.Z` + create tag + push tag |
+
+When both `autoRelease: true` and `CHANGELOG.md` are set, dark-factory automatically:
+- Determines version bump (patch/minor) from the changelog content
+- Renames `## Unreleased` → `## vX.Y.Z`
 - Creates a git tag (e.g., `v0.3.4`)
 - Pushes both commit and tag
 
-Without `CHANGELOG.md`, dark-factory commits and pushes without tagging.
+See [configuration.md](configuration.md) for the field reference and [release-process.md](release-process.md) for the full release procedure (including the pre-release scenario gate).
 
 ## Retrospective
 

@@ -66,21 +66,23 @@ These flags stack on top of any isolation mode.
 |------|---------|---------|----------|
 | `pr` | `false` | Push the branch and open a pull request at the end | `workflow: branch \| clone \| worktree` (direct has no feature branch) |
 | `autoMerge` | `false` | Merge the PR automatically once checks pass | `pr: true` |
-| `autoRelease` | `false` | Create git tag + bump CHANGELOG `## Unreleased` → `## vX.Y.Z` after merge to `<defaultBranch>` | any |
+| `autoRelease` | `false` | Push commits to remote after each completion. Additionally bump `CHANGELOG.md` `## Unreleased` → `## vX.Y.Z` and create+push a tag, but **only when `CHANGELOG.md` exists**. Without `CHANGELOG.md`, only push happens (no version, no tag). | any |
 
 ## Combinations
 
 | workflow | pr | autoMerge | autoRelease | Effect |
 |----------|----|-----------|-------------|--------|
-| direct | false | - | false | commit to current branch, do nothing else |
-| direct | false | - | true | commit to current branch, tag + release |
+| direct | false | - | false | commit to current branch, stay local |
+| direct | false | - | true | commit to current branch, push; tag if CHANGELOG.md present |
 | branch | false | - | false | create branch, commit, stay local |
 | branch | true | false | false | create branch, commit, open PR, await manual merge |
-| branch | true | true | true | create branch, commit, open PR, merge, tag + release |
+| branch | true | true | true | create branch, commit, open PR, merge, push; tag if CHANGELOG.md present |
 | worktree | false | - | false | worktree, commit, stay local — fast setup for huge repos, no push/PR |
-| worktree | true | true | true | worktree, commit, push, PR, merge, tag + release — fast setup for huge repos |
+| worktree | true | true | true | worktree, commit, push, PR, merge; tag if CHANGELOG.md present — fast setup for huge repos |
 | clone | false | - | false | clone, commit, push branch — no PR |
-| clone | true | true | true | clone, commit, push, PR, merge, tag + release |
+| clone | true | true | true | clone, commit, push, PR, merge; tag if CHANGELOG.md present |
+
+**Tagging is gated on `CHANGELOG.md` presence**, independent of `autoRelease`. With `autoRelease: true` and no `CHANGELOG.md`, commits are still pushed but no version bump or tag is produced.
 
 Invalid: `workflow: direct` with `pr: true` (no feature branch to open a PR for — validation rejects).
 

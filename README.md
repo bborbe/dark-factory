@@ -14,12 +14,15 @@ One factory per project, sequential prompt processing, zero human intervention b
 You (fast)                                    Factory (slow, unattended)
 ├── write prompt    ──→  prompts/              (inbox, passive)
 ├── ready to go     ──→  prompts/in-progress/  ┌─ watcher renames, processor executes
-├── write prompt 2  ──→  prompts/              │  YOLO → commit → tag → push
-├── move to queue   ──→  prompts/in-progress/  │  YOLO → commit → tag → push
+├── write prompt 2  ──→  prompts/              │  YOLO → commit → push* → tag*
+├── move to queue   ──→  prompts/in-progress/  │  YOLO → commit → push* → tag*
 └── go AFK                                     └─ idle, watching prompts/in-progress/
                                                     ↓
-You come back                       ←── changes committed and pushed
+You come back                       ←── changes committed (push/tag depending on config)
 ```
+
+\* push happens when `autoRelease: true`; tag is additionally produced when `CHANGELOG.md` exists.
+See [configuration.md](docs/configuration.md) and [release-process.md](docs/release-process.md).
 
 ## Prerequisites
 

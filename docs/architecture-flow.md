@@ -59,7 +59,7 @@ This is the core loop. For each queued prompt, dark-factory runs these steps:
  10    Host         Parse completion report from container logs
  11    Host         Validate report (success/partial/failed)
  12    Host         Move prompt to completed/
- 13    Host         Git commit + push (or PR creation)
+ 13    Host         Git commit (push gated on autoRelease; tag gated on CHANGELOG.md; or PR creation)
  14    Host         Auto-complete linked spec if all prompts done
  15    Host         Notify (Telegram/Discord) if attention needed
 ```
@@ -67,10 +67,12 @@ This is the core loop. For each queued prompt, dark-factory runs these steps:
 ### Phase 3: Post-Execution (Host)
 
 ```
-Direct workflow:     commit → tag → push
+Direct workflow:     commit → (push if autoRelease) → (tag + push tag if CHANGELOG.md)
 Branch workflow:     commit → push branch → (last prompt?) → merge to default → release
 PR workflow:         commit → push branch → create/update PR → (autoMerge?) → merge
 ```
+
+`autoRelease` (any-to-push) and `CHANGELOG.md` (presence-to-tag) are orthogonal: see [configuration.md](configuration.md) and [release-process.md](release-process.md).
 
 ## Preflight Failure Policy
 

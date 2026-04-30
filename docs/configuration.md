@@ -41,7 +41,7 @@ autoRelease: true
 | Field | Default | Purpose |
 |-------|---------|---------|
 | `autoMerge` | `false` | Merge PR automatically after checks pass (requires `pr: true`) |
-| `autoRelease` | `false` | Tag and push a release after each prompt completes. When `false` (default), changes are committed with changelog under `## Unreleased` but not tagged or pushed. When `true`, tags and pushes after completion. Works in all workflows (direct, PR, branch). |
+| `autoRelease` | `false` | Push the branch to remote after each prompt completes; additionally tag a release when `CHANGELOG.md` exists. When `false` (default), commits stay local (no push, no tag). When `true` and a `CHANGELOG.md` exists, commits are pushed AND `## Unreleased` is bumped to `## vX.Y.Z` with a tag pushed. When `true` without `CHANGELOG.md`, commits are still pushed but no tag is created. Works in all workflows (direct, PR, branch). |
 
 ## Validation
 

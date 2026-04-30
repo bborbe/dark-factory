@@ -279,9 +279,13 @@ preflightInterval: "8h"
 
 **On failure:** The daemon logs the command, its captured output, and the commit SHA that was checked. A notification is sent. The prompt remains queued.
 
-### CLI Override
+**Override:** Pass `--skip-preflight` to `run` or `daemon` to bypass preflight for a single invocation — see [CLI Flags](#cli-flags) below.
 
-Override the limit for a single run without editing config:
+### CLI Flags
+
+Override settings for a single run without editing config:
+
+**`--max-containers N`**
 
 ```bash
 dark-factory run --max-containers 5
@@ -289,6 +293,27 @@ dark-factory daemon --max-containers 1
 ```
 
 Priority: CLI arg > project config > global config > default (3).
+
+**`--skip-preflight`**
+
+```bash
+dark-factory run --skip-preflight
+dark-factory daemon --skip-preflight
+```
+
+Bypasses the preflight baseline check for this invocation. When set:
+
+- The configured `preflightCommand` is not executed.
+- No preflight cache is read or written.
+- No baseline-failure report is emitted.
+- Prompts proceed directly to normal execution.
+- A startup log line records that preflight was skipped.
+
+The flag is position-agnostic: `dark-factory --skip-preflight run` and `dark-factory run --skip-preflight` are equivalent.
+
+**Safety note:** Prompts may run on a broken baseline when this flag is used. The startup log line provides an audit trail. Use only when the baseline is knowingly broken (e.g., transient CVE, upstream flake) and the prompt must execute urgently.
+
+The flag does not persist: the next invocation without the flag runs preflight as configured. It has no effect when `preflightCommand` is empty (already disabled).
 
 ## Private Go Modules
 

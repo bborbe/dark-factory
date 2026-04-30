@@ -1,68 +1,227 @@
 ---
 status: draft
+created: "2026-04-30T19:39:12Z"
 ---
 
-# autoRelease: push the post-release "move prompt to completed" commit
+# autoRelease: push every commit, not just the release
 
 <summary>
-- When `autoRelease: true` is set, the release commit and tag are correctly pushed via `CommitAndRelease` in `pkg/git/git.go`.
-- However, the subsequent "move prompt to completed" commit (Phase 4 in the direct-workflow executor) is committed locally but never pushed.
-- Operators must run `git push` manually after every prompt completes, defeating the point of `autoRelease`.
+- `autoRelease=true` is documented as "push everything after each prompt completes", but the current implementation only pushes when a CHANGELOG.md exists (the release path).
+- Two orthogonal concerns are conflated: pushing (controlled by `autoRelease`) and tagging/version-bumping (controlled by CHANGELOG presence). Push lives only inside `CommitAndRelease`, the tag-producing path.
+- Result: in two scenarios the daemon commits locally and never pushes, even with `autoRelease=true`:
+  1. Project **with** CHANGELOG: the Phase 4 "move prompt to completed" commit is committed but never pushed (the release commit + tag are pushed correctly).
+  2. Project **without** CHANGELOG: Phase 1's `CommitOnly` work commit AND Phase 4's prompt-move commit both stay local.
 - Empirically observed: after the `bborbe/run` migration prompt completed under `autoRelease=true`, the release commit `release v1.9.23` and tag `v1.9.23` were pushed, but commit `3ad2fa2 move prompt to completed` remained local until manually pushed.
+- The recovery path (`pkg/committingrecoverer/recoverer.go`) has the same gap and must be fixed consistently.
 </summary>
 
 <objective>
-When `autoRelease: true`, the post-release "move prompt to completed" commit must be pushed to the remote automatically. After this change, no manual `git push` is required for any phase of a successful direct-workflow run with `autoRelease=true`.
+After this change, `autoRelease=true` produces a remote-equivalent local state for every successful prompt completion: every commit produced by the workflow is pushed to the remote, regardless of whether the project has a CHANGELOG. `autoRelease=false` continues to produce local-only commits (no push). Tagging behavior is unchanged: tags are produced only when CHANGELOG exists, and if produced they are pushed.
 </objective>
 
 <context>
-The relevant code path:
+**Mental model — two orthogonal concerns:**
 
-- `pkg/processor/workflow_executor_direct.go:60-103` (`directWorkflowExecutor.completeCommit`) — runs four phases: (1) commit work files, (2) move prompt file, (3) auto-complete specs, (4) commit the prompt-file move.
-- Phase 1's commit goes through the autoRelease path (`CommitAndRelease` in `pkg/git/git.go:158`) which pushes both the commit and the tag.
-- Phase 4 calls `e.deps.Releaser.CommitCompletedFile` which lives at `pkg/git/git.go:208-234`. This function does `git add <path>` + `git status --porcelain` + `git commit -m "move prompt to completed"`, but does NOT push.
-- The `gitPush` helper exists at `pkg/git/git.go:445` and is currently called from `CommitAndRelease` (lines 192-194) and `gitPushTag` (used for tag push).
-- `pkg/committingrecoverer/recoverer.go:127` ALSO calls `CommitCompletedFile` from a different code path (recovery after partial failure). The push behavior should be consistent there too — when autoRelease is on, the recovered commit should also be pushed.
-- Configuration: `pkg/config/config.go:103` has `AutoRelease bool`. The releaser interface at `pkg/git/git.go:95` declares `CommitCompletedFile(ctx, path) error`. The releaser is constructed via the factory and may need to know about the autoRelease flag.
+| `autoRelease` | CHANGELOG.md | Expected behavior |
+|---------------|--------------|-------------------|
+| false         | *            | local commits only, no push, no tag |
+| true          | absent       | commit + push (no tag) |
+| true          | present      | commit + push + tag + push tag |
 
-The existing test infrastructure: `pkg/git/git_test.go` (or similar) tests `CommitCompletedFile`. There should be table-driven tests for both autoRelease=true (push happens) and autoRelease=false (push does NOT happen).
+The bug today: push only happens on the `autoRelease=true` + CHANGELOG path, because push is implemented inside `CommitAndRelease`. Push needs to be lifted out of the commit primitives and gated on `autoRelease` at the workflow boundary.
 
-Workflow context: `autoRelease=false` (default) means "commit locally only" — neither the release nor the prompt-move commit gets pushed. `autoRelease=true` means "push everything after each prompt completes". The current behavior pushes the release commit but strands the prompt-move commit, which is internally inconsistent.
+**Relevant code:**
+
+- `pkg/git/git.go:92-99` — `Releaser` interface (`GetNextVersion`, `CommitAndRelease`, `CommitCompletedFile`, `CommitOnly`, `HasChangelog`, `MoveFile`).
+- `pkg/git/git.go:159-203` — `CommitAndRelease` does commit → tag → `gitPush` → `gitPushTag`. **Push lives here only.**
+- `pkg/git/git.go:208-234` — `CommitCompletedFile` does add → status check → commit. **No push.**
+- `pkg/git/git.go:130-144` — `CommitOnly` does add-all → commit. **No push.**
+- `pkg/git/git.go:445-455` — `gitPush(ctx) error` package-private helper.
+- `pkg/processor/workflow_helpers.go:114-152` — `handleDirectWorkflow` decides between `CommitOnly` (no changelog OR `autoRelease=false`) and `CommitAndRelease` (changelog AND `autoRelease=true`).
+- `pkg/processor/workflow_executor_direct.go:62-103` — `directWorkflowExecutor.completeCommit` runs Phase 1 (`handleDirectWorkflow`) and Phase 4 (`Releaser.CommitCompletedFile`).
+- `pkg/processor/workflow_helpers.go` — `WorkflowDeps` already exposes `AutoRelease` and `Releaser`. No new plumbing into the direct executor needed.
+- `pkg/committingrecoverer/recoverer.go:43-62` — `Recoverer` does **not** currently know about `autoRelease`. Needs to be threaded in via `NewRecoverer`.
+- `pkg/committingrecoverer/recoverer.go:104-130` — recovery commits via `git.CommitAll` (Phase 1 equivalent) and `releaser.CommitCompletedFile` (Phase 4 equivalent). Same push gap.
+- `pkg/config/config.go` — `AutoRelease bool` config field already exists.
+
+**Design choice — push at the workflow boundary, not inside the commit primitive:**
+
+- Single source of truth: "autoRelease=true ⇒ branch is pushed at end of workflow", independent of changelog and which commit primitive ran.
+- `CommitOnly`, `CommitCompletedFile`, `CommitAndRelease` stay focused on "make a commit". Tagging stays inside `CommitAndRelease` (a tag is a release artifact, tightly coupled to the version bump).
+- One push call covers both the work commit and the prompt-move commit (`git push` is idempotent — pushing again with no new commits exits zero with "Everything up-to-date").
+- `CommitAndRelease`'s existing push stays. After the fix, the workflow-level push runs after Phase 4 and is a no-op if Phase 1 already pushed via `CommitAndRelease`. This keeps tag-push atomic with the release commit.
+
+**Existing test infrastructure:**
+
+- `pkg/git/git_test.go` — table-driven tests for releaser methods.
+- `pkg/processor/processor_internal_test.go` — `handleDirectWorkflow` Describe; `stubReleaser` (line 241) is the minimal stub.
+- `pkg/processor/processor_automerge_test.go` — autoRelease=true vs false coverage at the processor level.
+- `mocks/releaser.go` — counterfeiter-generated; will need regeneration after interface change.
 </context>
 
 <requirements>
-1. **`CommitCompletedFile` must push when autoRelease is on.** Modify the releaser's `CommitCompletedFile` so that, after a successful local commit, it pushes the current branch to the remote. The push must be conditional on `autoRelease: true` — when `autoRelease: false`, behavior is unchanged (local commit only, no push), preserving the documented contract that autoRelease=false produces local-only changes.
 
-2. **Surface `autoRelease` to the releaser.** The releaser at `pkg/git/git.go` is constructed in the factory; thread the `AutoRelease` config field into the constructor so `CommitCompletedFile` can branch on it. A clean approach is to store `autoRelease bool` on the `releaser` struct and check it inside `CommitCompletedFile`.
+## 1. Add `PushBranch` to the `Releaser` interface
 
-3. **Apply the same fix to the recovery path.** `pkg/committingrecoverer/recoverer.go:127` calls `CommitCompletedFile` after recovering from a partial failure. The push behavior must be consistent — if autoRelease is on, the recovered prompt-move commit must also be pushed.
+`pkg/git/git.go`:
 
-4. **Reuse the existing `gitPush` helper.** Don't duplicate the push subprocess logic. Add a `gitPush(ctx)` call inside `CommitCompletedFile` after the successful commit, gated on `r.autoRelease`. If `gitPush` is currently package-private and not on the releaser, expose it appropriately or wrap it in a `releaser.push` method.
+```go
+type Releaser interface {
+    GetNextVersion(ctx context.Context, bump VersionBump) (string, error)
+    CommitAndRelease(ctx context.Context, bump VersionBump) error
+    CommitCompletedFile(ctx context.Context, path string) error
+    CommitOnly(ctx context.Context, message string) error
+    HasChangelog(ctx context.Context) bool
+    MoveFile(ctx context.Context, oldPath string, newPath string) error
+    PushBranch(ctx context.Context) error
+}
+```
 
-5. **Tests.** Add table-driven tests covering:
-   - `autoRelease=true` + clean dirty state → commit + push both happen
-   - `autoRelease=true` + nothing to commit (empty `git status`) → no commit, no push (early return preserved)
-   - `autoRelease=false` + clean dirty state → commit happens, push does NOT happen
-   - Push failure surfaces as a wrapped error from `CommitCompletedFile` (use `bborbe/errors.Wrap` consistent with the rest of the file)
+Add the implementation on `releaser`:
 
-6. **No behavior change for `autoRelease=false`.** Existing tests for the false case must continue to pass without modification.
+```go
+// PushBranch pushes the current branch's commits to the remote.
+// Idempotent: pushing with no new commits exits zero ("Everything up-to-date").
+func (r *releaser) PushBranch(ctx context.Context) error {
+    return gitPush(ctx)
+}
+```
 
-7. **No changes to `CommitAndRelease`.** That path already pushes correctly. Only `CommitCompletedFile` needs the fix.
+Regenerate `mocks/releaser.go` (counterfeiter). Follow whatever `make generate` / existing convention does in this repo.
+
+## 2. Push at the workflow boundary in the direct executor
+
+`pkg/processor/workflow_executor_direct.go`, in `completeCommit`, **after** Phase 4's `CommitWithRetry`:
+
+```go
+// Phase 5: push the branch when autoRelease is enabled.
+// Single push covers both Phase 1's work commit (when CommitOnly was used)
+// and Phase 4's prompt-move commit. Idempotent with CommitAndRelease's
+// internal push (changelog path).
+if e.deps.AutoRelease {
+    if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+        return e.deps.Releaser.PushBranch(retryCtx)
+    }); err != nil {
+        return errors.Wrap(ctx, err, "push branch")
+    }
+}
+```
+
+Do **not** modify Phases 1–4. Push gating lives only at this boundary.
+
+## 3. Apply the same push to the recovery path
+
+### 3a. Thread `autoRelease` into `Recoverer`
+
+`pkg/committingrecoverer/recoverer.go`:
+
+- Add `autoRelease bool` field to `recoverer` struct.
+- Add `autoRelease bool` parameter to `NewRecoverer` (place after `completedDir` to match field order; update doc comment).
+
+### 3b. Update the call site of `NewRecoverer`
+
+Find the construction site with:
+
+```bash
+grep -rn "committingrecoverer.NewRecoverer\|NewRecoverer(" pkg/factory/ pkg/processor/ main.go
+```
+
+Pass `cfg.AutoRelease` as the new argument.
+
+### 3c. Push at the end of `Recover`
+
+In `pkg/committingrecoverer/recoverer.go` `Recover`, **after** the Phase-4-equivalent `CommitWithRetry` block (the `releaser.CommitCompletedFile` call ~line 126), add:
+
+```go
+if r.autoRelease {
+    if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+        return r.releaser.PushBranch(retryCtx)
+    }); err != nil {
+        return errors.Wrap(ctx, err, "push branch during recovery")
+    }
+}
+```
+
+## 4. Tests — `pkg/git/git_test.go`
+
+Add a unit test for `releaser.PushBranch`:
+
+- Calls `gitPush` (verify by stubbing `exec.Command` if the existing test pattern does so, OR by running against a temp repo with a local bare remote — match whichever pattern existing `gitPush`-related tests use).
+- Returns wrapped error on failure.
+
+## 5. Tests — direct executor
+
+Find the existing direct-executor test file with:
+
+```bash
+grep -rln "directWorkflowExecutor\|completeCommit" pkg/processor/*_test.go
+```
+
+Add table-driven cases covering all 4 rows of the matrix:
+
+| autoRelease | CHANGELOG | Expected `PushBranch` calls | Expected `CommitAndRelease` calls | Expected `CommitOnly` calls |
+|---|---|---|---|---|
+| false | absent | 0 | 0 | 1 |
+| false | present | 0 | 0 | 1 |
+| true | absent | 1 | 0 | 1 |
+| true | present | 1 | 1 | 0 |
+
+Use the counterfeiter `mocks.Releaser` (or extend `stubReleaser` in `processor_internal_test.go:241` to count `PushBranch` calls).
+
+## 6. Tests — `pkg/committingrecoverer/recoverer_test.go`
+
+Add table-driven cases for the recovery path covering the same 4-row matrix.
+
+## 7. No changes to `CommitAndRelease`
+
+`CommitAndRelease`'s internal `gitPush` + `gitPushTag` remain. After the fix, the workflow-level push runs after `CommitAndRelease`'s push and is a no-op (idempotent). This keeps the tag push atomic with the release commit and minimizes churn in well-tested code.
+
+## 8. CHANGELOG entry
+
+Add to `CHANGELOG.md` under `## Unreleased`:
+
+```
+- fix: autoRelease now pushes the branch on every prompt completion, not only on the release path. Previously, the post-release "move prompt to completed" commit and the no-CHANGELOG work commit stayed local.
+```
+
 </requirements>
 
 <verification>
-- After running a prompt to completion in a test repo with `autoRelease: true`, `git status` shows the working tree clean AND `git rev-list @{u}..HEAD --count` returns `0` (no unpushed commits).
-- After running a prompt to completion with `autoRelease: false`, `git status` shows clean tree AND there are local commits NOT pushed (preserving existing behavior — the operator pushes manually when ready).
-- Existing tests pass: `make test`.
-- New tests for the four cases listed in requirement 5 pass.
-- `make precommit` succeeds end-to-end.
-- Manual smoke: pick any bborbe library that already has the migration prompt completed (e.g. `bborbe/run`) and confirm — by inspecting `pkg/git/git.go` and the test file — that the conditional-push logic is present and tested.
+
+`make precommit` must exit 0.
+
+Spot checks:
+
+```bash
+grep -n "PushBranch" pkg/git/git.go                                    # interface + impl
+grep -n "PushBranch" pkg/processor/workflow_executor_direct.go         # workflow-level push gate
+grep -n "PushBranch" pkg/committingrecoverer/recoverer.go              # recovery-level push gate
+grep -n "autoRelease bool" pkg/committingrecoverer/recoverer.go        # threaded into struct
+grep -rn "committingrecoverer.NewRecoverer" pkg/ main.go               # call site updated
+grep -n "PushBranch" mocks/releaser.go                                 # counterfeiter regenerated
+```
+
+End-to-end behavior (manual smoke):
+
+| Scenario | Expected after `dark-factory run` completes |
+|---|---|
+| autoRelease=false, CHANGELOG present | `git rev-list @{u}..HEAD --count` > 0 (commits stayed local) |
+| autoRelease=false, no CHANGELOG | `git rev-list @{u}..HEAD --count` > 0 |
+| autoRelease=true, CHANGELOG present | `git rev-list @{u}..HEAD --count` == 0; tag pushed |
+| autoRelease=true, no CHANGELOG | `git rev-list @{u}..HEAD --count` == 0; no tag |
+
 </verification>
 
 <constraints>
-- Don't change the public `Releaser` interface signature beyond what's necessary to thread `autoRelease` (constructor change is fine; method signatures should stay stable).
-- Don't push tags from `CommitCompletedFile` — the prompt-move commit has no tag. Only push the branch.
-- Don't add retry logic to the push — `CommitWithRetry` wraps the call site; consistency with the existing release flow (which doesn't retry the push either, only the commit) is the bar.
-- Don't touch unrelated workflows (branch, PR) — only the direct workflow needs the conditional-push gate. The branch/PR workflows already push the feature branch via `Brancher.Push` and the merge happens on the remote.
-- Don't remove or weaken the `len(strings.TrimSpace(string(output))) == 0` early-return — when there's nothing to commit, neither commit nor push should happen.
+- Do NOT commit — dark-factory handles git.
+- Do NOT change `go.mod` / `go.sum` / `vendor/`.
+- Do NOT change `CommitAndRelease`'s push behavior. Its tag-push must stay atomic with the release commit.
+- Do NOT add push logic inside `CommitOnly` or `CommitCompletedFile`. Push lives at the workflow boundary only.
+- Do NOT change the documented contract for `autoRelease=false`: it must continue to produce local-only commits with no push, regardless of CHANGELOG.
+- Use `errors.Wrap` / `errors.Errorf` from `github.com/bborbe/errors` — never `fmt.Errorf`.
+- Reuse the existing `gitPush` helper via the new `PushBranch` method; don't duplicate the subprocess call.
+- Don't add retry logic inside `PushBranch` itself — `CommitWithRetry` already wraps the call site, matching the existing release flow's retry shape.
+- Preserve the `len(strings.TrimSpace(string(output))) == 0` early-return in `CommitCompletedFile` (no commit when nothing to commit).
+- The branch/PR workflows are out of scope. They already push the feature branch via `Brancher.Push`; the merge happens on the remote.
+- Counterfeiter mocks must be regenerated; do not hand-edit `mocks/releaser.go`.
 </constraints>

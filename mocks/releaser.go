@@ -83,6 +83,17 @@ type Releaser struct {
 	moveFileReturnsOnCall map[int]struct {
 		result1 error
 	}
+	PushBranchStub        func(context.Context) error
+	pushBranchMutex       sync.RWMutex
+	pushBranchArgsForCall []struct {
+		arg1 context.Context
+	}
+	pushBranchReturns struct {
+		result1 error
+	}
+	pushBranchReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -458,6 +469,67 @@ func (fake *Releaser) MoveFileReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.moveFileReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) PushBranch(arg1 context.Context) error {
+	fake.pushBranchMutex.Lock()
+	ret, specificReturn := fake.pushBranchReturnsOnCall[len(fake.pushBranchArgsForCall)]
+	fake.pushBranchArgsForCall = append(fake.pushBranchArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.PushBranchStub
+	fakeReturns := fake.pushBranchReturns
+	fake.recordInvocation("PushBranch", []interface{}{arg1})
+	fake.pushBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) PushBranchCallCount() int {
+	fake.pushBranchMutex.RLock()
+	defer fake.pushBranchMutex.RUnlock()
+	return len(fake.pushBranchArgsForCall)
+}
+
+func (fake *Releaser) PushBranchCalls(stub func(context.Context) error) {
+	fake.pushBranchMutex.Lock()
+	defer fake.pushBranchMutex.Unlock()
+	fake.PushBranchStub = stub
+}
+
+func (fake *Releaser) PushBranchArgsForCall(i int) context.Context {
+	fake.pushBranchMutex.RLock()
+	defer fake.pushBranchMutex.RUnlock()
+	argsForCall := fake.pushBranchArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Releaser) PushBranchReturns(result1 error) {
+	fake.pushBranchMutex.Lock()
+	defer fake.pushBranchMutex.Unlock()
+	fake.PushBranchStub = nil
+	fake.pushBranchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) PushBranchReturnsOnCall(i int, result1 error) {
+	fake.pushBranchMutex.Lock()
+	defer fake.pushBranchMutex.Unlock()
+	fake.PushBranchStub = nil
+	if fake.pushBranchReturnsOnCall == nil {
+		fake.pushBranchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.pushBranchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

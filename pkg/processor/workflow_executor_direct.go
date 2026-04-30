@@ -99,6 +99,18 @@ func (e *directWorkflowExecutor) completeCommit(
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
+	// Phase 5: push the branch when autoRelease is enabled.
+	// Single push covers both Phase 1's work commit (when CommitOnly was used)
+	// and Phase 4's prompt-move commit. Idempotent with CommitAndRelease's
+	// internal push (changelog path).
+	if e.deps.AutoRelease {
+		if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+			return e.deps.Releaser.PushBranch(retryCtx)
+		}); err != nil {
+			return errors.Wrap(ctx, err, "push branch")
+		}
+	}
+
 	return nil
 }
 

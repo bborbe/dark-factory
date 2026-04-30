@@ -243,6 +243,7 @@ type stubReleaser struct {
 	hasChangelog       bool
 	commitOnlyCalled   int
 	commitAndRelCalled int
+	pushBranchCalled   int
 	nextVersion        string
 }
 
@@ -265,6 +266,11 @@ func (s *stubReleaser) GetNextVersion(_ context.Context, _ git.VersionBump) (str
 func (s *stubReleaser) CommitCompletedFile(_ context.Context, _ string) error { return nil }
 
 func (s *stubReleaser) MoveFile(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubReleaser) PushBranch(_ context.Context) error {
+	s.pushBranchCalled++
+	return nil
+}
 
 var _ = Describe("handleDirectWorkflow", func() {
 	var (
@@ -491,6 +497,7 @@ type stubWorkflowReleaser struct {
 	commitFileErr         error
 	hasChangelog          bool
 	commitAndReleaseCount int
+	pushBranchCount       int
 }
 
 func (s *stubWorkflowReleaser) CommitOnly(_ context.Context, _ string) error {
@@ -518,6 +525,11 @@ func (s *stubWorkflowReleaser) GetNextVersion(
 }
 
 func (s *stubWorkflowReleaser) MoveFile(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubWorkflowReleaser) PushBranch(_ context.Context) error {
+	s.pushBranchCount++
+	return nil
+}
 
 // stubWorkflowManager tracks MoveToCompleted and HasQueuedPromptsOnBranch.
 type stubWorkflowManager struct {

@@ -40,17 +40,20 @@ type PromptManager interface {
 // NewRecoverer creates a Recoverer that retries git commits for prompts in committing state.
 // The package-level git.HasDirtyFiles, git.CommitWithRetry, and git.CommitAll calls are
 // used directly (not injected) because extracting a git-wrapper is out of scope.
+// When autoRelease is true, the branch is pushed after every successful recovery commit.
 func NewRecoverer(
 	promptManager PromptManager,
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
 	completedDir string,
+	autoRelease bool,
 ) Recoverer {
 	return &recoverer{
 		promptManager: promptManager,
 		releaser:      releaser,
 		autoCompleter: autoCompleter,
 		completedDir:  completedDir,
+		autoRelease:   autoRelease,
 	}
 }
 
@@ -59,6 +62,7 @@ type recoverer struct {
 	releaser      git.Releaser
 	autoCompleter spec.AutoCompleter
 	completedDir  string
+	autoRelease   bool
 }
 
 // RecoverAll iterates all committing prompts. Failures are logged and swallowed.
@@ -127,6 +131,14 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		return r.releaser.CommitCompletedFile(retryCtx, completedPath)
 	}); err != nil {
 		return errors.Wrap(ctx, err, "commit completed file during recovery")
+	}
+
+	if r.autoRelease {
+		if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+			return r.releaser.PushBranch(retryCtx)
+		}); err != nil {
+			return errors.Wrap(ctx, err, "push branch during recovery")
+		}
 	}
 
 	slog.Info("git commit recovery succeeded", "file", filepath.Base(completedPath))

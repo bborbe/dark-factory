@@ -143,7 +143,7 @@ func newTestProcessor(
 			validationPrompt,
 			validationprompt.NewResolver(),
 		),
-		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir),
+		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir, autoRelease),
 		scanner,
 		0,
 		0,   // queueInterval and sweepInterval: 0 → use defaults (5s, 60s)

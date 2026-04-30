@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.138.1
+
+- fix: autoRelease now pushes the branch on every prompt completion, not only on the release path. Previously, the post-release "move prompt to completed" commit and the no-CHANGELOG work commit stayed local.
+
 ## v0.138.0
 
 - feat: add `--skip-preflight` CLI flag to `run` and `daemon` commands to bypass preflight baseline check for a single invocation

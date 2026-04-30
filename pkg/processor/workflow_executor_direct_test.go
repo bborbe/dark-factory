@@ -25,6 +25,106 @@ func (m *osFileMover) MoveFile(_ context.Context, oldPath, newPath string) error
 	return os.Rename(oldPath, newPath)
 }
 
+var _ = Describe("directWorkflowExecutor completeCommit autoRelease/CHANGELOG matrix", func() {
+	type matrixCase struct {
+		autoRelease          bool
+		hasChangelog         bool
+		wantPushBranch       int
+		wantCommitAndRelease int
+		wantCommitOnly       int
+	}
+
+	cases := []matrixCase{
+		{
+			autoRelease:          false,
+			hasChangelog:         false,
+			wantPushBranch:       0,
+			wantCommitAndRelease: 0,
+			wantCommitOnly:       1,
+		},
+		{
+			autoRelease:          false,
+			hasChangelog:         true,
+			wantPushBranch:       0,
+			wantCommitAndRelease: 0,
+			wantCommitOnly:       1,
+		},
+		{
+			autoRelease:          true,
+			hasChangelog:         false,
+			wantPushBranch:       1,
+			wantCommitAndRelease: 0,
+			wantCommitOnly:       1,
+		},
+		{
+			autoRelease:          true,
+			hasChangelog:         true,
+			wantPushBranch:       1,
+			wantCommitAndRelease: 1,
+			wantCommitOnly:       0,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc // capture range var
+		desc := func() string {
+			ar := "autoRelease=false"
+			if tc.autoRelease {
+				ar = "autoRelease=true"
+			}
+			cl := "no-changelog"
+			if tc.hasChangelog {
+				cl = "changelog"
+			}
+			return ar + " + " + cl
+		}()
+		It(desc, func() {
+			ctx := context.Background()
+			tempDir := GinkgoT().TempDir()
+			queueDir := filepath.Join(tempDir, "in-progress")
+			completedDirPath := filepath.Join(tempDir, "completed")
+			Expect(os.MkdirAll(queueDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(completedDirPath, 0750)).To(Succeed())
+
+			promptPath := filepath.Join(queueDir, "001-test.md")
+			Expect(
+				os.WriteFile(promptPath, []byte("---\nstatus: committing\n---\n# Test\n"), 0600),
+			).To(Succeed())
+			completedPath := filepath.Join(completedDirPath, "001-test.md")
+
+			promptMgr := prompt.NewManager(
+				filepath.Join(tempDir, "inbox"),
+				queueDir,
+				completedDirPath,
+				&osFileMover{},
+				libtime.NewCurrentDateTime(),
+			)
+			rel := &stubWorkflowReleaser{hasChangelog: tc.hasChangelog}
+			executor := NewDirectWorkflowExecutor(WorkflowDeps{
+				PromptManager: promptMgr,
+				AutoCompleter: &stubAutoCompleter{},
+				Releaser:      rel,
+				AutoRelease:   tc.autoRelease,
+			})
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+
+			err := executor.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.pushBranchCount).To(Equal(tc.wantPushBranch), "PushBranch call count")
+			Expect(
+				rel.commitAndReleaseCount,
+			).To(Equal(tc.wantCommitAndRelease), "CommitAndRelease call count")
+			Expect(rel.commitOnlyCount).To(Equal(tc.wantCommitOnly), "CommitOnly call count")
+		})
+	}
+})
+
 var _ = Describe("directWorkflowExecutor order-of-operations", func() {
 	It(
 		"transitions linked spec to verifying after the last prompt completes (regression: order-of-operations bug)",

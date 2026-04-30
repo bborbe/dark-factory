@@ -699,6 +699,7 @@ var _ = Describe("Processor", func() {
 					releaser,
 					realAutoCompleter,
 					sweepCompletedDir,
+					false,
 				),
 				sweepScanner,
 				0,

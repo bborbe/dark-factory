@@ -96,6 +96,7 @@ type Releaser interface {
 	CommitOnly(ctx context.Context, message string) error
 	HasChangelog(ctx context.Context) bool
 	MoveFile(ctx context.Context, oldPath string, newPath string) error
+	PushBranch(ctx context.Context) error
 }
 
 // releaser implements Releaser.
@@ -147,6 +148,12 @@ func (r *releaser) CommitOnly(ctx context.Context, message string) error {
 // Falls back to os.Rename if git operations fail or not in a git repo.
 func (r *releaser) MoveFile(ctx context.Context, oldPath string, newPath string) error {
 	return MoveFile(ctx, oldPath, newPath)
+}
+
+// PushBranch pushes the current branch's commits to the remote.
+// Idempotent: pushing with no new commits exits zero ("Everything up-to-date").
+func (r *releaser) PushBranch(ctx context.Context) error {
+	return gitPush(ctx)
 }
 
 // CommitAndRelease performs the full git workflow:

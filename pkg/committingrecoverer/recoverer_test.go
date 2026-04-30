@@ -51,6 +51,8 @@ func (s *stubPromptManager) MoveToCompleted(_ context.Context, _ string) error {
 type stubReleaser struct {
 	commitCompletedFileErr    error
 	commitCompletedFileCalled int
+	pushBranchErr             error
+	pushBranchCalled          int
 }
 
 func (s *stubReleaser) CommitCompletedFile(_ context.Context, _ string) error {
@@ -71,6 +73,11 @@ func (s *stubReleaser) CommitOnly(_ context.Context, _ string) error { return ni
 func (s *stubReleaser) HasChangelog(_ context.Context) bool { return false }
 
 func (s *stubReleaser) MoveFile(_ context.Context, _, _ string) error { return nil }
+
+func (s *stubReleaser) PushBranch(_ context.Context) error {
+	s.pushBranchCalled++
+	return s.pushBranchErr
+}
 
 type stubAutoCompleter struct {
 	checkAndCompleteErr    error
@@ -144,7 +151,7 @@ var _ = Describe("Recoverer", func() {
 		mgr = &stubPromptManager{}
 		rel = &stubReleaser{}
 		ac = &stubAutoCompleter{}
-		rec = committingrecoverer.NewRecoverer(mgr, rel, ac, completedDir)
+		rec = committingrecoverer.NewRecoverer(mgr, rel, ac, completedDir, false)
 	})
 
 	AfterEach(func() {
@@ -333,4 +340,62 @@ var _ = Describe("Recoverer", func() {
 			Expect(mgr.moveToCompletedCalled).To(Equal(1))
 		})
 	})
+})
+
+var _ = Describe("Recoverer autoRelease push matrix", func() {
+	type matrixCase struct {
+		autoRelease    bool
+		wantPushBranch int
+	}
+	cases := []matrixCase{
+		{autoRelease: false, wantPushBranch: 0},
+		{autoRelease: true, wantPushBranch: 1},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		desc := "autoRelease=false"
+		if tc.autoRelease {
+			desc = "autoRelease=true"
+		}
+		It(desc+" pushes or skips as expected", func() {
+			ctx := context.Background()
+			var err error
+
+			tempDir, err := os.MkdirTemp("", "recoverer-push-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tempDir) }()
+
+			completedDir := filepath.Join(tempDir, "completed")
+			Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+
+			// Set up a real git repo so HasDirtyFiles works
+			repoDir := filepath.Join(tempDir, "repo")
+			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
+			initGitRepo(repoDir)
+			Expect(os.Chdir(repoDir)).To(Succeed())
+			defer func() { _ = os.Chdir(tempDir) }()
+
+			promptPath := filepath.Join(tempDir, "001-push-test.md")
+			Expect(
+				os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: committing\n---\n# Push test\n"),
+					0600,
+				),
+			).To(Succeed())
+
+			mgr := &stubPromptManager{}
+			mgr.loadFunc = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return makePromptFile(path), nil
+			}
+			rel := &stubReleaser{}
+			ac := &stubAutoCompleter{}
+
+			rec := committingrecoverer.NewRecoverer(mgr, rel, ac, completedDir, tc.autoRelease)
+			err = rec.Recover(ctx, promptPath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rel.pushBranchCalled).To(Equal(tc.wantPushBranch), "PushBranch call count")
+		})
+	}
 })

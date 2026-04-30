@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-04-30T19:21:28Z"
 generating: "2026-04-30T19:21:29Z"
 prompted: "2026-04-30T19:27:13Z"
+verifying: "2026-04-30T19:42:10Z"
 branch: dark-factory/skip-preflight-cli-flag
 ---
 

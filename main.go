@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -37,7 +38,15 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(os.Args[1:])
+	// Check for contradictory flags before full parsing
+	if slices.Contains(os.Args[1:], "--hide-git") && slices.Contains(os.Args[1:], "--no-hide-git") {
+		fmt.Fprintf(os.Stderr, "error: --hide-git and --no-hide-git are mutually exclusive\n")
+		return errors.Errorf(ctx, "--hide-git and --no-hide-git are mutually exclusive")
+	}
+
+	debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(
+		os.Args[1:],
+	)
 
 	switch command {
 	case "help":
@@ -89,6 +98,9 @@ func run(ctx context.Context) error {
 	}
 	applyGlobalOverrides(&cfg, globalCfg, loadResult.Overrides)
 	sources := computeFieldSources(globalCfg, loadResult.Overrides)
+	if err := applyArgOverrides(ctx, &cfg, &sources, command, hideGit, model); err != nil {
+		return err
+	}
 
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	return runCommand(
@@ -598,6 +610,50 @@ func extractMaxContainers(ctx context.Context, args []string) (int, []string, er
 	return 0, args, nil
 }
 
+// applyArgOverrides validates command-gate rules and applies CLI flag overrides to cfg and sources.
+// hideGit and model are the extracted flag values from ParseArgs (nil/empty = not set).
+func applyArgOverrides(
+	ctx context.Context,
+	cfg *config.Config,
+	sources *config.FieldSources,
+	command string,
+	hideGit *bool,
+	model string,
+) error {
+	if hideGit != nil && command != "run" && command != "daemon" {
+		return errors.Errorf(ctx, "unknown flag: --hide-git")
+	}
+	if model != "" && command != "run" && command != "daemon" {
+		return errors.Errorf(ctx, "unknown flag: --model")
+	}
+	if hideGit != nil {
+		cfg.HideGit = *hideGit
+		sources.HideGit = "arg"
+	}
+	if model != "" {
+		if err := validateModelArg(ctx, model); err != nil {
+			return err
+		}
+		cfg.Model = model
+		sources.Model = "arg"
+	}
+	return nil
+}
+
+// validateModelArg validates a --model flag value against the shared model identifier regex.
+// Returns an error if the value contains invalid characters.
+func validateModelArg(ctx context.Context, model string) error {
+	if !globalconfig.ModelRegex.MatchString(model) {
+		return errors.Errorf(
+			ctx,
+			"--model value %q does not match required pattern %s",
+			model,
+			globalconfig.ModelPattern,
+		)
+	}
+	return nil
+}
+
 func printConfig(ctx context.Context, cfg config.Config) error {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
@@ -623,8 +679,8 @@ func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
-			"  run [--max-containers N] [--skip-preflight]    Process all queued prompts and exit\n"+
-			"  daemon [--max-containers N] [--skip-preflight] Watch for queued prompts and execute them (long-running)\n"+
+			"  run [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]    Process all queued prompts and exit\n"+
+			"  daemon [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
@@ -657,27 +713,33 @@ func printHelp() {
 func printRunHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory run [--max-containers N] [--auto-approve] [--skip-preflight]\n\n"+
+		"Usage: dark-factory run [--max-containers N] [--auto-approve] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]\n\n"+
 			"Process all queued prompts and exit.\n\n"+
 			"Flags:\n"+
-			"  --max-containers N  Override the container limit for this run\n"+
-			"  --auto-approve      Automatically approve new prompts found during run\n"+
-			"  --skip-preflight    Skip preflight baseline check for this invocation.\n"+
-			"                      Prompts may run on a broken baseline — use with caution.\n"+
-			"  --help, -h          Show this help\n",
+			"  --max-containers N      Override the container limit for this run\n"+
+			"  --auto-approve          Automatically approve new prompts found during run\n"+
+			"  --skip-preflight        Skip preflight baseline check for this invocation.\n"+
+			"                          Prompts may run on a broken baseline — use with caution.\n"+
+			"  --hide-git              Force hide-git mode on for this invocation (overrides yaml)\n"+
+			"  --no-hide-git           Force hide-git mode off for this invocation (overrides yaml)\n"+
+			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
+			"  --help, -h              Show this help\n",
 	)
 }
 
 func printDaemonHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight]\n\n"+
+		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]\n\n"+
 			"Watch for queued prompts and execute them (long-running).\n\n"+
 			"Flags:\n"+
-			"  --max-containers N  Override the container limit for this run\n"+
-			"  --skip-preflight    Skip preflight baseline check for this invocation.\n"+
-			"                      Prompts may run on a broken baseline — use with caution.\n"+
-			"  --help, -h          Show this help\n",
+			"  --max-containers N      Override the container limit for this run\n"+
+			"  --skip-preflight        Skip preflight baseline check for this invocation.\n"+
+			"                          Prompts may run on a broken baseline — use with caution.\n"+
+			"  --hide-git              Force hide-git mode on for this invocation (overrides yaml)\n"+
+			"  --no-hide-git           Force hide-git mode off for this invocation (overrides yaml)\n"+
+			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
+			"  --help, -h              Show this help\n",
 	)
 }
 
@@ -763,19 +825,25 @@ func printScenarioHelp() {
 }
 
 // ParseArgs parses command line arguments (without program name) and returns
-// (debug, command, subcommand, args, autoApprove, skipPreflight).
+// (debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model).
 // The -debug flag can appear anywhere and is extracted before parsing.
 // The --auto-approve flag is extracted for the "run" command.
 // The --skip-preflight flag is extracted for the "run" and "daemon" commands.
+// The --hide-git / --no-hide-git flags are extracted for "run" and "daemon".
+// The --model NAME flag is extracted for "run" and "daemon".
+// hideGit is nil when neither --hide-git nor --no-hide-git is passed.
+// model is empty string when --model is not passed.
 // No args → command="help" (prints usage, exits 0)
 // Bare "help" word → command="help" (same as --help)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
-func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool) {
+func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, *bool, string) {
 	debug := false
 	autoApprove := false
 	skipPreflight := false
+	hideGit := (*bool)(nil)
+	model := ""
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
 		switch arg {
@@ -785,13 +853,36 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool) {
 			autoApprove = true
 		case "--skip-preflight":
 			skipPreflight = true
+		case "--hide-git":
+			t := true
+			hideGit = &t
+		case "--no-hide-git":
+			f := false
+			hideGit = &f
 		default:
 			filtered = append(filtered, arg)
 		}
 	}
 
+	// Extract --model NAME from the filtered args (already stripped of boolean flags)
+	modelFiltered := make([]string, 0, len(filtered))
+	for i := 0; i < len(filtered); i++ {
+		if filtered[i] == "--model" {
+			if i+1 >= len(filtered) {
+				// Missing value — keep "--model" in filtered so runCommand can reject it
+				modelFiltered = append(modelFiltered, filtered[i])
+				continue
+			}
+			model = filtered[i+1]
+			i++ // skip the value
+			continue
+		}
+		modelFiltered = append(modelFiltered, filtered[i])
+	}
+	filtered = modelFiltered
+
 	if len(filtered) == 0 {
-		return debug, "help", "", []string{}, autoApprove, skipPreflight
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, hideGit, model
 	}
 
 	command := filtered[0]
@@ -799,17 +890,17 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool) {
 
 	switch command {
 	case "help", "--help", "-help", "-h":
-		return debug, "help", "", []string{}, autoApprove, skipPreflight
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, hideGit, model
 	case "--version", "-version", "-v":
-		return debug, "version", "", []string{}, autoApprove, skipPreflight
+		return debug, "version", "", []string{}, autoApprove, skipPreflight, hideGit, model
 	case "run", "daemon", "kill", "status", "list", "config":
-		return debug, command, "", rest, autoApprove, skipPreflight
+		return debug, command, "", rest, autoApprove, skipPreflight, hideGit, model
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {
-			return debug, command, "", []string{}, autoApprove, skipPreflight
+			return debug, command, "", []string{}, autoApprove, skipPreflight, hideGit, model
 		}
-		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight
+		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight, hideGit, model
 	}
 
-	return debug, "unknown", "", filtered, autoApprove, skipPreflight
+	return debug, "unknown", "", filtered, autoApprove, skipPreflight, hideGit, model
 }

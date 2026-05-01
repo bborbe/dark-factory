@@ -15,11 +15,13 @@ type parseArgsResult struct {
 	args          []string
 	autoApprove   bool
 	skipPreflight bool
+	hideGit       *bool
+	model         string
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(input)
+	debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(input)
 	if debug != want.debug {
 		t.Errorf("debug: got %v, want %v", debug, want.debug)
 	}
@@ -43,6 +45,15 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if skipPreflight != want.skipPreflight {
 		t.Errorf("skipPreflight: got %v, want %v", skipPreflight, want.skipPreflight)
+	}
+	// hideGit: both nil → ok; both non-nil with same value → ok; otherwise fail
+	if (hideGit == nil) != (want.hideGit == nil) {
+		t.Errorf("hideGit: got %v, want %v", hideGit, want.hideGit)
+	} else if hideGit != nil && want.hideGit != nil && *hideGit != *want.hideGit {
+		t.Errorf("hideGit: got %v, want %v", *hideGit, *want.hideGit)
+	}
+	if model != want.model {
+		t.Errorf("model: got %q, want %q", model, want.model)
 	}
 }
 
@@ -255,5 +266,73 @@ func TestParseArgsSkipPreflight(t *testing.T) {
 	assertParseArgs(t,
 		[]string{"run", "--skip-preflight", "--skip-preflight"},
 		parseArgsResult{command: "run", args: []string{}, skipPreflight: true},
+	)
+}
+
+func TestParseArgsHideGit(t *testing.T) {
+	t.Parallel()
+	trueVal := true
+	falseVal := false
+
+	// --hide-git after command
+	assertParseArgs(t,
+		[]string{"run", "--hide-git"},
+		parseArgsResult{command: "run", args: []string{}, hideGit: &trueVal},
+	)
+	// --no-hide-git after command
+	assertParseArgs(t,
+		[]string{"run", "--no-hide-git"},
+		parseArgsResult{command: "run", args: []string{}, hideGit: &falseVal},
+	)
+	// flag before command (position-agnostic)
+	assertParseArgs(t,
+		[]string{"--hide-git", "daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, hideGit: &trueVal},
+	)
+	// no flag → hideGit is nil
+	assertParseArgs(t,
+		[]string{"run"},
+		parseArgsResult{command: "run", args: []string{}, hideGit: nil},
+	)
+	// combined with other flags
+	assertParseArgs(t,
+		[]string{"run", "--hide-git", "--skip-preflight"},
+		parseArgsResult{command: "run", args: []string{}, hideGit: &trueVal, skipPreflight: true},
+	)
+}
+
+func TestParseArgsModel(t *testing.T) {
+	t.Parallel()
+
+	// --model after command
+	assertParseArgs(t,
+		[]string{"run", "--model", "claude-opus-4-7"},
+		parseArgsResult{command: "run", args: []string{}, model: "claude-opus-4-7"},
+	)
+	// --model before command
+	assertParseArgs(t,
+		[]string{"--model", "claude-haiku-4-5", "daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, model: "claude-haiku-4-5"},
+	)
+	// no flag → model is empty string
+	assertParseArgs(t,
+		[]string{"run"},
+		parseArgsResult{command: "run", args: []string{}, model: ""},
+	)
+	// combined with other flags
+	assertParseArgs(
+		t,
+		[]string{"run", "--model", "claude-sonnet-4-6", "--skip-preflight"},
+		parseArgsResult{
+			command:       "run",
+			args:          []string{},
+			model:         "claude-sonnet-4-6",
+			skipPreflight: true,
+		},
+	)
+	// model with colon (other provider)
+	assertParseArgs(t,
+		[]string{"run", "--model", "qwen3.6:35b-a3b"},
+		parseArgsResult{command: "run", args: []string{}, model: "qwen3.6:35b-a3b"},
 	)
 }

@@ -75,10 +75,14 @@ var _ = Describe("ParseArgs", func() {
 		args          []string
 		autoApprove   bool
 		skipPreflight bool
+		hideGit       *bool
+		model         string
 	}
 	parse := func(rawArgs []string) result {
-		debug, command, subcommand, args, autoApprove, skipPreflight := ParseArgs(rawArgs)
-		return result{debug, command, subcommand, args, autoApprove, skipPreflight}
+		debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(
+			rawArgs,
+		)
+		return result{debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model}
 	}
 
 	It("returns run command with --help in args (validation at dispatch)", func() {
@@ -238,6 +242,105 @@ var _ = Describe("applyGlobalOverrides", func() {
 		proj := config.LayeredProjectOverrides{HideGit: &f}
 		applyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.HideGit).To(BeFalse())
+	})
+})
+
+var _ = Describe("applyArgOverrides", func() {
+	ctx := context.Background()
+
+	It("applies hideGit=true override", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		t := true
+		Expect(applyArgOverrides(ctx, &cfg, &sources, "run", &t, "")).To(Succeed())
+		Expect(cfg.HideGit).To(BeTrue())
+		Expect(sources.HideGit).To(Equal("arg"))
+	})
+
+	It("applies hideGit=false override", func() {
+		cfg := config.Defaults()
+		cfg.HideGit = true
+		sources := config.FieldSources{}
+		f := false
+		Expect(applyArgOverrides(ctx, &cfg, &sources, "run", &f, "")).To(Succeed())
+		Expect(cfg.HideGit).To(BeFalse())
+		Expect(sources.HideGit).To(Equal("arg"))
+	})
+
+	It("applies model override", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applyArgOverrides(ctx, &cfg, &sources, "daemon", nil, "claude-opus-4-7"),
+		).To(Succeed())
+		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
+		Expect(sources.Model).To(Equal("arg"))
+	})
+
+	It("rejects --hide-git on non-run/daemon command", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		t := true
+		err := applyArgOverrides(ctx, &cfg, &sources, "status", &t, "")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown flag: --hide-git"))
+	})
+
+	It("rejects --model on non-run/daemon command", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applyArgOverrides(ctx, &cfg, &sources, "config", nil, "claude-opus-4-7")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown flag: --model"))
+	})
+
+	It("rejects invalid model value", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applyArgOverrides(ctx, &cfg, &sources, "run", nil, "claude;bad")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("does not match required pattern"))
+	})
+})
+
+var _ = Describe("validateModelArg", func() {
+	ctx := context.Background()
+
+	It("accepts a valid Anthropic model ID", func() {
+		Expect(validateModelArg(ctx, "claude-opus-4-7")).To(Succeed())
+	})
+
+	It("accepts a model with colon and slash", func() {
+		Expect(validateModelArg(ctx, "qwen3.6:35b-a3b")).To(Succeed())
+	})
+
+	It("accepts a namespaced local model", func() {
+		Expect(validateModelArg(ctx, "local/qwen3.6:35b-a3b")).To(Succeed())
+	})
+
+	It("accepts a Docker image ref", func() {
+		Expect(validateModelArg(ctx, "docker.io/bborbe/claude-yolo:v0.6.1")).To(Succeed())
+	})
+
+	It("rejects model with semicolon (shell metachar)", func() {
+		err := validateModelArg(ctx, "claude;rm -rf /")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("does not match required pattern"))
+	})
+
+	It("rejects model with dollar sign", func() {
+		err := validateModelArg(ctx, "claude-$VERSION")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("rejects model with spaces", func() {
+		err := validateModelArg(ctx, "claude opus")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("rejects empty model", func() {
+		err := validateModelArg(ctx, "")
+		Expect(err).To(HaveOccurred())
 	})
 })
 

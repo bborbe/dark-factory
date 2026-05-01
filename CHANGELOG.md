@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.141.0
+
+- feat: add --hide-git and --no-hide-git CLI flags to run and daemon commands to override hideGit setting per invocation
+- feat: add --model NAME CLI flag to run and daemon commands to override model per invocation
+- fix: passing both --hide-git and --no-hide-git in one invocation exits non-zero with usage error
+
 ## v0.140.0
 
 - feat: extend global config (~/.dark-factory/config.yaml) with `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model` fields; implement default←global←project merge precedence for these 4 fields

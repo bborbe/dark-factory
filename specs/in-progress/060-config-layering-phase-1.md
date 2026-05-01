@@ -1,7 +1,8 @@
 ---
-status: generating
-approved: "2026-05-01T07:59:39Z"
+status: prompted
+approved: "2026-05-01T08:43:33Z"
 generating: "2026-05-01T08:21:52Z"
+prompted: "2026-05-01T09:02:02Z"
 branch: dark-factory/config-layering-phase-1
 ---
 

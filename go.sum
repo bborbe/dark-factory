@@ -140,6 +140,7 @@ github.com/aymanbagabas/go-udiff v0.4.1/go.mod h1:0L9PGwj20lrtmEMeyw4WKJ/TMyDtvA
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694 h1:LiKs9FsSfMx3NomNclXYkv9enY77oft5Mc/vX/AKHgI=
+github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694/go.mod h1:PLNUetjLa77TCCziPsz0EI8a6CUxgC+1jgmWv0H25tg=
 github.com/bborbe/collection v1.20.7 h1:Y/w1t6vx68oPXftohwWBk3ZHwbxd4SFYp7KWS5UuxCU=
 github.com/bborbe/collection v1.20.7/go.mod h1:NTBj9Z0b/gLftxc8wj/mgIBEY5tqj5yqtQJFF6lHblA=
 github.com/bborbe/errors v1.5.8 h1:/R/sVjP7OZsgN+lW87WQy/JrptpuavRHU/74JCaTSTQ=

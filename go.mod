@@ -92,6 +92,7 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694 // indirect
 	github.com/bborbe/kv v1.19.2 // indirect
 	github.com/bborbe/log v1.6.8 // indirect
 	github.com/bborbe/math v1.3.6 // indirect

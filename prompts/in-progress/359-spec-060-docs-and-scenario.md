@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [060-config-layering-phase-1]
+summary: Added Global Config section and CLI flag docs to docs/configuration.md, created scenarios/013-config-layering.md, and added CHANGELOG Unreleased entries for all changes.
+container: dark-factory-359-spec-060-docs-and-scenario
+dark-factory-version: dev
 created: "2026-05-01T09:00:00Z"
 queued: "2026-05-01T09:19:24Z"
+started: "2026-05-01T09:50:49Z"
 branch: dark-factory/config-layering-phase-1
 ---
 

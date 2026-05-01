@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.141.1
+
+- docs: document global config layering in `docs/configuration.md` — new "Global Config" section with precedence chain, layered fields table, validation notes, and source tracing; extend "CLI Flags" section with `--hide-git`/`--no-hide-git` and `--model NAME` documentation
+- docs: add `scenarios/013-config-layering.md` — manual verification checklist for global→project→CLI precedence, invalid config rejection, contradictory flags, and missing global file fallback
+
 ## v0.141.0
 
 - feat: add --hide-git and --no-hide-git CLI flags to run and daemon commands to override hideGit setting per invocation

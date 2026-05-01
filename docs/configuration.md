@@ -190,6 +190,72 @@ model: "claude-sonnet-4-6"
 | `containerImage` | `docker.io/bborbe/claude-yolo:v0.6.2` | Docker image for YOLO execution |
 | `model` | `claude-sonnet-4-6` | Claude model used inside the container |
 
+## Global Config
+
+Machine-wide user preferences live in `~/.dark-factory/config.yaml`. This file is optional — when absent, all defaults apply and no behavior changes.
+
+```yaml
+# ~/.dark-factory/config.yaml
+maxContainers: 5
+model: claude-opus-4-7
+hideGit: true
+autoRelease: true
+dirtyFileThreshold: 20
+```
+
+### Precedence
+
+For user-pref fields, the effective value follows this chain (last writer wins):
+
+```
+default  ←  global config  ←  project config  ←  CLI flag
+```
+
+- **Default**: hardcoded in `config.Defaults()` (e.g. `model: claude-sonnet-4-6`)
+- **Global**: `~/.dark-factory/config.yaml` — applies to all projects on this machine
+- **Project**: `.dark-factory.yaml` in the repo root — overrides global for this project
+- **CLI flag**: `--model NAME`, `--hide-git`, `--no-hide-git` — overrides yaml for this invocation only
+
+Field absent at a layer means that layer is skipped — it never silently zeroes an upstream value.
+
+For a full description of the 5-layer model and which fields belong at which layer, see [docs/config-layering.md](config-layering.md).
+
+### Layered fields (phase 1)
+
+The following fields are currently eligible for global config:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `maxContainers` | `3` | System-wide container concurrency limit |
+| `model` | `claude-sonnet-4-6` | Claude model for all projects on this machine |
+| `hideGit` | `false` | Hide git status from YOLO container by default |
+| `autoRelease` | `false` | Auto-push commits and tag releases |
+| `dirtyFileThreshold` | `0` (disabled) | Skip prompts when dirty file count exceeds this |
+
+All values in `~/.dark-factory/config.yaml` are optional. Set only the ones you want to override.
+
+### Validation
+
+Global config is validated at startup. Invalid values fail startup with a clear error:
+
+```
+error: globalconfig: validate: globalconfig: dirtyFileThreshold must not be negative, got -1
+```
+
+The global config file itself is not validated before that — errors in the file (invalid YAML, unknown fields ignored by yaml.v3) surface at startup.
+
+Model values must match `^[a-zA-Z0-9._:/-]{1,256}$`. Shell metacharacters (spaces, semicolons, pipes, dollar signs, etc.) are rejected because the model name flows to container args.
+
+### Source tracing
+
+The `effective config` log line emitted at startup includes a `*Source` field for each layered field:
+
+```
+msg="effective config" model=claude-opus-4-7 modelSource=global hideGit=true hideGitSource=global ...
+```
+
+Possible values: `default`, `global`, `project`, `arg`.
+
 ## Per-Project Container Limit
 
 Override the global `maxContainers` limit for a specific project by adding `maxContainers` to `.dark-factory.yaml`:
@@ -314,6 +380,34 @@ The flag is position-agnostic: `dark-factory --skip-preflight run` and `dark-fac
 **Safety note:** Prompts may run on a broken baseline when this flag is used. The startup log line provides an audit trail. Use only when the baseline is knowingly broken (e.g., transient CVE, upstream flake) and the prompt must execute urgently.
 
 The flag does not persist: the next invocation without the flag runs preflight as configured. It has no effect when `preflightCommand` is empty (already disabled).
+
+**`--hide-git` / `--no-hide-git`**
+
+```bash
+dark-factory run --hide-git
+dark-factory run --no-hide-git
+dark-factory daemon --hide-git
+```
+
+Overrides the `hideGit` setting for this invocation. `--hide-git` forces hide-git on; `--no-hide-git` forces it off. Either flag beats both global and project config.
+
+Passing both `--hide-git` and `--no-hide-git` in the same invocation exits non-zero with a usage error.
+
+Priority: `--hide-git`/`--no-hide-git` > project config > global config > default.
+
+**`--model NAME`**
+
+```bash
+dark-factory run --model claude-haiku-4-5
+dark-factory daemon --model claude-opus-4-7
+dark-factory run --model docker.io/bborbe/claude-yolo:v0.6.1
+```
+
+Overrides the model for this invocation. Beats both global and project config.
+
+`NAME` must match `^[a-zA-Z0-9._:/-]{1,256}$`. Values with spaces, semicolons, pipes, or other shell metacharacters are rejected.
+
+Priority: `--model` arg > project config > global config > default.
 
 ## Private Go Modules
 

@@ -1,8 +1,11 @@
 ---
-status: approved
+status: executing
 spec: [060-config-layering-phase-1]
+container: dark-factory-357-spec-060-global-config-schema-and-merge
+dark-factory-version: dev
 created: "2026-05-01T09:00:00Z"
 queued: "2026-05-01T09:19:24Z"
+started: "2026-05-01T09:22:25Z"
 branch: dark-factory/config-layering-phase-1
 ---
 

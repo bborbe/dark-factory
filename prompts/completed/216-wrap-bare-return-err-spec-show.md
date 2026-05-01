@@ -1,5 +1,5 @@
 ---
-status: failed
+status: completed
 container: dark-factory-216-wrap-bare-return-err-spec-show
 dark-factory-version: v0.67.8
 created: "2026-03-27T14:23:18Z"

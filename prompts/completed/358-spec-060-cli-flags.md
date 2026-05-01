@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [060-config-layering-phase-1]
 summary: Added --hide-git, --no-hide-git, and --model NAME CLI flags to run and daemon commands with arg-level override priority in the layering chain, updating ParseArgs to return 8 values, adding applyArgOverrides and validateModelArg helpers, extending test coverage, and updating help text.
 container: dark-factory-358-spec-060-cli-flags
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-01T09:00:00Z"
 queued: "2026-05-01T09:19:24Z"
 started: "2026-05-01T09:43:44Z"
+completed: "2026-05-01T09:50:47Z"
 branch: dark-factory/config-layering-phase-1
 ---
 

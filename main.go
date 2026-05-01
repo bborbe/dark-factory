@@ -77,11 +77,18 @@ func run(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "chdir to git root")
 	}
 
-	loader := config.NewLoader()
-	cfg, err := loader.Load(ctx)
+	loadResult, err := config.LoadWithOverrides(ctx)
 	if err != nil {
 		return err
 	}
+	cfg := loadResult.Config
+
+	globalCfg, err := globalconfig.NewLoader().Load(ctx)
+	if err != nil {
+		return err
+	}
+	applyGlobalOverrides(&cfg, globalCfg, loadResult.Overrides)
+	sources := computeFieldSources(globalCfg, loadResult.Overrides)
 
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	return runCommand(
@@ -92,6 +99,7 @@ func run(ctx context.Context) error {
 		args,
 		autoApprove,
 		skipPreflight,
+		sources,
 		currentDateTimeGetter,
 	)
 }
@@ -126,6 +134,7 @@ func runCommand(
 	args []string,
 	autoApprove bool,
 	skipPreflight bool,
+	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	if skipPreflight {
@@ -161,9 +170,17 @@ func runCommand(
 		}
 		return factory.CreateKillCommand(cfg).Run(ctx, args)
 	case "run":
-		return runRunCommand(ctx, cfg, args, autoApprove, skipPreflight, currentDateTimeGetter)
+		return runRunCommand(
+			ctx,
+			cfg,
+			args,
+			autoApprove,
+			skipPreflight,
+			sources,
+			currentDateTimeGetter,
+		)
 	case "daemon":
-		return runDaemonCommand(ctx, cfg, args, skipPreflight, currentDateTimeGetter)
+		return runDaemonCommand(ctx, cfg, args, skipPreflight, sources, currentDateTimeGetter)
 	default:
 		return errors.Errorf(ctx, "unknown command: %s", command)
 	}
@@ -194,6 +211,7 @@ func runRunCommand(
 	args []string,
 	autoApprove bool,
 	skipPreflight bool,
+	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
@@ -209,7 +227,7 @@ func runRunCommand(
 	if skipPreflight {
 		slog.Info("preflight: baseline check disabled for this invocation (--skip-preflight flag)")
 	}
-	runErr := factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, skipPreflight, currentDateTimeGetter).
+	runErr := factory.CreateOneShotRunner(ctx, cfg, version.Version, autoApprove, skipPreflight, sources, currentDateTimeGetter).
 		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
 		slog.Error(
@@ -224,6 +242,7 @@ func runDaemonCommand(
 	cfg config.Config,
 	args []string,
 	skipPreflight bool,
+	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	n, remaining, err := extractMaxContainers(ctx, args)
@@ -239,7 +258,7 @@ func runDaemonCommand(
 	if skipPreflight {
 		slog.Info("preflight: baseline check disabled for this invocation (--skip-preflight flag)")
 	}
-	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, currentDateTimeGetter).
+	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, sources, currentDateTimeGetter).
 		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
 		slog.Error(
@@ -485,6 +504,69 @@ func validateRequeueArgs(ctx context.Context, args []string, helpFn func()) erro
 		return errors.Errorf(ctx, "too many arguments")
 	}
 	return nil
+}
+
+// applyGlobalOverrides applies global config values for the 4 layered user-pref fields
+// into cfg, but only where the project config did not explicitly set the field.
+// Fields the project explicitly set (non-nil pointer in overrides) are left untouched.
+func applyGlobalOverrides(
+	cfg *config.Config,
+	global globalconfig.GlobalConfig,
+	proj config.LayeredProjectOverrides,
+) {
+	if global.Model != nil && proj.Model == nil {
+		cfg.Model = *global.Model
+	}
+	if global.HideGit != nil && proj.HideGit == nil {
+		cfg.HideGit = *global.HideGit
+	}
+	if global.AutoRelease != nil && proj.AutoRelease == nil {
+		cfg.AutoRelease = *global.AutoRelease
+	}
+	if global.DirtyFileThreshold != nil && proj.DirtyFileThreshold == nil {
+		cfg.DirtyFileThreshold = *global.DirtyFileThreshold
+	}
+}
+
+// computeFieldSources determines which config layer provided each of the 4 layered user-pref fields.
+// Rules: global wins over default; project wins over global.
+// "arg" source is not set here — it is set in run commands when CLI flags override the value.
+func computeFieldSources(
+	global globalconfig.GlobalConfig,
+	proj config.LayeredProjectOverrides,
+) config.FieldSources {
+	s := config.FieldSources{
+		HideGit:            "default",
+		AutoRelease:        "default",
+		DirtyFileThreshold: "default",
+		Model:              "default",
+	}
+	if global.Model != nil {
+		s.Model = "global"
+	}
+	if global.HideGit != nil {
+		s.HideGit = "global"
+	}
+	if global.AutoRelease != nil {
+		s.AutoRelease = "global"
+	}
+	if global.DirtyFileThreshold != nil {
+		s.DirtyFileThreshold = "global"
+	}
+	// Project overrides global (project wins)
+	if proj.Model != nil {
+		s.Model = "project"
+	}
+	if proj.HideGit != nil {
+		s.HideGit = "project"
+	}
+	if proj.AutoRelease != nil {
+		s.AutoRelease = "project"
+	}
+	if proj.DirtyFileThreshold != nil {
+		s.DirtyFileThreshold = "project"
+	}
+	return s
 }
 
 // extractMaxContainers removes --max-containers N from args and returns the value (0 = not set).

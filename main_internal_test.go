@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/globalconfig"
 )
 
 var _ = Describe("extractMaxContainers", func() {
@@ -171,7 +172,17 @@ var _ = Describe("runCommand --skip-preflight rejection", func() {
 
 	DescribeTable("rejects --skip-preflight on unsupported commands",
 		func(command string) {
-			err := runCommand(ctx, config.Config{}, command, "", []string{}, false, true, dt)
+			err := runCommand(
+				ctx,
+				config.Config{},
+				command,
+				"",
+				[]string{},
+				false,
+				true,
+				config.FieldSources{},
+				dt,
+			)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unknown flag: --skip-preflight"))
 		},
@@ -182,4 +193,89 @@ var _ = Describe("runCommand --skip-preflight rejection", func() {
 		Entry("scenario", "scenario"),
 		Entry("config", "config"),
 	)
+})
+
+var _ = Describe("applyGlobalOverrides", func() {
+	It("applies global model when project did not set it", func() {
+		cfg := config.Defaults()
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		m := "claude-opus-4-7"
+		global.Model = &m
+		proj := config.LayeredProjectOverrides{}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
+	})
+
+	It("does not overwrite project model with global model", func() {
+		cfg := config.Defaults()
+		cfg.Model = "claude-sonnet-4-6"
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		gm := "claude-opus-4-7"
+		global.Model = &gm
+		pm := "claude-sonnet-4-6"
+		proj := config.LayeredProjectOverrides{Model: &pm}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
+	})
+
+	It("applies global hideGit when project did not set it", func() {
+		cfg := config.Defaults()
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.HideGit = &t
+		proj := config.LayeredProjectOverrides{}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.HideGit).To(BeTrue())
+	})
+
+	It("does not overwrite project hideGit=false with global hideGit=true", func() {
+		cfg := config.Defaults()
+		cfg.HideGit = false
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.HideGit = &t
+		f := false
+		proj := config.LayeredProjectOverrides{HideGit: &f}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.HideGit).To(BeFalse())
+	})
+})
+
+var _ = Describe("computeFieldSources", func() {
+	It("returns default for all fields when global and project both absent", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.Model).To(Equal("default"))
+		Expect(s.HideGit).To(Equal("default"))
+		Expect(s.AutoRelease).To(Equal("default"))
+		Expect(s.DirtyFileThreshold).To(Equal("default"))
+	})
+
+	It("returns global when global sets model and project does not", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		m := "claude-opus-4-7"
+		global.Model = &m
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.Model).To(Equal("global"))
+	})
+
+	It("returns project when project sets model (even if global also set)", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		gm := "claude-opus-4-7"
+		global.Model = &gm
+		pm := "claude-haiku-4-5"
+		proj := config.LayeredProjectOverrides{Model: &pm}
+		s := computeFieldSources(global, proj)
+		Expect(s.Model).To(Equal("project"))
+	})
+
+	It("returns project for hideGit when project explicitly sets false", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		f := false
+		proj := config.LayeredProjectOverrides{HideGit: &f}
+		s := computeFieldSources(global, proj)
+		Expect(s.HideGit).To(Equal("project"))
+	})
 })

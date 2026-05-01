@@ -971,6 +971,33 @@ var _ = Describe("Config", func() {
 			err := cfg.Validate(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		Describe("model validation", func() {
+			It("rejects model with semicolon", func() {
+				cfg := config.Defaults()
+				cfg.Model = "claude;rm -rf /"
+				Expect(cfg.Validate(ctx)).To(HaveOccurred())
+				Expect(cfg.Validate(ctx).Error()).To(ContainSubstring("model"))
+			})
+
+			It("accepts claude-sonnet-4-6 (default)", func() {
+				cfg := config.Defaults()
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("accepts Docker image ref format", func() {
+				cfg := config.Defaults()
+				cfg.Model = "docker.io/bborbe/claude-yolo:v0.6.1"
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("rejects empty model string", func() {
+				cfg := config.Defaults()
+				cfg.Model = ""
+				Expect(cfg.Validate(ctx)).To(HaveOccurred())
+				Expect(cfg.Validate(ctx).Error()).To(ContainSubstring("model"))
+			})
+		})
 	})
 
 })

@@ -44,6 +44,7 @@ var _ = Describe("Factory", func() {
 				cfg,
 				"v0.0.1",
 				false,
+				config.FieldSources{},
 				libtime.NewCurrentDateTime(),
 			)
 			Expect(runner).NotTo(BeNil())
@@ -246,6 +247,10 @@ var _ = Describe("Factory", func() {
 			Expect(output).To(ContainSubstring("promptsInProgressDir="))
 			Expect(output).To(ContainSubstring("promptsCompletedDir="))
 			Expect(output).To(ContainSubstring("promptsLogDir="))
+			Expect(output).To(ContainSubstring("modelSource="))
+			Expect(output).To(ContainSubstring("hideGitSource="))
+			Expect(output).To(ContainSubstring("autoReleaseSource="))
+			Expect(output).To(ContainSubstring("dirtyFileThresholdSource="))
 		}
 
 		assertNoSecrets := func(output string) {
@@ -266,7 +271,7 @@ var _ = Describe("Factory", func() {
 				c.MaxContainers = cfgMaxContainers
 				globalCfg := globalconfig.GlobalConfig{MaxContainers: globalMaxContainers}
 
-				factory.LogEffectiveConfig(c, globalCfg, globalFilePresent)
+				factory.LogEffectiveConfig(c, globalCfg, globalFilePresent, config.FieldSources{})
 
 				output := logBuf.String()
 				assertRequiredFields(output)
@@ -303,7 +308,7 @@ var _ = Describe("Factory", func() {
 			c.GitconfigFile = "/home/user/.gitconfig"
 			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
 
-			factory.LogEffectiveConfig(c, globalCfg, false)
+			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{})
 
 			output := logBuf.String()
 			assertNoSecrets(output)
@@ -313,7 +318,7 @@ var _ = Describe("Factory", func() {
 			c := fullTestConfig()
 			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
 
-			factory.LogEffectiveConfig(c, globalCfg, false)
+			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{})
 
 			output := logBuf.String()
 			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
@@ -386,7 +391,7 @@ var _ = Describe("Factory", func() {
 			c := buildPreflightConfig()
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err := factory.CreateRunner(ctx, c, "v0.0.1", false, libtime.NewCurrentDateTime()).
+			err := factory.CreateRunner(ctx, c, "v0.0.1", false, config.FieldSources{}, libtime.NewCurrentDateTime()).
 				Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
@@ -396,7 +401,7 @@ var _ = Describe("Factory", func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 			err := factory.CreateOneShotRunner(
-				ctx, c, "v0.0.1", false, false, libtime.NewCurrentDateTime(),
+				ctx, c, "v0.0.1", false, false, config.FieldSources{}, libtime.NewCurrentDateTime(),
 			).Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
@@ -408,7 +413,7 @@ var _ = Describe("Factory", func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 				// skipPreflight=true — preflight checker not created, queue is empty → exits with nil
-				err := factory.CreateOneShotRunner(ctx, c, "v0.0.1", false, true, libtime.NewCurrentDateTime()).
+				err := factory.CreateOneShotRunner(ctx, c, "v0.0.1", false, true, config.FieldSources{}, libtime.NewCurrentDateTime()).
 					Run(ctx)
 				Expect(err).NotTo(HaveOccurred())
 			},

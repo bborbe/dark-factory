@@ -1,5 +1,5 @@
 ---
-status: executing
+status: committing
 spec: [060-config-layering-phase-1]
 container: dark-factory-357-spec-060-global-config-schema-and-merge
 dark-factory-version: dev

@@ -133,6 +133,86 @@ var _ = Describe("Config", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		Describe("LoadWithOverrides", func() {
+			// The outer Loader BeforeEach already chdir's to a fresh tmpDir for each test.
+			// We write .dark-factory.yaml directly into the current directory.
+
+			It("returns LoadResult with defaults when config file is absent", func() {
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Config.Model).To(Equal("claude-sonnet-4-6"))
+				Expect(result.Overrides.Model).To(BeNil())
+				Expect(result.Overrides.HideGit).To(BeNil())
+				Expect(result.Overrides.AutoRelease).To(BeNil())
+				Expect(result.Overrides.DirtyFileThreshold).To(BeNil())
+			})
+
+			It("detects model explicitly set in project config", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("model: claude-opus-4-7\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Config.Model).To(Equal("claude-opus-4-7"))
+				Expect(result.Overrides.Model).NotTo(BeNil())
+				Expect(*result.Overrides.Model).To(Equal("claude-opus-4-7"))
+			})
+
+			It("reports nil override when model is not in project config (uses default)", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("workflow: direct\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Overrides.Model).To(BeNil())
+			})
+
+			It("detects hideGit explicitly set to false", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("hideGit: false\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Overrides.HideGit).NotTo(BeNil())
+				Expect(*result.Overrides.HideGit).To(BeFalse())
+			})
+
+			It("detects autoRelease explicitly set to true", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("autoRelease: true\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Overrides.AutoRelease).NotTo(BeNil())
+				Expect(*result.Overrides.AutoRelease).To(BeTrue())
+			})
+
+			It("detects dirtyFileThreshold explicitly set to zero", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("dirtyFileThreshold: 0\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Overrides.DirtyFileThreshold).NotTo(BeNil())
+				Expect(*result.Overrides.DirtyFileThreshold).To(Equal(0))
+			})
+		})
+
 		Describe("Load", func() {
 			It("returns defaults when config file does not exist", func() {
 				cfg, err := loader.Load(ctx)

@@ -179,7 +179,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("completedDir", validation.NotEmptyString(c.Prompts.CompletedDir)),
 		validation.Name("logDir", validation.NotEmptyString(c.Prompts.LogDir)),
 		validation.Name("containerImage", validation.NotEmptyString(c.ContainerImage)),
-		validation.Name("model", validation.NotEmptyString(c.Model)),
+		validation.Name("model", validation.HasValidationFunc(c.validateModel)),
 		validation.Name("debounceMs", validation.HasValidationFunc(func(ctx context.Context) error {
 			if c.DebounceMs <= 0 {
 				return errors.Errorf(ctx, "debounceMs must be positive, got %d", c.DebounceMs)
@@ -279,6 +279,21 @@ func (c Config) ParsedMaxPromptDuration() time.Duration {
 		return 0
 	}
 	return d
+}
+
+func (c Config) validateModel(ctx context.Context) error {
+	if c.Model == "" {
+		return errors.Errorf(ctx, "model must not be empty")
+	}
+	if !modelRegex.MatchString(c.Model) {
+		return errors.Errorf(
+			ctx,
+			"model %q does not match required pattern %s",
+			c.Model,
+			modelPattern,
+		)
+	}
+	return nil
 }
 
 // validateMaxContainers rejects negative maxContainers values.
@@ -509,6 +524,12 @@ func (c Config) validateExtraMounts(ctx context.Context) error {
 	}
 	return nil
 }
+
+// modelPattern is the regex for validating model identifiers at the project config layer.
+// Must stay in sync with globalconfig.ModelPattern — duplication is intentional (no cross-package import).
+const modelPattern = `^[a-zA-Z0-9._:/-]{1,256}$`
+
+var modelRegex = regexp.MustCompile(modelPattern)
 
 var envVarPattern = regexp.MustCompile(`^\$\{([A-Z_][A-Z0-9_]*)\}$`)
 

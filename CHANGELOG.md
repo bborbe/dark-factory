@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.140.0
+
+- feat: extend global config (~/.dark-factory/config.yaml) with `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model` fields; implement default←global←project merge precedence for these 4 fields
+- feat: effective config log line now shows per-field source annotations (`modelSource=global`, `hideGitSource=project`, etc.) for the 4 new layered fields
+- fix: tighten model validation — explicit `model: ""` rejected at every config layer; model values with shell metacharacters rejected via regex `^[a-zA-Z0-9._:/-]{1,256}$` (BREAKING: rare — no known valid model names contain these chars)
+
 ## v0.139.0
 
 - docs: clarify `autoRelease` vs `CHANGELOG.md` semantics across `configuration.md`, `workflows.md`, `running.md`, `architecture-flow.md`, and `README.md` — push is gated on `autoRelease`, tag is gated on `CHANGELOG.md` presence (orthogonal concerns)

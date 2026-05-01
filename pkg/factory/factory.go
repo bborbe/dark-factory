@@ -90,6 +90,7 @@ func LogEffectiveConfig(
 	cfg config.Config,
 	globalCfg globalconfig.GlobalConfig,
 	globalFilePresent bool,
+	sources config.FieldSources,
 ) {
 	effective := EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers)
 	source := "default"
@@ -103,15 +104,20 @@ func LogEffectiveConfig(
 		"maxContainersSource", source,
 		"containerImage", cfg.ContainerImage,
 		"model", cfg.Model,
+		"modelSource", sources.Model,
 		"workflow", cfg.Workflow,
 		"pr", cfg.PR,
 		"autoRelease", cfg.AutoRelease,
+		"autoReleaseSource", sources.AutoRelease,
 		"autoMerge", cfg.AutoMerge,
 		"verificationGate", cfg.VerificationGate,
 		"validationCommand", cfg.ValidationCommand,
 		"testCommand", cfg.TestCommand,
 		"debounceMs", cfg.DebounceMs,
 		"hideGit", cfg.HideGit,
+		"hideGitSource", sources.HideGit,
+		"dirtyFileThreshold", cfg.DirtyFileThreshold,
+		"dirtyFileThresholdSource", sources.DirtyFileThreshold,
 		"promptsInboxDir", cfg.Prompts.InboxDir,
 		"promptsInProgressDir", cfg.Prompts.InProgressDir,
 		"promptsCompletedDir", cfg.Prompts.CompletedDir,
@@ -128,9 +134,10 @@ func createStartupLogger(
 	ctx context.Context,
 	cfg config.Config,
 	globalCfg globalconfig.GlobalConfig,
+	sources config.FieldSources,
 ) func() {
 	present, _ := globalconfig.FileExists(ctx)
-	return func() { LogEffectiveConfig(cfg, globalCfg, present) }
+	return func() { LogEffectiveConfig(cfg, globalCfg, present, sources) }
 }
 
 // errRunner is a Runner that immediately returns an error when Run is called.
@@ -290,6 +297,7 @@ func CreateRunner(
 	cfg config.Config,
 	ver string,
 	skipPreflight bool,
+	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.Runner {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -417,7 +425,7 @@ func CreateRunner(
 		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
-		createStartupLogger(ctx, cfg, globalCfg),
+		createStartupLogger(ctx, cfg, globalCfg, sources),
 		cfg.HideGit,
 		logWriter,
 	)
@@ -432,6 +440,7 @@ func CreateOneShotRunner(
 	ver string,
 	autoApprove bool,
 	skipPreflight bool,
+	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.OneShotRunner {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -552,7 +561,7 @@ func CreateOneShotRunner(
 		autoApprove,
 		migrator,
 		releaser,
-		createStartupLogger(ctx, cfg, globalCfg),
+		createStartupLogger(ctx, cfg, globalCfg, sources),
 	)
 }
 

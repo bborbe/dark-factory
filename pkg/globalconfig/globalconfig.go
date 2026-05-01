@@ -9,6 +9,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/bborbe/errors"
 	"gopkg.in/yaml.v3"
@@ -17,6 +18,17 @@ import (
 // DefaultMaxContainers is the system-wide container limit when no config is set.
 const DefaultMaxContainers = 3
 
+// ModelPattern is the regex source string. Exported so callers can include
+// it in error messages.
+const ModelPattern = `^[a-zA-Z0-9._:/-]{1,256}$`
+
+// ModelRegex validates model identifiers at every config layer (global, project, CLI arg).
+// Permits Anthropic IDs (claude-opus-4-7), other-provider IDs (qwen3.6:35b-a3b),
+// namespaced paths (local/qwen3.6:35b-a3b), and Docker image refs (docker.io/bborbe/claude-yolo:v0.6.1).
+// Blocks shell metacharacters since model flows to container args.
+// EXPORTED so pkg/config and main.go reuse the SAME compiled regex — do not duplicate the pattern.
+var ModelRegex = regexp.MustCompile(ModelPattern)
+
 // userHomeDir is a variable so tests can override the home directory lookup.
 var userHomeDir = os.UserHomeDir
 
@@ -24,7 +36,11 @@ var userHomeDir = os.UserHomeDir
 // It is loaded from ~/.dark-factory/config.yaml once at daemon startup.
 // When the file does not exist or the field is omitted, defaults apply.
 type GlobalConfig struct {
-	MaxContainers int `yaml:"maxContainers"`
+	MaxContainers      int     `yaml:"maxContainers"`
+	HideGit            *bool   `yaml:"hideGit,omitempty"`
+	AutoRelease        *bool   `yaml:"autoRelease,omitempty"`
+	DirtyFileThreshold *int    `yaml:"dirtyFileThreshold,omitempty"`
+	Model              *string `yaml:"model,omitempty"`
 }
 
 // Validate validates the GlobalConfig fields.
@@ -35,6 +51,26 @@ func (g GlobalConfig) Validate(ctx context.Context) error {
 			"globalconfig: maxContainers must be >= 1, got %d",
 			g.MaxContainers,
 		)
+	}
+	if g.DirtyFileThreshold != nil && *g.DirtyFileThreshold < 0 {
+		return errors.Errorf(
+			ctx,
+			"globalconfig: dirtyFileThreshold must not be negative, got %d",
+			*g.DirtyFileThreshold,
+		)
+	}
+	if g.Model != nil {
+		if *g.Model == "" {
+			return errors.Errorf(ctx, "globalconfig: model must not be empty string when set")
+		}
+		if !ModelRegex.MatchString(*g.Model) {
+			return errors.Errorf(
+				ctx,
+				"globalconfig: model %q does not match required pattern %s",
+				*g.Model,
+				ModelPattern,
+			)
+		}
 	}
 	return nil
 }
@@ -111,7 +147,11 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 
 	// partial struct to detect which fields were set (vs omitted)
 	var partial struct {
-		MaxContainers *int `yaml:"maxContainers"`
+		MaxContainers      *int    `yaml:"maxContainers"`
+		HideGit            *bool   `yaml:"hideGit"`
+		AutoRelease        *bool   `yaml:"autoRelease"`
+		DirtyFileThreshold *int    `yaml:"dirtyFileThreshold"`
+		Model              *string `yaml:"model"`
 	}
 	if err := yaml.Unmarshal(data, &partial); err != nil {
 		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: parse config file")
@@ -119,6 +159,18 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 
 	if partial.MaxContainers != nil {
 		cfg.MaxContainers = *partial.MaxContainers
+	}
+	if partial.HideGit != nil {
+		cfg.HideGit = partial.HideGit
+	}
+	if partial.AutoRelease != nil {
+		cfg.AutoRelease = partial.AutoRelease
+	}
+	if partial.DirtyFileThreshold != nil {
+		cfg.DirtyFileThreshold = partial.DirtyFileThreshold
+	}
+	if partial.Model != nil {
+		cfg.Model = partial.Model
 	}
 
 	if err := cfg.Validate(ctx); err != nil {

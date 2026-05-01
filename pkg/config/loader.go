@@ -27,6 +27,32 @@ func NewLoader() Loader {
 	}
 }
 
+// LayeredProjectOverrides reports which of the 4 layered user-pref fields were
+// explicitly set in .dark-factory.yaml. nil means the field was absent from the file
+// (so the default or global value applies). Non-nil means project explicitly set it.
+type LayeredProjectOverrides struct {
+	HideGit            *bool
+	AutoRelease        *bool
+	DirtyFileThreshold *int
+	Model              *string
+	MaxContainers      *int // included for completeness; maxContainers uses its own precedence path
+}
+
+// LoadResult bundles the merged project config with information about which
+// of the 4 layered user-pref fields the project explicitly set.
+type LoadResult struct {
+	Config    Config
+	Overrides LayeredProjectOverrides
+}
+
+// LoadWithOverrides reads .dark-factory.yaml, merges with defaults, validates,
+// and returns the merged config plus project override detection data.
+// Use this when global-config layering is needed (e.g. in main.run()).
+// Existing callers that use NewLoader().Load() are unaffected.
+func LoadWithOverrides(ctx context.Context) (LoadResult, error) {
+	return (&fileLoader{configPath: ".dark-factory.yaml"}).loadWithOverrides(ctx)
+}
+
 // fileLoader implements Loader by reading from a file.
 type fileLoader struct {
 	configPath string
@@ -97,6 +123,18 @@ type partialConfig struct {
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
 func (l *fileLoader) Load(ctx context.Context) (Config, error) {
+	result, err := l.loadWithOverrides(ctx)
+	if err != nil {
+		return Config{}, err
+	}
+	return result.Config, nil
+}
+
+// loadWithOverrides reads the config file, merges with defaults, validates, and returns
+// both the merged config and project override detection data.
+//
+//nolint:funlen // captures overrides before merge; splitting would obscure the capture-before-merge ordering invariant
+func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) {
 	// Start with defaults
 	cfg := Defaults()
 
@@ -105,10 +143,10 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 	data, err := os.ReadFile(l.configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// File doesn't exist - return defaults
-			return cfg, nil
+			// File doesn't exist - return defaults, no overrides
+			return LoadResult{Config: cfg}, nil
 		}
-		return Config{}, errors.Wrap(ctx, err, "read config file")
+		return LoadResult{}, errors.Wrap(ctx, err, "read config file")
 	}
 
 	// Check file permissions
@@ -122,7 +160,16 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 	// Parse YAML into partial config to preserve defaults for missing fields
 	var partial partialConfig
 	if err := yaml.Unmarshal(data, &partial); err != nil {
-		return Config{}, errors.Wrap(ctx, err, "parse config file")
+		return LoadResult{}, errors.Wrap(ctx, err, "parse config file")
+	}
+
+	// Capture the 4 layered user-pref fields before merging (pointer = explicitly set in project)
+	overrides := LayeredProjectOverrides{
+		HideGit:            partial.HideGit,
+		AutoRelease:        partial.AutoRelease,
+		DirtyFileThreshold: partial.DirtyFileThreshold,
+		Model:              partial.Model,
+		MaxContainers:      partial.MaxContainers,
 	}
 
 	// Merge non-nil values onto defaults
@@ -183,10 +230,10 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 
 	// Validate merged config
 	if err := cfg.Validate(ctx); err != nil {
-		return Config{}, errors.Wrap(ctx, err, "validate config")
+		return LoadResult{}, errors.Wrap(ctx, err, "validate config")
 	}
 
-	return cfg, nil
+	return LoadResult{Config: cfg, Overrides: overrides}, nil
 }
 
 // mergePartial applies non-nil fields from partial onto cfg.

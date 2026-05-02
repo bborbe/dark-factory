@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [061-cli-set-config-flag]
 summary: Replaced --hide-git/--no-hide-git with generic --set key=value flag on run and daemon commands, removed slices import, updated ParseArgs signature, added parseSetFlags/applySetOverrides/applyOneSetOverride/parseStrictBool helpers, extended FieldSources with MaxContainers, updated LogEffectiveConfig, and removed all hideGit test references.
 container: dark-factory-360-spec-061-implementation
@@ -7,6 +7,7 @@ dark-factory-version: v0.141.1-1-g4fd8246-dirty
 created: "2026-05-02T11:00:00Z"
 queued: "2026-05-02T11:07:13Z"
 started: "2026-05-02T11:08:19Z"
+completed: "2026-05-02T11:27:08Z"
 branch: dark-factory/cli-set-config-flag
 ---
 

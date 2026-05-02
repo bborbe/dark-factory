@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.143.0
+
+- feat: add --set key=value CLI flag to run and daemon for per-invocation config override (supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers)
+- BREAKING: remove --hide-git and --no-hide-git flags; use --set hideGit=true / --set hideGit=false instead. Replace --hide-git with --set hideGit=true; replace --no-hide-git with --set hideGit=false.
+
 ## v0.142.0
 
 - docs: README mentions global config + new CLI flags; link to docs/configuration.md

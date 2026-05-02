@@ -15,13 +15,12 @@ type parseArgsResult struct {
 	args          []string
 	autoApprove   bool
 	skipPreflight bool
-	hideGit       *bool
 	model         string
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(input)
+	debug, command, subcommand, args, autoApprove, skipPreflight, model := ParseArgs(input)
 	if debug != want.debug {
 		t.Errorf("debug: got %v, want %v", debug, want.debug)
 	}
@@ -45,12 +44,6 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if skipPreflight != want.skipPreflight {
 		t.Errorf("skipPreflight: got %v, want %v", skipPreflight, want.skipPreflight)
-	}
-	// hideGit: both nil → ok; both non-nil with same value → ok; otherwise fail
-	if (hideGit == nil) != (want.hideGit == nil) {
-		t.Errorf("hideGit: got %v, want %v", hideGit, want.hideGit)
-	} else if hideGit != nil && want.hideGit != nil && *hideGit != *want.hideGit {
-		t.Errorf("hideGit: got %v, want %v", *hideGit, *want.hideGit)
 	}
 	if model != want.model {
 		t.Errorf("model: got %q, want %q", model, want.model)
@@ -266,38 +259,6 @@ func TestParseArgsSkipPreflight(t *testing.T) {
 	assertParseArgs(t,
 		[]string{"run", "--skip-preflight", "--skip-preflight"},
 		parseArgsResult{command: "run", args: []string{}, skipPreflight: true},
-	)
-}
-
-func TestParseArgsHideGit(t *testing.T) {
-	t.Parallel()
-	trueVal := true
-	falseVal := false
-
-	// --hide-git after command
-	assertParseArgs(t,
-		[]string{"run", "--hide-git"},
-		parseArgsResult{command: "run", args: []string{}, hideGit: &trueVal},
-	)
-	// --no-hide-git after command
-	assertParseArgs(t,
-		[]string{"run", "--no-hide-git"},
-		parseArgsResult{command: "run", args: []string{}, hideGit: &falseVal},
-	)
-	// flag before command (position-agnostic)
-	assertParseArgs(t,
-		[]string{"--hide-git", "daemon"},
-		parseArgsResult{command: "daemon", args: []string{}, hideGit: &trueVal},
-	)
-	// no flag → hideGit is nil
-	assertParseArgs(t,
-		[]string{"run"},
-		parseArgsResult{command: "run", args: []string{}, hideGit: nil},
-	)
-	// combined with other flags
-	assertParseArgs(t,
-		[]string{"run", "--hide-git", "--skip-preflight"},
-		parseArgsResult{command: "run", args: []string{}, hideGit: &trueVal, skipPreflight: true},
 	)
 }
 

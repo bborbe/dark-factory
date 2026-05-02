@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -38,15 +37,12 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	// Check for contradictory flags before full parsing
-	if slices.Contains(os.Args[1:], "--hide-git") && slices.Contains(os.Args[1:], "--no-hide-git") {
-		fmt.Fprintf(os.Stderr, "error: --hide-git and --no-hide-git are mutually exclusive\n")
-		return errors.Errorf(ctx, "--hide-git and --no-hide-git are mutually exclusive")
+	setOverrides, filteredArgs, err := parseSetFlags(ctx, os.Args[1:])
+	if err != nil {
+		return err
 	}
 
-	debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(
-		os.Args[1:],
-	)
+	debug, command, subcommand, args, autoApprove, skipPreflight, model := ParseArgs(filteredArgs)
 
 	switch command {
 	case "help":
@@ -98,7 +94,10 @@ func run(ctx context.Context) error {
 	}
 	applyGlobalOverrides(&cfg, globalCfg, loadResult.Overrides)
 	sources := computeFieldSources(globalCfg, loadResult.Overrides)
-	if err := applyArgOverrides(ctx, &cfg, &sources, command, hideGit, model); err != nil {
+	if err := applyArgOverrides(ctx, &cfg, &sources, command, model); err != nil {
+		return err
+	}
+	if err := applySetOverrides(ctx, &cfg, &sources, command, setOverrides); err != nil {
 		return err
 	}
 
@@ -540,9 +539,11 @@ func applyGlobalOverrides(
 	}
 }
 
-// computeFieldSources determines which config layer provided each of the 4 layered user-pref fields.
+// computeFieldSources determines which config layer provided each of the layered user-pref fields.
 // Rules: global wins over default; project wins over global.
-// "arg" source is not set here — it is set in run commands when CLI flags override the value.
+// "arg" source is not set here — it is set via applyArgOverrides / applySetOverrides when CLI flags override.
+// MaxContainers source is left empty when neither project nor arg set it; LogEffectiveConfig
+// falls back to inline detection (project>0 / globalFilePresent / default) for that case.
 func computeFieldSources(
 	global globalconfig.GlobalConfig,
 	proj config.LayeredProjectOverrides,
@@ -578,6 +579,9 @@ func computeFieldSources(
 	if proj.DirtyFileThreshold != nil {
 		s.DirtyFileThreshold = "project"
 	}
+	if proj.MaxContainers != nil {
+		s.MaxContainers = "project"
+	}
 	return s
 }
 
@@ -610,25 +614,164 @@ func extractMaxContainers(ctx context.Context, args []string) (int, []string, er
 	return 0, args, nil
 }
 
-// applyArgOverrides validates command-gate rules and applies CLI flag overrides to cfg and sources.
-// hideGit and model are the extracted flag values from ParseArgs (nil/empty = not set).
+// supportedSetKeys is the authoritative list of yaml-backed user-pref keys
+// accepted by --set. Adding a new yaml field requires a new entry here.
+var supportedSetKeys = []string{
+	"hideGit",
+	"autoRelease",
+	"dirtyFileThreshold",
+	"model",
+	"maxContainers",
+}
+
+// parseSetFlags scans rawArgs for --set key=value occurrences, collects them into a
+// map (last occurrence wins for duplicates), and returns filtered args with --set
+// entries removed. Call before ParseArgs to avoid contaminating the arg list.
+func parseSetFlags(ctx context.Context, rawArgs []string) (map[string]string, []string, error) {
+	overrides := make(map[string]string)
+	filtered := make([]string, 0, len(rawArgs))
+	for i := 0; i < len(rawArgs); i++ {
+		if rawArgs[i] != "--set" {
+			filtered = append(filtered, rawArgs[i])
+			continue
+		}
+		if i+1 >= len(rawArgs) {
+			return nil, nil, errors.Errorf(ctx, "--set requires a value")
+		}
+		val := rawArgs[i+1]
+		i++ // consume the value
+		parts := strings.SplitN(val, "=", 2)
+		if len(parts) != 2 {
+			return nil, nil, errors.Errorf(ctx, "--set value must be key=value, got %q", val)
+		}
+		key := parts[0]
+		value := parts[1]
+		if key == "" {
+			return nil, nil, errors.Errorf(ctx, "--set key must not be empty")
+		}
+		if _, exists := overrides[key]; exists {
+			slog.Debug("--set: duplicate key, last value wins")
+		}
+		overrides[key] = value
+	}
+	return overrides, filtered, nil
+}
+
+// applySetOverrides validates command-gate rules and applies --set key=value overrides
+// to cfg and sources. Valid only for "run" and "daemon" commands.
+func applySetOverrides(
+	ctx context.Context,
+	cfg *config.Config,
+	sources *config.FieldSources,
+	command string,
+	setOverrides map[string]string,
+) error {
+	if len(setOverrides) == 0 {
+		return nil
+	}
+	switch command {
+	case "run", "daemon":
+		// valid
+	default:
+		return errors.Errorf(ctx, "unknown flag: --set")
+	}
+	for key, value := range setOverrides {
+		if err := applyOneSetOverride(ctx, cfg, sources, key, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyOneSetOverride applies a single --set key=value entry with type coercion and validation.
+func applyOneSetOverride(
+	ctx context.Context,
+	cfg *config.Config,
+	sources *config.FieldSources,
+	key, value string,
+) error {
+	switch key {
+	case "hideGit":
+		b, err := parseStrictBool(ctx, key, value)
+		if err != nil {
+			return err
+		}
+		cfg.HideGit = b
+		sources.HideGit = "arg"
+	case "autoRelease":
+		b, err := parseStrictBool(ctx, key, value)
+		if err != nil {
+			return err
+		}
+		cfg.AutoRelease = b
+		sources.AutoRelease = "arg"
+	case "dirtyFileThreshold":
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return errors.Errorf(ctx, "--set %s: invalid integer %q", key, value)
+		}
+		if n < 0 {
+			return errors.Errorf(ctx, "--set %s: dirtyFileThreshold must be >= 0, got %d", key, n)
+		}
+		cfg.DirtyFileThreshold = n
+		sources.DirtyFileThreshold = "arg"
+	case "model":
+		if err := validateModelArg(ctx, value); err != nil {
+			return err
+		}
+		cfg.Model = value
+		sources.Model = "arg"
+	case "maxContainers":
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return errors.Errorf(ctx, "--set %s: invalid integer %q", key, value)
+		}
+		if n < 1 {
+			return errors.Errorf(ctx, "--set %s: maxContainers must be >= 1, got %d", key, n)
+		}
+		cfg.MaxContainers = n
+		sources.MaxContainers = "arg"
+	default:
+		return errors.Errorf(
+			ctx,
+			"unknown config key: %s (supported: %s)",
+			key,
+			strings.Join(supportedSetKeys, ", "),
+		)
+	}
+	return nil
+}
+
+// parseStrictBool parses a --set bool value. Only "true" and "false" are accepted.
+// strconv.ParseBool is intentionally NOT used — it accepts 1/0/yes/no which would
+// diverge from yaml semantics.
+func parseStrictBool(ctx context.Context, key, value string) (bool, error) {
+	switch value {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, errors.Errorf(
+			ctx,
+			"--set %s: invalid bool %q, expected true or false",
+			key,
+			value,
+		)
+	}
+}
+
+// applyArgOverrides validates command-gate rules and applies --model CLI flag override to cfg and sources.
+// model is the extracted flag value from ParseArgs (empty = not set).
 func applyArgOverrides(
 	ctx context.Context,
 	cfg *config.Config,
 	sources *config.FieldSources,
 	command string,
-	hideGit *bool,
 	model string,
 ) error {
-	if hideGit != nil && command != "run" && command != "daemon" {
-		return errors.Errorf(ctx, "unknown flag: --hide-git")
-	}
 	if model != "" && command != "run" && command != "daemon" {
 		return errors.Errorf(ctx, "unknown flag: --model")
-	}
-	if hideGit != nil {
-		cfg.HideGit = *hideGit
-		sources.HideGit = "arg"
 	}
 	if model != "" {
 		if err := validateModelArg(ctx, model); err != nil {
@@ -679,8 +822,8 @@ func printHelp() {
 	fmt.Fprintf(
 		os.Stdout,
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
-			"  run [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]    Process all queued prompts and exit\n"+
-			"  daemon [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME] Watch for queued prompts and execute them (long-running)\n"+
+			"  run [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...]    Process all queued prompts and exit\n"+
+			"  daemon [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
@@ -713,16 +856,20 @@ func printHelp() {
 func printRunHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory run [--max-containers N] [--auto-approve] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]\n\n"+
+		"Usage: dark-factory run [--max-containers N] [--auto-approve] [--skip-preflight] [--model NAME] [--set key=value ...]\n\n"+
 			"Process all queued prompts and exit.\n\n"+
 			"Flags:\n"+
 			"  --max-containers N      Override the container limit for this run\n"+
 			"  --auto-approve          Automatically approve new prompts found during run\n"+
 			"  --skip-preflight        Skip preflight baseline check for this invocation.\n"+
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
-			"  --hide-git              Force hide-git mode on for this invocation (overrides yaml)\n"+
-			"  --no-hide-git           Force hide-git mode off for this invocation (overrides yaml)\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
+			"  --set key=value         Override a config field for this invocation; may repeat\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers\n"+
+			"                          Bool example:   --set hideGit=true\n"+
+			"                          Int example:    --set dirtyFileThreshold=5\n"+
+			"                          String example: --set model=claude-opus-4-7\n"+
+			"                          Note: --max-containers N takes precedence over --set maxContainers=N if both are passed.\n"+
 			"  --help, -h              Show this help\n",
 	)
 }
@@ -730,15 +877,19 @@ func printRunHelp() {
 func printDaemonHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight] [--hide-git|--no-hide-git] [--model NAME]\n\n"+
+		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...]\n\n"+
 			"Watch for queued prompts and execute them (long-running).\n\n"+
 			"Flags:\n"+
 			"  --max-containers N      Override the container limit for this run\n"+
 			"  --skip-preflight        Skip preflight baseline check for this invocation.\n"+
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
-			"  --hide-git              Force hide-git mode on for this invocation (overrides yaml)\n"+
-			"  --no-hide-git           Force hide-git mode off for this invocation (overrides yaml)\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
+			"  --set key=value         Override a config field for this invocation; may repeat\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers\n"+
+			"                          Bool example:   --set hideGit=true\n"+
+			"                          Int example:    --set dirtyFileThreshold=5\n"+
+			"                          String example: --set model=claude-opus-4-7\n"+
+			"                          Note: --max-containers N takes precedence over --set maxContainers=N if both are passed.\n"+
 			"  --help, -h              Show this help\n",
 	)
 }
@@ -825,24 +976,22 @@ func printScenarioHelp() {
 }
 
 // ParseArgs parses command line arguments (without program name) and returns
-// (debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model).
+// (debug, command, subcommand, args, autoApprove, skipPreflight, model).
 // The -debug flag can appear anywhere and is extracted before parsing.
 // The --auto-approve flag is extracted for the "run" command.
 // The --skip-preflight flag is extracted for the "run" and "daemon" commands.
-// The --hide-git / --no-hide-git flags are extracted for "run" and "daemon".
 // The --model NAME flag is extracted for "run" and "daemon".
-// hideGit is nil when neither --hide-git nor --no-hide-git is passed.
 // model is empty string when --model is not passed.
+// --set key=value is NOT extracted here — call parseSetFlags before ParseArgs.
 // No args → command="help" (prints usage, exits 0)
 // Bare "help" word → command="help" (same as --help)
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
-func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, *bool, string) {
+func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, string) {
 	debug := false
 	autoApprove := false
 	skipPreflight := false
-	hideGit := (*bool)(nil)
 	model := ""
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
@@ -853,12 +1002,6 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, *b
 			autoApprove = true
 		case "--skip-preflight":
 			skipPreflight = true
-		case "--hide-git":
-			t := true
-			hideGit = &t
-		case "--no-hide-git":
-			f := false
-			hideGit = &f
 		default:
 			filtered = append(filtered, arg)
 		}
@@ -882,7 +1025,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, *b
 	filtered = modelFiltered
 
 	if len(filtered) == 0 {
-		return debug, "help", "", []string{}, autoApprove, skipPreflight, hideGit, model
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, model
 	}
 
 	command := filtered[0]
@@ -890,17 +1033,17 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, *b
 
 	switch command {
 	case "help", "--help", "-help", "-h":
-		return debug, "help", "", []string{}, autoApprove, skipPreflight, hideGit, model
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, model
 	case "--version", "-version", "-v":
-		return debug, "version", "", []string{}, autoApprove, skipPreflight, hideGit, model
+		return debug, "version", "", []string{}, autoApprove, skipPreflight, model
 	case "run", "daemon", "kill", "status", "list", "config":
-		return debug, command, "", rest, autoApprove, skipPreflight, hideGit, model
+		return debug, command, "", rest, autoApprove, skipPreflight, model
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {
-			return debug, command, "", []string{}, autoApprove, skipPreflight, hideGit, model
+			return debug, command, "", []string{}, autoApprove, skipPreflight, model
 		}
-		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight, hideGit, model
+		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight, model
 	}
 
-	return debug, "unknown", "", filtered, autoApprove, skipPreflight, hideGit, model
+	return debug, "unknown", "", filtered, autoApprove, skipPreflight, model
 }

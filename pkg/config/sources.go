@@ -4,7 +4,7 @@
 
 package config
 
-// FieldSources records which config layer provided each of the 4 layered user-pref fields.
+// FieldSources records which config layer provided each of the layered user-pref fields.
 // Valid values for each field are: "default", "global", "project", "arg".
 // Zero value (empty string) is treated the same as "default" by callers.
 type FieldSources struct {
@@ -12,4 +12,5 @@ type FieldSources struct {
 	AutoRelease        string
 	DirtyFileThreshold string
 	Model              string
+	MaxContainers      string
 }

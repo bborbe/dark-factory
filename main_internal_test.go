@@ -75,14 +75,11 @@ var _ = Describe("ParseArgs", func() {
 		args          []string
 		autoApprove   bool
 		skipPreflight bool
-		hideGit       *bool
 		model         string
 	}
 	parse := func(rawArgs []string) result {
-		debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model := ParseArgs(
-			rawArgs,
-		)
-		return result{debug, command, subcommand, args, autoApprove, skipPreflight, hideGit, model}
+		debug, command, subcommand, args, autoApprove, skipPreflight, model := ParseArgs(rawArgs)
+		return result{debug, command, subcommand, args, autoApprove, skipPreflight, model}
 	}
 
 	It("returns run command with --help in args (validation at dispatch)", func() {
@@ -248,48 +245,18 @@ var _ = Describe("applyGlobalOverrides", func() {
 var _ = Describe("applyArgOverrides", func() {
 	ctx := context.Background()
 
-	It("applies hideGit=true override", func() {
-		cfg := config.Defaults()
-		sources := config.FieldSources{}
-		t := true
-		Expect(applyArgOverrides(ctx, &cfg, &sources, "run", &t, "")).To(Succeed())
-		Expect(cfg.HideGit).To(BeTrue())
-		Expect(sources.HideGit).To(Equal("arg"))
-	})
-
-	It("applies hideGit=false override", func() {
-		cfg := config.Defaults()
-		cfg.HideGit = true
-		sources := config.FieldSources{}
-		f := false
-		Expect(applyArgOverrides(ctx, &cfg, &sources, "run", &f, "")).To(Succeed())
-		Expect(cfg.HideGit).To(BeFalse())
-		Expect(sources.HideGit).To(Equal("arg"))
-	})
-
 	It("applies model override", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		Expect(
-			applyArgOverrides(ctx, &cfg, &sources, "daemon", nil, "claude-opus-4-7"),
-		).To(Succeed())
+		Expect(applyArgOverrides(ctx, &cfg, &sources, "daemon", "claude-opus-4-7")).To(Succeed())
 		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
 		Expect(sources.Model).To(Equal("arg"))
-	})
-
-	It("rejects --hide-git on non-run/daemon command", func() {
-		cfg := config.Defaults()
-		sources := config.FieldSources{}
-		t := true
-		err := applyArgOverrides(ctx, &cfg, &sources, "status", &t, "")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("unknown flag: --hide-git"))
 	})
 
 	It("rejects --model on non-run/daemon command", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applyArgOverrides(ctx, &cfg, &sources, "config", nil, "claude-opus-4-7")
+		err := applyArgOverrides(ctx, &cfg, &sources, "config", "claude-opus-4-7")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unknown flag: --model"))
 	})
@@ -297,7 +264,7 @@ var _ = Describe("applyArgOverrides", func() {
 	It("rejects invalid model value", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applyArgOverrides(ctx, &cfg, &sources, "run", nil, "claude;bad")
+		err := applyArgOverrides(ctx, &cfg, &sources, "run", "claude;bad")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("does not match required pattern"))
 	})
@@ -380,5 +347,277 @@ var _ = Describe("computeFieldSources", func() {
 		proj := config.LayeredProjectOverrides{HideGit: &f}
 		s := computeFieldSources(global, proj)
 		Expect(s.HideGit).To(Equal("project"))
+	})
+
+	It("returns project for maxContainers when project sets it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		n := 2
+		proj := config.LayeredProjectOverrides{MaxContainers: &n}
+		s := computeFieldSources(global, proj)
+		Expect(s.MaxContainers).To(Equal("project"))
+	})
+
+	It("returns empty maxContainers when project did not set it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.MaxContainers).To(BeEmpty())
+	})
+})
+
+var _ = Describe("parseSetFlags", func() {
+	ctx := context.Background()
+
+	It("returns empty map and unchanged args when no --set flags", func() {
+		overrides, filtered, err := parseSetFlags(
+			ctx,
+			[]string{"run", "--model", "claude-opus-4-7"},
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(overrides).To(BeEmpty())
+		Expect(filtered).To(Equal([]string{"run", "--model", "claude-opus-4-7"}))
+	})
+
+	It("collects a single --set key=value", func() {
+		overrides, filtered, err := parseSetFlags(ctx, []string{"run", "--set", "hideGit=true"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(overrides).To(HaveKeyWithValue("hideGit", "true"))
+		Expect(filtered).To(Equal([]string{"run"}))
+	})
+
+	It("collects multiple distinct --set keys", func() {
+		overrides, filtered, err := parseSetFlags(ctx, []string{
+			"--set", "hideGit=false",
+			"--set", "autoRelease=true",
+			"run",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(overrides).To(HaveKeyWithValue("hideGit", "false"))
+		Expect(overrides).To(HaveKeyWithValue("autoRelease", "true"))
+		Expect(filtered).To(Equal([]string{"run"}))
+	})
+
+	It("last value wins for duplicate keys", func() {
+		overrides, _, err := parseSetFlags(ctx, []string{
+			"--set", "hideGit=true",
+			"--set", "hideGit=false",
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(overrides).To(HaveKeyWithValue("hideGit", "false"))
+	})
+
+	It("handles value containing = (e.g. model with docker image ref)", func() {
+		overrides, _, err := parseSetFlags(ctx, []string{"--set", "model=docker.io/foo:v1=extra"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(overrides).To(HaveKeyWithValue("model", "docker.io/foo:v1=extra"))
+	})
+
+	It("returns error when --set has no following value", func() {
+		_, _, err := parseSetFlags(ctx, []string{"--set"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("--set requires a value"))
+	})
+
+	It("returns error when --set value has no = sign", func() {
+		_, _, err := parseSetFlags(ctx, []string{"--set", "hideGit"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("key=value"))
+	})
+
+	It("returns error when --set key is empty", func() {
+		_, _, err := parseSetFlags(ctx, []string{"--set", "=true"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("key must not be empty"))
+	})
+})
+
+var _ = Describe("applySetOverrides", func() {
+	ctx := context.Background()
+
+	It("does nothing when overrides map is empty", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{})).To(Succeed())
+		Expect(sources.HideGit).To(BeEmpty())
+	})
+
+	It("sets hideGit=true and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "true"}),
+		).To(Succeed())
+		Expect(cfg.HideGit).To(BeTrue())
+		Expect(sources.HideGit).To(Equal("arg"))
+	})
+
+	It("sets hideGit=false and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.HideGit = true
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "false"}),
+		).To(Succeed())
+		Expect(cfg.HideGit).To(BeFalse())
+		Expect(sources.HideGit).To(Equal("arg"))
+	})
+
+	It("rejects hideGit=yes (strict bool)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "yes"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid bool"))
+		Expect(err.Error()).To(ContainSubstring("true or false"))
+	})
+
+	It("sets autoRelease=false and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.AutoRelease = true
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"daemon",
+				map[string]string{"autoRelease": "false"},
+			),
+		).To(Succeed())
+		Expect(cfg.AutoRelease).To(BeFalse())
+		Expect(sources.AutoRelease).To(Equal("arg"))
+	})
+
+	It("sets dirtyFileThreshold=5 and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"dirtyFileThreshold": "5"},
+			),
+		).To(Succeed())
+		Expect(cfg.DirtyFileThreshold).To(Equal(5))
+		Expect(sources.DirtyFileThreshold).To(Equal("arg"))
+	})
+
+	It("rejects dirtyFileThreshold=-1 (range check)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"dirtyFileThreshold": "-1"},
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("dirtyFileThreshold must be >= 0"))
+	})
+
+	It("rejects dirtyFileThreshold=abc (parse error)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"dirtyFileThreshold": "abc"},
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid integer"))
+	})
+
+	It("sets model=claude-opus-4-7 and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"model": "claude-opus-4-7"},
+			),
+		).To(Succeed())
+		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
+		Expect(sources.Model).To(Equal("arg"))
+	})
+
+	It("rejects model with shell metachar", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"model": "claude;rm -rf /"},
+		)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("sets maxContainers=2", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"maxContainers": "2"}),
+		).To(Succeed())
+		Expect(cfg.MaxContainers).To(Equal(2))
+		Expect(sources.MaxContainers).To(Equal("arg"))
+	})
+
+	It("rejects maxContainers=0 (range check)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"maxContainers": "0"},
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("maxContainers must be >= 1"))
+	})
+
+	It("rejects unknown key and lists supported keys", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"unknownKey": "foo"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown config key"))
+		Expect(err.Error()).To(ContainSubstring("hideGit"))
+		Expect(err.Error()).To(ContainSubstring("autoRelease"))
+	})
+
+	It("rejects --set on non-run/daemon command", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"status",
+			map[string]string{"hideGit": "true"},
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown flag: --set"))
+	})
+
+	It("--max-containers N takes precedence over --set maxContainers=N when applied after", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"maxContainers": "5"}),
+		).To(Succeed())
+		Expect(cfg.MaxContainers).To(Equal(5))
+		// Simulate extractMaxContainers applying --max-containers 3 afterwards
+		cfg.MaxContainers = 3
+		Expect(cfg.MaxContainers).To(Equal(3))
 	})
 })

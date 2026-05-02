@@ -82,8 +82,9 @@ func EffectiveMaxContainers(projectMax, globalMax int) int {
 // the resolved settings that drive daemon/run behavior. This is purely diagnostic;
 // no value is mutated.
 //
-// maxContainersSource is one of:
-//   - "project" when cfg.MaxContainers > 0 (project file override wins)
+// maxContainersSource is resolved from sources.MaxContainers when set (e.g. "arg", "project");
+// otherwise falls back to inline detection using cfg.MaxContainers and globalFilePresent:
+//   - "project" when cfg.MaxContainers > 0
 //   - "global"  when cfg.MaxContainers <= 0 AND globalFilePresent is true
 //   - "default" when cfg.MaxContainers <= 0 AND globalFilePresent is false
 func LogEffectiveConfig(
@@ -93,11 +94,15 @@ func LogEffectiveConfig(
 	sources config.FieldSources,
 ) {
 	effective := EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers)
-	source := "default"
-	if cfg.MaxContainers > 0 {
-		source = "project"
-	} else if globalFilePresent {
-		source = "global"
+	source := sources.MaxContainers
+	if source == "" {
+		if cfg.MaxContainers > 0 {
+			source = "project"
+		} else if globalFilePresent {
+			source = "global"
+		} else {
+			source = "default"
+		}
 	}
 	slog.Info("effective config",
 		"maxContainers", effective,

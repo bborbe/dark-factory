@@ -4,6 +4,15 @@ When all prompts linked to a spec complete, dark-factory auto-transitions the sp
 
 This guide is the checklist for that confirmation step.
 
+## Use `/dark-factory:verify-spec` to operationalize this guide
+
+The `/dark-factory:verify-spec <spec-id>` command invokes the `spec-verifier` agent, which walks Setup → Action → Expected interactively, applies the anti-evidence rejection rules from this guide as hard refusals, matches each Acceptance Criterion to fresh observable evidence, and only then runs `dark-factory spec complete <id>`. Prefer the command over a manual walk — it makes the rejection rules mechanical instead of vibes-based.
+
+Manual walk (this guide's procedure below) is still the right move when:
+- The spec has no scenario file and is purely structural (doc-only / refactor)
+- You're auditing the verification approach itself
+- The agent is unavailable
+
 ## Why Verify
 
 Prompt completion means "Claude said done and precommit passed on a per-prompt basis". It does not mean:

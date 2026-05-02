@@ -80,6 +80,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 | `/dark-factory:create-prompt` | Create a prompt file from spec or task description |
 | `/dark-factory:audit-spec` | Audit spec against preflight checklist |
 | `/dark-factory:audit-prompt` | Audit prompt against Definition of Done |
+| `/dark-factory:verify-spec` | End-to-end verify a spec interactively, then mark complete |
 
 ### CLI Commands
 
@@ -102,6 +103,7 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 - Never number filenames -- dark-factory assigns numbers on approve
 - Never manually edit frontmatter status -- use CLI commands above
 - Always audit before approving (`/dark-factory:audit-prompt`, `/dark-factory:audit-spec`)
+- Always verify before completing — use `/dark-factory:verify-spec <id>` over a manual `dark-factory spec complete`. The command refuses inspection-only "evidence" and only marks complete after the scenario passes against fresh evidence.
 - **Spec-linked prompts are daemon-generated.** After `dark-factory spec approve`, the daemon spawns a `dark-factory-gen-<spec>` container that creates the prompts automatically. **Never hand-write prompts for an approved spec.** Wait for the generation container to finish, then audit/approve the generated prompts. Hand-written prompts are only for standalone changes (no spec).
 - **BLOCKING: Never run `dark-factory prompt approve`, `dark-factory spec approve`, or `dark-factory daemon` without explicit user confirmation.** Write the prompt/spec, then STOP and ask the user to approve.
 - **Before starting daemon** -- run `dark-factory status` first to check if one is already running.

@@ -143,7 +143,7 @@ This moves the spec from `specs/` to `specs/in-progress/`, assigns a number, and
 | `approved` | `specs/in-progress/` | Ready for prompt generation | `dark-factory spec approve` |
 | `prompted` | `specs/in-progress/` | Prompts generated | Auto (dark-factory) |
 | `verifying` | `specs/in-progress/` | All linked prompts completed | Auto (dark-factory) |
-| `completed` | `specs/completed/` | Acceptance criteria verified | `dark-factory spec complete` |
+| `completed` | `specs/completed/` | Acceptance criteria verified | `/dark-factory:verify-spec` (preferred — see [spec-verification.md](spec-verification.md)) or manual `dark-factory spec complete` |
 
 Completed specs are immutable. If behavior changes later, create a new spec.
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.144.1
+
+- docs: cross-reference `/dark-factory:verify-spec` from README.md, CLAUDE.md, docs/spec-writing.md, docs/spec-verification.md, docs/claude-md-guide.md so the new verification command is discoverable from every entry point
+
 ## v0.144.0
 
 - feat: add `/dark-factory:verify-spec` command + `spec-verifier` agent — interactive end-to-end spec verification gate that refuses completion on inspection-only "evidence" (logs, unit tests, old operational evidence, wire-level probes) and only calls `dark-factory spec complete` after the scenario passes against fresh evidence from the deployed binary

@@ -48,6 +48,7 @@
   - `dark-factory status` — show combined status
   - `dark-factory prompt list` / `dark-factory spec list` — list with status
 - Always audit before approving (`/audit-prompt`, `/audit-spec`)
+- Always verify before completing — use `/dark-factory:verify-spec <id>` over a manual `dark-factory spec complete`. The command refuses inspection-only "evidence" (logs, unit tests, old operational evidence, wire-level probes) and only marks complete after the scenario passes against fresh evidence
 - **Never approve or run dark-factory without explicit user confirmation** — present the prompt, wait for user to say "approve" or "run"
 - **Start daemon in background** — use Bash tool with `run_in_background: true`: `dark-factory daemon` (not foreground, not detached with `&`)
 

@@ -128,6 +128,7 @@ claude plugin update dark-factory@dark-factory
 | `/dark-factory:create-prompt` | Create a prompt from spec or description |
 | `/dark-factory:audit-spec` | Audit spec against quality criteria |
 | `/dark-factory:audit-prompt` | Audit prompt against Definition of Done |
+| `/dark-factory:verify-spec` | End-to-end verify a spec interactively, then mark complete (operationalizes [docs/spec-verification.md](docs/spec-verification.md)) |
 | `/dark-factory:daemon` | Start daemon in background |
 | `/dark-factory:watch` | Monitor daemon with sound alerts (auto-detects project) |
 | `/dark-factory:run` | One-shot: generate prompts from specs, execute queue |

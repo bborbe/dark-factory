@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.144.0
+
+- feat: add `/dark-factory:verify-spec` command + `spec-verifier` agent — interactive end-to-end spec verification gate that refuses completion on inspection-only "evidence" (logs, unit tests, old operational evidence, wire-level probes) and only calls `dark-factory spec complete` after the scenario passes against fresh evidence from the deployed binary
+
 ## v0.143.0
 
 - feat: add --set key=value CLI flag to run and daemon for per-invocation config override (supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers)

@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-02T10:37:31Z"
 generating: "2026-05-02T10:40:19Z"
 prompted: "2026-05-02T10:47:24Z"
+verifying: "2026-05-02T11:32:19Z"
+completed: "2026-05-02T11:39:10Z"
 branch: dark-factory/cli-set-config-flag
 ---
 

@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [061-cli-set-config-flag]
+summary: Updated docs/configuration.md to replace --hide-git/--no-hide-git with --set key=value documentation and updated scenarios/013-config-layering.md to rewrite Scenario D, replace Scenario F, update the failure modes table, and add Scenario I for removed-flag rejection.
+container: dark-factory-361-spec-061-docs-and-scenario
+dark-factory-version: v0.141.1-1-g4fd8246-dirty
 created: "2026-05-02T11:00:00Z"
 queued: "2026-05-02T11:07:13Z"
+started: "2026-05-02T11:27:10Z"
 branch: dark-factory/cli-set-config-flag
 ---
 

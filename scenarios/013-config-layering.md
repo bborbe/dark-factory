@@ -4,12 +4,13 @@ status: active
 
 # Config layering: global → project → CLI precedence
 
-Validates the config layering feature introduced in spec 060. Checks:
+Validates the config layering feature introduced in specs 060 and 061. Checks:
 1. Global config sets model; project config is silent → global wins
 2. Project config explicitly sets model → project beats global
 3. CLI `--model` flag → arg beats both
-4. CLI `--no-hide-git` flag with global `hideGit: true` → arg beats global
-5. Effective-config log shows the correct `*Source` for each scenario
+4. `--set hideGit=false` with global `hideGit: true` → arg beats global
+5. `--set dirtyFileThreshold=10` → int override works with correct source
+6. Effective-config log shows the correct `*Source` for each scenario
 
 Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 
@@ -105,10 +106,10 @@ timeout 15s /tmp/new-dark-factory run --model claude-haiku-4-5 > run-c.log 2>&1 
 grep -E "model=claude-haiku-4-5|modelSource=arg" run-c.log
 ```
 
-## Scenario D: CLI --no-hide-git beats global hideGit=true
+## Scenario D: `--set hideGit=false` beats global `hideGit=true`
 
 ```bash
-timeout 15s /tmp/new-dark-factory run --no-hide-git > run-d.log 2>&1 || true
+timeout 15s /tmp/new-dark-factory run --set hideGit=false > run-d.log 2>&1 || true
 ```
 
 ### Expected D
@@ -148,19 +149,19 @@ hideGit: true
 YAML
 ```
 
-## Scenario F: contradictory flags rejected
+## Scenario F: `--set dirtyFileThreshold` int override
 
 ```bash
-timeout 5s /tmp/new-dark-factory run --hide-git --no-hide-git > run-f.log 2>&1 || true
+timeout 15s /tmp/new-dark-factory run --set dirtyFileThreshold=10 > run-f.log 2>&1 || true
 ```
 
 ### Expected F
 
-- [ ] Command exited non-zero
-- [ ] `run-f.log` contains `mutually exclusive` (or similar)
+- [ ] `run-f.log` contains `dirtyFileThreshold=10`
+- [ ] `run-f.log` contains `dirtyFileThresholdSource=arg`
 
 ```bash
-grep -i "exclusive\|contradictory\|mutually" run-f.log
+grep -E "dirtyFileThreshold=10|dirtyFileThresholdSource=arg" run-f.log
 ```
 
 ## Scenario G: model with shell metachar rejected
@@ -203,9 +204,32 @@ grep -E "model=claude-sonnet-4-6|modelSource=default" run-h.log
 | Project override not detected | Project sets `model: claude-sonnet-4-6` but `modelSource=global` appears in log |
 | Arg override not applied | `--model claude-haiku-4-5` but log shows different model |
 | Invalid global config not rejected | `dirtyFileThreshold: -5` in global file but startup succeeds |
-| Contradictory flags not rejected | `--hide-git --no-hide-git` succeeds silently |
+| `--set` bad input not rejected | `--set hideGit=yes` or `--set dirtyFileThreshold=-1` succeeds without error |
 | Shell metachar in --model not rejected | `--model 'claude;rm -rf /'` succeeds without validation error |
 | Missing global file crashes daemon | Deleting `~/.dark-factory/config.yaml` causes a startup error instead of silently using defaults |
+| `--set` bad bool value | `--set hideGit=yes` accepted silently instead of error |
+| Removed `--hide-git` accepted | `--hide-git` flag works instead of exiting with unknown-flag error |
+
+## Scenario I: removed flags exit non-zero
+
+```bash
+/tmp/new-dark-factory run --hide-git > run-i.log 2>&1 || true
+echo "exit: $?"
+/tmp/new-dark-factory run --no-hide-git >> run-i.log 2>&1 || true
+echo "exit: $?"
+```
+
+### Expected I
+
+- [ ] Both commands exit non-zero (unknown flag error)
+- [ ] `run-i.log` contains `unknown flag` (or similar)
+- [ ] `run-i.log` does NOT contain `hideGitSource=arg` (the flags had no effect)
+
+```bash
+grep -i "unknown.flag\|unrecognized" run-i.log
+```
+
+Migrate: replace `--hide-git` → `--set hideGit=true` and `--no-hide-git` → `--set hideGit=false`.
 
 ## Cleanup
 

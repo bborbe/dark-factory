@@ -214,7 +214,7 @@ default  ←  global config  ←  project config  ←  CLI flag
 - **Default**: hardcoded in `config.Defaults()` (e.g. `model: claude-sonnet-4-6`)
 - **Global**: `~/.dark-factory/config.yaml` — applies to all projects on this machine
 - **Project**: `.dark-factory.yaml` in the repo root — overrides global for this project
-- **CLI flag**: `--model NAME`, `--hide-git`, `--no-hide-git` — overrides yaml for this invocation only
+- **CLI flag**: `--model NAME`, `--max-containers N`, or `--set <key>=<value>` — overrides yaml for this invocation only
 
 Field absent at a layer means that layer is skipped — it never silently zeroes an upstream value.
 
@@ -381,20 +381,6 @@ The flag is position-agnostic: `dark-factory --skip-preflight run` and `dark-fac
 
 The flag does not persist: the next invocation without the flag runs preflight as configured. It has no effect when `preflightCommand` is empty (already disabled).
 
-**`--hide-git` / `--no-hide-git`**
-
-```bash
-dark-factory run --hide-git
-dark-factory run --no-hide-git
-dark-factory daemon --hide-git
-```
-
-Overrides the `hideGit` setting for this invocation. `--hide-git` forces hide-git on; `--no-hide-git` forces it off. Either flag beats both global and project config.
-
-Passing both `--hide-git` and `--no-hide-git` in the same invocation exits non-zero with a usage error.
-
-Priority: `--hide-git`/`--no-hide-git` > project config > global config > default.
-
 **`--model NAME`**
 
 ```bash
@@ -409,11 +395,36 @@ Overrides the model for this invocation. Beats both global and project config.
 
 Priority: `--model` arg > project config > global config > default.
 
+**`--set key=value`**
+
+```bash
+dark-factory run --set hideGit=true
+dark-factory run --set dirtyFileThreshold=5
+dark-factory run --set model=claude-opus-4-7
+dark-factory daemon --set autoRelease=false --set model=claude-haiku-4-5
+```
+
+Overrides any supported config field for this invocation. The flag may appear multiple times; if the same key appears more than once, the last occurrence wins.
+
+Supported keys and types:
+
+| Key | Type | Example |
+|-----|------|---------|
+| `hideGit` | bool (`true` or `false`) | `--set hideGit=true` |
+| `autoRelease` | bool (`true` or `false`) | `--set autoRelease=false` |
+| `dirtyFileThreshold` | int ≥ 0 | `--set dirtyFileThreshold=5` |
+| `model` | string (must match `^[a-zA-Z0-9._:/-]{1,256}$`) | `--set model=claude-opus-4-7` |
+| `maxContainers` | int ≥ 1 | `--set maxContainers=2` |
+
+Bool fields accept only `true` or `false` (case-sensitive). Values like `1`, `0`, `yes`, `no` are rejected. Unknown keys exit non-zero with an error listing the supported keys.
+
+Priority: `--set` arg > project config > global config > default.
+
 ## Common Patterns
 
 ### Run on an existing manual worktree
 
-A project configured for `workflow: direct` (no clone, no auto-worktree) can still be run safely against a worktree you create by hand. Combine global hide-git with per-invocation auto-release-off — no project-config edits needed.
+A project configured for `workflow: direct` (no clone, no auto-worktree) can still be run safely against a worktree you create by hand. Combine global `hideGit` with per-invocation auto-release-off — no project-config edits needed.
 
 ```bash
 # One-time global setup (per machine)
@@ -435,7 +446,7 @@ What this gives you:
 
 To override per invocation:
 ```bash
-dark-factory run --no-hide-git              # see git output for one run
+dark-factory run --set hideGit=false        # see git output for one run
 dark-factory run --auto-approve             # auto-approve any new prompts found
 dark-factory run --model claude-opus-4-7    # use opus for one run
 ```

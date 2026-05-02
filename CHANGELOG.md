@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.142.0
+
+- docs: README mentions global config + new CLI flags; link to docs/configuration.md
+- docs: add "Common Patterns" section to docs/configuration.md — covers running on an existing manual worktree (global `hideGit: true` + `autoRelease: false`, project workflow stays direct) and per-machine model preference
+
 ## v0.141.1
 
 - docs: document global config layering in `docs/configuration.md` — new "Global Config" section with precedence chain, layered fields table, validation notes, and source tracing; extend "CLI Flags" section with `--hide-git`/`--no-hide-git` and `--model NAME` documentation

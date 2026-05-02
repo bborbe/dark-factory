@@ -149,7 +149,11 @@ model: claude-sonnet-4-6                             # Claude model
 claudeDir: ~/.claude-yolo                            # host claude config dir (default: ~/.claude-yolo)
 ```
 
-See [docs/configuration.md](docs/configuration.md) for all config fields, validation, notifications, and providers.
+**User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`. Precedence: default ← global ← project ← CLI arg.
+
+**Per-invocation CLI flags** for `run`/`daemon`: `--model NAME`, `--hide-git`, `--no-hide-git`, `--max-containers N`, `--skip-preflight`, `--auto-approve`. Override yaml without editing files.
+
+See [docs/configuration.md](docs/configuration.md) for all config fields, the full layering precedence, and patterns like running on an existing manual worktree.
 
 ## YOLO Container Configuration
 

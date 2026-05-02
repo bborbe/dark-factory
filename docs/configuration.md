@@ -409,6 +409,46 @@ Overrides the model for this invocation. Beats both global and project config.
 
 Priority: `--model` arg > project config > global config > default.
 
+## Common Patterns
+
+### Run on an existing manual worktree
+
+A project configured for `workflow: direct` (no clone, no auto-worktree) can still be run safely against a worktree you create by hand. Combine global hide-git with per-invocation auto-release-off — no project-config edits needed.
+
+```bash
+# One-time global setup (per machine)
+mkdir -p ~/.dark-factory
+cat > ~/.dark-factory/config.yaml <<YAML
+hideGit: true
+autoRelease: false
+YAML
+
+# Each session, in the manual worktree
+cd /path/to/my-feature-worktree
+dark-factory run
+```
+
+What this gives you:
+- `hideGit: true` (global) — git status output is suppressed; the daemon trusts the worktree the operator chose, not the repo state at startup
+- `autoRelease: false` (global) — completed prompts commit locally but are NOT pushed or tagged; the operator releases manually when the branch is merged
+- Project's existing `workflow: direct` setting is unchanged — other operators (CI, other clones) keep their normal behavior
+
+To override per invocation:
+```bash
+dark-factory run --no-hide-git              # see git output for one run
+dark-factory run --auto-approve             # auto-approve any new prompts found
+dark-factory run --model claude-opus-4-7    # use opus for one run
+```
+
+### Personal model preference across all projects
+
+```yaml
+# ~/.dark-factory/config.yaml
+model: claude-opus-4-7
+```
+
+Every project that doesn't set `model` in its `.dark-factory.yaml` will run with opus. A project that explicitly wants sonnet still wins. Per-invocation `--model NAME` always wins.
+
 ## Private Go Modules
 
 For projects with private dependencies:

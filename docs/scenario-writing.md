@@ -102,7 +102,7 @@ status: active
 
 ## Setup
 - [ ] Git repo with at least one commit
-- [ ] `.dark-factory.yaml` with `workflow: pr`
+- [ ] `.dark-factory.yaml` with `workflow: clone` and `pr: true`
 - [ ] One prompt in inbox
 
 ## Action

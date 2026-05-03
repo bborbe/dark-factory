@@ -13,10 +13,10 @@ default ← global ← project ← env ← arg
 | Layer | Source | Scope | Examples |
 |---|---|---|---|
 | 1. Default | hardcoded constants in `pkg/config.Defaults()` | All fields | `model: claude-sonnet-4-6`, `maxContainers: 3` |
-| 2. Global | `~/.dark-factory/config.yaml` | User-level prefs | `hideGit`, `model`, `containerImage` |
+| 2. Global | `~/.dark-factory/config.yaml` | User-level prefs | `hideGit`, `autoRelease`, `model`, `maxContainers`, `dirtyFileThreshold` |
 | 3. Project | `.dark-factory.yaml` in repo | Repo-shape | `workflow`, `validationCommand`, dirs |
-| 4. Env | `DF_<FIELD>` env vars | Ad-hoc / CI overrides | `DF_HIDE_GIT=true` |
-| 5. Arg | CLI flags | Per-invocation | `--hide-git`, `--model`, `--skip-preflight` |
+| 4. Env | `DF_<FIELD>` env vars (planned, not implemented) | Ad-hoc / CI overrides | `DF_HIDE_GIT=true` |
+| 5. Arg | CLI flags | Per-invocation | `--model NAME`, `--max-containers N`, `--skip-preflight`, `--auto-approve`, `--set key=value` |
 
 ## Field Categories
 
@@ -24,13 +24,18 @@ default ← global ← project ← env ← arg
 
 User's machine-wide preference. Same value across most projects, but per-project override is fine.
 
+Currently supported in `~/.dark-factory/config.yaml`:
+
 - `model` — which Claude model to use
-- `containerImage` — YOLO image version
-- `claudeDir` — where `~/.claude-yolo` lives
 - `hideGit` — display preference
 - `maxContainers` — concurrency cap on this machine
 - `autoRelease` — "I always want auto-release"
 - `dirtyFileThreshold` — personal tolerance for repo mess
+
+Planned but not yet supported globally (project-only today):
+
+- `containerImage` — YOLO image version
+- `claudeDir` — where `~/.claude-yolo` lives
 - `verificationGate` — "always verify before completing"
 
 ### B. Project-shape (project-only)
@@ -96,7 +101,7 @@ Each field's effective value is computed by:
 value := defaults.Field
 if global.IsSet("field") { value = global.Field }
 if project.IsSet("field") { value = project.Field }
-if env.IsSet("DF_FIELD") { value = env.Field }
+if env.IsSet("DF_FIELD") { value = env.Field }   // Phase 2 — not yet implemented
 if arg.IsSet("--field") { value = arg.Field }
 ```
 
@@ -109,21 +114,25 @@ if arg.IsSet("--field") { value = arg.Field }
 
 ## Migration Plan
 
-### Phase 1: Establish global expansion (this iteration)
+### Phase 1: Establish global expansion (done)
 
-Move 4 user-pref fields to support layer 2 with proper precedence:
+Moved 5 user-pref fields to support layer 2 with proper precedence:
 
 1. `hideGit`
 2. `autoRelease`
 3. `dirtyFileThreshold`
 4. `model`
+5. `maxContainers`
 
-Add 2 CLI args (layer 5):
+CLI args (layer 5) implemented:
 
-- `--hide-git` (boolean toggle)
-- `--model NAME`
+- `--model NAME` — model override
+- `--max-containers N` — concurrency override
+- `--skip-preflight` — bypass preflight
+- `--auto-approve` — flush queue (run only)
+- `--set key=value` — generic per-invocation override; supported keys: `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model`, `maxContainers`. Bool values must be `true` or `false` (no 1/0/yes/no).
 
-Validate the merge mechanism end-to-end with these 4 before generalizing.
+There is no `--hide-git` flag — use `--set hideGit=true`.
 
 ### Phase 2: Env layer
 
@@ -132,7 +141,7 @@ Cheap: same merge code, one more source.
 
 ### Phase 3: Remaining user-prefs
 
-Move category A leftovers (`containerImage`, `claudeDir`, `maxContainers` already done, `verificationGate`).
+Move category A leftovers to support layer 2: `containerImage`, `claudeDir`, `verificationGate`.
 
 ### Phase 4: Secrets registry
 

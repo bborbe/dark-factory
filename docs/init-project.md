@@ -13,10 +13,16 @@ Set up a new or existing project to use the dark-factory pipeline.
 
 ## Step 1: Choose Workflow
 
-| `pr` | `worktree` | When to use | Git behavior |
-|------|-----------|-------------|-------------|
-| `false` | `false` | Small projects, no branch protection | Commits to current branch |
-| `true` | `true` | PR-based projects, libraries | Clone repo, feature branch + PR |
+`workflow:` controls isolation; `pr:` is an orthogonal flag (only `direct` rejects `pr: true`). Common combinations:
+
+| `workflow` | `pr` | When to use | Git behavior |
+|------------|------|-------------|--------------|
+| `direct` (default) | `false` | Small projects, no branch protection | Commits to current branch |
+| `branch` | `true` | Team with PR review, medium repo | Feature branch in parent repo + PR |
+| `clone` | `true` | Parallel prompts or full container isolation | Fresh clone, feature branch + PR |
+| `worktree` | `true` | Huge repos (>1 GB) | Worktree (no git in container) + PR |
+
+`branch`/`worktree`/`clone` also work with `pr: false` (commit to feature branch, no PR). See [workflows.md](workflows.md) for the full decision matrix.
 
 ## Step 2: Create Config
 
@@ -25,16 +31,15 @@ Create `.dark-factory.yaml` in the project root. Only add non-default values.
 **Direct workflow (default):**
 
 ```yaml
-pr: false
-worktree: false
+workflow: direct
 validationPrompt: docs/dod.md
 ```
 
 **PR workflow:**
 
 ```yaml
+workflow: branch
 pr: true
-worktree: true
 autoMerge: true
 validationPrompt: docs/dod.md
 ```
@@ -42,8 +47,7 @@ validationPrompt: docs/dod.md
 **With private Go modules:**
 
 ```yaml
-pr: false
-worktree: false
+workflow: direct
 validationPrompt: docs/dod.md
 defaultBranch: master
 gitconfigFile: ~/.claude-yolo/.gitconfig

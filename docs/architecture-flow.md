@@ -186,14 +186,14 @@ project/
 
 ## Workflow Modes
 
-| `pr` | `worktree` | Git behavior | Container sees |
-|------|-----------|-------------|----------------|
-| `false` | `false` | Commit to current branch in-place | Original repo (read-write) |
-| `false` | `true` | Clone repo, commit to branch | Clone directory (read-write) |
-| `true` | `false` | Commit in-place, create PR | Original repo (read-write) |
-| `true` | `true` | Clone repo, create PR | Clone directory (read-write) |
+| `workflow` | `pr` | Git behavior | Container sees |
+|------------|------|--------------|----------------|
+| `direct` (default) | `false` | Commit to current branch in-place | Parent repo (real `.git/`) |
+| `branch` | `false`/`true` | New branch in parent repo, optional PR | Parent repo on new branch |
+| `worktree` | `false`/`true` | `git worktree add` under `/tmp/dark-factory/`, optional PR | Worktree files (`.git` masked — no git in container) |
+| `clone` | `false`/`true` | Fresh clone under `/tmp/dark-factory/`, optional PR | Cloned repo (real `.git/`) |
 
-With `branch` set on prompt/spec: execution happens on that branch. Multiple prompts on the same branch see cumulative changes.
+`workflow: direct` + `pr: true` is rejected (no feature branch to open a PR from). See [workflows.md](workflows.md) for the full matrix and choosing a mode.
 
 ## Configuration Reference
 

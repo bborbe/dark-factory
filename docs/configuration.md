@@ -5,43 +5,36 @@ All dark-factory configuration lives in `.dark-factory.yaml` in the project root
 ## Minimal Config
 
 ```yaml
-pr: false
-worktree: false
+workflow: direct
 ```
 
-This is the default: commits directly to the current branch, no PRs, no clone isolation.
+This is the default: commits directly to the current branch, no PRs, no isolation.
 
 ## Workflow
 
-Two booleans control how dark-factory handles git:
-
-| `pr` | `worktree` | Behavior |
-|------|-----------|----------|
-| `false` | `false` | Commit directly to current branch (default) |
-| `true` | `true` | Clone repo, create feature branch, open PR |
-| `false` | `true` | Clone repo, commit to branch, no PR |
-| `true` | `false` | Commit in-place, open PR |
+Two dimensions control git behavior: **separation** (`workflow:` enum) and **delivery** (`pr`, `autoMerge`, `autoRelease` booleans).
 
 ```yaml
+workflow: branch
 pr: true
-worktree: true
-```
-
-**Legacy:** `workflow: direct` and `workflow: pr` still work but log a deprecation warning. Don't mix old and new fields — dark-factory rejects configs with both `workflow` and `pr`/`worktree` set.
-
-### Auto-merge and Auto-release
-
-```yaml
-pr: true
-worktree: true
 autoMerge: true
 autoRelease: true
 ```
 
-| Field | Default | Purpose |
-|-------|---------|---------|
-| `autoMerge` | `false` | Merge PR automatically after checks pass (requires `pr: true`) |
-| `autoRelease` | `false` | Push the branch to remote after each prompt completes; additionally tag a release when `CHANGELOG.md` exists. When `false` (default), commits stay local (no push, no tag). When `true` and a `CHANGELOG.md` exists, commits are pushed AND `## Unreleased` is bumped to `## vX.Y.Z` with a tag pushed. When `true` without `CHANGELOG.md`, commits are still pushed but no tag is created. Works in all workflows (direct, PR, branch). |
+| Field | Values | Purpose |
+|-------|--------|---------|
+| `workflow` | `direct` (default) \| `branch` \| `worktree` \| `clone` | Isolation level |
+| `pr` | `false` (default) \| `true` | Push branch and open PR (incompatible with `workflow: direct`) |
+| `autoMerge` | `false` (default) \| `true` | Merge PR automatically after checks pass (requires `pr: true`) |
+| `autoRelease` | `false` (default) \| `true` | Push commits; tag release when `CHANGELOG.md` exists |
+
+For the full matrix, container semantics, and choosing a mode, see [workflows.md](workflows.md).
+
+**Legacy fields** still parse but log a deprecation warning:
+- `worktree: bool` — mapped to a `workflow:` value (see [workflows.md](workflows.md#migration-from-legacy-config))
+- `workflow: pr` — mapped to `workflow: clone` + `pr: true`
+
+`autoRelease` semantics: When `false` (default), commits stay local (no push, no tag). When `true` and `CHANGELOG.md` exists, commits are pushed AND `## Unreleased` is bumped to `## vX.Y.Z` with a tag pushed. When `true` without `CHANGELOG.md`, commits are pushed but no tag is created. Works in all workflows.
 
 ## Validation
 
@@ -590,11 +583,12 @@ specs:
 ## Full Example
 
 ```yaml
+workflow: clone
 pr: true
-worktree: true
 autoMerge: true
 autoReview: true
 maxReviewRetries: 3
+useCollaborators: true
 defaultBranch: master
 validationCommand: "make precommit"
 validationPrompt: docs/dod.md

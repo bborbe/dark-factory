@@ -114,7 +114,7 @@ See [spec-verification.md](spec-verification.md) for the full verification proce
 
 ## Workflow: Direct
 
-Default workflow. Dark-factory commits to the current branch. Push and tag are gated by `autoRelease` and `CHANGELOG.md` (see [Versioning](#versioning) below and [configuration.md](configuration.md)).
+`workflow: direct` (default). Dark-factory commits to the current branch. Push and tag are gated by `autoRelease` and `CHANGELOG.md` (see [Versioning](#versioning) below and [configuration.md](configuration.md)).
 
 ```
 approve prompt → daemon executes → commit → (push if autoRelease) → (tag if CHANGELOG.md) → done
@@ -123,9 +123,9 @@ approve prompt → daemon executes → commit → (push if autoRelease) → (tag
 - Queue multiple prompts at once — they execute sequentially
 - Review with `git log -1` and `git diff HEAD~1`
 
-## Workflow: PR
+## Workflow: Branch / Worktree / Clone
 
-Dark-factory creates a feature branch and opens a PR.
+`workflow: branch | worktree | clone` puts work on a feature branch. With `pr: true`, dark-factory pushes and opens a PR; with `pr: false`, the branch stays local (or pushed without a PR for `clone`). The isolation mode (`branch`, `worktree`, `clone`) controls where the working tree lives — see [workflows.md](workflows.md) for the matrix.
 
 ```
 approve prompt → daemon executes → feature branch + PR → review → merge

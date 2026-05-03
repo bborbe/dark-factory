@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [064-cli-flexible-id-matching]
 summary: Added <id> format documentation to printPromptHelp and printSpecHelp in main.go, added ID Formats and Project Detection sections to docs/running.md, created scenarios/017-spec-064-flexible-id-matching.md, and added CHANGELOG Unreleased entry.
 container: dark-factory-369-spec-064-docs-scenario
@@ -7,6 +7,7 @@ dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T13:00:00Z"
 queued: "2026-05-03T12:51:47Z"
 started: "2026-05-03T13:10:25Z"
+completed: "2026-05-03T13:14:05Z"
 branch: dark-factory/cli-flexible-id-matching
 ---
 

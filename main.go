@@ -1017,7 +1017,8 @@ func printPromptHelp() {
 			"  complete <id>   Complete a prompt (triggers commit/push)\n"+
 			"  unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
 			"  reject <id> --reason <text>  Reject a prompt (move to rejected/, terminal state)\n"+
-			"  show <id>       Show details for a single prompt\n",
+			"  show <id>       Show details for a single prompt\n"+
+			"  <id> formats: padded number (063), unpadded number (63), full basename (063-foo-bar), or basename with .md extension\n",
 	)
 }
 
@@ -1031,7 +1032,8 @@ func printSpecHelp() {
 			"  unapprove <id>  Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  complete <id>   Mark a verified spec as completed\n"+
 			"  reject <id> --reason <text>  Reject a spec and all linked prompts (move to rejected/, terminal state)\n"+
-			"  show <id>       Show details for a single spec\n",
+			"  show <id>       Show details for a single spec\n"+
+			"  <id> formats: padded number (063), unpadded number (63), full basename (063-foo-bar), or basename with .md extension\n",
 	)
 }
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.147.1
+
+- docs: add accepted `<id>` format note to `spec` and `prompt` help text (padded/unpadded number, basename, .md extension)
+
 ## v0.147.0
 
 - feat: walk up directory tree from cwd to find .dark-factory.yaml project root, replacing git root detection

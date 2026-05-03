@@ -175,6 +175,25 @@ After each successful prompt, spend 2 minutes:
 | Container running for hours | Check `docker logs` — may be in a retry loop. Stop container, fix prompt |
 | `go mod download` fails | Check `netrcFile` and `GOPRIVATE` in config |
 
+## ID Formats
+
+`dark-factory spec` and `dark-factory prompt` subcommands taking an `<id>` argument accept four equivalent formats:
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| Padded number | `063` | Matches the format shown in `spec list` / `prompt list` output |
+| Unpadded number | `63` | Quick typing |
+| Full basename | `063-bug-foo-bar` | Tab-completion friendly |
+| With `.md` extension | `063-bug-foo-bar.md` | Convenient when copy-pasting from `ls` |
+
+When two specs share a number (defensive case — the daemon assigns unique numbers, so this should never occur in practice), the CLI errors with `ambiguous spec id <input>: <list-of-paths>` and exits non-zero.
+
+## Project Detection
+
+When run outside a project root (no `.dark-factory.yaml` in the current directory), `dark-factory` walks up the directory tree to find one — same convention as `git`. The walk stops at `$HOME`. If no `.dark-factory.yaml` is found, the CLI exits non-zero with `not a dark-factory project: no .dark-factory.yaml in <cwd> or any parent directory`.
+
+This means you can run `dark-factory spec list` from any subdirectory of a project — no need to `cd` to the root first.
+
 ## CLI Reference
 
 | Command | Purpose |

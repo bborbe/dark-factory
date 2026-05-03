@@ -1,7 +1,9 @@
 ---
-status: approved
+status: completed
 approved: "2026-05-03T11:07:36Z"
 generating: "2026-05-03T11:07:36Z"
+verifying: "2026-05-03T11:49:40Z"
+completed: "2026-05-03T12:14:20Z"
 branch: dark-factory/bug-autorelease-overrides-pr-workflow
 ---
 

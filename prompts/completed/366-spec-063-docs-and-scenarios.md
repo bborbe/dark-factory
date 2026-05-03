@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["063"]
+spec: [063-bug-autorelease-overrides-pr-workflow]
 summary: Updated docs/workflows.md Invalid section with new pr+autoMerge+autoRelease rejection, created scenarios 014/015/016 for spec 063, and added CHANGELOG.md Unreleased entry.
 container: dark-factory-366-spec-063-docs-and-scenarios
 dark-factory-version: v0.145.1-3-g93401a1

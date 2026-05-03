@@ -2,16 +2,21 @@
 
 ## Dark Factory Workflow
 
-**Never code directly.** All code changes go through the dark-factory pipeline.
+The headline reason to use prompts/specs: **safe unattended execution** in a YOLO Claude container with permission checks disabled. Queue work, step away, no "approve this bash command?" interruptions. Documentation, decomposition (specs only), and token savings (Sonnet vs Opus) follow as side benefits.
 
 ### What to do
 
-1. **Assess the change size:**
+1. **Choose a flow** — the decision is about *what artifact deserves to be committed alongside the change*, not size:
 
-| Change | Action |
-|--------|--------|
-| Simple fix, config change, 1-2 files | Write a prompt → [docs/prompt-writing.md](docs/prompt-writing.md) |
-| Multi-prompt feature, unclear edges, shared interfaces | Write a spec first → [docs/spec-writing.md](docs/spec-writing.md) |
+| Kind of change | Flow | What gets committed |
+|----------------|------|---------------------|
+| Doc / config / yaml — no code | **Direct** — edit + commit yourself, no dark-factory | Just the diff |
+| Code change of any size | **Prompt** — write a prompt, audit, approve, daemon executes | Prompt + diff (technical "how") → [docs/prompt-writing.md](docs/prompt-writing.md) |
+| Feature delivering business value | **Spec → prompts** — write spec, audit, approve, daemon auto-generates prompts, audit each, approve, daemon executes | Spec + prompts + diff (business "why" + technical "how") → [docs/spec-writing.md](docs/spec-writing.md) |
+
+Decide by: **Is code changing?** No → direct. Yes → prompt or spec. **Is there a business-level "why" that deserves its own document?** No → prompt. Yes → spec first.
+
+The prompt/spec split is **business-why vs technical-how**, not big vs small. A 50-prompt mechanical refactor stays prompts. A 1-prompt user-visible feature may still warrant a spec.
 
 2. **Read the relevant guide before starting** — every time, not from memory:
    - Architecture & flow → read [docs/architecture-flow.md](docs/architecture-flow.md)

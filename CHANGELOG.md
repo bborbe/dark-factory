@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.0
+
+- docs: rework "Choosing a Flow" framing across `docs/architecture-flow.md`, `docs/claude-md-guide.md`, `commands/read-guides.md`, and `CLAUDE.md`. Headline reason for using prompts/specs is now **safe unattended execution** (YOLO container, permission checks disabled) — documentation, decomposition, and Sonnet/Opus token savings are framed as side benefits. Decision matrix changed from 2-row size-based ("simple fix" vs "multi-prompt feature") to 3-row artifact-based: **Direct** (doc/config/yaml — no code), **Prompt** (any code change), **Spec → prompts** (feature delivering business value). The prompt/spec split is now explicitly framed as **business-why vs technical-how**, not big vs small. `commands/read-guides.md` Step 4 emits the decision table verbatim in every read-guides invocation so users see it before they pick a flow.
+
 ## v0.147.2
 
 - fix: resolve symlinks in `pkg/project/root_test.go` before comparing `FindRoot` results. On macOS, `os.MkdirTemp` returns paths under `/var/folders/...` but `os.Getwd()` after `os.Chdir` resolves the symlink to `/private/var/folders/...`. Tests now wrap `projectDir` with `filepath.EvalSymlinks` for stable equality checks. Caught during spec 064 verification — `make test` was failing on macOS even though production code (which uses `os.Getwd()` directly) was correct.

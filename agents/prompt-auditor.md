@@ -45,7 +45,7 @@ Every prompt MUST have these XML sections:
 
 ## Frontmatter (if present)
 
-- `spec` must be YAML array: `spec: ["020"]` not `spec: "020"`
+- `spec` must be YAML array of strings: `spec: ["020-foo-bar"]` (canonical full-slug form) or `spec: ["020"]` (bare number — accepted; daemon's `pkg/slugmigrator` resolves to full slug). Do NOT flag the long form as wrong.
 - Valid inbox statuses: `idea` (rough concept) or `draft` (complete, ready for approval)
 - Only `spec`, `status`, `created`, `issue` fields in inbox — dark-factory adds the rest
 - Never number filenames with dark-factory's global prefix (e.g. `001-`, `042-`) — dark-factory assigns those on approve

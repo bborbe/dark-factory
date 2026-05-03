@@ -53,13 +53,15 @@ When linking to a spec:
 
 ```yaml
 ---
-spec: ["030"]
+spec: ["030-foo-bar-baz"]
 status: draft
 created: "2026-03-11T10:00:00Z"
 ---
 ```
 
-- `spec` must be a YAML array: `spec: ["030"]` not `spec: "030"`
+- `spec` must be a YAML array of strings — single or multiple entries
+- **Canonical form is the full slug** (e.g. `["030-foo-bar-baz"]`), not the bare number. Daemon-generated prompts use this form, and `pkg/slugmigrator` rewrites bare numbers to full slugs after each generation cycle so all prompts converge on the canonical form
+- Bare numbers (`spec: ["030"]`) are accepted as input — the slug migrator resolves them to the full form at the next daemon iteration
 - Only use `spec`, `status`, `created`, `issue` — dark-factory adds the rest
 - Valid inbox statuses: `idea` (rough concept, needs refinement) or `draft` (complete, ready for approval)
 

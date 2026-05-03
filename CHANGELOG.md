@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.5
+
+- docs: align `prompt-writing.md` and `agents/prompt-auditor.md` with the actual canonical `spec:` frontmatter form. Daemon-generated prompts use full-slug entries (`spec: ["030-foo-bar-baz"]`) and `pkg/slugmigrator` rewrites bare numbers to the full form after each generation cycle. Both docs and the auditor rule now show the long form as canonical and explicitly accept bare numbers as input. Eliminates a recurring audit false-positive that flagged daemon-generated prompts as malformed.
+
 ## v0.145.4
 
 - docs: extend `docs/workflows.md` Invalid section to document `pr: true + autoMerge: false + autoRelease: true` rejection with three actionable resolutions

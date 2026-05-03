@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [064-cli-flexible-id-matching]
+summary: Created pkg/project/root.go with FindRoot walk-up function, updated main.go to use project.FindRoot instead of git.ResolveGitRoot, added root_test.go with three Ginkgo tests, and added CHANGELOG Unreleased entries
+container: dark-factory-368-spec-064-project-detection
+dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T13:00:00Z"
 queued: "2026-05-03T12:51:47Z"
+started: "2026-05-03T13:05:12Z"
 branch: dark-factory/cli-flexible-id-matching
 ---
 

@@ -21,9 +21,9 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
-	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/version"
 )
 
@@ -73,13 +73,13 @@ func run(ctx context.Context) error {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 	slog.Info("dark-factory starting", "version", version.Version)
 
-	gitRoot, err := git.ResolveGitRoot(ctx)
+	projectRoot, err := project.FindRoot(ctx)
 	if err != nil {
 		return err
 	}
-	slog.Debug("resolved git root", "root", gitRoot)
-	if err := os.Chdir(gitRoot); err != nil {
-		return errors.Wrap(ctx, err, "chdir to git root")
+	slog.Debug("resolved project root", "root", projectRoot)
+	if err := os.Chdir(projectRoot); err != nil {
+		return errors.Wrap(ctx, err, "chdir to project root")
 	}
 
 	loadResult, err := config.LoadWithOverrides(ctx)

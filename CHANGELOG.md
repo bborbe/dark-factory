@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.147.0
+
+- feat: walk up directory tree from cwd to find .dark-factory.yaml project root, replacing git root detection
+- fix: spec list / spec status / prompt list now error with "not a dark-factory project" when no .dark-factory.yaml found, instead of silently returning empty results
+
 ## v0.146.0
 
 - feat: CLI spec and prompt <id> arguments now resolve by integer value, accepting unpadded numbers ("63" matches "063-foo.md") and full basenames with or without .md extension; ambiguous numeric matches across directories return a descriptive error

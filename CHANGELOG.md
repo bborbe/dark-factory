@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.0
+
+- feat: --set now accepts workflow, pr, autoMerge keys for per-invocation delivery override
+
 ## v0.144.1
 
 - docs: cross-reference `/dark-factory:verify-spec` from README.md, CLAUDE.md, docs/spec-writing.md, docs/spec-verification.md, docs/claude-md-guide.md so the new verification command is discoverable from every entry point

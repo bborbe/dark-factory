@@ -130,7 +130,7 @@ CLI args (layer 5) implemented:
 - `--max-containers N` — concurrency override
 - `--skip-preflight` — bypass preflight
 - `--auto-approve` — flush queue (run only)
-- `--set key=value` — generic per-invocation override; supported keys: `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model`, `maxContainers`. Bool values must be `true` or `false` (no 1/0/yes/no).
+- `--set key=value` — generic per-invocation override; supported keys: `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model`, `maxContainers`, `workflow`, `pr`, `autoMerge`. Bool values must be `true` or `false` (no 1/0/yes/no). The legacy `workflow: pr` yaml value is not accepted via `--set`; use `--set workflow=clone --set pr=true` instead.
 
 There is no `--hide-git` flag — use `--set hideGit=true`.
 

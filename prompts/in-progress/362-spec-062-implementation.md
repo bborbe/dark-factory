@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [062-cli-set-workflow-pr-automerge]
+summary: Extended --set CLI flag to accept workflow, pr, and autoMerge keys with source tracking, combination validation, and updated help text and docs
+container: dark-factory-362-spec-062-implementation
+dark-factory-version: v0.143.0-5-g73d1db8
 created: "2026-05-03T09:00:00Z"
 queued: "2026-05-03T09:13:08Z"
+started: "2026-05-03T09:15:21Z"
 branch: dark-factory/spec-062
 ---
 

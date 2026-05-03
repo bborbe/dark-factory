@@ -100,6 +100,11 @@ func run(ctx context.Context) error {
 	if err := applySetOverrides(ctx, &cfg, &sources, command, setOverrides); err != nil {
 		return err
 	}
+	if command == "run" || command == "daemon" {
+		if err := cfg.Validate(ctx); err != nil {
+			return err
+		}
+	}
 
 	currentDateTimeGetter := libtime.NewCurrentDateTime()
 	return runCommand(
@@ -553,6 +558,9 @@ func computeFieldSources(
 		AutoRelease:        "default",
 		DirtyFileThreshold: "default",
 		Model:              "default",
+		Workflow:           "default",
+		PR:                 "default",
+		AutoMerge:          "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -581,6 +589,15 @@ func computeFieldSources(
 	}
 	if proj.MaxContainers != nil {
 		s.MaxContainers = "project"
+	}
+	if proj.Workflow != nil {
+		s.Workflow = "project"
+	}
+	if proj.PR != nil {
+		s.PR = "project"
+	}
+	if proj.AutoMerge != nil {
+		s.AutoMerge = "project"
 	}
 	return s
 }
@@ -620,8 +637,13 @@ var supportedSetKeys = []string{
 	"hideGit",
 	"autoRelease",
 	"dirtyFileThreshold",
+
 	"model",
 	"maxContainers",
+
+	"workflow",
+	"pr",
+	"autoMerge",
 }
 
 // parseSetFlags scans rawArgs for --set key=value occurrences, collects them into a
@@ -731,6 +753,8 @@ func applyOneSetOverride(
 		}
 		cfg.MaxContainers = n
 		sources.MaxContainers = "arg"
+	case "workflow", "pr", "autoMerge":
+		return applyDeliverySetOverride(ctx, cfg, sources, key, value)
 	default:
 		return errors.Errorf(
 			ctx,
@@ -738,6 +762,48 @@ func applyOneSetOverride(
 			key,
 			strings.Join(supportedSetKeys, ", "),
 		)
+	}
+	return nil
+}
+
+// applyDeliverySetOverride handles --set for workflow, pr, and autoMerge keys.
+func applyDeliverySetOverride(
+	ctx context.Context,
+	cfg *config.Config,
+	sources *config.FieldSources,
+	key, value string,
+) error {
+	switch key {
+	case "workflow":
+		// Reject the legacy "pr" enum value at the arg layer. The yaml loader maps it to
+		// workflow: clone + pr: true; the arg layer intentionally does not reproduce that mapping.
+		if value == string(config.WorkflowPR) {
+			return errors.Errorf(
+				ctx,
+				"legacy workflow value %q not accepted via --set; use --set workflow=clone --set pr=true",
+				value,
+			)
+		}
+		w := config.Workflow(value)
+		if err := w.Validate(ctx); err != nil {
+			return err
+		}
+		cfg.Workflow = w
+		sources.Workflow = "arg"
+	case "pr":
+		b, err := parseStrictBool(ctx, key, value)
+		if err != nil {
+			return err
+		}
+		cfg.PR = b
+		sources.PR = "arg"
+	default: // "autoMerge"
+		b, err := parseStrictBool(ctx, key, value)
+		if err != nil {
+			return err
+		}
+		cfg.AutoMerge = b
+		sources.AutoMerge = "arg"
 	}
 	return nil
 }
@@ -865,10 +931,12 @@ func printRunHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers\n"+
-			"                          Bool example:   --set hideGit=true\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge\n"+
+			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
-			"                          String example: --set model=claude-opus-4-7\n"+
+			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+
+			"                          Workflow example: --set workflow=branch --set pr=true\n"+
+			"                          Note: 'workflow: pr' is yaml-only legacy; use --set workflow=clone --set pr=true\n"+
 			"                          Note: --max-containers N takes precedence over --set maxContainers=N if both are passed.\n"+
 			"  --help, -h              Show this help\n",
 	)
@@ -885,10 +953,12 @@ func printDaemonHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers\n"+
-			"                          Bool example:   --set hideGit=true\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge\n"+
+			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
-			"                          String example: --set model=claude-opus-4-7\n"+
+			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+
+			"                          Workflow example: --set workflow=branch --set pr=true\n"+
+			"                          Note: 'workflow: pr' is yaml-only legacy; use --set workflow=clone --set pr=true\n"+
 			"                          Note: --max-containers N takes precedence over --set maxContainers=N if both are passed.\n"+
 			"  --help, -h              Show this help\n",
 	)

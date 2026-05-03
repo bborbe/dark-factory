@@ -395,6 +395,7 @@ dark-factory run --set hideGit=true
 dark-factory run --set dirtyFileThreshold=5
 dark-factory run --set model=claude-opus-4-7
 dark-factory daemon --set autoRelease=false --set model=claude-haiku-4-5
+dark-factory run --set workflow=branch --set pr=true
 ```
 
 Overrides any supported config field for this invocation. The flag may appear multiple times; if the same key appears more than once, the last occurrence wins.
@@ -408,8 +409,13 @@ Supported keys and types:
 | `dirtyFileThreshold` | int ≥ 0 | `--set dirtyFileThreshold=5` |
 | `model` | string (must match `^[a-zA-Z0-9._:/-]{1,256}$`) | `--set model=claude-opus-4-7` |
 | `maxContainers` | int ≥ 1 | `--set maxContainers=2` |
+| `workflow` | string (`direct`, `branch`, `worktree`, `clone`) | `--set workflow=branch` |
+| `pr` | bool (`true` or `false`) | `--set pr=true` |
+| `autoMerge` | bool (`true` or `false`) | `--set autoMerge=true` |
 
 Bool fields accept only `true` or `false` (case-sensitive). Values like `1`, `0`, `yes`, `no` are rejected. Unknown keys exit non-zero with an error listing the supported keys.
+
+The legacy `workflow: pr` yaml value is not accepted via `--set workflow=pr`; use `--set workflow=clone --set pr=true` instead. Cross-field constraints (e.g. `workflow: direct` + `pr: true`) are validated after all `--set` flags are applied and exit non-zero if violated.
 
 Priority: `--set` arg > project config > global config > default.
 

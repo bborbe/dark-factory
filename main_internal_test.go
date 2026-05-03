@@ -363,6 +363,39 @@ var _ = Describe("computeFieldSources", func() {
 		s := computeFieldSources(global, proj)
 		Expect(s.MaxContainers).To(BeEmpty())
 	})
+
+	It("returns default for workflow/pr/autoMerge when project did not set them", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.Workflow).To(Equal("default"))
+		Expect(s.PR).To(Equal("default"))
+		Expect(s.AutoMerge).To(Equal("default"))
+	})
+
+	It("returns project for workflow when project explicitly sets it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		w := config.WorkflowBranch
+		proj := config.LayeredProjectOverrides{Workflow: &w}
+		s := computeFieldSources(global, proj)
+		Expect(s.Workflow).To(Equal("project"))
+	})
+
+	It("returns project for pr when project explicitly sets it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		proj := config.LayeredProjectOverrides{PR: &t}
+		s := computeFieldSources(global, proj)
+		Expect(s.PR).To(Equal("project"))
+	})
+
+	It("returns project for autoMerge when project explicitly sets it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		proj := config.LayeredProjectOverrides{AutoMerge: &t}
+		s := computeFieldSources(global, proj)
+		Expect(s.AutoMerge).To(Equal("project"))
+	})
 })
 
 var _ = Describe("parseSetFlags", func() {
@@ -619,5 +652,139 @@ var _ = Describe("applySetOverrides", func() {
 		// Simulate extractMaxContainers applying --max-containers 3 afterwards
 		cfg.MaxContainers = 3
 		Expect(cfg.MaxContainers).To(Equal(3))
+	})
+
+	It("sets workflow=branch and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "branch"}),
+		).To(Succeed())
+		Expect(cfg.Workflow).To(Equal(config.WorkflowBranch))
+		Expect(sources.Workflow).To(Equal("arg"))
+	})
+
+	It("sets workflow=clone and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "clone"}),
+		).To(Succeed())
+		Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+		Expect(sources.Workflow).To(Equal("arg"))
+	})
+
+	It("rejects workflow=invalid with error listing valid values", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"workflow": "invalid"},
+		)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown workflow"))
+		Expect(err.Error()).To(ContainSubstring("direct"))
+		Expect(err.Error()).To(ContainSubstring("branch"))
+		Expect(err.Error()).To(ContainSubstring("worktree"))
+		Expect(err.Error()).To(ContainSubstring("clone"))
+	})
+
+	It("rejects workflow=pr (legacy enum) with message pointing to clone+pr", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "pr"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("legacy workflow value"))
+		Expect(err.Error()).To(ContainSubstring("workflow=clone"))
+		Expect(err.Error()).To(ContainSubstring("pr=true"))
+	})
+
+	It("sets pr=true and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.Workflow = config.WorkflowBranch // pr=true requires non-direct workflow
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
+		).To(Succeed())
+		Expect(cfg.PR).To(BeTrue())
+		Expect(sources.PR).To(Equal("arg"))
+	})
+
+	It("sets pr=false and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.PR = true
+		cfg.Workflow = config.WorkflowBranch
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "false"}),
+		).To(Succeed())
+		Expect(cfg.PR).To(BeFalse())
+		Expect(sources.PR).To(Equal("arg"))
+	})
+
+	It("rejects pr=yes (invalid bool)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "yes"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid bool"))
+		Expect(err.Error()).To(ContainSubstring("true or false"))
+	})
+
+	It("sets autoMerge=true and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.PR = true
+		cfg.Workflow = config.WorkflowBranch
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "true"}),
+		).To(Succeed())
+		Expect(cfg.AutoMerge).To(BeTrue())
+		Expect(sources.AutoMerge).To(Equal("arg"))
+	})
+
+	It("rejects autoMerge=1 (invalid bool)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "1"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid bool"))
+	})
+
+	It("workflow=direct pr=true combination fails cfg.Validate after both applied", func() {
+		cfg := config.Defaults() // Workflow=direct (default)
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
+		).To(Succeed()) // applySetOverrides itself succeeds — single-key validation only
+		// The cross-field validator fires on cfg.Validate (called by run() after applySetOverrides)
+		err := cfg.Validate(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("incompatible"))
+	})
+
+	It("autoMerge=true without pr=true fails cfg.Validate after applied", func() {
+		cfg := config.Defaults() // PR=false (default)
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "true"}),
+		).To(Succeed())
+		err := cfg.Validate(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("autoMerge requires pr: true"))
+	})
+
+	It("last workflow wins when key appears twice", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		// Simulate last-wins by applying two separate calls (map iteration order is undefined;
+		// use the parseSetFlags result directly for deterministic ordering in unit tests)
+		Expect(applyOneSetOverride(ctx, &cfg, &sources, "workflow", "branch")).To(Succeed())
+		Expect(applyOneSetOverride(ctx, &cfg, &sources, "workflow", "clone")).To(Succeed())
+		Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
+		Expect(sources.Workflow).To(Equal("arg"))
 	})
 })

@@ -13,4 +13,7 @@ type FieldSources struct {
 	DirtyFileThreshold string
 	Model              string
 	MaxContainers      string
+	Workflow           string
+	PR                 string
+	AutoMerge          string
 }

@@ -35,7 +35,10 @@ type LayeredProjectOverrides struct {
 	AutoRelease        *bool
 	DirtyFileThreshold *int
 	Model              *string
-	MaxContainers      *int // included for completeness; maxContainers uses its own precedence path
+	MaxContainers      *int      // included for completeness; maxContainers uses its own precedence path
+	Workflow           *Workflow // non-nil when .dark-factory.yaml explicitly sets workflow
+	PR                 *bool     // non-nil when .dark-factory.yaml explicitly sets pr
+	AutoMerge          *bool     // non-nil when .dark-factory.yaml explicitly sets autoMerge
 }
 
 // LoadResult bundles the merged project config with information about which
@@ -170,6 +173,9 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		DirtyFileThreshold: partial.DirtyFileThreshold,
 		Model:              partial.Model,
 		MaxContainers:      partial.MaxContainers,
+		Workflow:           partial.Workflow,
+		PR:                 partial.PR,
+		AutoMerge:          partial.AutoMerge,
 	}
 
 	// Merge non-nil values onto defaults

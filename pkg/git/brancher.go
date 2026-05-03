@@ -28,6 +28,13 @@ type Brancher interface {
 	Pull(ctx context.Context) error
 	MergeOriginDefault(ctx context.Context) error
 	IsClean(ctx context.Context) (bool, error)
+	// IsCleanIgnoring returns the dirty paths that are NOT covered by any of
+	// the given ignorePrefixes. An empty slice means the tree is effectively
+	// clean for the caller's purposes. The prefix comparison is
+	// strings.HasPrefix(path, prefix) on the path as reported by
+	// git status --porcelain (relative, no leading slash).
+	// A non-nil error means the git command itself failed.
+	IsCleanIgnoring(ctx context.Context, ignorePrefixes []string) ([]string, error)
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
 }
@@ -225,6 +232,46 @@ func (b *brancher) IsClean(ctx context.Context) (bool, error) {
 		return false, errors.Wrap(ctx, err, "check working tree status")
 	}
 	return strings.TrimSpace(string(output)) == "", nil
+}
+
+// IsCleanIgnoring returns dirty paths not covered by any ignorePrefixes.
+func (b *brancher) IsCleanIgnoring(ctx context.Context, ignorePrefixes []string) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain", "-z")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "check working tree status")
+	}
+	var dirty []string
+	// -z output: each entry is "XY <path>\0". Renamed entries (status R or C)
+	// append a second NUL-separated record holding the old path; we ignore the
+	// old-path follow-up records by only examining entries with a status prefix.
+	skipNext := false
+	for _, entry := range strings.Split(strings.TrimRight(string(output), "\x00"), "\x00") {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if len(entry) < 4 {
+			continue
+		}
+		statusXY := entry[:2]
+		path := entry[3:]
+		if statusXY[0] == 'R' || statusXY[0] == 'C' {
+			// Next record is the old path — skip it for prefix matching.
+			skipNext = true
+		}
+		ignored := false
+		for _, prefix := range ignorePrefixes {
+			if prefix != "" && strings.HasPrefix(path, prefix) {
+				ignored = true
+				break
+			}
+		}
+		if !ignored {
+			dirty = append(dirty, path)
+		}
+	}
+	return dirty, nil
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

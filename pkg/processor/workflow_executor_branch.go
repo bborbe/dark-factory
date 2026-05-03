@@ -7,6 +7,7 @@ package processor
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/bborbe/errors"
 
@@ -49,12 +50,17 @@ func (e *branchWorkflowExecutor) Setup(
 
 // setupInPlaceBranch switches to the given branch in-place.
 func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch string) error {
-	clean, err := e.deps.Brancher.IsClean(ctx)
+	dirtyPaths, err := e.deps.Brancher.IsCleanIgnoring(ctx, e.deps.IgnorePathPrefixes)
 	if err != nil {
 		return errors.Wrap(ctx, err, "check working tree")
 	}
-	if !clean {
-		return errors.Errorf(ctx, "working tree is not clean; cannot switch to branch %q", branch)
+	if len(dirtyPaths) > 0 {
+		return errors.Errorf(
+			ctx,
+			"working tree is not clean; cannot switch to branch %q; uncommitted changes: %s",
+			branch,
+			strings.Join(dirtyPaths, ", "),
+		)
 	}
 	defaultBranch, err := e.deps.Brancher.DefaultBranch(ctx)
 	if err != nil {

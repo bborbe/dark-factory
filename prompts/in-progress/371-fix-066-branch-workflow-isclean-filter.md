@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [066-bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write]
+summary: Added IsCleanIgnoring to Brancher interface+implementation, wired IgnorePathPrefixes through WorkflowDeps and factory, updated setupInPlaceBranch to filter dark-factory prompt dirs before branch checkout, migrated all IsClean→IsCleanIgnoring mock calls in tests, added 5 unit tests for the new method, updated docs/workflows.md and CHANGELOG.md.
+container: dark-factory-371-fix-066-branch-workflow-isclean-filter
+dark-factory-version: v0.147.2-1-g30ba42f
 created: "2026-05-03T20:10:00Z"
 queued: "2026-05-03T20:10:05Z"
+started: "2026-05-03T20:12:54Z"
 branch: dark-factory/bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write
 ---
 

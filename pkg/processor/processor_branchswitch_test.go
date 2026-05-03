@@ -159,7 +159,7 @@ var _ = Describe("Processor", func() {
 				return executor.ExecuteCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			Expect(brancher.IsCleanCallCount()).To(Equal(0))
+			Expect(brancher.IsCleanIgnoringCallCount()).To(Equal(0))
 			Expect(brancher.SwitchCallCount()).To(Equal(0))
 			Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 
@@ -193,7 +193,7 @@ var _ = Describe("Processor", func() {
 					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(brancher.IsCleanCallCount()).To(Equal(0))
+				Expect(brancher.IsCleanIgnoringCallCount()).To(Equal(0))
 				Expect(brancher.SwitchCallCount()).To(Equal(0))
 				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(0))
 				cancel()
@@ -220,7 +220,7 @@ var _ = Describe("Processor", func() {
 				releaser.HasChangelogReturns(false)
 				releaser.CommitOnlyReturns(nil)
 
-				brancher.IsCleanReturns(true, nil)
+				brancher.IsCleanIgnoringReturns(nil, nil)
 				brancher.DefaultBranchReturns("main", nil)
 				brancher.FetchAndVerifyBranchReturns(nil) // branch exists remotely
 				brancher.SwitchReturns(nil)
@@ -234,7 +234,7 @@ var _ = Describe("Processor", func() {
 					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(brancher.IsCleanCallCount()).To(Equal(1))
+				Expect(brancher.IsCleanIgnoringCallCount()).To(Equal(1))
 				Expect(brancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
 				_, branchArg := brancher.FetchAndVerifyBranchArgsForCall(0)
 				Expect(branchArg).To(Equal("dark-factory/test"))
@@ -268,7 +268,7 @@ var _ = Describe("Processor", func() {
 				releaser.HasChangelogReturns(false)
 				releaser.CommitOnlyReturns(nil)
 
-				brancher.IsCleanReturns(true, nil)
+				brancher.IsCleanIgnoringReturns(nil, nil)
 				brancher.DefaultBranchReturns("main", nil)
 				brancher.FetchAndVerifyBranchReturns(
 					stderrors.New("branch not found"),
@@ -285,7 +285,7 @@ var _ = Describe("Processor", func() {
 					return executor.ExecuteCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-				Expect(brancher.IsCleanCallCount()).To(Equal(1))
+				Expect(brancher.IsCleanIgnoringCallCount()).To(Equal(1))
 				Expect(brancher.FetchAndVerifyBranchCallCount()).To(Equal(1))
 				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(1))
 				_, createArg := brancher.CreateAndSwitchArgsForCall(0)
@@ -310,16 +310,16 @@ var _ = Describe("Processor", func() {
 				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				manager.AllPreviousCompletedReturns(true)
 
-				brancher.IsCleanReturns(false, nil) // dirty working tree
+				brancher.IsCleanIgnoringReturns([]string{"pkg/dirty.go"}, nil) // dirty working tree
 
 				p := newProcWithWorkflow(true, config.WorkflowBranch)
 				go func() {
 					_ = p.Process(ctx)
 				}()
 
-				// Wait for the IsClean call to happen (prompt fails)
+				// Wait for the IsCleanIgnoring call to happen (prompt fails)
 				Eventually(func() int {
-					return brancher.IsCleanCallCount()
+					return brancher.IsCleanIgnoringCallCount()
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				Expect(executor.ExecuteCallCount()).To(Equal(0))
@@ -353,7 +353,7 @@ var _ = Describe("Processor", func() {
 				autoCompleter.CheckAndCompleteReturns(nil)
 
 				// Branch setup mocks: branch does not exist remotely → CreateAndSwitch is called.
-				brancher.IsCleanReturns(true, nil)
+				brancher.IsCleanIgnoringReturns(nil, nil)
 				brancher.DefaultBranchReturns("main", nil)
 				brancher.FetchAndVerifyBranchReturns(stderrors.New("branch not found on remote"))
 				brancher.CreateAndSwitchReturns(nil)
@@ -417,7 +417,7 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// In-place branch switching should NOT have been called
-			Expect(brancher.IsCleanCallCount()).To(Equal(0))
+			Expect(brancher.IsCleanIgnoringCallCount()).To(Equal(0))
 
 			cancel()
 		})
@@ -442,7 +442,7 @@ var _ = Describe("Processor", func() {
 				releaser.HasChangelogReturns(false)
 				releaser.CommitOnlyReturns(nil)
 
-				brancher.IsCleanReturns(true, nil)
+				brancher.IsCleanIgnoringReturns(nil, nil)
 				brancher.DefaultBranchReturns("main", nil)
 				brancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
 				brancher.CreateAndSwitchReturns(nil)
@@ -547,7 +547,7 @@ var _ = Describe("Processor", func() {
 				releaser.HasChangelogReturns(true) // changelog exists but should NOT release
 				releaser.CommitOnlyReturns(nil)
 
-				brancher.IsCleanReturns(true, nil)
+				brancher.IsCleanIgnoringReturns(nil, nil)
 				brancher.DefaultBranchReturns("main", nil)
 				brancher.FetchAndVerifyBranchReturns(stderrors.New("not found"))
 				brancher.CreateAndSwitchReturns(nil)
@@ -586,7 +586,7 @@ var _ = Describe("Processor", func() {
 			autoCompleter.CheckAndCompleteReturns(nil)
 
 			// Branch setup mocks — Setup now always generates a branch from baseName.
-			brancher.IsCleanReturns(true, nil)
+			brancher.IsCleanIgnoringReturns(nil, nil)
 			brancher.DefaultBranchReturns("main", nil)
 			brancher.FetchAndVerifyBranchReturns(stderrors.New("branch not found"))
 			brancher.CreateAndSwitchReturns(nil)

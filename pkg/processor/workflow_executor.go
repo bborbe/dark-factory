@@ -82,4 +82,10 @@ type WorkflowDeps struct {
 	AutoMerge     bool
 	AutoReview    bool
 	AutoRelease   bool
+	// IgnorePathPrefixes lists directory prefixes (relative, no leading slash)
+	// that branchWorkflowExecutor should treat as dark-factory bookkeeping and
+	// exclude from the working-tree cleanliness check before branch switching.
+	// Typically set to the four prompts.* config directories.
+	// Nil or empty means no filtering (identical to the previous IsClean behavior).
+	IgnorePathPrefixes []string
 }

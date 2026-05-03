@@ -114,6 +114,7 @@ var _ = Describe("Factory", func() {
 				0,
 				0,
 				false,
+				nil, // promptDirPrefixes — nil means no ignore filtering in tests
 				nil,
 				0,   // queueInterval: 0 → default 5s
 				0,   // sweepInterval: 0 → default 60s

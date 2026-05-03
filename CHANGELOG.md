@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.2
+
+- fix: branch workflow no longer rejects its own prompt-file frontmatter writes as working-tree dirt; IsCleanIgnoring filters dark-factory state directories before branch checkout
+
 ## v0.148.1
 
 - fix: pass explicit `branch string` parameter to `PRCreator.Create` and supply `--head <branch>` to `gh pr create`, preventing "head branch is the same as base branch" error when cwd has been reset to master worktree in isolated workflows

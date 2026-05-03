@@ -97,6 +97,20 @@ type Brancher struct {
 		result1 bool
 		result2 error
 	}
+	IsCleanIgnoringStub        func(context.Context, []string) ([]string, error)
+	isCleanIgnoringMutex       sync.RWMutex
+	isCleanIgnoringArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	isCleanIgnoringReturns struct {
+		result1 []string
+		result2 error
+	}
+	isCleanIgnoringReturnsOnCall map[int]struct {
+		result1 []string
+		result2 error
+	}
 	MergeOriginDefaultStub        func(context.Context) error
 	mergeOriginDefaultMutex       sync.RWMutex
 	mergeOriginDefaultArgsForCall []struct {
@@ -597,6 +611,76 @@ func (fake *Brancher) IsCleanReturnsOnCall(i int, result1 bool, result2 error) {
 	}
 	fake.isCleanReturnsOnCall[i] = struct {
 		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) IsCleanIgnoring(arg1 context.Context, arg2 []string) ([]string, error) {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.isCleanIgnoringMutex.Lock()
+	ret, specificReturn := fake.isCleanIgnoringReturnsOnCall[len(fake.isCleanIgnoringArgsForCall)]
+	fake.isCleanIgnoringArgsForCall = append(fake.isCleanIgnoringArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
+	stub := fake.IsCleanIgnoringStub
+	fakeReturns := fake.isCleanIgnoringReturns
+	fake.recordInvocation("IsCleanIgnoring", []interface{}{arg1, arg2Copy})
+	fake.isCleanIgnoringMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Brancher) IsCleanIgnoringCallCount() int {
+	fake.isCleanIgnoringMutex.RLock()
+	defer fake.isCleanIgnoringMutex.RUnlock()
+	return len(fake.isCleanIgnoringArgsForCall)
+}
+
+func (fake *Brancher) IsCleanIgnoringCalls(stub func(context.Context, []string) ([]string, error)) {
+	fake.isCleanIgnoringMutex.Lock()
+	defer fake.isCleanIgnoringMutex.Unlock()
+	fake.IsCleanIgnoringStub = stub
+}
+
+func (fake *Brancher) IsCleanIgnoringArgsForCall(i int) (context.Context, []string) {
+	fake.isCleanIgnoringMutex.RLock()
+	defer fake.isCleanIgnoringMutex.RUnlock()
+	argsForCall := fake.isCleanIgnoringArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) IsCleanIgnoringReturns(result1 []string, result2 error) {
+	fake.isCleanIgnoringMutex.Lock()
+	defer fake.isCleanIgnoringMutex.Unlock()
+	fake.IsCleanIgnoringStub = nil
+	fake.isCleanIgnoringReturns = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) IsCleanIgnoringReturnsOnCall(i int, result1 []string, result2 error) {
+	fake.isCleanIgnoringMutex.Lock()
+	defer fake.isCleanIgnoringMutex.Unlock()
+	fake.IsCleanIgnoringStub = nil
+	if fake.isCleanIgnoringReturnsOnCall == nil {
+		fake.isCleanIgnoringReturnsOnCall = make(map[int]struct {
+			result1 []string
+			result2 error
+		})
+	}
+	fake.isCleanIgnoringReturnsOnCall[i] = struct {
+		result1 []string
 		result2 error
 	}{result1, result2}
 }

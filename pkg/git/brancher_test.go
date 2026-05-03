@@ -332,6 +332,80 @@ var _ = Describe("Brancher", func() {
 		})
 	})
 
+	Describe("IsCleanIgnoring", func() {
+		It("returns nil when repo is clean", func() {
+			dirtyPaths, err := b.IsCleanIgnoring(ctx, nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dirtyPaths).To(BeNil())
+		})
+
+		It("returns the dirty path when file is outside all ignore prefixes", func() {
+			// Create an untracked file at root — git reports "?? user-code.go"
+			Expect(
+				os.WriteFile(filepath.Join(tempDir, "user-code.go"), []byte("package main"), 0600),
+			).To(Succeed())
+
+			dirtyPaths, err := b.IsCleanIgnoring(ctx, []string{"prompts/in-progress"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(dirtyPaths)).To(Equal(1))
+			Expect(dirtyPaths[0]).To(Equal("user-code.go"))
+		})
+
+		It("returns nil when staged dirty file matches ignore prefix", func() {
+			// Stage a new file so git reports the individual path "A  prompts/in-progress/001-test.md"
+			// rather than the parent directory "?? prompts/" (untracked dirs are collapsed by git).
+			Expect(os.MkdirAll(filepath.Join(tempDir, "prompts/in-progress"), 0750)).To(Succeed())
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts/in-progress/001-test.md"),
+					[]byte("---\nstatus: in-progress\n---\n"),
+					0600,
+				),
+			).To(Succeed())
+			addCmd := exec.Command("git", "add", "prompts/in-progress/001-test.md")
+			Expect(addCmd.Run()).To(Succeed())
+
+			dirtyPaths, err := b.IsCleanIgnoring(ctx, []string{"prompts/in-progress"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(dirtyPaths).To(BeNil())
+		})
+
+		It("returns only non-ignored dirty path when mixed dirty files exist", func() {
+			// Stage the prompt file so it appears with a full individual path in git status.
+			Expect(os.MkdirAll(filepath.Join(tempDir, "prompts/in-progress"), 0750)).To(Succeed())
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts/in-progress/001-test.md"),
+					[]byte("---\nstatus: in-progress\n---\n"),
+					0600,
+				),
+			).To(Succeed())
+			addCmd := exec.Command("git", "add", "prompts/in-progress/001-test.md")
+			Expect(addCmd.Run()).To(Succeed())
+			// Also create an untracked user file at root
+			Expect(
+				os.WriteFile(filepath.Join(tempDir, "user-code.go"), []byte("package main"), 0600),
+			).To(Succeed())
+
+			dirtyPaths, err := b.IsCleanIgnoring(ctx, []string{"prompts/in-progress"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(dirtyPaths)).To(Equal(1))
+			Expect(dirtyPaths[0]).NotTo(ContainSubstring("prompts"))
+			Expect(dirtyPaths[0]).To(Equal("user-code.go"))
+		})
+
+		It("returns dirty paths when prefix list is empty and repo is dirty", func() {
+			// Create an untracked file — with empty prefixes, all dirty paths are returned.
+			Expect(
+				os.WriteFile(filepath.Join(tempDir, "user-code.go"), []byte("package main"), 0600),
+			).To(Succeed())
+
+			dirtyPaths, err := b.IsCleanIgnoring(ctx, nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(dirtyPaths)).To(BeNumerically(">=", 1))
+		})
+	})
+
 	Describe("MergeOriginDefault", func() {
 		It("skips merge when default branch cannot be determined", func() {
 			// When DefaultBranch fails (no GitHub remote, no config), MergeOriginDefault

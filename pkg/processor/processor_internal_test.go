@@ -386,7 +386,7 @@ func (s *stubCloner) Remove(_ context.Context, _ string) error {
 	return nil
 }
 
-// stubBrancher tracks Push/CreateAndSwitch/FetchAndVerify/Switch/IsClean/DefaultBranch/MergeToDefault calls.
+// stubBrancher tracks Push/CreateAndSwitch/FetchAndVerify/Switch/IsClean/IsCleanIgnoring/DefaultBranch/MergeToDefault calls.
 type stubBrancher struct {
 	pushCount             int
 	createAndSwitchCount  int
@@ -425,6 +425,17 @@ func (s *stubBrancher) Switch(_ context.Context, _ string) error {
 
 func (s *stubBrancher) IsClean(_ context.Context) (bool, error) {
 	return s.isClean, s.isCleanErr
+}
+
+func (s *stubBrancher) IsCleanIgnoring(_ context.Context, _ []string) ([]string, error) {
+	if s.isCleanErr != nil {
+		return nil, s.isCleanErr
+	}
+	if !s.isClean {
+		// Return a synthetic dirty path so callers can construct an error message.
+		return []string{"test/dirty-file.go"}, nil
+	}
+	return nil, nil
 }
 
 func (s *stubBrancher) DefaultBranch(_ context.Context) (string, error) {
@@ -1192,6 +1203,38 @@ var _ = Describe("processor workflow routing", func() {
 			err := rawExec.setupInPlaceBranch(ctx, "feature/dirty")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("working tree is not clean"))
+		})
+	})
+
+	// 11o-ignored: dirty prompt file is filtered → Setup proceeds
+	Describe("11o-ignored: setupInPlaceBranch dirty prompt file is filtered", func() {
+		It("advances past IsCleanIgnoring when only prompt dirs are dirty", func() {
+			deps := makeDeps(true)
+			// stubBrancher.IsCleanIgnoring returns nil (clean after filtering)
+			// because stubBrancher.isClean is true by default in makeDeps(true)
+			stubBr.isClean = true
+			// Ensure branch creation path works
+			stubBr.fetchAndVerifyErr = stderrors.New("branch not found remotely")
+			rawExec, ok := NewBranchWorkflowExecutor(deps).(*branchWorkflowExecutor)
+			Expect(ok).To(BeTrue())
+
+			err := rawExec.setupInPlaceBranch(ctx, "feature/prompt-retry")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	// 11o-userdir: user-side dirty path names the file in the error
+	Describe("11o-userdir: setupInPlaceBranch user-side dirt names the file in error", func() {
+		It("error message contains the offending path", func() {
+			deps := makeDeps(true)
+			stubBr.isClean = false // stubBrancher returns "test/dirty-file.go"
+			rawExec, ok := NewBranchWorkflowExecutor(deps).(*branchWorkflowExecutor)
+			Expect(ok).To(BeTrue())
+
+			err := rawExec.setupInPlaceBranch(ctx, "feature/user-dirt")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("test/dirty-file.go"))
+			Expect(err.Error()).To(ContainSubstring("feature/user-dirt"))
 		})
 	})
 

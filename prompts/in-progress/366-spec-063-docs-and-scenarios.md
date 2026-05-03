@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: ["063"]
+summary: Updated docs/workflows.md Invalid section with new pr+autoMerge+autoRelease rejection, created scenarios 014/015/016 for spec 063, and added CHANGELOG.md Unreleased entry.
+container: dark-factory-366-spec-063-docs-and-scenarios
+dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T12:00:00Z"
 queued: "2026-05-03T11:27:21Z"
+started: "2026-05-03T11:46:37Z"
 ---
 
 <summary>

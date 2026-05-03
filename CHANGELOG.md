@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.4
+
+- docs: extend `docs/workflows.md` Invalid section to document `pr: true + autoMerge: false + autoRelease: true` rejection with three actionable resolutions
+- docs: add scenarios 014, 015, 016 for spec 063 — config-validation rejection, branch+PR+autoMerge+autoRelease happy path, and direct+autoRelease regression
+
 ## v0.145.3
 
 - fix: branch workflow always creates feature branch from baseName even when prompt frontmatter has no branch field

@@ -84,7 +84,9 @@ These flags stack on top of any isolation mode.
 
 **Tagging is gated on `CHANGELOG.md` presence**, independent of `autoRelease`. With `autoRelease: true` and no `CHANGELOG.md`, commits are still pushed but no version bump or tag is produced.
 
-Invalid: `workflow: direct` with `pr: true` (no feature branch to open a PR for — validation rejects).
+Invalid:
+- `workflow: direct` with `pr: true` — no feature branch exists to open a PR from; validation rejects.
+- `pr: true` + `autoMerge: false` + `autoRelease: true` for any non-direct workflow — `autoRelease` requires tagging the merged commit on master, but `autoMerge: false` means the branch is never merged automatically; validation rejects with three actionable resolutions: set `autoMerge: true`, or set `autoRelease: false`, or set `pr: false`.
 
 ## Container semantics
 

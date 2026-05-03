@@ -186,16 +186,7 @@ func (c Config) Validate(ctx context.Context) error {
 			}
 			return nil
 		})),
-		validation.Name("serverPort", validation.HasValidationFunc(func(ctx context.Context) error {
-			if c.ServerPort < 0 || c.ServerPort > 65535 {
-				return errors.Errorf(
-					ctx,
-					"serverPort must be 0 (disabled) or 1-65535, got %d",
-					c.ServerPort,
-				)
-			}
-			return nil
-		})),
+		validation.Name("serverPort", validation.HasValidationFunc(c.validateServerPort)),
 		validation.Name(
 			"completedDir",
 			validation.HasValidationFunc(func(ctx context.Context) error {
@@ -215,6 +206,10 @@ func (c Config) Validate(ctx context.Context) error {
 			}
 			return nil
 		})),
+		validation.Name(
+			"autoRelease",
+			validation.HasValidationFunc(c.validateAutoReleaseAutoMerge),
+		),
 		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
 		validation.Name("provider", validation.HasValidationFunc(func(ctx context.Context) error {
 			provider := c.Provider
@@ -291,6 +286,18 @@ func (c Config) validateModel(ctx context.Context) error {
 			"model %q does not match required pattern %s",
 			c.Model,
 			modelPattern,
+		)
+	}
+	return nil
+}
+
+// validateServerPort rejects out-of-range server port values.
+func (c Config) validateServerPort(ctx context.Context) error {
+	if c.ServerPort < 0 || c.ServerPort > 65535 {
+		return errors.Errorf(
+			ctx,
+			"serverPort must be 0 (disabled) or 1-65535, got %d",
+			c.ServerPort,
 		)
 	}
 	return nil
@@ -430,6 +437,22 @@ func (c Config) validateWorkflowPR(ctx context.Context) error {
 		return errors.Errorf(
 			ctx,
 			"workflow 'direct' is incompatible with pr: true (no feature branch exists to open a PR from)",
+		)
+	}
+	return nil
+}
+
+// validateAutoReleaseAutoMerge rejects the combination of pr: true, autoMerge: false,
+// and autoRelease: true. autoRelease requires tagging the merged commit on master, but
+// autoMerge: false means the feature branch is never merged automatically — so there is
+// no commit on master to tag.
+func (c Config) validateAutoReleaseAutoMerge(ctx context.Context) error {
+	if c.PR && !c.AutoMerge && c.AutoRelease {
+		return errors.Errorf(
+			ctx,
+			"autoRelease: true with pr: true and autoMerge: false is invalid"+
+				" (autoRelease cannot tag a commit that hasn't been merged to master);"+
+				" set autoMerge: true, or set autoRelease: false, or set pr: false",
 		)
 	}
 	return nil

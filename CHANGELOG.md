@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.2
+
+- fix: reject pr: true + autoMerge: false + autoRelease: true at config load with actionable error naming all three valid resolutions
+
 ## v0.145.1
 
 - docs: cross-reference `bug-workflow.md` from `spec-writing.md` (When to Write a Spec table + Next Steps) and `documentation.md` (Spec section).

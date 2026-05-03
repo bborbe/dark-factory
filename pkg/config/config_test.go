@@ -566,6 +566,147 @@ var _ = Describe("Config", func() {
 			},
 		)
 
+		It("fails for pr=true + autoMerge=false + autoRelease=true with workflow branch", func() {
+			cfg := config.Config{
+				Workflow:    config.WorkflowBranch,
+				PR:          true,
+				AutoMerge:   false,
+				AutoRelease: true,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoRelease: true with pr: true and autoMerge: false is invalid"))
+			Expect(err.Error()).To(ContainSubstring("autoMerge: true"))
+			Expect(err.Error()).To(ContainSubstring("autoRelease: false"))
+			Expect(err.Error()).To(ContainSubstring("pr: false"))
+		})
+
+		It("fails for pr=true + autoMerge=false + autoRelease=true with workflow clone", func() {
+			cfg := config.Config{
+				Workflow:    config.WorkflowClone,
+				PR:          true,
+				AutoMerge:   false,
+				AutoRelease: true,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoRelease: true with pr: true and autoMerge: false is invalid"))
+		})
+
+		It("fails for pr=true + autoMerge=false + autoRelease=true with workflow worktree", func() {
+			cfg := config.Config{
+				Workflow:    config.WorkflowWorktree,
+				PR:          true,
+				AutoMerge:   false,
+				AutoRelease: true,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(
+				err.Error(),
+			).To(ContainSubstring("autoRelease: true with pr: true and autoMerge: false is invalid"))
+		})
+
+		It(
+			"succeeds for pr=true + autoMerge=true + autoRelease=true (autoMerge resolves the conflict)",
+			func() {
+				cfg := config.Config{
+					Workflow:    config.WorkflowBranch,
+					PR:          true,
+					AutoMerge:   true,
+					AutoRelease: true,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
+
+		It(
+			"succeeds for pr=true + autoMerge=false + autoRelease=false (autoRelease=false resolves the conflict)",
+			func() {
+				cfg := config.Config{
+					Workflow:    config.WorkflowBranch,
+					PR:          true,
+					AutoMerge:   false,
+					AutoRelease: false,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
+
+		It(
+			"succeeds for pr=false + autoMerge=false + autoRelease=true (pr=false resolves the conflict)",
+			func() {
+				cfg := config.Config{
+					Workflow:    config.WorkflowDirect,
+					PR:          false,
+					AutoMerge:   false,
+					AutoRelease: true,
+					Prompts: config.PromptsConfig{
+						InboxDir:      "prompts",
+						InProgressDir: "prompts/in-progress",
+						CompletedDir:  "prompts/completed",
+						LogDir:        "prompts/log",
+					},
+					ContainerImage: pkg.DefaultContainerImage,
+					Model:          "claude-sonnet-4-6",
+					DebounceMs:     500,
+				}
+				err := cfg.Validate(ctx)
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
+
 		It("fails for autoReview true with workflow direct", func() {
 			cfg := config.Config{
 				Workflow: config.WorkflowDirect,

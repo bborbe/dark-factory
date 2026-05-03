@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-05-03T19:33:27Z"
 generating: "2026-05-03T19:35:11Z"
 prompted: "2026-05-03T19:39:12Z"
+verifying: "2026-05-03T20:06:04Z"
 branch: dark-factory/bug-pr-create-missing-head-flag-in-isolated-workflows
 ---
 

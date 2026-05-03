@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [066-bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write]
 created: "2026-05-03T20:10:00Z"
+queued: "2026-05-03T20:10:05Z"
 branch: dark-factory/bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write
 ---
 

@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-03T08:50:30Z"
 generating: "2026-05-03T08:50:30Z"
 prompted: "2026-05-03T08:59:46Z"
+verifying: "2026-05-03T09:28:46Z"
+completed: "2026-05-03T10:48:53Z"
 branch: dark-factory/spec-062
 ---
 

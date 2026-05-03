@@ -204,7 +204,7 @@ var _ = Describe("Processor", func() {
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 			// Verify body is the default (no issue)
-			_, _, body := prCreator.CreateArgsForCall(0)
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(body).To(Equal("Automated by dark-factory"))
 
 			cancel()
@@ -231,7 +231,7 @@ var _ = Describe("Processor", func() {
 				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			_, _, body := prCreator.CreateArgsForCall(0)
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(body).To(ContainSubstring("Issue: BRO-42"))
 			Expect(body).To(Equal("Automated by dark-factory\n\nIssue: BRO-42"))
 
@@ -259,7 +259,7 @@ var _ = Describe("Processor", func() {
 				return prCreator.CreateCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			_, _, body := prCreator.CreateArgsForCall(0)
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(body).To(Equal("Automated by dark-factory"))
 			Expect(body).NotTo(ContainSubstring("Issue:"))
 

@@ -159,7 +159,7 @@ func (c *promptCompleteCommand) completePRWorkflow(
 		return errors.Wrap(ctx, err, "push branch")
 	}
 
-	prURL, err := c.prCreator.Create(gitCtx, title, "Automated by dark-factory")
+	prURL, err := c.prCreator.Create(gitCtx, title, "Automated by dark-factory", branch)
 	if err != nil {
 		return errors.Wrap(ctx, err, "create pull request")
 	}

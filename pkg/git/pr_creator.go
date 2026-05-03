@@ -17,7 +17,8 @@ import (
 
 // PRCreator handles GitHub pull request creation.
 type PRCreator interface {
-	Create(ctx context.Context, title string, body string) (string, error)
+	// Create creates a pull request on the given branch and returns the PR URL.
+	Create(ctx context.Context, title string, body string, branch string) (string, error)
 	// FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
 	FindOpenPR(ctx context.Context, branch string) (string, error)
 }
@@ -74,12 +75,23 @@ func (p *prCreator) FindOpenPR(ctx context.Context, branch string) (string, erro
 }
 
 // Create creates a pull request and returns the PR URL.
-func (p *prCreator) Create(ctx context.Context, title string, body string) (string, error) {
+func (p *prCreator) Create(
+	ctx context.Context,
+	title string,
+	body string,
+	branch string,
+) (string, error) {
 	if err := ValidatePRTitle(ctx, title); err != nil {
 		return "", errors.Wrap(ctx, err, "validate PR title")
 	}
-	// #nosec G204 -- title is from prompt frontmatter, body is static text
-	cmd := exec.CommandContext(ctx, "gh", "pr", "create", "--title", title, "--body", body)
+	// #nosec G204 -- title is from prompt frontmatter, body is static text, branch is validated
+	cmd := exec.CommandContext(
+		ctx,
+		"gh", "pr", "create",
+		"--head", branch,
+		"--title", title,
+		"--body", body,
+	)
 	if p.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
 	}

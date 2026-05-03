@@ -9,12 +9,13 @@ import (
 )
 
 type PRCreator struct {
-	CreateStub        func(context.Context, string, string) (string, error)
+	CreateStub        func(context.Context, string, string, string) (string, error)
 	createMutex       sync.RWMutex
 	createArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	createReturns struct {
 		result1 string
@@ -42,20 +43,21 @@ type PRCreator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *PRCreator) Create(arg1 context.Context, arg2 string, arg3 string) (string, error) {
+func (fake *PRCreator) Create(arg1 context.Context, arg2 string, arg3 string, arg4 string) (string, error) {
 	fake.createMutex.Lock()
 	ret, specificReturn := fake.createReturnsOnCall[len(fake.createArgsForCall)]
 	fake.createArgsForCall = append(fake.createArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.CreateStub
 	fakeReturns := fake.createReturns
-	fake.recordInvocation("Create", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Create", []interface{}{arg1, arg2, arg3, arg4})
 	fake.createMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -69,17 +71,17 @@ func (fake *PRCreator) CreateCallCount() int {
 	return len(fake.createArgsForCall)
 }
 
-func (fake *PRCreator) CreateCalls(stub func(context.Context, string, string) (string, error)) {
+func (fake *PRCreator) CreateCalls(stub func(context.Context, string, string, string) (string, error)) {
 	fake.createMutex.Lock()
 	defer fake.createMutex.Unlock()
 	fake.CreateStub = stub
 }
 
-func (fake *PRCreator) CreateArgsForCall(i int) (context.Context, string, string) {
+func (fake *PRCreator) CreateArgsForCall(i int) (context.Context, string, string, string) {
 	fake.createMutex.RLock()
 	defer fake.createMutex.RUnlock()
 	argsForCall := fake.createArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *PRCreator) CreateReturns(result1 string, result2 error) {

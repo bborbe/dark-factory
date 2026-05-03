@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.1
+
+- fix: pass explicit `branch string` parameter to `PRCreator.Create` and supply `--head <branch>` to `gh pr create`, preventing "head branch is the same as base branch" error when cwd has been reset to master worktree in isolated workflows
+
 ## v0.148.0
 
 - docs: rework "Choosing a Flow" framing across `docs/architecture-flow.md`, `docs/claude-md-guide.md`, `commands/read-guides.md`, and `CLAUDE.md`. Headline reason for using prompts/specs is now **safe unattended execution** (YOLO container, permission checks disabled) — documentation, decomposition, and Sonnet/Opus token savings are framed as side benefits. Decision matrix changed from 2-row size-based ("simple fix" vs "multi-prompt feature") to 3-row artifact-based: **Direct** (doc/config/yaml — no code), **Prompt** (any code change), **Spec → prompts** (feature delivering business value). The prompt/spec split is now explicitly framed as **business-why vs technical-how**, not big vs small. `commands/read-guides.md` Step 4 emits the decision table verbatim in every read-guides invocation so users see it before they pick a flow.

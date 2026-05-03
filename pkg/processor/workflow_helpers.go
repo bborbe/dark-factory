@@ -85,7 +85,7 @@ func findOrCreatePR(
 		)
 		return prURL, nil
 	}
-	prURL, err = deps.PRCreator.Create(gitCtx, title, buildPRBody(issue))
+	prURL, err = deps.PRCreator.Create(gitCtx, title, buildPRBody(issue), branchName)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "create pull request")
 	}

@@ -178,7 +178,7 @@ var _ = Describe("Processor", func() {
 			Expect(pushedBranch).To(Equal("dark-factory/001-worktree-test"))
 
 			// Verify PR was created
-			_, title, body := prCreator.CreateArgsForCall(0)
+			_, title, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(title).To(Equal("Add new feature"))
 			Expect(body).To(Equal("Automated by dark-factory"))
 

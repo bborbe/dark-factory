@@ -39,7 +39,7 @@ var _ = Describe("PRCreator", func() {
 			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
 				return nil, fmt.Errorf("command failed")
 			})
-			_, err := p.Create(ctx, "Test PR", "Test body")
+			_, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/test-branch")
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -47,21 +47,21 @@ var _ = Describe("PRCreator", func() {
 			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
 				return []byte("https://github.com/owner/repo/pull/1\n"), nil
 			})
-			url, err := p.Create(ctx, "Test PR", "Test body")
+			url, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(Equal("https://github.com/owner/repo/pull/1"))
 		})
 
 		It("returns error when title starts with a dash", func() {
 			p := git.NewPRCreator("")
-			_, err := p.Create(ctx, "--title-injection", "body")
+			_, err := p.Create(ctx, "--title-injection", "body", "dark-factory/test-branch")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid PR title"))
 		})
 
 		It("returns error when title starts with single dash", func() {
 			p := git.NewPRCreator("")
-			_, err := p.Create(ctx, "-bad-title", "body")
+			_, err := p.Create(ctx, "-bad-title", "body", "dark-factory/test-branch")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid PR title"))
 		})
@@ -70,7 +70,7 @@ var _ = Describe("PRCreator", func() {
 			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
 				return []byte("https://github.com/owner/repo/pull/1\n"), nil
 			})
-			_, err := p.Create(ctx, "Valid title", "body")
+			_, err := p.Create(ctx, "Valid title", "body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -80,9 +80,20 @@ var _ = Describe("PRCreator", func() {
 				capturedEnv = cmd.Env
 				return []byte("https://github.com/owner/repo/pull/1\n"), nil
 			})
-			_, err := p.Create(ctx, "Test PR", "body")
+			_, err := p.Create(ctx, "Test PR", "body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(capturedEnv).To(ContainElement("GH_TOKEN=my-token"))
+		})
+
+		It("passes --head branch to gh pr create", func() {
+			var capturedArgs []string
+			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
+				capturedArgs = cmd.Args
+				return []byte("https://github.com/owner/repo/pull/1\n"), nil
+			})
+			_, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/my-branch")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(capturedArgs).To(ContainElements("--head", "dark-factory/my-branch"))
 		})
 	})
 

@@ -465,7 +465,7 @@ func (s *stubPRCreator) FindOpenPR(_ context.Context, _ string) (string, error) 
 	return s.findOpenPRURL, s.findOpenPRErr
 }
 
-func (s *stubPRCreator) Create(_ context.Context, _, _ string) (string, error) {
+func (s *stubPRCreator) Create(_ context.Context, _, _, _ string) (string, error) {
 	s.createCount++
 	if s.createErr != nil {
 		return "", s.createErr

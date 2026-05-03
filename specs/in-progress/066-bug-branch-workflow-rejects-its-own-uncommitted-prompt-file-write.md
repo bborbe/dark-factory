@@ -1,6 +1,9 @@
 ---
-status: draft
-kind: bug
+status: prompted
+approved: "2026-05-03T19:51:07Z"
+generating: "2026-05-03T19:51:07Z"
+prompted: "2026-05-03T19:59:34Z"
+branch: dark-factory/bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write
 ---
 
 # `branch` workflow Setup rejects its own uncommitted prompt-file write → infinite-loop on retry
@@ -99,7 +102,8 @@ Compare with the `worktree`/`clone` executors (`pkg/processor/workflow_executor_
 - Do NOT change the prompt-file-as-source-of-truth invariant. Prompt frontmatter remains the canonical place to read prompt status; this fix is about *when* it's committed, not *whether*.
 - Do NOT regress `worktree`, `clone`, or `direct` workflows. Those paths are out of scope for this spec (sibling spec 065 covers worktree/clone separately).
 - Do NOT change existing prompt frontmatter schema. Status values, field names, and YAML structure stay as documented in `docs/prompt-writing.md`.
-- Do NOT introduce a `.dark-factory/state/` sidecar directory in this spec — option D in the fix-shape triage is allowed as a follow-up but must not land here without its own spec.
+- Do NOT introduce a `.dark-factory/state/` sidecar directory — that is option D, deferred to a future spec.
+- Do NOT commit prompt-file changes from inside CLI commands (option A) or wrap Setup in `git stash`/pop (option B). The chosen fix is option C: filter `IsClean` to ignore changes inside dark-factory's own state directories.
 - Reuse existing `Brancher`/`prompt.PromptFile` interfaces; do not introduce a parallel git-aware abstraction.
 
 ## Failure Modes
@@ -113,14 +117,31 @@ Compare with the `worktree`/`clone` executors (`pkg/processor/workflow_executor_
 | Daemon killed mid-execution; prompt frontmatter left in intermediate state; daemon restarted | Resume picks up cleanly without manual intervention | Existing resume scenario still passes |
 | Two prompts queued back-to-back, both via `retry` | Both advance through Setup without manual commits between them | Daemon log shows two `switched to branch` events, no `working tree is not clean` errors |
 
-## Possible fix shapes (for triage only — do NOT bind prompts)
+## Fix shape (resolved)
 
-The daemon-generated fix prompts must not anchor on a single option below; the triage decision happens before approval.
+**Decision: Option C — filter `IsClean` to user-relevant paths.**
 
-- **A. Commit-on-write in CLI commands.** `prompt_retry.go`, `prompt_requeue.go`, etc. commit the prompt-file change immediately. Simple, but pollutes git history with two commits per retry (status flip + actual work).
-- **B. Stash-around-Setup.** `setupInPlaceBranch` stashes any change to files inside `inboxDir`/`inProgressDir` before `git checkout`, pops after switch. Keeps history clean but introduces stash-management complexity (stash collisions, partial pops, etc.).
-- **C. Filter `IsClean` to user-relevant paths.** Tell `Brancher.IsClean` to ignore changes inside dark-factory's own state directories. Cleanest semantically — the daemon's own bookkeeping is not user dirt — but requires teaching the brancher about dark-factory layout.
-- **D. Move CLI state writes outside the project tree.** Keep prompt status in a sibling state dir or `.dark-factory/state/`, leave the prompt files themselves immutable user content. Biggest refactor; cleanest long-term separation.
+`Brancher.IsClean` is taught about the prompts directory layout (`promptsDir` from config: `inboxDir`, `inProgressDir`, `completedDir`, `logDir`) and ignores changes scoped to those paths. Outside of those paths, behavior is unchanged: any uncommitted user-source dirt continues to abort Setup with a clear error.
+
+**Why C** (over A/B/D):
+
+- **A (commit-on-write in CLI)** would put two commits in git history per retry — one for the status flip, one for the actual work. Pollutes history with daemon bookkeeping.
+- **B (stash-around-Setup)** introduces stash-management complexity: stash collisions, partial pops, recovery on daemon kill mid-stash. Hard to make crash-safe.
+- **C (filter IsClean)** is semantically correct: the daemon's own bookkeeping is not user dirt. Smallest surface area. The `Brancher` already needs to know about the project's git layout — adding awareness of dark-factory's state dirs is a natural extension.
+- **D (sidecar state dir)** is the cleanest long-term separation but is a refactor of `pf.Save` and every CLI command that touches prompt frontmatter. Not in scope here. Tracked as future work.
+
+**Implementation outline** (binding for fix prompts):
+
+1. `Brancher.IsClean(ctx)` gains an `ignorePathPrefixes []string` parameter (or a wrapper method `IsCleanIgnoring(...)`).
+2. `setupInPlaceBranch` (`pkg/processor/workflow_executor_branch.go:51`) calls the new form, passing prompt directory prefixes derived from the config.
+3. The dark-factory bookkeeping write that lands on a feature branch via `pf.Save` after Setup is unchanged (it's already harmless on the feature branch).
+4. Negative-control test: dirt in `pkg/foo/bar.go` outside the prompt dirs still aborts Setup with a clear error naming the offending file.
+
+### Alternatives considered (not selected — for future reference)
+
+- **A. Commit-on-write in CLI commands.** Rejected: history pollution.
+- **B. Stash-around-Setup.** Rejected: crash-safety complexity.
+- **D. Move CLI state writes outside the project tree.** Deferred: requires its own spec; tracked as a follow-up cleanup.
 
 ## Acceptance Criteria
 
@@ -129,7 +150,7 @@ The daemon-generated fix prompts must not anchor on a single option below; the t
 - [ ] No regression in `worktree`, `clone`, `direct` workflows (covered by existing scenarios).
 - [ ] No regression in the `dark-factory prompt approve` first-run path.
 - [ ] Daemon-resume after kill (mid-execution prompt frontmatter state) works without manual cleanup.
-- [ ] `docs/workflows.md` `branch`-row commentary documents that dark-factory commits prompt-frontmatter writes before Setup (or the equivalent invariant per the chosen fix shape) so users understand why the working tree is briefly modified by the CLI itself.
+- [ ] `docs/workflows.md` `branch`-row commentary states that `Brancher.IsClean` ignores changes inside dark-factory's own prompt directories (`inboxDir`, `inProgressDir`, `completedDir`, `logDir`), so users understand why those bookkeeping writes do not block Setup but user-source dirt does.
 
 ## Verification
 
@@ -186,10 +207,9 @@ dark-factory daemon &
 
 ## Open Questions
 
-1. Which fix shape (A/B/C/D)? **Must be resolved before `dark-factory spec approve`** — the prompt generator anchors on the spec, so an unresolved triage produces unanchored prompts.
-2. Are `prompt approve`, `prompt cancel`, `prompt unapprove`, `prompt complete` affected the same way, or only `retry`/`requeue`? Audit the full CLI surface.
-3. Should `pf.Save` (or its callers) be the single place that knows about parent-git semantics, or should each call site decide independently?
-4. The companion spec `bug-pr-create-missing-head-flag-in-isolated-workflows.md` is in the same dispatch path. Should both be fixed in one campaign or as separate specs? Likely separate — different files, different test surface — but worth coordinating to avoid merge churn.
+1. ~~Which fix shape (A/B/C/D)?~~ **Resolved: option C** (see "Fix shape (resolved)" section above).
+2. Are `prompt approve`, `prompt cancel`, `prompt unapprove`, `prompt complete` affected the same way, or only `retry`/`requeue`? Audit the full CLI surface during fix-prompt generation. Likely all CLI commands that write frontmatter are affected; option C neutralizes them all in one place (Setup), so this is a verification concern rather than a fix-scope concern.
+3. The companion spec `bug-pr-create-missing-head-flag-in-isolated-workflows.md` (065) is in the same dispatch path. Coordinate landing order to avoid merge churn — likely 065 first (already in flight), then this spec.
 
 ## See also
 

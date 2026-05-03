@@ -85,12 +85,8 @@ func (b *bitbucketPRCreator) Create(
 	ctx context.Context,
 	title string,
 	body string,
+	branch string,
 ) (string, error) {
-	currentBranch, err := currentGitBranch(ctx)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, "get current branch")
-	}
-
 	targetBranch := b.defaultBranch
 	if targetBranch == "" {
 		targetBranch = "master"
@@ -111,7 +107,7 @@ func (b *bitbucketPRCreator) Create(
 		Title:       title,
 		Description: body,
 		FromRef: bbRef{
-			ID:         "refs/heads/" + currentBranch,
+			ID:         "refs/heads/" + branch,
 			Repository: repo,
 		},
 		ToRef: bbRef{
@@ -166,10 +162,4 @@ func (b *bitbucketPRCreator) FindOpenPR(ctx context.Context, branch string) (str
 		"%s/projects/%s/repos/%s/pull-requests/%d",
 		b.client.baseURL, b.project, b.repo, pr.ID,
 	), nil
-}
-
-// currentGitBranch returns the current git branch name.
-func currentGitBranch(ctx context.Context) (string, error) {
-	b := NewBrancher()
-	return b.CurrentBranch(ctx)
 }

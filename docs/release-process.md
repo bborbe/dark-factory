@@ -17,16 +17,27 @@ The `dark-factory` repo runs `dark-factory` on itself with `autoRelease: true` a
 
 `make precommit` is necessary but not sufficient. Unit tests + lint do **not** cover host↔container, host↔git remote, or config→runtime seams.
 
-Before any prompt completes against this repo (and therefore before the auto-release fires), run all scenarios against a freshly built binary:
+Before any prompt completes against this repo (and therefore before the auto-release fires), run the relevant scenarios against a freshly built binary.
+
+**Scripted scenarios** (preferred — single command, deterministic, isolates HOME):
+
+```bash
+scenarios/helper/run-013-all.sh   # config layering + --set (specs 060/061/062)
+# additional helper/run-*.sh scripts ship as scenarios are ported
+```
+
+The helper scripts build `/tmp/new-dark-factory`, set up an isolated sandbox, run every sub-scenario, and exit 0 only if all assertions pass. They never touch the operator's `~/.dark-factory/config.yaml` (HOME is overridden inside the sandbox).
+
+**Markdown-only scenarios** (manual fallback):
 
 ```bash
 go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
-# Then run the scenarios in scenarios/ using /tmp/new-dark-factory <cmd>.
+# Walk scenarios/NNN-*.md by hand against /tmp/new-dark-factory.
 # NEVER use the bare `dark-factory` binary — that's the previously installed version
 # and misses unshipped code.
 ```
 
-### Skip rule (the only exception)
+### Surface-scoped skip rule
 
 If no binary-relevant files changed since the installed version, the installed binary is byte-equivalent to what the next release would produce, so scenarios add no signal:
 
@@ -36,7 +47,17 @@ git diff "$INSTALLED"..HEAD --name-only | grep -E '\.(go|mod|sum)$|^Makefile$|^D
 # empty output → skip scenarios; any hit → run them
 ```
 
-Do **not** shortcut by intuition ("docs-only", "pipeline-only") — always run the diff.
+When the diff is non-empty, only the scenarios touching the changed surface need to run. Map `git diff INSTALLED..HEAD --stat` against the scenario's "what it covers" line:
+
+| Diff touches | Run scenario |
+|---|---|
+| `pkg/config/`, `pkg/globalconfig/`, main.go `--set`/`--model`/`--max-containers`/`--skip-preflight` parsing, `pkg/factory.LogEffectiveConfig` | `scenarios/helper/run-013-all.sh` |
+| `pkg/git/`, prompt-execution flow, `--auto-approve` | scenarios 001, 002, 008 (markdown — TODO port) |
+| Container plumbing, preflight | scenarios 003, 010, 012 (markdown — TODO port) |
+| Spec lifecycle, reject cascade | scenarios 006, 011 (markdown — TODO port) |
+| PR review loop | scenario 009 (markdown — TODO port) |
+
+Do **not** shortcut by intuition for surfaces not listed — when in doubt, run the markdown scenarios manually.
 
 ### What autoRelease does
 

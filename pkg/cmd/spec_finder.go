@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/specnum"
 )
 
 // FindSpecFile finds a spec by absolute/relative path, exact filename, or numeric prefix match within specsDir.
@@ -18,60 +20,92 @@ func FindSpecFile(ctx context.Context, specsDir, id string) (string, error) {
 	return FindSpecFileInDirs(ctx, id, specsDir)
 }
 
-// FindSpecFileInDirs searches dirs in order and returns the first match.
-// Falls back to the existing FindSpecFile logic for each dir.
+// FindSpecFileInDirs resolves an <id> argument against one or more spec directories.
+// Accepts four formats:
+//   - padded number:              "063"
+//   - unpadded number:            "63"
+//   - full basename (no ext):     "063-bug-foo"
+//   - full basename (with .md):   "063-bug-foo.md"
+//
+// Resolution order:
+//  1. Direct path (absolute or containing a directory separator) — checked as-is.
+//  2. Exact basename match — strip .md suffix, append .md, stat in each dir in order.
+//  3. Numeric match — parse cleanID as integer via specnum.Parse; scan ALL dirs and
+//     collect files whose numeric prefix equals idNum; return unique or ambiguity error.
 func FindSpecFileInDirs(ctx context.Context, id string, dirs ...string) (string, error) {
-	// Try as a direct path first (absolute or relative with directory component)
+	return findFilesInDirs(ctx, id, "spec", "read specs directory", dirs)
+}
+
+// findFilesInDirs resolves an <id> argument against one or more directories using
+// integer-value numeric prefix matching and ambiguity detection.
+// kind is used in error messages ("spec", "prompt", etc.).
+func findFilesInDirs(
+	ctx context.Context,
+	id, kind, readErrMsg string,
+	dirs []string,
+) (string, error) {
 	if filepath.IsAbs(id) || strings.ContainsRune(id, '/') {
 		if _, err := os.Stat(id); err == nil {
 			return id, nil
 		}
 	}
-
+	cleanID := strings.TrimSuffix(id, ".md")
 	for _, dir := range dirs {
-		path, err := findInDir(ctx, dir, id)
-		if err == nil {
+		path := filepath.Join(dir, cleanID+".md")
+		if _, err := os.Stat(path); err == nil {
 			return path, nil
 		}
 	}
-	return "", errors.Errorf(ctx, "spec not found: %s", id)
+	idNum := specnum.Parse(cleanID)
+	if idNum < 0 {
+		return "", errors.Errorf(ctx, "%s not found: %s", kind, id)
+	}
+	var matches []string
+	for _, dir := range dirs {
+		dirMatches, err := collectNumericMatches(ctx, dir, idNum, readErrMsg)
+		if err != nil {
+			return "", err
+		}
+		matches = append(matches, dirMatches...)
+	}
+	switch len(matches) {
+	case 0:
+		return "", errors.Errorf(ctx, "%s not found: %s", kind, id)
+	case 1:
+		return matches[0], nil
+	default:
+		return "", errors.Errorf(
+			ctx,
+			"ambiguous %s id %s: matches %s",
+			kind,
+			id,
+			strings.Join(matches, ", "),
+		)
+	}
 }
 
-// findInDir searches for a spec file matching id within a single directory.
-func findInDir(ctx context.Context, dir, id string) (string, error) {
-	// Try exact match with .md extension
-	if strings.HasSuffix(id, ".md") {
-		path := filepath.Join(dir, id)
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	} else {
-		// Try as filename without extension
-		path := filepath.Join(dir, id+".md")
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
-
-	// Try prefix match (e.g. "001" matches "001-my-spec.md")
+// collectNumericMatches scans dir for .md files whose numeric prefix equals idNum.
+func collectNumericMatches(
+	ctx context.Context,
+	dir string,
+	idNum int,
+	readErrMsg string,
+) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", errors.Errorf(ctx, "spec not found: %s", id)
+			return nil, nil
 		}
-		return "", errors.Wrap(ctx, err, "read specs directory")
+		return nil, errors.Wrap(ctx, err, readErrMsg)
 	}
-
+	var matches []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		name := entry.Name()
-		if strings.HasPrefix(name, id+"-") ||
-			strings.HasPrefix(name, id) && strings.HasSuffix(name, ".md") {
-			return filepath.Join(dir, name), nil
+		if specnum.Parse(entry.Name()) == idNum {
+			matches = append(matches, filepath.Join(dir, entry.Name()))
 		}
 	}
-
-	return "", errors.Errorf(ctx, "spec not found: %s", id)
+	return matches, nil
 }

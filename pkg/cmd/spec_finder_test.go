@@ -85,6 +85,38 @@ var _ = Describe("findSpecFile", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("spec not found"))
 	})
+
+	It("finds spec by unpadded number", func() {
+		writeSpec("063-bug-foo.md")
+		result, err := cmd.FindSpecFile(ctx, specsDir, "63")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(filepath.Join(specsDir, "063-bug-foo.md")))
+	})
+
+	It("finds spec by padded number", func() {
+		writeSpec("063-bug-foo.md")
+		result, err := cmd.FindSpecFile(ctx, specsDir, "063")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(filepath.Join(specsDir, "063-bug-foo.md")))
+	})
+
+	It("does not match 010-bar.md when input is 1 (integer match, not string prefix)", func() {
+		writeSpec("001-foo.md")
+		writeSpec("010-bar.md")
+		result, err := cmd.FindSpecFile(ctx, specsDir, "1")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(filepath.Join(specsDir, "001-foo.md")))
+	})
+
+	It("returns ambiguity error when two specs share the same numeric prefix", func() {
+		writeSpec("001-foo.md")
+		writeSpec("001-bar.md")
+		_, err := cmd.FindSpecFile(ctx, specsDir, "001")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("ambiguous spec id 001"))
+		Expect(err.Error()).To(ContainSubstring("001-foo.md"))
+		Expect(err.Error()).To(ContainSubstring("001-bar.md"))
+	})
 })
 
 var _ = Describe("FindSpecFileInDirs", func() {
@@ -148,5 +180,27 @@ var _ = Describe("FindSpecFileInDirs", func() {
 		result, err := cmd.FindSpecFileInDirs(ctx, "003-spec.md", "/nonexistent/dir", dir2)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(path))
+	})
+
+	It("finds spec by unpadded number across dirs", func() {
+		path := filepath.Join(dir2, "063-bug-foo.md")
+		Expect(os.WriteFile(path, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		result, err := cmd.FindSpecFileInDirs(ctx, "63", dir1, dir2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(path))
+	})
+
+	It("returns ambiguity error when same numeric prefix exists in different dirs", func() {
+		path1 := filepath.Join(dir1, "001-foo.md")
+		path2 := filepath.Join(dir2, "001-bar.md")
+		Expect(os.WriteFile(path1, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+		Expect(os.WriteFile(path2, []byte("---\nstatus: draft\n---\n"), 0600)).To(Succeed())
+
+		_, err := cmd.FindSpecFileInDirs(ctx, "1", dir1, dir2)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("ambiguous spec id 1"))
+		Expect(err.Error()).To(ContainSubstring("001-foo.md"))
+		Expect(err.Error()).To(ContainSubstring("001-bar.md"))
 	})
 })

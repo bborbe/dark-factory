@@ -1,6 +1,7 @@
 ---
-status: executing
+status: committing
 spec: [064-cli-flexible-id-matching]
+summary: Replaced string-prefix matching in spec_finder.go and prompt_finder.go with integer-value numeric matching via specnum.Parse, extracted a shared findFilesInDirs helper (and collectNumericMatches sub-helper to satisfy gocognit), and added tests for unpadded numbers, padded numbers, integer-vs-string discrimination, and ambiguity detection.
 container: dark-factory-367-spec-064-id-resolver
 dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T13:00:00Z"

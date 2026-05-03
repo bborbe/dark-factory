@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.146.0
+
+- feat: CLI spec and prompt <id> arguments now resolve by integer value, accepting unpadded numbers ("63" matches "063-foo.md") and full basenames with or without .md extension; ambiguous numeric matches across directories return a descriptive error
+
 ## v0.145.5
 
 - docs: align `prompt-writing.md` and `agents/prompt-auditor.md` with the actual canonical `spec:` frontmatter form. Daemon-generated prompts use full-slug entries (`spec: ["030-foo-bar-baz"]`) and `pkg/slugmigrator` rewrites bare numbers to the full form after each generation cycle. Both docs and the auditor rule now show the long form as canonical and explicitly accept bare numbers as input. Eliminates a recurring audit false-positive that flagged daemon-generated prompts as malformed.

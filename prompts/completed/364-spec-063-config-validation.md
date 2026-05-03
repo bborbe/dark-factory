@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: ["063"]
 summary: Added validateAutoReleaseAutoMerge method to Config, wired it into Validate(), added 6 new Ginkgo tests covering all three failure and three success cases, extracted validateServerPort to fix funlen lint violation, and added CHANGELOG Unreleased entry.
 container: dark-factory-364-spec-063-config-validation
@@ -7,6 +7,7 @@ dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T12:00:00Z"
 queued: "2026-05-03T11:27:21Z"
 started: "2026-05-03T11:28:12Z"
+completed: "2026-05-03T11:37:56Z"
 ---
 
 <summary>

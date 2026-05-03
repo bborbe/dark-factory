@@ -38,6 +38,12 @@ var _ = Describe("FindRoot", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { _ = os.RemoveAll(projectDir) }()
 
+			// On macOS, os.MkdirTemp returns /var/folders/... but os.Getwd after
+			// os.Chdir resolves the symlink to /private/var/folders/...
+			// Resolve once for stable comparison.
+			resolvedProjectDir, err := filepath.EvalSymlinks(projectDir)
+			Expect(err).NotTo(HaveOccurred())
+
 			Expect(
 				os.WriteFile(
 					filepath.Join(projectDir, ".dark-factory.yaml"),
@@ -49,7 +55,7 @@ var _ = Describe("FindRoot", func() {
 
 			result, err := project.FindRoot(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(projectDir))
+			Expect(result).To(Equal(resolvedProjectDir))
 		},
 	)
 
@@ -57,6 +63,9 @@ var _ = Describe("FindRoot", func() {
 		projectDir, err := os.MkdirTemp("", "df-root-test-*")
 		Expect(err).NotTo(HaveOccurred())
 		defer func() { _ = os.RemoveAll(projectDir) }()
+
+		resolvedProjectDir, err := filepath.EvalSymlinks(projectDir)
+		Expect(err).NotTo(HaveOccurred())
 
 		subDir := filepath.Join(projectDir, "pkg", "config")
 		Expect(os.MkdirAll(subDir, 0750)).To(Succeed())
@@ -71,7 +80,7 @@ var _ = Describe("FindRoot", func() {
 
 		result, err := project.FindRoot(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result).To(Equal(projectDir))
+		Expect(result).To(Equal(resolvedProjectDir))
 	})
 
 	It("returns error when no .dark-factory.yaml is found anywhere up to $HOME", func() {

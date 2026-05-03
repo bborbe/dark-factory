@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.147.2
+
+- fix: resolve symlinks in `pkg/project/root_test.go` before comparing `FindRoot` results. On macOS, `os.MkdirTemp` returns paths under `/var/folders/...` but `os.Getwd()` after `os.Chdir` resolves the symlink to `/private/var/folders/...`. Tests now wrap `projectDir` with `filepath.EvalSymlinks` for stable equality checks. Caught during spec 064 verification — `make test` was failing on macOS even though production code (which uses `os.Getwd()` directly) was correct.
+
 ## v0.147.1
 
 - docs: add accepted `<id>` format note to `spec` and `prompt` help text (padded/unpadded number, basename, .md extension)

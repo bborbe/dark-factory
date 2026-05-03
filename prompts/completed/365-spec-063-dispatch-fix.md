@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: ["063"]
 summary: Fixed branchWorkflowExecutor.Setup() to always generate a feature branch from baseName when prompt frontmatter has no branch field, matching clone/worktree executor behavior, and added a new Ginkgo test covering the no-branch-in-frontmatter path.
 container: dark-factory-365-spec-063-dispatch-fix
@@ -7,6 +7,7 @@ dark-factory-version: v0.145.1-3-g93401a1
 created: "2026-05-03T12:00:00Z"
 queued: "2026-05-03T11:27:21Z"
 started: "2026-05-03T11:37:58Z"
+completed: "2026-05-03T11:46:35Z"
 ---
 
 <summary>

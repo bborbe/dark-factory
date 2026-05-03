@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [062-cli-set-workflow-pr-automerge]
 summary: Updated docs/configuration.md, docs/config-layering.md, and scenarios/013-config-layering.md to document the three new --set keys (workflow, pr, autoMerge) added in spec 062.
 container: dark-factory-363-spec-062-docs
@@ -7,6 +7,7 @@ dark-factory-version: v0.143.0-5-g73d1db8
 created: "2026-05-03T09:00:00Z"
 queued: "2026-05-03T09:13:08Z"
 started: "2026-05-03T09:23:49Z"
+completed: "2026-05-03T09:28:45Z"
 branch: dark-factory/spec-062
 ---
 

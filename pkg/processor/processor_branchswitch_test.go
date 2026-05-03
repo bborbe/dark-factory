@@ -330,6 +330,58 @@ var _ = Describe("Processor", func() {
 			},
 		)
 
+		It(
+			"branch workflow, no branch in frontmatter: generates branch from baseName and calls CreateAndSwitch",
+			func() {
+				promptPath := filepath.Join(promptsDir, "042-no-branch-in-frontmatter.md")
+				queued := []prompt.Prompt{
+					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+				}
+
+				// Prompt has NO branch field — the branch executor must generate one.
+				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+					return newProcessorTestPromptFile(path, "# Test\n\nContent"), nil
+				}
+				manager.ListQueuedReturnsOnCall(0, queued, nil)
+				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+				manager.AllPreviousCompletedReturns(true)
+				manager.MoveToCompletedReturns(nil)
+				executor.ExecuteReturns(nil)
+				releaser.CommitCompletedFileReturns(nil)
+				releaser.HasChangelogReturns(false)
+				releaser.CommitOnlyReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(nil)
+
+				// Branch setup mocks: branch does not exist remotely → CreateAndSwitch is called.
+				brancher.IsCleanReturns(true, nil)
+				brancher.DefaultBranchReturns("main", nil)
+				brancher.FetchAndVerifyBranchReturns(stderrors.New("branch not found on remote"))
+				brancher.CreateAndSwitchReturns(nil)
+				brancher.SwitchReturns(nil)
+
+				// handleBranchCompletion mocks (pr=false path, last prompt on branch).
+				brancher.MergeToDefaultReturns(nil)
+				manager.HasQueuedPromptsOnBranchReturns(false, nil)
+
+				p := newProcWithWorkflow(false, config.WorkflowBranch)
+				go func() {
+					_ = p.Process(ctx)
+				}()
+
+				Eventually(func() int {
+					return executor.ExecuteCallCount()
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+				// A branch must have been created even though the prompt had no branch field.
+				Expect(brancher.CreateAndSwitchCallCount()).To(Equal(1))
+				_, createdBranch := brancher.CreateAndSwitchArgsForCall(0)
+				// Branch name is derived from the prompt filename (without .md): "042-no-branch-in-frontmatter"
+				Expect(createdBranch).To(Equal("dark-factory/042-no-branch-in-frontmatter"))
+
+				cancel()
+			},
+		)
+
 		It("worktree=true, branch set: uses clone workflow, not in-place", func() {
 			promptPath := filepath.Join(promptsDir, "001-clone-branch.md")
 			queued := []prompt.Prompt{
@@ -530,16 +582,29 @@ var _ = Describe("Processor", func() {
 			releaser.HasChangelogReturns(true)
 			releaser.GetNextVersionReturns("v0.1.1", nil)
 			releaser.CommitAndReleaseReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+			autoCompleter.CheckAndCompleteReturns(nil)
+
+			// Branch setup mocks — Setup now always generates a branch from baseName.
+			brancher.IsCleanReturns(true, nil)
+			brancher.DefaultBranchReturns("main", nil)
+			brancher.FetchAndVerifyBranchReturns(stderrors.New("branch not found"))
+			brancher.CreateAndSwitchReturns(nil)
+			brancher.SwitchReturns(nil)
+			brancher.PushReturns(nil)
+			prCreator.CreateReturns("https://github.com/test/repo/pull/1", nil)
 
 			p := newProcDirect()
 			go func() { _ = p.Process(ctx) }()
 
+			// With a feature branch always created, CommitOnly is called for the branch
+			// commit and CommitAndRelease is NOT called (no release on feature branches).
 			Eventually(func() int {
-				return releaser.CommitAndReleaseCallCount()
+				return releaser.CommitOnlyCallCount()
 			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			// CommitOnly must NOT be called
-			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
+			// CommitAndRelease must NOT be called — autoRelease is suppressed on feature branches.
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
 
 			cancel()
 		})

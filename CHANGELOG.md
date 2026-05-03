@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.3
+
+- fix: branch workflow always creates feature branch from baseName even when prompt frontmatter has no branch field
+
 ## v0.145.2
 
 - fix: reject pr: true + autoMerge: false + autoRelease: true at config load with actionable error naming all three valid resolutions

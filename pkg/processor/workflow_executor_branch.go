@@ -26,10 +26,12 @@ func NewBranchWorkflowExecutor(deps WorkflowDeps) WorkflowExecutor {
 	return &branchWorkflowExecutor{deps: deps}
 }
 
-// Setup syncs with remote, then optionally switches to the feature branch from the prompt frontmatter.
+// Setup syncs with remote, then switches to the feature branch.
+// When the prompt frontmatter has no branch field, a branch name is derived
+// from baseName using the same convention as the clone and worktree executors.
 func (e *branchWorkflowExecutor) Setup(
 	ctx context.Context,
-	_ prompt.BaseName,
+	baseName prompt.BaseName,
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
@@ -37,8 +39,10 @@ func (e *branchWorkflowExecutor) Setup(
 	}
 	branch := pf.Branch()
 	if branch == "" {
-		// No branch specified — run directly on current branch.
-		return nil
+		branch = "dark-factory/" + string(baseName)
+		// Persist the generated branch into the in-memory PromptFile so the
+		// caller's subsequent pf.Save() writes it to disk for resume support.
+		pf.SetBranchIfEmpty(branch)
 	}
 	return e.setupInPlaceBranch(ctx, branch)
 }

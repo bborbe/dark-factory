@@ -1,5 +1,9 @@
 ---
-status: draft
+status: prompted
+approved: "2026-05-03T08:50:30Z"
+generating: "2026-05-03T08:50:30Z"
+prompted: "2026-05-03T08:59:46Z"
+branch: dark-factory/spec-062
 ---
 
 ## Summary
@@ -47,11 +51,11 @@ After this work, operators can pass `--set workflow=…`, `--set pr=…`, and `-
 
 ## Constraints
 
-- The existing `--set` supported-keys registry gains three entries (`workflow`, `pr`, `autoMerge`); the existing dispatch gains three coercion arms.
-- `workflow` coercion: parse the string into a `config.Workflow`, then call its `.Validate(ctx)`. Reject `pr` enum value at the arg layer with an explicit message — the legacy mapping is yaml-only by design (spec 060 guarantees this; do not undermine it by accepting `--set workflow=pr`).
-- `pr` and `autoMerge` use the existing `parseStrictBool` helper.
-- `config.FieldSources` gains three new fields (`Workflow`, `PR`, `AutoMerge` of type `string`/source-marker — match the existing pattern). All three default to `default`/`global`/`project` per the existing source resolution logic.
-- The existing `Config.Validate` already runs `validateWorkflowPR` and the autoMerge gate (`autoMerge requires pr: true`). Confirm they fire after the `--set` overrides are applied — there should be no code change needed in the validators themselves; only the call site that wires `--set` → `Config` → `Validate`.
+- Three new keys (`workflow`, `pr`, `autoMerge`) are recognized by `--set` parsing; unknown keys remain rejected.
+- `workflow` accepts the four valid enum values; the legacy `pr` enum value is rejected at the arg layer with a message pointing to `--set workflow=clone --set pr=true` (the yaml-only legacy mapping must not be re-introduced through the arg layer).
+- `pr` and `autoMerge` accept strict `true`/`false` only — same bool semantics as existing `--set` keys.
+- Source attribution distinguishes `arg` vs `project` vs `global` vs `default` for each new key, using the same model as existing tracked fields.
+- Existing combination validators run on the post-override config, so invalid combinations reject regardless of whether the value came from yaml or `--set`.
 - Coercion + validation happens at parse time (same as spec 061). Bad input fails before any prompt executes.
 - Errors use `errors.Errorf(ctx, ...)` from `github.com/bborbe/errors` — never `fmt.Errorf`.
 - Tests use Ginkgo/Gomega in external `_test` packages plus stdlib `testing` for table-driven cases (matches spec 061).

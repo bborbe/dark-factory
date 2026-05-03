@@ -17,7 +17,7 @@ Knowledge lives in four locations. Each has a clear purpose. Putting knowledge i
 
 ### Spec
 
-What the system should do, not how. Behavioral contract.
+What the system should do, not how. Behavioral contract. **Bug reports use specs too** — see [bug-workflow.md](bug-workflow.md) for `kind: bug`, mandatory Reproduction, and verification rules.
 
 **Belongs here:**
 - Problem statement, goal, desired behavior

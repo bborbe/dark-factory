@@ -2,9 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.145.1
+
+- docs: cross-reference `bug-workflow.md` from `spec-writing.md` (When to Write a Spec table + Next Steps) and `documentation.md` (Spec section).
+- specs: add `specs/ideas/bug-autorelease-overrides-pr-workflow.md` — bug report (filename-prefix convention, `kind: bug`) documenting that `autoRelease: true` bypasses both branch creation (`workflow: branch`) and PR creation (`pr: true`) when `autoMerge: false`, committing direct to master with a release tag.
+
 ## v0.145.0
 
 - feat: --set now accepts workflow, pr, autoMerge keys for per-invocation delivery override
+- docs: add `docs/bug-workflow.md` — guide for filing, triaging, fixing, and verifying bugs as specs with `kind: bug` frontmatter. Covers reproduction-section requirements, lifecycle mapping (idea → completed), bug-specific verification (must replay reproduction, not just run tests), and anti-patterns (no `specs/bugs/` folder, no `status: bug`, no fix prompts without a spec). [Note: this file was bundled into v0.145.0 by the autoRelease bug being documented in `specs/ideas/bug-autorelease-overrides-pr-workflow.md` — it should have been a separate release.]
 
 ## v0.144.1
 

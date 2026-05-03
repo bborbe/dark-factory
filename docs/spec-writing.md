@@ -9,8 +9,11 @@ A spec is a behavioral contract for a multi-prompt feature. It describes what th
 | Multi-prompt feature (3+ prompts) | Yes |
 | Unclear edge cases or failure modes | Yes |
 | Touching shared interfaces | Yes |
+| Bug report with reproduction | Yes — see [bug-workflow.md](bug-workflow.md) |
 | Single-file fix, obvious change | No — write a prompt directly |
 | Config change, version bump | No — write a prompt directly |
+
+For bugs specifically, see [bug-workflow.md](bug-workflow.md) — adds `kind: bug` frontmatter, mandatory Reproduction section, and verification rules that go beyond standard spec verification.
 
 ## Creating a Spec
 
@@ -152,3 +155,4 @@ Completed specs are immutable. If behavior changes later, create a new spec.
 - Prompts are auto-generated from the spec by the daemon
 - Or write prompts manually: [prompt-writing.md](prompt-writing.md)
 - Run the pipeline: [running.md](running.md)
+- Bug reports: [bug-workflow.md](bug-workflow.md)

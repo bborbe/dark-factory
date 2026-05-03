@@ -1,5 +1,6 @@
 ---
 status: idea
+kind: bug
 ---
 
 ## Summary

@@ -1,6 +1,8 @@
 ---
-status: draft
-kind: bug
+status: approved
+approved: "2026-05-03T11:07:36Z"
+generating: "2026-05-03T11:07:36Z"
+branch: dark-factory/bug-autorelease-overrides-pr-workflow
 ---
 
 ## Summary
@@ -113,16 +115,16 @@ While writing this spec, the dark-factory daemon (running on its own repo) was p
 
 Two suspects, both should be audited as part of the fix:
 
-1. **Config validation (`pkg/config/config.go` `validate()`):** does not reject the inconsistent combination `pr: true + autoMerge: false + autoRelease: true`. Existing precedent at `workflows.md:87` — `workflow: direct + pr: true` is already rejected — so the rejection pattern exists; this combo just isn't covered.
+1. **Config validation:** the load-time validation does not reject the inconsistent combination `pr: true + autoMerge: false + autoRelease: true`. Precedent for the rejection pattern already exists at `workflows.md:87` (`workflow: direct + pr: true` is already rejected); this combo just isn't covered.
 
-2. **Post-execution dispatch (likely in `pkg/processor` or `pkg/git` orchestration):** there appears to be an early-return or branching `if cfg.AutoRelease { directCommitAndTag(); return }` that bypasses the branch-creation path even when `workflow: branch`. The exact location needs code archaeology — the daemon log proves the branch step was never invoked, so something short-circuits before `brancher.CheckoutNew()`.
+2. **Post-execution dispatch:** an early-return path on `autoRelease=true` appears to bypass the separation step regardless of `workflow:` value. The daemon log proves the branch step was never invoked, so something short-circuits before any branch-creation logic runs. The exact location needs code archaeology during the fix.
 
 The fail-fast validation closes the immediate bug. The dispatch audit ensures no other delivery-flag combination can short-circuit the separation step in the future.
 
 ## Goal
 
 1. **Fail-fast on the invalid combo:** `pr: true + autoMerge: false + autoRelease: true` is rejected at config load with a clear, actionable error message that lists the three valid resolutions (set `autoMerge: true`, set `autoRelease: false`, or set `pr: false`).
-2. **Dispatch invariant:** for any `workflow != direct`, the separation step (branch creation) MUST always run before any delivery flag is evaluated. No early-return path may skip it.
+2. **Dispatch invariant:** for any `workflow` value that creates a separate branch (`branch`, `worktree`, `clone`), the separation step MUST always run before any delivery flag is evaluated. No early-return path may skip it. The fail-fast validation in #1 also applies to all three non-direct workflow values.
 3. **No silent regressions:** existing valid combinations continue to work — `direct + autoRelease=true`, `branch + pr=true + autoMerge=true + autoRelease=true`, `branch + pr=true + autoMerge=false + autoRelease=false`, etc.
 
 ## Non-goals
@@ -206,7 +208,7 @@ go test ./scenarios/...
 
 ## Open questions (for prompt-time discussion)
 
-- Should `clone + pr=true + autoMerge=false + autoRelease=true` and `worktree + pr=true + autoMerge=false + autoRelease=true` be rejected with the same rule? (Likely yes — the inconsistency argument applies regardless of separation mode.)
+- (Resolved in Goal #2: rejection applies to `branch`, `worktree`, and `clone` uniformly. The inconsistency argument is independent of separation mode.)
 - Should the validation message be one shared error for all three workflow values, or per-workflow? (Lean shared — message is about the delivery-flag combo, not the workflow.)
 - Should `autoRelease` get a per-workflow override, e.g. `autoReleaseOn: master|branch` to make the intent explicit? (Out of scope for this bug — file as a separate feature spec if useful.)
 - During the dispatch audit, is there a single short-circuit branch to remove, or does each delivery flag have its own bypass path that all need to be unified into a single dispatch table? (Code archaeology required.)

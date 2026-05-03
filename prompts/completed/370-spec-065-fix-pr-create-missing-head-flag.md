@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [065-bug-pr-create-missing-head-flag-in-isolated-workflows]
 summary: Added explicit `branch string` parameter to `PRCreator.Create`, pass `--head <branch>` to `gh pr create`, removed `currentGitBranch` from Bitbucket impl, threaded branch through all callers, regenerated mock, updated all test call sites.
 container: dark-factory-370-spec-065-fix-pr-create-missing-head-flag
@@ -7,6 +7,7 @@ dark-factory-version: v0.147.2-1-g30ba42f
 created: "2026-05-03T20:00:00Z"
 queued: "2026-05-03T19:39:42Z"
 started: "2026-05-03T19:47:11Z"
+completed: "2026-05-03T20:06:04Z"
 branch: dark-factory/bug-pr-create-missing-head-flag-in-isolated-workflows
 ---
 

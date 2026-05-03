@@ -42,7 +42,7 @@ Planned but not yet supported globally (project-only today):
 
 Inherently per-repo. No sane global default exists.
 
-- `workflow` / `pr` / `worktree` — depends on the repo's review culture
+- `workflow` / `pr` / `autoMerge` / `worktree` — depends on the repo's review culture; also available as `--set` arg overrides (per-invocation only; global config does not include them)
 - `defaultBranch` — repo-shape (master vs main)
 - `validationCommand`, `testCommand`, `preflightCommand`, `generateCommand` — each repo's makefile
 - `prompts.*Dir`, `specs.*Dir` — directory layout
@@ -130,7 +130,9 @@ CLI args (layer 5) implemented:
 - `--max-containers N` — concurrency override
 - `--skip-preflight` — bypass preflight
 - `--auto-approve` — flush queue (run only)
-- `--set key=value` — generic per-invocation override; supported keys: `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model`, `maxContainers`, `workflow`, `pr`, `autoMerge`. Bool values must be `true` or `false` (no 1/0/yes/no). The legacy `workflow: pr` yaml value is not accepted via `--set`; use `--set workflow=clone --set pr=true` instead.
+- `--set key=value` — generic per-invocation override; supported keys: `hideGit`, `autoRelease`, `dirtyFileThreshold`, `model`, `maxContainers`, `workflow`, `pr`, `autoMerge`. Bool values must be `true` or `false` (no 1/0/yes/no). Enum (`workflow`) accepts `direct`, `branch`, `worktree`, `clone`.
+
+**Retrospective note (spec 062):** `workflow`, `pr`, and `autoMerge` are category B (project-shape) fields and were originally declared project-only forever. Spec 062 intentionally adds them to `--set` — the ergonomics win (one-shot delivery overrides without editing `.dark-factory.yaml`) outweighs the surface-area cost. The global config layer (layer 2) does NOT gain these fields; they remain project-only at the yaml layer. Only the arg layer (layer 5) is extended.
 
 There is no `--hide-git` flag — use `--set hideGit=true`.
 

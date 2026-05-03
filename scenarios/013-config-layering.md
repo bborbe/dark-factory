@@ -231,6 +231,93 @@ grep -i "unknown.flag\|unrecognized" run-i.log
 
 Migrate: replace `--hide-git` → `--set hideGit=true` and `--no-hide-git` → `--set hideGit=false`.
 
+## Scenario J: --set workflow and pr override project workflow
+
+Reset project config to baseline (no workflow/pr lines):
+
+```bash
+grep -v "^workflow:\|^pr:\|^autoMerge:" .dark-factory.yaml > .dark-factory.yaml.tmp && mv .dark-factory.yaml.tmp .dark-factory.yaml
+```
+
+Run with the new keys:
+
+```bash
+timeout 15s /tmp/new-dark-factory run --set workflow=branch --set pr=true > run-j.log 2>&1 || true
+```
+
+### Expected J
+
+- [ ] `run-j.log` contains `workflow=branch`
+- [ ] `run-j.log` contains `workflowSource=arg`
+- [ ] `run-j.log` contains `pr=true`
+- [ ] `run-j.log` contains `prSource=arg`
+
+```bash
+grep -E "workflow=branch|workflowSource=arg" run-j.log
+grep -E "pr=true|prSource=arg" run-j.log
+```
+
+## Scenario K: --set autoMerge=true marks source=arg
+
+Reset to baseline, then update project config to have `pr: true` and `workflow: branch`:
+
+```bash
+grep -v "^workflow:\|^pr:\|^autoMerge:" .dark-factory.yaml > .dark-factory.yaml.tmp && mv .dark-factory.yaml.tmp .dark-factory.yaml
+cat >> .dark-factory.yaml << 'YAML'
+workflow: branch
+pr: true
+YAML
+timeout 15s /tmp/new-dark-factory run --set autoMerge=true > run-k.log 2>&1 || true
+```
+
+### Expected K
+
+- [ ] `run-k.log` contains `autoMerge=true`
+- [ ] `run-k.log` contains `autoMergeSource=arg`
+- [ ] `run-k.log` does NOT contain `autoMergeSource=project` (the value came from arg, not yaml)
+
+```bash
+grep -E "autoMerge=true|autoMergeSource=arg" run-k.log
+```
+
+## Scenario L: workflow=direct + pr=true combination is rejected
+
+Reset to baseline (validator must reject regardless of yaml, but clean state makes the test deterministic):
+
+```bash
+grep -v "^workflow:\|^pr:\|^autoMerge:" .dark-factory.yaml > .dark-factory.yaml.tmp && mv .dark-factory.yaml.tmp .dark-factory.yaml
+/tmp/new-dark-factory run --set workflow=direct --set pr=true > run-l.log 2>&1 || true
+echo "exit: $?"
+```
+
+### Expected L
+
+- [ ] Command exited non-zero
+- [ ] `run-l.log` contains `incompatible` (the existing workflow+pr combination error message)
+
+```bash
+grep -i "incompatible" run-l.log
+```
+
+## Scenario M: autoMerge=true without pr=true is rejected
+
+Reset to baseline (no `pr: true` anywhere):
+
+```bash
+grep -v "^workflow:\|^pr:\|^autoMerge:" .dark-factory.yaml > .dark-factory.yaml.tmp && mv .dark-factory.yaml.tmp .dark-factory.yaml
+/tmp/new-dark-factory run --set autoMerge=true > run-m.log 2>&1 || true
+echo "exit: $?"
+```
+
+### Expected M
+
+- [ ] Command exited non-zero
+- [ ] `run-m.log` contains `autoMerge requires pr: true`
+
+```bash
+grep -i "autoMerge requires pr" run-m.log
+```
+
 ## Cleanup
 
 ```bash

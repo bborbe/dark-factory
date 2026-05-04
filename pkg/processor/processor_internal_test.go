@@ -1616,6 +1616,74 @@ var _ = Describe("processor workflow routing", func() {
 			Expect(err.Error()).To(ContainSubstring("wait and merge PR"))
 		})
 	})
+
+	// 11aj: worktreeWorkflowExecutor no-diff success — regression for "agent reports success but
+	// produces no diff". CommitOnly is a no-op (returns nil), CommitsAhead == 0, so push/PR are
+	// skipped. Prompt must still move to completed/ without crashing.
+	Describe("11aj: worktreeWorkflowExecutor no-diff success (regression)", func() {
+		It(
+			"returns nil and moves to completed when CommitOnly no-ops and no commits ahead",
+			func() {
+				stubBr.commitsAhead = 0 // no commits — ahead == 0 guard skips push/PR
+				deps := makeDeps(true)  // PR=true to verify it is also skipped
+				rawExec, ok := NewWorktreeWorkflowExecutor(deps).(*worktreeWorkflowExecutor)
+				Expect(ok).To(BeTrue())
+				pf := newPromptFile("feature/wt-nodiff")
+
+				worktreeDir := GinkgoT().TempDir()
+				originalDir, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+				rawExec.branchName = "feature/wt-nodiff"
+				rawExec.worktreePath = worktreeDir
+				rawExec.originalDir = originalDir
+
+				Expect(os.Chdir(worktreeDir)).To(Succeed())
+
+				err = rawExec.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(stubWt.removeCount).To(Equal(1))
+				Expect(stubBr.pushCount).To(Equal(0))
+				Expect(stubPR.createCount).To(Equal(0))
+				Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+			},
+		)
+	})
+
+	// 11ak: cloneWorkflowExecutor no-diff success — same regression as 11aj but for clone.
+	Describe("11ak: cloneWorkflowExecutor no-diff success (regression)", func() {
+		It(
+			"returns nil and moves to completed when CommitOnly no-ops and no commits ahead",
+			func() {
+				stubBr.commitsAhead = 0 // no commits — ahead == 0 guard skips push/PR
+				deps := makeDeps(true)  // PR=true to verify it is also skipped
+				rawExec, ok := NewCloneWorkflowExecutor(deps).(*cloneWorkflowExecutor)
+				Expect(ok).To(BeTrue())
+				pf := newPromptFile("feature/clone-nodiff")
+
+				cloneDir := GinkgoT().TempDir()
+				originalDir, err := os.Getwd()
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+				rawExec.branchName = "feature/clone-nodiff"
+				rawExec.clonePath = cloneDir
+				rawExec.originalDir = originalDir
+
+				Expect(os.Chdir(cloneDir)).To(Succeed())
+
+				err = rawExec.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(stubCl.removeCount).To(Equal(1))
+				Expect(stubBr.pushCount).To(Equal(0))
+				Expect(stubPR.createCount).To(Equal(0))
+				Expect(stubMgr.moveToCompletedCount).To(Equal(1))
+			},
+		)
+	})
 })
 
 var _ = Describe("ResumeCommitting delegates to CommittingRecoverer", func() {

@@ -125,6 +125,53 @@ var _ = Describe("directWorkflowExecutor completeCommit autoRelease/CHANGELOG ma
 	}
 })
 
+// Regression: agent reports success but produces no diff — direct workflow must not crash.
+var _ = Describe("directWorkflowExecutor no-diff success (regression)", func() {
+	It("returns nil and moves prompt to completed when CommitOnly is a no-op", func() {
+		ctx := context.Background()
+		tempDir := GinkgoT().TempDir()
+		queueDir := filepath.Join(tempDir, "in-progress")
+		completedDirPath := filepath.Join(tempDir, "completed")
+		Expect(os.MkdirAll(queueDir, 0750)).To(Succeed())
+		Expect(os.MkdirAll(completedDirPath, 0750)).To(Succeed())
+
+		promptPath := filepath.Join(queueDir, "001-noop.md")
+		Expect(
+			os.WriteFile(promptPath, []byte("---\nstatus: committing\n---\n# Noop\n"), 0600),
+		).To(Succeed())
+		completedPath := filepath.Join(completedDirPath, "001-noop.md")
+
+		promptMgr := prompt.NewManager(
+			filepath.Join(tempDir, "inbox"),
+			queueDir,
+			completedDirPath,
+			&osFileMover{},
+			libtime.NewCurrentDateTime(),
+		)
+		// CommitOnly no-ops (returns nil) — simulates agent reporting success with no diff.
+		rel := &stubWorkflowReleaser{commitOnlyErr: nil}
+		executor := NewDirectWorkflowExecutor(WorkflowDeps{
+			PromptManager: promptMgr,
+			AutoCompleter: &stubAutoCompleter{},
+			Releaser:      rel,
+		})
+
+		pf := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{Status: "committing"},
+			[]byte("# Noop\n"),
+			libtime.NewCurrentDateTime(),
+		)
+
+		err := executor.Complete(ctx, ctx, pf, "noop title", promptPath, completedPath)
+		Expect(err).NotTo(HaveOccurred())
+		// Prompt must have moved to completed/ — no crash despite no diff.
+		Expect(completedPath).To(BeAnExistingFile())
+		Expect(rel.commitOnlyCount).To(Equal(1))
+		Expect(rel.commitAndReleaseCount).To(Equal(0))
+	})
+})
+
 var _ = Describe("directWorkflowExecutor order-of-operations", func() {
 	It(
 		"transitions linked spec to verifying after the last prompt completes (regression: order-of-operations bug)",

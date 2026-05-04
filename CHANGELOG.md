@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.3
+
+- fix: all workflows (direct, branch, worktree, clone) handle "agent reports success but produces no diff" gracefully — no more `git commit: exit status 1` crash; prompt moves to completed/ as expected
+
 ## v0.148.2
 
 - fix: branch workflow no longer rejects its own prompt-file frontmatter writes as working-tree dirt; IsCleanIgnoring filters dark-factory state directories before branch checkout

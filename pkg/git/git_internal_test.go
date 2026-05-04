@@ -81,6 +81,25 @@ var _ = Describe("redactToken", func() {
 })
 
 var _ = Describe("Internal git helpers", func() {
+	Describe("stageAllAndCheck", func() {
+		It("returns an error when git status fails (not a git repo)", func() {
+			nonGitDir, err := os.MkdirTemp("", "non-git-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			// Restore cwd first, then remove the temp dir (LIFO: remove runs second).
+			defer func() { _ = os.RemoveAll(nonGitDir) }()
+			defer func() { _ = os.Chdir(origDir) }()
+
+			Expect(os.Chdir(nonGitDir)).To(Succeed())
+
+			has, err := stageAllAndCheck(context.Background())
+			Expect(err).To(HaveOccurred())
+			Expect(has).To(BeFalse())
+		})
+	})
+
 	Describe("processUnreleasedSection", func() {
 		It("returns unchanged when no Unreleased section exists", func() {
 			lines := []string{

@@ -700,6 +700,33 @@ var _ = Describe("Git", func() {
 			}
 		})
 
+		Context("with no changes to commit (working tree is clean)", func() {
+			It(
+				"returns nil and creates no commit or tag when working tree has no staged changes",
+				func() {
+					tagsBefore, err := exec.Command("git", "-C", tempDir, "tag", "-l").
+						CombinedOutput()
+					Expect(err).NotTo(HaveOccurred())
+					headBefore, err := exec.Command("git", "-C", tempDir, "rev-parse", "HEAD").
+						CombinedOutput()
+					Expect(err).NotTo(HaveOccurred())
+
+					err = git.CommitAndRelease(ctx, git.PatchBump)
+					Expect(err).NotTo(HaveOccurred())
+
+					tagsAfter, err := exec.Command("git", "-C", tempDir, "tag", "-l").
+						CombinedOutput()
+					Expect(err).NotTo(HaveOccurred())
+					headAfter, err := exec.Command("git", "-C", tempDir, "rev-parse", "HEAD").
+						CombinedOutput()
+					Expect(err).NotTo(HaveOccurred())
+
+					Expect(string(tagsAfter)).To(Equal(string(tagsBefore)))
+					Expect(string(headAfter)).To(Equal(string(headBefore)))
+				},
+			)
+		})
+
 		Context("with changes to commit and ## Unreleased with entries", func() {
 			BeforeEach(func() {
 				// Update CHANGELOG to have entries in Unreleased
@@ -1600,10 +1627,18 @@ var _ = Describe("Git", func() {
 		})
 
 		Context("with no changes to commit", func() {
-			It("returns error when nothing to commit", func() {
-				err := r.CommitOnly(ctx, "Empty commit")
-				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(ContainSubstring("git commit"))
+			It("returns nil and creates no new commit when working tree is clean", func() {
+				headBefore, err := exec.Command("git", "-C", tempDir, "rev-parse", "HEAD").
+					CombinedOutput()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = r.CommitOnly(ctx, "should be a no-op")
+				Expect(err).NotTo(HaveOccurred())
+
+				headAfter, err := exec.Command("git", "-C", tempDir, "rev-parse", "HEAD").
+					CombinedOutput()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(headAfter)).To(Equal(string(headBefore)))
 			})
 		})
 	})

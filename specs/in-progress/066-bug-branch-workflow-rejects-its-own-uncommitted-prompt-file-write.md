@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-05-03T19:51:07Z"
 generating: "2026-05-03T19:51:07Z"
 prompted: "2026-05-03T19:59:34Z"
+verifying: "2026-05-03T20:26:03Z"
 branch: dark-factory/bug-branch-workflow-rejects-its-own-uncommitted-prompt-file-write
 ---
 

@@ -61,16 +61,11 @@ func HasDirtyFiles(ctx context.Context) (bool, error) {
 // CommitAll stages all changes and commits with the given message.
 // Used during committing recovery to commit work files left from a prior run.
 func CommitAll(ctx context.Context, message string) error {
-	if err := gitAddAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git add")
-	}
-	// #nosec G204 -- fixed command with no user input
-	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	output, err := statusCmd.Output()
+	has, err := stageAllAndCheck(ctx)
 	if err != nil {
-		return errors.Wrap(ctx, err, "git status")
+		return err
 	}
-	if len(strings.TrimSpace(string(output))) == 0 {
+	if !has {
 		return nil // nothing to commit
 	}
 	return gitCommit(ctx, message)
@@ -130,17 +125,21 @@ func (r *releaser) HasChangelog(ctx context.Context) bool {
 
 // CommitOnly performs a simple commit without versioning, tagging, or pushing.
 // This is used for projects without a CHANGELOG.md.
+// When the working tree has no staged changes, this returns nil without
+// invoking git commit. The downstream CommitsAhead guards in
+// handleAfterIsolatedCommit handle the no-commit case correctly.
 func (r *releaser) CommitOnly(ctx context.Context, message string) error {
-	// Stage all changes
-	if err := gitAddAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git add")
+	has, err := stageAllAndCheck(ctx)
+	if err != nil {
+		return err // already wrapped by stageAllAndCheck
 	}
-
-	// Commit
+	if !has {
+		slog.Info("no staged changes — skipping commit")
+		return nil
+	}
 	if err := gitCommit(ctx, message); err != nil {
 		return errors.Wrap(ctx, err, "git commit")
 	}
-
 	return nil
 }
 
@@ -163,10 +162,17 @@ func (r *releaser) PushBranch(ctx context.Context) error {
 // 4. git commit
 // 5. git tag
 // 6. git push + push tag
+// When the working tree has no staged changes, returns nil without creating
+// a commit, tag, or push — a tag against an unchanged HEAD would be wrong.
 func CommitAndRelease(ctx context.Context, bump VersionBump) error {
-	// Stage all changes
-	if err := gitAddAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git add")
+	// Stage all changes and check if anything was staged.
+	has, err := stageAllAndCheck(ctx)
+	if err != nil {
+		return err // already wrapped by stageAllAndCheck
+	}
+	if !has {
+		slog.Info("no staged changes — skipping release")
+		return nil
 	}
 
 	// Get next version
@@ -267,6 +273,24 @@ func gitAddAll(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "git add all")
 	}
 	return nil
+}
+
+// stageAllAndCheck stages all changes and reports whether anything was staged.
+// Returns (false, nil) when the working tree was already clean — caller should
+// treat as a graceful no-op (do NOT call git commit, which would exit 1).
+// Returns (true, nil) when at least one path is staged for commit.
+// A non-nil error means git itself failed.
+func stageAllAndCheck(ctx context.Context) (bool, error) {
+	if err := gitAddAll(ctx); err != nil {
+		return false, errors.Wrap(ctx, err, "git add")
+	}
+	// #nosec G204 -- fixed command with no user input
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "git status")
+	}
+	return len(strings.TrimSpace(string(output))) > 0, nil
 }
 
 // GetNextVersion determines the next version based on the bump type.

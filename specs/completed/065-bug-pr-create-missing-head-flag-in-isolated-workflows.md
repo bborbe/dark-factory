@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-03T19:33:27Z"
 generating: "2026-05-03T19:35:11Z"
 prompted: "2026-05-03T19:39:12Z"
 verifying: "2026-05-03T20:06:04Z"
+completed: "2026-05-04T20:06:01Z"
 branch: dark-factory/bug-pr-create-missing-head-flag-in-isolated-workflows
 ---
 
@@ -111,6 +112,36 @@ Then `dark-factory prompt complete <name>` (or merge the PR and let the next dae
 - [ ] `clone` workflow either opens a PR end-to-end (verified at runtime), or the spec records evidence that the bug does not apply to `clone`.
 - [ ] Unit test exists for `prCreator.Create` asserting the argv contains `--head <branch>`.
 - [ ] Bitbucket PR creator (`pkg/git/bitbucket_pr_creator.go`) is reviewed for the same flaw and fixed if applicable.
+
+## Non-applicability evidence — `clone` workflow
+
+AC 5 permits "verified at runtime OR the spec records evidence that the bug does not apply to `clone`." This subsection records the non-applicability evidence in lieu of a runtime replay.
+
+**No project in the operator's `~/Documents/workspaces/` is currently configured for `workflow: clone`.** Setting one up purely to exercise this AC is overhead disproportionate to the assurance gained, given the structural argument below.
+
+**Structural evidence:**
+
+All three non-direct workflows (`branch`, `worktree`, `clone`) reach PR creation through the same single chokepoint:
+
+```
+<workflow>WorkflowExecutor.Complete
+    └── handleAfterIsolatedCommit (pkg/processor/workflow_helpers.go:213-268)
+        └── findOrCreatePR (line 65-94)
+            └── deps.PRCreator.Create(gitCtx, title, body, branchName)  ← line 88, post-065
+```
+
+After the spec 065 fix, `branchName` is threaded explicitly into `Create` and emitted as `--head <branch>` argv. The branch parameter is set by the workflow executor itself (`worktreeWorkflowExecutor.Setup`, `cloneWorkflowExecutor.Setup`, `branchWorkflowExecutor.Setup` all set their respective branch field) and passed unchanged through `handleAfterIsolatedCommit`. There is no per-workflow divergence in this code path — all three call sites converge on the same `Create` invocation with the workflow-specific branch name.
+
+The unit test at `pkg/git/pr_creator_test.go` ("passes --head branch to gh pr create") pins the argv shape: it asserts that `Create(ctx, title, body, branch)` produces a `gh` command line containing `--head <branch>`. This holds regardless of which workflow chose the branch name.
+
+**Runtime evidence already captured:**
+
+- `worktree` workflow: PR #5 (https://github.com/bborbe/jira-task-creator/pull/5) — head `dark-factory/009-test-loglevel-handler`.
+- `branch` workflow: PR #6 (https://github.com/bborbe/jira-task-creator/pull/6) — head `dark-factory/010-test-branch-workflow-pr`.
+
+Both PRs were opened post-v0.148.1 (after the fix landed) and demonstrate that the chokepoint produces the correct `--head` for two distinct workflows. The `clone` workflow shares the same chokepoint and unit-test contract.
+
+**Conclusion:** the bug shape (head==base because `--head` was missing) is structurally impossible after the fix, regardless of which workflow chose the branch name. This evidence satisfies AC 5's "spec records evidence that the bug does not apply to `clone`" branch.
 
 ## Open Questions
 

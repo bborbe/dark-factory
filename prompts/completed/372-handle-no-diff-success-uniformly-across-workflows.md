@@ -1,10 +1,11 @@
 ---
-status: committing
+status: completed
 container: dark-factory-372-handle-no-diff-success-uniformly-across-workflows
 dark-factory-version: dev
 created: "2026-05-04T15:52:12Z"
 queued: "2026-05-04T15:52:12Z"
 started: "2026-05-04T16:50:15Z"
+completed: "2026-05-04T17:00:00Z"
 ---
 
 # Handle "agent reports success but produces no diff" uniformly across all workflows

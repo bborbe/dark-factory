@@ -406,6 +406,105 @@ var _ = Describe("Brancher", func() {
 		})
 	})
 
+	Describe("DiscardUncommittedInPaths", func() {
+		BeforeEach(func() {
+			// Create and commit a file under prompts/in-progress/ so it is tracked at HEAD.
+			Expect(
+				os.MkdirAll(filepath.Join(tempDir, "prompts", "in-progress"), 0750),
+			).To(Succeed())
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts", "in-progress", "001-test.md"),
+					[]byte("status: queued"),
+					0600,
+				),
+			).To(Succeed())
+			addCmd := exec.Command("git", "add", ".")
+			addCmd.Dir = tempDir
+			Expect(addCmd.Run()).To(Succeed())
+			commitCmd := exec.Command("git", "commit", "-m", "add prompt")
+			commitCmd.Dir = tempDir
+			Expect(commitCmd.Run()).To(Succeed())
+		})
+
+		It("restores a dirty tracked file to HEAD state", func() {
+			// Dirty the file without committing.
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts", "in-progress", "001-test.md"),
+					[]byte("status: failed"),
+					0600,
+				),
+			).To(Succeed())
+
+			err := b.DiscardUncommittedInPaths(ctx, []string{"prompts/"})
+			Expect(err).NotTo(HaveOccurred())
+
+			// File must be back to HEAD state.
+			content, readErr := os.ReadFile(
+				filepath.Join(tempDir, "prompts", "in-progress", "001-test.md"),
+			)
+			Expect(readErr).NotTo(HaveOccurred())
+			Expect(string(content)).To(Equal("status: queued"))
+
+			// git status must show no changes for that file.
+			statusCmd := exec.Command("git", "status", "--porcelain")
+			statusCmd.Dir = tempDir
+			output, runErr := statusCmd.Output()
+			Expect(runErr).NotTo(HaveOccurred())
+			Expect(string(output)).NotTo(ContainSubstring("001-test.md"))
+		})
+
+		It("empty prefixes slice is a no-op — returns nil, leaves dirty file untouched", func() {
+			// Dirty the file.
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts", "in-progress", "001-test.md"),
+					[]byte("status: failed"),
+					0600,
+				),
+			).To(Succeed())
+
+			err := b.DiscardUncommittedInPaths(ctx, []string{})
+			Expect(err).NotTo(HaveOccurred())
+
+			// File must still be dirty.
+			statusCmd := exec.Command("git", "status", "--porcelain")
+			statusCmd.Dir = tempDir
+			output, runErr := statusCmd.Output()
+			Expect(runErr).NotTo(HaveOccurred())
+			Expect(string(output)).To(ContainSubstring("001-test.md"))
+		})
+
+		It("prefix with no tracked files is silently skipped — returns nil", func() {
+			// A non-existent directory forces git to emit "did not match any file(s) known to git".
+			err := b.DiscardUncommittedInPaths(ctx, []string{"completely-missing-dir-xyz/"})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("prefix outside the dirty path does not affect the dirty file", func() {
+			// Dirty the prompts file.
+			Expect(
+				os.WriteFile(
+					filepath.Join(tempDir, "prompts", "in-progress", "001-test.md"),
+					[]byte("status: failed"),
+					0600,
+				),
+			).To(Succeed())
+
+			// Discard using "specs/" — should not touch "prompts/".
+			err := b.DiscardUncommittedInPaths(ctx, []string{"specs/"})
+			Expect(err).NotTo(HaveOccurred())
+
+			// File under prompts/ must still be dirty.
+			statusCmd := exec.Command("git", "status", "--porcelain")
+			statusCmd.Dir = tempDir
+			output, runErr := statusCmd.Output()
+			Expect(runErr).NotTo(HaveOccurred())
+			Expect(string(output)).To(ContainSubstring("001-test.md"))
+		})
+	})
+
 	Describe("MergeOriginDefault", func() {
 		It("skips merge when default branch cannot be determined", func() {
 			// When DefaultBranch fails (no GitHub remote, no config), MergeOriginDefault

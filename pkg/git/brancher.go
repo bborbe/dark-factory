@@ -7,6 +7,7 @@ package git
 import (
 	"context"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -35,6 +36,13 @@ type Brancher interface {
 	// git status --porcelain (relative, no leading slash).
 	// A non-nil error means the git command itself failed.
 	IsCleanIgnoring(ctx context.Context, ignorePrefixes []string) ([]string, error)
+	// DiscardUncommittedInPaths restores each path prefix to its HEAD state using
+	// git checkout HEAD -- <prefix>. Prefixes not covered by any uncommitted change
+	// are silently skipped. An empty prefixes slice is a no-op.
+	// This is called by setupInPlaceBranch immediately before Brancher.Switch so
+	// that dark-factory's own bookkeeping dirt does not prevent a branch switch
+	// when the target branch has divergent content for those paths.
+	DiscardUncommittedInPaths(ctx context.Context, prefixes []string) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
 }
@@ -272,6 +280,41 @@ func (b *brancher) IsCleanIgnoring(ctx context.Context, ignorePrefixes []string)
 		}
 	}
 	return dirty, nil
+}
+
+// DiscardUncommittedInPaths restores each path prefix to HEAD state.
+// For each non-empty prefix, it runs git checkout HEAD -- <prefix>.
+// If git reports that a prefix matched no tracked files ("did not match any
+// file(s) known to git"), the error is logged at debug level and skipped —
+// it is not a real failure for our purposes (the prefix was already clean).
+// Any other git failure is returned wrapped.
+func (b *brancher) DiscardUncommittedInPaths(ctx context.Context, prefixes []string) error {
+	for _, prefix := range prefixes {
+		if prefix == "" {
+			continue
+		}
+		var stderr strings.Builder
+		// #nosec G204 -- prefix is a dark-factory config-controlled path prefix
+		cmd := exec.CommandContext(ctx, "git", "checkout", "HEAD", "--", prefix)
+		// Force English locale so the "did not match any file" probe below is
+		// locale-stable. Without this, a French/German/etc. system git would
+		// produce a different error string and we'd misclassify it as a real
+		// failure. Append (not replace) so PATH and other env vars survive.
+		cmd.Env = append(os.Environ(), "LC_ALL=C", "LANG=C")
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			msg := stderr.String()
+			if strings.Contains(msg, "did not match any file") {
+				// The prefix has no tracked files to discard — treat as clean.
+				slog.Debug("DiscardUncommittedInPaths: prefix matched no tracked files, skipping",
+					"prefix", prefix)
+				continue
+			}
+			return errors.Wrapf(ctx, err, "discard uncommitted changes in %q: %s", prefix, msg)
+		}
+		slog.Debug("DiscardUncommittedInPaths: discarded bookkeeping dirt", "prefix", prefix)
+	}
+	return nil
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

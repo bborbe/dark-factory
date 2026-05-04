@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.4
+
+- fix: `branch` workflow retry no longer crashes at `git checkout` when the feature branch has divergent content for prompt-file paths (discards dark-factory's own bookkeeping dirt before the branch switch)
+
 ## v0.148.3
 
 - fix: all workflows (direct, branch, worktree, clone) handle "agent reports success but produces no diff" gracefully — no more `git commit: exit status 1` crash; prompt moves to completed/ as expected

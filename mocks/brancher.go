@@ -61,6 +61,18 @@ type Brancher struct {
 		result1 string
 		result2 error
 	}
+	DiscardUncommittedInPathsStub        func(context.Context, []string) error
+	discardUncommittedInPathsMutex       sync.RWMutex
+	discardUncommittedInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	discardUncommittedInPathsReturns struct {
+		result1 error
+	}
+	discardUncommittedInPathsReturnsOnCall map[int]struct {
+		result1 error
+	}
 	FetchStub        func(context.Context) error
 	fetchMutex       sync.RWMutex
 	fetchArgsForCall []struct {
@@ -426,6 +438,73 @@ func (fake *Brancher) DefaultBranchReturnsOnCall(i int, result1 string, result2 
 		result1 string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *Brancher) DiscardUncommittedInPaths(arg1 context.Context, arg2 []string) error {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.discardUncommittedInPathsMutex.Lock()
+	ret, specificReturn := fake.discardUncommittedInPathsReturnsOnCall[len(fake.discardUncommittedInPathsArgsForCall)]
+	fake.discardUncommittedInPathsArgsForCall = append(fake.discardUncommittedInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
+	stub := fake.DiscardUncommittedInPathsStub
+	fakeReturns := fake.discardUncommittedInPathsReturns
+	fake.recordInvocation("DiscardUncommittedInPaths", []interface{}{arg1, arg2Copy})
+	fake.discardUncommittedInPathsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) DiscardUncommittedInPathsCallCount() int {
+	fake.discardUncommittedInPathsMutex.RLock()
+	defer fake.discardUncommittedInPathsMutex.RUnlock()
+	return len(fake.discardUncommittedInPathsArgsForCall)
+}
+
+func (fake *Brancher) DiscardUncommittedInPathsCalls(stub func(context.Context, []string) error) {
+	fake.discardUncommittedInPathsMutex.Lock()
+	defer fake.discardUncommittedInPathsMutex.Unlock()
+	fake.DiscardUncommittedInPathsStub = stub
+}
+
+func (fake *Brancher) DiscardUncommittedInPathsArgsForCall(i int) (context.Context, []string) {
+	fake.discardUncommittedInPathsMutex.RLock()
+	defer fake.discardUncommittedInPathsMutex.RUnlock()
+	argsForCall := fake.discardUncommittedInPathsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) DiscardUncommittedInPathsReturns(result1 error) {
+	fake.discardUncommittedInPathsMutex.Lock()
+	defer fake.discardUncommittedInPathsMutex.Unlock()
+	fake.DiscardUncommittedInPathsStub = nil
+	fake.discardUncommittedInPathsReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) DiscardUncommittedInPathsReturnsOnCall(i int, result1 error) {
+	fake.discardUncommittedInPathsMutex.Lock()
+	defer fake.discardUncommittedInPathsMutex.Unlock()
+	fake.DiscardUncommittedInPathsStub = nil
+	if fake.discardUncommittedInPathsReturnsOnCall == nil {
+		fake.discardUncommittedInPathsReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.discardUncommittedInPathsReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *Brancher) Fetch(arg1 context.Context) error {

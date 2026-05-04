@@ -35,7 +35,7 @@ Progressive isolation levels.
 - Container mounts the parent repo at `/workspace`, now on the new branch
 - After the prompt: commit, optionally push / open PR
 - Serial execution (parent repo is shared)
-- **Working-tree cleanliness check:** before switching branches, dark-factory verifies the tree is clean — but ignores uncommitted changes inside the four prompt directories (`inboxDir`, `inProgressDir`, `completedDir`, `logDir`) because those are dark-factory's own bookkeeping writes, not user work. Any uncommitted change outside those directories still aborts Setup with an error naming the specific dirty file.
+- **Working-tree cleanliness check:** before switching branches, dark-factory verifies the tree is clean — but ignores uncommitted changes inside the four prompt directories (`inboxDir`, `inProgressDir`, `completedDir`, `logDir`) because those are dark-factory's own bookkeeping writes, not user work. Any uncommitted change outside those directories still aborts Setup with an error naming the specific dirty file. After the check passes, dark-factory discards the bookkeeping dirt (via `git checkout HEAD -- <prefix>` for each configured prefix) so that `git checkout <featureBranch>` does not refuse when the feature branch has divergent content for those same files.
 
 ### `worktree`
 

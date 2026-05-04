@@ -62,6 +62,17 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 			strings.Join(dirtyPaths, ", "),
 		)
 	}
+
+	// Discard any uncommitted changes in dark-factory's own bookkeeping
+	// directories before switching branches. These paths are "clean enough"
+	// per IsCleanIgnoring (spec 066), but git checkout still refuses to switch
+	// if the target branch has divergent content for those exact files.
+	// The in-memory PromptFile already holds the runtime state; pf.Save after
+	// Setup writes it onto the feature branch where it belongs.
+	if err := e.deps.Brancher.DiscardUncommittedInPaths(ctx, e.deps.IgnorePathPrefixes); err != nil {
+		return errors.Wrap(ctx, err, "discard bookkeeping dirt before branch switch")
+	}
+
 	defaultBranch, err := e.deps.Brancher.DefaultBranch(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get default branch")

@@ -463,6 +463,8 @@ func (s *stubBrancher) CommitsAhead(_ context.Context, _ string) (int, error) {
 	return s.commitsAhead, s.commitsAheadErr
 }
 
+func (s *stubBrancher) DiscardUncommittedInPaths(_ context.Context, _ []string) error { return nil }
+
 // stubPRCreator tracks FindOpenPR/Create calls.
 type stubPRCreator struct {
 	findOpenPRURL string

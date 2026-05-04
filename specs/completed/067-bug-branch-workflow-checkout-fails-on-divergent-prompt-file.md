@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-04T20:14:01Z"
 generating: "2026-05-04T20:14:01Z"
 prompted: "2026-05-04T20:17:38Z"
+verifying: "2026-05-04T20:31:24Z"
+completed: "2026-05-04T20:52:46Z"
 branch: dark-factory/bug-branch-workflow-checkout-fails-on-divergent-prompt-file
 ---
 

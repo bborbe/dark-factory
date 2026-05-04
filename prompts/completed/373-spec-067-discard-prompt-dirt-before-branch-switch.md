@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [067-bug-branch-workflow-checkout-fails-on-divergent-prompt-file]
 summary: Added DiscardUncommittedInPaths to Brancher interface and implementation, called it in setupInPlaceBranch before branch switch, regenerated mocks, added unit tests for both the git implementation and the branch workflow executor, updated docs/workflows.md, and added a CHANGELOG entry.
 container: dark-factory-373-spec-067-discard-prompt-dirt-before-branch-switch
@@ -7,6 +7,7 @@ dark-factory-version: dev
 created: "2026-05-04T20:15:00Z"
 queued: "2026-05-04T20:21:25Z"
 started: "2026-05-04T20:21:27Z"
+completed: "2026-05-04T20:31:24Z"
 branch: dark-factory/bug-branch-workflow-checkout-fails-on-divergent-prompt-file
 ---
 

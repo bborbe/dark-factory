@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [071-bug-autoreview-skips-postmerge-actions-no-tag-no-release]
 summary: Exported postMergeActions as PostMergeActions from pkg/processor, injected Brancher/Releaser/AutoRelease into reviewPoller, called PostMergeActions from handleApproved after MoveToCompleted, updated factory.go CreateReviewPoller call site, added new test cases for autoRelease=true/false and WaitAndMerge failure, and added CHANGELOG entry.
 container: dark-factory-377-fix-071-autoreview-postmerge-actions
@@ -7,6 +7,7 @@ dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-05T20:30:00Z"
 queued: "2026-05-05T20:34:03Z"
 started: "2026-05-05T20:34:04Z"
+completed: "2026-05-05T20:41:17Z"
 branch: dark-factory/bug-autoreview-skips-postmerge-actions-no-tag-no-release
 ---
 

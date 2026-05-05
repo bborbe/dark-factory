@@ -1,6 +1,9 @@
 ---
-status: idea
-kind: bug
+status: prompted
+approved: "2026-05-05T20:19:26Z"
+generating: "2026-05-05T20:19:27Z"
+prompted: "2026-05-05T20:25:45Z"
+branch: dark-factory/bug-autoreview-skips-postmerge-actions-no-tag-no-release
 ---
 
 # `autoReview` approval merges PR but skips `postMergeActions` → no master pull, no tag, no release
@@ -77,8 +80,8 @@ This defeats the point of `autoRelease`.
 ## Code pointers
 
 - `pkg/review/poller.go:204-218` — `handleApproved` does merge + move-to-completed, nothing else.
-- `pkg/processor/workflow_helpers.go:155-178` — `postMergeActions` is the missing call: switches to default branch, pulls, then `handleDirectWorkflow` for the tag if `AutoRelease && HasChangelog`.
-- `pkg/processor/workflow_helpers.go:181-211` — `handleAutoMergeForClone` (the working path) shows the correct sequence: `WaitAndMerge` → `MoveToCompleted` → `postMergeActions`.
+- `pkg/processor/workflow_helpers.go:167-191` — `postMergeActions` is the missing call: switches to default branch, pulls, then `handleDirectWorkflow` for the tag if `AutoRelease && HasChangelog`.
+- `pkg/processor/workflow_helpers.go:193-225` — `handleAutoMergeForClone` (the working path) shows the correct sequence: `WaitAndMerge` → `MoveToCompleted` → `postMergeActions`.
 - `pkg/factory/factory.go:971` (`NewReviewPoller` call site) — the poller does NOT receive `Releaser`, `Brancher`, or `AutoRelease bool`. Adding postMergeActions requires threading these through.
 
 ## Failure Modes
@@ -107,6 +110,19 @@ After this fix, a project configured with `pr+autoMerge+autoRelease+autoReview` 
 - Do NOT regress the autoMerge-only path (autoReview: false) — `handleAutoMergeForClone → postMergeActions` continues to work as today.
 - Do NOT stuff `postMergeActions` logic inline into the poller — extract or reuse the existing function so both call sites share one implementation.
 - Reuse existing `Releaser` / `Brancher` interfaces via the `WorkflowDeps`-equivalent dependency-injection pattern; do not introduce a parallel git-aware abstraction in `pkg/review/`.
+
+## Acceptance Criteria
+
+- [ ] After autoReview-triggered merge with `autoRelease: true` + `CHANGELOG.md`, the daemon log emits the same three lines as the autoMerge-only path: `merged PR and updated default branch`, `created tag`, `pushed tag`.
+- [ ] After autoReview-triggered merge, the local clone's default branch is fast-forwarded to origin (`git rev-list @{u}..HEAD --count` returns 0).
+- [ ] After autoReview-triggered merge with a `## Unreleased` CHANGELOG entry, `## Unreleased` is renamed to `## vX.Y.Z` and the file is committed.
+- [ ] After autoReview-triggered merge with `autoRelease: true` + `CHANGELOG.md`, a new `vX.Y.Z` tag exists locally AND on origin (`git ls-remote --tags origin` shows it).
+- [ ] With `CHANGELOG.md` absent, autoReview-triggered merge pulls master but creates no tag (matches `autoMerge`-only path with no changelog).
+- [ ] With `autoRelease: false`, autoReview-triggered merge pulls master but creates no tag.
+- [ ] The `autoReview: false` path (existing happy path) still calls `postMergeActions` after `handleAutoMergeForClone` — no regression.
+- [ ] The post-merge sequence is implemented by ONE function shared between `handleAutoMergeForClone` and `reviewPoller.handleApproved` — not duplicated.
+- [ ] `pkg/review/poller.go` does not introduce a parallel git-aware abstraction; reuses `Releaser` / `Brancher` injected via the existing `WorkflowDeps`-equivalent pattern.
+- [ ] CHANGELOG.md `## Unreleased` entry added describing this fix.
 
 ## Verification
 
@@ -160,12 +176,10 @@ kill $DAEMON_PID
 | Unit test asserting `handleApproved` calls `postMergeActions` | Necessary but not sufficient |
 | "All tests pass" without runtime replay | No |
 
-## Open Questions
+## Non-goals
 
-1. Should `postMergeActions` be moved to a shared package (`pkg/release/`?) or stay in `pkg/processor/` and the review poller depend on it? Cross-package call from `pkg/review/` to `pkg/processor/` is awkward but cheaper than a refactor. Triage decision before approval.
-2. The poller currently doesn't have `Releaser`/`Brancher` dependencies. Adding them is a constructor-signature change — affects `factory.go:971` and the counterfeiter mock. Acceptable if it's the right shape.
-3. `autoMerge` is required for autoReview today (`pkg/config/config.go:validateAutoReview` requires it). Confirm: this fix preserves that invariant and does not enable autoReview-without-autoMerge as a side effect.
-4. Should the fix also address the case where `autoMerge: false + autoReview: true`? Today that's rejected by validation, so no behavioral change needed; but if the validation ever loosens, the poller must continue to refuse to merge (which `WaitAndMerge` does explicitly via the merge command, so this is naturally safe — confirm during fix-prompt generation).
+- Refactoring `postMergeActions` into a shared `pkg/release/` package. Triage decision: keep it in `pkg/processor/` and let `pkg/review/` import it. Cross-package call is the cheaper, smaller fix. A future spec can extract the shared package if more callers appear.
+- Enabling `autoReview` without `autoMerge`. Today's validation rejects that combination; this fix preserves the invariant and does not relax it.
 
 ## See also
 

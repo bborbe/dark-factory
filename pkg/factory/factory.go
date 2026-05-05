@@ -467,6 +467,7 @@ func CreateRunner(
 		executor.NewDockerContainerStopper(),
 		createStartupLogger(ctx, cfg, globalCfg, sources),
 		cfg.HideGit,
+		preflightChecker,
 		logWriter,
 	)
 }

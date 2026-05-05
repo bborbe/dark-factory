@@ -21,6 +21,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -65,6 +66,7 @@ func NewRunner(
 	containerStopper executor.ContainerStopper,
 	startupLogger func(),
 	hideGit bool,
+	preflightChecker preflight.Checker,
 	logWriter io.Writer,
 ) Runner {
 	return &runner{
@@ -93,6 +95,7 @@ func NewRunner(
 		containerStopper:      containerStopper,
 		startupLogger:         startupLogger,
 		hideGit:               hideGit,
+		preflightChecker:      preflightChecker,
 		logWriter:             logWriter,
 	}
 }
@@ -124,6 +127,7 @@ type runner struct {
 	containerStopper      executor.ContainerStopper
 	startupLogger         func()
 	hideGit               bool
+	preflightChecker      preflight.Checker
 	logWriter             io.Writer
 }
 
@@ -202,6 +206,11 @@ func (r *runner) Run(ctx context.Context) error {
 		// non-fatal — continue startup
 	}
 
+	// Startup preflight: verify baseline is green before the watcher loop begins.
+	if err := r.runStartupPreflight(ctx); err != nil {
+		return err
+	}
+
 	// Run watcher, processor, server, and optional reviewPoller in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
@@ -219,6 +228,25 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	runners = append(runners, r.healthCheckLoop)
 	return run.CancelOnFirstError(ctx, runners...)
+}
+
+// runStartupPreflight verifies the baseline is green before the watcher loop begins.
+// Returns ErrPreflightFailed when the check fails or returns an error.
+// Returns nil when preflightChecker is nil (preflight disabled) or when the check passes.
+func (r *runner) runStartupPreflight(ctx context.Context) error {
+	if r.preflightChecker == nil {
+		return nil
+	}
+	ok, err := r.preflightChecker.Check(ctx)
+	if err != nil {
+		slog.Warn("preflight checker error", "error", err)
+		return processor.ErrPreflightFailed
+	}
+	if !ok {
+		slog.Info("preflight: baseline broken — dark-factory will exit")
+		return processor.ErrPreflightFailed
+	}
+	return nil
 }
 
 // startupDeps builds a StartupDeps from this runner's fields.

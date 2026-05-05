@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.150.0
+
+- feat: Run preflight at daemon startup before the watcher loop; daemon exits non-zero immediately when baseline is broken at start
+
 ## v0.149.5
 
 - improvement: `commands/generate-prompts-for-spec.md` now references `~/.claude/plugins/marketplaces/coding/docs/test-pyramid-triggers.md` for the per-prompt test-type decision rules instead of inlining them. Each generated prompt also pulls the triggers doc into its `<context>` so the implementing agent applies the same pyramid (default unit, integration per real boundary, E2E only when scenario rule mandates).

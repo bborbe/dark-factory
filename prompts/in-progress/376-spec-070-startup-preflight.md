@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [070-preflight-on-daemon-start]
+summary: Added startup preflight call to runner.Run() via extracted runStartupPreflight() helper, generated PreflightChecker mock by adding go:generate directive to preflight suite test, updated all 10 NewRunner call sites in runner_test.go, and added 3 new tests covering nil checker, failing check, and passing check cases.
+container: dark-factory-376-spec-070-startup-preflight
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-05T18:00:00Z"
 queued: "2026-05-05T19:40:53Z"
+started: "2026-05-05T20:11:36Z"
 branch: dark-factory/preflight-on-daemon-start
 ---
 

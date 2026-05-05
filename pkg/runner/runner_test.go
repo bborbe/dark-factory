@@ -6,6 +6,7 @@ package runner_test
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	pkgprocessor "github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
@@ -91,6 +93,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 		)
 	}
@@ -387,6 +390,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 		)
 
@@ -449,6 +453,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 		)
 
@@ -501,6 +506,7 @@ var _ = Describe("Runner", func() {
 			nil,
 			nil,
 			false, // hideGit
+			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 		)
 
@@ -569,6 +575,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 			)
 
@@ -787,6 +794,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 			)
 
@@ -870,6 +878,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 			)
 
@@ -963,6 +972,7 @@ var _ = Describe("Runner", func() {
 					nil,
 					nil,
 					false, // hideGit
+					nil,   // preflightChecker: no preflight in tests
 					nil,   // logWriter: no file in tests
 				)
 
@@ -1052,6 +1062,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 			)
 
@@ -1115,6 +1126,7 @@ var _ = Describe("Runner", func() {
 				nil,
 				nil,
 				false, // hideGit
+				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 			)
 		}
@@ -1274,6 +1286,103 @@ var _ = Describe("Runner", func() {
 
 			err := r.Run(runCtx)
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("startup preflight", func() {
+		var preflightChecker *mocks.PreflightChecker
+
+		BeforeEach(func() {
+			preflightChecker = &mocks.PreflightChecker{}
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+		})
+
+		makeRunnerWithPreflight := func(inboxDir, inProgressDir, completedDir string) runner.Runner {
+			return runner.NewRunner(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil, // server
+				nil, // reviewPoller
+				nil, // specWatcher
+				"",
+				containerChecker,
+				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
+				0,
+				nil,   // containerStopper
+				nil,   // startupLogger
+				false, // hideGit
+				preflightChecker,
+				nil, // logWriter
+			)
+		}
+
+		It("exits with ErrPreflightFailed when check returns false", func() {
+			preflightChecker.CheckReturns(false, nil)
+
+			r := makeRunnerWithPreflight(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+			)
+			err := r.Run(ctx)
+
+			Expect(stderrors.Is(err, pkgprocessor.ErrPreflightFailed)).To(BeTrue())
+			Expect(preflightChecker.CheckCallCount()).To(Equal(1))
+		})
+
+		It("exits with ErrPreflightFailed when check returns an error", func() {
+			preflightChecker.CheckReturns(false, stderrors.New("preflight timed out"))
+
+			r := makeRunnerWithPreflight(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+			)
+			err := r.Run(ctx)
+
+			Expect(stderrors.Is(err, pkgprocessor.ErrPreflightFailed)).To(BeTrue())
+			Expect(preflightChecker.CheckCallCount()).To(Equal(1))
+		})
+
+		It("enters watcher loop when check passes", func() {
+			preflightChecker.CheckReturns(true, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := makeRunnerWithPreflight(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+			)
+
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+			Expect(preflightChecker.CheckCallCount()).To(Equal(1))
 		})
 	})
 })

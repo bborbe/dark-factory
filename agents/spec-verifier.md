@@ -131,22 +131,65 @@ git commit -m "scenario: promote <name> to active after spec <id> verification"
 
 If the scenario was already `active`, skip this phase.
 
-## Phase 7: Mark spec complete
+## Phase 7: Append verification result, then mark spec complete
 
-Only after every prior phase passes. Use `$DF_BINARY` from Phase 0 if it was set, otherwise the installed binary:
+Only after every prior phase passes.
+
+### Step 1: Append `## Verification Result` to the spec
+
+Specs are append-only after completion: existing content stays immutable, but a verification record is appended *before* the spec moves to `specs/completed/`. The block lets future readers answer "what specifically proved this spec passed, and when?" from the spec file alone — without grepping conversation history.
+
+Build the block from evidence captured in Phases 3-5. Keep it under ~15 lines. Fixed shape:
+
+```markdown
+
+## Verification Result
+
+**Verified:** <UTC timestamp> (HEAD <short-sha>)
+**Binary:** <path-used — `$DF_BINARY` or installed binary path>
+**Scenario:** <1-line description of the runtime replay performed>
+**Evidence:**
+- <key log line / artifact 1>
+- <key log line / artifact 2>
+- <external confirmation, e.g. `gh pr list` output>
+**Verdict:** PASS
+```
+
+Rules:
+- The timestamp is when the verification PASS verdict was reached (use `date -u +%Y-%m-%dT%H:%M:%SZ`).
+- HEAD is `git -C "$DF_REPO_ROOT" rev-parse --short HEAD`.
+- Evidence bullets must be the actual captured artifacts from Phase 3-5, not narration.
+- Do NOT recapitulate the spec's Acceptance Criteria — only the proof.
+- Do NOT include sensitive data (tokens, internal URLs that aren't already in the spec).
+
+Append to the spec file (still in `specs/in-progress/`) and commit:
+
+```bash
+# Append the block (use a temp file or tool to preserve YAML frontmatter and existing content)
+git add specs/in-progress/<id>-*.md
+git commit -m "verification result for spec <id>"
+```
+
+### Step 2: Mark complete via CLI
+
+Use `$DF_BINARY` from Phase 0 if it was set, otherwise the installed binary:
 
 ```bash
 "${DF_BINARY:-dark-factory}" spec complete <spec-id>
 ```
 
-Confirm the file moved to `specs/completed/`. Commit the move:
+This moves the file from `specs/in-progress/` to `specs/completed/`.
+
+### Step 3: Commit the move
 
 ```bash
 git add specs/
 git commit -m "complete spec <id>"
 ```
 
-Report the final verdict and the path to `specs/completed/<id>-<name>.md`.
+### Final report
+
+Report the verdict, the path to `specs/completed/<id>-<name>.md`, and confirm the appended `## Verification Result` block is in the committed file.
 </workflow>
 
 <anti_evidence>

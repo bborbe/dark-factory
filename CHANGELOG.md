@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.149.3
+
+- improvement: `spec-verifier` Phase 7 now appends a `## Verification Result` block to the spec before moving it to `specs/completed/`. Captures timestamp, HEAD sha, binary path, scenario, and concrete evidence — so future readers can answer "what proved this spec passed?" from the spec file alone, without grepping conversation history. Specs remain append-only (existing content immutable).
+
 ## v0.149.2
 
 - improvement: `spec-verifier` agent now adds Phase 0 binary-freshness check — when verifying a dark-factory spec, builds `/tmp/dark-factory-<sha>` from HEAD if the installed binary lags, and uses that path through Phase 7 `spec complete`. Prevents stale-binary verifications that would run old code and produce evidence saying nothing about the fix.

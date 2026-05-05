@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-05T21:36:08Z"
 generating: "2026-05-05T21:37:20Z"
 prompted: "2026-05-05T21:41:23Z"
+verifying: "2026-05-05T21:53:52Z"
+completed: "2026-05-05T22:23:00Z"
 branch: dark-factory/bug-autoreview-path-unreachable-when-automerge-takes-precedence
 ---
 

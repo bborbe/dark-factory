@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.149.2
+
+- improvement: `spec-verifier` agent now adds Phase 0 binary-freshness check — when verifying a dark-factory spec, builds `/tmp/dark-factory-<sha>` from HEAD if the installed binary lags, and uses that path through Phase 7 `spec complete`. Prevents stale-binary verifications that would run old code and produce evidence saying nothing about the fix.
+
 ## v0.148.5
 
 - fix: `clone` workflow (`workflow: clone`, legacy `workflow: pr`) now completes end-to-end — feature branch pushed from inside the clone before removal, parent repo fetches the branch ref before `CommitsAhead`, eliminating `exit 128` crash at post-commit step

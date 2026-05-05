@@ -29,6 +29,48 @@ You drive the verification interactively — ask the operator to run each Action
 </constraints>
 
 <workflow>
+## Phase 0: Binary freshness (when the spec is for dark-factory itself)
+
+A bug spec for dark-factory cannot be verified with a stale binary. If `dark-factory --version` lags behind the repo HEAD, the verification will run old code and produce evidence that says nothing about the fix. Always build fresh when the spec is for dark-factory itself.
+
+### Detection
+
+The spec is for dark-factory itself when the spec file lives in a Go module named `github.com/bborbe/dark-factory`:
+
+```bash
+DF_REPO_ROOT="$(git -C "$(dirname "<spec-path>")" rev-parse --show-toplevel)"
+if grep -q '^module github.com/bborbe/dark-factory$' "$DF_REPO_ROOT/go.mod" 2>/dev/null; then
+  # dark-factory's own spec → must use a binary built from HEAD
+fi
+```
+
+For specs in other repos (vault-cli, etc.) that *use* dark-factory but are not dark-factory itself, the installed `dark-factory` binary is correct. Skip Phase 0.
+
+### Build
+
+When the dark-factory repo is the verification target:
+
+```bash
+HEAD_SHA="$(git -C "$DF_REPO_ROOT" rev-parse --short HEAD)"
+DF_BINARY="/tmp/dark-factory-$HEAD_SHA"
+if [ ! -x "$DF_BINARY" ]; then
+  go build -C "$DF_REPO_ROOT" -o "$DF_BINARY" .
+fi
+```
+
+Use `$DF_BINARY` everywhere the rest of the workflow says `dark-factory <subcommand>` — including `dark-factory spec complete` in Phase 7. The spec lifecycle CLI and the verification commands MUST run through the same binary.
+
+### Confirm and announce
+
+Before proceeding to Phase 1, tell the operator which binary will be used and quote its `--version` output:
+
+```
+Using $DF_BINARY ($("$DF_BINARY" --version))
+HEAD: $HEAD_SHA  ($(git -C "$DF_REPO_ROOT" log -1 --format='%s'))
+```
+
+If the operator's installed `dark-factory --version` already matches `HEAD_SHA`, you may skip the build and use the installed binary — but still announce which path will be used.
+
 ## Phase 1: Preconditions
 
 1. Read the spec file at the path provided by the caller.
@@ -91,10 +133,10 @@ If the scenario was already `active`, skip this phase.
 
 ## Phase 7: Mark spec complete
 
-Only after every prior phase passes:
+Only after every prior phase passes. Use `$DF_BINARY` from Phase 0 if it was set, otherwise the installed binary:
 
 ```bash
-dark-factory spec complete <spec-id>
+"${DF_BINARY:-dark-factory}" spec complete <spec-id>
 ```
 
 Confirm the file moved to `specs/completed/`. Commit the move:

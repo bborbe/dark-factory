@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-04T21:25:10Z"
 generating: "2026-05-04T21:25:23Z"
 prompted: "2026-05-04T21:32:08Z"
+verifying: "2026-05-05T11:36:08Z"
+completed: "2026-05-05T12:10:09Z"
 branch: dark-factory/bug-clone-workflow-commits-ahead-fails-after-clone-removed
 ---
 

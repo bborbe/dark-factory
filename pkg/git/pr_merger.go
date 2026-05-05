@@ -7,6 +7,7 @@ package git
 import (
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"os"
 	"os/exec"
 	"time"
@@ -45,6 +46,32 @@ type prStatus struct {
 	MergeStateStatus string `json:"mergeStateStatus"`
 }
 
+// decideMergeAction maps a mergeStateStatus value to an action:
+//
+//	(true, nil)  → merge the PR now
+//	(false, err) → fatal conflict, abort polling
+//	(false, nil) → keep polling (BLOCKED, BEHIND, UNKNOWN, UNSTABLE, HAS_HOOKS)
+//
+// GitHub mergeStateStatus reference:
+//
+//	CLEAN → all checks pass, no conflicts
+//	DIRTY → merge conflicts
+//	BLOCKED → branch protection blocking merge
+//	BEHIND → branch is behind base
+//	UNSTABLE → checks are failing
+//	HAS_HOOKS → pre-receive hooks pending
+//	UNKNOWN → state not yet computed
+func decideMergeAction(mergeStateStatus string) (shouldMerge bool, err error) {
+	switch mergeStateStatus {
+	case "CLEAN":
+		return true, nil
+	case "DIRTY":
+		return false, stderrors.New("PR has conflicts and cannot be merged")
+	default:
+		return false, nil
+	}
+}
+
 // WaitAndMerge polls the PR until it's mergeable, then merges it.
 func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
 	deadline := time.Time(p.currentDateTimeGetter.Now()).Add(p.mergeTimeout)
@@ -65,15 +92,14 @@ func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
 				return errors.Wrap(ctx, err, "check PR status")
 			}
 
-			switch status.MergeStateStatus {
-			case "MERGEABLE":
-				return p.mergePR(ctx, prURL)
-			case "CONFLICTING":
-				return errors.Errorf(ctx, "PR has conflicts and cannot be merged")
-			default:
-				// Continue polling for other states (BLOCKED, UNKNOWN, etc.)
-				continue
+			shouldMerge, mergeErr := decideMergeAction(status.MergeStateStatus)
+			if mergeErr != nil {
+				return errors.Wrap(ctx, mergeErr, "PR not mergeable")
 			}
+			if shouldMerge {
+				return p.mergePR(ctx, prURL)
+			}
+			// BLOCKED, BEHIND, UNKNOWN, UNSTABLE, HAS_HOOKS → continue polling
 		}
 	}
 }

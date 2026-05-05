@@ -1,7 +1,12 @@
 ---
-status: draft
+status: committing
 spec: [072-bug-autoreview-path-unreachable-when-automerge-takes-precedence]
+summary: Fixed autoReview routing order in handleAfterIsolatedCommit (AutoReview now checked before AutoMerge) and fixed WaitAndMerge to use correct mergeStateStatus values (CLEAN/DIRTY) via new decideMergeAction helper, with full unit test coverage for both fixes.
+container: dark-factory-378-spec-072-fix-autoreview-routing-and-waitandmerge
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-05T21:40:00Z"
+queued: "2026-05-05T21:46:39Z"
+started: "2026-05-05T21:49:03Z"
 branch: dark-factory/bug-autoreview-path-unreachable-when-automerge-takes-precedence
 ---
 
@@ -363,7 +368,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 
 Before writing this test, verify the exact `newTestProcessor` call signature by running:
 ```bash
-grep -n "func newTestProcessor" pkg/processor/
+grep -rn "func newTestProcessor" pkg/processor/
 ```
 and count the number of arguments in the existing calls in `processor_automerge_test.go`. The parameter order and count must match exactly — do NOT guess.
 

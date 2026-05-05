@@ -261,6 +261,16 @@ func handleAfterIsolatedCommit(
 	if err != nil {
 		return errors.Wrap(ctx, err, "find or create PR")
 	}
+	if deps.AutoReview {
+		// AutoReview takes precedence over AutoMerge: open PR, wait for human approval,
+		// then auto-merge after approval (handleApproved in pkg/review/poller.go handles the merge).
+		savePRURLToFrontmatter(gitCtx, deps, promptPath, prURL)
+		if err := deps.PromptManager.SetStatus(ctx, promptPath, string(prompt.InReviewPromptStatus)); err != nil {
+			return errors.Wrap(ctx, err, "set in_review status")
+		}
+		slog.Info("PR created, waiting for review", "url", prURL)
+		return nil
+	}
 	if deps.AutoMerge {
 		return handleAutoMergeForClone(
 			gitCtx,
@@ -273,14 +283,6 @@ func handleAfterIsolatedCommit(
 			prURL,
 			title,
 		)
-	}
-	if deps.AutoReview {
-		savePRURLToFrontmatter(gitCtx, deps, promptPath, prURL)
-		if err := deps.PromptManager.SetStatus(ctx, promptPath, string(prompt.InReviewPromptStatus)); err != nil {
-			return errors.Wrap(ctx, err, "set in_review status")
-		}
-		slog.Info("PR created, waiting for review", "url", prURL)
-		return nil
 	}
 	if err := moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed and commit")

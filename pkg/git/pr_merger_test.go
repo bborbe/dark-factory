@@ -14,6 +14,37 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 )
 
+var _ = Describe("decideMergeAction", func() {
+	DescribeTable("maps mergeStateStatus to action",
+		func(status string, wantMerge bool, wantErr bool) {
+			shouldMerge, err := git.DecideMergeActionForTest(status)
+			if wantErr {
+				Expect(err).To(HaveOccurred())
+				Expect(shouldMerge).To(BeFalse())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shouldMerge).To(Equal(wantMerge))
+			}
+		},
+		Entry("CLEAN → merge", "CLEAN", true, false),
+		Entry("DIRTY → conflict error", "DIRTY", false, true),
+		Entry("BLOCKED → keep polling", "BLOCKED", false, false),
+		Entry("BEHIND → keep polling", "BEHIND", false, false),
+		Entry("UNKNOWN → keep polling", "UNKNOWN", false, false),
+		Entry("UNSTABLE → keep polling", "UNSTABLE", false, false),
+		Entry("HAS_HOOKS → keep polling", "HAS_HOOKS", false, false),
+		Entry("empty string → keep polling", "", false, false),
+		Entry("MERGEABLE (old wrong value) → keep polling", "MERGEABLE", false, false),
+		Entry("CONFLICTING (old wrong value) → keep polling", "CONFLICTING", false, false),
+	)
+
+	It("DIRTY error message mentions conflicts", func() {
+		_, err := git.DecideMergeActionForTest("DIRTY")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("conflict"))
+	})
+})
+
 var _ = Describe("PRMerger", func() {
 	var ctx context.Context
 	var merger git.PRMerger

@@ -352,7 +352,16 @@ func CreateRunner(
 
 	var poller review.ReviewPoller
 	if cfg.AutoReview {
-		poller = CreateReviewPoller(ctx, cfg, promptManager, projectName, n, currentDateTimeGetter)
+		poller = CreateReviewPoller(
+			ctx,
+			cfg,
+			promptManager,
+			projectName,
+			n,
+			currentDateTimeGetter,
+			releaser,
+			cfg.AutoRelease,
+		)
 	}
 
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -966,6 +975,8 @@ func CreateReviewPoller(
 	projectName project.Name,
 	n notifier.Notifier,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	releaser git.Releaser,
+	autoRelease bool,
 ) review.ReviewPoller {
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 
@@ -981,6 +992,9 @@ func CreateReviewPoller(
 		review.NewFixPromptGenerator(),
 		projectName,
 		n,
+		deps.brancher,
+		releaser,
+		autoRelease,
 	)
 }
 

@@ -239,7 +239,7 @@ func (e *branchWorkflowExecutor) handleBranchPRCompletion(
 		if err := e.deps.PRMerger.WaitAndMerge(gitCtx, prURL); err != nil {
 			return errors.Wrap(ctx, err, "wait and merge PR")
 		}
-		return postMergeActions(gitCtx, ctx, e.deps, title)
+		return PostMergeActions(gitCtx, ctx, e.deps, title)
 	}
 	savePRURLToFrontmatter(gitCtx, e.deps, completedPath, prURL)
 	return nil

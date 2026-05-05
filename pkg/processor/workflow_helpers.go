@@ -164,8 +164,10 @@ func handleDirectWorkflow(
 	return nil
 }
 
-// postMergeActions switches to default branch, pulls, and optionally releases.
-func postMergeActions(
+// PostMergeActions switches to default branch, pulls, and optionally releases.
+// Called by both handleAutoMergeForClone (autoMerge path) and reviewPoller.handleApproved
+// (autoReview path) so both delivery paths share one implementation.
+func PostMergeActions(
 	gitCtx context.Context,
 	ctx context.Context,
 	deps WorkflowDeps,
@@ -220,7 +222,7 @@ func handleAutoMergeForClone(
 	if err := moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed and commit")
 	}
-	return postMergeActions(gitCtx, ctx, deps, title)
+	return PostMergeActions(gitCtx, ctx, deps, title)
 }
 
 // handleAfterIsolatedCommit handles push + optional PR + prompt lifecycle for clone/worktree.

@@ -1,7 +1,12 @@
 ---
-status: draft
+status: committing
 spec: [071-bug-autoreview-skips-postmerge-actions-no-tag-no-release]
+summary: Exported postMergeActions as PostMergeActions from pkg/processor, injected Brancher/Releaser/AutoRelease into reviewPoller, called PostMergeActions from handleApproved after MoveToCompleted, updated factory.go CreateReviewPoller call site, added new test cases for autoRelease=true/false and WaitAndMerge failure, and added CHANGELOG entry.
+container: dark-factory-377-fix-071-autoreview-postmerge-actions
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-05T20:30:00Z"
+queued: "2026-05-05T20:34:03Z"
+started: "2026-05-05T20:34:04Z"
 branch: dark-factory/bug-autoreview-skips-postmerge-actions-no-tag-no-release
 ---
 
@@ -491,7 +496,7 @@ Additional spot-checks after implementation:
 2. `grep -n "PostMergeActions" pkg/review/poller.go` — one occurrence (inside `handleApproved`).
 3. `grep -n "brancher\|releaser\|autoRelease" pkg/review/poller.go` — at least six occurrences (struct fields + constructor params + WorkflowDeps literal).
 4. `grep -n "PostMergeActions" pkg/processor/workflow_helpers.go pkg/review/poller.go` — exactly two files, exactly two occurrences total in those files.
-5. `grep -n "releaser.*cfg.AutoRelease\|cfg.AutoRelease" pkg/factory/factory.go` — one occurrence at the `CreateReviewPoller` call site.
+5. `grep -nE "CreateReviewPoller\(.*releaser.*cfg\.AutoRelease" pkg/factory/factory.go` — one occurrence at the `CreateReviewPoller` call site.
 6. `grep -n "CommitAndRelease\|HasChangelog" pkg/review/poller_test.go` — at least two occurrences (new test case 4d).
 7. `grep -n "func postMergeActions" pkg/processor/workflow_helpers.go` — zero occurrences (must be renamed to `PostMergeActions`).
 8. `cd /workspace && go test ./pkg/review/... ./pkg/processor/... ./pkg/factory/...` — all pass.

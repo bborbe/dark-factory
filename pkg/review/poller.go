@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -43,6 +44,9 @@ func NewReviewPoller(
 	generator FixPromptGenerator,
 	projectName project.Name,
 	n notifier.Notifier,
+	brancher git.Brancher,
+	releaser git.Releaser,
+	autoRelease bool,
 ) ReviewPoller {
 	return &reviewPoller{
 		queueDir:            queueDir,
@@ -56,6 +60,9 @@ func NewReviewPoller(
 		generator:           generator,
 		projectName:         projectName,
 		notifier:            n,
+		brancher:            brancher,
+		releaser:            releaser,
+		autoRelease:         autoRelease,
 	}
 }
 
@@ -74,6 +81,9 @@ type reviewPoller struct {
 	generator           FixPromptGenerator
 	projectName         project.Name
 	notifier            notifier.Notifier
+	brancher            git.Brancher
+	releaser            git.Releaser
+	autoRelease         bool
 }
 
 // resolveReviewers returns the allowed reviewers, fetching them lazily on the first call.
@@ -194,14 +204,19 @@ func (p *reviewPoller) processPrompt(ctx context.Context, path string) {
 	case git.ReviewVerdictNone:
 		// No trusted review yet — nothing to do.
 	case git.ReviewVerdictApproved:
-		p.handleApproved(ctx, path, prURL)
+		p.handleApproved(ctx, path, prURL, pf)
 	case git.ReviewVerdictChangesRequested:
 		p.handleChangesRequested(ctx, path, prURL, pf, reviewResult.Body)
 	}
 }
 
-// handleApproved merges the PR and marks the prompt as completed.
-func (p *reviewPoller) handleApproved(ctx context.Context, path string, prURL string) {
+// handleApproved merges the PR, marks the prompt as completed, and runs post-merge actions.
+func (p *reviewPoller) handleApproved(
+	ctx context.Context,
+	path string,
+	prURL string,
+	pf *prompt.PromptFile,
+) {
 	if err := p.prMerger.WaitAndMerge(ctx, prURL); err != nil {
 		slog.Warn("failed to merge PR", "file", filepath.Base(path), "error", err)
 		return
@@ -214,6 +229,19 @@ func (p *reviewPoller) handleApproved(ctx context.Context, path string, prURL st
 			"error",
 			err,
 		)
+	}
+	title := pf.Title()
+	if title == "" {
+		title = strings.TrimSuffix(filepath.Base(path), ".md")
+	}
+	gitCtx := context.WithoutCancel(ctx)
+	deps := processor.WorkflowDeps{
+		Brancher:    p.brancher,
+		Releaser:    p.releaser,
+		AutoRelease: p.autoRelease,
+	}
+	if err := processor.PostMergeActions(gitCtx, ctx, deps, title); err != nil {
+		slog.Warn("post-merge actions failed", "file", filepath.Base(path), "error", err)
 	}
 }
 

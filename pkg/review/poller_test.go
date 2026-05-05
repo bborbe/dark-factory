@@ -30,6 +30,8 @@ var _ = Describe("ReviewPoller", func() {
 		manager             *mocks.ReviewPromptManager
 		generator           *mocks.FixPromptGenerator
 		collaboratorFetcher *mocks.CollaboratorFetcher
+		brancher            *mocks.Brancher
+		releaser            *mocks.Releaser
 		poller              review.ReviewPoller
 		maxRetries          int
 		promptPath          string
@@ -53,6 +55,14 @@ var _ = Describe("ReviewPoller", func() {
 		generator = &mocks.FixPromptGenerator{}
 		collaboratorFetcher = &mocks.CollaboratorFetcher{}
 		collaboratorFetcher.FetchReturns([]string{"trusted-reviewer"})
+		brancher = &mocks.Brancher{}
+		releaser = &mocks.Releaser{}
+		// Default: post-merge actions succeed — brancher returns a default branch and pull succeeds
+		brancher.DefaultBranchReturns("master", nil)
+		brancher.SwitchReturns(nil)
+		brancher.PullReturns(nil)
+		// Default: no CHANGELOG → no release tag created
+		releaser.HasChangelogReturns(false)
 
 		// Create a real .md file in queueDir so os.ReadDir finds it.
 		promptPath = filepath.Join(queueDir, "001-test-prompt.md")
@@ -89,6 +99,9 @@ var _ = Describe("ReviewPoller", func() {
 			generator,
 			"",
 			notifier.NewMultiNotifier(),
+			brancher,
+			releaser,
+			false,
 		)
 	})
 
@@ -111,7 +124,8 @@ var _ = Describe("ReviewPoller", func() {
 
 			Eventually(func() bool {
 				return prMerger.WaitAndMergeCallCount() >= 1 &&
-					manager.MoveToCompletedCallCount() >= 1
+					manager.MoveToCompletedCallCount() >= 1 &&
+					brancher.PullCallCount() >= 1
 			}).Should(BeTrue())
 		})
 
@@ -207,6 +221,9 @@ var _ = Describe("ReviewPoller", func() {
 				generator,
 				"test-project",
 				fakeNotifier,
+				brancher,
+				releaser,
+				false,
 			)
 
 			manager.LoadReturns(&prompt.PromptFile{
@@ -363,6 +380,81 @@ var _ = Describe("ReviewPoller", func() {
 			Expect(generator.GenerateCallCount()).To(BeNumerically(">=", 1))
 			// IncrementRetryCount must NOT be called if Generate failed.
 			Expect(manager.IncrementRetryCountCallCount()).To(Equal(0))
+		})
+
+		It(
+			"calls CommitAndRelease after approval when autoRelease=true and CHANGELOG exists",
+			func() {
+				pollerWithRelease := review.NewReviewPoller(
+					queueDir,
+					inboxDir,
+					collaboratorFetcher,
+					maxRetries,
+					1*time.Millisecond,
+					fetcher,
+					prMerger,
+					manager,
+					generator,
+					"",
+					notifier.NewMultiNotifier(),
+					brancher,
+					releaser,
+					true,
+				)
+
+				fetcher.FetchLatestReviewReturns(&git.ReviewResult{
+					Verdict: git.ReviewVerdictApproved,
+				}, nil)
+				prMerger.WaitAndMergeReturns(nil)
+				manager.MoveToCompletedReturns(nil)
+				brancher.DefaultBranchReturns("master", nil)
+				brancher.SwitchReturns(nil)
+				brancher.PullReturns(nil)
+				releaser.HasChangelogReturns(true)
+				releaser.CommitAndReleaseReturns(nil)
+
+				runCtx, runCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer runCancel()
+				go func() { _ = pollerWithRelease.Run(runCtx) }()
+
+				Eventually(func() bool {
+					return releaser.CommitAndReleaseCallCount() >= 1
+				}).Should(BeTrue())
+			},
+		)
+
+		It("pulls default branch but does not tag when autoRelease=false", func() {
+			fetcher.FetchLatestReviewReturns(&git.ReviewResult{
+				Verdict: git.ReviewVerdictApproved,
+			}, nil)
+			prMerger.WaitAndMergeReturns(nil)
+			manager.MoveToCompletedReturns(nil)
+			// default setup: brancher.Pull/Switch/DefaultBranch return nil, releaser.HasChangelog=false
+
+			runCtx, runCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer runCancel()
+			go func() { _ = poller.Run(runCtx) }()
+
+			Eventually(func() bool {
+				return brancher.PullCallCount() >= 1
+			}).Should(BeTrue())
+			runCancel()
+
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
+		})
+
+		It("does not call PostMergeActions when WaitAndMerge fails", func() {
+			fetcher.FetchLatestReviewReturns(&git.ReviewResult{
+				Verdict: git.ReviewVerdictApproved,
+			}, nil)
+			prMerger.WaitAndMergeReturns(stderrors.New("merge failed"))
+
+			runCtx, runCancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer runCancel()
+			Expect(poller.Run(runCtx)).To(Succeed())
+
+			Expect(brancher.PullCallCount()).To(Equal(0))
+			Expect(brancher.DefaultBranchCallCount()).To(Equal(0))
 		})
 
 		It("logs warning but continues when queueDir cannot be read", func() {

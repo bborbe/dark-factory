@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.150.1
+
+- fix: `autoReview` approval now runs `postMergeActions` after merge — master is pulled locally, `## Unreleased` is promoted to `## vX.Y.Z`, tag is created and pushed (matches `autoMerge`-only path)
+
 ## v0.150.0
 
 - feat: Run preflight at daemon startup before the watcher loop; daemon exits non-zero immediately when baseline is broken at start

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.149.0
+
+- feat: add `/dark-factory:refine-spec` command + `spec-refiner` agent — interactive spec narrowing between `create-spec` (capture) and `audit-spec` (structure check); forces single-sentence scope, splits adjacent concerns into `specs/ideas/` stubs, transitions status idea→draft
+
 ## v0.148.4
 
 - fix: `branch` workflow retry no longer crashes at `git checkout` when the feature branch has divergent content for prompt-file paths (discards dark-factory's own bookkeeping dirt before the branch switch)

@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [069-pr-body-rich-content]
 summary: Added PromptFile.Summary() method and enriched PR body with prompt summary, spec reference, and issue reference; updated both findOrCreatePR call sites; added unit tests and scenario 018; fixed otel vulnerability.
 container: dark-factory-375-spec-069-pr-body-rich-content
@@ -7,6 +7,7 @@ dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-05T17:30:00Z"
 queued: "2026-05-05T17:36:06Z"
 started: "2026-05-05T17:36:07Z"
+completed: "2026-05-05T17:47:45Z"
 branch: dark-factory/pr-body-rich-content
 ---
 

@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [070-preflight-on-daemon-start]
 created: "2026-05-05T18:00:00Z"
+queued: "2026-05-05T19:40:53Z"
 branch: dark-factory/preflight-on-daemon-start
 ---
 
@@ -170,20 +171,42 @@ The `preflightChecker` variable is already declared above in `CreateRunner` (lin
 
 ## 4. Update `pkg/runner/runner_test.go`
 
-### 4a. Update `newTestRunner`
+### 4a. Update ALL `runner.NewRunner` call sites in `pkg/runner/runner_test.go`
 
-In `newTestRunner`, the last two arguments are:
+**Important:** the test file has **10 separate `runner.NewRunner(...)` call sites**, not just `newTestRunner`. Adding a new parameter breaks compilation at every site. Verify with:
+
+```bash
+grep -n "runner.NewRunner(" pkg/runner/runner_test.go
+# expected: 10 lines (newTestRunner at ~68, plus 9 inline at ~364, 426, 478, 546, 764, 847, 940, 1029, 1092)
+```
+
+At every one of those call sites, the last two trailing arguments are:
 ```go
     false, // hideGit
     nil,   // logWriter: no file in tests
 ```
 
-Change to:
+Insert a `nil, // preflightChecker` argument between them so each call ends with:
 ```go
     false, // hideGit
     nil,   // preflightChecker: no preflight in tests
     nil,   // logWriter: no file in tests
 ```
+
+Recommended: use `sed` to edit all sites in one pass, then re-grep to confirm 10 occurrences:
+
+```bash
+# Insert preflightChecker line before every "nil,   // logWriter: no file in tests" line
+sed -i.bak '/nil,   \/\/ logWriter: no file in tests/i\
+\t\t\tnil,   // preflightChecker: no preflight in tests' pkg/runner/runner_test.go
+rm pkg/runner/runner_test.go.bak
+
+# Verify
+grep -c "preflightChecker: no preflight in tests" pkg/runner/runner_test.go
+# expected: 10
+```
+
+Adjust indentation if `sed` insertion drops indentation off — the inserted line must match the surrounding indent level at each call site (mix of 2 and 3 leading tabs). If `sed` mangles indentation, fall back to manual edit at each line, but every site must be updated.
 
 ### 4b. Add new import lines
 
@@ -331,7 +354,7 @@ grep -n "preflightChecker" pkg/factory/factory.go
 # expect: one occurrence in the runner.NewRunner call
 
 grep -c "preflightChecker" pkg/runner/runner_test.go
-# expect: ≥ 5 (newTestRunner nil arg + test block uses)
+# expect: ≥ 14 (10 call-site nil args + test block uses)
 
 ls mocks/preflight-checker.go
 # must exist

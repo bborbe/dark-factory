@@ -172,8 +172,8 @@ var _ = Describe("Processor", func() {
 			Expect(worktreePath).To(ContainSubstring("dark-factory/test-project-001-worktree-test"))
 			Expect(branchName).To(Equal("dark-factory/001-worktree-test"))
 
-			// Verify push was called
-			Expect(brancher.PushCallCount()).To(Equal(1))
+			// Verify push was called (once from inside clone executor, once from handleAfterIsolatedCommit)
+			Expect(brancher.PushCallCount()).To(Equal(2))
 			_, pushedBranch := brancher.PushArgsForCall(0)
 			Expect(pushedBranch).To(Equal("dark-factory/001-worktree-test"))
 

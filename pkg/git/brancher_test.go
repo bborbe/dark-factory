@@ -522,4 +522,67 @@ var _ = Describe("Brancher", func() {
 			Expect(err.Error()).To(ContainSubstring("merge origin/main"))
 		})
 	})
+
+	Describe("FetchBranch", func() {
+		It(
+			"returns nil when origin does not have the branch (swallows couldn't find remote ref)",
+			func() {
+				// Set up a bare "origin" without the feature branch pushed to it.
+				bareDir := GinkgoT().TempDir()
+				cmd := exec.Command("git", "init", "--bare", bareDir)
+				Expect(cmd.Run()).To(Succeed())
+				cmd = exec.Command("git", "remote", "add", "origin", bareDir)
+				cmd.Dir = tempDir
+				Expect(cmd.Run()).To(Succeed())
+
+				err := b.FetchBranch(ctx, "dark-factory/not-yet-pushed")
+				Expect(err).NotTo(HaveOccurred())
+			},
+		)
+
+		It("creates a local branch when origin has the branch", func() {
+			// Set up a bare "origin".
+			bareDir := GinkgoT().TempDir()
+			cmd := exec.Command("git", "init", "--bare", bareDir)
+			Expect(cmd.Run()).To(Succeed())
+			// Add origin remote.
+			cmd = exec.Command("git", "remote", "add", "origin", bareDir)
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+			// Push the initial commit to origin.
+			cmd = exec.Command("git", "push", "origin", "HEAD:master")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+			// Create and push a feature branch to origin.
+			cmd = exec.Command("git", "checkout", "-b", "dark-factory/feature-foo")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+			cmd = exec.Command("git", "push", "origin", "dark-factory/feature-foo")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+			// Switch back to master so dark-factory/feature-foo is not the current branch.
+			cmd = exec.Command("git", "checkout", "master")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+			// Delete the local branch to simulate parent-repo state.
+			cmd = exec.Command("git", "branch", "-D", "dark-factory/feature-foo")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed())
+
+			// FetchBranch should recreate the local branch from origin.
+			err := b.FetchBranch(ctx, "dark-factory/feature-foo")
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify the local branch now exists.
+			cmd = exec.Command("git", "rev-parse", "--verify", "dark-factory/feature-foo")
+			cmd.Dir = tempDir
+			Expect(cmd.Run()).To(Succeed(), "local branch should have been created by FetchBranch")
+		})
+
+		It("returns error for invalid branch name", func() {
+			err := b.FetchBranch(ctx, "--injected-flag")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("validate branch name"))
+		})
+	})
 })

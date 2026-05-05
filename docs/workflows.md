@@ -58,6 +58,7 @@ Progressive isolation levels.
 - Parallel execution: each prompt gets its own clone
 - Clone contains a full `.git` directory — git works inside the container
 - Cleanup: `rm -rf` the clone after commit/push
+- **Push-before-remove:** the clone executor pushes the feature branch to origin from inside the clone (before `os.Chdir` back to the original repo and before `Cloner.Remove`). This ensures the branch is reachable on origin when `handleAfterIsolatedCommit` runs in the parent repo after the clone is gone.
 
 ## Delivery: orthogonal flags
 

@@ -221,6 +221,13 @@ func handleAfterIsolatedCommit(
 	promptPath string,
 	completedPath string,
 ) error {
+	// Fetch the branch as a local ref so that CommitsAhead can resolve the bare
+	// branch name via git rev-list. For the clone workflow the branch was just
+	// pushed from inside the clone; for worktree the local ref already exists and
+	// this is a fast no-op (or a silent skip if origin does not have it yet).
+	if err := deps.Brancher.FetchBranch(gitCtx, branchName); err != nil {
+		return errors.Wrap(ctx, err, "fetch branch before commit count")
+	}
 	ahead, err := deps.Brancher.CommitsAhead(gitCtx, branchName)
 	if err != nil {
 		return errors.Wrap(ctx, err, "count commits ahead")

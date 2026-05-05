@@ -96,6 +96,18 @@ type Brancher struct {
 	fetchAndVerifyBranchReturnsOnCall map[int]struct {
 		result1 error
 	}
+	FetchBranchStub        func(context.Context, string) error
+	fetchBranchMutex       sync.RWMutex
+	fetchBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	fetchBranchReturns struct {
+		result1 error
+	}
+	fetchBranchReturnsOnCall map[int]struct {
+		result1 error
+	}
 	IsCleanStub        func(context.Context) (bool, error)
 	isCleanMutex       sync.RWMutex
 	isCleanArgsForCall []struct {
@@ -626,6 +638,68 @@ func (fake *Brancher) FetchAndVerifyBranchReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.fetchAndVerifyBranchReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) FetchBranch(arg1 context.Context, arg2 string) error {
+	fake.fetchBranchMutex.Lock()
+	ret, specificReturn := fake.fetchBranchReturnsOnCall[len(fake.fetchBranchArgsForCall)]
+	fake.fetchBranchArgsForCall = append(fake.fetchBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.FetchBranchStub
+	fakeReturns := fake.fetchBranchReturns
+	fake.recordInvocation("FetchBranch", []interface{}{arg1, arg2})
+	fake.fetchBranchMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) FetchBranchCallCount() int {
+	fake.fetchBranchMutex.RLock()
+	defer fake.fetchBranchMutex.RUnlock()
+	return len(fake.fetchBranchArgsForCall)
+}
+
+func (fake *Brancher) FetchBranchCalls(stub func(context.Context, string) error) {
+	fake.fetchBranchMutex.Lock()
+	defer fake.fetchBranchMutex.Unlock()
+	fake.FetchBranchStub = stub
+}
+
+func (fake *Brancher) FetchBranchArgsForCall(i int) (context.Context, string) {
+	fake.fetchBranchMutex.RLock()
+	defer fake.fetchBranchMutex.RUnlock()
+	argsForCall := fake.fetchBranchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) FetchBranchReturns(result1 error) {
+	fake.fetchBranchMutex.Lock()
+	defer fake.fetchBranchMutex.Unlock()
+	fake.FetchBranchStub = nil
+	fake.fetchBranchReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) FetchBranchReturnsOnCall(i int, result1 error) {
+	fake.fetchBranchMutex.Lock()
+	defer fake.fetchBranchMutex.Unlock()
+	fake.FetchBranchStub = nil
+	if fake.fetchBranchReturnsOnCall == nil {
+		fake.fetchBranchReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.fetchBranchReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

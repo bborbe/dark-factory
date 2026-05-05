@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"os"
 	"path/filepath"
+	"sync"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -362,12 +363,28 @@ func (s *stubWorktreer) Remove(_ context.Context, _ string) error {
 	return nil
 }
 
+// callRecorder tracks the order of named operations across multiple stubs.
+type callRecorder struct {
+	mu  sync.Mutex
+	ops []string
+}
+
+func (r *callRecorder) record(op string) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ops = append(r.ops, op)
+}
+
 // stubCloner tracks Clone/Remove calls.
 type stubCloner struct {
 	cloneStub   func(ctx context.Context, srcDir, destDir, branch string) error
 	removeStub  func(ctx context.Context, path string) error
 	cloneCount  int
 	removeCount int
+	recorder    *callRecorder
 }
 
 func (s *stubCloner) Clone(ctx context.Context, srcDir, destDir, branch string) error {
@@ -379,6 +396,7 @@ func (s *stubCloner) Clone(ctx context.Context, srcDir, destDir, branch string) 
 }
 
 func (s *stubCloner) Remove(_ context.Context, _ string) error {
+	s.recorder.record("Remove")
 	s.removeCount++
 	if s.removeStub != nil {
 		return s.removeStub(context.Background(), "")
@@ -402,9 +420,11 @@ type stubBrancher struct {
 	mergeOriginDefaultErr error
 	commitsAhead          int
 	commitsAheadErr       error
+	recorder              *callRecorder
 }
 
 func (s *stubBrancher) Push(_ context.Context, _ string) error {
+	s.recorder.record("Push")
 	s.pushCount++
 	return nil
 }
@@ -464,6 +484,8 @@ func (s *stubBrancher) CommitsAhead(_ context.Context, _ string) (int, error) {
 }
 
 func (s *stubBrancher) DiscardUncommittedInPaths(_ context.Context, _ []string) error { return nil }
+
+func (s *stubBrancher) FetchBranch(_ context.Context, _ string) error { return nil }
 
 // stubPRCreator tracks FindOpenPR/Create calls.
 type stubPRCreator struct {
@@ -856,7 +878,7 @@ var _ = Describe("processor workflow routing", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(stubCl.removeCount).To(Equal(1))
-			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(2))
 			Expect(stubPR.createCount).To(Equal(0))
 			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
 		})
@@ -888,7 +910,7 @@ var _ = Describe("processor workflow routing", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(stubCl.removeCount).To(Equal(1))
-			Expect(stubBr.pushCount).To(Equal(1))
+			Expect(stubBr.pushCount).To(Equal(2))
 			Expect(stubPR.createCount).To(Equal(1))
 		})
 	})
@@ -1680,11 +1702,60 @@ var _ = Describe("processor workflow routing", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(stubCl.removeCount).To(Equal(1))
-				Expect(stubBr.pushCount).To(Equal(0))
+				Expect(stubBr.pushCount).To(Equal(1))
 				Expect(stubPR.createCount).To(Equal(0))
 				Expect(stubMgr.moveToCompletedCount).To(Equal(1))
 			},
 		)
+	})
+
+	// 11al: cloneWorkflowExecutor.Complete — Push precedes clone removal
+	Describe("11al: cloneWorkflowExecutor.Complete — push precedes clone removal", func() {
+		It("calls Push before Remove (ordering assertion, not just counts)", func() {
+			recorder := &callRecorder{}
+			stubBr.recorder = recorder
+			stubCl.recorder = recorder
+
+			stubBr.commitsAhead = 1
+			deps := makeDeps(false)
+			rawExec, ok := NewCloneWorkflowExecutor(deps).(*cloneWorkflowExecutor)
+			Expect(ok).To(BeTrue())
+			pf := newPromptFile("feature/clone-push-order")
+
+			cloneDir := GinkgoT().TempDir()
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalDir) })
+
+			rawExec.branchName = "feature/clone-push-order"
+			rawExec.clonePath = cloneDir
+			rawExec.originalDir = originalDir
+
+			Expect(os.Chdir(cloneDir)).To(Succeed())
+
+			err = rawExec.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Counter sanity
+			Expect(stubBr.pushCount).To(Equal(2))
+			Expect(stubCl.removeCount).To(Equal(1))
+
+			// Load-bearing assertion: the FIRST Push must come before the only Remove.
+			firstPushIdx := -1
+			removeIdx := -1
+			for i, op := range recorder.ops {
+				if op == "Push" && firstPushIdx == -1 {
+					firstPushIdx = i
+				}
+				if op == "Remove" {
+					removeIdx = i
+				}
+			}
+			Expect(firstPushIdx).To(BeNumerically(">=", 0), "Push should have been called")
+			Expect(removeIdx).To(BeNumerically(">=", 0), "Remove should have been called")
+			Expect(firstPushIdx).To(BeNumerically("<", removeIdx),
+				"Push must precede Remove — the original bug was Remove-before-Push")
+		})
 	})
 })
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.148.5
+
+- fix: `clone` workflow (`workflow: clone`, legacy `workflow: pr`) now completes end-to-end — feature branch pushed from inside the clone before removal, parent repo fetches the branch ref before `CommitsAhead`, eliminating `exit 128` crash at post-commit step
+
 ## v0.149.1
 
 - refactor: `/dark-factory:refine-spec` is now a single slash command (no agent) — preserves conversation context and removes the redundant restart-question UX that fired even when the human/Claude session already had the single-sentence anchor

@@ -45,6 +45,15 @@ type Brancher interface {
 	DiscardUncommittedInPaths(ctx context.Context, prefixes []string) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
+	// FetchBranch fetches the named branch from origin as a local branch
+	// (git fetch origin <branch>:<branch>). This creates refs/heads/<branch>
+	// in the current repo so that CommitsAhead's bare-branch ref resolves
+	// correctly after a clone executor has pushed the branch from a separate
+	// clone directory.
+	// If origin does not yet have the branch (e.g., worktree path before push),
+	// the error is swallowed and nil is returned — the caller can proceed with
+	// whatever local ref already exists.
+	FetchBranch(ctx context.Context, branch string) error
 }
 
 // BrancherOption is a functional option for configuring a brancher.
@@ -360,6 +369,34 @@ func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
 		return errors.Wrapf(ctx, err, "merge branch %q to default: %s", branch, stderr.String())
 	}
 	slog.Info("merged feature branch to default", "branch", branch, "default", defaultBranch)
+	return nil
+}
+
+// FetchBranch fetches the named branch from origin into a local branch of the same name.
+// It runs: git fetch origin <branch>:<branch>
+// If origin does not have the branch ("couldn't find remote ref"), the error is
+// logged at debug level and nil is returned — a missing remote branch is not a
+// failure; it simply means there is nothing to fetch yet (e.g. worktree path
+// before push). Any other git failure is returned wrapped.
+func (b *brancher) FetchBranch(ctx context.Context, branch string) error {
+	if err := ValidateBranchName(ctx, branch); err != nil {
+		return errors.Wrap(ctx, err, "validate branch name")
+	}
+	slog.Debug("fetching branch from origin as local ref", "branch", branch)
+	var stderr strings.Builder
+	// #nosec G204 -- branch name is derived from prompt filename and sanitized
+	cmd := exec.CommandContext(ctx, "git", "fetch", "origin", branch+":"+branch)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := stderr.String()
+		if strings.Contains(msg, "couldn't find remote ref") {
+			// Branch not on origin yet — nothing to fetch; caller uses existing local ref.
+			slog.Debug("FetchBranch: branch not on origin yet, skipping", "branch", branch)
+			return nil
+		}
+		return errors.Wrapf(ctx, err, "fetch branch %q from origin: %s", branch, msg)
+	}
+	slog.Debug("FetchBranch: fetched branch as local ref", "branch", branch)
 	return nil
 }
 

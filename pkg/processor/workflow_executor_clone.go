@@ -105,6 +105,14 @@ func (e *cloneWorkflowExecutor) Complete(
 		return errors.Wrap(ctx, err, "commit changes")
 	}
 
+	// Push from inside the clone while the feature branch is still locally
+	// visible. The parent repo has never seen this branch; pushing here ensures
+	// it exists on origin before the clone is removed and handleAfterIsolatedCommit
+	// runs CommitsAhead against the parent repo.
+	if err := e.deps.Brancher.Push(gitCtx, e.branchName); err != nil {
+		return errors.Wrap(ctx, err, "push branch from clone")
+	}
+
 	if err := os.Chdir(e.originalDir); err != nil {
 		return errors.Wrap(ctx, err, "chdir back to original directory")
 	}

@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [068-bug-clone-workflow-commits-ahead-fails-after-clone-removed]
+summary: Fixed clone workflow exit 128 crash by pushing the feature branch from inside the clone before chdir-back and clone removal, adding FetchBranch to the Brancher interface to create a local ref in the parent repo before CommitsAhead runs, and adding ordering assertion tests to prove push-before-remove invariant.
+container: dark-factory-374-spec-068-fix-clone-workflow-commits-ahead
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-04T21:30:00Z"
 queued: "2026-05-05T11:25:00Z"
+started: "2026-05-05T11:27:26Z"
 branch: dark-factory/bug-clone-workflow-commits-ahead-fails-after-clone-removed
 ---
 

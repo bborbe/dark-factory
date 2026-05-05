@@ -19,33 +19,58 @@ All scenarios use explicit frontmatter: `status: idea`, `draft`, `active`, or `o
 
 ## When to Write a Scenario
 
-**Scenarios verify integration seams that unit tests can't prove.** Unit tests mock
-dependencies and pass green when each component works in isolation. Scenarios
-exercise the real wiring: config → runtime, host → container, process → git remote.
+### Test pyramid framework
 
-| Triggers scenario | Why |
-|---|---|
-| Touches orchestration/lifecycle (processor, daemon loop, watcher) | Control-flow bugs (busy-loops, leaked goroutines) invisible to unit tests |
-| Crosses container boundary (Docker exec, mounts, host↔container I/O) | Unit tests mock runners; real container behavior differs |
-| Crosses git boundary (clone, commit, push, PR) | Git + remote side effects can't be faked reliably |
-| Config field → runtime behavior | Proves the field actually reaches execution, not dropped by loader |
-| New operation / schema / identifier published through a library validator | Library runtime validation (regex, schema, allowlist) only fires on the real publish path |
-| New registry entry / handler / route | Registration in code ≠ reachable via production dispatch |
-| Regression from a bug unit tests missed | The seam that failed must be locked down |
+| Layer | Frequency | Scope | When to write |
+|---|---|---|---|
+| Unit | nearly always | single function/method on isolated data | all new business logic, algorithms, edge cases, error states; mocks fine |
+| Integration | selectively | two or more components, or one component against a real out-of-process dep | repository ↔ DB, client ↔ external API, module-to-module wiring; one happy path + one error path is usually enough |
+| End-to-end (scenario) | sparingly | full system as a user would exercise it | critical happy-path user journeys; smoke tests for production-like wiring |
 
-| Does NOT trigger scenario | Why |
-|---|---|
-| Pure refactor inside a package | Existing scenarios cover the behavior |
-| Error message / log wording | No seam, no behavior change |
-| New struct field with no runtime consumer | No seam until something reads it |
-| Config / version bump | No new seam |
-| Doc / comment changes | No code seam |
+**Directive: push tests as far down the pyramid as possible.** Default is unit. Reach for integration only when a real out-of-process dependency or a contract between modules is involved. Reach for a scenario only when the bottom two layers genuinely cannot exercise the behavior.
 
-**If in doubt:** ask "could a unit test with mocks pass while this silently breaks?"
-If yes → scenario. Two canonical examples:
+### Why scenarios are scarce
 
-- **Spec 055** — config field wiring that was dropped by the loader; unit tests passed, production didn't.
-- **Spec 015** — a new Kafka `CommandOperation` constant (`increment_frontmatter`, with underscores) passed struct-shape tests but was rejected at runtime by the cqrs regex `^[a-z][a-z-]*$`. A scenario that publishes a real command through the dev cluster and asserts the frontmatter update lands would have caught it before operators saw a retry loop.
+Scenarios are slow, brittle, and expensive. Adding one per spec inverts the pyramid: 100 specs → 100 E2E tests → CI takes hours, flaky failures everywhere, every fix is an archaeological dig because E2E tests are bad at root-cause analysis. Most specs are satisfied by unit and integration tests in the implementation prompt.
+
+Scenarios exist for the rare cases where neither unit nor integration tests can exercise the real path: real Docker container behavior, real git remote, real GitHub API rendering, real multi-service orchestration. Use sparingly.
+
+### Default: no new scenario
+
+A spec does NOT need a new scenario when any of these are true:
+
+- The behavior can be exercised by unit tests (per-function correctness)
+- The behavior can be exercised by an integration test in the package (real `git` binary, in-process HTTP handler, fake clock — anything you can wire up locally without a sandbox repo or external service)
+- An existing scenario already covers the same code path
+- The change is a pure refactor, doc edit, error wording, struct-field addition with no runtime consumer, config bump, or version bump
+- The spec author and reviewer agree the operator's first-deploy smoke check is sufficient (informal manual verification, not committed)
+
+### Add a scenario only when ALL of these hold
+
+1. **Unit and integration tests genuinely cannot reach the behavior.** Real Docker container output, real `gh pr view` rendering, real `kubectlquant` cluster state — things that need a real external system, not a test double.
+2. **The behavior is load-bearing for an essential user journey.** PR opens correctly end-to-end, daemon starts on a green tree, prompt completes the clone workflow without crashing. Not "every config field that flows to runtime."
+3. **No existing scenario covers it.** Reuse before adding.
+4. **You can name the regression risk.** "If this breaks at runtime and no scenario catches it, an operator hits an `exit 128` for the second time" — concrete, specific. Not "in case something breaks."
+
+If you can't tick all four, do NOT add a scenario. The unit and integration tests in the prompt are sufficient.
+
+### Canonical examples — when a scenario IS justified
+
+- **Spec 068** — clone workflow crashed at runtime with `exit 128` after the clone was deleted. Unit tests passed. The bug was a control-flow ordering issue in the daemon's post-commit pipeline that no test double could catch. Scenario locks it down.
+- **Spec 015** — a new Kafka `CommandOperation` constant passed struct-shape tests but was rejected at runtime by the cqrs regex. Real publish through the dev cluster was the only way to surface this.
+- **Spec 055** — config field wiring dropped by the loader. Unit tests on the field passed; production didn't see it.
+
+Each one: load-bearing, runtime-only failure mode, no test double can fake the boundary.
+
+### Counter-examples — when a scenario is NOT justified
+
+- A new public method on a struct, with a unit test asserting its return value.
+- A new config field whose handler is unit-tested and whose effect is also unit-tested.
+- An additional `slog.Info` log line.
+- A refactor that splits one function into two; behavior unchanged.
+- A bug fix where the original failure was caught by a unit test that simply hadn't existed before — write the unit test, no scenario needed.
+
+If the test pyramid says it should be unit or integration, write it as unit or integration. Don't reach for a scenario because "this touches an integration seam."
 
 ## Format
 

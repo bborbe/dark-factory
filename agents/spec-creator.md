@@ -123,7 +123,7 @@ Binary, testable statements:
 - [ ]
 - [ ]
 
-**Scenario coverage for integration seams (MANDATORY when triggered):** if the spec introduces or modifies an integration seam (new Kafka operation / schema / topic, new CRD field, new HTTP route, new subprocess interface, new external service, changed dispatch rule), add an acceptance criterion that either (a) names an existing `scenarios/NNN-*.md` that already exercises the seam, or (b) requires a new scenario be written as part of this change. Prompt-level tests cannot fake multi-service boundaries or real deployment state; scenarios are the only layer that runs the real path. Use the `docs/scenario-writing.md` "When to Write a Scenario" guide to decide.
+**Scenario coverage — default: NO new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Scenarios are E2E tests at the top of the test pyramid — slow, brittle, expensive — and should be rare. Add a scenario AC only when ALL of these hold: (a) unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam"), (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. If unsure: NO scenario. See `docs/scenario-writing.md` "When to Write a Scenario" for the canonical rule.
 
 ## Verification
 

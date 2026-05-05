@@ -103,7 +103,7 @@ Before approving, verify the spec answers all of these:
 - [ ] What could go wrong?
 - [ ] What must not regress?
 - [ ] How will we know it's done?
-- [ ] If the change introduces or modifies an integration seam (publish path, new Kafka operation, new CRD field, new HTTP route, new subprocess interface, new external service call), does Acceptance Criteria call for a scenario that exercises the real seam end-to-end? If yes, the scenario must either already exist (link it) or be listed as an acceptance criterion that ships with the spec.
+- [ ] **Default: no new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Add a scenario only when (a) unit/integration tests genuinely cannot reach the behavior, (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. See `docs/scenario-writing.md` for the full rule. If unsure: NO scenario.
 
 If the spec can't answer these in under a page, it's underdesigned or too large.
 
@@ -111,15 +111,17 @@ If the spec can't answer these in under a page, it's underdesigned or too large.
 
 Specs drive three defense layers. Keep them scoped correctly:
 
-| Layer | Belongs to | Catches |
-|---|---|---|
-| Unit contract test | Prompt | Single-function library validator, parser, marshaller on a new value |
-| Integration test | Prompt | Dispatch-path round-trip, registry lookup, serialization through real code |
-| End-to-end scenario | Spec + scenario | Real deployment behavior, multi-service interactions, boundaries no test harness can fake |
+| Layer | Belongs to | Catches | Default coverage |
+|---|---|---|---|
+| Unit contract test | Prompt | Single-function library validator, parser, marshaller on a new value | **Always** — bulk of test coverage |
+| Integration test | Prompt | Dispatch-path round-trip, registry lookup, serialization through real code | **Most specs** — covers what unit can't |
+| End-to-end scenario | Spec + scenario | Real deployment behavior, multi-service interactions, boundaries no test harness can fake | **Rare** — only when the bottom two layers genuinely cannot reach the behavior |
 
-A spec that introduces a new integration seam MUST call for the matching E2E scenario in Acceptance Criteria. A spec that only refactors existing behavior (no new seam) does not need one. Use the scenario-writing guide to decide whether an existing scenario covers the change or a new one is required.
+The pyramid: broad base of unit tests, smaller layer of integration tests, narrow tip of E2E scenarios. Most specs ship with prompt-level tests only. A scenario is justified only when integration tests can't reach the behavior — see `docs/scenario-writing.md` for the four-condition test.
 
-**Example where a spec MUST require a scenario:** spec 015 introduced a new Kafka command kind `increment_frontmatter`. The prompt-level tests verified struct shape and called the cqrs validator. Neither caught a regex mismatch that rejected the operation at actual publish time in dev. A scenario that publishes a real `IncrementFrontmatterCommand` through the dev cluster and asserts the frontmatter update lands would have caught it before operators saw a retry loop.
+**Example where a scenario IS justified:** spec 068 — the clone workflow crashed with `exit 128` at runtime after the clone was deleted. Unit tests passed. The bug was a control-flow ordering issue that no test double could catch. The scenario locks it down.
+
+**Example where a scenario is NOT justified:** a new config field whose handler is unit-tested and whose effect is unit-tested. The field reaches runtime via the same loader path 200 other fields use; reproducing that with a scenario adds no signal.
 
 ## Audit and Approve
 

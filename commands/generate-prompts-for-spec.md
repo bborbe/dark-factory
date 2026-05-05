@@ -36,6 +36,26 @@ Do NOT inline patterns that are already documented — the YOLO agent will read 
 
 Decompose the spec into 2–6 prompt files. Group coupled behaviors that cannot be verified independently into the same prompt. Sequence them so each prompt's postconditions are the next prompt's preconditions.
 
+## Scenarios — never default, never split
+
+Scenarios are E2E tests at the top of the test pyramid: slow, brittle, expensive. Most specs are satisfied by unit + integration tests written as part of the implementation prompt — do NOT add scenario authoring as a default decomposition step.
+
+**Rule 1: Do not add a scenario the spec did not request.**
+- If the spec's Acceptance Criteria does NOT explicitly require a new scenario, do NOT generate scenario authoring requirements speculatively. The prompt-level tests already cover the spec's ACs.
+- "Touches an integration seam" is NOT a trigger by itself. The spec author already applied the four-condition test from `docs/scenario-writing.md`. If they did not list a scenario AC, none is needed.
+
+**Rule 2: When the spec DOES require a scenario, inline it — do NOT split into a separate prompt.**
+- Writing a scenario is writing a markdown checklist. It does not need its own YOLO container run.
+- Add the scenario authoring as a numbered requirement step in the implementation prompt that touches the relevant code (typically the last step, before the verification command).
+- Example requirement: "Write `scenarios/NNN-<slug>.md` with status `draft`. Setup: ... Action: ... Expected: ..." — full scenario body inlined.
+- One Docker container run produces both the code change AND the scenario file.
+
+**Rule 3: Split a scenario into its own prompt only as a rare exception.**
+- Justified only when the scenario's checklist genuinely cannot fit alongside the code change in one prompt without losing readability AND the scenario itself requires distinct setup the implementation prompt's container won't have.
+- This is unusual. Default to inlining.
+
+If unsure between inline and split, inline.
+
 For each prompt, write a file to `/workspace/prompts/<slug>.md`. Do NOT add number prefixes — dark-factory assigns numbers on approve. If prompts must be executed in a specific order, prefix with `1-`, `2-`, `3-` for alphabetical sorting (e.g. `1-spec-020-model.md`, `2-spec-020-routing.md`).
 
 Each file must start with this exact frontmatter:

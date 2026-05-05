@@ -61,14 +61,14 @@ Wait for the user's pick (or acceptance of the recommendation).
 - Keep `Constraints`, `Failure Modes` (3-column: Trigger | Expected | Recovery), `Verification`.
 - Behavioral ratio target: 70% what/why/constraints, 30% how.
 
-**Scenario-trigger check.** Add a scenario acceptance criterion if the change introduces or modifies an integration seam:
-- New Kafka operation / schema / topic
-- New CRD field, new HTTP route
-- New subprocess interface, new external service call
-- Config field → runtime behavior wiring
-- Host ↔ container, host ↔ git remote boundary
+**Scenario-trigger check — default is NO scenario.** Scenarios are E2E tests at the top of the test pyramid; most specs ship with unit + integration tests only. Add a scenario AC only when ALL four hold:
 
-If a seam is touched, the AC reads: "Scenario added under `scenarios/` (number assigned at scenario-write time): [one-line assertion]."
+1. Unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam").
+2. The behavior is load-bearing for an essential user journey.
+3. No existing scenario covers the same code path.
+4. The regression risk is concrete and named ("if this breaks at runtime, an operator hits X" — specific, not "in case something breaks").
+
+If unsure, NO scenario. The unit and integration tests in the implementation prompt are sufficient for the typical spec. See `docs/scenario-writing.md` for the full rule.
 
 ### 6. Create stub specs for split-out concerns
 

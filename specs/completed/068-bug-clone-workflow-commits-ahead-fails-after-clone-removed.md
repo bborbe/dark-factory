@@ -240,3 +240,18 @@ rm -rf "$WORK_DIR"
 - `pkg/processor/workflow_executor_worktree.go:99-127` — the working analog (worktrees share `.git/`).
 - `pkg/processor/workflow_helpers.go:213-268` — the post-commit pipeline that assumes branch-is-locally-visible.
 - `scenarios/002-workflow-pr.md` — the scenario that surfaces this bug.
+
+## Verification Result
+
+**Verified:** 2026-05-05T12:02:29Z (HEAD `81bb4df`, post-v0.148.5)
+**Binary:** `/tmp/dark-factory-068` (built fresh from source for verification)
+**Scenario:** clone+pr replay against `~/Documents/workspaces/dark-factory-sandbox` with `workflow=clone, pr=true`
+**Evidence:**
+- Daemon log: `level=INFO msg="created PR" url=https://github.com/bborbe/dark-factory-sandbox/pull/3`
+- No `exit 128` and no `count commits ahead` failure in the daemon run
+- `gh pr list -R bborbe/dark-factory-sandbox` → PR #3 OPEN at SHA `215f5c50c6f20ad1fd0f4d8e6896b17a3599ca3e`
+- Effective config (from log): `workflow=clone (project) pr=true (project)` — exact bug-trigger condition
+- Cleanup: PR #3 closed, branch `dark-factory/002-verify-068` deleted on origin
+**Verdict:** PASS
+
+(Appended retroactively — spec was completed before the v0.149.3 spec-verifier introduced the auto-append step.)

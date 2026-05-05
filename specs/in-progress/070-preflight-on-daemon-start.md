@@ -1,6 +1,9 @@
 ---
-status: draft
-kind: feature
+status: prompted
+approved: "2026-05-05T17:59:10Z"
+generating: "2026-05-05T17:59:10Z"
+prompted: "2026-05-05T18:07:19Z"
+branch: dark-factory/preflight-on-daemon-start
 ---
 
 ## Summary
@@ -61,7 +64,7 @@ Operators continue to discover broken baselines at queue time, often after long 
 
 ## Acceptance Criteria
 
-- [ ] On `dark-factory daemon` start, the daemon log shows a preflight attempt within the first second of startup (or a "preflight cached" log line if the cache is fresh).
+- [ ] On `dark-factory daemon` start, the daemon log shows a preflight attempt (or a "preflight cached" log line if the cache is fresh) BEFORE the watcher loop emits its first "waiting for changes" / "watching for prompts" log line.
 - [ ] When preflight passes at start, the daemon enters the watcher loop normally and executes the next queued prompt without a second preflight (cache hit).
 - [ ] When preflight fails at start, the daemon exits non-zero and logs the failure cause exactly like the existing mid-run failure path.
 - [ ] When `--skip-preflight` is passed, the startup preflight is skipped (same as today's mid-run behavior).

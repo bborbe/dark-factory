@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-05T17:59:10Z"
 generating: "2026-05-05T17:59:10Z"
 prompted: "2026-05-05T18:07:19Z"
 verifying: "2026-05-05T20:27:07Z"
+completed: "2026-05-05T21:10:02Z"
 branch: dark-factory/preflight-on-daemon-start
 ---
 

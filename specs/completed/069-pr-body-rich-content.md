@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-05T16:19:29Z"
 generating: "2026-05-05T16:19:29Z"
 prompted: "2026-05-05T16:24:01Z"
 verifying: "2026-05-05T17:47:45Z"
+completed: "2026-05-05T20:57:27Z"
 branch: dark-factory/pr-body-rich-content
 ---
 

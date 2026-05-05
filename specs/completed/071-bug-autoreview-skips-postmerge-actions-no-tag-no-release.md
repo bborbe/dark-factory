@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-05T20:19:26Z"
 generating: "2026-05-05T20:19:27Z"
 prompted: "2026-05-05T20:25:45Z"
+verifying: "2026-05-05T20:41:17Z"
+completed: "2026-05-05T21:32:01Z"
 branch: dark-factory/bug-autoreview-skips-postmerge-actions-no-tag-no-release
 ---
 

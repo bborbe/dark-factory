@@ -208,7 +208,7 @@ func (e *branchWorkflowExecutor) handleBranchPRCompletion(
 	if err := e.deps.Brancher.Push(gitCtx, featureBranch); err != nil {
 		return errors.Wrap(ctx, err, "push feature branch")
 	}
-	prURL, err := findOrCreatePR(gitCtx, ctx, e.deps, featureBranch, title, pf.Issue())
+	prURL, err := findOrCreatePR(gitCtx, ctx, e.deps, featureBranch, title, pf)
 	if err != nil {
 		return errors.Wrap(ctx, err, "find or create PR")
 	}

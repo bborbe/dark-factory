@@ -9,6 +9,7 @@ import (
 	stderrors "errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	libtime "github.com/bborbe/time"
@@ -93,6 +94,20 @@ var _ = Describe("Processor", func() {
 					Issue:  issue,
 				},
 				[]byte("# Test\n\nDefault test content"),
+				libtime.NewCurrentDateTime(),
+			)
+		}
+
+		createFullPromptFile := func(path string, branch string, issue string, specs []string, body string) *prompt.PromptFile {
+			return prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{
+					Status: string(prompt.ApprovedPromptStatus),
+					Branch: branch,
+					Issue:  issue,
+					Specs:  prompt.SpecList(specs),
+				},
+				[]byte(body),
 				libtime.NewCurrentDateTime(),
 			)
 		}
@@ -233,7 +248,8 @@ var _ = Describe("Processor", func() {
 
 			_, _, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(body).To(ContainSubstring("Issue: BRO-42"))
-			Expect(body).To(Equal("Automated by dark-factory\n\nIssue: BRO-42"))
+			Expect(body).To(HaveSuffix("Automated by dark-factory"))
+			Expect(body).NotTo(HavePrefix("Automated by dark-factory"))
 
 			cancel()
 		})
@@ -262,6 +278,118 @@ var _ = Describe("Processor", func() {
 			_, _, body, _ := prCreator.CreateArgsForCall(0)
 			Expect(body).To(Equal("Automated by dark-factory"))
 			Expect(body).NotTo(ContainSubstring("Issue:"))
+
+			cancel()
+		})
+
+		It("prompt has summary: PR body starts with summary and ends with footer", func() {
+			promptPath := filepath.Join(promptsDir, "001-with-summary.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createFullPromptFile(
+					path,
+					"feature/summary",
+					"",
+					nil,
+					"<summary>\nThis adds a caching layer.\n</summary>\n",
+				), nil
+			}
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/103", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return prCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
+			Expect(body).To(ContainSubstring("This adds a caching layer."))
+			Expect(body).To(HaveSuffix("Automated by dark-factory"))
+			Expect(body).NotTo(HavePrefix("Automated by dark-factory"))
+
+			cancel()
+		})
+
+		It("prompt has spec in frontmatter: PR body contains Spec line before footer", func() {
+			promptPath := filepath.Join(promptsDir, "001-with-spec.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createFullPromptFile(
+					path,
+					"feature/spec-ref",
+					"",
+					[]string{"069-pr-body-rich-content"},
+					"# Test\n\nContent",
+				), nil
+			}
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/104", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return prCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
+			Expect(body).To(ContainSubstring("Spec: 069-pr-body-rich-content"))
+			Expect(body).To(HaveSuffix("Automated by dark-factory"))
+
+			cancel()
+		})
+
+		It("prompt has summary + spec + issue: all three present, footer is last", func() {
+			promptPath := filepath.Join(promptsDir, "001-full-body.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return createFullPromptFile(
+					path,
+					"feature/full",
+					"BRO-99",
+					[]string{"069-foo"},
+					"<summary>\nRich summary text.\n</summary>\n",
+				), nil
+			}
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			setupCloneMocks()
+			prCreator.FindOpenPRReturns("", nil)
+			prCreator.CreateReturns("https://github.com/user/repo/pull/105", nil)
+
+			p := newProcWorktree(false)
+			go func() { _ = p.Process(ctx) }()
+
+			Eventually(func() int {
+				return prCreator.CreateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			_, _, body, _ := prCreator.CreateArgsForCall(0)
+			Expect(body).To(ContainSubstring("Rich summary text."))
+			Expect(body).To(ContainSubstring("Spec: 069-foo"))
+			Expect(body).To(ContainSubstring("Issue: BRO-99"))
+			Expect(body).To(HaveSuffix("Automated by dark-factory"))
+			summaryIdx := strings.Index(body, "Rich summary text.")
+			specIdx := strings.Index(body, "Spec: 069-foo")
+			issueIdx := strings.Index(body, "Issue: BRO-99")
+			footerIdx := strings.Index(body, "Automated by dark-factory")
+			Expect(summaryIdx).To(BeNumerically("<", specIdx))
+			Expect(specIdx).To(BeNumerically("<", issueIdx))
+			Expect(issueIdx).To(BeNumerically("<", footerIdx))
 
 			cancel()
 		})

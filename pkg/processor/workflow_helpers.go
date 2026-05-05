@@ -8,6 +8,7 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -30,12 +31,24 @@ func syncWithRemoteViaDeps(ctx context.Context, deps WorkflowDeps) error {
 	return nil
 }
 
-// buildPRBody constructs the PR body, appending an issue reference when one is set.
-func buildPRBody(issue string) string {
-	if issue != "" {
-		return "Automated by dark-factory\n\nIssue: " + issue
+// buildPRBody constructs the PR body from the prompt file's summary, spec links, and issue reference.
+func buildPRBody(pf *prompt.PromptFile) string {
+	var parts []string
+	if summary := pf.Summary(); summary != "" {
+		parts = append(parts, summary)
 	}
-	return "Automated by dark-factory"
+	var metaLines []string
+	for _, spec := range pf.Specs() {
+		metaLines = append(metaLines, "Spec: "+spec)
+	}
+	if issue := pf.Issue(); issue != "" {
+		metaLines = append(metaLines, "Issue: "+issue)
+	}
+	if len(metaLines) > 0 {
+		parts = append(parts, strings.Join(metaLines, "\n"))
+	}
+	parts = append(parts, "Automated by dark-factory")
+	return strings.Join(parts, "\n\n")
 }
 
 // moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits.
@@ -69,7 +82,7 @@ func findOrCreatePR(
 	deps WorkflowDeps,
 	branchName string,
 	title string,
-	issue string,
+	pf *prompt.PromptFile,
 ) (string, error) {
 	prURL, err := deps.PRCreator.FindOpenPR(gitCtx, branchName)
 	if err != nil {
@@ -85,7 +98,7 @@ func findOrCreatePR(
 		)
 		return prURL, nil
 	}
-	prURL, err = deps.PRCreator.Create(gitCtx, title, buildPRBody(issue), branchName)
+	prURL, err = deps.PRCreator.Create(gitCtx, title, buildPRBody(pf), branchName)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "create pull request")
 	}
@@ -242,7 +255,7 @@ func handleAfterIsolatedCommit(
 	if !deps.PR {
 		return moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath)
 	}
-	prURL, err := findOrCreatePR(gitCtx, ctx, deps, branchName, title, pf.Issue())
+	prURL, err := findOrCreatePR(gitCtx, ctx, deps, branchName, title, pf)
 	if err != nil {
 		return errors.Wrap(ctx, err, "find or create PR")
 	}

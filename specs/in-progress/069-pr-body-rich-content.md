@@ -1,9 +1,10 @@
 ---
-status: draft
-kind: feature
+status: prompted
+approved: "2026-05-05T16:19:29Z"
+generating: "2026-05-05T16:19:29Z"
+prompted: "2026-05-05T16:24:01Z"
+branch: dark-factory/pr-body-rich-content
 ---
-
-# PR body explains why the PR was created
 
 ## Summary
 

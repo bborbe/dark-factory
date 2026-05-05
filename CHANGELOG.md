@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.149.0
+
+- feat: Enrich PR body with prompt summary, spec reference, and issue reference
+
 ## v0.149.3
 
 - improvement: `spec-verifier` Phase 7 now appends a `## Verification Result` block to the spec before moving it to `specs/completed/`. Captures timestamp, HEAD sha, binary path, scenario, and concrete evidence — so future readers can answer "what proved this spec passed?" from the spec file alone, without grepping conversation history. Specs remain append-only (existing content immutable).

@@ -488,6 +488,24 @@ func (pf *PromptFile) VerificationSection() string {
 	return strings.TrimSpace(body[start : start+end])
 }
 
+// Summary extracts the content of the <summary> tag from the prompt body.
+// Returns an empty string if no <summary> tag is found.
+func (pf *PromptFile) Summary() string {
+	body := string(pf.Body)
+	const openTag = "<summary>"
+	const closeTag = "</summary>"
+	start := strings.Index(body, openTag)
+	if start == -1 {
+		return ""
+	}
+	start += len(openTag)
+	end := strings.Index(body[start:], closeTag)
+	if end == -1 {
+		return ""
+	}
+	return strings.TrimSpace(body[start : start+end])
+}
+
 // SetSummary sets the summary field in frontmatter.
 func (pf *PromptFile) SetSummary(summary string) {
 	pf.Frontmatter.Summary = summary

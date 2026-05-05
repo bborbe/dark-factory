@@ -1002,6 +1002,59 @@ Content here.
 		})
 	})
 
+	Describe("PromptFile.Summary", func() {
+		It("returns trimmed summary content when summary block is present", func() {
+			path := filepath.Join(tempDir, "001-summary.md")
+			content := "---\nstatus: approved\n---\n\n<summary>\nThis is the summary.\n</summary>\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Summary()).To(Equal("This is the summary."))
+		})
+
+		It("returns empty string when no summary block", func() {
+			path := filepath.Join(tempDir, "001-no-summary.md")
+			content := "---\nstatus: approved\n---\n\n# No summary tag here\n"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Summary()).To(Equal(""))
+		})
+
+		It(
+			"returns empty string when summary open tag is present but close tag is missing",
+			func() {
+				path := filepath.Join(tempDir, "001-unclosed-summary.md")
+				content := "<summary>\nNo close tag"
+				err := os.WriteFile(path, []byte(content), 0600)
+				Expect(err).To(BeNil())
+
+				pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					Load(ctx, path)
+				Expect(err).To(BeNil())
+				Expect(pf.Summary()).To(Equal(""))
+			},
+		)
+
+		It("returns empty string when summary block is present but empty", func() {
+			path := filepath.Join(tempDir, "001-empty-summary.md")
+			content := "<summary>\n   \n</summary>"
+			err := os.WriteFile(path, []byte(content), 0600)
+			Expect(err).To(BeNil())
+
+			pf, err := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				Load(ctx, path)
+			Expect(err).To(BeNil())
+			Expect(pf.Summary()).To(Equal(""))
+		})
+	})
+
 	Describe("PromptFile.MarkFailed", func() {
 		It("sets status to failed with timestamp", func() {
 			path := filepath.Join(tempDir, "001-test.md")

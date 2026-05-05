@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.149.5
+
+- improvement: `commands/generate-prompts-for-spec.md` now references `~/.claude/plugins/marketplaces/coding/docs/test-pyramid-triggers.md` for the per-prompt test-type decision rules instead of inlining them. Each generated prompt also pulls the triggers doc into its `<context>` so the implementing agent applies the same pyramid (default unit, integration per real boundary, E2E only when scenario rule mandates).
+
 ## v0.149.4
 
 - policy: scenarios are now treated as rare E2E tests at the top of the test pyramid — default is NO new scenario per spec. Updated `docs/scenario-writing.md` (test-pyramid framework + four-condition trigger), `docs/spec-writing.md` (preflight + test-layer table soften), `agents/spec-creator.md` (template default), `commands/refine-spec.md` (scenario_trigger_check tightened), and `commands/generate-prompts-for-spec.md` (do not generate speculative scenario prompts; when one IS required, inline as a step in the implementation prompt — never split into a separate prompt).

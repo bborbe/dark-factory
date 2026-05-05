@@ -56,6 +56,16 @@ Scenarios are E2E tests at the top of the test pyramid: slow, brittle, expensive
 
 If unsure between inline and split, inline.
 
+## Tests in each prompt
+
+When deciding what tests each generated prompt should ask the implementing agent to write, follow the test-pyramid triggers in `~/.claude/plugins/marketplaces/coding/docs/test-pyramid-triggers.md`. Default to unit; add integration only when crossing a real out-of-process boundary; skip E2E unless the scenarios rule above mandates it.
+
+Reference the triggers doc from each generated prompt's `<context>` section so the implementing agent applies the same rule:
+
+```
+Read `test-pyramid-triggers.md` in `~/.claude/plugins/marketplaces/coding/docs/` for which test types to write for each code change.
+```
+
 For each prompt, write a file to `/workspace/prompts/<slug>.md`. Do NOT add number prefixes — dark-factory assigns numbers on approve. If prompts must be executed in a specific order, prefix with `1-`, `2-`, `3-` for alphabetical sorting (e.g. `1-spec-020-model.md`, `2-spec-020-routing.md`).
 
 Each file must start with this exact frontmatter:

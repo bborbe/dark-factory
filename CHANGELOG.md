@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.153.0
+
+- docs: Split release docs — new `docs/releasing-dark-factory.md` for releasing dark-factory itself (binary + plugin); `docs/release-process.md` clarified to cover autoRelease behavior in consuming projects only. CLAUDE.md `make install` rule now points at the new doc.
+
 ## v0.152.0
 
 - feat: `/dark-factory:configure` slash command for create/reconfigure/auto-migrate of `.dark-factory.yaml` (greenfield delegates to `init-project`; valid existing config offers reconfigure menu; invalid config detects spec-073-style legacy fields and proposes migration; backup + diff + validate + revert on every write)

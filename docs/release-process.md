@@ -1,5 +1,9 @@
 # Release Process
 
+> Looking for how to release dark-factory itself (the binary + the plugin)?
+> See [releasing-dark-factory.md](releasing-dark-factory.md). This doc covers
+> autoRelease behavior in projects that **use** dark-factory.
+
 Two release surfaces in this repo. They ship independently and follow different procedures.
 
 | Surface | What ships | How |

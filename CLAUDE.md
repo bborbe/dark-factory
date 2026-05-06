@@ -30,7 +30,7 @@ The prompt/spec split is **business-why vs technical-how**, not big vs small. A 
 
 4. **After completing a spec or major refactor**, run the relevant scenario to verify end-to-end behavior. Scenarios live in `scenarios/` (numbered by complexity). Always use a temp copy of the sandbox — never run against the original.
 
-5. **Before `make install`**, run all scenarios in `scenarios/` against a freshly built binary. Build once with `go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .`, then scenarios invoke `/tmp/new-dark-factory <cmd>`. NEVER use the bare `dark-factory` binary — that runs the previously-installed version and misses unshipped code. Unit tests + `make precommit` alone are not sufficient.
+5. **Before `make install`**, follow [docs/releasing-dark-factory.md](docs/releasing-dark-factory.md) — mandatory reading and procedure. The release gate (run all scenarios against a freshly built `/tmp/new-dark-factory`, NEVER the installed binary) and the version alignment check both live there. Unit tests + `make precommit` alone are not sufficient.
 
    **Scenario-skip rule (only exception):** Compare installed version to HEAD — if no binary-relevant files changed, the installed binary is byte-equivalent to what you'd install, so scenarios add no signal.
    ```bash

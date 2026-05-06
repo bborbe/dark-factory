@@ -1,5 +1,6 @@
 ---
-status: draft
+status: completed
+completed: "2026-05-06T12:47:21Z"
 ---
 
 # `/dark-factory:configure` slash command — interactive create/reconfigure/auto-migrate for `.dark-factory.yaml`

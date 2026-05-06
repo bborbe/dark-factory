@@ -25,7 +25,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
-	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
@@ -54,7 +53,6 @@ func NewRunner(
 	watcher watcher.Watcher,
 	processor processor.Processor,
 	server server.Server,
-	reviewPoller review.ReviewPoller,
 	specWatcher specwatcher.SpecWatcher,
 	projectName project.Name,
 	containerChecker executor.ContainerChecker,
@@ -83,7 +81,6 @@ func NewRunner(
 		watcher:               watcher,
 		processor:             processor,
 		server:                server,
-		reviewPoller:          reviewPoller,
 		specWatcher:           specWatcher,
 		projectName:           projectName,
 		containerChecker:      containerChecker,
@@ -115,7 +112,6 @@ type runner struct {
 	watcher               watcher.Watcher
 	processor             processor.Processor
 	server                server.Server
-	reviewPoller          review.ReviewPoller
 	specWatcher           specwatcher.SpecWatcher
 	projectName           project.Name
 	containerChecker      executor.ContainerChecker
@@ -211,7 +207,7 @@ func (r *runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Run watcher, processor, server, and optional reviewPoller in parallel
+	// Run watcher, processor, server, and optional specWatcher in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
 		r.watcher.Watch,
@@ -219,9 +215,6 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	if r.server != nil {
 		runners = append(runners, r.server.ListenAndServe)
-	}
-	if r.reviewPoller != nil {
-		runners = append(runners, r.reviewPoller.Run)
 	}
 	if r.specWatcher != nil {
 		runners = append(runners, r.specWatcher.Watch)

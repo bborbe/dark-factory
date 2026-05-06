@@ -40,7 +40,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/queuescanner"
-	"github.com/bborbe/dark-factory/pkg/review"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/scenario"
 	"github.com/bborbe/dark-factory/pkg/server"
@@ -178,11 +177,9 @@ func createPromptManager(
 
 // providerDeps holds the provider-specific git operation implementations.
 type providerDeps struct {
-	prCreator           git.PRCreator
-	prMerger            git.PRMerger
-	reviewFetcher       git.ReviewFetcher
-	collaboratorFetcher git.CollaboratorFetcher
-	brancher            git.Brancher
+	prCreator git.PRCreator
+	prMerger  git.PRMerger
+	brancher  git.Brancher
 }
 
 // createProviderDeps returns the git provider implementations based on cfg.Provider.
@@ -205,20 +202,10 @@ func createGitHubProviderDeps(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
 	ghToken := cfg.ResolvedGitHubToken()
-	repoNameFetcher := git.NewGHRepoNameFetcher(ghToken)
-	collaboratorLister := git.NewGHCollaboratorLister(ghToken)
-	collaboratorFetcher := git.NewCollaboratorFetcher(
-		repoNameFetcher,
-		collaboratorLister,
-		cfg.UseCollaborators,
-		cfg.AllowedReviewers,
-	)
 	return providerDeps{
-		prCreator:           git.NewPRCreator(ghToken),
-		prMerger:            git.NewPRMerger(ghToken, currentDateTimeGetter),
-		reviewFetcher:       git.NewReviewFetcher(ghToken),
-		collaboratorFetcher: collaboratorFetcher,
-		brancher:            git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
+		prCreator: git.NewPRCreator(ghToken),
+		prMerger:  git.NewPRMerger(ghToken, currentDateTimeGetter),
+		brancher:  git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
 	}
 }
 
@@ -269,14 +256,7 @@ func createBitbucketProviderDeps(
 			coords.Repo,
 			currentDateTimeGetter,
 		),
-		reviewFetcher: git.NewBitbucketReviewFetcher(
-			baseURL,
-			token,
-			coords.Project,
-			coords.Repo,
-		),
-		collaboratorFetcher: collaboratorFetcher,
-		brancher:            git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
+		brancher: git.NewBrancher(git.WithDefaultBranch(cfg.DefaultBranch)),
 	}
 }
 
@@ -350,20 +330,6 @@ func CreateRunner(
 		)
 	}
 
-	var poller review.ReviewPoller
-	if cfg.AutoReview {
-		poller = CreateReviewPoller(
-			ctx,
-			cfg,
-			promptManager,
-			projectName,
-			n,
-			currentDateTimeGetter,
-			releaser,
-			cfg.AutoRelease,
-		)
-	}
-
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
@@ -417,7 +383,6 @@ func CreateRunner(
 		deps.prMerger,
 		cfg.AutoMerge,
 		cfg.AutoRelease,
-		cfg.AutoReview,
 		cfg.ValidationCommand,
 		cfg.ValidationPrompt,
 		cfg.TestCommand,
@@ -467,7 +432,7 @@ func CreateRunner(
 	return runner.NewRunner(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.LogDir,
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
-		promptManager, CreateLocker("."), watcher, proc, srv, poller,
+		promptManager, CreateLocker("."), watcher, proc, srv,
 		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
@@ -569,7 +534,6 @@ func CreateOneShotRunner(
 			deps.prMerger,
 			cfg.AutoMerge,
 			cfg.AutoRelease,
-			cfg.AutoReview,
 			cfg.ValidationCommand,
 			cfg.ValidationPrompt,
 			cfg.TestCommand,
@@ -769,7 +733,6 @@ func CreateWorkflowExecutor(
 	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
-	autoReview bool,
 	projectName project.Name,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
@@ -788,7 +751,6 @@ func CreateWorkflowExecutor(
 		PRMerger:           prMerger,
 		PR:                 pr,
 		AutoMerge:          autoMerge,
-		AutoReview:         autoReview,
 		AutoRelease:        autoRelease,
 		IgnorePathPrefixes: promptDirPrefixes,
 	}
@@ -827,7 +789,6 @@ func CreateProcessor(
 	prMerger git.PRMerger,
 	autoMerge bool,
 	autoRelease bool,
-	autoReview bool,
 	validationCommand string,
 	validationPrompt string,
 	testCommand string,
@@ -864,7 +825,7 @@ func CreateProcessor(
 	)
 	workflowExecutor := CreateWorkflowExecutor(
 		workflow, pr, brancher, prCreator, prMerger,
-		autoMerge, autoRelease, autoReview,
+		autoMerge, autoRelease,
 		projectName, promptManager, releaser, autoCompleter,
 		promptDirPrefixes,
 	)
@@ -965,37 +926,6 @@ func CreateProcessor(
 	)
 	ppForwarder.inner = proc
 	return proc
-}
-
-// CreateReviewPoller creates a ReviewPoller that watches in_review prompts and handles approvals/changes.
-func CreateReviewPoller(
-	ctx context.Context,
-	cfg config.Config,
-	promptManager *prompt.Manager,
-	projectName project.Name,
-	n notifier.Notifier,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	releaser git.Releaser,
-	autoRelease bool,
-) review.ReviewPoller {
-	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
-
-	return review.NewReviewPoller(
-		cfg.Prompts.InProgressDir,
-		cfg.Prompts.InboxDir,
-		deps.collaboratorFetcher,
-		cfg.MaxReviewRetries,
-		time.Duration(cfg.PollIntervalSec)*time.Second,
-		deps.reviewFetcher,
-		deps.prMerger,
-		promptManager,
-		review.NewFixPromptGenerator(),
-		projectName,
-		n,
-		deps.brancher,
-		releaser,
-		autoRelease,
-	)
 }
 
 // CreateNotifier creates a Notifier from config, or a no-op if no channels are configured.

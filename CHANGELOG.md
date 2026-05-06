@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.150.3
+
+- refactor: Remove entire `autoReview` code path — deleted `pkg/review/`, `ReviewPoller`, `ReviewFetcher`, `FixPromptGenerator`, `review_fetcher.go`, related mocks, and all wiring; `autoMerge: true` with branch protection is now the only merge gate
+
 ## v0.150.2
 
 - fix: autoReview routing in `handleAfterIsolatedCommit` — check `AutoReview` before `AutoMerge` so `autoReview: true` prompts transition to `in_review` instead of being routed to `WaitAndMerge` directly

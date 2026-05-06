@@ -80,7 +80,6 @@ type WorkflowDeps struct {
 	PRMerger      git.PRMerger
 	PR            bool
 	AutoMerge     bool
-	AutoReview    bool
 	AutoRelease   bool
 	// IgnorePathPrefixes lists directory prefixes (relative, no leading slash)
 	// that branchWorkflowExecutor should treat as dark-factory bookkeeping and

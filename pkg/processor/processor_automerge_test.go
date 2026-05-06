@@ -140,7 +140,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				prMerger,
 				false, // autoMerge disabled
 				false,
-				false,
 				autoCompleter,
 				specLister,
 				"",
@@ -248,7 +247,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 					worktreer,
 					prMerger,
 					true, // autoMerge enabled
-					false,
 					false,
 					autoCompleter,
 					specLister,
@@ -364,7 +362,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				prMerger,
 				true, // autoMerge enabled
 				true, // autoRelease enabled
-				false,
 				autoCompleter,
 				specLister,
 				"",
@@ -463,7 +460,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 					prMerger,
 					true, // autoMerge enabled
 					true, // autoRelease enabled
-					false,
 					autoCompleter,
 					specLister,
 					"",
@@ -566,7 +562,6 @@ DARK-FACTORY-REPORT -->`), 0600)
 				prMerger,
 				true,  // autoMerge enabled
 				false, // autoRelease disabled
-				false,
 				autoCompleter,
 				specLister,
 				"",
@@ -605,341 +600,99 @@ DARK-FACTORY-REPORT -->`), 0600)
 		})
 	})
 
-	Context("Auto-review", func() {
-		It(
-			"should set status to in_review and NOT move to completed when autoReview=true (PR workflow)",
-			func() {
-				originalDir, err := os.Getwd()
-				Expect(err).NotTo(HaveOccurred())
-				DeferCleanup(func() {
-					_ = os.Chdir(originalDir)
-				})
+	It("should move to completed normally when pr=true, autoMerge=false", func() {
+		originalDir, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			_ = os.Chdir(originalDir)
+		})
 
-				promptPath := filepath.Join(promptsDir, "001-auto-review.md")
-				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-				}
+		promptPath := filepath.Join(promptsDir, "001-no-auto-review.md")
+		queued := []prompt.Prompt{
+			{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+		}
 
-				cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
-					return os.MkdirAll(destDir, 0750)
-				}
-				cloner.RemoveStub = func(_ context.Context, path string) error {
-					return os.RemoveAll(path)
-				}
-				manager.ListQueuedReturnsOnCall(0, queued, nil)
-				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				manager.AllPreviousCompletedReturns(true)
-				executor.ExecuteReturns(nil)
-				releaser.CommitOnlyReturns(nil)
-				brancher.FetchReturns(nil)
-				brancher.MergeOriginDefaultReturns(nil)
-				brancher.PushReturns(nil)
-				prCreator.CreateReturns("https://github.com/test/test/pull/42", nil)
-				manager.SetStatusReturns(nil)
-				manager.SetPRURLReturns(nil)
+		cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
+			return os.MkdirAll(destDir, 0750)
+		}
+		cloner.RemoveStub = func(_ context.Context, path string) error {
+			return os.RemoveAll(path)
+		}
+		manager.ListQueuedReturnsOnCall(0, queued, nil)
+		manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+		manager.AllPreviousCompletedReturns(true)
+		executor.ExecuteReturns(nil)
+		releaser.CommitCompletedFileReturns(nil)
+		releaser.CommitOnlyReturns(nil)
+		brancher.FetchReturns(nil)
+		brancher.MergeOriginDefaultReturns(nil)
+		brancher.PushReturns(nil)
+		prCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
+		manager.MoveToCompletedReturns(nil)
+		manager.SetPRURLReturns(nil)
 
-				// Create log file with success report
-				logDir := filepath.Join(promptsDir, "log")
-				_ = os.MkdirAll(logDir, 0750)
-				logPath := filepath.Join(logDir, "001-auto-review.log")
-				_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
-{"status":"success","summary":"Auto-review test","blockers":[]}
-DARK-FACTORY-REPORT -->`), 0600)
-
-				p := newTestProcessor(
-					promptsDir,
-					filepath.Join(promptsDir, "completed"),
-					logDir,
-					"test-project",
-					executor,
-					manager,
-					releaser,
-					versionGet,
-					wakeup,
-					true,
-					config.WorkflowClone,
-					brancher,
-					prCreator,
-					cloner,
-					worktreer,
-					prMerger,
-					false, // autoMerge disabled
-					false,
-					true, // autoReview enabled
-					autoCompleter,
-					specLister,
-					"",
-					"",
-					"",
-					false,
-					notifier.NewMultiNotifier(),
-					nil,
-					0,
-					"",
-					nil,
-					nil,
-					0,
-					nil,
-					nil,
-					0,
-					0,
-					nil,
-				)
-
-				go func() {
-					_ = p.Process(ctx)
-				}()
-
-				// Wait for PR to be created
-				Eventually(func() int {
-					return prCreator.CreateCallCount()
-				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-				// SetStatus should be called with in_review
-				Eventually(func() string {
-					if manager.SetStatusCallCount() == 0 {
-						return ""
-					}
-					_, _, status := manager.SetStatusArgsForCall(
-						manager.SetStatusCallCount() - 1,
-					)
-					return status
-				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.InReviewPromptStatus)))
-
-				// MoveToCompleted should NOT be called
-				Consistently(func() int {
-					return manager.MoveToCompletedCallCount()
-				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-				// WaitAndMerge should NOT be called
-				Consistently(func() int {
-					return prMerger.WaitAndMergeCallCount()
-				}, 200*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-				cancel()
-			},
-		)
-
-		It(
-			"should take autoReview path (not autoMerge) when both autoReview=true and autoMerge=true",
-			func() {
-				originalDir, err := os.Getwd()
-				Expect(err).NotTo(HaveOccurred())
-				DeferCleanup(func() {
-					_ = os.Chdir(originalDir)
-				})
-
-				promptPath := filepath.Join(promptsDir, "001-autoreview-takes-precedence.md")
-				queued := []prompt.Prompt{
-					{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-				}
-
-				cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
-					return os.MkdirAll(destDir, 0750)
-				}
-				cloner.RemoveStub = func(_ context.Context, path string) error {
-					return os.RemoveAll(path)
-				}
-				manager.ListQueuedReturnsOnCall(0, queued, nil)
-				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-				manager.AllPreviousCompletedReturns(true)
-				executor.ExecuteReturns(nil)
-				releaser.CommitOnlyReturns(nil)
-				brancher.FetchReturns(nil)
-				brancher.MergeOriginDefaultReturns(nil)
-				brancher.PushReturns(nil)
-				prCreator.CreateReturns("https://github.com/test/test/pull/99", nil)
-				manager.SetStatusReturns(nil)
-				manager.SetPRURLReturns(nil)
-
-				// Create log file with success report
-				logDir := filepath.Join(promptsDir, "log")
-				_ = os.MkdirAll(logDir, 0750)
-				logPath := filepath.Join(logDir, "001-autoreview-takes-precedence.log")
-				_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
-{"status":"success","summary":"autoReview precedence test","blockers":[]}
-DARK-FACTORY-REPORT -->`), 0600)
-
-				p := newTestProcessor(
-					promptsDir,
-					filepath.Join(promptsDir, "completed"),
-					logDir,
-					"test-project",
-					executor,
-					manager,
-					releaser,
-					versionGet,
-					wakeup,
-					true,
-					config.WorkflowClone,
-					brancher,
-					prCreator,
-					cloner,
-					worktreer,
-					prMerger,
-					true, // autoMerge enabled
-					false,
-					true, // autoReview enabled — must take precedence
-					autoCompleter,
-					specLister,
-					"",
-					"",
-					"",
-					false,
-					notifier.NewMultiNotifier(),
-					nil,
-					0,
-					"",
-					nil,
-					nil,
-					0,
-					nil,
-					nil,
-					0,
-					0,
-					nil,
-				)
-
-				go func() {
-					_ = p.Process(ctx)
-				}()
-
-				// PR must be created
-				Eventually(func() int {
-					return prCreator.CreateCallCount()
-				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
-
-				// SetStatus must be called with in_review (autoReview path taken)
-				Eventually(func() string {
-					if manager.SetStatusCallCount() == 0 {
-						return ""
-					}
-					_, _, status := manager.SetStatusArgsForCall(
-						manager.SetStatusCallCount() - 1,
-					)
-					return status
-				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.InReviewPromptStatus)))
-
-				// WaitAndMerge must NOT be called (autoMerge path bypassed)
-				Consistently(func() int {
-					return prMerger.WaitAndMergeCallCount()
-				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-				// MoveToCompleted must NOT be called (prompt stays in in_review)
-				Consistently(func() int {
-					return manager.MoveToCompletedCallCount()
-				}, 200*time.Millisecond, 50*time.Millisecond).Should(Equal(0))
-
-				cancel()
-			},
-		)
-
-		It("should move to completed normally when autoReview=false (PR workflow)", func() {
-			originalDir, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(func() {
-				_ = os.Chdir(originalDir)
-			})
-
-			promptPath := filepath.Join(promptsDir, "001-no-auto-review.md")
-			queued := []prompt.Prompt{
-				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
-			}
-
-			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
-				return os.MkdirAll(destDir, 0750)
-			}
-			cloner.RemoveStub = func(_ context.Context, path string) error {
-				return os.RemoveAll(path)
-			}
-			manager.ListQueuedReturnsOnCall(0, queued, nil)
-			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
-			manager.AllPreviousCompletedReturns(true)
-			executor.ExecuteReturns(nil)
-			releaser.CommitCompletedFileReturns(nil)
-			releaser.CommitOnlyReturns(nil)
-			brancher.FetchReturns(nil)
-			brancher.MergeOriginDefaultReturns(nil)
-			brancher.PushReturns(nil)
-			prCreator.CreateReturns("https://github.com/test/test/pull/43", nil)
-			manager.MoveToCompletedReturns(nil)
-			manager.SetPRURLReturns(nil)
-
-			// Create log file with success report
-			logDir := filepath.Join(promptsDir, "log")
-			_ = os.MkdirAll(logDir, 0750)
-			logPath := filepath.Join(logDir, "001-no-auto-review.log")
-			_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
+		// Create log file with success report
+		logDir := filepath.Join(promptsDir, "log")
+		_ = os.MkdirAll(logDir, 0750)
+		logPath := filepath.Join(logDir, "001-no-auto-review.log")
+		_ = os.WriteFile(logPath, []byte(`<!-- DARK-FACTORY-REPORT
 {"status":"success","summary":"No auto-review test","blockers":[]}
 DARK-FACTORY-REPORT -->`), 0600)
 
-			p := newTestProcessor(
-				promptsDir,
-				filepath.Join(promptsDir, "completed"),
-				logDir,
-				"test-project",
-				executor,
-				manager,
-				releaser,
-				versionGet,
-				wakeup,
-				true,
-				config.WorkflowClone,
-				brancher,
-				prCreator,
-				cloner,
-				worktreer,
-				prMerger,
-				false, // autoMerge disabled
-				false,
-				false, // autoReview disabled
-				autoCompleter,
-				specLister,
-				"",
-				"",
-				"",
-				false,
-				notifier.NewMultiNotifier(),
-				nil,
-				0,
-				"",
-				nil,
-				nil,
-				0,
-				nil,
-				nil,
-				0,
-				0,
-				nil,
-			)
+		p := newTestProcessor(
+			promptsDir,
+			filepath.Join(promptsDir, "completed"),
+			logDir,
+			"test-project",
+			executor,
+			manager,
+			releaser,
+			versionGet,
+			wakeup,
+			true,
+			config.WorkflowClone,
+			brancher,
+			prCreator,
+			cloner,
+			worktreer,
+			prMerger,
+			false, // autoMerge disabled
+			false, // autoRelease disabled
+			autoCompleter,
+			specLister,
+			"",
+			"",
+			"",
+			false,
+			notifier.NewMultiNotifier(),
+			nil,
+			0,
+			"",
+			nil,
+			nil,
+			0,
+			nil,
+			nil,
+			0,
+			0,
+			nil,
+		)
 
-			go func() {
-				_ = p.Process(ctx)
-			}()
+		go func() {
+			_ = p.Process(ctx)
+		}()
 
-			// Wait for PR to be created
-			Eventually(func() int {
-				return prCreator.CreateCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+		// Wait for PR to be created
+		Eventually(func() int {
+			return prCreator.CreateCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			// MoveToCompleted should be called (normal flow)
-			Eventually(func() int {
-				return manager.MoveToCompletedCallCount()
-			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+		// MoveToCompleted should be called (normal flow)
+		Eventually(func() int {
+			return manager.MoveToCompletedCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-			// SetStatus should NOT be called with in_review
-			Consistently(func() bool {
-				for i := 0; i < manager.SetStatusCallCount(); i++ {
-					_, _, status := manager.SetStatusArgsForCall(i)
-					if status == string(prompt.InReviewPromptStatus) {
-						return true
-					}
-				}
-				return false
-			}, 500*time.Millisecond, 50*time.Millisecond).Should(BeFalse())
-
-			cancel()
-		})
+		cancel()
 	})
 
 })

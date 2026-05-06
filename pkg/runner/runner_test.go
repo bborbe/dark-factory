@@ -81,7 +81,6 @@ var _ = Describe("Runner", func() {
 			watcher,
 			processor,
 			server,
-			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
 			containerChecker,
@@ -378,7 +377,6 @@ var _ = Describe("Runner", func() {
 			watcher,
 			processor,
 			nil, // No server
-			nil, // no reviewPoller
 			nil, // no specWatcher
 			"",
 			containerChecker,
@@ -401,122 +399,6 @@ var _ = Describe("Runner", func() {
 		Expect(err).To(BeNil())
 
 		// Verify watcher and processor were called
-		Expect(watcher.WatchCallCount()).To(Equal(1))
-		Expect(processor.ProcessCallCount()).To(Equal(1))
-	})
-
-	It("should include reviewPoller in run loop when non-nil", func() {
-		locker.AcquireReturns(nil)
-		locker.ReleaseReturns(nil)
-		manager.NormalizeFilenamesReturns(nil, nil)
-
-		mockReviewPoller := &mocks.ReviewPoller{}
-		pollerCalled := make(chan struct{})
-
-		watcher.WatchStub = func(ctx context.Context) error {
-			<-ctx.Done()
-			return nil
-		}
-		processor.ProcessStub = func(ctx context.Context) error {
-			<-ctx.Done()
-			return nil
-		}
-		mockReviewPoller.RunStub = func(ctx context.Context) error {
-			close(pollerCalled)
-			<-ctx.Done()
-			return nil
-		}
-
-		r := runner.NewRunner(
-			promptsDir,
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			filepath.Join(promptsDir, "logs"),
-			filepath.Join(specsDir, "inbox"),
-			filepath.Join(specsDir, "in-progress"),
-			filepath.Join(specsDir, "completed"),
-			filepath.Join(specsDir, "logs"),
-			manager,
-			locker,
-			watcher,
-			processor,
-			nil, // No server
-			mockReviewPoller,
-			nil, // no specWatcher
-			"",
-			containerChecker,
-			notifier.NewMultiNotifier(),
-			&mocks.SpecSlugMigrator{},
-			libtime.NewCurrentDateTime(),
-			&mocks.FileMover{},
-			0,
-			nil,
-			nil,
-			false, // hideGit
-			nil,   // preflightChecker: no preflight in tests
-			nil,   // logWriter: no file in tests
-		)
-
-		go func() {
-			_ = r.Run(ctx)
-		}()
-
-		Eventually(pollerCalled, 1*time.Second).Should(BeClosed())
-
-		cancel()
-	})
-
-	It("should not include reviewPoller in run loop when nil", func() {
-		locker.AcquireReturns(nil)
-		locker.ReleaseReturns(nil)
-		manager.NormalizeFilenamesReturns(nil, nil)
-
-		watcher.WatchStub = func(ctx context.Context) error {
-			<-ctx.Done()
-			return nil
-		}
-		processor.ProcessStub = func(ctx context.Context) error {
-			<-ctx.Done()
-			return nil
-		}
-
-		r := runner.NewRunner(
-			promptsDir,
-			promptsDir,
-			filepath.Join(promptsDir, "completed"),
-			filepath.Join(promptsDir, "logs"),
-			filepath.Join(specsDir, "inbox"),
-			filepath.Join(specsDir, "in-progress"),
-			filepath.Join(specsDir, "completed"),
-			filepath.Join(specsDir, "logs"),
-			manager,
-			locker,
-			watcher,
-			processor,
-			nil, // No server
-			nil, // no reviewPoller
-			nil, // no specWatcher
-			"",
-			containerChecker,
-			notifier.NewMultiNotifier(),
-			&mocks.SpecSlugMigrator{},
-			libtime.NewCurrentDateTime(),
-			&mocks.FileMover{},
-			0,
-			nil,
-			nil,
-			false, // hideGit
-			nil,   // preflightChecker: no preflight in tests
-			nil,   // logWriter: no file in tests
-		)
-
-		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
-		defer runCancel()
-
-		err := r.Run(runCtx)
-		Expect(err).To(BeNil())
-
-		// Watcher and processor ran
 		Expect(watcher.WatchCallCount()).To(Equal(1))
 		Expect(processor.ProcessCallCount()).To(Equal(1))
 	})
@@ -563,7 +445,6 @@ var _ = Describe("Runner", func() {
 				watcher,
 				processor,
 				server,
-				nil,
 				nil,
 				"",
 				containerChecker,
@@ -783,7 +664,6 @@ var _ = Describe("Runner", func() {
 				processor,
 				nil,
 				nil,
-				nil,
 				"test-project",
 				containerChecker,
 				fakeNotifier,
@@ -865,7 +745,6 @@ var _ = Describe("Runner", func() {
 				locker,
 				watcher,
 				processor,
-				nil,
 				nil,
 				nil,
 				"test-project",
@@ -961,7 +840,6 @@ var _ = Describe("Runner", func() {
 					processor,
 					nil,
 					nil,
-					nil,
 					"test-project",
 					containerChecker,
 					fakeNotifier,
@@ -1051,7 +929,6 @@ var _ = Describe("Runner", func() {
 				processor,
 				nil,
 				nil,
-				nil,
 				"test-project",
 				containerChecker,
 				fakeNotifier,
@@ -1113,7 +990,6 @@ var _ = Describe("Runner", func() {
 				locker,
 				watcher,
 				processor,
-				nil,
 				nil,
 				nil,
 				"test-project",
@@ -1314,7 +1190,6 @@ var _ = Describe("Runner", func() {
 				watcher,
 				processor,
 				nil, // server
-				nil, // reviewPoller
 				nil, // specWatcher
 				"",
 				containerChecker,

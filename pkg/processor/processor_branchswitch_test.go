@@ -113,7 +113,6 @@ var _ = Describe("Processor", func() {
 				prMerger,
 				false,
 				false,
-				false,
 				autoCompleter,
 				specLister,
 				"",
@@ -502,7 +501,6 @@ var _ = Describe("Processor", func() {
 					prMerger,
 					false,
 					true, // autoRelease=true
-					false,
 					autoCompleter,
 					specLister,
 					"",
@@ -653,7 +651,6 @@ var _ = Describe("Processor", func() {
 				cloner,
 				worktreer,
 				prMerger,
-				false,
 				false,
 				false,
 				autoCompleter,

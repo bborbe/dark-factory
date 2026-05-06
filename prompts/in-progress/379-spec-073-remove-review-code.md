@@ -1,7 +1,11 @@
 ---
-status: draft
+status: committing
 spec: [073-simplify-merge-gate-by-relying-on-mergestatestatus]
+container: dark-factory-379-spec-073-remove-review-code
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T00:00:00Z"
+queued: "2026-05-06T07:02:57Z"
+started: "2026-05-06T07:04:08Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 
@@ -335,21 +339,31 @@ It("should take autoReview path (not autoMerge) when both autoReview=true and au
 ```
 (approximately lines 724–835)
 
-### 7b. Update remaining `newTestProcessor` calls that pass `autoReview`
+### 7b. Update ALL `newTestProcessor` call sites across the four test files
 
-After removing the two It blocks, search for any remaining `newTestProcessor` calls in `processor_automerge_test.go` that pass a `false` value in the `autoReview` position. Remove that argument.
+**Important: `newTestProcessor` is called from FOUR test files (~41 call sites total). All must be updated, not just `processor_automerge_test.go`.** Removing `autoReview bool` from the helper signature breaks compilation at every call site.
 
-Run to find call sites:
+Verify the spread first:
 ```bash
-grep -n "autoReview\|AutoReview" pkg/processor/processor_automerge_test.go
+for f in pkg/processor/processor_test.go pkg/processor/processor_automerge_test.go pkg/processor/processor_retry_test.go pkg/processor/processor_verification_test.go; do
+  echo "$f: $(grep -c 'newTestProcessor(' "$f") calls"
+done
+# Expected counts: processor_test.go: 23, processor_automerge_test.go: 8 (after 7a deletes 2), processor_retry_test.go: 4, processor_verification_test.go: 6
 ```
-Remove all occurrences (positional `false` arguments in the `autoReview` slot, and comments referencing `autoReview`).
 
-Also search other processor test files that call `newTestProcessor`:
+For each call site in each of the four files, drop the positional `false`/`true` argument in the `autoReview` slot. The argument sits between `autoRelease` and `autoCompleter` — confirm the position by reading 5 lines around the call.
+
+Run after editing to confirm zero stragglers:
 ```bash
-grep -rn "newTestProcessor" pkg/processor/
+grep -rn "autoReview\|AutoReview" pkg/processor/ --include="*_test.go"
+# Expected: zero matches
 ```
-Update every call site to drop the `autoReview bool` argument.
+
+If `make test` reports compile errors elsewhere, search again — there may be additional test files that grew between when this prompt was written and now:
+```bash
+grep -rln "newTestProcessor(" pkg/processor/
+```
+Update any file in that list that still passes the `autoReview` argument.
 
 ### 7c. Update `processor_test.go` autoMerge test that references `in_review` status
 

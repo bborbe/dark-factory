@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [073-simplify-merge-gate-by-relying-on-mergestatestatus]
 created: "2026-05-06T00:00:00Z"
+queued: "2026-05-06T07:02:57Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 
@@ -60,15 +61,15 @@ grep -n "AutoReview\|MaxReviewRetries\|AllowedReviewers\|UseCollaborators\|PollI
 
 ### 1b. Remove from `Defaults()`
 
-In the `Defaults()` function, remove:
+In the `Defaults()` function (~line 155), the actual order is:
 ```go
 AutoReview:        false,
 MaxReviewRetries:  3,
-UseCollaborators:  false,
 PollIntervalSec:   60,
+UseCollaborators:  false,
 ```
 
-(`AllowedReviewers` has no default entry — it is a nil slice by default, which is already the zero value.)
+Remove all four lines. (`AllowedReviewers` has no default entry — it is a nil slice by default, which is already the zero value.)
 
 ### 1c. Remove `validateAutoReview` from `Validate()`
 
@@ -169,7 +170,16 @@ Place this block AFTER `yaml.Unmarshal` succeeds and BEFORE the `mergePartial` c
 
 ## 3. Update `pkg/factory/factory.go`
 
-In `createBitbucketProviderDeps`, change the `NewBitbucketCollaboratorFetcher` call to pass `nil` instead of `cfg.AllowedReviewers`:
+**Precondition check:** prompt 1 (`1-spec-073-remove-review-code`) already removed the GitHub-side `collaboratorFetcher` construction (which referenced `cfg.UseCollaborators` and `cfg.AllowedReviewers`). Verify before proceeding:
+
+```bash
+grep -n "cfg.AllowedReviewers\|cfg.UseCollaborators" pkg/factory/factory.go
+# Expected: ONE match — only the Bitbucket call site at ~line 258 remains
+```
+
+If the GitHub references still exist, the prompt 1 work was incomplete — fix that first by deleting the GitHub `collaboratorFetcher` construction block in `createGitHubProviderDeps` (the function should only return prCreator, prMerger, brancher).
+
+Then, in `createBitbucketProviderDeps`, change the `NewBitbucketCollaboratorFetcher` call to pass `nil` instead of `cfg.AllowedReviewers`:
 
 ```go
 // BEFORE:
@@ -227,43 +237,9 @@ Locate the exact spans by running:
 grep -n "autoReview\|AutoReview\|AllowedReviewers" pkg/config/config_test.go
 ```
 
-### 4c. Add three It blocks for friendly error on removed fields
+### 4c. Friendly-error It blocks
 
-In the `Describe("Loader", ...)` or `Describe("Validate", ...)` section (place them adjacent to existing loader tests), add:
-
-```go
-It("returns a friendly error when autoReview is set in YAML", func() {
-    dir := GinkgoT().TempDir()
-    path := filepath.Join(dir, ".dark-factory.yaml")
-    Expect(os.WriteFile(path, []byte("autoReview: true\n"), 0600)).To(Succeed())
-    _, err := config.NewLoaderWithPath(path).Load(ctx)
-    Expect(err).To(HaveOccurred())
-    Expect(err.Error()).To(ContainSubstring("autoReview"))
-    Expect(err.Error()).To(ContainSubstring("branch protection"))
-})
-
-It("returns a friendly error when allowedReviewers is set in YAML", func() {
-    dir := GinkgoT().TempDir()
-    path := filepath.Join(dir, ".dark-factory.yaml")
-    Expect(os.WriteFile(path, []byte("allowedReviewers:\n  - alice\n"), 0600)).To(Succeed())
-    _, err := config.NewLoaderWithPath(path).Load(ctx)
-    Expect(err).To(HaveOccurred())
-    Expect(err.Error()).To(ContainSubstring("allowedReviewers"))
-    Expect(err.Error()).To(ContainSubstring("branch protection"))
-})
-
-It("returns a friendly error when useCollaborators is set in YAML", func() {
-    dir := GinkgoT().TempDir()
-    path := filepath.Join(dir, ".dark-factory.yaml")
-    Expect(os.WriteFile(path, []byte("useCollaborators: true\n"), 0600)).To(Succeed())
-    _, err := config.NewLoaderWithPath(path).Load(ctx)
-    Expect(err).To(HaveOccurred())
-    Expect(err.Error()).To(ContainSubstring("useCollaborators"))
-    Expect(err.Error()).To(ContainSubstring("branch protection"))
-})
-```
-
-Note: check how `config.NewLoaderWithPath` is exposed — it may be `config.NewLoader()` or the tests may need to create a loader with a specific path. Search the existing test file for how other loader tests create a loader with a specific path, and mirror that pattern exactly. If the loader only exposes `NewLoader()` which hard-codes `.dark-factory.yaml`, create a temp dir, `os.Chdir` into it, write the file, and call `config.NewLoader().Load(ctx)` — then restore the original dir. Mirror the existing test pattern precisely.
+The friendly-error tests for removed config fields are added in `config_loader_test.go` per requirement 5c (where the Loader machinery lives). No additions in `config_test.go`.
 
 ## 5. Update `pkg/config/config_loader_test.go`
 
@@ -292,9 +268,42 @@ Expect(cfg.PollIntervalSec).To(Equal(30))
 
 ### 5c. Add three It blocks for friendly errors
 
-After the existing loader It blocks in `config_loader_test.go`, add three It blocks that verify the friendly errors (same as requirement 4c above — mirror the existing file's `It` structure and loader invocation pattern).
+**Important: `config.NewLoaderWithPath(path)` does NOT exist. Only `config.NewLoader()` exists, and it reads `.dark-factory.yaml` from the current working directory.** Mirror the existing `os.Chdir`-into-tmpDir + `config.NewLoader()` pattern already used in `config_loader_test.go`'s `BeforeEach`/`AfterEach`.
 
-These are regression tests: they must fail on the code from prompt 1 (where the fields still exist in Config) and pass after prompt 2's changes.
+Find the existing pattern:
+```bash
+grep -B2 -A6 "config.NewLoader()" pkg/config/config_loader_test.go | head -30
+```
+
+Add these three It blocks adjacent to existing loader tests in the same `Describe` block. The surrounding `BeforeEach` already chdirs into a tmpDir, so `os.WriteFile(".dark-factory.yaml", ...)` writes to the right place:
+
+```go
+It("returns a friendly error when autoReview is set in YAML", func() {
+    Expect(os.WriteFile(".dark-factory.yaml", []byte("autoReview: true\n"), 0600)).To(Succeed())
+    _, err := loader.Load(ctx)
+    Expect(err).To(HaveOccurred())
+    Expect(err.Error()).To(ContainSubstring("autoReview"))
+    Expect(err.Error()).To(ContainSubstring("branch protection"))
+})
+
+It("returns a friendly error when allowedReviewers is set in YAML", func() {
+    Expect(os.WriteFile(".dark-factory.yaml", []byte("allowedReviewers:\n  - alice\n"), 0600)).To(Succeed())
+    _, err := loader.Load(ctx)
+    Expect(err).To(HaveOccurred())
+    Expect(err.Error()).To(ContainSubstring("allowedReviewers"))
+    Expect(err.Error()).To(ContainSubstring("branch protection"))
+})
+
+It("returns a friendly error when useCollaborators is set in YAML", func() {
+    Expect(os.WriteFile(".dark-factory.yaml", []byte("useCollaborators: true\n"), 0600)).To(Succeed())
+    _, err := loader.Load(ctx)
+    Expect(err).To(HaveOccurred())
+    Expect(err.Error()).To(ContainSubstring("useCollaborators"))
+    Expect(err.Error()).To(ContainSubstring("branch protection"))
+})
+```
+
+`loader` is the `config.NewLoader()` instance from the existing `BeforeEach`.
 
 ## 6. Update `pkg/config/roundtrip_test.go`
 

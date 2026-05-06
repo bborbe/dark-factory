@@ -89,7 +89,6 @@ var _ = Describe("Factory", func() {
 				git.NewPRMerger("", libtime.NewCurrentDateTime()),
 				false,
 				false,
-				false,
 				"make precommit",
 				"",
 				"",

@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [074-bug-noisy-waiting-for-changes-log]
 summary: 'Replaced unconditional idle log with a sampler-throttled closure: emits once on idle-window entry, then heartbeats at configurable idleLogInterval (default 1m); removed duplicate startup log from processor.go; added IdleLogInterval config field, loader support, validation, ParsedIdleLogInterval(); promoted github.com/bborbe/log to direct dependency; added buildIdleLogger factory function with unit tests; updated docs and CHANGELOG.'
 container: dark-factory-381-spec-074-idle-log-throttle
@@ -7,6 +7,7 @@ dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T09:15:00Z"
 queued: "2026-05-06T09:26:47Z"
 started: "2026-05-06T09:26:48Z"
+completed: "2026-05-06T09:39:03Z"
 branch: dark-factory/bug-noisy-waiting-for-changes-log
 ---
 

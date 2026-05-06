@@ -11,10 +11,12 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/bborbe/errors"
 	libhttp "github.com/bborbe/http"
+	liblog "github.com/bborbe/log"
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
@@ -416,9 +418,11 @@ func CreateRunner(
 		preflightChecker,
 		cfg.ParsedQueueInterval(),
 		cfg.ParsedSweepInterval(),
-		func(_ context.Context, _ context.CancelFunc) {
-			slog.Info("nothing to do, waiting for changes")
-		},
+		buildIdleLogger(
+			cfg.ParsedIdleLogInterval(),
+			cfg.ParsedQueueInterval(),
+			func() { slog.Info("nothing to do, waiting for changes") },
+		),
 	)
 	watcher := CreateWatcher(inProgressDir, inboxDir, promptManager, wakeup,
 		time.Duration(cfg.DebounceMs)*time.Millisecond, currentDateTimeGetter)
@@ -1411,4 +1415,48 @@ func CreateCombinedListCommand(
 		counter,
 		promptManager,
 	)
+}
+
+// buildIdleLogger returns the onIdle callback used by daemon-mode.
+// Exposed for testing the burst-collapse and heartbeat behavior.
+//
+// Behavior:
+//   - First call (or first call > 2*queueInterval since the last) emits unconditionally
+//   - Subsequent calls within the same idle window emit only when the heartbeat sampler fires
+//   - idleLogInterval == 0 disables the heartbeat; only first-entry emissions fire
+func buildIdleLogger(
+	idleLogInterval time.Duration,
+	queueInterval time.Duration,
+	emit func(),
+) func(context.Context, context.CancelFunc) {
+	var (
+		mu           sync.Mutex
+		lastIdleCall time.Time
+		heartbeat    liblog.Sampler
+	)
+	newHeartbeat := func() liblog.Sampler {
+		s := liblog.NewSampleTime(idleLogInterval)
+		s.IsSample() // prime: consume the initial fire so the interval starts from now
+		return s
+	}
+	if idleLogInterval > 0 {
+		heartbeat = newHeartbeat()
+	}
+	return func(_ context.Context, _ context.CancelFunc) {
+		mu.Lock()
+		defer mu.Unlock()
+		now := time.Now()
+		isNewIdleEntry := lastIdleCall.IsZero() || now.Sub(lastIdleCall) > 2*queueInterval
+		lastIdleCall = now
+		if isNewIdleEntry {
+			emit()
+			if idleLogInterval > 0 {
+				heartbeat = newHeartbeat()
+			}
+			return
+		}
+		if heartbeat != nil && heartbeat.IsSample() {
+			emit()
+		}
+	}
 }

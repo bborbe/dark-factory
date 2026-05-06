@@ -1,6 +1,9 @@
 ---
-status: draft
-kind: bug
+status: prompted
+approved: "2026-05-06T09:00:16Z"
+generating: "2026-05-06T09:00:17Z"
+prompted: "2026-05-06T09:08:11Z"
+branch: dark-factory/bug-noisy-waiting-for-changes-log
 ---
 
 # `"nothing to do, waiting for changes"` log is emitted on every idle tick (every 5s by default)
@@ -29,8 +32,8 @@ dark-factory version: `v0.150.2` (built from master at HEAD).
    time=2026-05-06T09:31:00.144+02:00 level=INFO msg="nothing to do, waiting for changes"
    ...
    ```
-3. The burst of 3-4 lines at the same millisecond happens because the processor's internal idle log AND the factory's `onIdle` callback both fire on the same tick.
-4. After 1 minute idle: 12 lines. After 1 hour idle: ~720 lines. The signal-to-noise ratio of `.dark-factory.log` collapses to ~0 once the daemon idles.
+3. The burst of 3-4 lines at the same millisecond happens at busy→idle transitions: multiple wakeup paths (watcher tick, queue scanner tick, spec watcher tick) all observe "nothing to do" within the same instant and each invoke `onIdle`, which calls `slog.Info(...)` unconditionally.
+4. After 1 minute idle: 12 lines (~one per `queueInterval`). After 1 hour idle: ~720 lines. The signal-to-noise ratio of `.dark-factory.log` collapses to ~0 once the daemon idles.
 
 ## Expected vs Actual
 
@@ -49,10 +52,11 @@ This also burns disk space and IO on a long-running daemon: a project that idles
 
 ## Code pointers
 
-- `pkg/factory/factory.go:418-422` — the `onIdle` callback passed to `CreateProcessor` calls `slog.Info("nothing to do, waiting for changes")` unconditionally on every idle tick.
-- `pkg/processor/processor.go:191` — internal `slog.Info("waiting for changes")` fires on the same tick, doubling the noise. Possibly also fires from another goroutine (watcher / spec watcher) explaining the 3-4× burst.
+- `pkg/factory/factory.go:418-422` — the `onIdle` callback passed to `CreateProcessor` calls `slog.Info("nothing to do, waiting for changes")` unconditionally every time the processor reports an idle tick. This is the per-tick noise source.
+- `pkg/processor/processor.go:191` — `slog.Info("waiting for changes")` emits ONCE at processor startup (before the ticker loop). It uses a different message ("waiting for changes" vs "nothing to do, waiting for changes") and is not the duplicate; it's the startup line. Worth keeping or merging into a single startup signal — distinct concern.
 - `pkg/queuescanner/scanner.go` — owns the tick cadence (`queueInterval`).
 - `pkg/config/config.go` — `QueueInterval` (default `5s`) controls the tick rate but should NOT be repurposed as the log-throttle rate; log throttling is a separate concern.
+- The 3-4× burst at busy→idle transitions is caused by multiple wakeup paths (`watcher`, `queueScanner`, `specWatcher`) each independently driving the processor's `runReadyTick` → `onIdle` chain in the same instant. Throttling at the `onIdle` callback layer collapses these naturally.
 
 ## Workaround
 
@@ -60,15 +64,23 @@ Filter the log line at the operator's tail step: `tail -f .dark-factory.log | gr
 
 ## Goal
 
-The idle log line is emitted at most once per state transition (busy → idle), plus an optional heartbeat at a long interval (default `1m`, configurable). Duplicate emissions on the same tick are eliminated. The daemon's log becomes readable: each line is an event, not a heartbeat.
+The idle log line is emitted at most once per state transition (busy → idle), plus a time-throttled heartbeat. Duplicate emissions in the same instant are eliminated. The daemon's log becomes readable: each line is an event, not a heartbeat.
 
 ## Constraints
 
 - Do NOT change `queueInterval` semantics — the scanner still polls at the same cadence; only the log emission is throttled.
 - Do NOT silence the idle log entirely — operators need to confirm the daemon is alive after a long idle window.
-- Do NOT emit the idle line from multiple sites for the same logical event — pick ONE source of truth (the `onIdle` callback in factory.go is the natural choice; the processor's internal `"waiting for changes"` line should be removed or merged into the same callback).
-- Heartbeat interval should be configurable via `idleLogInterval` (default `1m`) so noisy and quiet projects can tune.
+- The idle log line MUST be emitted from a single source of truth — pick ONE site, not multiple call sites contributing to the same logical event.
+- The throttling mechanism MUST reuse an existing in-house log-sampling abstraction rather than rolling a one-off counter or timestamp inline. (See "Implementation hints" below for the candidate library already present in `go.mod`.)
+- Heartbeat interval MUST be configurable so noisy and quiet projects can tune; default produces ≤2 lines/min in the worst case.
+- The first emission after a busy→idle transition is unconditional (not subject to the sampler) so operators see the state change immediately; subsequent same-state emissions go through the sampler.
 - Existing one-shot (`run`) mode behavior MUST not regress — `onIdle` in one-shot mode triggers context cancellation; that path stays unchanged. Only the daemon-mode log emission is throttled.
+
+## Implementation hints (non-binding)
+
+- `github.com/bborbe/log` already in `go.mod` as indirect dep; exposes `Sampler`, `SamplerFactory`, `NewSampleTime(d)`, `SamplerList`. Promote to direct dependency.
+- Established usage pattern: `~/Documents/workspaces/sm-octopus/docs/howto/raw-fetcher-conventions.md` — "Use `log.SamplerFactory` + `glog.Infof` for sampled success logging."
+- Implementation prompt may choose a different library if it justifies why; the constraint above only forbids inline ad-hoc throttling.
 
 ## Failure Modes
 
@@ -76,7 +88,7 @@ The idle log line is emitted at most once per state transition (busy → idle), 
 |---------|-------------------|----------|
 | Daemon enters idle state for the first time | Emit `"nothing to do, waiting for changes"` once | None — single log entry |
 | Daemon stays idle for 30s, no state change | No additional log entries | None |
-| Daemon stays idle for `idleLogInterval` (default 1m) | Emit a heartbeat: `"still idle, waiting for changes"` (or similar — distinct from the first-time line so grep can filter) | None |
+| Daemon stays idle for the heartbeat interval (default 1m) | Emit a heartbeat log line distinguishable from the first-entry line (so grep can filter); exact text decided in fix prompt | None |
 | Daemon transitions busy → idle → busy → idle | Each idle re-entry emits the first-time line once | None |
 | `idleLogInterval: 0` set in config | Heartbeat disabled; only the first-entry line emits per idle window | Operator knows by the absence of recent events |
 | One-shot `run` mode finishes, `onIdle` fires to cancel context | Context cancellation works as before; no log emission required | Existing exit path |
@@ -151,7 +163,9 @@ mv .dark-factory.yaml.bak .dark-factory.yaml
 
 ## See also
 
-- `pkg/factory/factory.go:418-422` — the `onIdle` callback to wrap in a throttle.
+- `pkg/factory/factory.go:418-422` — the `onIdle` callback to wrap in a `log.Sampler`-throttled emit.
 - `pkg/processor/processor.go:191` — the duplicate emit site to remove.
 - `pkg/processor/processor_verification_test.go:543-544` — existing test asserting `Equal(1)` for `"waiting for changes"` count after one-shot run; verify this test still applies (one-shot path doesn't emit the idle line, only daemon does).
 - `pkg/config/config.go` — `QueueInterval` (existing) and the new `IdleLogInterval` field to add.
+- `github.com/bborbe/log` — `NewSampleTime(d)`, `SamplerFactory`, `SamplerList`. Already in `go.mod` as indirect dep — promote to direct.
+- `~/Documents/workspaces/sm-octopus/docs/howto/raw-fetcher-conventions.md` — established usage pattern for `log.SamplerFactory` in this codebase family.

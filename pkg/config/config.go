@@ -119,6 +119,7 @@ type Config struct {
 	PreflightInterval      string              `yaml:"preflightInterval"`
 	QueueInterval          string              `yaml:"queueInterval"`
 	SweepInterval          string              `yaml:"sweepInterval"`
+	IdleLogInterval        string              `yaml:"idleLogInterval"`
 }
 
 // Defaults returns a Config with all default values.
@@ -158,6 +159,7 @@ func Defaults() Config {
 		PreflightInterval: "8h",
 		QueueInterval:     "5s",
 		SweepInterval:     "60s",
+		IdleLogInterval:   "1m",
 	}
 }
 
@@ -235,6 +237,7 @@ func (c Config) Validate(ctx context.Context) error {
 		),
 		validation.Name("queueInterval", validation.HasValidationFunc(c.validateQueueInterval)),
 		validation.Name("sweepInterval", validation.HasValidationFunc(c.validateSweepInterval)),
+		validation.Name("idleLogInterval", validation.HasValidationFunc(c.validateIdleLogInterval)),
 	}.Validate(ctx)
 }
 
@@ -397,6 +400,42 @@ func (c Config) validateSweepInterval(ctx context.Context) error {
 	}
 	if d <= 0 {
 		return errors.Errorf(ctx, "sweepInterval must be positive, got %s", c.SweepInterval)
+	}
+	return nil
+}
+
+// ParsedIdleLogInterval returns the parsed duration from IdleLogInterval.
+// Returns time.Minute when IdleLogInterval is empty or unparseable (preserves default behaviour).
+// Returns 0 when IdleLogInterval is "0" (heartbeat disabled).
+// Safe to call at any time — never panics.
+func (c Config) ParsedIdleLogInterval() time.Duration {
+	if c.IdleLogInterval == "" {
+		return time.Minute
+	}
+	d, err := time.ParseDuration(c.IdleLogInterval)
+	if err != nil {
+		return time.Minute
+	}
+	return d
+}
+
+// validateIdleLogInterval rejects unparseable or negative duration strings for idleLogInterval.
+// Zero is valid and disables the heartbeat.
+func (c Config) validateIdleLogInterval(ctx context.Context) error {
+	if c.IdleLogInterval == "" {
+		return nil
+	}
+	d, err := time.ParseDuration(c.IdleLogInterval)
+	if err != nil {
+		return errors.Errorf(
+			ctx,
+			"idleLogInterval %q is not a valid duration: %v",
+			c.IdleLogInterval,
+			err,
+		)
+	}
+	if d < 0 {
+		return errors.Errorf(ctx, "idleLogInterval must not be negative, got %s", c.IdleLogInterval)
 	}
 	return nil
 }

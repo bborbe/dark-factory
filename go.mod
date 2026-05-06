@@ -11,6 +11,7 @@ require (
 	github.com/bborbe/collection v1.20.7
 	github.com/bborbe/errors v1.5.8
 	github.com/bborbe/http v1.26.8
+	github.com/bborbe/log v1.6.8
 	github.com/bborbe/run v1.9.12
 	github.com/bborbe/time v1.25.6
 	github.com/bborbe/validation v1.4.9
@@ -94,7 +95,6 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20250826111327-4006b543a694 // indirect
 	github.com/bborbe/kv v1.19.2 // indirect
-	github.com/bborbe/log v1.6.8 // indirect
 	github.com/bborbe/math v1.3.6 // indirect
 	github.com/bborbe/parse v1.10.8 // indirect
 	github.com/bborbe/sentry v1.9.13 // indirect

@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-05-05T22:28:02Z"
 generating: "2026-05-05T22:28:44Z"
 prompted: "2026-05-05T22:41:33Z"
+verifying: "2026-05-06T07:35:33Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 

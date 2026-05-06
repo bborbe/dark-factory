@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	libtime "github.com/bborbe/time"
@@ -521,28 +520,30 @@ var _ = Describe("Processor", func() {
 			)
 		}
 
-		It("daemon Process logs 'waiting for changes' once after startup scan", func() {
-			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
+		It(
+			"daemon Process does not log 'waiting for changes' at startup (removed in favour of onIdle callback)",
+			func() {
+				manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 
-			p := newProc()
-			errCh := make(chan error, 1)
-			go func() {
-				errCh <- p.Process(ctx)
-			}()
+				p := newProc()
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- p.Process(ctx)
+				}()
 
-			time.Sleep(200 * time.Millisecond)
-			cancel()
+				time.Sleep(200 * time.Millisecond)
+				cancel()
 
-			select {
-			case err := <-errCh:
-				Expect(err).To(BeNil())
-			case <-time.After(2 * time.Second):
-				Fail("processor did not stop within timeout")
-			}
+				select {
+				case err := <-errCh:
+					Expect(err).To(BeNil())
+				case <-time.After(2 * time.Second):
+					Fail("processor did not stop within timeout")
+				}
 
-			Expect(logBuf.String()).To(ContainSubstring("waiting for changes"))
-			Expect(strings.Count(logBuf.String(), "waiting for changes")).To(Equal(1))
-		})
+				Expect(logBuf.String()).NotTo(ContainSubstring("waiting for changes"))
+			},
+		)
 
 		It("daemon ticker scan does not log 'no queued prompts' at INFO level", func() {
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)

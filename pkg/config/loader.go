@@ -122,6 +122,7 @@ type partialConfig struct {
 	PreflightInterval      *string              `yaml:"preflightInterval"`
 	QueueInterval          *string              `yaml:"queueInterval"`
 	SweepInterval          *string              `yaml:"sweepInterval"`
+	IdleLogInterval        *string              `yaml:"idleLogInterval"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -393,6 +394,9 @@ func mergePartialLimits(cfg *Config, partial *partialConfig) {
 	}
 	if partial.SweepInterval != nil {
 		cfg.SweepInterval = *partial.SweepInterval
+	}
+	if partial.IdleLogInterval != nil {
+		cfg.IdleLogInterval = *partial.IdleLogInterval
 	}
 }
 

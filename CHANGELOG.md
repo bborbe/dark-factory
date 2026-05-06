@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.150.5
+
+- fix: Suppress noisy `"nothing to do, waiting for changes"` idle log — emits once per idle entry, then at most once per `idleLogInterval` (default 1m) heartbeat; configurable via `idleLogInterval:` in `.dark-factory.yaml`
+
 ## v0.150.4
 
 - BREAKING: removed `autoReview`, `allowedReviewers`, `useCollaborators`, `maxReviewRetries`, `pollIntervalSec` config fields. Use GitHub branch protection to gate merges. Configs containing any of the three user-visible removed fields (`autoReview`, `allowedReviewers`, `useCollaborators`) now fail at load time with a friendly error.

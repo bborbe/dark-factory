@@ -188,8 +188,6 @@ func (p *processor) Process(ctx context.Context) error {
 	// After startup scan, also retry any committing prompts.
 	p.committingRecoverer.RecoverAll(ctx)
 
-	slog.Info("waiting for changes")
-
 	// Listen for ready signals from watcher
 	ticker := time.NewTicker(p.queueInterval)
 	defer ticker.Stop()

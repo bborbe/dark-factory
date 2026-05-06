@@ -309,14 +309,16 @@ autoRetryLimit: 3
 ```yaml
 queueInterval: "5s"
 sweepInterval: "60s"
+idleLogInterval: "1m"
 ```
 
 | Field | Default | Purpose |
 |-------|---------|---------|
 | `queueInterval` | `5s` | How often the daemon polls for queued prompts and re-checks committing prompts. Lower values give faster response to fsnotify-missed events at the cost of more frequent file scans. |
 | `sweepInterval` | `60s` | How often the daemon scans `specs/in-progress/` for prompted specs whose linked prompts have all completed and transitions them to `verifying`. Self-healing safety net for the per-prompt auto-complete path; lower values give faster recovery from missed transitions. |
+| `idleLogInterval` | `1m` | How often the daemon emits a heartbeat `"nothing to do, waiting for changes"` log line while idle. The first-entry line always fires immediately when the daemon enters an idle window. Set to `"0"` to disable the heartbeat entirely (only the first-entry line fires). Operators can raise this to reduce log volume during long idle periods. |
 
-Both accept Go duration strings (`"5s"`, `"60s"`, `"5m"`, `"1h"`). Invalid strings or non-positive durations are rejected at daemon startup.
+`queueInterval` and `sweepInterval` accept Go duration strings (`"5s"`, `"60s"`, `"5m"`, `"1h"`). Invalid strings or non-positive durations are rejected at daemon startup. `idleLogInterval` also accepts Go duration strings; `"0"` is valid and disables the heartbeat.
 
 ### Preflight Baseline Check
 

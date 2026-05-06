@@ -1,5 +1,5 @@
 autoRelease: true
-maxContainers: 5
+maxContainers: 8
 pr: false
 preflightCommand: "make precommit"
 preflightInterval: "8h"

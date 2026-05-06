@@ -341,7 +341,8 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 
 	cancelled, execErr := p.runContainer(ctx, content, logFile, containerName, pr.Path)
 	if cancelled {
-		return nil // proceed to next prompt; status is already set to cancelled
+		p.moveCancelledPrompt(ctx, pr.Path)
+		return nil // proceed to next prompt
 	}
 	if execErr != nil {
 		return execErr
@@ -468,6 +469,21 @@ func (p *processor) handleEmptyPrompt(
 		return nil
 	}
 	return errors.Wrap(ctx, contentErr, "get prompt content")
+}
+
+// moveCancelledPrompt moves a cancelled prompt out of in-progress/ into cancelled/.
+// Non-fatal: if the move fails, we log a warning and continue — the cancelled status
+// already prevents the daemon from re-executing the prompt.
+func (p *processor) moveCancelledPrompt(ctx context.Context, promptPath string) {
+	if moveErr := p.promptManager.MoveToCancelled(ctx, promptPath); moveErr != nil {
+		slog.Warn(
+			"failed to move cancelled prompt",
+			"file",
+			filepath.Base(promptPath),
+			"error",
+			moveErr,
+		)
+	}
 }
 
 // computePromptMetadata derives the baseName and containerName from the prompt path and project name.

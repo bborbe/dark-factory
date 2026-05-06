@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [075-bug-prompt-cancel-leaves-running-container-and-file]
+summary: Wired MoveToCancelled into CLI cancel command and processor so cancelled prompts always move out of in-progress/ into cancelled/
+container: dark-factory-383-spec-075-cli-and-processor
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T09:20:00Z"
 queued: "2026-05-06T10:06:58Z"
+started: "2026-05-06T10:24:13Z"
 branch: dark-factory/bug-prompt-cancel-leaves-running-container-and-file
 ---
 

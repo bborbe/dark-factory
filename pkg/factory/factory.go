@@ -1087,7 +1087,7 @@ func CreateCancelCommand(
 		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
-	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, promptManager)
+	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, cfg.Prompts.CancelledDir, promptManager)
 }
 
 // CreatePromptCompleteCommand creates a PromptCompleteCommand.

@@ -24,16 +24,19 @@ type CancelCommand interface {
 // cancelCommand implements CancelCommand.
 type cancelCommand struct {
 	queueDir      string
+	cancelledDir  string
 	promptManager PromptManager
 }
 
 // NewCancelCommand creates a new CancelCommand.
 func NewCancelCommand(
 	queueDir string,
+	cancelledDir string,
 	promptManager PromptManager,
 ) CancelCommand {
 	return &cancelCommand{
 		queueDir:      queueDir,
+		cancelledDir:  cancelledDir,
 		promptManager: promptManager,
 	}
 }
@@ -45,9 +48,10 @@ func (a *cancelCommand) Run(ctx context.Context, args []string) error {
 	}
 	id := args[0]
 
+	// Primary search: in-progress (the queue).
 	path, err := FindPromptFile(ctx, a.queueDir, id)
 	if err != nil {
-		return errors.Errorf(ctx, "prompt not found: %s", id)
+		return a.handleNotFound(ctx, id)
 	}
 
 	pf, err := a.promptManager.Load(ctx, path)
@@ -56,13 +60,25 @@ func (a *cancelCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	switch prompt.PromptStatus(pf.Frontmatter.Status) {
-	case prompt.ApprovedPromptStatus, prompt.ExecutingPromptStatus:
+	case prompt.ApprovedPromptStatus:
+		// Not yet running: mark cancelled and move the file immediately.
+		if err := a.promptManager.MoveToCancelled(ctx, path); err != nil {
+			return errors.Wrap(ctx, err, "move to cancelled")
+		}
+		fmt.Printf("cancelled: %s\n", filepath.Base(path))
+		return nil
+
+	case prompt.ExecutingPromptStatus:
+		// Container is running: write status=cancelled to trigger the
+		// cancellationwatcher (daemon-side), which will stop the container.
+		// The processor moves the file to cancelled/ after the container exits.
 		pf.MarkCancelled()
 		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "save prompt")
 		}
 		fmt.Printf("cancelled: %s\n", filepath.Base(path))
 		return nil
+
 	default:
 		return errors.Errorf(
 			ctx,
@@ -70,4 +86,25 @@ func (a *cancelCommand) Run(ctx context.Context, args []string) error {
 			pf.Frontmatter.Status,
 		)
 	}
+}
+
+// handleNotFound checks whether the prompt was already moved to cancelled/ (idempotency).
+// Returns nil if the prompt is already in cancelled/, otherwise returns a not-found error.
+func (a *cancelCommand) handleNotFound(ctx context.Context, id string) error {
+	if a.cancelledDir == "" {
+		return errors.Errorf(ctx, "prompt not found: %s", id)
+	}
+	cancelledPath, findErr := FindPromptFile(ctx, a.cancelledDir, id)
+	if findErr != nil {
+		return errors.Errorf(ctx, "prompt not found: %s", id)
+	}
+	pf, loadErr := a.promptManager.Load(ctx, cancelledPath)
+	if loadErr != nil {
+		return errors.Errorf(ctx, "prompt not found: %s", id)
+	}
+	if pf.Frontmatter.Status != string(prompt.CancelledPromptStatus) {
+		return errors.Errorf(ctx, "prompt not found: %s", id)
+	}
+	fmt.Printf("already cancelled: %s\n", filepath.Base(cancelledPath))
+	return nil
 }

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.151.1
+
+- fix: `prompt cancel` now moves approved prompts to `prompts/cancelled/` immediately, preventing daemon re-spawn
+- fix: processor moves executing prompts to `prompts/cancelled/` after container stops on cancel
+- fix: `prompt cancel` is idempotent — cancelling an already-cancelled prompt returns exit 0
+- fix: `NewCancelCommand` accepts `cancelledDir` parameter; factory wires `cfg.Prompts.CancelledDir`
+
 ## v0.151.0
 
 - feat: Add `cancelledDir` config field (`prompts/cancelled/` default) and `MoveToCancelled` method on `prompt.Manager` to move cancelled prompt files with a UTC timestamp; add `cancelled` frontmatter field; `listQueued` skips `cancelled` status files; `cmd.PromptManager` and `processor.PromptManager` interfaces extended accordingly

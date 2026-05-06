@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.150.4
+
+- BREAKING: removed `autoReview`, `allowedReviewers`, `useCollaborators`, `maxReviewRetries`, `pollIntervalSec` config fields. Use GitHub branch protection to gate merges. Configs containing any of the three user-visible removed fields (`autoReview`, `allowedReviewers`, `useCollaborators`) now fail at load time with a friendly error.
+
 ## v0.150.3
 
 - refactor: Remove entire `autoReview` code path — deleted `pkg/review/`, `ReviewPoller`, `ReviewFetcher`, `FixPromptGenerator`, `review_fetcher.go`, related mocks, and all wiring; `autoMerge: true` with branch protection is now the only merge gate

@@ -43,10 +43,6 @@ var _ = Describe("Config", func() {
 			Expect(cfg.ServerPort).To(Equal(0))
 			Expect(cfg.AutoMerge).To(BeFalse())
 			Expect(cfg.AutoRelease).To(BeFalse())
-			Expect(cfg.AutoReview).To(BeFalse())
-			Expect(cfg.MaxReviewRetries).To(Equal(3))
-			Expect(cfg.PollIntervalSec).To(Equal(60))
-			Expect(cfg.UseCollaborators).To(BeFalse())
 			Expect(cfg.GitHub.Token).To(BeEmpty())
 			Expect(cfg.PreflightCommand).To(Equal("make precommit"))
 			Expect(cfg.PreflightInterval).To(Equal("8h"))
@@ -706,121 +702,6 @@ var _ = Describe("Config", func() {
 				Expect(err).NotTo(HaveOccurred())
 			},
 		)
-
-		It("fails for autoReview true with workflow direct", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowDirect,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage:   pkg.DefaultContainerImage,
-				Model:            "claude-sonnet-4-6",
-				DebounceMs:       500,
-				ServerPort:       8080,
-				AutoMerge:        false,
-				AutoReview:       true,
-				AllowedReviewers: []string{"bborbe"},
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(
-				err.Error(),
-			).To(ContainSubstring("autoReview requires pr: true"))
-		})
-
-		It("fails for autoReview true with pr: false (no workflow field)", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowDirect,
-				PR:       false,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage:   pkg.DefaultContainerImage,
-				Model:            "claude-sonnet-4-6",
-				DebounceMs:       500,
-				ServerPort:       8080,
-				AutoReview:       true,
-				AllowedReviewers: []string{"bborbe"},
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("autoReview requires pr: true"))
-		})
-
-		It("fails for autoReview true with autoMerge false", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowClone,
-				PR:       true,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage:   pkg.DefaultContainerImage,
-				Model:            "claude-sonnet-4-6",
-				DebounceMs:       500,
-				ServerPort:       8080,
-				AutoMerge:        false,
-				AutoReview:       true,
-				AllowedReviewers: []string{"bborbe"},
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("autoReview requires autoMerge"))
-		})
-
-		It("fails for autoReview true with no reviewer source", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowClone,
-				PR:       true,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage: pkg.DefaultContainerImage,
-				Model:          "claude-sonnet-4-6",
-				DebounceMs:     500,
-				ServerPort:     8080,
-				AutoMerge:      true,
-				AutoReview:     true,
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).To(HaveOccurred())
-			Expect(
-				err.Error(),
-			).To(ContainSubstring("autoReview requires allowedReviewers or useCollaborators: true"))
-		})
-
-		It("succeeds for autoReview true with all required fields", func() {
-			cfg := config.Config{
-				Workflow: config.WorkflowClone,
-				PR:       true,
-				Prompts: config.PromptsConfig{
-					InboxDir:      "prompts",
-					InProgressDir: "prompts/in-progress",
-					CompletedDir:  "prompts/completed",
-					LogDir:        "prompts/log",
-				},
-				ContainerImage:   pkg.DefaultContainerImage,
-				Model:            "claude-sonnet-4-6",
-				DebounceMs:       500,
-				ServerPort:       8080,
-				AutoMerge:        true,
-				AutoReview:       true,
-				AllowedReviewers: []string{"bborbe"},
-			}
-			err := cfg.Validate(ctx)
-			Expect(err).NotTo(HaveOccurred())
-		})
 
 		It("succeeds with DefaultBranch set to master", func() {
 			cfg := config.Config{

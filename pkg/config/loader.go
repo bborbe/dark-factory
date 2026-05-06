@@ -80,48 +80,48 @@ type partialSpecsConfig struct {
 // partialConfig is used for YAML unmarshaling to distinguish between
 // explicitly set zero values and missing fields.
 type partialConfig struct {
-	Workflow               *Workflow             `yaml:"workflow"`
-	PR                     *bool                 `yaml:"pr"`
-	Worktree               *bool                 `yaml:"worktree"`
-	ProjectName            *string               `yaml:"projectName"`
-	DefaultBranch          *string               `yaml:"defaultBranch"`
-	Prompts                *partialPromptsConfig `yaml:"prompts"`
-	Specs                  *partialSpecsConfig   `yaml:"specs"`
-	ContainerImage         *string               `yaml:"containerImage"`
-	NetrcFile              *string               `yaml:"netrcFile"`
-	GitconfigFile          *string               `yaml:"gitconfigFile"`
-	Model                  *string               `yaml:"model"`
-	ValidationCommand      *string               `yaml:"validationCommand"`
-	ValidationPrompt       *string               `yaml:"validationPrompt"`
-	TestCommand            *string               `yaml:"testCommand"`
-	DebounceMs             *int                  `yaml:"debounceMs"`
-	ServerPort             *int                  `yaml:"serverPort"`
-	AutoMerge              *bool                 `yaml:"autoMerge"`
-	AutoRelease            *bool                 `yaml:"autoRelease"`
-	VerificationGate       *bool                 `yaml:"verificationGate"`
-	AutoReview             *bool                 `yaml:"autoReview"`
-	MaxReviewRetries       *int                  `yaml:"maxReviewRetries"`
-	AllowedReviewers       []string              `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators       *bool                 `yaml:"useCollaborators"`
-	PollIntervalSec        *int                  `yaml:"pollIntervalSec"`
-	GitHub                 *GitHubConfig         `yaml:"github"`
-	Provider               *Provider             `yaml:"provider"`
-	Bitbucket              *BitbucketConfig      `yaml:"bitbucket"`
-	Notifications          *NotificationsConfig  `yaml:"notifications"`
-	Env                    map[string]string     `yaml:"env,omitempty"`
-	ExtraMounts            []ExtraMount          `yaml:"extraMounts,omitempty"`
-	ClaudeDir              *string               `yaml:"claudeDir"`
-	GenerateCommand        *string               `yaml:"generateCommand"`
-	AdditionalInstructions *string               `yaml:"additionalInstructions,omitempty"`
-	MaxContainers          *int                  `yaml:"maxContainers,omitempty"`
-	DirtyFileThreshold     *int                  `yaml:"dirtyFileThreshold,omitempty"`
-	MaxPromptDuration      *string               `yaml:"maxPromptDuration"`
-	AutoRetryLimit         *int                  `yaml:"autoRetryLimit"`
-	HideGit                *bool                 `yaml:"hideGit"`
-	PreflightCommand       *string               `yaml:"preflightCommand"`
-	PreflightInterval      *string               `yaml:"preflightInterval"`
-	QueueInterval          *string               `yaml:"queueInterval"`
-	SweepInterval          *string               `yaml:"sweepInterval"`
+	Workflow          *Workflow             `yaml:"workflow"`
+	PR                *bool                 `yaml:"pr"`
+	Worktree          *bool                 `yaml:"worktree"`
+	ProjectName       *string               `yaml:"projectName"`
+	DefaultBranch     *string               `yaml:"defaultBranch"`
+	Prompts           *partialPromptsConfig `yaml:"prompts"`
+	Specs             *partialSpecsConfig   `yaml:"specs"`
+	ContainerImage    *string               `yaml:"containerImage"`
+	NetrcFile         *string               `yaml:"netrcFile"`
+	GitconfigFile     *string               `yaml:"gitconfigFile"`
+	Model             *string               `yaml:"model"`
+	ValidationCommand *string               `yaml:"validationCommand"`
+	ValidationPrompt  *string               `yaml:"validationPrompt"`
+	TestCommand       *string               `yaml:"testCommand"`
+	DebounceMs        *int                  `yaml:"debounceMs"`
+	ServerPort        *int                  `yaml:"serverPort"`
+	AutoMerge         *bool                 `yaml:"autoMerge"`
+	AutoRelease       *bool                 `yaml:"autoRelease"`
+	VerificationGate  *bool                 `yaml:"verificationGate"`
+	// Removed fields kept as sentinels to detect legacy configs.
+	// loadWithOverrides returns a friendly error if any of these is set.
+	AutoReview             *bool                `yaml:"autoReview"`
+	AllowedReviewers       []string             `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators       *bool                `yaml:"useCollaborators"`
+	GitHub                 *GitHubConfig        `yaml:"github"`
+	Provider               *Provider            `yaml:"provider"`
+	Bitbucket              *BitbucketConfig     `yaml:"bitbucket"`
+	Notifications          *NotificationsConfig `yaml:"notifications"`
+	Env                    map[string]string    `yaml:"env,omitempty"`
+	ExtraMounts            []ExtraMount         `yaml:"extraMounts,omitempty"`
+	ClaudeDir              *string              `yaml:"claudeDir"`
+	GenerateCommand        *string              `yaml:"generateCommand"`
+	AdditionalInstructions *string              `yaml:"additionalInstructions,omitempty"`
+	MaxContainers          *int                 `yaml:"maxContainers,omitempty"`
+	DirtyFileThreshold     *int                 `yaml:"dirtyFileThreshold,omitempty"`
+	MaxPromptDuration      *string              `yaml:"maxPromptDuration"`
+	AutoRetryLimit         *int                 `yaml:"autoRetryLimit"`
+	HideGit                *bool                `yaml:"hideGit"`
+	PreflightCommand       *string              `yaml:"preflightCommand"`
+	PreflightInterval      *string              `yaml:"preflightInterval"`
+	QueueInterval          *string              `yaml:"queueInterval"`
+	SweepInterval          *string              `yaml:"sweepInterval"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -136,7 +136,7 @@ func (l *fileLoader) Load(ctx context.Context) (Config, error) {
 // loadWithOverrides reads the config file, merges with defaults, validates, and returns
 // both the merged config and project override detection data.
 //
-//nolint:funlen // captures overrides before merge; splitting would obscure the capture-before-merge ordering invariant
+//nolint:funlen,gocognit // captures overrides before merge; splitting would obscure the capture-before-merge ordering invariant
 func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) {
 	// Start with defaults
 	cfg := Defaults()
@@ -176,6 +176,29 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		Workflow:           partial.Workflow,
 		PR:                 partial.PR,
 		AutoMerge:          partial.AutoMerge,
+	}
+
+	// Detect removed config fields and return actionable errors.
+	if partial.AutoReview != nil {
+		return LoadResult{}, errors.Errorf(ctx,
+			"unknown field %q — autoReview was removed in v0.151.0; "+
+				"configure GitHub branch protection on the repo to enforce review requirements",
+			"autoReview",
+		)
+	}
+	if len(partial.AllowedReviewers) > 0 {
+		return LoadResult{}, errors.Errorf(ctx,
+			"unknown field %q — allowedReviewers was removed in v0.151.0; "+
+				"configure GitHub branch protection on the repo to enforce review requirements",
+			"allowedReviewers",
+		)
+	}
+	if partial.UseCollaborators != nil {
+		return LoadResult{}, errors.Errorf(ctx,
+			"unknown field %q — useCollaborators was removed in v0.151.0; "+
+				"configure GitHub branch protection on the repo to enforce review requirements",
+			"useCollaborators",
+		)
 	}
 
 	// Merge non-nil values onto defaults
@@ -246,7 +269,6 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 func mergePartial(cfg *Config, partial *partialConfig) {
 	mergePartialWorkflow(cfg, partial)
 	mergePartialContainer(cfg, partial)
-	mergePartialReview(cfg, partial)
 	mergePartialProviders(cfg, partial)
 	mergePartialLimits(cfg, partial)
 }
@@ -333,25 +355,6 @@ func mergePartialContainer(cfg *Config, partial *partialConfig) {
 	}
 	if partial.PreflightInterval != nil {
 		cfg.PreflightInterval = *partial.PreflightInterval
-	}
-}
-
-// mergePartialReview merges auto-review and reviewer settings.
-func mergePartialReview(cfg *Config, partial *partialConfig) {
-	if partial.AutoReview != nil {
-		cfg.AutoReview = *partial.AutoReview
-	}
-	if partial.MaxReviewRetries != nil {
-		cfg.MaxReviewRetries = *partial.MaxReviewRetries
-	}
-	if partial.AllowedReviewers != nil {
-		cfg.AllowedReviewers = partial.AllowedReviewers
-	}
-	if partial.UseCollaborators != nil {
-		cfg.UseCollaborators = *partial.UseCollaborators
-	}
-	if partial.PollIntervalSec != nil {
-		cfg.PollIntervalSec = *partial.PollIntervalSec
 	}
 }
 

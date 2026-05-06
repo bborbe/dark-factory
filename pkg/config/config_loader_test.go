@@ -719,6 +719,40 @@ worktree: false
 				Expect(cfg.AdditionalInstructions).To(BeEmpty())
 			})
 
+			It("returns a friendly error when autoReview is set in YAML", func() {
+				Expect(
+					os.WriteFile(".dark-factory.yaml", []byte("autoReview: true\n"), 0600),
+				).To(Succeed())
+				_, err := loader.Load(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("autoReview"))
+				Expect(err.Error()).To(ContainSubstring("branch protection"))
+			})
+
+			It("returns a friendly error when allowedReviewers is set in YAML", func() {
+				Expect(
+					os.WriteFile(
+						".dark-factory.yaml",
+						[]byte("allowedReviewers:\n  - alice\n"),
+						0600,
+					),
+				).To(Succeed())
+				_, err := loader.Load(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("allowedReviewers"))
+				Expect(err.Error()).To(ContainSubstring("branch protection"))
+			})
+
+			It("returns a friendly error when useCollaborators is set in YAML", func() {
+				Expect(
+					os.WriteFile(".dark-factory.yaml", []byte("useCollaborators: true\n"), 0600),
+				).To(Succeed())
+				_, err := loader.Load(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("useCollaborators"))
+				Expect(err.Error()).To(ContainSubstring("branch protection"))
+			})
+
 			// If you add a new field to config.Config, you MUST:
 			//   1. Add the field to partialConfig in loader.go
 			//   2. Add the merge block to mergePartial
@@ -769,12 +803,6 @@ serverPort: 9000
 autoMerge: true
 autoRelease: true
 verificationGate: true
-autoReview: true
-maxReviewRetries: 5
-allowedReviewers:
-  - test-reviewer
-useCollaborators: true
-pollIntervalSec: 30
 github:
   token: ${TEST_GITHUB_TOKEN}
 provider: bitbucket-server
@@ -830,11 +858,6 @@ autoRetryLimit: 2
 					Expect(cfg.AutoMerge).To(BeTrue())
 					Expect(cfg.AutoRelease).To(BeTrue())
 					Expect(cfg.VerificationGate).To(BeTrue())
-					Expect(cfg.AutoReview).To(BeTrue())
-					Expect(cfg.MaxReviewRetries).To(Equal(5))
-					Expect(cfg.AllowedReviewers).To(Equal([]string{"test-reviewer"}))
-					Expect(cfg.UseCollaborators).To(BeTrue())
-					Expect(cfg.PollIntervalSec).To(Equal(30))
 					Expect(cfg.GitHub.Token).To(Equal("${TEST_GITHUB_TOKEN}"))
 					Expect(cfg.Provider).To(Equal(config.ProviderBitbucketServer))
 					Expect(cfg.Bitbucket.BaseURL).To(Equal("https://bitbucket.example.com"))

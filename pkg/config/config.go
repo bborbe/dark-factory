@@ -102,11 +102,6 @@ type Config struct {
 	AutoMerge              bool                `yaml:"autoMerge"`
 	AutoRelease            bool                `yaml:"autoRelease"`
 	VerificationGate       bool                `yaml:"verificationGate"`
-	AutoReview             bool                `yaml:"autoReview"`
-	MaxReviewRetries       int                 `yaml:"maxReviewRetries"`
-	AllowedReviewers       []string            `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators       bool                `yaml:"useCollaborators"`
-	PollIntervalSec        int                 `yaml:"pollIntervalSec"`
 	GitHub                 GitHubConfig        `yaml:"github"`
 	Provider               Provider            `yaml:"provider"`
 	Bitbucket              BitbucketConfig     `yaml:"bitbucket"`
@@ -154,10 +149,6 @@ func Defaults() Config {
 		ServerPort:        0,
 		AutoMerge:         false,
 		AutoRelease:       false,
-		AutoReview:        false,
-		MaxReviewRetries:  3,
-		PollIntervalSec:   60,
-		UseCollaborators:  false,
 		GitHub:            GitHubConfig{},
 		Provider:          ProviderGitHub,
 		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
@@ -210,7 +201,6 @@ func (c Config) Validate(ctx context.Context) error {
 			"autoRelease",
 			validation.HasValidationFunc(c.validateAutoReleaseAutoMerge),
 		),
-		validation.Name("autoReview", validation.HasValidationFunc(c.validateAutoReview)),
 		validation.Name("provider", validation.HasValidationFunc(func(ctx context.Context) error {
 			provider := c.Provider
 			if provider == "" {
@@ -454,23 +444,6 @@ func (c Config) validateAutoReleaseAutoMerge(ctx context.Context) error {
 				" (autoRelease cannot tag a commit that hasn't been merged to master);"+
 				" set autoMerge: true, or set autoRelease: false, or set pr: false",
 		)
-	}
-	return nil
-}
-
-// validateAutoReview validates the autoReview configuration.
-func (c Config) validateAutoReview(ctx context.Context) error {
-	if !c.AutoReview {
-		return nil
-	}
-	if !c.PR {
-		return errors.Errorf(ctx, "autoReview requires pr: true")
-	}
-	if !c.AutoMerge {
-		return errors.Errorf(ctx, "autoReview requires autoMerge")
-	}
-	if len(c.AllowedReviewers) == 0 && !c.UseCollaborators {
-		return errors.Errorf(ctx, "autoReview requires allowedReviewers or useCollaborators: true")
 	}
 	return nil
 }

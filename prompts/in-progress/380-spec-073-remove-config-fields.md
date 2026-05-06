@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [073-simplify-merge-gate-by-relying-on-mergestatestatus]
+summary: Removed autoReview, allowedReviewers, useCollaborators, maxReviewRetries, pollIntervalSec from Config and Defaults(); kept three user-visible fields as sentinels in partialConfig with friendly error detection in loadWithOverrides; updated factory.go, all three test files, and CHANGELOG.md.
+container: dark-factory-380-spec-073-remove-config-fields
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T00:00:00Z"
 queued: "2026-05-06T07:02:57Z"
+started: "2026-05-06T07:26:49Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 

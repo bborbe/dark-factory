@@ -28,16 +28,14 @@ var exclusions = map[string]string{
 	"Bitbucket":     "nested struct, merged wholesale via mergePartialProviders",
 	"Notifications": "nested struct, merged wholesale via mergePartialProviders",
 	// Collection fields
-	"Env":              "map[string]string collection, merged as-is without pointer indirection",
-	"ExtraMounts":      "slice collection, merged as-is without pointer indirection",
-	"AllowedReviewers": "slice collection, merged as-is without pointer indirection",
+	"Env":         "map[string]string collection, merged as-is without pointer indirection",
+	"ExtraMounts": "slice collection, merged as-is without pointer indirection",
 	// Legacy / special Load step handling
 	"Worktree": "zeroed unconditionally in Load step D; legacy field",
 	"Workflow": "legacy pr-enum mapping applied in Load step A; not a plain assignment",
 	// Validation-coupled fields — round-trip covered by paired-yaml tests below
-	"PR":         "validation-coupled: workflow: direct + pr: true is invalid; covered by paired-yaml test",
-	"AutoMerge":  "validation-coupled: requires pr: true; covered by paired-yaml test",
-	"AutoReview": "validation-coupled: requires pr+autoMerge+allowedReviewers; covered by paired-yaml test",
+	"PR":        "validation-coupled: workflow: direct + pr: true is invalid; covered by paired-yaml test",
+	"AutoMerge": "validation-coupled: requires pr: true; covered by paired-yaml test",
 }
 
 var _ = Describe("Config/partialConfig parity", func() {
@@ -161,10 +159,6 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.DebounceMs).To(Equal(42)) }),
 			Entry("serverPort", "serverPort", "8888",
 				func(cfg Config) { Expect(cfg.ServerPort).To(Equal(8888)) }),
-			Entry("maxReviewRetries", "maxReviewRetries", "9",
-				func(cfg Config) { Expect(cfg.MaxReviewRetries).To(Equal(9)) }),
-			Entry("pollIntervalSec", "pollIntervalSec", "99",
-				func(cfg Config) { Expect(cfg.PollIntervalSec).To(Equal(99)) }),
 			Entry("maxContainers", "maxContainers", "5",
 				func(cfg Config) { Expect(cfg.MaxContainers).To(Equal(5)) }),
 			Entry("dirtyFileThreshold", "dirtyFileThreshold", "7",
@@ -176,8 +170,6 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.AutoRelease).To(BeTrue()) }),
 			Entry("verificationGate", "verificationGate", "true",
 				func(cfg Config) { Expect(cfg.VerificationGate).To(BeTrue()) }),
-			Entry("useCollaborators", "useCollaborators", "true",
-				func(cfg Config) { Expect(cfg.UseCollaborators).To(BeTrue()) }),
 			Entry("hideGit", "hideGit", "true",
 				func(cfg Config) { Expect(cfg.HideGit).To(BeTrue()) }),
 		)
@@ -212,11 +204,11 @@ var _ = Describe("Config/partialConfig parity", func() {
 			Expect(cfg.AutoMerge).To(BeTrue())
 		})
 
-		It("autoReview: true round-trips when all required fields are present", func() {
-			yaml := "workflow: clone\npr: true\nautoMerge: true\nautoReview: true\nuseCollaborators: true\n"
-			cfg, err := writeAndLoad(yaml)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.AutoReview).To(BeTrue())
+		It("autoReview: true in YAML returns a friendly error", func() {
+			_, err := writeAndLoad("workflow: clone\npr: true\nautoMerge: true\nautoReview: true\n")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("autoReview"))
+			Expect(err.Error()).To(ContainSubstring("branch protection"))
 		})
 
 		// provider: bitbucket-server requires bitbucket.baseURL — test with paired field.

@@ -242,7 +242,7 @@ func createBitbucketProviderDeps(
 		coords.Repo,
 		cfg.DefaultBranch,
 		userFetcher,
-		cfg.AllowedReviewers,
+		nil,
 	)
 
 	return providerDeps{

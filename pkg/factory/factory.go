@@ -164,6 +164,7 @@ func createPromptManager(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
+	cancelledDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (*prompt.Manager, git.Releaser) {
 	releaser := git.NewReleaser()
@@ -171,6 +172,7 @@ func createPromptManager(
 		inboxDir,
 		inProgressDir,
 		completedDir,
+		cancelledDir,
 		releaser,
 		currentDateTimeGetter,
 	)
@@ -271,6 +273,7 @@ func createSpecSlugMigrator(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return slugmigrator.NewMigrator(
@@ -301,6 +304,7 @@ func CreateRunner(
 		inboxDir,
 		inProgressDir,
 		completedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	versionGetter := version.NewGetter(ver)
@@ -470,7 +474,7 @@ func CreateOneShotRunner(
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
 	promptManager, releaser := createPromptManager(
-		inboxDir, inProgressDir, completedDir, currentDateTimeGetter)
+		inboxDir, inProgressDir, completedDir, cfg.Prompts.CancelledDir, currentDateTimeGetter)
 	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
 	projectName := project.Resolve(cfg.ProjectName)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
@@ -1015,6 +1019,7 @@ func CreateStatusCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 
@@ -1043,6 +1048,7 @@ func CreateListCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewListCommand(
@@ -1063,6 +1069,7 @@ func CreateRequeueCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewRequeueCommand(cfg.Prompts.InProgressDir, promptManager)
@@ -1077,6 +1084,7 @@ func CreateCancelCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewCancelCommand(cfg.Prompts.InProgressDir, promptManager)
@@ -1092,6 +1100,7 @@ func CreatePromptCompleteCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
@@ -1115,6 +1124,7 @@ func CreateUnapproveCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 
@@ -1134,6 +1144,7 @@ func CreateApproveCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 
@@ -1212,6 +1223,7 @@ func CreateSpecUnapproveCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewSpecUnapproveCommand(
@@ -1233,6 +1245,7 @@ func CreateRejectCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewRejectCommand(
@@ -1252,6 +1265,7 @@ func CreateSpecRejectCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewSpecRejectCommand(
@@ -1290,6 +1304,7 @@ func CreateCombinedStatusCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 
@@ -1372,6 +1387,7 @@ func CreatePromptShowCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	return cmd.NewPromptShowCommand(
@@ -1392,6 +1408,7 @@ func CreateCombinedListCommand(
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
 		currentDateTimeGetter,
 	)
 	counter := prompt.NewCounter(

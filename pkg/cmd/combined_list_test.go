@@ -38,7 +38,7 @@ var _ = Describe("CombinedListCommand", func() {
 			"",
 			lister,
 			counter,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 	})
 

@@ -96,6 +96,7 @@ var _ = Describe("directWorkflowExecutor completeCommit autoRelease/CHANGELOG ma
 				filepath.Join(tempDir, "inbox"),
 				queueDir,
 				completedDirPath,
+				"",
 				&osFileMover{},
 				libtime.NewCurrentDateTime(),
 			)
@@ -145,6 +146,7 @@ var _ = Describe("directWorkflowExecutor no-diff success (regression)", func() {
 			filepath.Join(tempDir, "inbox"),
 			queueDir,
 			completedDirPath,
+			"",
 			&osFileMover{},
 			libtime.NewCurrentDateTime(),
 		)
@@ -211,6 +213,7 @@ var _ = Describe("directWorkflowExecutor order-of-operations", func() {
 				filepath.Join(tempDir, "prompts", "inbox"),
 				queueDir,
 				completedDir,
+				"",
 				&osFileMover{},
 				libtime.NewCurrentDateTime(),
 			)
@@ -225,7 +228,7 @@ var _ = Describe("directWorkflowExecutor order-of-operations", func() {
 				libtime.NewCurrentDateTime(),
 				"",
 				notifier.NewMultiNotifier(),
-				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+				prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 
 			// Build directWorkflowExecutor with real promptMgr and autoCompleter;

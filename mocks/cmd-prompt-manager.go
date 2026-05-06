@@ -24,6 +24,18 @@ type CmdPromptManager struct {
 		result1 *prompt.PromptFile
 		result2 error
 	}
+	MoveToCancelledStub        func(context.Context, string) error
+	moveToCancelledMutex       sync.RWMutex
+	moveToCancelledArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	moveToCancelledReturns struct {
+		result1 error
+	}
+	moveToCancelledReturnsOnCall map[int]struct {
+		result1 error
+	}
 	MoveToCompletedStub        func(context.Context, string) error
 	moveToCompletedMutex       sync.RWMutex
 	moveToCompletedArgsForCall []struct {
@@ -117,6 +129,68 @@ func (fake *CmdPromptManager) LoadReturnsOnCall(i int, result1 *prompt.PromptFil
 		result1 *prompt.PromptFile
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *CmdPromptManager) MoveToCancelled(arg1 context.Context, arg2 string) error {
+	fake.moveToCancelledMutex.Lock()
+	ret, specificReturn := fake.moveToCancelledReturnsOnCall[len(fake.moveToCancelledArgsForCall)]
+	fake.moveToCancelledArgsForCall = append(fake.moveToCancelledArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	stub := fake.MoveToCancelledStub
+	fakeReturns := fake.moveToCancelledReturns
+	fake.recordInvocation("MoveToCancelled", []interface{}{arg1, arg2})
+	fake.moveToCancelledMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *CmdPromptManager) MoveToCancelledCallCount() int {
+	fake.moveToCancelledMutex.RLock()
+	defer fake.moveToCancelledMutex.RUnlock()
+	return len(fake.moveToCancelledArgsForCall)
+}
+
+func (fake *CmdPromptManager) MoveToCancelledCalls(stub func(context.Context, string) error) {
+	fake.moveToCancelledMutex.Lock()
+	defer fake.moveToCancelledMutex.Unlock()
+	fake.MoveToCancelledStub = stub
+}
+
+func (fake *CmdPromptManager) MoveToCancelledArgsForCall(i int) (context.Context, string) {
+	fake.moveToCancelledMutex.RLock()
+	defer fake.moveToCancelledMutex.RUnlock()
+	argsForCall := fake.moveToCancelledArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *CmdPromptManager) MoveToCancelledReturns(result1 error) {
+	fake.moveToCancelledMutex.Lock()
+	defer fake.moveToCancelledMutex.Unlock()
+	fake.MoveToCancelledStub = nil
+	fake.moveToCancelledReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *CmdPromptManager) MoveToCancelledReturnsOnCall(i int, result1 error) {
+	fake.moveToCancelledMutex.Lock()
+	defer fake.moveToCancelledMutex.Unlock()
+	fake.MoveToCancelledStub = nil
+	if fake.moveToCancelledReturnsOnCall == nil {
+		fake.moveToCancelledReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.moveToCancelledReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *CmdPromptManager) MoveToCompleted(arg1 context.Context, arg2 string) error {

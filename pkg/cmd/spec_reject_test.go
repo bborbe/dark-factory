@@ -56,7 +56,7 @@ var _ = Describe("SpecRejectCommand", func() {
 			promptsInProgressDir,
 			promptsCompletedDir,
 			promptsRejectedDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()

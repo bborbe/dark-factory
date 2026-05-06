@@ -17,4 +17,5 @@ type PromptManager interface {
 	Load(ctx context.Context, path string) (*prompt.PromptFile, error)
 	NormalizeFilenames(ctx context.Context, dir string) ([]prompt.Rename, error)
 	MoveToCompleted(ctx context.Context, path string) error
+	MoveToCancelled(ctx context.Context, path string) error
 }

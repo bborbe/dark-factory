@@ -55,7 +55,7 @@ var _ = Describe("SpecGenerator", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		promptMgr = &mocks.GeneratorPromptManager{}
-		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		realPM := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
 		promptMgr.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
 			return realPM.Load(ctx, path)
 		}

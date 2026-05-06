@@ -41,7 +41,7 @@ var _ = Describe("RejectCommand", func() {
 			inboxDir,
 			inProgressDir,
 			rejectedDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

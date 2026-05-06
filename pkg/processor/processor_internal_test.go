@@ -581,6 +581,8 @@ func (s *stubWorkflowManager) MoveToCompleted(_ context.Context, _ string) error
 	return s.moveToCompletedErr
 }
 
+func (s *stubWorkflowManager) MoveToCancelled(_ context.Context, _ string) error { return nil }
+
 func (s *stubWorkflowManager) HasQueuedPromptsOnBranch(
 	_ context.Context,
 	_, _ string,

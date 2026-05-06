@@ -36,7 +36,7 @@ var _ = Describe("RequeueCommand", func() {
 
 		requeueCmd = cmd.NewRequeueCommand(
 			queueDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

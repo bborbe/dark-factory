@@ -48,7 +48,7 @@ var _ = Describe("PromptShowCommand", func() {
 			inProgressDir,
 			completedDir,
 			logDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

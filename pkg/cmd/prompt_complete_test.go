@@ -45,7 +45,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		promptManager = &mocks.CmdPromptManager{}
-		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		realPM := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
 		promptManager.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
 			return realPM.Load(ctx, path)
 		}

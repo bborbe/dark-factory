@@ -1,7 +1,12 @@
 ---
-status: draft
+status: committing
 spec: [075-bug-prompt-cancel-leaves-running-container-and-file]
+summary: Added cancelledDir config field (default prompts/cancelled) to PromptsConfig, Cancelled UTC timestamp field to Frontmatter, updated MarkCancelled() to set timestamp, added cancelledDir as 4th parameter to prompt.NewManager, implemented moveToCancelled private function and MoveToCancelled public method on Manager, added CancelledPromptStatus to listQueued skip list, extended cmd.PromptManager and processor.PromptManager interfaces, updated createPromptManager and all 16 call sites in factory.go, updated all test files to pass empty string as 4th arg, regenerated counterfeiter mocks, added tests for MoveToCancelled and MarkCancelled, updated CHANGELOG.md
+container: dark-factory-382-spec-075-foundation
+dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T09:20:00Z"
+queued: "2026-05-06T10:06:58Z"
+started: "2026-05-06T10:07:00Z"
 branch: dark-factory/bug-prompt-cancel-leaves-running-container-and-file
 ---
 

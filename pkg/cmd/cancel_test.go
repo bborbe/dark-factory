@@ -36,7 +36,7 @@ var _ = Describe("CancelCommand", func() {
 
 		cancelCmd = cmd.NewCancelCommand(
 			queueDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 		)
 		ctx = context.Background()
 	})

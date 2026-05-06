@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [075-bug-prompt-cancel-leaves-running-container-and-file]
 created: "2026-05-06T09:20:00Z"
+queued: "2026-05-06T10:06:58Z"
 branch: dark-factory/bug-prompt-cancel-leaves-running-container-and-file
 ---
 
@@ -189,6 +190,10 @@ Add or update the following test cases (keep existing ones that remain valid):
 
 ### 4a. Update `BeforeEach`
 
+`prompt.NewManager` requires a non-nil `FileMover`. `git.NewReleaser()` (from `github.com/bborbe/dark-factory/pkg/git`) implements `FileMover` via `MoveFile` (uses `git mv`, falls back to `os.Rename`) — verified at `pkg/git/git.go:101,148`. Use it as the mover. Passing `nil` would NPE the moment any test calls `MoveToCancelled`.
+
+Add the import for `pkg/git` if not already present.
+
 ```go
 BeforeEach(func() {
     var err error
@@ -199,23 +204,19 @@ BeforeEach(func() {
     err = os.MkdirAll(queueDir, 0750)
     Expect(err).NotTo(HaveOccurred())
 
-    cancelledDir := filepath.Join(tempDir, "cancelled")
-    // Do NOT pre-create cancelledDir — test that MoveToCancelled creates it
+    cancelledDir = filepath.Join(tempDir, "cancelled")
+    // Do NOT pre-create cancelledDir — test that MoveToCancelled creates it on demand.
 
     cancelCmd = cmd.NewCancelCommand(
         queueDir,
         cancelledDir,
-        prompt.NewManager("", queueDir, "", cancelledDir, nil, libtime.NewCurrentDateTime()),
+        prompt.NewManager("", queueDir, "", cancelledDir, git.NewReleaser(), libtime.NewCurrentDateTime()),
     )
     ctx = context.Background()
 })
 ```
 
-Wait — `prompt.NewManager` requires a `FileMover`. For tests that call `MoveToCancelled`, you need a real file mover. Use `git.NewReleaser()` from `github.com/bborbe/dark-factory/pkg/git` as the mover (it implements `FileMover` and uses `os.Rename`). Check if `git.NewReleaser()` implements `FileMover` by reading `pkg/git/` for the `MoveFile` method signature, OR check the existing `cancel_test.go` and `prompt_manager_test.go` for how a real Manager is constructed in tests.
-
-If `git.NewReleaser()` is used in existing tests, mirror that pattern. If tests use a temp dir with an OS-backed mover, do the same.
-
-**Implementation note**: The simplest approach for cancel_test.go is to create a concrete `prompt.Manager` backed by real filesystem operations (since the test creates actual files in a temp dir). Look at `pkg/prompt/prompt_manager_test.go` `BeforeEach` for the exact construction pattern used there.
+`cancelledDir` should be declared as a `var` in the surrounding `Describe` block alongside `queueDir`, `tempDir`, `cancelCmd`, `ctx` so it's accessible from individual It blocks.
 
 ### 4b. Test: approved prompt moves to cancelled dir
 
@@ -251,13 +252,14 @@ Describe("Cancel an executing prompt", func() {
 
 ### 4d. Test: idempotency — second cancel is exit 0
 
+`cancelledDir` is declared in the outer `Describe` (per 4a). The BeforeEach does NOT pre-create it; create it inside this It block before writing the cancelled file:
+
 ```
 Describe("Cancel an already-cancelled prompt (in cancelled dir)", func() {
     It("is idempotent: returns nil", func() {
-        cancelledDir := filepath.Join(tempDir, "cancelled")
         err := os.MkdirAll(cancelledDir, 0750)
         Expect(err).NotTo(HaveOccurred())
-        
+
         testFile := filepath.Join(cancelledDir, "084-cancelled.md")
         // Write file with status: cancelled to cancelledDir
         // Call cancelCmd.Run(ctx, []string{"084-cancelled.md"})

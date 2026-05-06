@@ -255,6 +255,7 @@ type Frontmatter struct {
 	LastFailReason     string   `yaml:"lastFailReason,omitempty"`
 	Rejected           string   `yaml:"rejected,omitempty"`
 	RejectedReason     string   `yaml:"rejected_reason,omitempty"`
+	Cancelled          string   `yaml:"cancelled,omitempty"`
 }
 
 // HasSpec returns true if the given spec ID is in the Specs list.
@@ -448,8 +449,9 @@ func (pf *PromptFile) MarkPendingVerification() {
 	pf.Frontmatter.Status = string(PendingVerificationPromptStatus)
 }
 
-// MarkCancelled sets status to cancelled.
+// MarkCancelled sets status to cancelled with a UTC timestamp.
 func (pf *PromptFile) MarkCancelled() {
+	pf.Frontmatter.Cancelled = pf.now().UTC().Format(time.RFC3339)
 	pf.Frontmatter.Status = string(CancelledPromptStatus)
 }
 
@@ -580,6 +582,7 @@ func NewManager(
 	inboxDir string,
 	inProgressDir string,
 	completedDir string,
+	cancelledDir string,
 	mover FileMover,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) *Manager {
@@ -587,6 +590,7 @@ func NewManager(
 		inboxDir:              inboxDir,
 		inProgressDir:         inProgressDir,
 		completedDir:          completedDir,
+		cancelledDir:          cancelledDir,
 		mover:                 mover,
 		currentDateTimeGetter: currentDateTimeGetter,
 	}
@@ -597,6 +601,7 @@ type Manager struct {
 	inboxDir              string
 	inProgressDir         string
 	completedDir          string
+	cancelledDir          string
 	mover                 FileMover
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
@@ -681,6 +686,11 @@ func (pm *Manager) MoveToCompleted(ctx context.Context, path string) error {
 	return moveToCompleted(ctx, path, pm.completedDir, pm.mover, pm.currentDateTimeGetter)
 }
 
+// MoveToCancelled sets status to "cancelled" (with timestamp) and moves a prompt file to the cancelled/ subdirectory.
+func (pm *Manager) MoveToCancelled(ctx context.Context, path string) error {
+	return moveToCancelled(ctx, path, pm.cancelledDir, pm.mover, pm.currentDateTimeGetter)
+}
+
 // NormalizeFilenames scans a directory for .md files and ensures they follow the NNN-slug.md naming convention.
 // It also checks the completed directory for used numbers.
 func (pm *Manager) NormalizeFilenames(ctx context.Context, dir string) ([]Rename, error) {
@@ -762,7 +772,8 @@ func listQueued(
 			fm.Status == string(CompletedPromptStatus) ||
 			fm.Status == string(FailedPromptStatus) ||
 			fm.Status == string(InReviewPromptStatus) ||
-			fm.Status == string(PendingVerificationPromptStatus) {
+			fm.Status == string(PendingVerificationPromptStatus) ||
+			fm.Status == string(CancelledPromptStatus) {
 			slog.Debug("skipping prompt", "file", entry.Name(), "status", fm.Status)
 			continue
 		}
@@ -1081,6 +1092,40 @@ func moveToCompleted(
 	dest := filepath.Join(completedDir, filename)
 
 	slog.Debug("moving to completed", "from", path, "to", dest)
+
+	if err := mover.MoveFile(ctx, path, dest); err != nil {
+		return errors.Wrap(ctx, err, "move file")
+	}
+
+	return nil
+}
+
+// moveToCancelled sets status to "cancelled" (with timestamp) and moves a prompt file to the cancelled directory.
+func moveToCancelled(
+	ctx context.Context,
+	path string,
+	cancelledDir string,
+	mover FileMover,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) error {
+	pf, err := load(ctx, path, currentDateTimeGetter)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt")
+	}
+
+	pf.MarkCancelled()
+	if err := pf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "set cancelled status")
+	}
+
+	if err := os.MkdirAll(cancelledDir, 0750); err != nil {
+		return errors.Wrap(ctx, err, "create cancelled directory")
+	}
+
+	filename := filepath.Base(path)
+	dest := filepath.Join(cancelledDir, filename)
+
+	slog.Debug("moving to cancelled", "from", path, "to", dest)
 
 	if err := mover.MoveFile(ctx, path, dest); err != nil {
 		return errors.Wrap(ctx, err, "move file")

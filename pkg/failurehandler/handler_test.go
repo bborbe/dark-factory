@@ -121,7 +121,7 @@ var _ = Describe("Handler", func() {
 
 				Expect(promptMgr.LoadCallCount()).To(Equal(1))
 				// The PromptFile was saved (written to disk) — file should have approved status
-				saved, readErr := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				saved, readErr := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 					Load(ctx, promptPath)
 				Expect(readErr).NotTo(HaveOccurred())
 				Expect(saved.Frontmatter.Status).To(Equal("approved"))
@@ -143,7 +143,7 @@ var _ = Describe("Handler", func() {
 				err := h.Handle(ctx, promptPath, stderrors.New("fatal error"))
 				Expect(err).NotTo(HaveOccurred())
 
-				saved, readErr := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				saved, readErr := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 					Load(ctx, promptPath)
 				Expect(readErr).NotTo(HaveOccurred())
 				Expect(saved.Frontmatter.Status).To(Equal("failed"))
@@ -169,7 +169,7 @@ var _ = Describe("Handler", func() {
 				err := h.Handle(ctx, promptPath, stderrors.New("error after retries"))
 				Expect(err).NotTo(HaveOccurred())
 
-				saved, readErr := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				saved, readErr := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 					Load(ctx, promptPath)
 				Expect(readErr).NotTo(HaveOccurred())
 				Expect(saved.Frontmatter.Status).To(Equal("failed"))

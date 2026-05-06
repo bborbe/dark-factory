@@ -54,7 +54,7 @@ var _ = Describe("SpecUnapproveCommand", func() {
 			specsInProgressDir,
 			promptsInboxDir,
 			promptsInProgressDir,
-			prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			libtime.NewCurrentDateTime(),
 		)
 		ctx = context.Background()

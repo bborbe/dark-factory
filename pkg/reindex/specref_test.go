@@ -48,7 +48,7 @@ var _ = Describe("UpdateSpecRefs", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		mover = &osFileMover{}
-		pm = prompt.NewManager("", "", "", mover, libtime.NewCurrentDateTime())
+		pm = prompt.NewManager("", "", "", "", mover, libtime.NewCurrentDateTime())
 	})
 
 	It("no spec renames returns nil, nil", func() {

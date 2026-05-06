@@ -379,7 +379,7 @@ var _ = Describe("Watcher", func() {
 	It("should stamp created timestamp on inbox file without one", func() {
 		promptManager := &mocks.WatcherPromptManager{}
 		promptManager.NormalizeFilenamesReturns([]prompt.Rename{}, nil)
-		realPM := prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime())
+		realPM := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
 		promptManager.LoadStub = func(ctx context.Context, path string) (*prompt.PromptFile, error) {
 			return realPM.Load(ctx, path)
 		}

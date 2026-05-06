@@ -160,7 +160,7 @@ var _ = Describe("Processor", func() {
 
 				// Use the real Load (not the stub) since Save writes to disk
 				manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-					return prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+					return prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 						Load(ctx, path)
 				}
 
@@ -197,7 +197,7 @@ var _ = Describe("Processor", func() {
 			n.NotifyReturns(nil)
 
 			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-				return prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				return prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 					Load(ctx, path)
 			}
 
@@ -244,7 +244,7 @@ var _ = Describe("Processor", func() {
 			n.NotifyReturns(nil)
 
 			manager.LoadStub = func(_ context.Context, path string) (*prompt.PromptFile, error) {
-				return prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()).
+				return prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
 					Load(ctx, path)
 			}
 
@@ -616,7 +616,7 @@ var _ = Describe("Processor", func() {
 				libtime.NewCurrentDateTime(),
 				"",
 				notifier.NewMultiNotifier(),
-				prompt.NewManager("", "", "", nil, libtime.NewCurrentDateTime()),
+				prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			)
 
 			// Manager returns empty queue so the processor doesn't try to run any prompts

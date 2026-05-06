@@ -53,6 +53,7 @@ type PromptsConfig struct {
 	InProgressDir string `yaml:"inProgressDir"`
 	CompletedDir  string `yaml:"completedDir"`
 	RejectedDir   string `yaml:"rejectedDir"`
+	CancelledDir  string `yaml:"cancelledDir"`
 	LogDir        string `yaml:"logDir"`
 }
 
@@ -133,6 +134,7 @@ func Defaults() Config {
 			InProgressDir: "prompts/in-progress",
 			CompletedDir:  "prompts/completed",
 			RejectedDir:   "prompts/rejected",
+			CancelledDir:  "prompts/cancelled",
 			LogDir:        "prompts/log",
 		},
 		Specs: SpecsConfig{

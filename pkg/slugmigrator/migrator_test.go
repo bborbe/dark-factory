@@ -47,6 +47,7 @@ var _ = Describe("Migrator", func() {
 			promptsDir,
 			promptsDir,
 			promptsDir,
+			"",
 			mover,
 			currentDateTimeGetter,
 		)
@@ -160,6 +161,7 @@ var _ = Describe("Migrator", func() {
 					promptsDir,
 					promptsDir,
 					promptsDir,
+					"",
 					ambiguousMover,
 					currentDateTimeGetter,
 				)

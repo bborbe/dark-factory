@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.151.0
+
+- feat: Add `cancelledDir` config field (`prompts/cancelled/` default) and `MoveToCancelled` method on `prompt.Manager` to move cancelled prompt files with a UTC timestamp; add `cancelled` frontmatter field; `listQueued` skips `cancelled` status files; `cmd.PromptManager` and `processor.PromptManager` interfaces extended accordingly
+
 ## v0.150.5
 
 - fix: Suppress noisy `"nothing to do, waiting for changes"` idle log — emits once per idle entry, then at most once per `idleLogInterval` (default 1m) heartbeat; configurable via `idleLogInterval:` in `.dark-factory.yaml`

@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 spec: [073-simplify-merge-gate-by-relying-on-mergestatestatus]
 container: dark-factory-379-spec-073-remove-review-code
 dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T00:00:00Z"
 queued: "2026-05-06T07:02:57Z"
 started: "2026-05-06T07:04:08Z"
+completed: "2026-05-06T07:26:47Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 

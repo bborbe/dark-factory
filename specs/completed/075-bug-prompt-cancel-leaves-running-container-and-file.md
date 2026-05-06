@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-06T09:07:19Z"
 generating: "2026-05-06T09:08:11Z"
 prompted: "2026-05-06T09:20:37Z"
 verifying: "2026-05-06T10:39:25Z"
+completed: "2026-05-06T17:52:09Z"
 branch: dark-factory/bug-prompt-cancel-leaves-running-container-and-file
 ---
 

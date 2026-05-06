@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.151.2
+
+- fix: Cancelled executing prompts now classified as `cancelled` (not `failed`) — fixed race between cancellationwatcher's `close(ch)` and `StopAndRemoveContainer`, plus added deterministic fallback in processor to re-read file after `Execute` returns
+
 ## v0.151.1
 
 - fix: `prompt cancel` now moves approved prompts to `prompts/cancelled/` immediately, preventing daemon re-spawn

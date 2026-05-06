@@ -404,6 +404,14 @@ func (p *processor) runContainer(
 		return true, nil
 	}
 	if execErr != nil {
+		// Deterministic fallback: goroutine may not have been scheduled before Execute
+		// returned. Re-read the prompt file — the CLI writes status=cancelled before
+		// stopping the container, so this is the ground truth.
+		if pf, loadErr := p.promptManager.Load(ctx, promptPath); loadErr == nil &&
+			pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
+			slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
+			return true, nil
+		}
 		if ctx.Err() != nil {
 			slog.Info("daemon shutting down, leaving container running")
 		} else {

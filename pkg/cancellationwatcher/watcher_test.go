@@ -94,6 +94,48 @@ var _ = Describe("Watcher", func() {
 		Expect(gotContainerName).To(Equal("test-container"))
 	})
 
+	It("closes the channel BEFORE StopAndRemoveContainer completes (ordering guarantee)", func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// StopAndRemoveContainer blocks until we release it — lets us check
+		// whether the channel was already closed before the stop finishes.
+		stopStarted := make(chan struct{})
+		stopReleased := make(chan struct{})
+		mockExecutor.StopAndRemoveContainerStub = func(_ context.Context, _ string) {
+			close(stopStarted)
+			<-stopReleased
+		}
+
+		cancelledPF := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{Status: string(prompt.CancelledPromptStatus)},
+			[]byte("# Test\n"),
+			libtime.NewCurrentDateTime(),
+		)
+		mockLoader.LoadReturns(cancelledPF, nil)
+
+		ch := w.Watch(ctx, promptPath, "test-container")
+
+		// Let fsnotify set up before writing
+		time.Sleep(100 * time.Millisecond)
+		err := os.WriteFile(promptPath, []byte("---\nstatus: cancelled\n---\n\n# Test\n"), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Wait until StopAndRemoveContainer has been entered (but not yet returned)
+		Eventually(stopStarted, 2*time.Second).Should(BeClosed())
+
+		// Channel MUST be closed before StopAndRemoveContainer finishes
+		Expect(ch).To(BeClosed(), "channel must close before StopAndRemoveContainer completes")
+
+		// Release the stop
+		close(stopReleased)
+
+		Eventually(func() int {
+			return mockExecutor.StopAndRemoveContainerCallCount()
+		}, 2*time.Second).Should(Equal(1))
+	})
+
 	It("exits cleanly when ctx is cancelled mid-watch", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 

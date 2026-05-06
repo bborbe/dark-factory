@@ -100,8 +100,8 @@ func (w *watcher) watch(
 					"file", filepath.Base(promptPath),
 					"container", containerName,
 				)
-				w.executor.StopAndRemoveContainer(ctx, containerName)
 				close(ch)
+				w.executor.StopAndRemoveContainer(ctx, containerName)
 				return
 			}
 		}

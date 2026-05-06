@@ -6,6 +6,7 @@ package processor_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -172,6 +173,87 @@ var _ = Describe("ProcessPrompt — cancellation", func() {
 		err = pp.ProcessPrompt(testCtx, pr)
 		Expect(err).NotTo(HaveOccurred())
 
+		Expect(mgr.MoveToCancelledCallCount()).To(Equal(1))
+		_, cancelledPath := mgr.MoveToCancelledArgsForCall(0)
+		Expect(cancelledPath).To(Equal(promptPath))
+	})
+
+	It("detects cancellation from file when Execute returns before cancel channel closes", func() {
+		tempDir, err := os.MkdirTemp("", "processor-cancel-fallback-*")
+		Expect(err).NotTo(HaveOccurred())
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
+		logDir := filepath.Join(tempDir, "log")
+		err = os.MkdirAll(logDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+
+		promptPath := filepath.Join(tempDir, "002-cancel-fallback-test.md")
+		err = os.WriteFile(
+			promptPath,
+			[]byte("---\nstatus: approved\n---\n# Cancel fallback test\n\nTest content"),
+			0600,
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		ctx := context.Background()
+
+		mgr := &mocks.ProcessorPromptManager{}
+		// First call (ProcessPrompt initial load): return approved status
+		mgr.LoadReturnsOnCall(0,
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Cancel fallback test\n\nTest content"),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		// Second call (runContainer fallback re-read): return cancelled status
+		mgr.LoadReturnsOnCall(1,
+			prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.CancelledPromptStatus)},
+				[]byte("# Cancel fallback test\n\nTest content"),
+				libtime.NewCurrentDateTime(),
+			),
+			nil,
+		)
+		mgr.MoveToCancelledReturns(nil)
+
+		// Execute returns immediately with an error (simulates SIGTERM from container stop)
+		exec := &mocks.Executor{}
+		exec.ExecuteReturns(fmt.Errorf("exit status 143"))
+
+		// CancellationWatcher returns a channel that NEVER closes during the test.
+		// This simulates the race: Execute returns before the cancel channel fires.
+		fakeCancellationWatcher := &mocks.CancellationWatcher{}
+		neverClosingCh := make(chan struct{}) // never closed — simulates the race
+		fakeCancellationWatcher.WatchReturns(neverClosingCh)
+
+		workflowExec := &mocks.WorkflowExecutor{}
+		workflowExec.SetupReturns(nil)
+
+		vg := &mocks.VersionGetter{}
+		vg.GetReturns("v0.0.1-test")
+
+		pp := newProcessorWithMockWatcher(
+			logDir,
+			exec,
+			mgr,
+			vg,
+			fakeCancellationWatcher,
+			workflowExec,
+		)
+
+		pr := prompt.Prompt{Path: promptPath, Status: prompt.ApprovedPromptStatus}
+
+		testCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+
+		err = pp.ProcessPrompt(testCtx, pr)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Processor must call MoveToCancelled (not MarkFailed / return error)
 		Expect(mgr.MoveToCancelledCallCount()).To(Equal(1))
 		_, cancelledPath := mgr.MoveToCancelledArgsForCall(0)
 		Expect(cancelledPath).To(Equal(promptPath))

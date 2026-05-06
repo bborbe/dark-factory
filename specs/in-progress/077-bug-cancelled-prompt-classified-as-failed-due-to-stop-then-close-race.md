@@ -1,7 +1,8 @@
 ---
-status: generating
+status: prompted
 approved: "2026-05-06T16:19:54Z"
 generating: "2026-05-06T16:25:52Z"
+prompted: "2026-05-06T16:31:14Z"
 branch: dark-factory/bug-cancelled-prompt-classified-as-failed-due-to-stop-then-close-race
 ---
 

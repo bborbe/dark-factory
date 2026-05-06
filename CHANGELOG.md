@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.152.0
+
+- feat: `/dark-factory:configure` slash command for create/reconfigure/auto-migrate of `.dark-factory.yaml` (greenfield delegates to `init-project`; valid existing config offers reconfigure menu; invalid config detects spec-073-style legacy fields and proposes migration; backup + diff + validate + revert on every write)
+- docs: `docs/configuration.md` documents `idleLogInterval` field added in v0.150.5
+
 ## v0.151.2
 
 - fix: Cancelled executing prompts now classified as `cancelled` (not `failed`) — fixed race between cancellationwatcher's `close(ch)` and `StopAndRemoveContainer`, plus added deterministic fallback in processor to re-read file after `Execute` returns

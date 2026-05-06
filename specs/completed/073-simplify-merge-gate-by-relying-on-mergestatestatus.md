@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-05T22:28:02Z"
 generating: "2026-05-05T22:28:44Z"
 prompted: "2026-05-05T22:41:33Z"
 verifying: "2026-05-06T07:35:33Z"
+completed: "2026-05-06T13:03:46Z"
 branch: dark-factory/simplify-merge-gate-by-relying-on-mergestatestatus
 ---
 
@@ -154,3 +155,19 @@ git checkout -- .dark-factory.yaml
 - `pkg/config/config.go` lines 461-475 (`validateAutoReview`) and the three field declarations — to delete.
 - `pkg/factory/factory.go` `CreateReviewPoller` and its call site — to delete.
 - `pkg/git/pr_merger.go` — `WaitAndMerge` is the single merge gate after this spec.
+
+## Verification Result
+
+**Verified:** 2026-05-06T13:00:38Z (HEAD d01b167)
+**Binary:** /tmp/dark-factory-d01b167 (built from HEAD; installed binary v0.148.4-3-gc45254a was stale)
+**Scenario:** Walked all 10 ACs: file-deletion checks via `ls`, code-removal checks via `grep`, friendly-error path verified via `make precommit` exercising ginkgo specs in pkg/config/config_loader_test.go and pkg/config/roundtrip_test.go.
+**Evidence:**
+- `ls pkg/review` / `pkg/git/review_fetcher.go` / `pkg/git/bitbucket_review_fetcher.go` → all "No such file or directory"
+- `grep AutoReview\|AllowedReviewers\|UseCollaborators\|MaxReviewRetries\|validateAutoReview pkg/config/config.go` → no matches
+- `grep CreateReviewPoller pkg/factory/` and `grep reviewPoller pkg/runner/` → no matches
+- `grep MaxReviewRetries\|pkg/review main.go pkg/factory/ pkg/runner/` → no matches
+- `pkg/config/loader.go:183-203` returns friendly errors naming each removed field + branch protection migration; ginkgo specs at config_loader_test.go:722/732/746 + roundtrip_test.go:207 assert error text — all green under `make precommit`
+- `make precommit` → "ready to commit" (exit 0; trivy 0 vulns)
+- `CHANGELOG.md:22` — "BREAKING: removed `autoReview`, `allowedReviewers`, `useCollaborators`, `maxReviewRetries`, `pollIntervalSec` config fields..."
+- `git tag -l | grep v0.151` → v0.151.0, v0.151.1 — passive proof autoMerge → CLEAN → merge → tag flow (spec 072) survives the simplification
+**Verdict:** PASS

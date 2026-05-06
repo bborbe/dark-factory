@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-06T09:00:16Z"
 generating: "2026-05-06T09:00:17Z"
 prompted: "2026-05-06T09:08:11Z"
 verifying: "2026-05-06T09:39:03Z"
+completed: "2026-05-06T13:49:32Z"
 branch: dark-factory/bug-noisy-waiting-for-changes-log
 ---
 

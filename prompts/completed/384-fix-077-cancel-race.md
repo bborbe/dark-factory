@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [077-bug-cancelled-prompt-classified-as-failed-due-to-stop-then-close-race]
 summary: 'Fixed cancel race: swapped close(ch) before StopAndRemoveContainer in watcher.go and added deterministic file-reread fallback in processor.go runContainer; added ordering test in watcher_test.go and fallback test in processor_cancel_test.go.'
 container: dark-factory-384-fix-077-cancel-race
@@ -7,6 +7,7 @@ dark-factory-version: v0.148.4-3-gc45254a
 created: "2026-05-06T16:30:00Z"
 queued: "2026-05-06T16:47:43Z"
 started: "2026-05-06T16:54:29Z"
+completed: "2026-05-06T16:58:11Z"
 branch: dark-factory/bug-cancelled-prompt-classified-as-failed-due-to-stop-then-close-race
 ---
 

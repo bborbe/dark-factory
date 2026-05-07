@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.154.0
+
+- chore: bump claude-yolo v0.6.2 → v0.6.3
+- chore: bump Go 1.26.2 → 1.26.3
+
 ## v0.153.0
 
 - docs: Split release docs — new `docs/releasing-dark-factory.md` for releasing dark-factory itself (binary + plugin); `docs/release-process.md` clarified to cover autoRelease behavior in consuming projects only. CLAUDE.md `make install` rule now points at the new doc.

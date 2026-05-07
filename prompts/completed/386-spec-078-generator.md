@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [078-auto-approve-generated-prompts]
 summary: 'Wired autoApprovePrompts into the spec generator: extended PromptManager interface with NormalizeFilenames, regenerated the Counterfeiter mock, added autoApproveGeneratedPrompts and approvePromptFromInbox methods to dockerSpecGenerator, called auto-approve from finalizePrompted, passed cfg.AutoApprovePrompts and cfg.Prompts.InProgressDir through CreateSpecGenerator in factory.go, added four new test cases covering audit-pass, audit-fail, already-approved idempotency, and disabled-flag paths, and added the CHANGELOG entry under ## Unreleased.'
 container: dark-factory-386-spec-078-generator
@@ -7,9 +7,8 @@ dark-factory-version: v0.154.0
 created: "2026-05-07T22:00:00Z"
 queued: "2026-05-07T21:50:05Z"
 started: "2026-05-07T22:23:42Z"
-completed: "2026-05-07T22:09:35Z"
+completed: "2026-05-07T22:27:33Z"
 branch: dark-factory/auto-approve-generated-prompts
-lastFailReason: 'execute prompt: docker run failed: wait command: exit status 143'
 ---
 
 <summary>

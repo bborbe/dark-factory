@@ -632,6 +632,8 @@ func CreateSpecGenerator(
 		cfg.AdditionalInstructions,
 		cfg.ParsedMaxPromptDuration(),
 		promptManager,
+		cfg.AutoApprovePrompts,
+		cfg.Prompts.InProgressDir,
 	)
 }
 

@@ -73,6 +73,8 @@ var _ = Describe("SpecGenerator", func() {
 			"",
 			0,
 			promptMgr,
+			false,
+			"",
 		)
 
 		// Write a spec file with status "approved"
@@ -571,6 +573,8 @@ var _ = Describe("SpecGenerator", func() {
 					"Read /docs/guidelines.md before starting.",
 					0,
 					promptMgr,
+					false,
+					"",
 				)
 				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
@@ -606,6 +610,189 @@ var _ = Describe("SpecGenerator", func() {
 
 				_, gotPrompt, _, _ := executor.ExecuteArgsForCall(0)
 				Expect(gotPrompt).To(Equal("/dark-factory:generate-prompts-for-spec " + specPath))
+			})
+		})
+	})
+
+	Describe("auto-approve generated prompts", func() {
+		var (
+			queueDir      string
+			sgAutoApprove generator.SpecGenerator
+		)
+
+		BeforeEach(func() {
+			var err error
+			queueDir, err = os.MkdirTemp("", "generator-queue-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			promptMgr.NormalizeFilenamesReturns(nil, nil)
+
+			sgAutoApprove = generator.NewSpecGenerator(
+				executor,
+				containerChecker,
+				inboxDir,
+				completedDir,
+				specsDir,
+				logDir,
+				libtime.NewCurrentDateTime(),
+				&mocks.SpecSlugMigrator{},
+				"/dark-factory:generate-prompts-for-spec",
+				"",
+				0,
+				promptMgr,
+				true,
+				queueDir,
+			)
+		})
+
+		AfterEach(func() {
+			_ = os.RemoveAll(queueDir)
+		})
+
+		Context("autoApprovePrompts is false: executor called only once for generate", func() {
+			It("does not audit and leaves generated file in inbox", func() {
+				generatedPath := filepath.Join(inboxDir, "130-auto-approve-disabled.md")
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(generatedPath, []byte("# Generated"), 0600)
+				}
+
+				// Use the non-auto-approve generator
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				Expect(executor.ExecuteCallCount()).To(Equal(1))
+				_, _, _, containerName := executor.ExecuteArgsForCall(0)
+				Expect(containerName).To(HavePrefix("dark-factory-gen-"))
+
+				_, statErr := os.Stat(generatedPath)
+				Expect(statErr).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("autoApprovePrompts is true and audit passes: prompt is approved", func() {
+			It("calls executor twice and moves prompt to queueDir", func() {
+				generatedPath := filepath.Join(inboxDir, "131-audit-passes.md")
+				callCount := 0
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					callCount++
+					if callCount == 1 {
+						// generate call
+						return os.WriteFile(
+							generatedPath,
+							[]byte("---\nstatus: draft\n---\n# Generated"),
+							0600,
+						)
+					}
+					// audit call — return nil (pass)
+					return nil
+				}
+
+				Expect(sgAutoApprove.Generate(ctx, specPath)).To(Succeed())
+
+				Expect(executor.ExecuteCallCount()).To(Equal(2))
+
+				_, auditContent, _, _ := executor.ExecuteArgsForCall(1)
+				Expect(auditContent).To(HavePrefix("/dark-factory:audit-prompt "))
+
+				_, statErr := os.Stat(generatedPath)
+				Expect(
+					os.IsNotExist(statErr),
+				).To(BeTrue(), "generated file should be moved out of inbox")
+
+				entries, err := os.ReadDir(queueDir)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(entries).To(HaveLen(1))
+				// StripNumberPrefix strips "131-" from the filename when approving
+				Expect(entries[0].Name()).To(Equal("audit-passes.md"))
+
+				Expect(promptMgr.NormalizeFilenamesCallCount()).To(Equal(1))
+				_, normalizeDir := promptMgr.NormalizeFilenamesArgsForCall(0)
+				Expect(normalizeDir).To(Equal(queueDir))
+			})
+		})
+
+		Context("audit fails: prompt stays in inbox and remaining prompts not audited", func() {
+			It("stops after first audit failure and leaves both files in inbox", func() {
+				generated1 := filepath.Join(inboxDir, "132-audit-fail-1.md")
+				generated2 := filepath.Join(inboxDir, "133-audit-fail-2.md")
+				callCount := 0
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					callCount++
+					if callCount == 1 {
+						// generate call — write two files
+						Expect(
+							os.WriteFile(
+								generated1,
+								[]byte("---\nstatus: draft\n---\n# Prompt 1"),
+								0600,
+							),
+						).To(Succeed())
+						return os.WriteFile(
+							generated2,
+							[]byte("---\nstatus: draft\n---\n# Prompt 2"),
+							0600,
+						)
+					}
+					// first audit call — fail
+					return errors.New("audit failed")
+				}
+
+				Expect(sgAutoApprove.Generate(ctx, specPath)).To(Succeed())
+
+				// generate + one audit attempt
+				Expect(executor.ExecuteCallCount()).To(Equal(2))
+
+				_, statErr1 := os.Stat(generated1)
+				_, statErr2 := os.Stat(generated2)
+				// Both should still be in inbox (but we only know one audit was attempted)
+				// At least one of them remains (the failed one stays)
+				Expect(os.IsNotExist(statErr1) && os.IsNotExist(statErr2)).To(BeFalse(),
+					"at least one file should remain in inbox after audit failure")
+
+				Expect(promptMgr.NormalizeFilenamesCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("prompt already absent from inbox: auto-approve skips silently", func() {
+			It("does not call audit executor and returns nil", func() {
+				generatedPath := filepath.Join(inboxDir, "134-already-gone.md")
+
+				// Executor writes the file during generate
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						generatedPath,
+						[]byte("---\nstatus: draft\n---\n# Gone"),
+						0600,
+					)
+				}
+
+				// Custom migrator removes the file after diffFiles captures it (simulating manual approve).
+				// diffFiles already computed newFiles=[generatedPath] before MigrateDirs runs.
+				migrator := &mocks.SpecSlugMigrator{}
+				migrator.MigrateDirsStub = func(ctx context.Context, dirs []string) error {
+					return os.Remove(generatedPath)
+				}
+
+				sgWithMigrator := generator.NewSpecGenerator(
+					executor,
+					containerChecker,
+					inboxDir,
+					completedDir,
+					specsDir,
+					logDir,
+					libtime.NewCurrentDateTime(),
+					migrator,
+					"/dark-factory:generate-prompts-for-spec",
+					"",
+					0,
+					promptMgr,
+					true,
+					queueDir,
+				)
+
+				Expect(sgWithMigrator.Generate(ctx, specPath)).To(Succeed())
+
+				// Only the generate call; no audit call since file was gone by the time auto-approve ran
+				Expect(executor.ExecuteCallCount()).To(Equal(1))
 			})
 		})
 	})

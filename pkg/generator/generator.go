@@ -16,6 +16,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -42,6 +43,8 @@ func NewSpecGenerator(
 	additionalInstructions string,
 	maxPromptDuration time.Duration,
 	pm PromptManager,
+	autoApprovePrompts bool,
+	queueDir string,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
 		executor:               executor,
@@ -56,6 +59,8 @@ func NewSpecGenerator(
 		additionalInstructions: additionalInstructions,
 		maxPromptDuration:      maxPromptDuration,
 		promptManager:          pm,
+		autoApprovePrompts:     autoApprovePrompts,
+		queueDir:               queueDir,
 	}
 }
 
@@ -73,6 +78,8 @@ type dockerSpecGenerator struct {
 	additionalInstructions string
 	maxPromptDuration      time.Duration
 	promptManager          PromptManager
+	autoApprovePrompts     bool
+	queueDir               string // in-progress dir; prompts are approved into here
 }
 
 // buildPromptContent assembles the full prompt content for spec generation,
@@ -241,7 +248,106 @@ func (g *dockerSpecGenerator) finalizePrompted(
 	}
 
 	sf.SetStatus(string(spec.StatusPrompted))
-	return errors.Wrap(ctx, sf.Save(ctx), "save spec file")
+	if err := sf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "save spec file")
+	}
+
+	// Auto-approve generated prompts if configured. Runs AFTER spec is "prompted" so audit
+	// failure leaves the spec visible to the user in "prompted" state. No-op when disabled.
+	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
+	g.autoApproveGeneratedPrompts(ctx, specBasename, newFiles)
+
+	return nil
+}
+
+// autoApproveGeneratedPrompts audits and approves each newly generated prompt.
+// It runs the /dark-factory:audit-prompt slash command via the existing YOLO executor.
+// On audit pass: moves the prompt from inbox to queue and marks it approved.
+// On audit failure: logs the failure and stops processing remaining prompts for this spec.
+// Returns nothing — audit failure is non-fatal; the spec stays in "prompted" state.
+func (g *dockerSpecGenerator) autoApproveGeneratedPrompts(
+	ctx context.Context,
+	specBasename string,
+	newFiles []string,
+) {
+	if !g.autoApprovePrompts {
+		return
+	}
+	for _, promptPath := range newFiles {
+		promptBasename := filepath.Base(promptPath)
+
+		if _, statErr := os.Stat(promptPath); os.IsNotExist(statErr) {
+			slog.Info(
+				"auto-approve: prompt no longer in inbox, skipping (likely manually approved)",
+				"prompt", promptBasename,
+			)
+			continue
+		}
+
+		auditContainerName := "dark-factory-audit-" + specBasename + "-" +
+			strings.TrimSuffix(promptBasename, ".md")
+		auditLogFile := filepath.Join(
+			g.logDir,
+			"audit-"+specBasename+"-"+promptBasename+".log",
+		)
+		auditContent := "/dark-factory:audit-prompt " + promptPath
+
+		slog.Info("auto-approve: auditing generated prompt", "prompt", promptBasename)
+		if err := g.executor.Execute(ctx, auditContent, auditLogFile, auditContainerName); err != nil {
+			slog.Error(
+				"auto-approve: audit FAILED for generated prompt — remaining prompts for spec will not be auto-approved",
+				"spec",
+				specBasename,
+				"prompt",
+				promptBasename,
+				"error",
+				err,
+			)
+			return
+		}
+
+		if approveErr := g.approvePromptFromInbox(ctx, promptPath, promptBasename); approveErr != nil {
+			slog.Error(
+				"auto-approve: approve step failed after audit pass",
+				"spec", specBasename,
+				"prompt", promptBasename,
+				"error", approveErr,
+			)
+			return
+		}
+
+		slog.Info("auto-approve: approved generated prompt", "prompt", promptBasename)
+	}
+}
+
+// approvePromptFromInbox moves a prompt from inbox to the queue and marks it approved.
+// Replicates the core of approveFromInbox in pkg/cmd/approve.go without the fuzzy search.
+func (g *dockerSpecGenerator) approvePromptFromInbox(
+	ctx context.Context,
+	inboxPath string,
+	promptBasename string,
+) error {
+	stripped := prompt.StripNumberPrefix(promptBasename)
+	queuePath := filepath.Join(g.queueDir, stripped)
+
+	if err := os.Rename(inboxPath, queuePath); err != nil {
+		return errors.Wrapf(ctx, err, "move prompt %s from inbox to queue", promptBasename)
+	}
+
+	pf, err := g.promptManager.Load(ctx, queuePath)
+	if err != nil {
+		return errors.Wrapf(ctx, err, "load prompt after move: %s", stripped)
+	}
+	pf.MarkApproved()
+	if err := pf.Save(ctx); err != nil {
+		return errors.Wrapf(ctx, err, "save approved prompt: %s", stripped)
+	}
+
+	if _, err := g.promptManager.NormalizeFilenames(ctx, g.queueDir); err != nil {
+		slog.Warn("auto-approve: normalize filenames failed after approve", "error", err)
+	}
+
+	return nil
 }
 
 // inheritFromSpec copies branch and issue from the spec into each newly created prompt file,

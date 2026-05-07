@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [078-auto-approve-generated-prompts]
 summary: Added autoApprovePrompts boolean setting across all config layers (GlobalConfig, Config, partialConfig, LayeredProjectOverrides, FieldSources), wired --auto-approve-prompts CLI flag into runDaemonCommand and runRunCommand, and emits autoApprovePrompts/autoApprovePromptsSource in LogEffectiveConfig at daemon startup.
 container: dark-factory-385-spec-078-config
@@ -7,6 +7,7 @@ dark-factory-version: v0.154.0
 created: "2026-05-07T22:00:00Z"
 queued: "2026-05-07T21:50:05Z"
 started: "2026-05-07T21:51:28Z"
+completed: "2026-05-07T22:02:46Z"
 branch: dark-factory/auto-approve-generated-prompts
 ---
 

@@ -161,31 +161,63 @@ Add a top-level section **"Spec vs Prompt Fitness"** in the report. Example:
 - Covers all desired behaviors
 - Uses checkbox format `- [ ]`
 
-## Integration-seam scenario coverage
+## Scenario Coverage
 
-Specs that introduce or modify an integration seam MUST have matching end-to-end scenario coverage. Prompt-level unit and integration tests cannot fake multi-service boundaries, real deployment configuration, or real dispatch tables.
+**Authoritative reference: `docs/scenario-writing.md`.** Always cross-check scenario decisions against that doc — do not reason from auditor heuristics alone.
 
-**Integration seams to watch for in the spec:**
+**Default: NO scenario.** Most specs ship with unit + integration tests in the prompt only. Scenarios are slow, brittle, expensive — adding one per spec inverts the test pyramid.
+
+### When to flag a scenario gap
+
+A scenario is justified ONLY when ALL FOUR of these hold (lifted from `docs/scenario-writing.md`):
+
+1. **Unit and integration tests genuinely cannot reach the behavior** — real Docker output, real `gh pr view` rendering, real `kubectlquant` cluster state. Things that need a real external system, not a test double. NOT "the change touches a seam."
+2. **The behavior is load-bearing for an essential user journey** — daemon starts, PR opens correctly E2E. Not "every config field that flows to runtime."
+3. **No existing scenario covers it** — reuse before adding.
+4. **The author can name the regression risk** — concrete and specific. "If this breaks at runtime, an operator hits exit 128 for the second time." Not "in case something breaks."
+
+If any one condition fails → **NO scenario needed**. The unit + integration tests in the implementation prompt are sufficient.
+
+### Watch-flags (NOT sufficient on their own — apply the four-condition test)
+
+These shapes deserve a moment of "should I check the four conditions?" but do NOT trigger a critical flag by themselves:
 
 - New or changed Kafka topic / operation / schema
 - New or changed CRD field the operator consumes
-- New HTTP route or CLI flag exposed to callers
+- New HTTP route or CLI flag
 - New subprocess interface (agent image, buca target, container entrypoint)
 - New external service integration
-- Changed behavior of an existing seam (e.g. modifying a validator's regex, changing a registry's dispatch rules)
+- Changed validator / dispatch table / loader
 
-**What the spec must provide:**
+### Anti-pattern explicitly named in the source doc
 
-- An Acceptance Criterion that either (a) links to an existing scenario in `scenarios/` that already exercises the seam, or (b) requires a new scenario to be written as part of the change
-- If the spec generates prompts, one of the prompts must be a scenario-writing prompt (see `docs/scenario-writing.md`)
+> "Don't reach for a scenario because 'this touches an integration seam.'"
 
-**Severity:**
+If your reasoning starts with "this is a seam, therefore scenario", you have applied the lazy shortcut the doc warns against. Apply the four-condition test instead.
 
-- Flag as **Critical Issue** when the spec introduces a new integration seam (per heuristics above) with no scenario reference or scenario-writing acceptance criterion.
-- Flag as **Recommendation** when the seam is an extension of an already-covered area and an existing scenario plausibly covers it — instruct the author to confirm the existing scenario still passes.
-- No flag when the spec is a pure refactor, rename, or internal-only change with no integration-boundary impact.
+### Canonical YES (from `docs/scenario-writing.md`)
 
-**Why this matters:** prompt-level tests (unit + integration) share the pattern "test the code near the change." They cannot reliably catch failures that only manifest when the change interacts with real deployment state — another service's expectations, a validator's live regex, a registered handler's dispatch behavior. Scenarios are the only layer that runs the real path. A spec that changes a seam without requiring scenario coverage has an unaddressed regression risk that later surfaces as an incident.
+- **Spec 015** — Kafka `CommandOperation` constant passed struct-shape tests but was rejected at runtime by the cqrs regex. Real publish through the dev cluster was the only way to surface this.
+- **Spec 068** — clone-workflow `exit 128` from a control-flow ordering bug post-clone-deletion. No test double caught it.
+- **Spec 055** — config field wiring dropped by the loader. Unit tests on the field passed; production didn't see it.
+
+Each one: load-bearing, **runtime-only failure mode**, no test double can fake the boundary.
+
+### Canonical NO (from `docs/scenario-writing.md`)
+
+- A new public method on a struct, with a unit test asserting its return value.
+- A new config field whose handler is unit-tested AND whose effect is also unit-tested.
+- An additional log line.
+- A refactor that splits one function into two; behavior unchanged.
+- A bug fix where the original failure was caught by a unit test that simply hadn't existed before — write the unit test, no scenario needed.
+
+### Severity rules
+
+- Flag as **Critical Issue** ONLY when ALL FOUR conditions hold AND the spec has no scenario reference / no scenario-writing acceptance criterion.
+- Flag as **Recommendation** when conditions 2-4 hold but condition 1 is debatable — ask the author to justify why integration tests cannot reach the behavior.
+- **No flag** when any one condition fails. This is the default for most specs.
+
+**Symmetric scoring:** falsely flagging a scenario as required is as bad as missing a real one. Both inflate CI cost and erode trust in the audit. When in doubt, NO scenario.
 
 ## Documentation Placement
 
@@ -218,8 +250,8 @@ Adjustments:
 **Score**: X/10
 **Status**: [Excellent | Good | Needs Improvement | Significant Issues]
 
-## Integration-Seam Scenario Coverage
-- [x/!] If spec introduces/modifies an integration seam (new Kafka op/CRD field/HTTP route/subprocess interface/external service), Acceptance Criteria references an existing scenario or requires a new one (or N/A)
+## Scenario Coverage
+- [x/!] Default is NO scenario. Flag ONLY if ALL FOUR conditions in `docs/scenario-writing.md` hold (unit/integration tests genuinely cannot reach + load-bearing user journey + no existing coverage + concrete named regression risk) AND the spec has no scenario reference. Watch-flags alone (Kafka op, CRD field, HTTP route) are NOT sufficient. (or N/A)
 
 ## Location & Frontmatter
 - [x/!] File in `specs/` inbox (not `specs/in-progress/`)

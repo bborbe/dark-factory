@@ -1,9 +1,11 @@
 ---
-status: approved
+status: prompted
 tags:
     - dark-factory
     - spec
 approved: "2026-05-07T20:50:33Z"
+generating: "2026-05-07T21:36:18Z"
+prompted: "2026-05-07T21:46:45Z"
 branch: dark-factory/auto-approve-generated-prompts
 ---
 
@@ -31,13 +33,20 @@ Users who opt in can leave a project running unattended and have the daemon take
 - Alternative audit policies (e.g. partial pass, severity thresholds) — single binary pass/fail only.
 - Cancelling or rolling back prompts that are already in the queue when this feature is toggled.
 
+## Assumptions
+
+- The existing `/dark-factory:audit-prompt` slash command is callable inside the YOLO container and produces a clear pass/fail signal that dark-factory can read.
+- The existing in-YOLO slash-command invocation mechanism used by `generate-prompts` is reusable as-is for auditing — same launch path, same result-parsing path.
+- The existing approve operation invoked by `dark-factory prompt approve <name>` is idempotent: calling it on an already-approved prompt is a no-op rather than an error (the manual-vs-auto race in Security / Abuse Cases relies on this).
+- The `maxContainers` config-layering pattern (see `docs/config-layering.md`) — including the `*Source` reporting convention — is the established template and will not change for this spec's lifetime.
+
 ## Desired Behavior
 
 1. **Opt-in setting.** A new setting `autoApprovePrompts` (boolean, default `false`) controls whether the daemon performs auto-approve for generated prompts. When `false`, the daemon's behavior is identical to today's behavior.
 
 2. **Same precedence as `maxContainers`.** The setting is resolvable from global config, project-local config (`.dark-factory.yaml`), and a CLI argument, with the same precedence chain as `maxContainers` (CLI > project > global > default). See `docs/config-layering.md`.
 
-3. **Effective-config reporting.** The daemon's startup effective-config log line includes the resolved value and the source it came from (default, global, project, or CLI), in the same shape as other layered settings already report (e.g. `maxContainers=N maxContainersSource=...`).
+3. **Effective-config reporting.** The daemon's startup effective-config log line emits the keys `autoApprovePrompts=<true|false>` and `autoApprovePromptsSource=<default|global|project|cli>` in the same shape as `maxContainers=N maxContainersSource=...`.
 
 4. **Trigger only on generated prompts.** Auto-approve runs only on prompts produced by the existing generate-prompts flow for an approved spec. Prompts created by any other path (hand-written, dropped into the inbox, copied from another project) are never auto-approved.
 
@@ -58,7 +67,7 @@ Users who opt in can leave a project running unattended and have the daemon take
 - Hand-written prompts that did not come through generate-prompts must never trigger auto-approve, even when the setting is enabled.
 - Config layering must follow the `maxContainers` pattern documented in `docs/config-layering.md` (precedence, source reporting, sentinel for unset booleans).
 - Existing tests must continue to pass. `make precommit` must pass.
-- The CLI flag name follows the existing `--max-containers` naming convention (kebab-case derived from the YAML key).
+- The CLI flag name is `--auto-approve-prompts` (kebab-case derived from the YAML key, matching the `--max-containers` convention).
 
 ## Failure Modes
 
@@ -68,7 +77,7 @@ Users who opt in can leave a project running unattended and have the daemon take
 | Audit slash command reports failure | Auto-approve is skipped for that prompt; daemon stops processing further generated prompts for the same spec; failure surfaced | User audits/fixes the prompt manually, then approves manually |
 | Audit slash command crashes or times out inside YOLO | Treated as audit failure (fail-closed); same stop-the-spec behavior as a failed audit | User investigates and resumes manually |
 | Setting enabled at global, disabled at project | Project value wins (precedence); auto-approve disabled in that project | Expected, no action |
-| Daemon restarted mid-spec with the setting toggled | New value applies to subsequent generations only; in-flight generations finish under their original setting | Expected, no action |
+| Daemon restarted mid-spec with the setting toggled | New value applies to generations started after restart; whatever was in-flight at restart is handled per the existing daemon-restart behavior (no new in-flight-config tracking introduced by this spec) | Expected, no action |
 | Audit fails on prompt N of M for a spec | Prompts 1..N-1 already approved/executing continue; prompts N..M are not auto-approved; user intervenes | User fixes prompt N, approves manually, daemon resumes |
 | `autoApprovePrompts` set to a non-boolean in YAML | Startup validation error with clear message | User fixes config |
 
@@ -92,7 +101,7 @@ Users who opt in can leave a project running unattended and have the daemon take
 - [ ] Hand-written prompts (not produced by generate-prompts) are never auto-approved regardless of the setting.
 - [ ] Audit timeout, crash, or non-success result is treated as a failure (fail-closed).
 - [ ] If a prompt is manually approved before auto-approve fires, auto-approve is a no-op (no error, no double-approval).
-- [ ] Integration test asserts that on audit failure for prompt N of a spec, prompts N+1..M from the same spec are not auto-approved (while prompts 1..N-1 already approved continue executing).
+- [ ] On audit failure for prompt N of a spec, prompts N+1..M from the same spec are not auto-approved; prompts 1..N-1 already approved continue executing.
 - [ ] Existing tests pass.
 - [ ] `make precommit` passes.
 
@@ -110,7 +119,7 @@ Manual verification:
 2. With `autoApprovePrompts: true` (project config), approve a spec and observe the daemon audit each generated prompt and auto-approve those that pass; check the daemon log for the audit invocation and approve action.
 3. Force a generated prompt to fail audit (e.g. produce a deliberately broken prompt). Observe: that prompt is not approved, subsequent prompts for the same spec are not auto-approved, and the failure is visible to the user.
 4. Set `autoApprovePrompts: true` globally and `autoApprovePrompts: false` in a project. Restart the daemon in that project. Observe the startup log reports `autoApprovePrompts=false autoApprovePromptsSource=project`.
-5. Pass `--auto-approve-prompts=true` (or whatever flag shape matches the existing `--max-containers` pattern) on the CLI and observe it overrides both global and project values, with the source reported as `cli`.
+5. Pass `--auto-approve-prompts=true` on the CLI and observe it overrides both global and project values, with the source reported as `cli`.
 
 ## Do-Nothing Option
 

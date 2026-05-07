@@ -105,6 +105,21 @@ var _ = Describe("fileLoader.Load", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("get home directory"))
 	})
+
+	It("reads autoApprovePrompts=true from file", func() {
+		writeConfig("autoApprovePrompts: true\n")
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.AutoApprovePrompts).NotTo(BeNil())
+		Expect(*cfg.AutoApprovePrompts).To(BeTrue())
+	})
+
+	It("returns nil AutoApprovePrompts when field is omitted", func() {
+		writeConfig("maxContainers: 3\n")
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.AutoApprovePrompts).To(BeNil())
+	})
 })
 
 var _ = Describe("FileExists", func() {

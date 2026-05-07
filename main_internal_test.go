@@ -240,6 +240,31 @@ var _ = Describe("applyGlobalOverrides", func() {
 		applyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.HideGit).To(BeFalse())
 	})
+
+	It("applies global autoApprovePrompts when project did not set it", func() {
+		cfg := config.Defaults()
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.AutoApprovePrompts = &t
+		proj := config.LayeredProjectOverrides{}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.AutoApprovePrompts).To(BeTrue())
+	})
+
+	It(
+		"does not overwrite project autoApprovePrompts=false with global autoApprovePrompts=true",
+		func() {
+			cfg := config.Defaults()
+			cfg.AutoApprovePrompts = false
+			global := globalconfig.GlobalConfig{MaxContainers: 3}
+			t := true
+			global.AutoApprovePrompts = &t
+			f := false
+			proj := config.LayeredProjectOverrides{AutoApprovePrompts: &f}
+			applyGlobalOverrides(&cfg, global, proj)
+			Expect(cfg.AutoApprovePrompts).To(BeFalse())
+		},
+	)
 })
 
 var _ = Describe("applyArgOverrides", func() {
@@ -320,6 +345,7 @@ var _ = Describe("computeFieldSources", func() {
 		Expect(s.HideGit).To(Equal("default"))
 		Expect(s.AutoRelease).To(Equal("default"))
 		Expect(s.DirtyFileThreshold).To(Equal("default"))
+		Expect(s.AutoApprovePrompts).To(Equal("default"))
 	})
 
 	It("returns global when global sets model and project does not", func() {
@@ -395,6 +421,35 @@ var _ = Describe("computeFieldSources", func() {
 		proj := config.LayeredProjectOverrides{AutoMerge: &t}
 		s := computeFieldSources(global, proj)
 		Expect(s.AutoMerge).To(Equal("project"))
+	})
+
+	It("returns global for autoApprovePrompts when global sets it and project does not", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.AutoApprovePrompts = &t
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.AutoApprovePrompts).To(Equal("global"))
+	})
+
+	It(
+		"returns project for autoApprovePrompts when project sets it (even if global also set)",
+		func() {
+			global := globalconfig.GlobalConfig{MaxContainers: 3}
+			gt := true
+			global.AutoApprovePrompts = &gt
+			pf := false
+			proj := config.LayeredProjectOverrides{AutoApprovePrompts: &pf}
+			s := computeFieldSources(global, proj)
+			Expect(s.AutoApprovePrompts).To(Equal("project"))
+		},
+	)
+
+	It("returns default for autoApprovePrompts when neither global nor project set it", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		proj := config.LayeredProjectOverrides{}
+		s := computeFieldSources(global, proj)
+		Expect(s.AutoApprovePrompts).To(Equal("default"))
 	})
 })
 

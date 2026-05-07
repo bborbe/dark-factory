@@ -41,6 +41,7 @@ type GlobalConfig struct {
 	AutoRelease        *bool   `yaml:"autoRelease,omitempty"`
 	DirtyFileThreshold *int    `yaml:"dirtyFileThreshold,omitempty"`
 	Model              *string `yaml:"model,omitempty"`
+	AutoApprovePrompts *bool   `yaml:"autoApprovePrompts,omitempty"`
 }
 
 // Validate validates the GlobalConfig fields.
@@ -152,6 +153,7 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 		AutoRelease        *bool   `yaml:"autoRelease"`
 		DirtyFileThreshold *int    `yaml:"dirtyFileThreshold"`
 		Model              *string `yaml:"model"`
+		AutoApprovePrompts *bool   `yaml:"autoApprovePrompts"`
 	}
 	if err := yaml.Unmarshal(data, &partial); err != nil {
 		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: parse config file")
@@ -171,6 +173,9 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	}
 	if partial.Model != nil {
 		cfg.Model = partial.Model
+	}
+	if partial.AutoApprovePrompts != nil {
+		cfg.AutoApprovePrompts = partial.AutoApprovePrompts
 	}
 
 	if err := cfg.Validate(ctx); err != nil {

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.155.0
+
+- feat: Add `autoApprovePrompts` boolean setting resolvable from global config, project config, and `--auto-approve-prompts` CLI flag; effective value and source logged at daemon startup
+
 ## v0.154.0
 
 - chore: bump claude-yolo v0.6.2 → v0.6.3

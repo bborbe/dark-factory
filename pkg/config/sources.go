@@ -16,4 +16,5 @@ type FieldSources struct {
 	Workflow           string
 	PR                 string
 	AutoMerge          string
+	AutoApprovePrompts string
 }

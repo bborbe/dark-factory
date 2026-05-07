@@ -211,6 +211,46 @@ var _ = Describe("Config", func() {
 				Expect(result.Overrides.DirtyFileThreshold).NotTo(BeNil())
 				Expect(*result.Overrides.DirtyFileThreshold).To(Equal(0))
 			})
+
+			It("detects autoApprovePrompts explicitly set to true", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("autoApprovePrompts: true\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Config.AutoApprovePrompts).To(BeTrue())
+				Expect(result.Overrides.AutoApprovePrompts).NotTo(BeNil())
+				Expect(*result.Overrides.AutoApprovePrompts).To(BeTrue())
+			})
+
+			It("detects autoApprovePrompts explicitly set to false (non-nil override)", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("autoApprovePrompts: false\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Config.AutoApprovePrompts).To(BeFalse())
+				Expect(result.Overrides.AutoApprovePrompts).NotTo(BeNil())
+			})
+
+			It("returns nil autoApprovePrompts override when field is absent from config", func() {
+				err := os.WriteFile(
+					filepath.Join(tmpDir, ".dark-factory.yaml"),
+					[]byte("workflow: direct\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				result, err := config.LoadWithOverrides(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Config.AutoApprovePrompts).To(BeFalse())
+				Expect(result.Overrides.AutoApprovePrompts).To(BeNil())
+			})
 		})
 
 		Describe("Load", func() {

@@ -114,6 +114,7 @@ type Config struct {
 	AdditionalInstructions string              `yaml:"additionalInstructions,omitempty"`
 	MaxContainers          int                 `yaml:"maxContainers,omitempty"`
 	DirtyFileThreshold     int                 `yaml:"dirtyFileThreshold,omitempty"`
+	AutoApprovePrompts     bool                `yaml:"autoApprovePrompts,omitempty"`
 	MaxPromptDuration      string              `yaml:"maxPromptDuration"`
 	AutoRetryLimit         int                 `yaml:"autoRetryLimit"`
 	PreflightCommand       string              `yaml:"preflightCommand"`

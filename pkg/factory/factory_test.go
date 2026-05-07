@@ -323,6 +323,20 @@ var _ = Describe("Factory", func() {
 			output := logBuf.String()
 			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
 		})
+
+		It("emits autoApprovePrompts and autoApprovePromptsSource", func() {
+			c := fullTestConfig()
+			c.AutoApprovePrompts = true
+			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
+			sources := config.FieldSources{}
+			sources.AutoApprovePrompts = "project"
+
+			factory.LogEffectiveConfig(c, globalCfg, false, sources)
+
+			output := logBuf.String()
+			Expect(output).To(ContainSubstring("autoApprovePrompts=true"))
+			Expect(output).To(ContainSubstring("autoApprovePromptsSource=project"))
+		})
 	})
 
 	Describe("preflight failure terminates runners", func() {

@@ -262,6 +262,61 @@ func TestParseArgsSkipPreflight(t *testing.T) {
 	)
 }
 
+func TestExtractAutoApprovePromptsFlagOnly(t *testing.T) {
+	t.Parallel()
+	set, remaining := extractAutoApprovePrompts([]string{"--auto-approve-prompts"})
+	if !set {
+		t.Error("expected set=true")
+	}
+	if len(remaining) != 0 {
+		t.Errorf("expected empty remaining, got %v", remaining)
+	}
+}
+
+func TestExtractAutoApprovePromptsFlagWithTrailing(t *testing.T) {
+	t.Parallel()
+	set, remaining := extractAutoApprovePrompts([]string{"--auto-approve-prompts", "other"})
+	if !set {
+		t.Error("expected set=true")
+	}
+	if len(remaining) != 1 || remaining[0] != "other" {
+		t.Errorf("expected [other], got %v", remaining)
+	}
+}
+
+func TestExtractAutoApprovePromptsFlagAfterArg(t *testing.T) {
+	t.Parallel()
+	set, remaining := extractAutoApprovePrompts([]string{"other", "--auto-approve-prompts"})
+	if !set {
+		t.Error("expected set=true")
+	}
+	if len(remaining) != 1 || remaining[0] != "other" {
+		t.Errorf("expected [other], got %v", remaining)
+	}
+}
+
+func TestExtractAutoApprovePromptsEmpty(t *testing.T) {
+	t.Parallel()
+	set, remaining := extractAutoApprovePrompts([]string{})
+	if set {
+		t.Error("expected set=false")
+	}
+	if len(remaining) != 0 {
+		t.Errorf("expected empty remaining, got %v", remaining)
+	}
+}
+
+func TestExtractAutoApprovePromptsNoFlag(t *testing.T) {
+	t.Parallel()
+	set, remaining := extractAutoApprovePrompts([]string{"other"})
+	if set {
+		t.Error("expected set=false")
+	}
+	if len(remaining) != 1 || remaining[0] != "other" {
+		t.Errorf("expected [other], got %v", remaining)
+	}
+}
+
 func TestParseArgsModel(t *testing.T) {
 	t.Parallel()
 

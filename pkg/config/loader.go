@@ -39,6 +39,7 @@ type LayeredProjectOverrides struct {
 	Workflow           *Workflow // non-nil when .dark-factory.yaml explicitly sets workflow
 	PR                 *bool     // non-nil when .dark-factory.yaml explicitly sets pr
 	AutoMerge          *bool     // non-nil when .dark-factory.yaml explicitly sets autoMerge
+	AutoApprovePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets autoApprovePrompts
 }
 
 // LoadResult bundles the merged project config with information about which
@@ -115,6 +116,7 @@ type partialConfig struct {
 	AdditionalInstructions *string              `yaml:"additionalInstructions,omitempty"`
 	MaxContainers          *int                 `yaml:"maxContainers,omitempty"`
 	DirtyFileThreshold     *int                 `yaml:"dirtyFileThreshold,omitempty"`
+	AutoApprovePrompts     *bool                `yaml:"autoApprovePrompts"`
 	MaxPromptDuration      *string              `yaml:"maxPromptDuration"`
 	AutoRetryLimit         *int                 `yaml:"autoRetryLimit"`
 	HideGit                *bool                `yaml:"hideGit"`
@@ -177,6 +179,7 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		Workflow:           partial.Workflow,
 		PR:                 partial.PR,
 		AutoMerge:          partial.AutoMerge,
+		AutoApprovePrompts: partial.AutoApprovePrompts,
 	}
 
 	// Detect removed config fields and return actionable errors.
@@ -382,6 +385,9 @@ func mergePartialLimits(cfg *Config, partial *partialConfig) {
 	}
 	if partial.DirtyFileThreshold != nil {
 		cfg.DirtyFileThreshold = *partial.DirtyFileThreshold
+	}
+	if partial.AutoApprovePrompts != nil {
+		cfg.AutoApprovePrompts = *partial.AutoApprovePrompts
 	}
 	if partial.MaxPromptDuration != nil {
 		cfg.MaxPromptDuration = *partial.MaxPromptDuration

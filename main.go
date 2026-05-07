@@ -237,6 +237,11 @@ func runRunCommand(
 	if n > 0 {
 		cfg.MaxContainers = n
 	}
+	autoApprovePrompts, remaining := extractAutoApprovePrompts(remaining)
+	if autoApprovePrompts {
+		cfg.AutoApprovePrompts = true
+		sources.AutoApprovePrompts = "arg"
+	}
 	if err := validateNoArgs(ctx, remaining, printRunHelp); err != nil {
 		return err
 	}
@@ -267,6 +272,11 @@ func runDaemonCommand(
 	}
 	if n > 0 {
 		cfg.MaxContainers = n
+	}
+	autoApprovePrompts, remaining := extractAutoApprovePrompts(remaining)
+	if autoApprovePrompts {
+		cfg.AutoApprovePrompts = true
+		sources.AutoApprovePrompts = "arg"
 	}
 	if err := validateNoArgs(ctx, remaining, printDaemonHelp); err != nil {
 		return err
@@ -542,6 +552,9 @@ func applyGlobalOverrides(
 	if global.DirtyFileThreshold != nil && proj.DirtyFileThreshold == nil {
 		cfg.DirtyFileThreshold = *global.DirtyFileThreshold
 	}
+	if global.AutoApprovePrompts != nil && proj.AutoApprovePrompts == nil {
+		cfg.AutoApprovePrompts = *global.AutoApprovePrompts
+	}
 }
 
 // computeFieldSources determines which config layer provided each of the layered user-pref fields.
@@ -561,6 +574,7 @@ func computeFieldSources(
 		Workflow:           "default",
 		PR:                 "default",
 		AutoMerge:          "default",
+		AutoApprovePrompts: "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -574,6 +588,9 @@ func computeFieldSources(
 	if global.DirtyFileThreshold != nil {
 		s.DirtyFileThreshold = "global"
 	}
+	if global.AutoApprovePrompts != nil {
+		s.AutoApprovePrompts = "global"
+	}
 	// Project overrides global (project wins)
 	if proj.Model != nil {
 		s.Model = "project"
@@ -586,6 +603,9 @@ func computeFieldSources(
 	}
 	if proj.DirtyFileThreshold != nil {
 		s.DirtyFileThreshold = "project"
+	}
+	if proj.AutoApprovePrompts != nil {
+		s.AutoApprovePrompts = "project"
 	}
 	if proj.MaxContainers != nil {
 		s.MaxContainers = "project"
@@ -629,6 +649,21 @@ func extractMaxContainers(ctx context.Context, args []string) (int, []string, er
 		return n, remaining, nil
 	}
 	return 0, args, nil
+}
+
+// extractAutoApprovePrompts removes --auto-approve-prompts from args and reports whether it was set.
+// The flag is a presence flag: its appearance means true. No value argument is consumed.
+func extractAutoApprovePrompts(args []string) (bool, []string) {
+	for i, arg := range args {
+		if arg != "--auto-approve-prompts" {
+			continue
+		}
+		remaining := make([]string, 0, len(args)-1)
+		remaining = append(remaining, args[:i]...)
+		remaining = append(remaining, args[i+1:]...)
+		return true, remaining
+	}
+	return false, args
 }
 
 // supportedSetKeys is the authoritative list of yaml-backed user-pref keys

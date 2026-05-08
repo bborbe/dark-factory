@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [079-bug-completion-report-parser-tail-boundary]
 summary: Fixed ParseFromLog to select last complete marker pair in tail window and export ErrStartWithoutEnd sentinel so validator can distinguish actionable boundary failures from other parse errors
 container: dark-factory-387-bug-079-fix-completion-report-parser
@@ -7,6 +7,7 @@ dark-factory-version: v0.154.0
 created: "2026-05-08T09:00:00Z"
 queued: "2026-05-08T09:17:32Z"
 started: "2026-05-08T09:17:34Z"
+completed: "2026-05-08T09:24:45Z"
 branch: dark-factory/bug-completion-report-parser-tail-boundary
 ---
 

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- chore: `make precommit` now runs `check-versions` to enforce 3-way plugin version alignment across `plugin.json`, `marketplace.json` (`metadata.version` and `plugins[0].version`); fails build on mismatch
+
 ## v0.156.1
 
 - fix: ParseFromLog selects last complete marker pair in tail window, preventing orphaned end-marker boundary artifact from silently swallowing agent-reported failures

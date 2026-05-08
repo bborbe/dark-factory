@@ -9,8 +9,23 @@ LDFLAGS := -X github.com/bborbe/dark-factory/pkg/version.Version=$(VERSION)
 default: precommit
 
 .PHONY: precommit
-precommit: ensure format generate test check addlicense
+precommit: ensure format generate test check addlicense check-versions
 	@echo "ready to commit"
+
+.PHONY: check-versions
+check-versions:
+	@echo "Checking plugin version alignment..."
+	@PLUGIN_VER=$$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])"); \
+	META_VER=$$(python3 -c "import json; print(json.load(open('.claude-plugin/marketplace.json'))['metadata']['version'])"); \
+	PLUGINS0_VER=$$(python3 -c "import json; print(json.load(open('.claude-plugin/marketplace.json'))['plugins'][0]['version'])"); \
+	echo "  plugin.json:                       $$PLUGIN_VER"; \
+	echo "  marketplace.json metadata:         $$META_VER"; \
+	echo "  marketplace.json plugins[0]:       $$PLUGINS0_VER"; \
+	if [ "$$PLUGIN_VER" != "$$META_VER" ] || [ "$$PLUGIN_VER" != "$$PLUGINS0_VER" ]; then \
+		echo "MISMATCH: 3 plugin JSON fields must equal each other (see CLAUDE.md → Version Alignment)"; \
+		exit 1; \
+	fi; \
+	echo "Plugin versions aligned at $$PLUGIN_VER"
 
 .PHONY: ensure
 ensure:

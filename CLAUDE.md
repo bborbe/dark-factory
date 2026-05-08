@@ -57,6 +57,17 @@ The prompt/spec split is **business-why vs technical-how**, not big vs small. A 
 - **Never approve or run dark-factory without explicit user confirmation** — present the prompt, wait for user to say "approve" or "run"
 - **Start daemon in background** — use Bash tool with `run_in_background: true`: `dark-factory daemon` (not foreground, not detached with `&`)
 
+## 🚨 Version Alignment — MANDATORY
+
+**Three plugin version strings MUST always equal each other:**
+1. `.claude-plugin/plugin.json` — `"version"` field
+2. `.claude-plugin/marketplace.json` — `metadata.version`
+3. `.claude-plugin/marketplace.json` — `plugins[0].version`
+
+`make precommit` runs `check-versions` which fails the build if any of the three diverge. Never commit a plugin release with mismatched versions.
+
+The binary version (CHANGELOG top entry + git tag) is a **separate stream** managed by the autoRelease daemon and is independent of the plugin version (per `docs/releasing-dark-factory.md`). The 3-way plugin alignment above is what `check-versions` enforces.
+
 ## Plugin Release Checklist
 
 **When to release:** Any change to `commands/`, `agents/`, `docs/`, or `skills/` requires a plugin version bump — these files ship as part of the plugin.

@@ -353,7 +353,6 @@ var _ = Describe("Recoverer autoRelease push matrix", func() {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		desc := "autoRelease=false"
 		if tc.autoRelease {
 			desc = "autoRelease=true"
@@ -361,6 +360,9 @@ var _ = Describe("Recoverer autoRelease push matrix", func() {
 		It(desc+" pushes or skips as expected", func() {
 			ctx := context.Background()
 			var err error
+
+			originalDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
 
 			tempDir, err := os.MkdirTemp("", "recoverer-push-test-*")
 			Expect(err).NotTo(HaveOccurred())
@@ -374,7 +376,7 @@ var _ = Describe("Recoverer autoRelease push matrix", func() {
 			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
 			initGitRepo(repoDir)
 			Expect(os.Chdir(repoDir)).To(Succeed())
-			defer func() { _ = os.Chdir(tempDir) }()
+			defer func() { _ = os.Chdir(originalDir) }()
 
 			promptPath := filepath.Join(tempDir, "001-push-test.md")
 			Expect(

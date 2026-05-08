@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 - chore: `make precommit` now runs `check-versions` to enforce 3-way plugin version alignment across `plugin.json`, `marketplace.json` (`metadata.version` and `plugins[0].version`); fails build on mismatch
+- test: scenarios 019 (active) and 020 (idea) for spec 078 auto-approve-generated-prompts; clarified `dark-factory-sandbox` is the dedicated test repo for dark-factory's own scenarios
 
 ## v0.156.1
 

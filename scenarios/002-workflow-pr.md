@@ -10,7 +10,7 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 
 ## Setup
 
-**Note:** PR workflow requires a real GitHub remote for `gh pr create`. This scenario pushes to the real sandbox repo — clean up the PR and branch after the run.
+**Note:** `~/Documents/workspaces/dark-factory-sandbox` is the dedicated test repo for dark-factory's own scenarios. Pushing branches and opening PRs against its GitHub remote is the intended use — that's why it exists as a separate repo from `dark-factory`. PR workflow requires a real GitHub remote for `gh pr create`; this scenario uses the sandbox remote on purpose. Clean up the feature branch and PR after the run.
 
 ```bash
 go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .

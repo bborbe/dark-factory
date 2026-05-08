@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-05-08T08:57:51Z"
 generating: "2026-05-08T08:59:20Z"
 prompted: "2026-05-08T09:09:27Z"
+verifying: "2026-05-08T09:24:45Z"
+completed: "2026-05-08T14:03:56Z"
 branch: dark-factory/bug-completion-report-parser-tail-boundary
 ---
 

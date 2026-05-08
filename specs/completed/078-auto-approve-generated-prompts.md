@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-05-07T20:50:33Z"
 generating: "2026-05-07T21:36:18Z"
 prompted: "2026-05-07T21:46:45Z"
 verifying: "2026-05-07T22:27:33Z"
+completed: "2026-05-08T14:03:56Z"
 branch: dark-factory/auto-approve-generated-prompts
 ---
 

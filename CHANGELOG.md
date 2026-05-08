@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.156.1
+
+- fix: ParseFromLog selects last complete marker pair in tail window, preventing orphaned end-marker boundary artifact from silently swallowing agent-reported failures
+
 ## v0.156.0
 
 - feat: When `autoApprovePrompts: true`, daemon audits and auto-approves each generated prompt via the existing YOLO executor; audit failure stops further auto-approvals for the spec without changing spec status

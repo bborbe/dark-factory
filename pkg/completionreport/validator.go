@@ -6,6 +6,7 @@ package completionreport
 
 import (
 	"context"
+	stderrors "errors"
 	"log/slog"
 
 	"github.com/bborbe/errors"
@@ -41,8 +42,15 @@ func (v *validator) Validate(
 ) (*report.CompletionReport, error) {
 	completionReport, err := report.ParseFromLog(ctx, logFile)
 	if err != nil {
+		if stderrors.Is(err, report.ErrStartWithoutEnd) {
+			// Start marker found but no end marker in the tail: the agent began a report
+			// but the tail window was cut before the closing delimiter.
+			// This is an actionable failure — do not downgrade to "no report".
+			return nil, errors.Wrap(ctx, err, "parse completion report")
+		}
+		// Other parse errors (e.g. both markers present but JSON is malformed):
+		// downgrade to "no report" for backwards compatibility.
 		slog.Debug("failed to parse completion report", "error", err)
-		// Parse error — downgrade to "no report" and fall through to critical failure scan.
 		completionReport = nil
 	}
 

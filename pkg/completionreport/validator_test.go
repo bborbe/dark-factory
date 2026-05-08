@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -153,5 +154,59 @@ DARK-FACTORY-REPORT -->
 		Expect(r).To(BeAssignableToTypeOf(&report.CompletionReport{}))
 		Expect(r.Verification).NotTo(BeNil())
 		Expect(r.Verification.ExitCode).To(Equal(0))
+	})
+
+	It("propagates error when log has start marker but no end marker", func() {
+		writeLog(`Starting session...
+
+` + report.MarkerStart + `
+{"status":"failed","summary":"truncated","blockers":[]}
+`)
+		// NOTE: no closing MarkerEnd
+		r, err := validator.Validate(ctx, logFile)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("parse report tail boundary"))
+		Expect(r).To(BeNil())
+	})
+
+	It("propagates failure when production-shaped log has orphaned end marker in tail", func() {
+		// Reuse the 9235-byte construction from pkg/report/parse_test.go test 4b.
+		// Both report blocks contain "status":"failed".
+		makeFailedJSON := func(wantLen int) string {
+			base := `{"status":"failed","blockers":[],"summary":"make precommit failed","verification":{"command":"make precommit","exitCode":1}}`
+			padLen := wantLen - len(base) - 8
+			Expect(padLen).To(BeNumerically(">=", 0))
+			return base[:len(base)-1] + `,"_p":"` + strings.Repeat("x", padLen) + `"}`
+		}
+
+		const (
+			wantTotal     = 9235
+			tailBytesSize = 4096
+			block1Start   = 5122
+			block1End     = 5693
+			block2Start   = 7371
+		)
+
+		jsonLen := block1End - block1Start - len(report.MarkerStart) - 2
+		json1 := makeFailedJSON(jsonLen)
+		json2 := makeFailedJSON(jsonLen)
+
+		block1 := report.MarkerStart + "\n" + json1 + "\n" + report.MarkerEnd + "\n"
+		block2 := report.MarkerStart + "\n" + json2 + "\n" + report.MarkerEnd + "\n"
+
+		filler := strings.Repeat("f", block2Start-(block1Start+len(block1)))
+		trailing := strings.Repeat("t", wantTotal-block2Start-len(block2))
+		preamble := strings.Repeat("a", block1Start)
+
+		content := preamble + block1 + filler + block2 + trailing
+		Expect(len(content)).To(Equal(wantTotal))
+
+		writeLog(content)
+
+		r, err := validator.Validate(ctx, logFile)
+		Expect(err).To(HaveOccurred())
+		Expect(r).To(BeNil())
+		// The validator returns a non-nil error reflecting the parsed status:failed,
+		// NOT a downgraded "no report" path.
 	})
 })

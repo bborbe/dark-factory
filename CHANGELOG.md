@@ -2,9 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## v0.156.2
 
-- chore: `make precommit` now runs `check-versions` to enforce 3-way plugin version alignment across `plugin.json`, `marketplace.json` (`metadata.version` and `plugins[0].version`); fails build on mismatch
+- chore: extract `check-versions` to `scripts/check-versions.sh` (4-field locked check: CHANGELOG top + `plugin.json` + `marketplace.json` `metadata.version` + `plugins[0].version`); add `make release-check` (`precommit + check-versions`); unwire from `precommit` so binary↔plugin drift is allowed during development and only enforced at install time. Aligns with `vault-cli` / `semantic-search` release-gate shape.
+- chore: catch-up bump plugin manifests `0.154.0` → `0.156.2` to re-align with binary CHANGELOG (no plugin surface changes since `0.154.0`).
 - test: scenarios 019 (active) and 020 (idea) for spec 078 auto-approve-generated-prompts; clarified `dark-factory-sandbox` is the dedicated test repo for dark-factory's own scenarios
 - test: fix flaky `pkg/committingrecoverer` suite — autoRelease matrix test now restores cwd to the original directory (not to the temp dir it later removes), preventing `os.Getwd: no such file or directory` cascades in subsequent specs under random ordering
 

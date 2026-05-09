@@ -51,26 +51,21 @@ git diff "$INSTALLED"..HEAD --name-only | grep -E '\.(go|mod|sum)$|^Makefile$|^D
 
 This is the ONLY documented skip. Do not invent others ("docs-only changes shouldn't break anything") — surface mappings are fragile and have been wrong before.
 
-## Version alignment check (run BEFORE every commit that bumps versions)
+## Version alignment check (release-time)
 
-Whenever you bump any version (binary tag OR plugin JSON), all related fields must align. Run:
+`scripts/check-versions.sh` enforces the locked model: top CHANGELOG entry == `plugin.json` `version` == `marketplace.json` `metadata.version` == `marketplace.json` `plugins[0].version`. Run via `make check-versions`, or via `make release-check` (which adds `make precommit` first).
 
 ```bash
-# Binary alignment: latest tag matches latest CHANGELOG section
-LATEST_TAG=$(git tag -l | sort -V | tail -1)
-LATEST_CHANGELOG=$(grep -m1 '^## v' CHANGELOG.md | sed 's/^## //')
-test "$LATEST_TAG" = "$LATEST_CHANGELOG" && echo "✅ binary aligned" || echo "❌ tag=$LATEST_TAG changelog=$LATEST_CHANGELOG"
-
-# Plugin alignment: three JSON fields must match each other
-PLUGIN=$(jq -r .version .claude-plugin/plugin.json)
-META=$(jq -r .metadata.version .claude-plugin/marketplace.json)
-PLUGINS0=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
-test "$PLUGIN" = "$META" -a "$META" = "$PLUGINS0" && echo "✅ plugin aligned ($PLUGIN)" || echo "❌ plugin=$PLUGIN meta=$META plugins[0]=$PLUGINS0"
+make release-check          # full gate: precommit + check-versions
+# or, just the version check:
+make check-versions
+# or directly:
+bash scripts/check-versions.sh
 ```
 
-(Future: ship `scripts/check-versions.sh` that runs both checks and exits non-zero on any mismatch.)
+The git tag is bound to CHANGELOG by `autoRelease` at release time, so it is not separately checked here.
 
-Plugin version is independent of the binary tag — the two streams are not required to match each other, only to be internally consistent within their surface.
+**NOT wired into `make precommit`** — drift between binary CHANGELOG (advanced freely by `autoRelease`) and plugin JSONs (manually bumped when commands/agents change) is the expected state during development. Alignment is enforced at install time only, so plugin bumps catch up to the binary's CHANGELOG before downstream consumers pick up a new version.
 
 ## Binary release (automatic — but the operator owns the gate)
 

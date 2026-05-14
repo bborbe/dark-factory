@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.156.3
+
+- bump bborbe/{http,time,kv,math,parse,sentry} deps
+- bump go-git/go-git v5.18→v5.19, go-billy v5.8→v5.9
+- bump golang.org/x/{crypto,net,sys,term,text,exp}
+- bump osv-scanner v2.3.7→v2.3.8, errcheck v1.10→v1.20
+- docs: add import-before-tidy and sequential spec verification rules
+
 ## v0.156.2
 
 - chore: extract `check-versions` to `scripts/check-versions.sh` (4-field locked check: CHANGELOG top + `plugin.json` + `marketplace.json` `metadata.version` + `plugins[0].version`); add `make release-check` (`precommit + check-versions`); unwire from `precommit` so binary↔plugin drift is allowed during development and only enforced at install time. Aligns with `vault-cli` / `semantic-search` release-gate shape.

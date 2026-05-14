@@ -200,6 +200,20 @@ Dep bump: `go get foo@v1.2.3 && go mod tidy` — that's it.
 
 Exception: if the repo commits `vendor/`, document that deviation in the prompt. See `go-build-args-guide.md#vendor-handling`.
 
+### Add imports before tidying
+
+`go mod tidy` (and `make ensure`, which calls it) removes any direct entry from `go.mod` that no code currently imports. A prompt step that does `go get foo@v1.2.3 && go mod tidy` BEFORE the file that imports `foo` is written will silently demote/remove the dep — the next `make precommit` then fails on the unresolved import.
+
+```
+BAD:  Step 1: go get foo && go mod tidy
+      Step 2: write code that imports foo
+      → Step 1 left go.mod unchanged because nothing imported foo yet
+GOOD: Step 1: write code that imports foo
+      Step 2: go mod tidy (promotes foo to a direct dep)
+```
+
+For prompts that add a new dependency: state the order explicitly — write the import first, then tidy.
+
 ### `make ensure` vs `make precommit` mid-implementation
 
 When a prompt says "add a new dependency" or "regenerate vendored code", the intermediate state cannot pass `make precommit` (test+check fail until the code is updated). Use `make ensure` for dependency-only preparation steps, then reserve `make precommit` for final verification.

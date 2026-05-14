@@ -55,6 +55,8 @@ If all your ACs cluster in one layer, the spec is probably underspecified — fl
 
 Do not verify while prompts are still queued or running — wait for auto-transition.
 
+**Verify in approval order, lowest spec number first.** Do not skip a spec to verify a later one. Specs typically build on each other (spec N+1 may depend on contracts asserted by spec N). If spec N reveals a defect that blocks completion, leave it in `verifying` and stack a fix prompt — do not jump ahead to N+1, because verifying N+1 against an unstable N produces ambiguous live evidence. Once N is clean, proceed sequentially.
+
 ## Verification Procedure
 
 Run these six checks in order. Stop at the first failure.

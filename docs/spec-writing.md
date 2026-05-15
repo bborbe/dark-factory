@@ -107,15 +107,28 @@ Every Acceptance Criterion must declare **what the verifier will observe to conf
 | **File content (diff or grep)** | "`grep -n 'pattern' file.md` returns line ≥1" |
 | **HTTP response** | "`GET /api/x` returns 200 with body matching `{...}`" |
 | **Kafka message** | "topic `foo` receives one message with key `K` and payload matching `{...}`" |
-| **Metric value** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Metric value (positive)** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Metric value (delta)** | "Counter `bar_total{label=y}` increments by exactly N after action" |
 | **Cluster state** | "`kubectl get pod X` returns Running with container ready=true" |
 | **Vault / file artifact** | "task file under `tasks/` has frontmatter field `Y: Z`" |
+| **State transition** | "frontmatter `status` transitions `prompted → verifying`" / "Jira ticket transitions `In Progress → Done`" — captures the **delta** with before/after framing |
+| **Negative evidence** | "`git diff path/to/file.go` is empty after action" / "`grep ERROR run.log` returns 0 lines" / "no kafka message on topic `Z` during the window" — captures the **absence** of an artifact |
+
+### Negative ACs — write them, don't skip them
+
+Specs that only assert positives miss invariants. For any AC of the form "X is NOT changed" / "Y is NOT logged" / "Z is NOT published" / "feature off ⇒ pre-spec behavior", declare a negative evidence shape: an explicit grep / diff / probe that returns zero results in the asserted-empty window.
+
+- ❌ "config Y is not mutated" (how do you verify?)
+- ✅ "`git diff config/Y.yaml` returns empty after the action — `git status` shows no modified files"
+- ❌ "no extra errors are logged"
+- ✅ "`grep -c ERROR run.log` returns 0 during the test window"
 
 ### Bad ACs (no evidence shape)
 
 - ❌ "Unit test covers this" — that's the test plan, not the evidence
 - ❌ "It works" / "Functionality verified" — narration
 - ❌ "Tests pass" without naming what specific behavior is asserted
+- ❌ "Correctness is established" — narration
 
 ### Good ACs (evidence shape declared)
 
@@ -152,18 +165,32 @@ Specs that defer decisions to implementation time create unbounded interpretatio
 
 **Flagged words:** `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
 
-### Resolution rules
+### Flag only deferrals, not descriptive English
 
-Each occurrence must either:
+These same words are legitimate when describing existing state or identifying artifacts. Flag only when the word **defers a decision** the implementer would otherwise make.
 
-1. **Resolve to a concrete rule** — replace "appropriate retry policy" with "retry once with 5s + jitter backoff"
-2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when the decision is truly local (one-line scope) and reversible (no schema, no persistent state, no external contract)
+**Flag (deferral):**
+- ❌ "the agent **should** retry appropriately" — defers retry policy
+- ❌ "use a **reasonable** timeout" — defers timeout value
+- ❌ "log **relevant** fields" — defers field list
 
-### Good vs bad
+**Don't flag (descriptive):**
+- ✅ "the daemon **should** be running when the cursor is read" — state assumption
+- ✅ "the **relevant** config file" — identifying an existing artifact
+- ✅ "the **correct** review state" — describing the expected outcome
 
-- ❌ "Agent retries appropriately on network failure"
-- ✅ "Agent retries once after 5s + jitter on network failure; on second failure, escalates"
-- ✅ "On retry, the agent decides the backoff jitter at impl time (local, reversible)"
+For each hit, ask: "Does this word leave a decision, or does it describe state?" If decision → flag.
+
+### Resolution rules (when flagged)
+
+Each flagged hedge must either:
+
+1. **Resolve to a concrete rule** — "appropriate retry policy" → "retry once with 5s + jitter backoff"
+2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when truly local AND reversible:
+   - ✅ "log level for the new debug statement (INFO vs DEBUG) — agent decides at impl time"
+   - ✅ "exact error message wording — agent decides at impl time"
+   - ❌ "retry policy — agent decides at impl time" (cross-cutting, affects external contract)
+   - ❌ "schema field name — agent decides at impl time" (persistent state, irreversible)
 
 ## Failure Modes — Optional Columns for Non-Trivial Specs
 
@@ -187,6 +214,10 @@ For specs that add real-world side effects, the Failure Modes section should cov
 - Rate limiting / throttling
 - Resource exhaustion (disk, memory, connections)
 - Clock skew / timezone
+
+### Recovery rows follow the same evidence-shape vocabulary
+
+ACs declare evidence shape; Recovery actions should too. "Operator inspects diagnostics" is vague; "operator runs `dark-factory prompt retry <id>` and confirms `phase: in_progress` in the vault task file" is verifiable. Without observable recovery evidence, the verifier can confirm the failure was reached but not that the recovery path was exercised.
 
 ## Preflight Checklist
 

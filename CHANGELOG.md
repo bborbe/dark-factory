@@ -24,10 +24,10 @@ All notable changes to this project will be documented in this file.
 ### `agents/spec-auditor.md`
 
 - Three new audit dimensions matching the writer-side self-checks:
-  - **Evidence shape per AC** — flag each AC without a declared evidence shape
-  - **Adversarial laziness pass** — "what's the laziest impl that passes every AC?" single-prompt under-specification check
-  - **Hedge-word audit** — grep for hedges, classify each as resolve / mark agent-decides
-- Failure Modes guidance: optional columns (Detection, Reversibility, Concurrency); failure-mode categories to check
+  - **Evidence shape per AC** — flag each AC without a declared evidence shape. Evidence-shape table includes positive (exit code / log line / HTTP / kafka / metric), state transition (delta with before/after framing), and negative evidence (grep returns 0 / git diff empty / no kafka publish during window).
+  - **Adversarial laziness pass** — "what's the laziest impl that passes every AC?" Report MUST include a concrete code-shaped one-liner naming the laziest implementation gesture (not vibes).
+  - **Hedge-word audit** — grep for hedges, distinguish deferral from descriptive English (don't flag "daemon should be running" / "the relevant config file"); each flagged hedge resolves to a concrete rule or is marked "agent decides at impl time" with concrete acceptable/non-acceptable exemplars.
+- Failure Modes guidance: optional columns (Detection, Reversibility, Concurrency); failure-mode categories to check; **Recovery rows follow the same evidence-shape vocabulary as ACs** (so the verifier can confirm the recovery path was exercised, not just that the failure was reached).
 - Filename-Content Alignment: extended to cover Acceptance Criteria, not just Summary + Goal
 - Report format: three new top-level sections before Spec-vs-Prompt Fitness
 - Scoring rubric: three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1)

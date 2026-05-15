@@ -141,6 +141,7 @@ Add a top-level section **"Spec vs Prompt Fitness"** in the report. Example:
 - Table format minimum: Trigger | Expected behavior | Recovery
 - Covers realistic failure scenarios
 - Recovery actions are actionable
+- **Recovery rows follow the same evidence-shape vocabulary as Acceptance Criteria.** A Recovery that says "operator inspects diagnostics" is vague; a Recovery that says "operator runs `dark-factory prompt retry <id>` and confirms `phase: in_progress` in the vault task file" is verifiable. Without observable recovery evidence, the verifier can confirm the failure was reached but not that the recovery path was exercised.
 
 ### Optional columns for non-trivial specs
 
@@ -202,15 +203,26 @@ Every Acceptance Criterion must declare **how the verifier will observe it pass*
 | **File content (diff or grep)** | "`grep -n 'pattern' file.md` returns line ≥1" |
 | **HTTP response** | "`GET /api/x` returns 200 with body matching `{...}`" |
 | **Kafka message** | "topic `foo` receives one message with key `K` and payload matching `{...}`" |
-| **Metric value** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Metric value (positive)** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Metric value (delta)** | "Counter `bar_total{label=y}` increments by exactly N after action" |
 | **Cluster state** | "`kubectl get pod X` returns Running with container ready=true" |
 | **Vault / file artifact** | "task file under `tasks/` has frontmatter field `Y: Z`" |
+| **State transition** (NEW) | "frontmatter `status` transitions `prompted → verifying` after the daemon runs" / "Jira ticket transitions `In Progress → Done` / `BigQuery row count for table T increases by N`" — captures the **delta** with before/after framing |
+| **Negative evidence** (NEW) | "`git diff path/to/file.go` is empty after action" / "`grep ERROR run.log` returns 0 lines" / "no kafka message published on topic `Z` during the test window" — captures the **absence** of an artifact; legitimate for "X is not mutated" / "no errors logged" / "feature off ⇒ pre-spec behavior" ACs |
+
+### Negative-evidence ACs — when to use, how to write
+
+Specs that only assert positives miss invariants. For any AC stating "X is NOT changed" / "Y is NOT logged" / "Z is NOT published", declare a **negative evidence shape**: an explicit grep / diff / probe that returns zero results in the asserted-empty window.
+
+Bad: "config Y is not mutated" (how do you verify?)
+Good: "`git diff config/Y.yaml` returns empty after the action — verified by `git status` showing no modified files"
 
 ### What does NOT count as evidence shape
 
 - "Unit test covers this" — that's the test plan, not the observable evidence
 - "It works" / "Functionality verified" — narration, not artifact
 - "Tests pass" without naming what specific behavior is being asserted by which test
+- "Correctness is established" — narration
 
 ### How to flag
 
@@ -241,11 +253,21 @@ If the laziest implementation is:
 
 ### How to apply
 
-Run this as a final sanity check after reading all ACs. Write a 2-3 sentence "laziness pass" subsection in the report:
+Run this as a final sanity check after reading all ACs.
 
-> **Adversarial laziness pass**: laziest implementation that passes every AC = [description]. [PASS — the laziest impl is non-trivial enough] / [FAIL — under-specified ACs: N, M].
+**MANDATORY report output** — every audit must include a concrete laziest-impl one-liner. The line is the load-bearing artifact; without it, the report cannot prove the auditor actually ran the pass.
 
-If FAIL, suggest concrete tightening for each under-specified AC.
+Required shape:
+> **Adversarial laziness pass**: laziest impl = `<concrete one-liner naming the implementation gesture>`. Verdict: PASS / FAIL.
+
+The one-liner must be **code-shaped concreteness**, not vibes:
+- ✅ "laziest impl = `touch docs/foo.md` + add a no-op handler returning nil"
+- ✅ "laziest impl = always return `verdict: approve` regardless of input"
+- ✅ "laziest impl = `return nil` in the new function; tests pass because they only check it exists"
+- ❌ "laziest impl = something that passes the ACs" (no information)
+- ❌ "the laziest implementation would not satisfy the Goal" (no specifics)
+
+If FAIL, list under-specified ACs by number and suggest concrete tightening for each.
 
 ## Hedge-Word Audit (FREE — catches decision deferrals)
 
@@ -255,18 +277,42 @@ Specs that defer decisions to implementation time create unbounded interpretatio
 
 `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
 
-### Resolution rules
+### Critical distinction — flag deferrals, NOT descriptive English
 
-Each hedge must either:
-1. **Resolve to a concrete rule** — replace "appropriate retry policy" with "retry once with 5s + jitter backoff"
-2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when the decision is truly local (one-line scope) and reversible (no schema, no persistent state, no external contract)
+A hedge word is **only flagged when it defers a decision** the implementer would otherwise make. Many of the same words are legitimate descriptive English about expected state, existing artifacts, or natural-language framing.
+
+**Flag (deferral):**
+- ❌ "the agent **should** retry appropriately" → defers retry policy
+- ❌ "use a **reasonable** timeout" → defers timeout value
+- ❌ "log **relevant** fields" → defers field list
+- ❌ "handle **proper** error cases" → defers which errors
+
+**Don't flag (descriptive):**
+- ✅ "the daemon should be running when the cursor is read" → state assumption, not deferral
+- ✅ "the relevant config file" → identifying an existing artifact
+- ✅ "the correct review state" → describing the expected outcome
+- ✅ "etc." inside an exhaustive parenthetical → not a decision deferral (but mild smell — prefer explicit lists)
+
+### How to distinguish
+
+For each hit, ask: "Does this word leave a decision the implementer must make, or does it describe state / identify an artifact?" If the former → flag. If the latter → ignore.
+
+### Resolution rules (when flagged)
+
+Each flagged hedge must either:
+1. **Resolve to a concrete rule** — "appropriate retry policy" → "retry once with 5s + jitter backoff"
+2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when the decision is truly local AND reversible:
+   - ✅ Acceptable: "log level for the new debug statement (INFO vs DEBUG) — agent decides at impl time"
+   - ✅ Acceptable: "exact error message wording — agent decides at impl time"
+   - ❌ Not acceptable: "retry policy — agent decides at impl time" (cross-cutting, affects external contract)
+   - ❌ Not acceptable: "schema field name — agent decides at impl time" (persistent state, irreversible)
 
 ### How to flag
 
 Quote each hedge with line number; classify as either "resolve" (specify) or "mark agent-decides" (acceptable but call out explicitly).
 
 Flag pattern:
-> Line 47: "the agent should retry **appropriately**" — UNRESOLVED hedge. Specify retry count and backoff, or mark as "agent decides at impl time" if the decision is local.
+> Line 47: "the agent should retry **appropriately**" — UNRESOLVED hedge (deferral). Specify retry count and backoff, or mark as "agent decides at impl time" if the decision is local and reversible.
 
 ## Scenario Coverage
 

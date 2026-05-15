@@ -217,6 +217,11 @@ Knowledge lives in four locations: specs (behavioral, dies after implementation)
 
 Check these:
 - **Inline pattern detection** — if `<requirements>` contains >10 lines of a reusable coding pattern (CQRS wiring, factory setup, test suite bootstrap, BoltDB setup), flag as recommendation: "Consider extracting to a doc and referencing instead of inlining. Inline patterns drift from actual APIs and cause prompt failures."
+- **Detail-level mismatch** — see `docs/prompt-writing.md` "Detail Levels". Flag as **Recommendation** when:
+  - The prompt's `<requirements>` contains >200 lines of inlined Go AND a matching pattern already exists in the project (`pkg/`, `internal/`). The prompt should reference the existing file instead of re-inlining. ("Translation work treated as Level 1 when Level 3 would do.")
+  - The prompt inlines `if/else` chains or pre-decides error message strings when the failure modes are already enumerated in the linked spec. The agent can write the conditionals from the spec's failure-modes table.
+  - The prompt enumerates every test scenario as separate `It` blocks when a `DescribeTable` would suffice.
+- **Author-logic bug risk** — when inlined code embeds logic the prompt author wrote from memory (not copy-pasted from the spec or an existing file), flag as **Recommendation**: "This logic is the author's, not the spec's or existing code's. Verify the inlined classification/sequence matches the spec, or replace with a contract reference and let the agent derive it." Common offenders: error-class switch statements, retry policies, state-machine transitions.
 - **Missing doc reference** — if prompt uses a library pattern that has a matching doc in the coding plugin (`~/.claude/plugins/marketplaces/coding/docs/`) but `<context>` doesn't reference it, flag as recommendation: "A coding plugin doc exists for this pattern — reference it in `<context>` instead of inlining."
   - To check: list files in the project's `docs/` directory and in `~/.claude/plugins/marketplaces/coding/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
 - **Existing project doc ignored** — if `project/docs/` has a relevant doc (topic match) but prompt doesn't mention it in `<context>`, flag as recommendation: "Project doc `docs/X.md` covers this topic — reference it in `<context>`."

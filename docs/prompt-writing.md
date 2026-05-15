@@ -111,14 +111,148 @@ Run `make precommit` -- must pass.
 
 ## Writing Rules
 
-### Specificity over brevity
+### Specificity over brevity — but pick the right *kind* of specificity
 
-Longer, more specific prompts succeed more often. Include:
+Longer, more specific prompts succeed more often *when the specificity is about contracts and anchors*, not when it's about pre-deciding every line of code the agent will write. Spelling out every if/else and every error message ships the author's bugs verbatim and prevents the agent from applying existing project conventions. See [Detail Levels](#detail-levels) below for how to pick the right grain.
+
+Always include:
 - Exact file paths (repo-relative)
 - Function/type names as primary anchors
-- Line numbers only as optional hints (`~line 176`)
-- Old → new code patterns for find-and-replace
 - Library import paths
+- References to existing files demonstrating each pattern the new code follows
+
+Optional (depends on detail level):
+- Line numbers only as hints (`~line 176`) — go stale quickly
+- Old → new code patterns for find-and-replace — useful for mechanical refactors, harmful for novel work
+- Inlined code bodies — see Detail Levels for when this helps vs. hurts
+
+### Detail Levels
+
+Prompts span a spectrum from "fully scripted" to "intent only." Each level has real trade-offs. Pick deliberately; default to **Level 3 (Medium)** for most work in a mature codebase. Mismatched grain is the most common cause of prompt failure: too much detail ships author bugs, too little produces wrong abstractions.
+
+| Level | Shape | Typical line count |
+|-------|-------|-------------------|
+| 1 — Very Detailed | Full inlined function bodies, every `if`/`else` written, error messages pre-decided | 500–1500 |
+| 2 — Detailed | Function signatures + key error paths inlined; agent fills bodies | 200–500 |
+| 3 — Medium *(default)* | Interfaces + sequence + pattern references + failure modes; no function bodies | 80–200 |
+| 4 — Soft | End-state contracts + pattern references; agent chooses structure | 40–100 |
+| 5 — Very Rough | One-paragraph intent + verification command | 10–40 |
+
+#### Level 1 — Very Detailed (scripted)
+
+**Shape:** Full Go source inlined for every function. Every conditional written out. Test cases enumerated by literal value.
+
+**Pros:**
+- Maximum reproducibility across model versions; works on cheap/weak models.
+- The exact output is in the prompt — no agent interpretation needed.
+- Good for teaching examples or documenting a canonical implementation.
+
+**Cons:**
+- The author's bugs ship verbatim (the agent faithfully implements the wrong `fmt.Errorf` instead of the project's `errors.Wrapf`).
+- Drifts from project style because the prompt-author writes from memory, not from existing code.
+- Audit becomes line-by-line code review of the prompt — slow and error-prone.
+- The agent's pattern-matching strength is wasted.
+- Any reusable knowledge inside the prompt rots and re-rots across every future prompt that needs the same pattern.
+
+**When to use:**
+- Brand-new pattern with no existing exemplar in the codebase.
+- Absolute first prompt of a new project (no convention to follow yet).
+- Reproducing a published reference implementation that should match an external source line-for-line.
+
+#### Level 2 — Detailed (annotated skeleton)
+
+**Shape:** Function signatures and key error paths spelled out. Imports listed. Bodies left to the agent with hints (`// retry once on transient errors per DB#8`).
+
+**Pros:**
+- Still very prescriptive about the contract surface.
+- Manageable to audit (200–500 lines, not 1500).
+- Less prone to style drift than Level 1 because bodies follow project conventions.
+
+**Cons:**
+- The author still owns most of the logic; bugs in the spelled-out error paths still ship.
+- The skeleton can subtly bias the agent away from a cleaner structure it would have chosen.
+
+**When to use:**
+- Novel logic in a familiar project (the pattern doesn't exist yet, but the style does).
+- Complex algorithms where the exact shape of the control flow matters.
+- Migrating off a stable external API where the call sequence is fixed.
+
+#### Level 3 — Medium (contracts + references) — **default**
+
+**Shape:** Interface signatures, sequence of operations, pattern references (`see pkg/github/client.go for the errors.Wrapf style`), explicit failure modes copied from the spec, test scenarios named (`table-test the verdict × autoApprove matrix`). No function bodies. No pre-written error messages.
+
+**Pros:**
+- Best for translation work — applying an existing project pattern to a new feature.
+- Leverages the agent's pattern-matching strength: it reads the referenced file and adopts the style automatically.
+- Small enough to audit at a contract level instead of a line-by-line review.
+- Prompts age well — the contract changes rarely, the implementation can be regenerated.
+- Author bugs in inlined code can't ship because there is no inlined code.
+
+**Cons:**
+- Requires at least one good in-tree exemplar for each pattern referenced.
+- Weaker models may produce non-uniform code across siblings without explicit shape.
+- Reviewer must trust the contract rather than the implementation.
+
+**When to use:**
+- Most refactors and feature work in mature codebases (the default).
+- Multi-prompt specs where consistency across siblings matters.
+- Any case where existing code already demonstrates the conventions the new code should follow.
+
+#### Level 4 — Soft (constraints + goals)
+
+**Shape:** What must be true at the end, plus references and constraints. No interfaces enumerated. Agent decides sequence, structure, and decomposition within the file.
+
+**Pros:**
+- Maximum agent agency — it can refactor adjacent code if that produces a cleaner result.
+- Very small prompts; fast to write.
+- The agent may discover a better abstraction than the author would have specified.
+
+**Cons:**
+- Outcomes more variable across runs and model versions.
+- Relies on agent capability and self-discipline; weaker models drift.
+- Harder to review (less to compare against).
+- Multi-prompt coordination breaks down — siblings may make incompatible decisions.
+
+**When to use:**
+- Greenfield work with a capable model.
+- Rapid iteration when the right shape is uncertain.
+- Cleanup tasks where the agent is expected to use judgment about how far to refactor.
+
+#### Level 5 — Very Rough (intent)
+
+**Shape:** One paragraph stating intent. A single verification command. No constraints, no references.
+
+**Pros:**
+- Trivial to write — minutes from idea to attempt.
+- Forces the agent to do the design thinking.
+- Useful as a "first draft" that can be refined into Level 3.
+
+**Cons:**
+- Highly variable output; often produces wrong abstractions on first try.
+- Usually needs multiple rounds with edits — total wall time is often longer than starting at Level 3.
+- Almost never satisfies the audit DoD on first pass.
+- No reproducibility — same prompt twice produces different code.
+
+**When to use:**
+- Spike / exploration where the answer isn't yet known.
+- Throwaway scripts.
+- Rapidly evolving requirements where any specification will be out of date by the time it's written.
+
+### Choosing a level
+
+Ask in order:
+
+1. **Does the codebase already demonstrate this pattern somewhere?**
+   - Yes → Level 3 (reference the exemplar; don't re-inline it). This is the common case.
+   - No → continue.
+2. **Will the agent need to invent a novel structure?**
+   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven.
+   - No → Level 2 (spelled-out signatures, hinted bodies).
+3. **Is this a published external API that must match line-for-line?**
+   - Yes → Level 1 (and link the external source).
+   - No → re-read step 1.
+
+When in doubt, write **Level 3** and let audit suggest tightening to Level 2 if the agent would be likely to drift.
 
 ### Anchor by name, not line number
 

@@ -19,6 +19,8 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
 - Specs describe behavior, not code
 - No struct names, function signatures, or file paths unless they are frozen constraints
 - The test: "Would this still make sense to a non-developer?"
+- **Every Acceptance Criterion must declare an evidence shape** (exit code / log line / file diff / HTTP status / kafka message / metric / cluster state / file artifact). See `docs/spec-writing.md` "Evidence Shape per Acceptance Criterion".
+- **Avoid hedge words** (`should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`) — each must resolve to a concrete rule or be explicitly marked "agent decides at impl time". See `docs/spec-writing.md` "Hedge Words to Avoid".
 - NEVER manually set frontmatter status — use `dark-factory spec approve`
 - ALWAYS use paths exactly as provided by the caller — never resolve or modify `~` or any path component
 </constraints>
@@ -49,7 +51,10 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
 
 4. **Write spec content** following template below
 
-5. **Validate** against preflight checklist
+5. **Validate** against preflight checklist AND the three self-check passes:
+   - **Adversarial laziness**: read the spec assuming the laziest possible implementation. If a no-op or hardcoded fake satisfies every AC, tighten the ACs before reporting.
+   - **Hedge-word grep**: scan the spec for `should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`; resolve each or mark "agent decides at impl time" explicitly.
+   - **Evidence-shape check**: every AC names how the verifier will observe pass — exit code, log line, file content, HTTP status, kafka message, metric, cluster state, or file artifact.
 
 6. **Report** file path and suggest `/audit-spec` before approving
 </workflow>
@@ -102,6 +107,10 @@ config compatibility, invariants.
 
 ## Failure Modes
 
+Minimum table: `Trigger | Expected behavior | Recovery`. For specs touching network I/O, persistent state, or shared resources, add optional columns: **Detection** (how does the operator know the failure occurred?), **Reversibility** (reversible / irreversible / partial), **Concurrency** (what if two instances or a mid-action crash?). See `docs/spec-writing.md` "Failure Modes — Optional Columns".
+
+For specs with real-world side effects, cover at least one row per category: external unavailability, schema drift, partial-progress crash, rate limiting, resource exhaustion, clock skew.
+
 | Trigger | Expected behavior | Recovery |
 |---------|-------------------|----------|
 | | | |
@@ -117,7 +126,7 @@ config compatibility, invariants.
 
 ## Acceptance Criteria
 
-Binary, testable statements:
+Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
 
 - [ ]
 - [ ]
@@ -166,6 +175,10 @@ After creating the spec, report:
 - File created (with path)
 - Number of desired behaviors
 - Preflight checklist status (all 7 questions answered?)
+- **Self-check passes**:
+  - Adversarial laziness: 1-2 sentences naming what the laziest implementation would look like; PASS = laziest impl is non-trivial; FAIL = list under-specified ACs
+  - Hedge words: zero unresolved, or each marked "agent decides at impl time" with line numbers
+  - Evidence shape: every AC declares its evidence shape (or list AC numbers that don't)
 - Suggest: "Run `/audit-spec <file>` to validate before approving"
 - Remind: "Use `dark-factory spec approve <name>` to approve — never edit status manually"
 - If domain knowledge was found that should become a project doc: list the topics and suggest creating `docs/X.md` before generating prompts

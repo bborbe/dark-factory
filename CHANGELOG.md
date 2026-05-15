@@ -4,14 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## v0.157.0
 
-- spec-auditor: add three new audit dimensions to close the audit↔verify gap
-  - **Evidence shape per AC** — each Acceptance Criterion must declare how the verifier will observe it (exit code, log line, file diff, HTTP status, kafka message, metric, etc.); without it, `spec-verifier` has to invent evidence type per spec
-  - **Adversarial laziness pass** — read the spec assuming the laziest implementation that passes every AC; if that impl is a no-op or trivial fake, the ACs are under-specified
-  - **Hedge-word audit** — flag `should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`; each must either resolve to a concrete rule or be explicitly marked "agent decides at impl time"
-- spec-auditor: extend Failure Modes guidance with optional columns (Detection, Reversibility, Concurrency) for non-trivial specs touching network I/O, persistent state, or shared resources; document recommended failure-mode categories (external unavailability, schema drift, partial-progress crash, rate limiting, resource exhaustion, clock skew)
-- spec-auditor: extend Filename-Content Alignment check to cover Acceptance Criteria, not just Summary + Goal
-- spec-auditor: report format gains three new top-level sections (Adversarial Laziness Pass, Hedge-Word Audit, Evidence Shape per AC) before Spec-vs-Prompt Fitness
-- spec-auditor: scoring rubric gains three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1)
+**Symmetric update to the spec writer + auditor + spec-writing guide.** Closes the audit↔verify gap by adding three new dimensions; specs now declare evidence up front so verification is mechanical, and the writer self-checks against the audit rules before reporting.
+
+### `docs/spec-writing.md` (canonical guide)
+
+- New section: **Evidence Shape per Acceptance Criterion** — table of acceptable shapes (exit code, log line, file diff, HTTP status, kafka message, metric, cluster state, file artifact); good/bad AC examples
+- New section: **Adversarial Laziness Test** — read the spec assuming the laziest implementation; if it's a no-op or hardcoded fake, the ACs are under-specified; fix pattern is to replace artifact-existence with behavior
+- New section: **Hedge Words to Avoid** — flagged words list and resolution rules (resolve to concrete rule OR mark "agent decides at impl time")
+- New section: **Failure Modes — Optional Columns for Non-Trivial Specs** — Detection, Reversibility, Concurrency; categories to cover for specs with real-world side effects (external unavailability, schema drift, partial-progress crash, rate limiting, resource exhaustion, clock skew)
+
+### `agents/spec-creator.md`
+
+- Constraints expanded: every AC must declare evidence shape; hedge words avoided
+- Workflow step 5 expanded: three self-checks before reporting (adversarial laziness, hedge-word grep, evidence-shape check)
+- Template AC section: prose-level evidence-shape guidance with good/bad examples
+- Template Failure Modes section: optional columns + category coverage prompts
+- Report output: now includes self-check pass/fail per dimension
+
+### `agents/spec-auditor.md`
+
+- Three new audit dimensions matching the writer-side self-checks:
+  - **Evidence shape per AC** — flag each AC without a declared evidence shape
+  - **Adversarial laziness pass** — "what's the laziest impl that passes every AC?" single-prompt under-specification check
+  - **Hedge-word audit** — grep for hedges, classify each as resolve / mark agent-decides
+- Failure Modes guidance: optional columns (Detection, Reversibility, Concurrency); failure-mode categories to check
+- Filename-Content Alignment: extended to cover Acceptance Criteria, not just Summary + Goal
+- Report format: three new top-level sections before Spec-vs-Prompt Fitness
+- Scoring rubric: three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1)
 
 ## v0.156.3
 

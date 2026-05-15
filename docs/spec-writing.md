@@ -92,6 +92,102 @@ When a spec needs technical detail (API endpoints, protocol formats) that would 
 - **Two features with different do-nothing arguments?** Split into separate specs
 - **Contains struct names or file paths that aren't frozen constraints?** Too implementation-level — push details to prompts
 
+## Evidence Shape per Acceptance Criterion
+
+Every Acceptance Criterion must declare **what the verifier will observe to confirm pass.** This is what `spec-verifier` will demand — making it explicit in the AC lets the verifier be mechanical and lets you avoid the rewrite cycle.
+
+### Acceptable evidence shapes
+
+| Shape | Example phrasing in AC |
+|---|---|
+| **Exit code** | "`make precommit` exits 0" |
+| **Stdout / stderr match** | "stdout contains `processed: 42`" |
+| **Log line** | "log line at INFO level: `request_id=<uuid> status=ok`" |
+| **File presence** | "`ls path/to/file` succeeds" |
+| **File content (diff or grep)** | "`grep -n 'pattern' file.md` returns line ≥1" |
+| **HTTP response** | "`GET /api/x` returns 200 with body matching `{...}`" |
+| **Kafka message** | "topic `foo` receives one message with key `K` and payload matching `{...}`" |
+| **Metric value** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Cluster state** | "`kubectl get pod X` returns Running with container ready=true" |
+| **Vault / file artifact** | "task file under `tasks/` has frontmatter field `Y: Z`" |
+
+### Bad ACs (no evidence shape)
+
+- ❌ "Unit test covers this" — that's the test plan, not the evidence
+- ❌ "It works" / "Functionality verified" — narration
+- ❌ "Tests pass" without naming what specific behavior is asserted
+
+### Good ACs (evidence shape declared)
+
+- ✅ "After invocation, `cat tasks/<id>.md` shows `phase: completed` in frontmatter"
+- ✅ "`kubectlquant -n dev logs <pod> | grep 'job spawned'` returns ≥1 match"
+- ✅ "`gh pr view 2 --json reviews` lists one review with `state: APPROVED` by login `pr-review-of-ben`"
+
+The point is not to inline test scripts — it's to make the AC's *observable target* unambiguous.
+
+## Adversarial Laziness Test
+
+Before finalizing, read your spec assuming the implementer intends the **laziest implementation that still passes every Acceptance Criterion.** Ask:
+
+> If I tried to satisfy every AC with the minimum possible work, what would I do?
+
+If the answer is a no-op, a hardcoded fake, or a trivial refactor that doesn't deliver the Goal — your ACs are under-specified.
+
+### Examples
+
+| AC | Laziest impl | Verdict |
+|---|---|---|
+| "File `docs/foo.md` exists" | `touch docs/foo.md` | Under-specified — needs minimum content / sections |
+| "Unit test for X exists" | `func TestX(t *testing.T) {}` | Under-specified — needs assertion type |
+| "Verdict is binary (approve / request-changes)" | always return `approve` | Under-specified — needs per-input-class assertion |
+| "On 403, escalate to human_review" | hardcoded escalation | Adequately specified — escalation is the observable |
+
+### Fix pattern
+
+Replace artifact-existence ACs with behavior ACs. Instead of "doc X exists," write "doc X contains section Y with content matching Z."
+
+## Hedge Words to Avoid
+
+Specs that defer decisions to implementation time create unbounded interpretation surface. The auditor will flag these; pre-empt the rework.
+
+**Flagged words:** `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
+
+### Resolution rules
+
+Each occurrence must either:
+
+1. **Resolve to a concrete rule** — replace "appropriate retry policy" with "retry once with 5s + jitter backoff"
+2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when the decision is truly local (one-line scope) and reversible (no schema, no persistent state, no external contract)
+
+### Good vs bad
+
+- ❌ "Agent retries appropriately on network failure"
+- ✅ "Agent retries once after 5s + jitter on network failure; on second failure, escalates"
+- ✅ "On retry, the agent decides the backoff jitter at impl time (local, reversible)"
+
+## Failure Modes — Optional Columns for Non-Trivial Specs
+
+The minimum table is `Trigger | Expected behavior | Recovery`. For specs touching network I/O, persistent state, external systems, or shared resources, prefer the extended format.
+
+| Column | Add when… | Question it answers |
+|---|---|---|
+| **Detection** | Spec has async / out-of-band failure modes (kafka publish, background job, timeout) | How does the operator know the failure occurred? |
+| **Reversibility** | Spec writes to external state (GitHub PR, kafka topic, database) | Is the failure reversible / irreversible / partial? Irreversible failures demand stronger pre-checks. |
+| **Concurrency** | Spec touches shared state (cursor file, lock, frontmatter status) | What if two instances do this simultaneously, or one crashes mid-action? |
+
+**Don't add all four columns blanket** — that's bureaucracy. Only when the dimension is real for this spec.
+
+### Categories to check (at least once each for non-trivial specs)
+
+For specs that add real-world side effects, the Failure Modes section should cover at least one row per:
+
+- External system unavailability
+- Schema / version drift
+- Partial progress / crash mid-action
+- Rate limiting / throttling
+- Resource exhaustion (disk, memory, connections)
+- Clock skew / timezone
+
 ## Preflight Checklist
 
 Before approving, verify the spec answers all of these:

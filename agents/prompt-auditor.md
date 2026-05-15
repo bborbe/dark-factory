@@ -219,6 +219,8 @@ Check these:
 - **Inline pattern detection** — if `<requirements>` contains >10 lines of a reusable coding pattern (CQRS wiring, factory setup, test suite bootstrap, BoltDB setup), flag as recommendation: "Consider extracting to a doc and referencing instead of inlining. Inline patterns drift from actual APIs and cause prompt failures."
 - **Pattern collision** (priority signal, not line count) — flag as **Recommendation** when the prompt inlines code that conflicts with an established project pattern, regardless of total inlined-code volume. The signal is *collision*, not *amount*. A 5-line `fmt.Errorf` inline is more dangerous than a 100-line struct definition that matches existing types.
   
+  **You (the auditor) execute these searches via Bash.** Do NOT report them as guidance for the prompt author to run later — run them yourself during the audit, capture the actual match counts, and cite the file paths in the finding. The mechanical check is only useful if it's mechanically run.
+  
   Mechanical checks to run:
   1. **Error wrapping collision** — `rg -c 'errors\.Wrapf' pkg/ internal/` returns ≥5 matches AND prompt's `<requirements>` contains `fmt.Errorf(`. Flag: "Project uses `errors.Wrapf(ctx, err, ...)` (N matches in pkg/). Prompt inlines `fmt.Errorf` — agent will adopt the wrong style."
   2. **HTTP client collision** — `rg -l 'http.NewRequestWithContext' pkg/` returns ≥1 file AND prompt inlines a different request-construction style.

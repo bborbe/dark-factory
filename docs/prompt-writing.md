@@ -262,15 +262,18 @@ If a surface returns 5+ matches with a consistent pattern → Level 3 references
 
 **Then ask in order:**
 
-1. **Does the codebase already demonstrate this pattern somewhere?** (verified by Step 0)
-   - Yes → Level 3 (reference the exemplar; don't re-inline it). This is the common case.
-   - No → continue.
-2. **Will the agent need to invent a novel structure?**
-   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven and document it.
-   - No → Level 2 (spelled-out signatures, hinted bodies).
-3. **Is this a published external API that must match line-for-line?**
+1. **Did Step 0 find ≥5 matches with a consistent pattern for the surface you're touching?**
+   - Yes → continue to question 2.
+   - No → **patterns are missing or inconsistent.** Continue to question 4 (do NOT silently fall through to Level 3 — that's the trap).
+2. **Is this a published external API that must match line-for-line?**
    - Yes → Level 1 (and link the external source).
-   - No → re-read step 1.
+   - No → **Level 3** (reference the exemplars from Step 0; don't re-inline). This is the common case for translation work in mature codebases.
+3. *(unreachable from question 1; kept for symmetry with prior versions)*
+4. **(Patterns missing.) Will the agent need to invent a novel structure?**
+   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven AND document it in `project/docs/`.
+   - No (translation work but no exemplar yet) → **Level 2** (spelled-out signatures, hinted bodies) — more honest than fake Level 3 references that don't exist. Promote to Level 3 in a future prompt once the pattern is documented.
+
+**The "fall-through-to-Level-3" trap:** the most common mistake. Author runs no searches, picks Level 3 because it's the "default", references files that don't exist or don't demonstrate the pattern claimed. Agent silently inlines (because it has nothing to reference), and the prompt produces author-style code anyway — back to the original problem. Step 0 + question 1's hard split prevents this.
 
 ### What the spectrum does NOT solve
 

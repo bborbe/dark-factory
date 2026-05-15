@@ -111,7 +111,7 @@ Every Acceptance Criterion must declare **what the verifier will observe to conf
 | **Metric value (delta)** | "Counter `bar_total{label=y}` increments by exactly N after action" |
 | **Cluster state** | "`kubectl get pod X` returns Running with container ready=true" |
 | **Vault / file artifact** | "task file under `tasks/` has frontmatter field `Y: Z`" |
-| **State transition** | "frontmatter `status` transitions `prompted → verifying`" / "Jira ticket transitions `In Progress → Done`" — captures the **delta** with before/after framing |
+| **State transition** | "frontmatter `status` transitions `prompted → verifying`" / "Jira ticket transitions `In Progress → Done`" / "BigQuery row count for table T increases by N" — captures the **delta** with before/after framing |
 | **Negative evidence** | "`git diff path/to/file.go` is empty after action" / "`grep ERROR run.log` returns 0 lines" / "no kafka message on topic `Z` during the window" — captures the **absence** of an artifact |
 
 ### Negative ACs — write them, don't skip them
@@ -163,7 +163,7 @@ Replace artifact-existence ACs with behavior ACs. Instead of "doc X exists," wri
 
 Specs that defer decisions to implementation time create unbounded interpretation surface. The auditor will flag these; pre-empt the rework.
 
-**Flagged words:** `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
+**Words to scrutinise for deferrals** (flag only when they defer a decision — see distinction below): `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
 
 ### Flag only deferrals, not descriptive English
 

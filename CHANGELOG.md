@@ -30,7 +30,9 @@ All notable changes to this project will be documented in this file.
 - Failure Modes guidance: optional columns (Detection, Reversibility, Concurrency); failure-mode categories to check; **Recovery rows follow the same evidence-shape vocabulary as ACs** (so the verifier can confirm the recovery path was exercised, not just that the failure was reached).
 - Filename-Content Alignment: extended to cover Acceptance Criteria, not just Summary + Goal
 - Report format: three new top-level sections before Spec-vs-Prompt Fitness
-- Scoring rubric: three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1)
+- Scoring rubric: three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1) + explicit floor of 1 (so a spec failing every adjustment still scores 1, not negative)
+- Output format polish: Score line shows `(minimum 1)`; "Flagged words" list renamed "Words to scrutinise for deferrals (flag only when they defer a decision)" to pre-empt grep-first mechanical flagging
+- Template: spec-creator AC block pre-fills one example (`make precommit` exits 0 — exit-code evidence) so writers see the evidence-shape pattern inline; BigQuery example added to docs/spec-writing.md State-transition row for parity with the auditor
 
 ## v0.156.3
 

@@ -128,7 +128,9 @@ For specs with real-world side effects, cover at least one row per category: ext
 
 Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
 
-- [ ]
+Example AC (replace with your own — keep the evidence-shape pattern):
+
+- [ ] `make precommit` exits 0 in the changed module — evidence: exit code
 - [ ]
 - [ ]
 

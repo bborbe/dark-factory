@@ -405,7 +405,7 @@ Adjustments:
 # Spec Audit Report: [Spec Title]
 
 **File**: `[path]`
-**Score**: X/10
+**Score**: X/10 (minimum 1)
 **Status**: [Excellent | Good | Needs Improvement | Significant Issues]
 
 ## Scenario Coverage

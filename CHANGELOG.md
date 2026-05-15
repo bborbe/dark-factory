@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.157.0
+
+- spec-auditor: add three new audit dimensions to close the audit↔verify gap
+  - **Evidence shape per AC** — each Acceptance Criterion must declare how the verifier will observe it (exit code, log line, file diff, HTTP status, kafka message, metric, etc.); without it, `spec-verifier` has to invent evidence type per spec
+  - **Adversarial laziness pass** — read the spec assuming the laziest implementation that passes every AC; if that impl is a no-op or trivial fake, the ACs are under-specified
+  - **Hedge-word audit** — flag `should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`; each must either resolve to a concrete rule or be explicitly marked "agent decides at impl time"
+- spec-auditor: extend Failure Modes guidance with optional columns (Detection, Reversibility, Concurrency) for non-trivial specs touching network I/O, persistent state, or shared resources; document recommended failure-mode categories (external unavailability, schema drift, partial-progress crash, rate limiting, resource exhaustion, clock skew)
+- spec-auditor: extend Filename-Content Alignment check to cover Acceptance Criteria, not just Summary + Goal
+- spec-auditor: report format gains three new top-level sections (Adversarial Laziness Pass, Hedge-Word Audit, Evidence Shape per AC) before Spec-vs-Prompt Fitness
+- spec-auditor: scoring rubric gains three new adjustments (laziness FAIL: -2, hedges >3: -1, no evidence shapes: -1)
+
 ## v0.156.3
 
 - bump bborbe/{http,time,kv,math,parse,sentry} deps

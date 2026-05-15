@@ -111,14 +111,250 @@ Run `make precommit` -- must pass.
 
 ## Writing Rules
 
-### Specificity over brevity
+### Specificity over brevity — but pick the right *kind* of specificity
 
-Longer, more specific prompts succeed more often. Include:
+Longer, more specific prompts succeed more often *when the specificity is about contracts and anchors*, not when it's about pre-deciding every line of code the agent will write. Spelling out every if/else and every error message ships the author's bugs verbatim and prevents the agent from applying existing project conventions. See [Detail Levels](#detail-levels) below for how to pick the right grain.
+
+Always include:
 - Exact file paths (repo-relative)
 - Function/type names as primary anchors
-- Line numbers only as optional hints (`~line 176`)
-- Old → new code patterns for find-and-replace
 - Library import paths
+- References to existing files demonstrating each pattern the new code follows
+
+Optional (depends on detail level):
+- Line numbers only as hints (`~line 176`) — go stale quickly
+- Old → new code patterns for find-and-replace — useful for mechanical refactors, harmful for novel work
+- Inlined code bodies — see Detail Levels for when this helps vs. hurts
+
+### Detail Levels
+
+Prompts span a spectrum from "fully scripted" to "intent only." Each level has real trade-offs. Pick deliberately; default to **Level 3 (Medium)** for most work in a mature codebase. Mismatched grain is the most common cause of prompt failure: too much detail ships author bugs, too little produces wrong abstractions.
+
+| Level | Shape | Typical line count |
+|-------|-------|-------------------|
+| 1 — Very Detailed | Full inlined function bodies, every `if`/`else` written, error messages pre-decided | 500–1500 |
+| 2 — Detailed | Function signatures + key error paths inlined; agent fills bodies | 200–500 |
+| 3 — Medium *(default)* | Interfaces + sequence + pattern references + failure modes; no function bodies | 80–200 |
+| 4 — Soft | End-state contracts + pattern references; agent chooses structure | 40–100 |
+| 5 — Very Rough | One-paragraph intent + verification command | 10–40 |
+
+#### Level 1 — Very Detailed (scripted)
+
+**Shape:** Full Go source inlined for every function. Every conditional written out. Test cases enumerated by literal value.
+
+**Pros:**
+- Maximum reproducibility across model versions; works on cheap/weak models.
+- The exact output is in the prompt — no agent interpretation needed.
+- Good for teaching examples or documenting a canonical implementation.
+
+**Cons:**
+- The author's bugs ship verbatim (the agent faithfully implements the wrong `fmt.Errorf` instead of the project's `errors.Wrapf`).
+- Drifts from project style because the prompt-author writes from memory, not from existing code.
+- Audit becomes line-by-line code review of the prompt — slow and error-prone.
+- The agent's pattern-matching strength is wasted.
+- Any reusable knowledge inside the prompt rots and re-rots across every future prompt that needs the same pattern.
+
+**When to use:**
+- Brand-new pattern with no existing exemplar in the codebase.
+- Absolute first prompt of a new project (no convention to follow yet).
+- Reproducing a published reference implementation that should match an external source line-for-line.
+
+#### Level 2 — Detailed (annotated skeleton)
+
+**Shape:** Function signatures and key error paths spelled out. Imports listed. Bodies left to the agent with hints (`// retry once on transient errors per DB#8`).
+
+**Pros:**
+- Still very prescriptive about the contract surface.
+- Manageable to audit (200–500 lines, not 1500).
+- Less prone to style drift than Level 1 because bodies follow project conventions.
+
+**Cons:**
+- The author still owns most of the logic; bugs in the spelled-out error paths still ship.
+- The skeleton can subtly bias the agent away from a cleaner structure it would have chosen.
+
+**When to use:**
+- Novel logic in a familiar project (the pattern doesn't exist yet, but the style does).
+- Complex algorithms where the exact shape of the control flow matters.
+- Migrating off a stable external API where the call sequence is fixed.
+
+#### Level 3 — Medium (contracts + references) — **default**
+
+**Shape:** Interface signatures, sequence of operations, pattern references (`see pkg/github/client.go for the errors.Wrapf style`), explicit failure modes copied from the spec, test scenarios named (`table-test the verdict × autoApprove matrix`). No function bodies. No pre-written error messages.
+
+**Pros:**
+- Best for translation work — applying an existing project pattern to a new feature.
+- Leverages the agent's pattern-matching strength: it reads the referenced file and adopts the style automatically.
+- Small enough to audit at a contract level instead of a line-by-line review.
+- Prompts age well — the contract changes rarely, the implementation can be regenerated.
+- Author bugs in inlined code can't ship because there is no inlined code.
+
+**Cons:**
+- Requires at least one good in-tree exemplar for each pattern referenced.
+- Weaker models may produce non-uniform code across siblings without explicit shape.
+- Reviewer must trust the contract rather than the implementation.
+
+**When to use:**
+- Most refactors and feature work in mature codebases (the default).
+- Multi-prompt specs where consistency across siblings matters.
+- Any case where existing code already demonstrates the conventions the new code should follow.
+
+#### Level 4 — Soft (constraints + goals)
+
+**Shape:** What must be true at the end, plus references and constraints. No interfaces enumerated. Agent decides sequence, structure, and decomposition within the file.
+
+**Pros:**
+- Maximum agent agency — it can refactor adjacent code if that produces a cleaner result.
+- Very small prompts; fast to write.
+- The agent may discover a better abstraction than the author would have specified.
+
+**Cons:**
+- Outcomes more variable across runs and model versions.
+- Relies on agent capability and self-discipline; weaker models drift.
+- Harder to review (less to compare against).
+- Multi-prompt coordination breaks down — siblings may make incompatible decisions.
+
+**When to use:**
+- Greenfield work with a capable model.
+- Rapid iteration when the right shape is uncertain.
+- Cleanup tasks where the agent is expected to use judgment about how far to refactor.
+
+#### Level 5 — Very Rough (intent)
+
+**Shape:** One paragraph stating intent. A single verification command. No constraints, no references.
+
+**Pros:**
+- Trivial to write — minutes from idea to attempt.
+- Forces the agent to do the design thinking.
+- Useful as a "first draft" that can be refined into Level 3.
+
+**Cons:**
+- Highly variable output; often produces wrong abstractions on first try.
+- Usually needs multiple rounds with edits — total wall time is often longer than starting at Level 3.
+- Almost never satisfies the audit DoD on first pass.
+- No reproducibility — same prompt twice produces different code.
+
+**When to use:**
+- Spike / exploration where the answer isn't yet known.
+- Throwaway scripts.
+- Rapidly evolving requirements where any specification will be out of date by the time it's written.
+
+### Choosing a level
+
+**The Level 3 default assumes documented patterns actually exist in the codebase.** In a messy or greenfield codebase with no stable exemplars, Level 3 is dishonest — the prompt promises "see X for the style" but X doesn't exist, and the agent silently slides back into inlining. If patterns aren't there yet, Level 2 (spelled-out signatures, hinted bodies) is more honest until a pattern is proven, then promote to Level 3.
+
+**Step 0 — Discover existing patterns before writing.** Spend ~2 minutes running searches like:
+
+```bash
+# Error-wrapping style in this project
+rg -l 'errors\.Wrapf|fmt\.Errorf' pkg/ internal/ | head
+
+# HTTP client construction
+rg -l 'http\.Client|net/http' pkg/ | head
+
+# Counterfeiter mock pattern
+rg -l 'counterfeiter:generate' pkg/ | head
+
+# Test framework
+rg -l 'ginkgo\.|gomega\.|testing\.T' pkg/ | head
+```
+
+If a surface returns 5+ matches with a consistent pattern → Level 3 references work. If it returns 0–2 → that pattern is novel for this codebase; choose Level 2 or document the new convention in a project doc first.
+
+**Then ask in order:**
+
+1. **Did Step 0 find ≥5 matches with a consistent pattern for the surface you're touching?**
+   - Yes → continue to question 2.
+   - No → **patterns are missing or inconsistent.** Continue to question 4 (do NOT silently fall through to Level 3 — that's the trap).
+2. **Is this a published external API that must match line-for-line?**
+   - Yes → Level 1 (and link the external source).
+   - No → **Level 3** (reference the exemplars from Step 0; don't re-inline). This is the common case for translation work in mature codebases.
+3. *(unreachable from question 1; kept for symmetry with prior versions)*
+4. **(Patterns missing.) Will the agent need to invent a novel structure?**
+   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven AND document it in `project/docs/`.
+   - No (translation work but no exemplar yet) → **Level 2** (spelled-out signatures, hinted bodies) — more honest than fake Level 3 references that don't exist. Promote to Level 3 in a future prompt once the pattern is documented.
+
+**The "fall-through-to-Level-3" trap:** the most common mistake. Author runs no searches, picks Level 3 because it's the "default", references files that don't exist or don't demonstrate the pattern claimed. Agent silently inlines (because it has nothing to reference), and the prompt produces author-style code anyway — back to the original problem. Step 0 + question 1's hard split prevents this.
+
+### What the spectrum does NOT solve
+
+Pattern-anchoring (Level 3) solves **convention-drift bugs** — the agent adopts the project's existing style automatically. It does **not** solve **logic bugs in genuinely novel code**. Examples that no exemplar would catch:
+
+- `io.LimitReader(resp.Body, 500)` placed BEFORE `json.Unmarshal` — truncates the body before parsing, but no existing file demonstrates the right ordering because no existing file has this exact concern.
+- A retry classifier that maps "POST returned 200 but review absent in GET" to the wrong error class — the logic itself is wrong, not the style.
+- An off-by-one in pagination, an inverted boolean, a swapped argument order.
+
+These need **test cases the agent must satisfy** (spec acceptance criteria, failure-modes table, scenario tests) or **adversarial review** — they cannot be prevented by referring to exemplars. The detail spectrum reduces *one class* of bug; the other class needs spec-level rigor.
+
+### Worked example: bot-identity self-check at three levels
+
+Same surface (verify the GitHub bot account matches `BOT_GITHUB_LOGIN` before posting), three grain levels:
+
+**Level 1 — Very Detailed**
+
+```
+## Step 4 — Implement BotIdentityCheck
+
+Create function `func CheckBotIdentity(ctx context.Context, client HTTPClient, expectedLogin string) error`:
+
+1. Build request:
+   req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user", nil)
+   if err != nil {
+       return fmt.Errorf("build request: %w", err)
+   }
+   req.Header.Set("Authorization", "token "+token)
+   req.Header.Set("Accept", "application/vnd.github+json")
+
+2. Execute request:
+   resp, err := client.Do(req)
+   if err != nil {
+       return fmt.Errorf("execute request: %w", err)
+   }
+   defer resp.Body.Close()
+
+[... 60 more lines of fully-written Go ...]
+```
+
+**Cost:** The author wrote `fmt.Errorf` from memory. The project uses `errors.Wrapf(ctx, err, ...)`. The agent will faithfully ship `fmt.Errorf` — every test passes; `make precommit` lint fails or worse, the convention drifts silently.
+
+**Level 3 — Medium (default)**
+
+```
+## Bot identity check (DB#4 in spec 027)
+
+Contract:
+- Function: CheckBotIdentity(ctx, client HTTPClient, expectedLogin string) error
+- Returns nil iff GitHub's GET /user response's `login` field equals expectedLogin
+- Returns errors.Wrapf(ctx, ErrBotIdentityMismatch, "got %q, want %q", actual, expectedLogin) on mismatch
+- Returns wrapped error on HTTP / parse failure per the retry-policy classification
+
+Pattern references (read before writing):
+- `pkg/github/client.go` for HTTP+errors.Wrapf style and Authorization header construction
+- `pkg/githubauth/types.go` for the HTTPClient interface shape and Counterfeiter annotation
+- `pkg/verdict.go` for sentinel-error pattern (see `ErrUnknownVerdict`)
+
+Test (use DescribeTable):
+- happy: 200 + login=expectedLogin → nil
+- mismatch: 200 + login=other → wrapped ErrBotIdentityMismatch
+- transient: network error → wrapped per pkg/github/client.go classification
+- malformed: non-JSON response → wrapped, treated as permanent
+```
+
+**Cost:** None of the inlined bugs are possible — the agent reads `pkg/github/client.go` and adopts the existing `errors.Wrapf` style, header construction, and error classification. ~25 lines of prompt vs ~70.
+
+**Level 5 — Very Rough**
+
+```
+## Bot identity check
+
+The agent self-checks that the GitHub PAT belongs to `pr-review-of-ben`
+before posting any review. Mismatch → refuse + diagnostic.
+
+verification: make precommit
+```
+
+**Cost:** The agent might invent the function in the wrong package, miss the retry-policy integration, or choose a different error sentinel. Works for spike/exploration; needs rewrite for production.
+
+When in doubt, write **Level 3** and let audit suggest tightening to Level 2 if the agent would be likely to drift.
 
 ### Anchor by name, not line number
 

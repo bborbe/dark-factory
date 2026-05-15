@@ -217,11 +217,34 @@ Knowledge lives in four locations: specs (behavioral, dies after implementation)
 
 Check these:
 - **Inline pattern detection** — if `<requirements>` contains >10 lines of a reusable coding pattern (CQRS wiring, factory setup, test suite bootstrap, BoltDB setup), flag as recommendation: "Consider extracting to a doc and referencing instead of inlining. Inline patterns drift from actual APIs and cause prompt failures."
-- **Detail-level mismatch** — see `docs/prompt-writing.md` "Detail Levels". Flag as **Recommendation** when:
-  - The prompt's `<requirements>` contains >200 lines of inlined Go AND a matching pattern already exists in the project (`pkg/`, `internal/`). The prompt should reference the existing file instead of re-inlining. ("Translation work treated as Level 1 when Level 3 would do.")
+- **Pattern collision** (priority signal, not line count) — flag as **Recommendation** when the prompt inlines code that conflicts with an established project pattern, regardless of total inlined-code volume. The signal is *collision*, not *amount*. A 5-line `fmt.Errorf` inline is more dangerous than a 100-line struct definition that matches existing types.
+  
+  Mechanical checks to run:
+  1. **Error wrapping collision** — `rg -c 'errors\.Wrapf' pkg/ internal/` returns ≥5 matches AND prompt's `<requirements>` contains `fmt.Errorf(`. Flag: "Project uses `errors.Wrapf(ctx, err, ...)` (N matches in pkg/). Prompt inlines `fmt.Errorf` — agent will adopt the wrong style."
+  2. **HTTP client collision** — `rg -l 'http.NewRequestWithContext' pkg/` returns ≥1 file AND prompt inlines a different request-construction style.
+  3. **Test framework collision** — `rg -l 'ginkgo' pkg/` matches AND prompt inlines `testing.T` table-driven tests; or vice versa.
+  4. **Mock pattern collision** — `rg -l 'counterfeiter:generate' pkg/` matches AND prompt inlines a hand-written mock instead of a `//counterfeiter:generate` directive.
+  5. **Context propagation collision** — `rg -c 'ctx context.Context' pkg/ | head` returns ≥5 files threading ctx AND prompt's inlined function signatures omit ctx.
+
+  If ANY collision detected, flag as Recommendation citing the matching pattern file and line count.
+
+- **Volume × collision combined** — flag as **Recommendation** (separate from pattern collision) when ALL of:
+  - `<requirements>` contains >200 lines of inlined Go, AND
+  - At least one matching pattern exists in the project (`pkg/`, `internal/`)
+  
+  Rationale: large inlined blocks raise the *probability* of a collision the line-by-line check missed. The volume threshold is a backup signal, not the primary one.
+
+- **Other inlining smells** — flag as **Recommendation**:
   - The prompt inlines `if/else` chains or pre-decides error message strings when the failure modes are already enumerated in the linked spec. The agent can write the conditionals from the spec's failure-modes table.
   - The prompt enumerates every test scenario as separate `It` blocks when a `DescribeTable` would suffice.
-- **Author-logic bug risk** — when inlined code embeds logic the prompt author wrote from memory (not copy-pasted from the spec or an existing file), flag as **Recommendation**: "This logic is the author's, not the spec's or existing code's. Verify the inlined classification/sequence matches the spec, or replace with a contract reference and let the agent derive it." Common offenders: error-class switch statements, retry policies, state-machine transitions.
+
+- **Author-logic bug risk** (mechanical) — flag as **Recommendation** when inlined logic appears NOT to derive from the spec or existing code. Mechanical checks:
+  1. **Inlined classification function not in spec** — if `<requirements>` contains a `switch` or `if-else` chain over error states (`case "transient":`, `case "permanent":`) that does NOT match the linked spec's failure-modes table exactly (same rows, same classifications), flag: "Inlined classification differs from spec failure-modes table — author logic, not spec logic."
+  2. **Retry policy diverges from spec** — if `<requirements>` contains retry-loop code (`for i := 0; i < ...`, `retry once`, backoff durations) AND the spec defines a retry policy, diff the prompt's policy against the spec's. Any divergence → flag.
+  3. **No matching project import** — if the prompt names a helper / sentinel / interface that returns zero matches in `rg pkg/ internal/` AND the spec doesn't define it either, flag: "Inlined logic references no existing project code and no spec contract — likely written from memory."
+  4. **State-machine transitions in prompt body** — if `<requirements>` contains state-transition pseudocode (`if state == X { goto Y }`) without referencing an existing state-machine file in the project, flag.
+
+  Common offenders: error-class switches, retry policies, state-machine transitions, classification functions.
 - **Missing doc reference** — if prompt uses a library pattern that has a matching doc in the coding plugin (`~/.claude/plugins/marketplaces/coding/docs/`) but `<context>` doesn't reference it, flag as recommendation: "A coding plugin doc exists for this pattern — reference it in `<context>` instead of inlining."
   - To check: list files in the project's `docs/` directory and in `~/.claude/plugins/marketplaces/coding/docs/` (if accessible), scan for topic matches against patterns used in `<requirements>`
 - **Existing project doc ignored** — if `project/docs/` has a relevant doc (topic match) but prompt doesn't mention it in `<context>`, flag as recommendation: "Project doc `docs/X.md` covers this topic — reference it in `<context>`."

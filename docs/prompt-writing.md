@@ -240,17 +240,116 @@ Prompts span a spectrum from "fully scripted" to "intent only." Each level has r
 
 ### Choosing a level
 
-Ask in order:
+**The Level 3 default assumes documented patterns actually exist in the codebase.** In a messy or greenfield codebase with no stable exemplars, Level 3 is dishonest — the prompt promises "see X for the style" but X doesn't exist, and the agent silently slides back into inlining. If patterns aren't there yet, Level 2 (spelled-out signatures, hinted bodies) is more honest until a pattern is proven, then promote to Level 3.
 
-1. **Does the codebase already demonstrate this pattern somewhere?**
+**Step 0 — Discover existing patterns before writing.** Spend ~2 minutes running searches like:
+
+```bash
+# Error-wrapping style in this project
+rg -l 'errors\.Wrapf|fmt\.Errorf' pkg/ internal/ | head
+
+# HTTP client construction
+rg -l 'http\.Client|net/http' pkg/ | head
+
+# Counterfeiter mock pattern
+rg -l 'counterfeiter:generate' pkg/ | head
+
+# Test framework
+rg -l 'ginkgo\.|gomega\.|testing\.T' pkg/ | head
+```
+
+If a surface returns 5+ matches with a consistent pattern → Level 3 references work. If it returns 0–2 → that pattern is novel for this codebase; choose Level 2 or document the new convention in a project doc first.
+
+**Then ask in order:**
+
+1. **Does the codebase already demonstrate this pattern somewhere?** (verified by Step 0)
    - Yes → Level 3 (reference the exemplar; don't re-inline it). This is the common case.
    - No → continue.
 2. **Will the agent need to invent a novel structure?**
-   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven.
+   - Yes → Level 4 or 5 (let it explore), then promote to Level 3 once the pattern is proven and document it.
    - No → Level 2 (spelled-out signatures, hinted bodies).
 3. **Is this a published external API that must match line-for-line?**
    - Yes → Level 1 (and link the external source).
    - No → re-read step 1.
+
+### What the spectrum does NOT solve
+
+Pattern-anchoring (Level 3) solves **convention-drift bugs** — the agent adopts the project's existing style automatically. It does **not** solve **logic bugs in genuinely novel code**. Examples that no exemplar would catch:
+
+- `io.LimitReader(resp.Body, 500)` placed BEFORE `json.Unmarshal` — truncates the body before parsing, but no existing file demonstrates the right ordering because no existing file has this exact concern.
+- A retry classifier that maps "POST returned 200 but review absent in GET" to the wrong error class — the logic itself is wrong, not the style.
+- An off-by-one in pagination, an inverted boolean, a swapped argument order.
+
+These need **test cases the agent must satisfy** (spec acceptance criteria, failure-modes table, scenario tests) or **adversarial review** — they cannot be prevented by referring to exemplars. The detail spectrum reduces *one class* of bug; the other class needs spec-level rigor.
+
+### Worked example: bot-identity self-check at three levels
+
+Same surface (verify the GitHub bot account matches `BOT_GITHUB_LOGIN` before posting), three grain levels:
+
+**Level 1 — Very Detailed**
+
+```
+## Step 4 — Implement BotIdentityCheck
+
+Create function `func CheckBotIdentity(ctx context.Context, client HTTPClient, expectedLogin string) error`:
+
+1. Build request:
+   req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/user", nil)
+   if err != nil {
+       return fmt.Errorf("build request: %w", err)
+   }
+   req.Header.Set("Authorization", "token "+token)
+   req.Header.Set("Accept", "application/vnd.github+json")
+
+2. Execute request:
+   resp, err := client.Do(req)
+   if err != nil {
+       return fmt.Errorf("execute request: %w", err)
+   }
+   defer resp.Body.Close()
+
+[... 60 more lines of fully-written Go ...]
+```
+
+**Cost:** The author wrote `fmt.Errorf` from memory. The project uses `errors.Wrapf(ctx, err, ...)`. The agent will faithfully ship `fmt.Errorf` — every test passes; `make precommit` lint fails or worse, the convention drifts silently.
+
+**Level 3 — Medium (default)**
+
+```
+## Bot identity check (DB#4 in spec 027)
+
+Contract:
+- Function: CheckBotIdentity(ctx, client HTTPClient, expectedLogin string) error
+- Returns nil iff GitHub's GET /user response's `login` field equals expectedLogin
+- Returns errors.Wrapf(ctx, ErrBotIdentityMismatch, "got %q, want %q", actual, expectedLogin) on mismatch
+- Returns wrapped error on HTTP / parse failure per the retry-policy classification
+
+Pattern references (read before writing):
+- `pkg/github/client.go` for HTTP+errors.Wrapf style and Authorization header construction
+- `pkg/githubauth/types.go` for the HTTPClient interface shape and Counterfeiter annotation
+- `pkg/verdict.go` for sentinel-error pattern (see `ErrUnknownVerdict`)
+
+Test (use DescribeTable):
+- happy: 200 + login=expectedLogin → nil
+- mismatch: 200 + login=other → wrapped ErrBotIdentityMismatch
+- transient: network error → wrapped per pkg/github/client.go classification
+- malformed: non-JSON response → wrapped, treated as permanent
+```
+
+**Cost:** None of the inlined bugs are possible — the agent reads `pkg/github/client.go` and adopts the existing `errors.Wrapf` style, header construction, and error classification. ~25 lines of prompt vs ~70.
+
+**Level 5 — Very Rough**
+
+```
+## Bot identity check
+
+The agent self-checks that the GitHub PAT belongs to `pr-review-of-ben`
+before posting any review. Mismatch → refuse + diagnostic.
+
+verification: make precommit
+```
+
+**Cost:** The agent might invent the function in the wrong package, miss the retry-policy integration, or choose a different error sentinel. Works for spike/exploration; needs rewrite for production.
 
 When in doubt, write **Level 3** and let audit suggest tightening to Level 2 if the agent would be likely to drift.
 

@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.158.0
+
+**Prompt writing detail-level spectrum + softer auditor.** Reframes "specificity over brevity" — over-specifying inlined Go ships the prompt author's bugs and prevents the agent from applying project conventions. New 5-level grain spectrum + writer-side discipline + mechanical auditor checks.
+
+### `docs/prompt-writing.md` (canonical guide)
+
+- New section: **Detail Levels** — 5-level spectrum from Very Detailed (full inlined function bodies) to Very Rough (one-paragraph intent), with pros, cons, and concrete when-to-use guidance per level
+- New section: **Choosing a level** — discovery-step-first decision tree with concrete `rg` commands; hard-split question 1 prevents silent fall-through to Level 3 on greenfield projects without exemplars
+- New section: **What the spectrum does NOT solve** — honest scope: pattern-anchoring fixes convention-drift bugs, not logic bugs in genuinely novel code (`io.LimitReader` before `json.Unmarshal`, off-by-one, swapped args); those need spec-level rigor or adversarial review
+- New worked example: same surface (bot-identity self-check) shown at Level 1, Level 3, Level 5 — concrete comparison of how Level 3 prevents the `fmt.Errorf` vs `errors.Wrapf` convention-drift bug
+- Reframed **Specificity over brevity** to distinguish contracts/anchors (good specificity) from pre-deciding every line (bad specificity that ships author bugs)
+
+### `agents/prompt-auditor.md`
+
+- New **Recommendation** checks under Documentation Placement:
+  - **Pattern collision** (priority signal, not line count) — 5 mechanical checks the auditor executes via Bash: error wrapping (`fmt.Errorf` inlined while project uses `errors.Wrapf`), HTTP client style, test framework, mock pattern, context propagation. Explicit instruction: "You (the auditor) execute these searches via Bash."
+  - **Volume × collision** — backup signal for >200 lines of inlined Go when a matching project pattern exists
+  - **Other inlining smells** — pre-decided `if/else` chains when spec failure-modes already enumerate; per-`It` test scenarios when `DescribeTable` suffices
+  - **Author-logic bug risk** — mechanical: classification differs from spec failure-modes table, retry policy diverges from spec, no matching project import, state-machine transitions not in any existing state-machine file
+
+### `commands/create-prompt.md` (writer-side symmetry)
+
+- Mandatory pre-write step: `rg`-based pattern discovery for every surface the prompt will touch
+- 2x2 decision matrix (patterns exist × structure novel) maps each cell to a detail level; closes the "Level 3 because default" trap
+- Explicit guidance that the prompt's `<context>` MUST list the exemplar files; auditor's "Pattern collision" check fails otherwise
+
 ## v0.157.0
 
 **Symmetric update to the spec writer + auditor + spec-writing guide.** Closes the audit↔verify gap by adding three new dimensions; specs now declare evidence up front so verification is mechanical, and the writer self-checks against the audit rules before reporting.

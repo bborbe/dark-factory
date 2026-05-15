@@ -92,6 +92,133 @@ When a spec needs technical detail (API endpoints, protocol formats) that would 
 - **Two features with different do-nothing arguments?** Split into separate specs
 - **Contains struct names or file paths that aren't frozen constraints?** Too implementation-level — push details to prompts
 
+## Evidence Shape per Acceptance Criterion
+
+Every Acceptance Criterion must declare **what the verifier will observe to confirm pass.** This is what `spec-verifier` will demand — making it explicit in the AC lets the verifier be mechanical and lets you avoid the rewrite cycle.
+
+### Acceptable evidence shapes
+
+| Shape | Example phrasing in AC |
+|---|---|
+| **Exit code** | "`make precommit` exits 0" |
+| **Stdout / stderr match** | "stdout contains `processed: 42`" |
+| **Log line** | "log line at INFO level: `request_id=<uuid> status=ok`" |
+| **File presence** | "`ls path/to/file` succeeds" |
+| **File content (diff or grep)** | "`grep -n 'pattern' file.md` returns line ≥1" |
+| **HTTP response** | "`GET /api/x` returns 200 with body matching `{...}`" |
+| **Kafka message** | "topic `foo` receives one message with key `K` and payload matching `{...}`" |
+| **Metric value (positive)** | "Prometheus counter `foo_total{label=x}` increments by 1" |
+| **Metric value (delta)** | "Counter `bar_total{label=y}` increments by exactly N after action" |
+| **Cluster state** | "`kubectl get pod X` returns Running with container ready=true" |
+| **Vault / file artifact** | "task file under `tasks/` has frontmatter field `Y: Z`" |
+| **State transition** | "frontmatter `status` transitions `prompted → verifying`" / "Jira ticket transitions `In Progress → Done`" / "BigQuery row count for table T increases by N" — captures the **delta** with before/after framing |
+| **Negative evidence** | "`git diff path/to/file.go` is empty after action" / "`grep ERROR run.log` returns 0 lines" / "no kafka message on topic `Z` during the window" — captures the **absence** of an artifact |
+
+### Negative ACs — write them, don't skip them
+
+Specs that only assert positives miss invariants. For any AC of the form "X is NOT changed" / "Y is NOT logged" / "Z is NOT published" / "feature off ⇒ pre-spec behavior", declare a negative evidence shape: an explicit grep / diff / probe that returns zero results in the asserted-empty window.
+
+- ❌ "config Y is not mutated" (how do you verify?)
+- ✅ "`git diff config/Y.yaml` returns empty after the action — `git status` shows no modified files"
+- ❌ "no extra errors are logged"
+- ✅ "`grep -c ERROR run.log` returns 0 during the test window"
+
+### Bad ACs (no evidence shape)
+
+- ❌ "Unit test covers this" — that's the test plan, not the evidence
+- ❌ "It works" / "Functionality verified" — narration
+- ❌ "Tests pass" without naming what specific behavior is asserted
+- ❌ "Correctness is established" — narration
+
+### Good ACs (evidence shape declared)
+
+- ✅ "After invocation, `cat tasks/<id>.md` shows `phase: completed` in frontmatter"
+- ✅ "`kubectl -n dev logs <pod> | grep 'job spawned'` returns ≥1 match"
+- ✅ "`gh pr view 2 --json reviews` lists one review with `state: APPROVED` by login `pr-review-of-ben`"
+
+The point is not to inline test scripts — it's to make the AC's *observable target* unambiguous.
+
+## Adversarial Laziness Test
+
+Before finalizing, read your spec assuming the implementer intends the **laziest implementation that still passes every Acceptance Criterion.** Ask:
+
+> If I tried to satisfy every AC with the minimum possible work, what would I do?
+
+If the answer is a no-op, a hardcoded fake, or a trivial refactor that doesn't deliver the Goal — your ACs are under-specified.
+
+### Examples
+
+| AC | Laziest impl | Verdict |
+|---|---|---|
+| "File `docs/foo.md` exists" | `touch docs/foo.md` | Under-specified — needs minimum content / sections |
+| "Unit test for X exists" | `func TestX(t *testing.T) {}` | Under-specified — needs assertion type |
+| "Verdict is binary (approve / request-changes)" | always return `approve` | Under-specified — needs per-input-class assertion |
+| "On 403, escalate to human_review" | hardcoded escalation | Adequately specified — escalation is the observable |
+
+### Fix pattern
+
+Replace artifact-existence ACs with behavior ACs. Instead of "doc X exists," write "doc X contains section Y with content matching Z."
+
+## Hedge Words to Avoid
+
+Specs that defer decisions to implementation time create unbounded interpretation surface. The auditor will flag these; pre-empt the rework.
+
+**Words to scrutinise for deferrals** (flag only when they defer a decision — see distinction below): `should`, `appropriate`, `reasonable`, `as needed`, `where applicable`, `if necessary`, `proper`, `correct`, `sensible`, `suitable`, `relevant`, `adequately`, `sufficiently`, `etc.`, `and so on`, `among others`
+
+### Flag only deferrals, not descriptive English
+
+These same words are legitimate when describing existing state or identifying artifacts. Flag only when the word **defers a decision** the implementer would otherwise make.
+
+**Flag (deferral):**
+- ❌ "the agent **should** retry appropriately" — defers retry policy
+- ❌ "use a **reasonable** timeout" — defers timeout value
+- ❌ "log **relevant** fields" — defers field list
+
+**Don't flag (descriptive):**
+- ✅ "the daemon **should** be running when the cursor is read" — state assumption
+- ✅ "the **relevant** config file" — identifying an existing artifact
+- ✅ "the **correct** review state" — describing the expected outcome
+
+For each hit, ask: "Does this word leave a decision, or does it describe state?" If decision → flag.
+
+### Resolution rules (when flagged)
+
+Each flagged hedge must either:
+
+1. **Resolve to a concrete rule** — "appropriate retry policy" → "retry once with 5s + jitter backoff"
+2. **Be explicitly marked "agent decides at impl time"** — acceptable ONLY when truly local AND reversible:
+   - ✅ "log level for the new debug statement (INFO vs DEBUG) — agent decides at impl time"
+   - ✅ "exact error message wording — agent decides at impl time"
+   - ❌ "retry policy — agent decides at impl time" (cross-cutting, affects external contract)
+   - ❌ "schema field name — agent decides at impl time" (persistent state, irreversible)
+
+## Failure Modes — Optional Columns for Non-Trivial Specs
+
+The minimum table is `Trigger | Expected behavior | Recovery`. For specs touching network I/O, persistent state, external systems, or shared resources, prefer the extended format.
+
+| Column | Add when… | Question it answers |
+|---|---|---|
+| **Detection** | Spec has async / out-of-band failure modes (kafka publish, background job, timeout) | How does the operator know the failure occurred? |
+| **Reversibility** | Spec writes to external state (GitHub PR, kafka topic, database) | Is the failure reversible / irreversible / partial? Irreversible failures demand stronger pre-checks. |
+| **Concurrency** | Spec touches shared state (cursor file, lock, frontmatter status) | What if two instances do this simultaneously, or one crashes mid-action? |
+
+**Don't add all four columns blanket** — that's bureaucracy. Only when the dimension is real for this spec.
+
+### Categories to check (at least once each for non-trivial specs)
+
+For specs that add real-world side effects, the Failure Modes section should cover at least one row per:
+
+- External system unavailability
+- Schema / version drift
+- Partial progress / crash mid-action
+- Rate limiting / throttling
+- Resource exhaustion (disk, memory, connections)
+- Clock skew / timezone
+
+### Recovery rows follow the same evidence-shape vocabulary
+
+ACs declare evidence shape; Recovery actions should too. "Operator inspects diagnostics" is vague; "operator runs `dark-factory prompt retry <id>` and confirms `phase: in_progress` in the vault task file" is verifiable. Without observable recovery evidence, the verifier can confirm the failure was reached but not that the recovery path was exercised.
+
 ## Preflight Checklist
 
 Before approving, verify the spec answers all of these:

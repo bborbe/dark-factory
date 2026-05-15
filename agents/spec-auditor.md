@@ -188,7 +188,7 @@ Flag as Recommendation if the spec touches the relevant surface but skips the ca
 - Uses checkbox format `- [ ]`
 - **Each AC declares its evidence shape** — see below
 
-## Evidence Shape per AC (CRITICAL — what the verifier will demand)
+## Evidence Shape per AC (always run — individual findings are Recommendations)
 
 Every Acceptance Criterion must declare **how the verifier will observe it pass**. Without this, `spec-verifier` has to invent the evidence type per spec and "fresh observable evidence" cannot be enforced consistently.
 
@@ -231,7 +231,7 @@ For each AC that does NOT declare an evidence shape, raise as a **Recommendation
 Flag pattern in report:
 > AC #N ("...text...") declares no evidence shape. Suggest: `evidence: <shape>` — e.g. `grep -n 'foo' bar.md` returns ≥1 line.
 
-## Adversarial Laziness Pass (CRITICAL — catches under-specification)
+## Adversarial Laziness Pass (always run — verdict drives scoring at -2, individual under-specified ACs are Recommendations)
 
 Read the spec assuming the author intends the **laziest possible implementation that still passes every Acceptance Criterion**. Ask: what would that implementation look like?
 
@@ -324,7 +324,7 @@ Flag pattern:
 
 A scenario is justified ONLY when ALL FOUR of these hold (lifted from `docs/scenario-writing.md`):
 
-1. **Unit and integration tests genuinely cannot reach the behavior** — real Docker output, real `gh pr view` rendering, real `kubectlquant` cluster state. Things that need a real external system, not a test double. NOT "the change touches a seam."
+1. **Unit and integration tests genuinely cannot reach the behavior** — real Docker output, real `gh pr view` rendering, real `kubectl` cluster state. Things that need a real external system, not a test double. NOT "the change touches a seam."
 2. **The behavior is load-bearing for an essential user journey** — daemon starts, PR opens correctly E2E. Not "every config field that flows to runtime."
 3. **No existing scenario covers it** — reuse before adding.
 4. **The author can name the regression risk** — concrete and specific. "If this breaks at runtime, an operator hits exit 128 for the second time." Not "in case something breaks."
@@ -397,6 +397,8 @@ Adjustments:
 - Adversarial laziness pass FAILS (laziest impl is a no-op or trivial fake): -2 points
 - More than 3 unresolved hedge words: -1 point
 - ACs declare no evidence shape at all (purely binary checkboxes with no observable target): -1 point
+
+**Floor: minimum score is 1.** A spec failing every adjustment still scores 1, not negative. Score 1 = "significant rework needed" per the rubric above; lower would be meaningless and produce confusing audit reports.
 </scoring>
 
 <output_format>
@@ -430,8 +432,11 @@ Adjustments:
 - [x/!] Existing project docs referenced where relevant
 
 ## Adversarial Laziness Pass
-- [x/!] Laziest implementation that passes every AC is non-trivial and delivers the stated Goal
-- Brief description of what the laziest impl would look like (1-2 sentences)
+
+> **Adversarial laziness pass**: laziest impl = `<concrete code-shaped one-liner>`. Verdict: PASS / FAIL.
+
+(One blockquote line is MANDATORY — the one-liner is the load-bearing artifact proving the pass actually ran.)
+
 - If FAIL: list under-specified ACs by number with concrete tightening suggestions
 
 ## Hedge-Word Audit

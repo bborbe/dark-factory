@@ -133,7 +133,7 @@ Specs that only assert positives miss invariants. For any AC of the form "X is N
 ### Good ACs (evidence shape declared)
 
 - ✅ "After invocation, `cat tasks/<id>.md` shows `phase: completed` in frontmatter"
-- ✅ "`kubectlquant -n dev logs <pod> | grep 'job spawned'` returns ≥1 match"
+- ✅ "`kubectl -n dev logs <pod> | grep 'job spawned'` returns ≥1 match"
 - ✅ "`gh pr view 2 --json reviews` lists one review with `state: APPROVED` by login `pr-review-of-ben`"
 
 The point is not to inline test scripts — it's to make the AC's *observable target* unambiguous.

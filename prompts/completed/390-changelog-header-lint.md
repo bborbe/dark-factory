@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Added scripts/check-changelog.sh with 4 preamble lint rules, wired check-changelog into precommit, and added processUnreleasedSection fixture test with full real-world SemVer preamble; all rules verified including negative test (stranded preamble → rule 3 fires, exit=1).
 container: dark-factory-390-changelog-header-lint
 dark-factory-version: v0.156.1-1-g04f3863-dirty
 created: "2026-05-16T14:30:00Z"
 queued: "2026-05-16T13:03:39Z"
 started: "2026-05-16T13:03:40Z"
+completed: "2026-05-16T13:07:37Z"
 ---
 
 <summary>

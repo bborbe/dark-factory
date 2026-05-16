@@ -1,6 +1,8 @@
 ---
-status: approved
+status: prompted
 approved: "2026-05-16T11:48:19Z"
+generating: "2026-05-16T12:00:13Z"
+prompted: "2026-05-16T12:06:25Z"
 branch: dark-factory/bug-git-wrapper-swallows-stderr
 ---
 

@@ -238,6 +238,23 @@ This is the step that bites another project if the gate was skipped. Other proje
 
 The plugin's install is automatic via the marketplace once the bumped JSON files reach `master` — Claude Code re-checks the marketplace periodically.
 
+## Release session checklist (operator template)
+
+Copy this into a scratch note at the start of a release session. Flip `⬜` → `✅` as you tick items off. The single flat list keeps state visible at a glance without scrolling between headings.
+
+```text
+⬜ Release gate: `scenarios/helper/run-013-all.sh` + walk active markdown scenarios
+⬜ Local diffs ready: CHANGELOG top section, plugin JSONs (×3 fields), any docs/agents/commands/skills edits
+⬜ `make release-check` — must exit 0 (4-way: CHANGELOG top == plugin.json == 2× marketplace.json)
+⬜ `git commit -m "release plugin vX.Y.Z: <summary>"`
+⬜ `git tag vX.Y.Z` — completes the 5-way sync (CHANGELOG ↔ 3 JSON fields ↔ git tag); required for `go install @latest` consumers + `gh release create`
+⬜ `git push && git push origin vX.Y.Z`
+⬜ `make install` (local) — operator binary updates to vX.Y.Z
+⬜ `gh release create vX.Y.Z --target master --title "vX.Y.Z" --notes "<extracted from CHANGELOG>"` (skip for internal-only refactors)
+```
+
+When chaining: a step that depends on the previous one (commit → tag → push → install → gh release) should stay sequential. Don't tick a later item until the earlier one is `✅`.
+
 ## See also
 
 - [release-process.md](release-process.md) — autoRelease behavior in projects that USE dark-factory (not how dark-factory itself ships)

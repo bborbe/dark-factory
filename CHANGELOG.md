@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.161.0
+
+- feat: Add `check-changelog` Makefile target and `scripts/check-changelog.sh` that lints CHANGELOG.md for stranded SemVer preamble (rules: correct title, preamble before first `##`, preamble appears exactly once, MAJOR bullet appears exactly once); wired into `precommit`
+- test: Add `processUnreleasedSection` fixture with full real-world SemVer preamble asserting header is preserved byte-for-byte on Unreleased rename
+
 ## v0.160.1
 
 - fix: Restore CHANGELOG.md preamble (SemVer link + MAJOR/MINOR/PATCH bullets) at top after a past `## Unreleased` insertion above the preamble stranded it between `## v0.51.8` and `## v0.51.7`

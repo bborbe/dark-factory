@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [081-bug-git-wrapper-swallows-stderr]
 created: "2026-05-16T12:10:00Z"
+queued: "2026-05-16T13:03:39Z"
 branch: dark-factory/bug-git-wrapper-swallows-stderr
 ---
 
@@ -78,7 +79,7 @@ This helper is used in every wrapper below to format the stderr string before in
 
 ## 2. Update `pkg/git/brancher.go` — capture stderr at every `cmd.Run()` shell-out
 
-**Audit step (required before editing):** Run `grep -n 'exec\.Command' pkg/git/brancher.go` to list every call site. Confirm each one is covered below. Do NOT edit any call site already covered by `FetchBranch`, `MergeToDefault`, or `DiscardUncommittedInPaths` (those already capture stderr correctly).
+**Audit step (required before editing):** Run `grep -n 'exec\.Command' pkg/git/brancher.go` to list every call site. Confirm each one is covered below. Do NOT edit `FetchBranch` or `MergeToDefault` (verified to already capture stderr via `var stderr strings.Builder` + `cmd.Stderr = &stderr`). `DiscardUncommittedInPaths` (around line 307) still uses bare `cmd.Run()` — apply the combined-output pattern to it as well (label: `"discard uncommitted changes in paths: %s"`).
 
 For each method below, apply the pattern:
 1. Declare `var combined strings.Builder` before the command.
@@ -197,19 +198,34 @@ if err := cmd.Run(); err != nil {
 }
 ```
 
-## 4. Verify no exec.Command("git") call sites were missed
+## 4. Verify no `cmd.Run()` git call sites were missed; handle `.Output()` sites separately
 
 After editing, run:
 ```
 grep -rnE 'exec\.Command(Context)?\([^,]+,\s*"git"' pkg/git/
 ```
 
-For **every** file and line returned, confirm one of:
-- `cmd.Stderr = &...` is set (or `cmd.Stdout = &...` + `cmd.Stderr = &...` for combined)
-- OR the call is in `cloner.go`, `worktreer.go` (already compliant — do not modify)
-- OR the call uses `.Output()` and already sets `cmd.Stderr`
+For **every** file and line returned, classify the call site:
 
-If any unmatched call sites remain, apply the same combined-output pattern before continuing.
+**(a) `.Run()` sites** — MUST capture stderr via `cmd.Stdout = &combined; cmd.Stderr = &combined`. These are the focus of requirements 2-3. If any `.Run()` site is unmatched, apply the same combined-output pattern.
+
+**(b) `.Output()` sites** (audited: ~11 — `brancher.go:136, 196, 216, 247, 256, 414`; `git.go:54, 231, 289, 305`) — these read stdout and intentionally discard stderr because they parse output of read-only commands (`status --porcelain`, `rev-parse`, `tag --list`, `symbolic-ref`, `rev-list --count`). For each, set `cmd.Stderr = &stderrBuf` (single-purpose buffer, NOT combined with stdout) and on `.Output()` error wrap with `errors.Wrapf(ctx, err, "<label>: %s", truncateStderr(stderrBuf.String()))`. Example pattern:
+
+```go
+var stderrBuf strings.Builder
+cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+cmd.Stderr = &stderrBuf
+output, err := cmd.Output()
+if err != nil {
+    return errors.Wrapf(ctx, err, "check working tree status: %s", truncateStderr(stderrBuf.String()))
+}
+```
+
+Apply this pattern to every `.Output()` site. The label must describe the operation (not "git output"). Keep the existing return type and stdout-parsing logic unchanged.
+
+**(c) Already-compliant sites** — `cloner.go`, `worktreer.go`, `brancher.go::FetchBranch`, `brancher.go::MergeToDefault`. Do not modify.
+
+If after these changes any unmatched call sites remain, apply the relevant pattern before continuing.
 
 ## 5. Update `pkg/cmd/prompt_show.go` — display `LastFailReason` and extract renderer
 
@@ -409,7 +425,7 @@ Create the file. It need not be exhaustive — the spec requires exactly one sec
 When a prompt fails, dark-factory records the error in the prompt file's `lastFailReason`
 field and in `.dark-factory.log`.
 
-### Before this fix (dark-factory < v0.X.Y)
+### Before this fix
 
 The daemon log showed only the exit code and a Go stack trace:
 
@@ -438,7 +454,6 @@ The `dark-factory prompt show <id>` output also shows the full error under the `
 worktree, then run `dark-factory prompt retry` to re-queue the failed prompt.
 ```
 
-(Adjust the version placeholder to the actual released version after `make precommit` succeeds.)
 
 ## 10. Add a CHANGELOG entry
 
@@ -479,5 +494,5 @@ Additional spot checks:
 5. `grep -n 'RenderPromptShow' pkg/cmd/prompt_show.go` — function exists and is called from `Run`.
 6. `grep -n 'Reading prompt-failure errors' docs/troubleshooting.md` — section header present.
 7. `grep -n 'would be overwritten by merge\|exit status 2' docs/troubleshooting.md` — both literal strings present in the section body.
-8. `grep -A1 '## Unreleased' CHANGELOG.md` — shows the new fix entry.
+8. `grep -F 'fix: git wrappers in pkg/git/ now capture stderr' CHANGELOG.md` — exact new entry present (matching just `## Unreleased` is insufficient because the section may already contain other entries).
 </verification>

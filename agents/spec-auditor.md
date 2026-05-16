@@ -82,6 +82,42 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - One independently deployable behavior change per spec
 - Two features with different do-nothing arguments = two specs
 
+## Project Fit (CRITICAL — flag at top of report if spec is in the wrong project)
+
+**A spec must live in the dark-factory project whose repo it modifies.** Each dark-factory project mounts exactly ONE git repo into the container and owns write credentials only for that repo's remote. A spec that targets a different repo's code will spawn prompts that clone-and-push cross-repo, which fails on credentials and irrecoverably loses any local commit when the container exits.
+
+**Mechanical check (the auditor runs these via Bash):**
+
+1. Resolve the project's own remote:
+   ```bash
+   git -C <project-root> remote get-url origin
+   ```
+   Normalise `git@github.com:OWNER/REPO.git` and `https://github.com/OWNER/REPO.git` to the form `OWNER/REPO`.
+
+2. Scan the spec body for repo references that include an explicit owner/repo prefix in file paths or URLs:
+   ```bash
+   grep -nE '(github\.com[:/])?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+\.(go|md|yaml|json|sh)' <spec-file>
+   grep -nE 'git clone (https?://|git@)github\.com[:/][^/]+/[^ ]+' <spec-file>
+   grep -nE 'bborbe/[a-z][a-z0-9-]+' <spec-file>
+   ```
+   Extract the `OWNER/REPO` segment from each match.
+
+3. **Flag as Critical** when the spec's primary code-modification target (file paths in `## Reproduction`, `## Desired Behavior`, `## Acceptance Criteria`, `## Verification`) consistently references an `OWNER/REPO` different from the project's own remote.
+
+   Heuristic: if ≥3 distinct path/URL references name `<other-owner>/<other-repo>/...` and the spec's verification commands target `<other-owner>/<other-repo>`, the spec is misplaced.
+
+**Critical-issue wording:**
+
+> Spec targets `<other-owner>/<other-repo>` but lives in `<project-root>` (`<this-owner>/<this-repo>`'s dark-factory pipeline). This project's daemon mounts `<this-repo>` as `/workspace` and has credentials only for `<this-repo>`'s remote.
+>
+> Generated prompts will need to `git clone <other-repo>` into the container and then `git push` against it — which fails: the container has no credentials for `<other-repo>`. The local commit inside the container is lost when the container exits.
+>
+> **Fix:** move this spec to `<other-repo>`'s own dark-factory pipeline (e.g. `~/Documents/workspaces/<other-repo>/specs/`). That project's daemon mounts `<other-repo>` as `/workspace` and owns its write credentials. All file paths in the moved spec should become repo-relative (drop the `<other-owner>/<other-repo>/` prefix).
+>
+> **Exception:** if the spec genuinely modifies BOTH repos (rare and likely a sign of an undocumented shared library), the auditor flags Recommendation instead and requires the spec to explicitly state which fraction targets each repo + which prompts will be cross-cut. Default assumption is mistake, not intentional cross-cutting.
+
+---
+
 ## Spec vs Prompt Fitness (CRITICAL — flag at top of report if mismatch)
 
 **Specs exist to think through multi-prompt, multi-file, architecturally non-trivial changes.** Small fixes belong in a single prompt, written directly. Evaluate on these signals:
@@ -410,6 +446,9 @@ Adjustments:
 
 ## Scenario Coverage
 - [x/!] Default is NO scenario. Flag ONLY if ALL FOUR conditions in `docs/scenario-writing.md` hold (unit/integration tests genuinely cannot reach + load-bearing user journey + no existing coverage + concrete named regression risk) AND the spec has no scenario reference. Watch-flags alone (Kafka op, CRD field, HTTP route) are NOT sufficient. (or N/A)
+
+## Project Fit
+- [x/!] Spec's code-modification targets match this dark-factory project's own repo (no cross-repo file paths or `git clone <other-remote>` references — see Project Fit section)
 
 ## Location & Frontmatter
 - [x/!] File in `specs/` inbox (not `specs/in-progress/`)

@@ -207,6 +207,38 @@ var _ = Describe("Internal git helpers", func() {
 			Expect(found).To(BeTrue())
 			Expect(result[2]).To(Equal("## v1.1.0"))
 		})
+
+		It("preserves the full SemVer preamble when renaming Unreleased", func() {
+			lines := []string{
+				"# Changelog",
+				"",
+				"All notable changes to this project will be documented in this file.",
+				"",
+				"Please choose versions by [Semantic Versioning](http://semver.org/).",
+				"",
+				"* MAJOR version when you make incompatible API changes,",
+				"* MINOR version when you add functionality in a backwards-compatible manner, and",
+				"* PATCH version when you make backwards-compatible bug fixes.",
+				"",
+				"## Unreleased",
+				"- feat: New thing",
+				"",
+				"## v1.0.0",
+				"- Old change",
+			}
+
+			result, found := processUnreleasedSection(lines, "v1.1.0")
+			Expect(found).To(BeTrue())
+			Expect(len(result)).To(Equal(len(lines)))
+			// Header (lines 0..9) must be byte-identical to input
+			for i := 0; i < 10; i++ {
+				Expect(result[i]).To(Equal(lines[i]), "header line %d drifted", i)
+			}
+			// The rename happened at the right place
+			Expect(result[10]).To(Equal("## v1.1.0"))
+			// The body that followed is untouched
+			Expect(result[13]).To(Equal("## v1.0.0"))
+		})
 	})
 
 	Describe("CommitAndRelease", func() {

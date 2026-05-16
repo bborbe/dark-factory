@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+Please choose versions by [Semantic Versioning](http://semver.org/).
+
+* MAJOR version when you make incompatible API changes,
+* MINOR version when you add functionality in a backwards-compatible manner, and
+* PATCH version when you make backwards-compatible bug fixes.
+
+## v0.160.1
+
+- fix: Restore CHANGELOG.md preamble (SemVer link + MAJOR/MINOR/PATCH bullets) at top after a past `## Unreleased` insertion above the preamble stranded it between `## v0.51.8` and `## v0.51.7`
+
 ## v0.160.0
 
 - feat: Container names now follow `<project>-gen-<spec>` and `<project>-exec-<prompt>` schema (was `dark-factory-gen-<spec>` and `<project>-<prompt>`). The project name defaults to the git root directory basename. External tooling that greps for `dark-factory-gen-` must be updated to grep for `-gen-` or `<project>-gen-`. The optional `project:` field in `.dark-factory.yaml` overrides the project name.
@@ -1222,12 +1232,6 @@ All notable changes to this project will be documented in this file.
 ## v0.51.8
 
 - refactor: share single `QueueActionHandler` instance between `/api/v1/queue/action` and `/api/v1/queue/action/all` routes in `CreateServer`
-
-Please choose versions by [Semantic Versioning](http://semver.org/).
-
-* MAJOR version when you make incompatible API changes,
-* MINOR version when you add functionality in a backwards-compatible manner, and
-* PATCH version when you make backwards-compatible bug fixes.
 
 ## v0.51.7
 

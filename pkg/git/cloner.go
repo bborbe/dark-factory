@@ -83,9 +83,11 @@ func (c *cloner) gitClone(ctx context.Context, srcDir string, destDir string) er
 func (c *cloner) setRealRemote(ctx context.Context, srcDir string, destDir string) error {
 	// #nosec G204 -- srcDir is controlled by the application
 	remoteCmd := exec.CommandContext(ctx, "git", "-C", srcDir, "remote", "get-url", "origin")
+	var remoteStderr strings.Builder
+	remoteCmd.Stderr = &remoteStderr
 	remoteOutput, err := remoteCmd.Output()
 	if err != nil {
-		return errors.Wrap(ctx, err, "get remote url")
+		return errors.Wrapf(ctx, err, "get remote url: %s", truncateStderr(remoteStderr.String()))
 	}
 	// #nosec G204 -- destDir and remoteURL are controlled by the application
 	setRemoteCmd := exec.CommandContext(

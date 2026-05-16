@@ -438,8 +438,16 @@ func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
 	}
 	// Ensure we're on the default branch
 	// #nosec G204 -- defaultBranch comes from gh CLI, branch comes from validated frontmatter
-	if err := exec.CommandContext(ctx, "git", "checkout", defaultBranch).Run(); err != nil {
-		return errors.Wrap(ctx, err, "switch to default branch before merge")
+	checkoutCmd := exec.CommandContext(ctx, "git", "checkout", defaultBranch)
+	var checkoutStderr strings.Builder
+	checkoutCmd.Stderr = &checkoutStderr
+	if err := checkoutCmd.Run(); err != nil {
+		return errors.Wrapf(
+			ctx,
+			err,
+			"switch to default branch before merge: %s",
+			truncateStderr(checkoutStderr.String()),
+		)
 	}
 	// Merge feature branch into default (no fast-forward to preserve branch history)
 	// #nosec G204 -- branch name comes from validated frontmatter
@@ -447,7 +455,13 @@ func (b *brancher) MergeToDefault(ctx context.Context, branch string) error {
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "merge branch %q to default: %s", branch, stderr.String())
+		return errors.Wrapf(
+			ctx,
+			err,
+			"merge branch %q to default: %s",
+			branch,
+			truncateStderr(stderr.String()),
+		)
 	}
 	slog.Info("merged feature branch to default", "branch", branch, "default", defaultBranch)
 	return nil
@@ -475,7 +489,13 @@ func (b *brancher) FetchBranch(ctx context.Context, branch string) error {
 			slog.Debug("FetchBranch: branch not on origin yet, skipping", "branch", branch)
 			return nil
 		}
-		return errors.Wrapf(ctx, err, "fetch branch %q from origin: %s", branch, msg)
+		return errors.Wrapf(
+			ctx,
+			err,
+			"fetch branch %q from origin: %s",
+			branch,
+			truncateStderr(msg),
+		)
 	}
 	slog.Debug("FetchBranch: fetched branch as local ref", "branch", branch)
 	return nil

@@ -90,6 +90,30 @@ git log "$(git describe --tags --abbrev=0)"..HEAD --oneline   # any unpushed com
 
 After a successful auto-release, both `git status` (clean) and `git rev-list @{u}..HEAD --count` (zero) should hold.
 
+## GitHub Release (manual — when to surface a milestone)
+
+`autoRelease` creates a `vX.Y.Z` git tag after every approved prompt. Tags are sufficient for `go install github.com/bborbe/dark-factory@vX.Y.Z`, `git describe`, and any tag-aware consumer.
+
+A **GitHub Release** is a separate, deliberate act — distinct from the tag. It adds release notes, an entry on the repo's Releases tab, an RSS/atom feed for subscribers, and optional binary assets. Create one **only after**:
+
+1. All `scenarios/` pass against the current source tree.
+2. Plugin JSONs are aligned (if `commands/`, `agents/`, `docs/`, or `skills/` changed since the last plugin release).
+3. The `CHANGELOG.md` entry summarises what users should care about — not the internal commit log.
+
+Skip the GitHub Release for internal refactors, pre-release/experimental work, or chains of small tags. It is fine to skip several auto-tags and cumulate them into a single milestone Release later.
+
+How:
+
+```bash
+TAG=$(git describe --tags --abbrev=0)
+gh release create "$TAG" \
+  --target master \
+  --title "$TAG" \
+  --notes "$(awk "/^## $TAG/,/^## v/" CHANGELOG.md | head -n -1)"
+```
+
+Verify on github.com → Releases tab. The Release object can be edited (notes, draft state) without retagging.
+
 ## Plugin release (manual)
 
 Whenever any of `commands/`, `agents/`, `docs/`, or `skills/` change, the plugin version must be bumped. The binary's `autoRelease` does **not** bump the plugin version — these JSON files are not part of the binary CHANGELOG-driven flow.

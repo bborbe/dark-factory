@@ -1,9 +1,10 @@
 ---
-status: approved
+status: generating
 tags:
     - dark-factory
     - spec
 approved: "2026-05-16T11:45:09Z"
+generating: "2026-05-16T11:48:07Z"
 branch: dark-factory/container-naming-project-role-prefix
 ---
 

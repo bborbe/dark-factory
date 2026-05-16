@@ -1,9 +1,8 @@
 ---
-status: draft
-kind: bug
+status: approved
+approved: "2026-05-16T11:48:19Z"
+branch: dark-factory/bug-git-wrapper-swallows-stderr
 ---
-
-# Git wrapper errors swallow git stderr; operators see only `exit status 2` plus stack trace
 
 ## Summary
 
@@ -109,7 +108,7 @@ This costs several minutes per failure and is the entire motivation for the fix.
 - [ ] Every git shell-out in `pkg/git/` captures stderr to a buffer. Evidence: `grep -rnE 'exec\.Command.*"git"' pkg/git/` lists all call sites; for each, the same file shows either `CombinedOutput()` or an explicit `Stderr = &stderrBuf` assignment in surrounding lines. Auditor walks the list and confirms zero unmatched sites.
 - [ ] When a git wrapper fails with non-zero exit, its returned error string contains git's captured stderr verbatim. Evidence: a new Ginkgo test in `pkg/git/` injects a fake git binary (via PATH override or a test seam) that exits 2 and writes the literal string `INJECTED_STDERR_MARKER\nsecond line` to stderr; assertion: `err.Error()` contains both `INJECTED_STDERR_MARKER` and `second line`.
 - [ ] Triggering-incident case is locked down: a Ginkgo test sets up a fake git that emits the verbatim "Your local changes to the following files would be overwritten by merge: foo.md\nPlease commit your changes or stash them before you merge.\nAborting" stderr with exit 2, calls `MergeOriginDefault`, and asserts the returned error contains all three lines verbatim. Evidence: test exists and passes.
-- [ ] `dark-factory prompt show <failed-prompt-id>` renders the full error including git stderr without truncation in the path between processor → log → CLI. Evidence: an integration-style test (or a Ginkgo test against the relevant rendering function) feeds an error containing a long stderr through the CLI's render function; assertion: stdout contains the same stderr string. If no rendering function is testable in isolation, evidence is a manual run captured in the PR description (operator reproduces dirty-tree, runs `dark-factory prompt show`, pastes output showing git stderr).
+- [ ] `dark-factory prompt show <failed-prompt-id>` renders the full error including git stderr without truncation in the path between processor → log → CLI. Evidence: a Ginkgo test against the CLI's prompt-show render function feeds an error whose `Error()` contains a multi-line stderr (including the literal `INJECTED_STDERR_MARKER` and `second line`); assertion: the renderer's captured output contains both lines verbatim. The rendering function must be made testable in isolation if it is not already — extracting it into a pure function is part of the fix.
 - [ ] On success, git's stdout/stderr is logged at DEBUG level. Evidence: a Ginkgo test invokes a wrapper against a fake git that exits 0 with stdout `Already up to date.` and asserts the test logger received a DEBUG-level entry containing that string.
 - [ ] Truncation guard: a Ginkgo test feeds 64 KiB of stderr through the wrapper and asserts the returned error contains the marker `(truncated)` and is bounded under some explicit byte limit (limit value — agent decides at impl time, but must be documented in a comment at the truncation site).
 - [ ] No regression: `make precommit` exits 0 from `~/Documents/workspaces/dark-factory/`. Evidence: exit code 0.
@@ -145,6 +144,10 @@ dark-factory prompt show <failed-prompt-id>
 Pure code-correctness fix in `pkg/git/` plus minor error-string change. Rung-1 (`make precommit` in `pkg/git/` and unit tests with a fake-git helper) is the primary gate. No k8s involvement — dark-factory runs on developer machines.
 
 Rung-2 equivalent is the manual end-to-end verification above: trigger a real merge failure and confirm git's stderr appears in `.dark-factory.log` and `dark-factory prompt show`.
+
+## Do-Nothing Option
+
+Operators continue the SSH-and-reproduce cycle on every git failure — minutes per incident, several per week during heavy spec churn. After ~3 such incidents the fix has paid back. Doing nothing leaves a permanent diagnostic tax on every git-related daemon failure.
 
 ## Out of Scope
 

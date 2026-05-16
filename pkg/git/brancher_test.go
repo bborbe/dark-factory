@@ -5,10 +5,14 @@
 package git_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -583,6 +587,108 @@ var _ = Describe("Brancher", func() {
 			err := b.FetchBranch(ctx, "--injected-flag")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("validate branch name"))
+		})
+	})
+})
+
+// makeFakeGitBinary writes a shell script "git" to dir that prints stderrOutput to
+// stderr, stdoutOutput to stdout, then exits with exitCode.
+func makeFakeGitBinary(dir string, exitCode int, stderrOutput, stdoutOutput string) {
+	script := fmt.Sprintf("#!/bin/sh\nprintf '%%s' %q >&2\nprintf '%%s' %q\nexit %d\n",
+		stderrOutput, stdoutOutput, exitCode)
+	gitPath := filepath.Join(dir, "git")
+	Expect(os.WriteFile(gitPath, []byte(script), 0700)).To(Succeed())
+}
+
+var _ = Describe("Brancher stderr capture", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	setupFakePath := func(binDir string) {
+		origPath := os.Getenv("PATH")
+		Expect(os.Setenv("PATH", binDir+":"+origPath)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(os.Setenv("PATH", origPath)).To(Succeed())
+		})
+	}
+
+	Describe("MergeOriginDefault stderr capture", func() {
+		It("error contains git stderr verbatim (generic)", func() {
+			binDir := GinkgoT().TempDir()
+			makeFakeGitBinary(binDir, 2, "INJECTED_STDERR_MARKER\nsecond line", "")
+			setupFakePath(binDir)
+
+			b := git.NewBrancher(git.WithDefaultBranch("master"))
+			err := b.MergeOriginDefault(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("INJECTED_STDERR_MARKER"))
+			Expect(err.Error()).To(ContainSubstring("second line"))
+		})
+
+		It(
+			"dirty-tree triggering-incident case: stderr contains overwrite-warning verbatim",
+			func() {
+				stderrMsg := "error: Your local changes to the following files would be overwritten by merge:\n" +
+					"\tprompts/spec-031.md\n" +
+					"Please commit your changes or stash them before you merge.\n" +
+					"Aborting"
+				binDir := GinkgoT().TempDir()
+				makeFakeGitBinary(binDir, 2, stderrMsg, "")
+				setupFakePath(binDir)
+
+				b := git.NewBrancher(git.WithDefaultBranch("master"))
+				err := b.MergeOriginDefault(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("Your local changes to the following files would be overwritten by merge"))
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("Please commit your changes or stash them before you merge"))
+				Expect(err.Error()).To(ContainSubstring("Aborting"))
+			},
+		)
+
+		It(
+			"truncation guard: error is bounded and contains (truncated) for oversized stderr",
+			func() {
+				bigStderr := strings.Repeat("X", 64*1024)
+				binDir := GinkgoT().TempDir()
+				makeFakeGitBinary(binDir, 2, bigStderr, "")
+				setupFakePath(binDir)
+
+				b := git.NewBrancher(git.WithDefaultBranch("master"))
+				err := b.MergeOriginDefault(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("(truncated)"))
+				Expect(len(err.Error())).To(BeNumerically("<", 64*1024))
+			},
+		)
+	})
+
+	Describe("Pull DEBUG log on success", func() {
+		It("logs git stdout at DEBUG level when command succeeds", func() {
+			binDir := GinkgoT().TempDir()
+			makeFakeGitBinary(binDir, 0, "", "Already up to date.\n")
+			setupFakePath(binDir)
+
+			var logBuf bytes.Buffer
+			testHandler := slog.NewTextHandler(
+				&logBuf,
+				&slog.HandlerOptions{Level: slog.LevelDebug},
+			)
+			testLogger := slog.New(testHandler)
+			oldDefault := slog.Default()
+			slog.SetDefault(testLogger)
+			DeferCleanup(func() { slog.SetDefault(oldDefault) })
+
+			b := git.NewBrancher(git.WithDefaultBranch("master"))
+			err := b.Pull(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(logBuf.String()).To(ContainSubstring("Already up to date."))
 		})
 	})
 })

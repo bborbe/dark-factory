@@ -49,11 +49,13 @@ func CommitWithRetry(
 
 // HasDirtyFiles returns true if there are any uncommitted changes in the working tree.
 func HasDirtyFiles(ctx context.Context) (bool, error) {
+	var stderrBuf strings.Builder
 	// #nosec G204 -- fixed command with no user input
 	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return false, errors.Wrap(ctx, err, "git status")
+		return false, errors.Wrapf(ctx, err, "git status: %s", truncateStderr(stderrBuf.String()))
 	}
 	return len(strings.TrimSpace(string(output))) > 0, nil
 }
@@ -220,17 +222,25 @@ func CommitAndRelease(ctx context.Context, bump VersionBump) error {
 // Does nothing if the file is already staged or committed.
 func CommitCompletedFile(ctx context.Context, path string) error {
 	// Stage only the specified file
+	var addCombined strings.Builder
 	// #nosec G204 -- path is from completed prompt file, controlled by application
 	cmd := exec.CommandContext(ctx, "git", "add", path)
+	cmd.Stdout = &addCombined
+	cmd.Stderr = &addCombined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "git add")
+		return errors.Wrapf(ctx, err, "git add: %s", truncateStderr(addCombined.String()))
+	}
+	if s := addCombined.String(); s != "" {
+		slog.Debug("git output", "op", "add-completed-file", "output", s)
 	}
 
 	// Check if there's anything to commit
+	var statusStderrBuf strings.Builder
 	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	statusCmd.Stderr = &statusStderrBuf
 	output, err := statusCmd.Output()
 	if err != nil {
-		return errors.Wrap(ctx, err, "git status")
+		return errors.Wrapf(ctx, err, "git status: %s", truncateStderr(statusStderrBuf.String()))
 	}
 
 	// Nothing to commit
@@ -239,9 +249,15 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 	}
 
 	// Commit
+	var commitCombined strings.Builder
 	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", "move prompt to completed")
+	commitCmd.Stdout = &commitCombined
+	commitCmd.Stderr = &commitCombined
 	if err := commitCmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "git commit")
+		return errors.Wrapf(ctx, err, "git commit: %s", truncateStderr(commitCombined.String()))
+	}
+	if s := commitCombined.String(); s != "" {
+		slog.Debug("git output", "op", "commit-completed-file", "output", s)
 	}
 	return nil
 }
@@ -249,9 +265,15 @@ func CommitCompletedFile(ctx context.Context, path string) error {
 // MoveFile moves a file using git mv to preserve history.
 // Falls back to os.Rename if git operations fail or not in a git repo.
 func MoveFile(ctx context.Context, oldPath string, newPath string) error {
+	var combined strings.Builder
 	// #nosec G204 -- paths are controlled by the application, not user input
 	cmd := exec.CommandContext(ctx, "git", "mv", oldPath, newPath)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
+		if s := combined.String(); s != "" {
+			slog.Debug("git mv failed, falling back to os.Rename", "stderr", s)
+		}
 		// git mv failed (not a repo, file not tracked, etc.) — fallback to os.Rename
 		return fallbackRename(ctx, oldPath, newPath)
 	}
@@ -268,9 +290,15 @@ func fallbackRename(ctx context.Context, oldPath string, newPath string) error {
 
 // gitAddAll stages all changes
 func gitAddAll(ctx context.Context) error {
+	var combined strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "add", "-A")
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "git add all")
+		return errors.Wrapf(ctx, err, "git add all: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "add-all", "output", s)
 	}
 	return nil
 }
@@ -284,11 +312,13 @@ func stageAllAndCheck(ctx context.Context) (bool, error) {
 	if err := gitAddAll(ctx); err != nil {
 		return false, errors.Wrap(ctx, err, "git add")
 	}
+	var stderrBuf strings.Builder
 	// #nosec G204 -- fixed command with no user input
 	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return false, errors.Wrap(ctx, err, "git status")
+		return false, errors.Wrapf(ctx, err, "git status: %s", truncateStderr(stderrBuf.String()))
 	}
 	return len(strings.TrimSpace(string(output))) > 0, nil
 }
@@ -300,11 +330,13 @@ func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 
 // getNextVersion determines the next version based on the bump type
 func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
+	var stderrBuf strings.Builder
 	// #nosec G204 -- arguments are static, not user input
 	cmd := exec.CommandContext(ctx, "git", "tag", "--list", "v*")
+	cmd.Stderr = &stderrBuf
 	out, err := cmd.Output()
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "list git tags")
+		return "", errors.Wrapf(ctx, err, "list git tags: %s", truncateStderr(stderrBuf.String()))
 	}
 
 	// Collect and parse all valid semver tags
@@ -449,10 +481,16 @@ func processUnreleasedSection(lines []string, version string) ([]string, bool) {
 func gitCommit(ctx context.Context, message string) error {
 	slog.Debug("creating commit", "message", message)
 
+	var combined strings.Builder
 	// #nosec G204 -- message is passed as argument to git commit, not executed
 	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "create commit")
+		return errors.Wrapf(ctx, err, "create commit: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "commit", "output", s)
 	}
 	return nil
 }
@@ -465,10 +503,16 @@ func gitTag(ctx context.Context, tag string) error {
 
 	slog.Debug("creating tag", "tag", tag)
 
+	var combined strings.Builder
 	// #nosec G204 -- tag is validated as semantic version above
 	cmd := exec.CommandContext(ctx, "git", "tag", tag)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "create tag")
+		return errors.Wrapf(ctx, err, "create tag: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "tag", "output", s)
 	}
 	return nil
 }
@@ -477,11 +521,16 @@ func gitTag(ctx context.Context, tag string) error {
 func gitPush(ctx context.Context) error {
 	slog.Debug("pushing commits to remote")
 
+	var combined strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "push")
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "push to remote")
+		return errors.Wrapf(ctx, err, "push to remote: %s", truncateStderr(combined.String()))
 	}
-
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "push", "output", s)
+	}
 	return nil
 }
 
@@ -494,11 +543,16 @@ func gitPushTag(ctx context.Context, tag string) error {
 
 	slog.Debug("pushing tag to remote", "tag", tag)
 
+	var combined strings.Builder
 	// #nosec G204 -- tag is validated as semantic version above
 	cmd := exec.CommandContext(ctx, "git", "push", "origin", tag)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "push tag to remote")
+		return errors.Wrapf(ctx, err, "push tag to remote: %s", truncateStderr(combined.String()))
 	}
-
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "push-tag", "output", s)
+	}
 	return nil
 }

@@ -5,6 +5,7 @@
 package cmd_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -125,5 +126,21 @@ var _ = Describe("PromptShowCommand", func() {
 			err := promptShowCmd.Run(ctx, []string{"--json", "005"})
 			Expect(err).NotTo(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("RenderPromptShow", func() {
+	It("renders LastFailReason verbatim including multi-line git stderr", func() {
+		var buf bytes.Buffer
+		out := cmd.PromptShowOutput{
+			File:           "042-foo.md",
+			Status:         "failed",
+			LastFailReason: "merge origin/master: exit status 2\nYour local changes to the following files would be overwritten by merge:\n\tprompts/spec-031.md\nPlease commit your changes or stash them before you merge.\nAborting: INJECTED_STDERR_MARKER\nsecond line",
+		}
+		cmd.RenderPromptShow(&buf, out)
+		output := buf.String()
+		Expect(output).To(ContainSubstring("INJECTED_STDERR_MARKER"))
+		Expect(output).To(ContainSubstring("second line"))
+		Expect(output).To(ContainSubstring("would be overwritten by merge"))
 	})
 })

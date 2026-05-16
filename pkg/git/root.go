@@ -15,7 +15,9 @@ import (
 // ResolveGitRoot returns the absolute path to the root of the current git repository
 // by running `git rev-parse --show-toplevel`. Returns an error if not inside a git repo.
 func ResolveGitRoot(ctx context.Context) (string, error) {
+	var stderrBuf strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
+	cmd.Stderr = &stderrBuf
 	out, err := cmd.Output()
 	if err != nil {
 		return "", errors.New(

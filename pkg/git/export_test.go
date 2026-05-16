@@ -8,3 +8,8 @@ package git
 func DecideMergeActionForTest(mergeStateStatus string) (shouldMerge bool, err error) {
 	return decideMergeAction(mergeStateStatus)
 }
+
+// TruncateStderrForTest exposes truncateStderr for external tests.
+func TruncateStderrForTest(s string) string {
+	return truncateStderr(s)
+}

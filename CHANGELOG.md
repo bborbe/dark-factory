@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.161.1
+
+- fix: git wrappers in pkg/git/ now capture stderr and include it verbatim in errors, so dirty-tree, auth, and network failures are diagnosable from the daemon log without manual worktree reproduction
+
 ## v0.161.0
 
 - feat: Add `check-changelog` Makefile target and `scripts/check-changelog.sh` that lints CHANGELOG.md for stranded SemVer preamble (rules: correct title, preamble before first `##`, preamble appears exactly once, MAJOR bullet appears exactly once); wired into `precommit`

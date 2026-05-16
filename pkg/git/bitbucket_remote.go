@@ -63,11 +63,13 @@ func ParseBitbucketRemoteFromGit(
 	ctx context.Context,
 	remoteName string,
 ) (*BitbucketRemoteCoords, error) {
+	var stderrBuf strings.Builder
 	// #nosec G204 -- remoteName is a fixed string ("origin"), not user input
 	cmd := exec.CommandContext(ctx, "git", "remote", "get-url", remoteName)
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "get git remote url")
+		return nil, errors.Wrapf(ctx, err, "get git remote url: %s", truncateStderr(stderrBuf.String()))
 	}
 	remoteURL := strings.TrimSpace(string(output))
 	return ParseBitbucketRemoteURL(ctx, remoteURL)

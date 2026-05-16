@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [081-bug-git-wrapper-swallows-stderr]
+summary: All git wrappers in pkg/git/ now capture stderr and include it verbatim in errors; prompt show renders LastFailReason; truncateStderr helper with 8KiB cap; six new tests; troubleshooting doc added
+container: dark-factory-391-spec-081-git-stderr-capture
+dark-factory-version: v0.156.1-1-g04f3863-dirty
 created: "2026-05-16T12:10:00Z"
 queued: "2026-05-16T13:03:39Z"
+started: "2026-05-16T13:07:40Z"
 branch: dark-factory/bug-git-wrapper-swallows-stderr
 ---
 

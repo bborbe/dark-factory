@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,15 +48,46 @@ func NewPromptShowCommand(
 
 // PromptShowOutput holds all fields for JSON output.
 type PromptShowOutput struct {
-	File      string   `json:"file"`
-	Status    string   `json:"status"`
-	Specs     []string `json:"specs,omitempty"`
-	Summary   string   `json:"summary,omitempty"`
-	Created   string   `json:"created,omitempty"`
-	Queued    string   `json:"queued,omitempty"`
-	Started   string   `json:"started,omitempty"`
-	Completed string   `json:"completed,omitempty"`
-	LogPath   string   `json:"log_path,omitempty"`
+	File           string   `json:"file"`
+	Status         string   `json:"status"`
+	Specs          []string `json:"specs,omitempty"`
+	Summary        string   `json:"summary,omitempty"`
+	LastFailReason string   `json:"lastFailReason,omitempty"`
+	Created        string   `json:"created,omitempty"`
+	Queued         string   `json:"queued,omitempty"`
+	Started        string   `json:"started,omitempty"`
+	Completed      string   `json:"completed,omitempty"`
+	LogPath        string   `json:"log_path,omitempty"`
+}
+
+// RenderPromptShow writes the human-readable text representation of out to w.
+func RenderPromptShow(w io.Writer, out PromptShowOutput) {
+	fmt.Fprintf(w, "File:    %s\n", out.File)
+	fmt.Fprintf(w, "Status:  %s\n", out.Status)
+	if len(out.Specs) > 0 {
+		fmt.Fprintf(w, "Spec:    %s\n", strings.Join(out.Specs, ", "))
+	}
+	if out.Summary != "" {
+		fmt.Fprintf(w, "Summary: %s\n", out.Summary)
+	}
+	if out.LastFailReason != "" {
+		fmt.Fprintf(w, "Error:   %s\n", out.LastFailReason)
+	}
+	if out.Created != "" {
+		fmt.Fprintf(w, "Created:   %s\n", out.Created)
+	}
+	if out.Queued != "" {
+		fmt.Fprintf(w, "Queued:    %s\n", out.Queued)
+	}
+	if out.Started != "" {
+		fmt.Fprintf(w, "Started:   %s\n", out.Started)
+	}
+	if out.Completed != "" {
+		fmt.Fprintf(w, "Completed: %s\n", out.Completed)
+	}
+	if out.LogPath != "" {
+		fmt.Fprintf(w, "Log:     %s\n", out.LogPath)
+	}
 }
 
 // Run executes the prompt show command.
@@ -98,15 +130,16 @@ func (p *promptShowCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	out := PromptShowOutput{
-		File:      filepath.Base(path),
-		Status:    pf.Frontmatter.Status,
-		Specs:     []string(pf.Frontmatter.Specs),
-		Summary:   pf.Frontmatter.Summary,
-		Created:   pf.Frontmatter.Created,
-		Queued:    pf.Frontmatter.Queued,
-		Started:   pf.Frontmatter.Started,
-		Completed: pf.Frontmatter.Completed,
-		LogPath:   logPath,
+		File:           filepath.Base(path),
+		Status:         pf.Frontmatter.Status,
+		Specs:          []string(pf.Frontmatter.Specs),
+		Summary:        pf.Frontmatter.Summary,
+		LastFailReason: pf.Frontmatter.LastFailReason,
+		Created:        pf.Frontmatter.Created,
+		Queued:         pf.Frontmatter.Queued,
+		Started:        pf.Frontmatter.Started,
+		Completed:      pf.Frontmatter.Completed,
+		LogPath:        logPath,
 	}
 
 	if jsonOutput {
@@ -115,28 +148,6 @@ func (p *promptShowCommand) Run(ctx context.Context, args []string) error {
 		return encoder.Encode(out)
 	}
 
-	fmt.Printf("File:    %s\n", out.File)
-	fmt.Printf("Status:  %s\n", out.Status)
-	if len(out.Specs) > 0 {
-		fmt.Printf("Spec:    %s\n", strings.Join(out.Specs, ", "))
-	}
-	if out.Summary != "" {
-		fmt.Printf("Summary: %s\n", out.Summary)
-	}
-	if out.Created != "" {
-		fmt.Printf("Created:   %s\n", out.Created)
-	}
-	if out.Queued != "" {
-		fmt.Printf("Queued:    %s\n", out.Queued)
-	}
-	if out.Started != "" {
-		fmt.Printf("Started:   %s\n", out.Started)
-	}
-	if out.Completed != "" {
-		fmt.Printf("Completed: %s\n", out.Completed)
-	}
-	if out.LogPath != "" {
-		fmt.Printf("Log:     %s\n", out.LogPath)
-	}
+	RenderPromptShow(os.Stdout, out)
 	return nil
 }

@@ -92,10 +92,21 @@ func (b *brancher) CreateAndSwitch(ctx context.Context, name string) error {
 	}
 	slog.Debug("creating and switching to branch", "branch", name)
 
+	var combined strings.Builder
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
 	cmd := exec.CommandContext(ctx, "git", "checkout", "-b", name)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "create and switch to branch")
+		return errors.Wrapf(
+			ctx,
+			err,
+			"create and switch to branch: %s",
+			truncateStderr(combined.String()),
+		)
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "create-and-switch", "output", s)
 	}
 	return nil
 }
@@ -107,10 +118,21 @@ func (b *brancher) Push(ctx context.Context, name string) error {
 	}
 	slog.Debug("pushing branch to remote", "branch", name)
 
+	var combined strings.Builder
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
 	cmd := exec.CommandContext(ctx, "git", "push", "-u", "origin", name)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "push branch to remote")
+		return errors.Wrapf(
+			ctx,
+			err,
+			"push branch to remote: %s",
+			truncateStderr(combined.String()),
+		)
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "push-branch", "output", s)
 	}
 	return nil
 }
@@ -122,20 +144,33 @@ func (b *brancher) Switch(ctx context.Context, name string) error {
 	}
 	slog.Debug("switching to branch", "branch", name)
 
+	var combined strings.Builder
 	// #nosec G204 -- branch name is controlled by the application
 	cmd := exec.CommandContext(ctx, "git", "checkout", name)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "switch to branch")
+		return errors.Wrapf(ctx, err, "switch to branch: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "switch-branch", "output", s)
 	}
 	return nil
 }
 
 // CurrentBranch returns the name of the current branch.
 func (b *brancher) CurrentBranch(ctx context.Context) (string, error) {
+	var stderrBuf strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "get current branch")
+		return "", errors.Wrapf(
+			ctx,
+			err,
+			"get current branch: %s",
+			truncateStderr(stderrBuf.String()),
+		)
 	}
 	branch := strings.TrimSpace(string(output))
 	slog.Debug("current branch", "branch", branch)
@@ -146,9 +181,15 @@ func (b *brancher) CurrentBranch(ctx context.Context) (string, error) {
 func (b *brancher) Fetch(ctx context.Context) error {
 	slog.Debug("fetching from origin")
 
+	var combined strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "fetch from origin")
+		return errors.Wrapf(ctx, err, "fetch from origin: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "fetch", "output", s)
 	}
 	return nil
 }
@@ -160,10 +201,16 @@ func (b *brancher) FetchAndVerifyBranch(ctx context.Context, branch string) erro
 	}
 	slog.Debug("fetching from origin and verifying branch", "branch", branch)
 
+	var combined strings.Builder
 	// #nosec G204 -- branch name comes from validated frontmatter
 	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "fetch from origin")
+		return errors.Wrapf(ctx, err, "fetch from origin: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "fetch-and-verify-branch", "output", s)
 	}
 
 	// #nosec G204 -- branch name comes from validated frontmatter
@@ -211,8 +258,10 @@ func (b *brancher) DefaultBranch(ctx context.Context) (string, error) {
 // defaultBranchFromSymbolicRef tries to determine the default branch using
 // git symbolic-ref refs/remotes/origin/HEAD, which works for any git remote.
 func defaultBranchFromSymbolicRef(ctx context.Context) string {
+	var stderrBuf strings.Builder
 	// #nosec G204 -- static command with no user input
 	cmd := exec.CommandContext(ctx, "git", "symbolic-ref", "refs/remotes/origin/HEAD")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -234,29 +283,49 @@ func defaultBranchFromSymbolicRef(ctx context.Context) string {
 func (b *brancher) Pull(ctx context.Context) error {
 	slog.Debug("pulling current branch")
 
+	var combined strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "pull")
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "pull current branch")
+		return errors.Wrapf(ctx, err, "pull current branch: %s", truncateStderr(combined.String()))
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "pull", "output", s)
 	}
 	return nil
 }
 
 // IsClean returns true if the working tree has no uncommitted changes.
 func (b *brancher) IsClean(ctx context.Context) (bool, error) {
+	var stderrBuf strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return false, errors.Wrap(ctx, err, "check working tree status")
+		return false, errors.Wrapf(
+			ctx,
+			err,
+			"check working tree status: %s",
+			truncateStderr(stderrBuf.String()),
+		)
 	}
 	return strings.TrimSpace(string(output)) == "", nil
 }
 
 // IsCleanIgnoring returns dirty paths not covered by any ignorePrefixes.
 func (b *brancher) IsCleanIgnoring(ctx context.Context, ignorePrefixes []string) ([]string, error) {
+	var stderrBuf strings.Builder
 	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain", "-z")
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, "check working tree status")
+		return nil, errors.Wrapf(
+			ctx,
+			err,
+			"check working tree status: %s",
+			truncateStderr(stderrBuf.String()),
+		)
 	}
 	var dirty []string
 	// -z output: each entry is "XY <path>\0". Renamed entries (status R or C)
@@ -337,10 +406,22 @@ func (b *brancher) MergeOriginDefault(ctx context.Context) error {
 
 	slog.Debug("merging origin default branch", "branch", defaultBranch)
 
+	var combined strings.Builder
 	// #nosec G204 -- branch name is fetched via gh CLI from GitHub API, not user input
 	cmd := exec.CommandContext(ctx, "git", "merge", "origin/"+defaultBranch)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
 	if err := cmd.Run(); err != nil {
-		return errors.Wrap(ctx, err, "merge origin/"+defaultBranch)
+		return errors.Wrapf(
+			ctx,
+			err,
+			"merge origin/%s: %s",
+			defaultBranch,
+			truncateStderr(combined.String()),
+		)
+	}
+	if s := combined.String(); s != "" {
+		slog.Debug("git output", "op", "merge-origin-default", "output", s)
 	}
 	return nil
 }
@@ -409,6 +490,7 @@ func (b *brancher) CommitsAhead(ctx context.Context, branch string) (int, error)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, "get default branch for commit count")
 	}
+	var stderrBuf strings.Builder
 	// #nosec G204 -- branch name is derived from prompt filename and sanitized
 	cmd := exec.CommandContext(
 		ctx,
@@ -417,9 +499,15 @@ func (b *brancher) CommitsAhead(ctx context.Context, branch string) (int, error)
 		"--count",
 		"origin/"+defaultBranch+".."+branch,
 	)
+	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, "count commits ahead")
+		return 0, errors.Wrapf(
+			ctx,
+			err,
+			"count commits ahead: %s",
+			truncateStderr(stderrBuf.String()),
+		)
 	}
 	count, err := strconv.Atoi(strings.TrimSpace(string(output)))
 	if err != nil {

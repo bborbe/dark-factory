@@ -20,7 +20,30 @@ A single change can touch one surface or both.
 
 The gate exists because `make precommit` does NOT cover host↔container, host↔git remote, or config→runtime seams. Unit tests pass while runtime behavior is broken — that has bitten the project repeatedly (cancellation race, `WaitAndMerge` field mismatch, autoReview unreachable path).
 
-The rule: **before every `make install`, run all scenarios against a freshly built binary**. No surface-scoped skipping unless the diff is genuinely empty.
+The rule: **before every `make install`, run all active scenarios against a freshly built binary**. No surface-scoped skipping unless the diff is genuinely empty.
+
+### Expectations
+
+| Aspect | Value |
+|--------|-------|
+| Wall time (full active gate) | ~30 min |
+| YOLO cost (across LLM-driving scenarios) | ~$0.60 |
+| LLM-driving scenarios | 001, 002, 003, 006, 019 (each ≈25–35 s, one ≈2.5 min) |
+| Pure-CLI scenarios (no YOLO) | 011, 013 |
+| Mixed (one YOLO + CLI assertions) | 010, 012 |
+
+Plan to babysit. Scenarios that touch GitHub (002, 015, 018) leave real PRs/branches behind that need manual cleanup.
+
+### Preflight (before starting the gate)
+
+```bash
+docker info >/dev/null 2>&1 || { echo "Docker daemon required"; exit 1; }
+gh auth status >/dev/null 2>&1 || { echo "gh CLI must be authed for PR scenarios"; exit 1; }
+```
+
+If a dark-factory daemon is running on dark-factory itself (the autoRelease loop), leave it running. Scenarios use sandbox copies and a per-run `maxContainers: 999`, which intentionally bypasses the system-wide cap so the gate is not throttled by the live daemon.
+
+### Steps
 
 ```bash
 # 1. Build a fresh binary (NOT the installed one)
@@ -29,15 +52,47 @@ go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 # 2. Confirm it built and reports the unreleased version
 /tmp/new-dark-factory --version  # should say "dark-factory dev"
 
-# 3. Run all scenarios against it
-scenarios/helper/run-all.sh   # TODO: this script does not yet exist — port markdown scenarios first
-# Until run-all.sh exists, the operator must walk every scripted helper:
-scenarios/helper/run-013-all.sh
-# AND walk every markdown scenario manually:
-ls scenarios/*.md  # 001 through 012+; each one's "Action" + "Expected" must pass
+# 3. Walk every scenario whose frontmatter says `status: active`.
+#    Skip `status: draft` (incomplete, may fail for unrelated reasons) and
+#    `status: idea` (stubs, nothing to walk).
+awk '/^status:/{print FILENAME": "$2; nextfile}' scenarios/*.md  # status per file
+
+# 4. Run the helper-automated batch first (fastest signal — 42 sub-scenarios):
+scenarios/helper/run-013-all.sh   # automates scenario 013 sub-scenarios A–M
+# Expected: "Result: 42 passed, 0 failed"
+
+# 5. Walk each remaining active markdown scenario by hand.
+#    Each file's Setup → Action → Expected must all pass.
 ```
 
-If any scenario fails: do **not** proceed to install. Fix the regression first, then rerun the gate.
+### Scenario ↔ runner map
+
+| # | Status | Runner |
+|---|--------|--------|
+| 001 | active | manual (Setup uses `scenarios/helper/lib.sh::setup_sandbox_copy`) |
+| 002 | active | manual — opens real PR on dark-factory-sandbox; close + delete branch after |
+| 003 | active | manual |
+| 006 | active | manual |
+| 010 | active | manual |
+| 011 | active | manual (pure CLI, no YOLO) |
+| 012 | active | manual |
+| 013 | active | **`scenarios/helper/run-013-all.sh`** (fully automated, 42 assertions) |
+| 019 | active | manual (full spec lifecycle, ≈2.5 min) |
+| 014–018 | draft | skip (exploratory, may fail for non-binary reasons) |
+| 004, 005, 007–009, 020 | idea | skip (stubs, nothing to walk) |
+
+If any active scenario fails: do **not** proceed to install. Fix the regression first, then rerun the gate.
+
+### When a scenario fails — where to look first
+
+| Symptom | Most likely surface |
+|---------|---------------------|
+| YOLO container fails to start, log shows `root/sudo privileges` | `pkg/runner/` UID remapping, or container image bump |
+| Stream formatter crash, log truncated after `Starting headless session...` | `pkg/executor/streamfmt/`, container image |
+| Git push fails, error swallowed | `pkg/git/` — verify stderr is captured into the wrapped error |
+| Spec stuck in `prompted` after prompts done | `pkg/processor/` workflow_executor phase ordering or sweep ticker |
+| Container name collision / wrong project segment | `pkg/generator/`, `pkg/processor/` spawn sites |
+| Plugin fields stale after release | `.claude-plugin/plugin.json` + both `marketplace.json` version fields drifted |
 
 ### When the diff is empty
 
@@ -49,7 +104,7 @@ git diff "$INSTALLED"..HEAD --name-only | grep -E '\.(go|mod|sum)$|^Makefile$|^D
 # empty output → installed binary is byte-equivalent to /tmp/new-dark-factory → skip
 ```
 
-This is the ONLY documented skip. Do not invent others ("docs-only changes shouldn't break anything") — surface mappings are fragile and have been wrong before.
+This is the ONLY documented skip. Do not invent others ("docs-only changes shouldn't break anything") — surface mappings are fragile and have been wrong before. If `INSTALLED` is far behind HEAD (e.g., several auto-releases happened without an install), the diff will be large and the skip does NOT apply — walk the full gate.
 
 ## Version alignment check (release-time)
 
@@ -135,7 +190,7 @@ git diff "$LAST_PLUGIN_TAG"..HEAD --name-only -- commands/ agents/ docs/ skills/
    - `.claude-plugin/marketplace.json` `metadata.version`
    - `.claude-plugin/marketplace.json` `plugins[0].version`
 4. **Add a `## vX.Y.Z` section** to `CHANGELOG.md` at the top, covering all changes since the previous CHANGELOG entry (binary AND plugin in the same section — there is one CHANGELOG, not two).
-5. **Run the version alignment check** (above) — must report `✅ plugin aligned`.
+5. **Run the version alignment check** as a gate, not a verify — `make check-versions` MUST exit 0 before commit. Easy to bump only 3 of the 4 places; this is the catch.
 6. **Commit:** `git commit -m "release plugin vX.Y.Z: <summary>"`.
 7. **Push:** `git push`.
 

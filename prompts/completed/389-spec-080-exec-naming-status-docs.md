@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [080-container-naming-project-role-prefix]
 summary: 'Added -exec- role infix to execution container names, made status checker project-aware for gen-container filtering, updated CreateServer and createStatusChecker signatures to accept projectName, updated all call sites and 13 test call sites, added project: field to docs/configuration.md, and added ## Unreleased CHANGELOG migration note.'
 container: dark-factory-389-spec-080-exec-naming-status-docs
@@ -7,6 +7,7 @@ dark-factory-version: v0.156.1-1-g04f3863-dirty
 created: "2026-05-16T12:00:00Z"
 queued: "2026-05-16T12:15:33Z"
 started: "2026-05-16T12:29:22Z"
+completed: "2026-05-16T12:37:42Z"
 branch: dark-factory/container-naming-project-role-prefix
 ---
 

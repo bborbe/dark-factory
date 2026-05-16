@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-05-16T11:45:09Z"
 generating: "2026-05-16T11:48:07Z"
 prompted: "2026-05-16T12:00:12Z"
 verifying: "2026-05-16T12:37:42Z"
+completed: "2026-05-16T20:22:33Z"
 branch: dark-factory/container-naming-project-role-prefix
 ---
 

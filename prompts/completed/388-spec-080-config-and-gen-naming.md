@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [080-container-naming-project-role-prefix]
 summary: Added optional `project:` field to Config with validation, threaded resolved project name into spec-generation container naming across generator, lifecycle, health_check, and factory; renamed containers from dark-factory-gen-<spec> to <project>-gen-<spec> with legacy-compat probe in startup recovery.
 container: dark-factory-388-spec-080-config-and-gen-naming
@@ -7,6 +7,7 @@ dark-factory-version: v0.156.1-1-g04f3863-dirty
 created: "2026-05-16T12:00:00Z"
 queued: "2026-05-16T12:15:33Z"
 started: "2026-05-16T12:15:34Z"
+completed: "2026-05-16T12:29:19Z"
 branch: dark-factory/container-naming-project-role-prefix
 ---
 

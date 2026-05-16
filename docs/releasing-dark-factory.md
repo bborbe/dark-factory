@@ -133,7 +133,15 @@ Dark-factory runs against itself as a daemon with `autoRelease: true`. Every suc
 5. Tag `vX.Y.Z`, push tag and commit
 6. Move the prompt file to `prompts/completed/` and push that commit too
 
-The operator's responsibility is to **run the release gate before approving any prompt** that may produce a binary change. Once the prompt is approved, the daemon ships whatever the agent produced — there is no second checkpoint.
+The operator's responsibility is to **run the release gate at the right checkpoint** for the prompt's surface. Once a prompt is approved, the daemon ships whatever the agent produced — there is no second checkpoint.
+
+| Prompt touches | Gate cadence |
+|----------------|--------------|
+| `pkg/`, `main.go`, `Makefile`, `Dockerfile`, `go.mod` | Run the FULL gate before approving. Binary risk. |
+| `commands/`, `agents/`, `docs/`, `skills/`, `scenarios/` | Daily checkpoint, OR before the next plugin release — not per-prompt. No binary risk. |
+| `prompts/`, `specs/`, frontmatter-only, log files | Skip. Pipeline metadata, not shipped. |
+
+The full gate is ~30 min wall-clock; running it per-prompt would block daily work. The decision rule is the diff surface, not the prompt count.
 
 To verify a release shipped:
 
@@ -173,6 +181,8 @@ Verify on github.com → Releases tab. The Release object can be edited (notes, 
 
 Whenever any of `commands/`, `agents/`, `docs/`, or `skills/` change, the plugin version must be bumped. The binary's `autoRelease` does **not** bump the plugin version — these JSON files are not part of the binary CHANGELOG-driven flow.
 
+**Not in the plugin surface:** `scenarios/` (test infrastructure — runs against a freshly built binary, not shipped to consumers), `prompts/`, `specs/`, `pkg/`, `main.go`. Changes to those do not require a plugin bump. The plugin ships `commands/`, `agents/`, `docs/`, `skills/` (and the marketplace JSONs themselves).
+
 ### When to bump
 
 ```bash
@@ -203,9 +213,25 @@ git diff "$LAST_PLUGIN_TAG"..HEAD --name-only -- commands/ agents/ docs/ skills/
 
 ## Install (the moment the new version reaches consumers)
 
+Two install paths — different sources, different use cases:
+
+| Command | Source | When |
+|---------|--------|------|
+| `make install` (= `go install -ldflags "$(LDFLAGS)" .`) | local working tree (current HEAD + uncommitted) | After a local gate pass; what an operator runs to update their own machine to current source |
+| `go install github.com/bborbe/dark-factory@latest` | Go module proxy (latest tag) | What downstream consumers run; only picks up what's been tag-pushed |
+
 ```bash
+# Operator update from local source:
+make install
+dark-factory --version  # should report current HEAD's commit (or latest local tag)
+
+# Downstream / fresh machine:
 go install github.com/bborbe/dark-factory@latest
-dark-factory --version  # should now match the latest tag
+dark-factory --version  # should match the latest pushed tag
+
+# Verify install picked up the new binary:
+which dark-factory       # confirms $PATH points at $GOPATH/bin or $HOME/go/bin
+dark-factory --version   # should NOT report the previous version — if it does, GOPATH may shadow or there is a stale binary on $PATH ahead of $GOPATH/bin
 ```
 
 This is the step that bites another project if the gate was skipped. Other projects that run dark-factory will pick up the new binary the next time they `go install`. A regression in the new binary surfaces in their workflow, not yours.

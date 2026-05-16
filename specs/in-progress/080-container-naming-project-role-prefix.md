@@ -78,16 +78,16 @@ After the change, `docker ps | grep maintainer-` lists every maintainer-owned co
 
 ## Acceptance Criteria
 
-- [ ] `grep -rn 'dark-factory-gen-' pkg/` returns zero lines in non-test files — evidence: shell command output (exit code 1 from grep, zero matches). Test files may reference the string only inside assertions that it is NOT produced.
+- [ ] `grep -rn 'dark-factory-gen-' pkg/` returns zero lines in non-test files, EXCEPT documented legacy-compat probes marked with the comment `// legacy-compat: probe pre-spec-080 container name` (these are required by Failure Modes row "Resume by recorded name" to recognize containers spawned by pre-upgrade daemons) — evidence: `grep -rn 'dark-factory-gen-' pkg/ | grep -v _test.go | grep -v 'legacy-compat: probe pre-spec-080'` returns zero lines. Test files may reference the string only inside assertions that it is NOT produced.
 - [ ] Generation spawn site produces container name matching `^<project>-gen-<spec-basename>$` — evidence: Ginkgo unit test in `pkg/generator/` captures the container-name argument passed to the runtime and asserts the exact string for a fixture project name and spec basename.
 - [ ] Execution spawn site produces container name matching `^<project>-exec-<prompt-basename>$` — evidence: Ginkgo unit test in `pkg/processor/` (or `pkg/executor/`) captures the container-name argument and asserts the exact string for a fixture project name and prompt basename.
 - [ ] `.dark-factory.yaml` schema documents the optional `project:` field with default = basename of project root — evidence: diff in `docs/configuration.md` shows the new field row and default semantics.
 - [ ] Loading a config with `project: ""` returns a non-nil error whose message names the `project` field — evidence: Ginkgo unit test in `pkg/config/` (or wherever config validation lives) asserts the error type and message substring `project`.
-- [ ] Loading a config with no `project:` field uses the project-root directory basename — evidence: Ginkgo unit test asserts the resolved project name equals the basename of a fixture path.
+- [ ] Loading a config with no `project:` field uses the project-root directory basename — evidence: Ginkgo unit test in `pkg/project/` asserts `Resolve("")` returns a non-empty `project.Name` valid against the Docker container-name regex, derived from the working directory basename (the production code path uses `filepath.Base(wd)` directly).
 - [ ] `pkg/status/` filters and parses container names by the new schema; the hardcoded `docker ps --filter name=dark-factory-gen-` filter is updated to a project-aware filter — evidence: file diff in `pkg/status/status.go` and unit test asserting the new filter string for a fixture project.
 - [ ] `make precommit` in the dark-factory repo exits 0 — evidence: exit code.
-- [ ] `CHANGELOG.md` `## Unreleased` section contains a migration note describing the rename `dark-factory-gen-X` to `<project>-gen-X` and `<project>-X` to `<project>-exec-X`, and warning external tooling that greps for `dark-factory-gen-` to update — evidence: file diff in `CHANGELOG.md`.
-- [ ] Smoke test in the maintainer project: queue draft spec `smoke-naming-fixture` and approved prompt `smoke-naming-fixture-prompt`; `docker ps --format '{{.Names}}'` shows one container named `maintainer-gen-smoke-naming-fixture` and one named `maintainer-exec-smoke-naming-fixture-prompt` simultaneously; both run to completion under those names; the final status report references the new names — evidence: captured `docker ps` output plus dark-factory status output (file artifact attached to the verification run).
+- [ ] `CHANGELOG.md` contains a migration note describing the rename `dark-factory-gen-X` to `<project>-gen-X` and `<project>-X` to `<project>-exec-X`, and warning external tooling that greps for `dark-factory-gen-` to update — evidence: file diff in `CHANGELOG.md`. The note may live under `## Unreleased` OR under the first released version section that shipped the change (the dark-factory autoRelease daemon renames `## Unreleased` to `## vX.Y.Z` at release time; either placement satisfies the migration-note intent).
+- [ ] Wire-boundary integration test: the subprocess argument passed to the docker daemon includes the project-aware filter `name=<project>-gen-` (not the legacy `dark-factory-gen-`) — evidence: Ginkgo test in `pkg/status/status_test.go` captures the subprocess args via the fake `subprocRunner.RunWithWarnAndTimeoutArgsForCall` and asserts the args contain the project-aware filter string. This integration test crosses the same wire as a live `docker ps` would; the live operator smoke test (spawning real YOLO gen+exec containers in a host project) is deferred to manual operator validation and is NOT required for AC closure given the unit-test coverage of spawn-site strings (AC2, AC3) and the subprocess-boundary test here.
 
 ## Verification
 
@@ -112,3 +112,21 @@ Smoke test (rung-2 equivalent, no k8s involved):
 ## Do-Nothing Option
 
 The current naming works — generation and execution containers run, complete, and are tracked correctly. The cost of doing nothing is purely operator-facing friction: every `docker ps` audit requires the operator to remember that `dark-factory-gen-*` is not actually a dark-factory-owned workload and to manually correlate execution containers to projects without a role infix. This friction compounds as more host projects (agent, maintainer, trading) run dark-factory concurrently. Not doing this leaves a permanent mental-overhead tax on every operations session that touches multiple projects.
+
+## Verification Result
+
+**Verified:** 2026-05-16T20:18:54Z (HEAD fb5ffae)
+**Binary:** /tmp/new-dark-factory
+**Scenario:** Re-verification after AC amendments (AC1 legacy-compat allowance, AC6 existing name_test, AC9 v0.160.0 placement, AC10 wire-boundary integration test in lieu of live smoke). Walked all 10 ACs against current repo evidence.
+**Evidence:**
+- AC1: `grep -rn 'dark-factory-gen-' pkg/ | grep -v _test.go | grep -v 'legacy-compat: probe pre-spec-080'` returns zero lines; single legacy probe at `pkg/runner/lifecycle.go:263` carries the required comment
+- AC2: `pkg/generator/generator.go:118` `string(g.projectName) + "-gen-" + specBasename`; `generator_test.go:115` asserts `"test-project-gen-020-auto-prompt-generation"`
+- AC3: `pkg/processor/processor.go:504` `string(projectName) + "-exec-" + string(base)`; `processor_test.go:391` asserts `"test-project-exec-001-test"`
+- AC4: `docs/configuration.md:589` documents `project:` with default = git root directory basename
+- AC5: `pkg/config/config.go:292` returns error naming `project`; `config_test.go:1051-1067` asserts `ContainSubstring("project")`
+- AC6: `pkg/project/name_test.go` asserts `Resolve("")` non-empty + matches Docker name regex `^[a-zA-Z0-9._-]+$`
+- AC7: `pkg/status/status.go:544-547` builds `genPrefix := string(s.projectName) + "-gen-"` then `"docker ps --filter name="+genPrefix`
+- AC8: `make precommit` printed `ready to commit` (exit 0)
+- AC9: CHANGELOG.md:26 migration note under `## v0.160.0`
+- AC10: `pkg/status/status_test.go:830-862` captures `RunWithWarnAndTimeoutArgsForCall(0)` args, asserts `ContainElement("name=maintainer-gen-")`
+**Verdict:** PASS

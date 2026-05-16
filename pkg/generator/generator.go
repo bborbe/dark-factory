@@ -16,6 +16,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -45,8 +46,10 @@ func NewSpecGenerator(
 	pm PromptManager,
 	autoApprovePrompts bool,
 	queueDir string,
+	projectName project.Name,
 ) SpecGenerator {
 	return &dockerSpecGenerator{
+		projectName:            projectName,
 		executor:               executor,
 		containerChecker:       containerChecker,
 		inboxDir:               inboxDir,
@@ -66,6 +69,7 @@ func NewSpecGenerator(
 
 // dockerSpecGenerator implements SpecGenerator using the Docker executor.
 type dockerSpecGenerator struct {
+	projectName            project.Name
 	executor               executor.Executor
 	containerChecker       executor.ContainerChecker
 	inboxDir               string
@@ -110,7 +114,9 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	// b. Derive container name from spec filename
 	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
-	containerName := "dark-factory-gen-" + specBasename
+	containerName := string(
+		prompt.ContainerName(string(g.projectName) + "-gen-" + specBasename).Sanitize(),
+	)
 
 	// c. Derive log file path
 	logFile := filepath.Join(g.logDir, "gen-"+specBasename+".log")

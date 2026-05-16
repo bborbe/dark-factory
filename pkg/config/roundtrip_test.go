@@ -103,6 +103,11 @@ var _ = Describe("Config/partialConfig parity", func() {
 			// String fields
 			Entry("projectName", "projectName", "sentinel-projectName",
 				func(cfg Config) { Expect(cfg.ProjectName).To(Equal("sentinel-projectName")) }),
+			Entry("project", "project", "sentinel-project",
+				func(cfg Config) {
+					Expect(cfg.Project).NotTo(BeNil())
+					Expect(*cfg.Project).To(Equal("sentinel-project"))
+				}),
 			Entry("defaultBranch", "defaultBranch", "sentinel-defaultBranch",
 				func(cfg Config) { Expect(cfg.DefaultBranch).To(Equal("sentinel-defaultBranch")) }),
 			Entry(

@@ -287,5 +287,6 @@ func (r *runner) resumeOrResetGenerating(ctx context.Context) error {
 		r.specsInProgressDir,
 		r.containerChecker,
 		r.currentDateTimeGetter,
+		r.projectName.String(),
 	)
 }

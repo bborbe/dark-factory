@@ -206,6 +206,40 @@ Exception: if the target repo commits `vendor/` and the prompt declares that dev
 - Before flagging an absolute path as a violation, check the mount set captured in step 2 of the workflow. If the path's prefix matches a mount target (`/docs`, `/workspace`, etc.), it is valid — do NOT flag.
 - Detect candidate paths by scanning for `/`, `~/`, or `$HOME/` prefixes, then classify each against the mount set.
 
+**Cross-repo writes (mount-credential boundary):**
+
+Dark-factory mounts exactly ONE project repo into the container (typically at `/workspace`) and provides git credentials only for that repo's remote. The container has no SSH agent, no GitHub PAT, and the in-container HTTP proxy (`tinyproxy`) is read-only — read access (`git clone`, `git fetch`) works, but any write to a remote OTHER than the mounted project's own remote will silently fail. The agent typically reports `status: partial` with a "no credentials" blocker, the daemon marks the prompt failed, and Docker removes the container — **the local commit inside the container is then lost forever**.
+
+This is the highest-severity failure mode for a prompt because the work is irrecoverable.
+
+**Mechanical check (the auditor runs these via Bash):**
+
+1. Grep `<requirements>` for explicit clones of remote URLs:
+   ```bash
+   grep -nE 'git clone (https?://|git@)' <prompt-file>
+   ```
+   For each match, capture the URL.
+2. Resolve the current project's remote:
+   ```bash
+   git -C <project-root> remote get-url origin
+   ```
+3. Grep `<requirements>` for any write operation:
+   ```bash
+   grep -nE 'git push|git commit.*--amend|gh pr create|gh release' <prompt-file>
+   ```
+4. **Flag as Critical** when ALL THREE are true:
+   - Step 1 found a clone URL that does NOT match the project remote from step 2 (after normalising `git@` vs `https://`)
+   - Step 3 found a write operation
+   - The write occurs inside the cloned repo's directory (heuristic: `cd /tmp/<cloned-name>` or `git -C /tmp/<cloned-name>` precedes the write)
+
+**Critical-issue wording:**
+
+> Cross-repo write detected. The prompt clones `<external-remote>` and then issues `<write-op>` against it. The dark-factory container has no credentials for `<external-remote>` — the push will fail at runtime and the local commit inside the container is unrecoverable once the container exits.
+>
+> **Fix:** move the spec to `<external-remote>`'s own dark-factory pipeline (e.g. `~/Documents/workspaces/<external-repo>/specs/`). That project's daemon mounts `<external-remote>` as `/workspace` and owns its write credentials. Cross-repo clone-and-push is not a supported pattern.
+>
+> If the external clone is read-only (no `git push` / `gh pr create` follows), this is fine — flag only when writes are attempted.
+
 **Config/args documentation completeness:**
 - If the prompt adds, renames, removes, or changes defaults for CLI args, config fields, env vars, or flags, grep the repo for all references
 - If `docs/`, `README.md`, examples, or comments reference the old name or are missing the new name, flag as critical: "`X` changed but `file.md` still references old value/name"
@@ -289,6 +323,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] External calls have timeout/cancellation behavior specified
 - [x/!] New constants / strings that flow through library validators have a test calling the validator (or N/A)
 - [x/!] No `go mod vendor` in `<requirements>` or `<verification>` (vendor is a build-time concern, not a prompt concern — see Wasted vendor regeneration)
+- [x/!] No cross-repo writes: prompt does not clone a remote other than the project's own AND then push / `gh pr create` against it (work would be lost when container exits)
 
 ## Documentation Placement
 - [x/!] No inlined reusable patterns (>10 lines) that should be in a doc

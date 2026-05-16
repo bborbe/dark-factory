@@ -85,6 +85,7 @@ type partialConfig struct {
 	PR                *bool                 `yaml:"pr"`
 	Worktree          *bool                 `yaml:"worktree"`
 	ProjectName       *string               `yaml:"projectName"`
+	Project           *string               `yaml:"project,omitempty"`
 	DefaultBranch     *string               `yaml:"defaultBranch"`
 	Prompts           *partialPromptsConfig `yaml:"prompts"`
 	Specs             *partialSpecsConfig   `yaml:"specs"`
@@ -290,6 +291,9 @@ func mergePartialWorkflow(cfg *Config, partial *partialConfig) {
 	}
 	if partial.ProjectName != nil {
 		cfg.ProjectName = *partial.ProjectName
+	}
+	if partial.Project != nil {
+		cfg.Project = partial.Project
 	}
 	if partial.DefaultBranch != nil {
 		cfg.DefaultBranch = *partial.DefaultBranch

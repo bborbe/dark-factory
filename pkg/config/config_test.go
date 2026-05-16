@@ -1020,6 +1020,70 @@ var _ = Describe("Config", func() {
 				Expect(cfg.Validate(ctx).Error()).To(ContainSubstring("model"))
 			})
 		})
+
+		Describe("project field", func() {
+			validBase := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+
+			It("succeeds when project field is absent (nil)", func() {
+				cfg := validBase
+				cfg.Project = nil
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("succeeds when project is set to a non-empty value", func() {
+				cfg := validBase
+				s := "maintainer"
+				cfg.Project = &s
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("fails when project is set to empty string", func() {
+				cfg := validBase
+				s := ""
+				cfg.Project = &s
+				err := cfg.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("project"))
+			})
+
+			It("fails when project is whitespace-only", func() {
+				cfg := validBase
+				s := "   "
+				cfg.Project = &s
+				err := cfg.Validate(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("project"))
+			})
+		})
+	})
+
+	Describe("ResolvedProjectOverride", func() {
+		It("returns ProjectName when Project is nil", func() {
+			cfg := config.Config{ProjectName: "legacy-name"}
+			Expect(cfg.ResolvedProjectOverride()).To(Equal("legacy-name"))
+		})
+
+		It("returns *Project when Project is set and non-empty", func() {
+			s := "maintainer"
+			cfg := config.Config{ProjectName: "legacy-name", Project: &s}
+			Expect(cfg.ResolvedProjectOverride()).To(Equal("maintainer"))
+		})
+
+		It("returns ProjectName when Project is nil and ProjectName is empty", func() {
+			cfg := config.Config{}
+			Expect(cfg.ResolvedProjectOverride()).To(Equal(""))
+		})
 	})
 
 })

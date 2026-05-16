@@ -53,8 +53,15 @@ func CheckGeneratingSpecsForTest(
 	specsInProgressDir string,
 	checker executor.ContainerChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
 ) error {
-	return checkGeneratingSpecs(ctx, specsInProgressDir, checker, currentDateTimeGetter)
+	return checkGeneratingSpecs(
+		ctx,
+		specsInProgressDir,
+		checker,
+		currentDateTimeGetter,
+		projectName,
+	)
 }
 
 // RunHealthCheckLoopForTest exposes runHealthCheckLoop for external test packages.

@@ -49,7 +49,7 @@ func runHealthCheckLoop(
 			if err := checkExecutingPrompts(ctx, inProgressDir, checker, mgr, n, projectName, maxPromptDuration, stopper, currentDateTimeGetter); err != nil {
 				slog.Warn("health check for executing prompts failed", "error", err)
 			}
-			if err := checkGeneratingSpecs(ctx, specsInProgressDir, checker, currentDateTimeGetter); err != nil {
+			if err := checkGeneratingSpecs(ctx, specsInProgressDir, checker, currentDateTimeGetter, projectName); err != nil {
 				slog.Warn("health check for generating specs failed", "error", err)
 			}
 		}
@@ -238,6 +238,7 @@ func checkGeneratingSpecs(
 	specsInProgressDir string,
 	checker executor.ContainerChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
 ) error {
 	entries, err := os.ReadDir(specsInProgressDir)
 	if err != nil {
@@ -259,7 +260,7 @@ func checkGeneratingSpecs(
 			continue
 		}
 		specBasename := strings.TrimSuffix(entry.Name(), ".md")
-		containerName := "dark-factory-gen-" + specBasename
+		containerName := projectName + "-gen-" + specBasename
 		running, err := checker.IsRunning(ctx, containerName)
 		if err != nil {
 			slog.Warn("health check: failed to check spec container, skipping",

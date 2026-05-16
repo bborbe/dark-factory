@@ -17,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/generator"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -75,6 +76,7 @@ var _ = Describe("SpecGenerator", func() {
 			promptMgr,
 			false,
 			"",
+			project.Name("test-project"),
 		)
 
 		// Write a spec file with status "approved"
@@ -110,7 +112,7 @@ var _ = Describe("SpecGenerator", func() {
 				Expect(executor.ExecuteCallCount()).To(Equal(1))
 				_, gotPrompt, gotLogFile, gotContainer := executor.ExecuteArgsForCall(0)
 				Expect(gotPrompt).To(Equal("/dark-factory:generate-prompts-for-spec " + specPath))
-				Expect(gotContainer).To(Equal("dark-factory-gen-020-auto-prompt-generation"))
+				Expect(gotContainer).To(Equal("test-project-gen-020-auto-prompt-generation"))
 				Expect(
 					gotLogFile,
 				).To(Equal(filepath.Join(logDir, "gen-020-auto-prompt-generation.log")))
@@ -575,6 +577,7 @@ var _ = Describe("SpecGenerator", func() {
 					promptMgr,
 					false,
 					"",
+					project.Name("test-project"),
 				)
 				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
 					return os.WriteFile(
@@ -642,6 +645,7 @@ var _ = Describe("SpecGenerator", func() {
 				promptMgr,
 				true,
 				queueDir,
+				project.Name("test-project"),
 			)
 		})
 
@@ -661,7 +665,7 @@ var _ = Describe("SpecGenerator", func() {
 
 				Expect(executor.ExecuteCallCount()).To(Equal(1))
 				_, _, _, containerName := executor.ExecuteArgsForCall(0)
-				Expect(containerName).To(HavePrefix("dark-factory-gen-"))
+				Expect(containerName).To(HavePrefix("test-project-gen-"))
 
 				_, statErr := os.Stat(generatedPath)
 				Expect(statErr).NotTo(HaveOccurred())
@@ -787,6 +791,7 @@ var _ = Describe("SpecGenerator", func() {
 					promptMgr,
 					true,
 					queueDir,
+					project.Name("test-project"),
 				)
 
 				Expect(sgWithMigrator.Generate(ctx, specPath)).To(Succeed())

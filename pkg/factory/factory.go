@@ -310,7 +310,7 @@ func CreateRunner(
 		currentDateTimeGetter,
 	)
 	versionGetter := version.NewGetter(ver)
-	projectName := project.Resolve(cfg.ProjectName)
+	projectName := project.Resolve(cfg.ResolvedProjectOverride())
 	wakeup := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(
@@ -478,7 +478,7 @@ func CreateOneShotRunner(
 	promptManager, releaser := createPromptManager(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.CancelledDir, currentDateTimeGetter)
 	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
-	projectName := project.Resolve(cfg.ProjectName)
+	projectName := project.Resolve(cfg.ResolvedProjectOverride())
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -609,7 +609,7 @@ func CreateSpecGenerator(
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
 			containerImage,
-			project.Resolve(cfg.ProjectName).String(),
+			project.Resolve(cfg.ResolvedProjectOverride()).String(),
 			cfg.Model,
 			cfg.NetrcFile,
 			cfg.GitconfigFile,
@@ -634,6 +634,7 @@ func CreateSpecGenerator(
 		promptManager,
 		cfg.AutoApprovePrompts,
 		cfg.Prompts.InProgressDir,
+		project.Resolve(cfg.ResolvedProjectOverride()),
 	)
 }
 

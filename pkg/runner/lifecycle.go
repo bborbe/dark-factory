@@ -221,6 +221,7 @@ func resumeOrResetGenerating(
 	specsInProgressDir string,
 	checker executor.ContainerChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
 ) error {
 	entries, err := os.ReadDir(specsInProgressDir)
 	if err != nil {
@@ -233,7 +234,7 @@ func resumeOrResetGenerating(
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		if err := resumeOrResetGeneratingEntry(ctx, specsInProgressDir, entry.Name(), checker, currentDateTimeGetter); err != nil {
+		if err := resumeOrResetGeneratingEntry(ctx, specsInProgressDir, entry.Name(), checker, currentDateTimeGetter, projectName); err != nil {
 			return errors.Wrap(ctx, err, "resume or reset generating entry")
 		}
 	}
@@ -247,6 +248,7 @@ func resumeOrResetGeneratingEntry(
 	name string,
 	checker executor.ContainerChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
 ) error {
 	path := filepath.Join(specsInProgressDir, name)
 	sf, err := spec.Load(ctx, path, currentDateTimeGetter)
@@ -256,16 +258,26 @@ func resumeOrResetGeneratingEntry(
 	if spec.Status(sf.Frontmatter.Status) != spec.StatusGenerating {
 		return nil
 	}
-	// Derive container name from spec filename (dark-factory-gen-<basename>)
 	specBasename := strings.TrimSuffix(name, ".md")
-	containerName := "dark-factory-gen-" + specBasename
+	newName := projectName + "-gen-" + specBasename
+	legacyName := "dark-factory-gen-" + specBasename // legacy-compat: probe pre-spec-080 container name
 
-	running, err := checker.IsRunning(ctx, containerName)
+	running, err := checker.IsRunning(ctx, newName)
 	if err != nil {
-		slog.Warn("failed to check spec generation container liveness, resetting spec",
-			"file", name, "container", containerName, "error", err)
-		running = false
+		return errors.Wrapf(ctx, err, "check container running %s", newName)
 	}
+	containerName := newName
+	if !running {
+		legacyRunning, lerr := checker.IsRunning(ctx, legacyName)
+		if lerr != nil {
+			return errors.Wrapf(ctx, lerr, "check legacy container running %s", legacyName)
+		}
+		if legacyRunning {
+			containerName = legacyName
+			running = true
+		}
+	}
+
 	if running {
 		slog.Info("spec generation container still running, leaving as generating",
 			"file", name, "container", containerName)

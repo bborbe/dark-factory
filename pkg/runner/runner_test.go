@@ -1044,7 +1044,7 @@ var _ = Describe("Runner", func() {
 
 			Expect(containerChecker.IsRunningCallCount()).To(Equal(1))
 			_, name := containerChecker.IsRunningArgsForCall(0)
-			Expect(name).To(Equal("dark-factory-gen-042-my-spec"))
+			Expect(name).To(Equal("test-project-gen-042-my-spec"))
 		})
 
 		It("resets spec to approved when container is not running", func() {

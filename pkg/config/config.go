@@ -84,6 +84,7 @@ func (m ExtraMount) IsReadonly() bool {
 // Config holds the dark-factory configuration.
 type Config struct {
 	ProjectName            string              `yaml:"projectName"`
+	Project                *string             `yaml:"project,omitempty"`
 	Workflow               Workflow            `yaml:"workflow"`
 	PR                     bool                `yaml:"pr,omitempty"`
 	Worktree               bool                `yaml:"worktree,omitempty"`
@@ -170,6 +171,7 @@ func Defaults() Config {
 func (c Config) Validate(ctx context.Context) error {
 	return validation.All{
 		validation.Name("workflow", c.Workflow),
+		validation.Name("project", validation.HasValidationFunc(c.validateProject)),
 		validation.Name("inboxDir", validation.NotEmptyString(c.Prompts.InboxDir)),
 		validation.Name("inProgressDir", validation.NotEmptyString(c.Prompts.InProgressDir)),
 		validation.Name("completedDir", validation.NotEmptyString(c.Prompts.CompletedDir)),
@@ -244,6 +246,16 @@ func (c Config) Validate(ctx context.Context) error {
 	}.Validate(ctx)
 }
 
+// ResolvedProjectOverride returns the effective project name override string for project.Resolve().
+// The explicit `project:` field takes precedence over the legacy `projectName:` field.
+// Returns an empty string when neither is set; project.Resolve() handles the git-root fallback.
+func (c Config) ResolvedProjectOverride() string {
+	if c.Project != nil && strings.TrimSpace(*c.Project) != "" {
+		return *c.Project
+	}
+	return c.ProjectName
+}
+
 // ParsedPreflightInterval returns the parsed duration from PreflightInterval.
 // Returns 0 when PreflightInterval is empty (disables interval-based caching).
 // Safe to call at any time — returns 0 on error, never panics.
@@ -270,6 +282,16 @@ func (c Config) ParsedMaxPromptDuration() time.Duration {
 		return 0
 	}
 	return d
+}
+
+func (c Config) validateProject(ctx context.Context) error {
+	if c.Project == nil {
+		return nil
+	}
+	if strings.TrimSpace(*c.Project) == "" {
+		return errors.Errorf(ctx, "project must not be empty or whitespace-only when set")
+	}
+	return nil
 }
 
 func (c Config) validateModel(ctx context.Context) error {

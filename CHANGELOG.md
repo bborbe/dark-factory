@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.159.0
+
+- feat: Add optional `project:` field to `.dark-factory.yaml` config that overrides the container name prefix for spec-generation containers, with validation that rejects empty/whitespace-only values
+- feat: Rename spec-generation containers from `dark-factory-gen-<spec>` to `<project>-gen-<spec>` using `ContainerName.Sanitize()`; startup recovery probes both new and legacy container names for zero-downtime upgrade
+
 ## v0.158.0
 
 **Prompt writing detail-level spectrum + softer auditor.** Reframes "specificity over brevity" — over-specifying inlined Go ships the prompt author's bugs and prevents the agent from applying project conventions. New 5-level grain spectrum + writer-side discipline + mechanical auditor checks.

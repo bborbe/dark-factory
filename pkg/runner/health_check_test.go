@@ -563,7 +563,13 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 	})
 
 	It("returns nil when dir is empty", func() {
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -574,6 +580,7 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 			"/nonexistent/specs",
 			checker,
 			currentDateTime,
+			"test-project",
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
@@ -584,7 +591,13 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 			os.WriteFile(filepath.Join(specsInProgressDir, "notes.txt"), []byte("text"), 0600),
 		).To(Succeed())
 
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -592,7 +605,13 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 	It("skips spec not in generating state", func() {
 		writeSpecFile(specsInProgressDir, "001-myspec.md", "approved")
 
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(0))
 	})
@@ -601,7 +620,13 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 		writeSpecFile(specsInProgressDir, "001-myspec.md", "generating")
 		checker.IsRunningReturns(true, nil)
 
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(1))
 
@@ -613,13 +638,19 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 		path := writeSpecFile(specsInProgressDir, "001-myspec.md", "generating")
 		checker.IsRunningReturns(false, nil)
 
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(checker.IsRunningCallCount()).To(Equal(1))
 
 		// Verify container name derived correctly
 		_, containerName := checker.IsRunningArgsForCall(0)
-		Expect(containerName).To(Equal("dark-factory-gen-001-myspec"))
+		Expect(containerName).To(Equal("test-project-gen-001-myspec"))
 
 		content, _ := os.ReadFile(path)
 		Expect(string(content)).To(ContainSubstring("status: approved"))
@@ -629,7 +660,13 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 		path := writeSpecFile(specsInProgressDir, "001-myspec.md", "generating")
 		checker.IsRunningReturns(false, fmt.Errorf("docker error"))
 
-		err := runner.CheckGeneratingSpecsForTest(ctx, specsInProgressDir, checker, currentDateTime)
+		err := runner.CheckGeneratingSpecsForTest(
+			ctx,
+			specsInProgressDir,
+			checker,
+			currentDateTime,
+			"test-project",
+		)
 		Expect(err).NotTo(HaveOccurred())
 
 		content, _ := os.ReadFile(path)

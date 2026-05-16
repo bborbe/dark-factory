@@ -159,3 +159,16 @@ Operators continue the SSH-and-reproduce cycle on every git failure — minutes 
 - Operator-hint pattern matching ("hint: worktree is dirty; commit or stash before retry" prepended on known stderr patterns) — explicitly deferrable to a follow-up spec. Verbatim stderr alone closes ~90% of the diagnostic gap.
 - Any change to the workflow-setup control flow. The daemon correctly aborts on a failed merge; only the failure-reporting path is in scope.
 - Changes to error rendering outside `pkg/git/` and the immediate operator-facing surfaces (log line, `prompt show`).
+
+## Verification Result
+
+**Verified:** 2026-05-16T20:27:19Z (HEAD a2d2abb)
+**Binary:** /tmp/new-dark-factory (built from a2d2abb at 2026-05-16T22:24:55+02:00)
+**Scenario:** AC1 re-audit walked every `exec.CommandContext(ctx, "git", ...)` site in `pkg/git/` production code (git.go, brancher.go, cloner.go, bitbucket_remote.go, worktreer.go, root.go); confirmed each captures stderr via `Stderr=&buf` and includes `truncateStderr(...)` in wrapped errors. AC2-AC8 already verified in prior run; AC7 re-confirmed via fresh `make precommit`.
+**Evidence:**
+- AC1 fix sites confirmed: brancher.go:441-451 (MergeToDefault checkout captures `checkoutStderr`, wraps via `truncateStderr`); cloner.go:85-91 (setRealRemote `remote get-url` captures `remoteStderr`, wraps via `truncateStderr`)
+- AC1 cleanup sites confirmed: brancher.go:454-465 (MergeToDefault merge via `truncateStderr`), brancher.go:483-498 (FetchBranch via `truncateStderr`)
+- AC1 full audit: 36 production git shell-out sites; all capture stderr (probe sites at brancher.go:217 and cloner.go:107 are best-effort by design and documented as such)
+- AC7: `make precommit` exit 0, final line `ready to commit`
+- truncateStderr documented at pkg/git/stderr.go:14 with explicit 8 KiB limit and `(truncated)` marker
+**Verdict:** PASS

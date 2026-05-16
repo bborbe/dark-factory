@@ -335,6 +335,7 @@ func CreateRunner(
 			promptManager,
 			currentDateTimeGetter,
 			cfg.MaxContainers,
+			projectName,
 		)
 	}
 
@@ -686,6 +687,7 @@ func createStatusChecker(
 	projectMax int,
 	dirtyFileThreshold int,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName project.Name,
 ) status.Checker {
 	projectDir, _ := os.Getwd()
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
@@ -694,6 +696,7 @@ func createStatusChecker(
 		globalCfg = globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
 	}
 	return status.NewChecker(
+		projectName,
 		projectDir,
 		inProgressDir,
 		completedDir,
@@ -977,6 +980,7 @@ func CreateServer(
 	promptManager *prompt.Manager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectMaxContainers int,
+	projectName project.Name,
 ) server.Server {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	statusChecker := createStatusChecker(
@@ -989,6 +993,7 @@ func CreateServer(
 		projectMaxContainers,
 		0, // CreateServer has no dirty-file threshold — server is status-only
 		currentDateTimeGetter,
+		projectName,
 	)
 
 	// Build the mux with all routes
@@ -1038,6 +1043,7 @@ func CreateStatusCommand(
 		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
+		project.Resolve(cfg.ResolvedProjectOverride()),
 	)
 	formatter := status.NewFormatter()
 
@@ -1323,6 +1329,7 @@ func CreateCombinedStatusCommand(
 		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
+		project.Resolve(cfg.ResolvedProjectOverride()),
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

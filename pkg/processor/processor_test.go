@@ -388,7 +388,7 @@ var _ = Describe("Processor", func() {
 		// Verify executor was called with correct log path
 		_, _, logFile, containerName := executor.ExecuteArgsForCall(0)
 		Expect(logFile).To(Equal(filepath.Join(promptsDir, "log", "001-test.log")))
-		Expect(containerName).To(Equal("test-project-001-test"))
+		Expect(containerName).To(Equal("test-project-exec-001-test"))
 
 		// Verify Load was called (processor uses Load/Save pattern now)
 		Expect(manager.LoadCallCount()).To(BeNumerically(">=", 1))
@@ -1073,7 +1073,7 @@ var _ = Describe("Processor", func() {
 
 		// Verify container name was sanitized
 		_, _, _, containerName := executor.ExecuteArgsForCall(0)
-		Expect(containerName).To(Equal("test-project-001-test-file-name"))
+		Expect(containerName).To(Equal("test-project-exec-001-test-file-name"))
 
 		cancel()
 	})

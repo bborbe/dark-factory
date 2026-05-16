@@ -586,6 +586,7 @@ specs:
 | Field | Default | Purpose |
 |-------|---------|---------|
 | `projectName` | (auto-detected) | Override project name in notifications and logs |
+| `project` | — | Optional override for the Docker container name prefix (`<project>-gen-<spec>`, `<project>-exec-<prompt>`). When absent, defaults to the git working tree root directory basename. Rejects empty or whitespace-only values. |
 | `debounceMs` | `500` | File watcher debounce in milliseconds |
 | `serverPort` | `0` | REST API port (0 = disabled) |
 

@@ -27,6 +27,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -142,6 +143,7 @@ var _ = Describe("Factory", func() {
 				nil, // promptManager not needed for nil check
 				libtime.NewCurrentDateTime(),
 				0,
+				project.Name("test-project"),
 			)
 			Expect(server).NotTo(BeNil())
 		})

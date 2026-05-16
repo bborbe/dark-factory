@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.160.0
+
+- feat: Container names now follow `<project>-gen-<spec>` and `<project>-exec-<prompt>` schema (was `dark-factory-gen-<spec>` and `<project>-<prompt>`). The project name defaults to the git root directory basename. External tooling that greps for `dark-factory-gen-` must be updated to grep for `-gen-` or `<project>-gen-`. The optional `project:` field in `.dark-factory.yaml` overrides the project name.
+
 ## v0.159.0
 
 - feat: Add optional `project:` field to `.dark-factory.yaml` config that overrides the container name prefix for spec-generation containers, with validation that rejects empty/whitespace-only values

@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/status"
 )
@@ -58,6 +59,7 @@ var _ = Describe("StatusChecker", func() {
 
 		promptMgr = &mocks.StatusPromptManager{}
 		statusChecker = status.NewChecker(
+			project.Name("test-project"),
 			"",
 			queueDir,
 			completedDir,
@@ -294,6 +296,7 @@ status: executing
 
 			// Create checker with log directory
 			checkerWithLogs := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -320,6 +323,7 @@ status: executing
 
 			// Create checker with non-existent log directory
 			checkerWithLogs := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -519,6 +523,7 @@ container: dark-factory-nonexistent-container-xyz
 			counter.CountRunningReturns(2, nil)
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -547,6 +552,7 @@ container: dark-factory-nonexistent-container-xyz
 			counter.CountRunningReturns(0, stderrors.New("docker not available"))
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -573,6 +579,7 @@ container: dark-factory-nonexistent-container-xyz
 			counter := &mocks.ContainerCounter{}
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -606,6 +613,7 @@ container: dark-factory-nonexistent-container-xyz
 			).To(Succeed())
 
 			checkerWithProject := status.NewChecker(
+				project.Name("test-project"),
 				tempDir,
 				queueDir,
 				completedDir,
@@ -630,6 +638,7 @@ container: dark-factory-nonexistent-container-xyz
 
 		It("leaves GitIndexLock false when .git/index.lock does not exist", func() {
 			checkerWithProject := status.NewChecker(
+				project.Name("test-project"),
 				tempDir,
 				queueDir,
 				completedDir,
@@ -654,6 +663,7 @@ container: dark-factory-nonexistent-container-xyz
 
 		It("reflects DirtyFileThreshold from checker config", func() {
 			checkerWithThreshold := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -684,6 +694,7 @@ container: dark-factory-nonexistent-container-xyz
 			runner.RunWithWarnAndTimeoutDirReturns(nil, context.DeadlineExceeded)
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				tempDir,
 				queueDir,
 				completedDir,
@@ -713,6 +724,7 @@ container: dark-factory-nonexistent-container-xyz
 			runner.RunWithWarnAndTimeoutDirReturns([]byte{}, nil)
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -758,6 +770,7 @@ container: dark-factory-006
 			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				"",
 				queueDir,
 				completedDir,
@@ -787,6 +800,7 @@ container: dark-factory-006
 			counter.CountRunningReturns(0, context.DeadlineExceeded)
 
 			checker := status.NewChecker(
+				project.Name("test-project"),
 				tempDir,
 				queueDir,
 				completedDir,
@@ -810,6 +824,42 @@ container: dark-factory-006
 			Expect(st.DirtyFileCheckSkipped).To(BeTrue())
 			Expect(st.GeneratingSpecSkipped).To(BeTrue())
 			Expect(st.ContainerCountSkipped).To(BeTrue())
+		})
+	})
+
+	Describe("populateGeneratingSpec project-aware filter", func() {
+		It("parses generating container name with project-aware prefix", func() {
+			runner := &mocks.SubprocRunner{}
+			runner.RunWithWarnAndTimeoutReturns([]byte("maintainer-gen-031-my-spec\n"), nil)
+			runner.RunWithWarnAndTimeoutDirReturns([]byte{}, nil)
+
+			checker := status.NewChecker(
+				project.Name("maintainer"),
+				"",
+				queueDir,
+				completedDir,
+				"prompts/log",
+				lockFilePath,
+				8080,
+				promptMgr,
+				nil,
+				0,
+				0,
+				libtime.NewCurrentDateTime(),
+				runner,
+			)
+
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+
+			st, err := checker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.GeneratingSpec).To(Equal("031-my-spec"))
+			Expect(st.GeneratingContainer).To(Equal("maintainer-gen-031-my-spec"))
+
+			// Verify the filter string passed to the subprocess includes the project-aware prefix
+			_, _, _, args := runner.RunWithWarnAndTimeoutArgsForCall(0)
+			Expect(args).To(ContainElement("name=maintainer-gen-"))
 		})
 	})
 })

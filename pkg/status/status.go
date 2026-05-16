@@ -19,6 +19,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
@@ -81,6 +82,7 @@ type Checker interface {
 
 // checker implements Checker.
 type checker struct {
+	projectName           project.Name
 	projectDir            string
 	queueDir              string
 	completedDir          string
@@ -97,6 +99,7 @@ type checker struct {
 
 // NewChecker creates a new Checker with additional options.
 func NewChecker(
+	projectName project.Name,
 	projectDir string,
 	queueDir string,
 	completedDir string,
@@ -111,6 +114,7 @@ func NewChecker(
 	subprocRunner subproc.Runner,
 ) Checker {
 	return &checker{
+		projectName:           projectName,
 		projectDir:            projectDir,
 		queueDir:              queueDir,
 		completedDir:          completedDir,
@@ -537,10 +541,10 @@ func (s *checker) isContainerRunning(
 
 // populateGeneratingSpec checks for running spec generation containers and populates status.
 func (s *checker) populateGeneratingSpec(ctx context.Context, st *Status) {
-	const genPrefix = "dark-factory-gen-"
+	genPrefix := string(s.projectName) + "-gen-"
 	out, err := s.subprocRunner.RunWithWarnAndTimeout(
 		ctx,
-		"docker ps --filter name=dark-factory-gen-",
+		"docker ps --filter name="+genPrefix,
 		"docker",
 		"ps",
 		"--filter",

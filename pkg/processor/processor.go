@@ -501,6 +501,6 @@ func computePromptMetadata(
 	projectName project.Name,
 ) (prompt.BaseName, prompt.ContainerName) {
 	base := prompt.BaseName(strings.TrimSuffix(filepath.Base(promptPath), ".md"))
-	name := prompt.ContainerName(string(projectName) + "-" + string(base)).Sanitize()
+	name := prompt.ContainerName(string(projectName) + "-exec-" + string(base)).Sanitize()
 	return base, name
 }

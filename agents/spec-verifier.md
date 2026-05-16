@@ -71,6 +71,86 @@ HEAD: $HEAD_SHA  ($(git -C "$DF_REPO_ROOT" log -1 --format='%s'))
 
 If the operator's installed `dark-factory --version` already matches `HEAD_SHA`, you may skip the build and use the installed binary — but still announce which path will be used.
 
+## Phase 0.5: Target deploy freshness (when the spec has Post-Deploy ACs)
+
+Phase 0 covers the dark-factory binary. This phase covers the **target system the spec changes** — typically a service deployed to k8s in a separate repo (e.g. `bborbe/agent`, `bborbe/vault-cli`). The same logic applies: a spec whose ACs require the fix to be running cannot be verified against a pre-fix deployment.
+
+Today's anti-evidence pattern #4 catches stale deploys reactively during the AC walk, but only after the operator has answered most of Phase 4. This phase refuses upfront so the operator runs `make buca` (or equivalent) before any AC walkthrough begins.
+
+### Detection
+
+Scan the spec's `## Acceptance Criteria` section for ACs marked with the prefix `**Post-Deploy (Rung-N):**` at the start of the AC body (N is 2 or 3). For each such AC, extract two evidence lines that MUST appear inside the same bullet (or as nested lines below it):
+
+- `deploy_check:` — a shell command that prints the deployed version token to stdout
+- `deploy_target:` — the expected token to compare against (literal string, or a `$(git rev-parse --short HEAD)`-style expansion)
+
+```bash
+# Extract Post-Deploy ACs and their deploy_check/deploy_target lines
+grep -nA 4 '\*\*Post-Deploy (Rung-' "<spec-path>"
+```
+
+If zero Post-Deploy ACs are found, **skip Phase 0.5 entirely** and announce:
+
+```
+Phase 0.5: skipped — no Post-Deploy ACs declared
+```
+
+Then proceed to Phase 1.
+
+### Spec-format guard
+
+If a Post-Deploy AC is found WITHOUT both `deploy_check:` and `deploy_target:` lines, refuse immediately:
+
+```
+Phase 0.5 FAIL — spec-format error
+  AC: "<AC text>"
+  Missing: deploy_check / deploy_target evidence shape
+
+Fix: edit the spec to add the two evidence lines under this AC, re-run /dark-factory:audit-spec, then re-run verify-spec.
+```
+
+Do not advance to Phase 1.
+
+### Execute checks
+
+For each Post-Deploy AC, run its `deploy_check:` command exactly once via `bash -lc` from the spec's host-repo root (the repo containing the spec file). Capture stdout, stderr, and exit code. Resolve `deploy_target:` (e.g. expand `$(git rev-parse --short HEAD)` against the host repo's HEAD).
+
+Compare captured stdout to the resolved target as **literal strings** (after trimming whitespace). Substring match counts as PASS only if the spec author wrote a substring-friendly target (the spec writing guide covers the conventions).
+
+If the check command exits non-zero, treat it as FAIL — report the captured stderr verbatim so the operator can fix the precondition (auth, network, missing pod).
+
+### Report and gate
+
+On any FAIL:
+
+```
+Phase 0.5 FAIL — target deploy is stale
+
+AC: "<AC text>"
+  env:       <label the spec author declared, e.g. dev / prod>
+  captured:  <stdout of deploy_check, trimmed>
+  required:  <resolved deploy_target>
+  fix:       <exact command the spec author wrote for this AC>
+
+Spec stays in `specs/in-progress/`. Re-run verify-spec after the deploy completes and the new pod is serving.
+```
+
+Do NOT advance to Phase 1. Do NOT call `dark-factory spec complete`.
+
+On PASS for every check, announce each environment with its captured token:
+
+```
+Phase 0.5 PASS
+  dev:  <captured-token>  (target <required-token>) ✅
+  prod: <captured-token>  (target <required-token>) ✅
+```
+
+Capture the tokens — they get reused in Phase 7's `## Verification Result` `**Binary:**` line so the appended block records exactly which deployed version proved the spec.
+
+### Interaction with Phase 0
+
+Phase 0 runs first for dark-factory's own specs and ensures the verifier itself is fresh. Phase 0.5 runs after, regardless of which repo the spec targets, and gates on whether the *target system* is fresh. Both can apply to the same spec (a dark-factory spec that also requires a deployed dark-factory daemon). For specs that target dark-factory's own daemon, the `deploy_check:` typically queries the running daemon's reported version against `$HEAD_SHA`.
+
 ## Phase 1: Preconditions
 
 1. Read the spec file at the path provided by the caller.

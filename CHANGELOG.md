@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- feat: `spec-verifier` agent gains Phase 0.5 — target-deploy freshness gate that runs before the AC walk when the spec declares Post-Deploy ACs. Refuses verification upfront if any environment is pre-fix, naming the captured-vs-required tokens and the exact deploy command. Catches stale-deploy verification cheaply rather than reactively during Phase 4 anti-evidence.
+- feat: `spec-writing.md` documents the `**Post-Deploy (Rung-N):**` AC marker and the `deploy_check:` / `deploy_target:` evidence shapes the verifier consumes.
+- feat: `spec-auditor` agent gains a Post-Deploy marker check — ACs whose body queries a deployed system (`kubectlquant`, `kubectl -n`, `make buca` evidence, `--version` against a deployed binary) without the marker + evidence lines are flagged as Critical. Specs already in `specs/in-progress/` and `specs/completed/` are grandfathered.
+
 ## v0.161.1
 
 - fix: git wrappers in pkg/git/ now capture stderr and include it verbatim in errors, so dirty-tree, auth, and network failures are diagnosable from the daemon log without manual worktree reproduction

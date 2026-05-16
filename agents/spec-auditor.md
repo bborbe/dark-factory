@@ -267,6 +267,29 @@ For each AC that does NOT declare an evidence shape, raise as a **Recommendation
 Flag pattern in report:
 > AC #N ("...text...") declares no evidence shape. Suggest: `evidence: <shape>` — e.g. `grep -n 'foo' bar.md` returns ≥1 line.
 
+### Post-Deploy AC marker check (always run)
+
+Any AC whose body queries a deployed system MUST carry the `**Post-Deploy (Rung-N):**` prefix and two extra evidence lines (`deploy_check:` and `deploy_target:`). The `spec-verifier` agent's Phase 0.5 extracts these to gate verification before the AC walk — without them, a stale deploy is only caught reactively.
+
+**Trigger heuristics — flag any AC body containing:**
+
+- `kubectlquant`, `kubectl ` (with namespace flag), `oc ` — k8s queries against a running cluster
+- `make buca` referenced as part of the evidence path
+- `--version` or `/version` against a deployed binary
+- A pod-image SHA query, `crictl`, `helm get`, an `image:` field reference
+
+For each match:
+
+1. Check that the AC body starts with `**Post-Deploy (Rung-2):**` or `**Post-Deploy (Rung-3):**`.
+2. Check that both `deploy_check:` and `deploy_target:` lines appear as nested bullets directly under the AC.
+3. If the marker is missing OR either evidence line is missing → flag as **Critical Issue** (the verifier will refuse with a spec-format error on Phase 0.5).
+4. If the marker is present but the AC describes a build-time check that doesn't touch a deployed system → flag as **Recommendation** to remove the marker (false-positive declarations confuse the verifier's gate).
+
+**Grandfathering:** specs already in `specs/in-progress/` or `specs/completed/` are not retroactively flagged — only specs in the `specs/` inbox (status `idea` or `draft`) under active edit. The auditor MUST check the spec's directory and skip the check entirely on in-progress/completed files.
+
+Flag pattern in report:
+> AC #N ("...text...") queries deployed system (matches `kubectlquant -n dev get jobs`) but lacks the `**Post-Deploy (Rung-N):**` marker and `deploy_check:` / `deploy_target:` evidence lines. The spec-verifier's Phase 0.5 will refuse with a spec-format error. Add the marker and the two evidence lines (see `docs/spec-writing.md#post-deploy-acs`).
+
 ## Adversarial Laziness Pass (always run — verdict drives scoring at -2, individual under-specified ACs are Recommendations)
 
 Read the spec assuming the author intends the **laziest possible implementation that still passes every Acceptance Criterion**. Ask: what would that implementation look like?

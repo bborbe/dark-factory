@@ -138,6 +138,34 @@ Specs that only assert positives miss invariants. For any AC of the form "X is N
 
 The point is not to inline test scripts — it's to make the AC's *observable target* unambiguous.
 
+### Post-Deploy ACs — declare the deployment freshness check
+
+Any AC that observes a *deployed* system (k8s pod, running daemon, live HTTP endpoint, in-cluster log) MUST mark itself with the prefix `**Post-Deploy (Rung-N):**` (N is 2 or 3 per the project's verification ladder) and declare two extra evidence-shape lines: `deploy_check:` and `deploy_target:`.
+
+The `spec-verifier` agent runs Phase 0.5 before the AC walk: it executes every `deploy_check:`, compares stdout against the resolved `deploy_target:`, and refuses verification upfront if any environment is pre-fix. This catches stale deploys before the operator burns time on Phase 4 anti-evidence checks.
+
+**Shape:**
+
+```markdown
+- [ ] **Post-Deploy (Rung-2):** the new gate fires in dev — evidence: `kubectlquant -n dev logs <executor-pod> --since=15m | grep spawn_suppressed` returns ≥1 line referencing the task id.
+  - `deploy_check:` `kubectlquant -n dev get deploy/agent-task-executor -o jsonpath='{.spec.template.spec.containers[0].image}' | awk -F: '{print $NF}'`
+  - `deploy_target:` `$(git rev-parse --short HEAD)`
+```
+
+**Rules:**
+
+- The marker `**Post-Deploy (Rung-N):**` is positional — it MUST be the first token of the AC body. The verifier extracts on this exact substring.
+- `deploy_check:` runs via `bash -lc` from the spec's host-repo root. It may `cd` internally but must not assume a specific CWD. Exit non-zero on failure.
+- `deploy_target:` is treated as a literal string after `bash -c` expansion. Compare cleanly: prefer short SHAs (`git rev-parse --short HEAD`), exact semver tags, or substrings that the deploy-check command emits verbatim. The verifier does NOT do semver-aware comparison.
+- One `deploy_check:` per environment. If a spec has Rung-2 (dev) AND Rung-3 (prod) ACs, write two ACs with two checks. Each AC is independently gated.
+- If the spec's AC body mentions `kubectlquant`, `make buca`, `--version`, or any pod-image query but the marker is absent, the `spec-auditor` flags it as a spec-format violation. Add the marker and the two evidence lines.
+
+**When NOT to use Post-Deploy markers:**
+
+- Build-time ACs (`make precommit` exits 0, `grep` of source files, unit-test row names). These run in CI/local, not against a deployed system.
+- File-presence / doc-content / CHANGELOG ACs. The artifact lives in the repo, not in a cluster.
+- Scenario ACs that build a fresh binary in `/tmp/`. The scenario harness is its own freshness mechanism (see `docs/releasing-dark-factory.md`).
+
 ## Adversarial Laziness Test
 
 Before finalizing, read your spec assuming the implementer intends the **laziest implementation that still passes every Acceptance Criterion.** Ask:

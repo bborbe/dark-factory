@@ -116,6 +116,8 @@ Description line right after the title — one sentence starting with "Validates
 
 **5. Keep it short.** A scenario with 20+ checkboxes is too large. Split it.
 
+**6. Factor reusable setup into building-block helpers, not full auto-runners.** When the same setup recurs across scenarios — preparing a content directory, starting a server, building a fresh binary — extract it into `scenarios/helper/<verb>-<noun>.sh` (e.g. `setup-content-dir.sh`, `start-http-server.sh`, `stop-server.sh`, `probe-stdio.sh`). The scenario's Setup block then reads one line per helper: `bash scenarios/helper/setup-X.sh`. Action and Expected blocks stay in markdown — assertions are usually scenario-specific, no point factoring them out. Reach for a full `run-NNN-all.sh` auto-runner only when you have ~10+ scenarios and walking by hand has become the bottleneck. Premature auto-runners hide what's actually being tested and lock in orchestration that may not fit later scenarios.
+
 ## Example
 
 ```markdown

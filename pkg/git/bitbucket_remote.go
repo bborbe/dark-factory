@@ -69,7 +69,12 @@ func ParseBitbucketRemoteFromGit(
 	cmd.Stderr = &stderrBuf
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, errors.Wrapf(ctx, err, "get git remote url: %s", truncateStderr(stderrBuf.String()))
+		return nil, errors.Wrapf(
+			ctx,
+			err,
+			"get git remote url: %s",
+			truncateStderr(stderrBuf.String()),
+		)
 	}
 	remoteURL := strings.TrimSpace(string(output))
 	return ParseBitbucketRemoteURL(ctx, remoteURL)

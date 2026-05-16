@@ -16,7 +16,13 @@
 #
 # Functions:
 #   build_binary [SRC_DIR]      — go build -o $BIN .
-#   scenario_setup [YAML]       — mktemp + git init + write .dark-factory.yaml + cd
+#   scenario_setup [YAML]       — mktemp + git init + write .dark-factory.yaml + cd (empty sandbox)
+#   setup_sandbox_copy [YAML] [SUBDIR] [SANDBOX_SRC] — mktemp + cp dark-factory-sandbox + write
+#                                  .dark-factory.yaml + init bare remote + set origin + cd (full
+#                                  sandbox copy with bare remote, suitable for scenarios that
+#                                  exercise real prompts/specs against the canonical test repo)
+#   cleanup_sandbox [WORK_DIR]  — rm -rf the given dir (or $WORK_DIR if omitted); use when an
+#                                  explicit cleanup is desired and the EXIT trap is not enough
 #   scenario_run ARGS...        — run "$BIN run ARGS..." with a timeout
 #   scenario_run_command ARGS...— run "$BIN ARGS..." (no implicit "run" subcommand)
 #   reset_yaml_workflow_pr      — strip workflow/pr/autoMerge lines from .dark-factory.yaml
@@ -54,6 +60,45 @@ scenario_setup() {
   git -c user.email=t@t -c user.name=t commit -qm init
   echo "→ sandbox: $WORK_DIR"
   echo "→ HOME:    $HOME"
+}
+
+setup_sandbox_copy() {
+  # Copy the dark-factory-sandbox repo into a temp dir, write .dark-factory.yaml,
+  # init a bare remote, redirect origin to it, and cd into the sandbox.
+  # Sets WORK_DIR. Registers an EXIT trap to clean up.
+  #
+  # Usage:
+  #   setup_sandbox_copy                                      # default yaml, default subdir "sandbox", default source
+  #   setup_sandbox_copy "$(printf 'workflow: pr\n')"         # custom yaml
+  #   setup_sandbox_copy "$YAML" "dark-factory-sandbox"       # name the subdir (some scenarios use this name)
+  #   setup_sandbox_copy "$YAML" "sandbox" /path/to/sandbox   # override source path
+  local yaml=${1:-$'workflow: direct\nautoRelease: false\nmaxContainers: 999\n'}
+  local subdir=${2:-sandbox}
+  local sandbox_src=${3:-${DARK_FACTORY_SANDBOX:-$HOME/Documents/workspaces/dark-factory-sandbox}}
+  if [ ! -d "$sandbox_src" ]; then
+    echo "setup_sandbox_copy: sandbox source missing: $sandbox_src" >&2
+    return 1
+  fi
+  WORK_DIR=$(mktemp -d)
+  trap 'rm -rf "$WORK_DIR"' EXIT
+  cp -r "$sandbox_src" "$WORK_DIR/$subdir"
+  cd "$WORK_DIR/$subdir"
+  printf '%s' "$yaml" > .dark-factory.yaml
+  git init --bare "$WORK_DIR/remote.git" >/dev/null 2>&1
+  git remote set-url origin "$WORK_DIR/remote.git"
+  echo "→ sandbox: $WORK_DIR/$subdir"
+  echo "→ remote:  $WORK_DIR/remote.git"
+}
+
+cleanup_sandbox() {
+  # Explicit cleanup, in case the caller doesn't want to wait for the EXIT trap.
+  # Usage:
+  #   cleanup_sandbox             # uses $WORK_DIR
+  #   cleanup_sandbox /path/dir
+  local dir=${1:-${WORK_DIR:-}}
+  if [ -n "$dir" ] && [ -d "$dir" ]; then
+    rm -rf "$dir"
+  fi
 }
 
 write_global_config() {

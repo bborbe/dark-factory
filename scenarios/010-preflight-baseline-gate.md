@@ -62,7 +62,7 @@ PROMPT
 timeout 30s /tmp/new-dark-factory daemon > daemon.log 2>&1 || true
 ```
 
-- [ ] Daemon ran for ~30s then exited via timeout
+- [ ] Daemon exited (fail-fast on baseline failure — typically within a few seconds, not a full 30s timeout)
 - [ ] `daemon.log` exists
 
 ## Expected
@@ -73,16 +73,17 @@ timeout 30s /tmp/new-dark-factory daemon > daemon.log 2>&1 || true
 
 ### Failure report includes command and captured output
 - [ ] `daemon.log` contains the configured command (`echo BASELINE_BROKEN_MARKER`)
-- [ ] `daemon.log` contains the captured stderr token `BASELINE_BROKEN_MARKER`
+- [ ] `daemon.log` contains the captured stderr token `BASELINE_BROKEN_MARKER` as part of the FAILED report (not just inside the config-dump line)
+
+### Daemon exits fail-fast (does NOT busy-loop, does NOT keep retrying)
+- [ ] `daemon.log` contains `preflight baseline broken — dark-factory exiting`
+- [ ] `daemon.log` contains exactly ONE occurrence of `baseline check FAILED` (no retry loop)
+- [ ] `daemon.log` total line count < 50 (fail-fast exit, not cadence loop)
 
 ### Prompt stays queued, does not execute
 - [ ] `math_abs.go` does NOT contain `preflight-canary`
-- [ ] Prompt file is still in `prompts/` with `status: queued` (not moved to `completed/` or `failed/`)
+- [ ] Prompt file is still in `prompts/in-progress/` with status `approved` (not moved to `completed/` or `failed/`)
 - [ ] No container launched (no `[read]` / `[edit]` entries under `prompts/log/`)
-
-### Gate runs on cadence, not busy-loop
-- [ ] `daemon.log` contains < 100 lines with `baseline check FAILED` over the 30s window
-- [ ] `daemon.log` total line count < 500
 
 ## Green path (optional extension)
 

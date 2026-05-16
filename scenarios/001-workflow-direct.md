@@ -11,19 +11,12 @@ Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 ## Setup
 
 ```bash
-go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
-WORK_DIR=$(mktemp -d)
-cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
-cd "$WORK_DIR/dark-factory-sandbox"
-cat > .dark-factory.yaml << 'YAML'
-workflow: direct
-autoRelease: true
-maxContainers: 999
-YAML
-# Redirect push to local bare repo (avoid polluting real remote)
-git init --bare "$WORK_DIR/remote.git"
-git remote set-url origin "$WORK_DIR/remote.git"
+source ~/Documents/workspaces/dark-factory/scenarios/helper/lib.sh
+build_binary
+setup_sandbox_copy "$(printf 'workflow: direct\nautoRelease: true\nmaxContainers: 999\n')" dark-factory-sandbox
 ```
+
+`setup_sandbox_copy` sets `WORK_DIR`, copies the sandbox into `$WORK_DIR/dark-factory-sandbox`, writes `.dark-factory.yaml`, creates a local bare remote at `$WORK_DIR/remote.git`, redirects `origin` to it, and `cd`s into the sandbox. An EXIT trap removes `$WORK_DIR` when the shell exits.
 
 - [ ] Repo has `workflow: direct` in `.dark-factory.yaml`
 - [ ] Repo has `CHANGELOG.md` with at least one version entry
@@ -46,6 +39,8 @@ git remote set-url origin "$WORK_DIR/remote.git"
 
 ## Cleanup
 
+Automatic — the EXIT trap registered by `setup_sandbox_copy` removes `$WORK_DIR` when the shell exits. To clean up explicitly mid-session:
+
 ```bash
-rm -rf "$WORK_DIR"
+cleanup_sandbox
 ```

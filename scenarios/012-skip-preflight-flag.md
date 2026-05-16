@@ -83,9 +83,9 @@ timeout 60s /tmp/new-dark-factory run --skip-preflight > run-skip.log 2>&1 || tr
 - [ ] `run-skip.log` contains `preflight: baseline check disabled for this invocation`
 
 ### No baseline-failure report emitted
-- [ ] `run-skip.log` does NOT contain `BASELINE_BROKEN_MARKER`
 - [ ] `run-skip.log` does NOT contain `preflight: baseline check FAILED`
 - [ ] `run-skip.log` does NOT contain `preflight: running baseline check`
+- [ ] `run-skip.log` does NOT contain `BASELINE_BROKEN_MARKER` outside the `effective config` line (the literal string appears verbatim in the `preflightCommand=...` config dump, which is config inspection, not a failure event). Detection: `grep BASELINE_BROKEN_MARKER run-skip.log | grep -v 'effective config'` returns zero lines.
 
 ### Prompt executes through normal flow
 - [ ] `run-skip.log` contains evidence of container launch (e.g. `starting container` or `executing prompt`)

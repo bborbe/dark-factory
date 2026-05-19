@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.163.4
+
+- chore: Bump default container image to claude-yolo:v0.8.1 (ANTHROPIC_MODEL-aware model resolution for alt-provider routing + one-shot prompt-file permission fix)
+
 ## v0.163.3
 
 - fix: `validateClaudeAuth` no longer blocks dark-factory launch when the merged container env provides alt-provider auth (`ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`). Required for routing to MiniMax and other Anthropic-compatible providers without an OAuth token on disk.

@@ -27,6 +27,7 @@ require (
 	github.com/securego/gosec/v2 v2.26.1
 	github.com/segmentio/golines v0.13.0
 	github.com/shoenig/go-modtool v0.7.1
+	github.com/stretchr/testify v1.11.1
 	go.uber.org/goleak v1.3.0
 	golang.org/x/vuln v1.3.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -367,7 +368,6 @@ require (
 	github.com/ssgreg/nlreturn/v2 v2.2.1 // indirect
 	github.com/stbenjam/no-sprintf-host-port v0.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tetafro/godot v1.5.6 // indirect
 	github.com/thoas/go-funk v0.9.3 // indirect

@@ -7,6 +7,7 @@ package globalconfig
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,12 @@ const ModelPattern = `^[a-zA-Z0-9._:/-]{1,256}$`
 // EXPORTED so pkg/config and main.go reuse the SAME compiled regex — do not duplicate the pattern.
 var ModelRegex = regexp.MustCompile(ModelPattern)
 
+// envKeyPattern is the required format for environment variable key names.
+const envKeyPattern = `^[A-Z_][A-Z0-9_]*$`
+
+// envKeyRegexp validates environment variable key names.
+var envKeyRegexp = regexp.MustCompile(envKeyPattern)
+
 // userHomeDir is a variable so tests can override the home directory lookup.
 var userHomeDir = os.UserHomeDir
 
@@ -36,12 +43,13 @@ var userHomeDir = os.UserHomeDir
 // It is loaded from ~/.dark-factory/config.yaml once at daemon startup.
 // When the file does not exist or the field is omitted, defaults apply.
 type GlobalConfig struct {
-	MaxContainers      int     `yaml:"maxContainers"`
-	HideGit            *bool   `yaml:"hideGit,omitempty"`
-	AutoRelease        *bool   `yaml:"autoRelease,omitempty"`
-	DirtyFileThreshold *int    `yaml:"dirtyFileThreshold,omitempty"`
-	Model              *string `yaml:"model,omitempty"`
-	AutoApprovePrompts *bool   `yaml:"autoApprovePrompts,omitempty"`
+	MaxContainers      int               `yaml:"maxContainers"`
+	HideGit            *bool             `yaml:"hideGit,omitempty"`
+	AutoRelease        *bool             `yaml:"autoRelease,omitempty"`
+	DirtyFileThreshold *int              `yaml:"dirtyFileThreshold,omitempty"`
+	Model              *string           `yaml:"model,omitempty"`
+	AutoApprovePrompts *bool             `yaml:"autoApprovePrompts,omitempty"`
+	Env                map[string]string `yaml:"env,omitempty"`
 }
 
 // Validate validates the GlobalConfig fields.
@@ -70,6 +78,16 @@ func (g GlobalConfig) Validate(ctx context.Context) error {
 				"globalconfig: model %q does not match required pattern %s",
 				*g.Model,
 				ModelPattern,
+			)
+		}
+	}
+	for k := range g.Env {
+		if !envKeyRegexp.MatchString(k) {
+			return errors.Errorf(
+				ctx,
+				"globalconfig: env key %q does not match required pattern %s",
+				k,
+				envKeyPattern,
 			)
 		}
 	}
@@ -132,6 +150,16 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 
 	configPath := filepath.Join(home, ".dark-factory", "config.yaml")
 
+	// Best-effort permission check — skip silently on stat failure.
+	if info, statErr := os.Stat(configPath); statErr == nil {
+		if perm := info.Mode().Perm(); perm&0066 != 0 {
+			slog.Warn(
+				"global config has group or world read/write permissions; consider: chmod 600",
+				"path", configPath,
+			)
+		}
+	}
+
 	// #nosec G304 -- configPath is derived from user home dir, not user input
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -148,12 +176,13 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 
 	// partial struct to detect which fields were set (vs omitted)
 	var partial struct {
-		MaxContainers      *int    `yaml:"maxContainers"`
-		HideGit            *bool   `yaml:"hideGit"`
-		AutoRelease        *bool   `yaml:"autoRelease"`
-		DirtyFileThreshold *int    `yaml:"dirtyFileThreshold"`
-		Model              *string `yaml:"model"`
-		AutoApprovePrompts *bool   `yaml:"autoApprovePrompts"`
+		MaxContainers      *int              `yaml:"maxContainers"`
+		HideGit            *bool             `yaml:"hideGit"`
+		AutoRelease        *bool             `yaml:"autoRelease"`
+		DirtyFileThreshold *int              `yaml:"dirtyFileThreshold"`
+		Model              *string           `yaml:"model"`
+		AutoApprovePrompts *bool             `yaml:"autoApprovePrompts"`
+		Env                map[string]string `yaml:"env,omitempty"`
 	}
 	if err := yaml.Unmarshal(data, &partial); err != nil {
 		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: parse config file")
@@ -176,6 +205,9 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	}
 	if partial.AutoApprovePrompts != nil {
 		cfg.AutoApprovePrompts = partial.AutoApprovePrompts
+	}
+	if partial.Env != nil {
+		cfg.Env = partial.Env
 	}
 
 	if err := cfg.Validate(ctx); err != nil {

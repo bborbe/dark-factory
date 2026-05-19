@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -93,6 +94,7 @@ func LogEffectiveConfig(
 	globalCfg globalconfig.GlobalConfig,
 	globalFilePresent bool,
 	sources config.FieldSources,
+	projectEnv map[string]string,
 ) {
 	effective := EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers)
 	source := sources.MaxContainers
@@ -105,6 +107,25 @@ func LogEffectiveConfig(
 			source = "default"
 		}
 	}
+
+	// Compute env key groupings — values are never logged.
+	var fromGlobal, projectOverrides, projectOnly []string
+	for k := range globalCfg.Env {
+		if _, overridden := projectEnv[k]; overridden {
+			projectOverrides = append(projectOverrides, k)
+		} else {
+			fromGlobal = append(fromGlobal, k)
+		}
+	}
+	for k := range projectEnv {
+		if _, inGlobal := globalCfg.Env[k]; !inGlobal {
+			projectOnly = append(projectOnly, k)
+		}
+	}
+	sort.Strings(fromGlobal)
+	sort.Strings(projectOverrides)
+	sort.Strings(projectOnly)
+
 	slog.Info("effective config",
 		"maxContainers", effective,
 		"maxContainersSource", source,
@@ -135,6 +156,9 @@ func LogEffectiveConfig(
 		"promptsLogDir", cfg.Prompts.LogDir,
 		"preflightCommand", cfg.PreflightCommand,
 		"preflightInterval", cfg.PreflightInterval,
+		"envFromGlobal", fromGlobal,
+		"envProjectOverrides", projectOverrides,
+		"envProjectOnly", projectOnly,
 	)
 }
 
@@ -146,9 +170,10 @@ func createStartupLogger(
 	cfg config.Config,
 	globalCfg globalconfig.GlobalConfig,
 	sources config.FieldSources,
+	projectEnv map[string]string,
 ) func() {
 	present, _ := globalconfig.FileExists(ctx)
-	return func() { LogEffectiveConfig(cfg, globalCfg, present, sources) }
+	return func() { LogEffectiveConfig(cfg, globalCfg, present, sources, projectEnv) }
 }
 
 // errRunner is a Runner that immediately returns an error when Run is called.
@@ -299,6 +324,9 @@ func CreateRunner(
 	if err != nil {
 		return &errRunner{err: errors.Wrap(ctx, err, "globalconfig")}
 	}
+	// Merge global env with project env (project wins on collision).
+	projectEnv := cfg.Env
+	cfg.Env = config.MergeEnv(globalCfg.Env, projectEnv)
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
@@ -450,7 +478,7 @@ func CreateRunner(
 		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
-		createStartupLogger(ctx, cfg, globalCfg, sources),
+		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 		cfg.HideGit,
 		preflightChecker,
 		logWriter,
@@ -473,6 +501,9 @@ func CreateOneShotRunner(
 	if err != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, err, "globalconfig")}
 	}
+	// Merge global env with project env (project wins on collision).
+	projectEnv := cfg.Env
+	cfg.Env = config.MergeEnv(globalCfg.Env, projectEnv)
 	inboxDir := cfg.Prompts.InboxDir
 	inProgressDir := cfg.Prompts.InProgressDir
 	completedDir := cfg.Prompts.CompletedDir
@@ -595,7 +626,7 @@ func CreateOneShotRunner(
 		autoApprove,
 		migrator,
 		releaser,
-		createStartupLogger(ctx, cfg, globalCfg, sources),
+		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 	)
 }
 

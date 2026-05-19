@@ -273,7 +273,13 @@ var _ = Describe("Factory", func() {
 				c.MaxContainers = cfgMaxContainers
 				globalCfg := globalconfig.GlobalConfig{MaxContainers: globalMaxContainers}
 
-				factory.LogEffectiveConfig(c, globalCfg, globalFilePresent, config.FieldSources{})
+				factory.LogEffectiveConfig(
+					c,
+					globalCfg,
+					globalFilePresent,
+					config.FieldSources{},
+					nil,
+				)
 
 				output := logBuf.String()
 				assertRequiredFields(output)
@@ -310,7 +316,7 @@ var _ = Describe("Factory", func() {
 			c.GitconfigFile = "/home/user/.gitconfig"
 			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
 
-			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{})
+			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{}, nil)
 
 			output := logBuf.String()
 			assertNoSecrets(output)
@@ -320,7 +326,7 @@ var _ = Describe("Factory", func() {
 			c := fullTestConfig()
 			globalCfg := globalconfig.GlobalConfig{MaxContainers: globalconfig.DefaultMaxContainers}
 
-			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{})
+			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{}, nil)
 
 			output := logBuf.String()
 			Expect(strings.Count(output, `msg="effective config"`)).To(Equal(1))
@@ -333,11 +339,44 @@ var _ = Describe("Factory", func() {
 			sources := config.FieldSources{}
 			sources.AutoApprovePrompts = "project"
 
-			factory.LogEffectiveConfig(c, globalCfg, false, sources)
+			factory.LogEffectiveConfig(c, globalCfg, false, sources, nil)
 
 			output := logBuf.String()
 			Expect(output).To(ContainSubstring("autoApprovePrompts=true"))
 			Expect(output).To(ContainSubstring("autoApprovePromptsSource=project"))
+		})
+
+		It("reports env keys by source group and never logs values", func() {
+			c := fullTestConfig()
+			c.Env = map[string]string{
+				"GLOBAL_ONLY":  "gv",
+				"SHARED":       "project-wins",
+				"PROJECT_ONLY": "pv",
+			}
+			globalCfg := globalconfig.GlobalConfig{
+				MaxContainers: globalconfig.DefaultMaxContainers,
+				Env: map[string]string{
+					"GLOBAL_ONLY": "gv",
+					"SHARED":      "global-val",
+				},
+			}
+			projectEnv := map[string]string{
+				"SHARED":       "project-wins",
+				"PROJECT_ONLY": "pv",
+			}
+
+			factory.LogEffectiveConfig(c, globalCfg, false, config.FieldSources{}, projectEnv)
+
+			output := logBuf.String()
+			// Each key appears specifically in its expected source group
+			Expect(output).To(MatchRegexp(`envFromGlobal=\[[^]]*GLOBAL_ONLY`))
+			Expect(output).To(MatchRegexp(`envProjectOverrides=\[[^]]*SHARED`))
+			Expect(output).To(MatchRegexp(`envProjectOnly=\[[^]]*PROJECT_ONLY`))
+			// Values must NOT appear anywhere
+			Expect(output).NotTo(ContainSubstring("gv"))
+			Expect(output).NotTo(ContainSubstring("project-wins"))
+			Expect(output).NotTo(ContainSubstring("global-val"))
+			Expect(output).NotTo(ContainSubstring("pv"))
 		})
 	})
 

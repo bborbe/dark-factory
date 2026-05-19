@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.163.0
+
+- feat: Support global env vars in `~/.dark-factory/config.yaml`; project env overrides per-key (key-level merge, project wins). Env keys must match `^[A-Z_][A-Z0-9_]*$`. Effective-config log line reports env keys by source layer (`envFromGlobal`, `envProjectOverrides`, `envProjectOnly`). Home config file emits warning when group/world readable.
+
 ## v0.162.0
 
 - feat: `spec-verifier` agent gains Phase 0.5 — target-deploy freshness gate that runs before the AC walk when the spec declares Post-Deploy ACs. Refuses verification upfront if any environment is pre-fix, naming the captured-vs-required tokens and the exact deploy command. Catches stale-deploy verification cheaply rather than reactively during Phase 4 anti-evidence.

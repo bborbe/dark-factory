@@ -551,6 +551,12 @@ func (c Config) validateGitconfigFile(ctx context.Context) error {
 	return nil
 }
 
+// envKeyPattern is the required format for environment variable key names.
+const envKeyPattern = `^[A-Z_][A-Z0-9_]*$`
+
+// envKeyRegexp validates environment variable key names.
+var envKeyRegexp = regexp.MustCompile(envKeyPattern)
+
 // reservedEnvKeys are env var names set internally by the executor and cannot be overridden.
 var reservedEnvKeys = []string{"YOLO_PROMPT_FILE", "ANTHROPIC_MODEL"}
 
@@ -559,6 +565,14 @@ func (c Config) validateEnv(ctx context.Context) error {
 	for k, v := range c.Env {
 		if k == "" {
 			return errors.Errorf(ctx, "env key must not be empty")
+		}
+		if !envKeyRegexp.MatchString(k) {
+			return errors.Errorf(
+				ctx,
+				"env key %q does not match required pattern %s",
+				k,
+				envKeyPattern,
+			)
 		}
 		for _, reserved := range reservedEnvKeys {
 			if k == reserved {

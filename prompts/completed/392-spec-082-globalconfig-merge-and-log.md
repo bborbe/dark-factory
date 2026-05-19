@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [082-global-env-layering]
 summary: Added global env var support to ~/.dark-factory/config.yaml with key-level project-wins merge, envKeyPattern validation, home-file permission warning, and env-source reporting in the effective-config log line.
 container: dark-factory-exec-392-spec-082-globalconfig-merge-and-log
@@ -7,6 +7,7 @@ dark-factory-version: v0.162.0
 created: "2026-05-19T00:00:00Z"
 queued: "2026-05-19T16:50:54Z"
 started: "2026-05-19T16:50:56Z"
+completed: "2026-05-19T17:02:47Z"
 branch: dark-factory/global-env-layering
 ---
 

@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Bumped DefaultContainerImage constant and all documentation references from claude-yolo:v0.6.3 to claude-yolo:v0.7.0, and added CHANGELOG Unreleased entry.
 container: dark-factory-exec-394-bump-default-yolo-image-v0-7-0
 dark-factory-version: v0.162.0
 created: "2026-05-19T19:55:00Z"
 queued: "2026-05-19T17:58:44Z"
 started: "2026-05-19T17:58:46Z"
+completed: "2026-05-19T18:03:58Z"
 ---
 
 <summary>

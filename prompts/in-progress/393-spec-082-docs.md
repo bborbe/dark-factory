@@ -1,8 +1,12 @@
 ---
-status: approved
+status: committing
 spec: [082-global-env-layering]
+summary: 'Updated docs/config-layering.md and docs/configuration.md to document global env layering: moved env from project-only to Category A with key-level merge semantics and secrets exception, updated Out-of-scope section with required phrase, added env row to Layered fields table, and added Global env subsection to configuration.md.'
+container: dark-factory-exec-393-spec-082-docs
+dark-factory-version: v0.162.0
 created: "2026-05-19T00:00:00Z"
 queued: "2026-05-19T16:50:54Z"
+started: "2026-05-19T17:02:50Z"
 branch: dark-factory/global-env-layering
 ---
 

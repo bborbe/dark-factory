@@ -224,6 +224,7 @@ The following fields are currently eligible for global config:
 | `hideGit` | `false` | Hide git status from YOLO container by default |
 | `autoRelease` | `false` | Auto-push commits and tag releases |
 | `dirtyFileThreshold` | `0` (disabled) | Skip prompts when dirty file count exceeds this |
+| `env` | (none) | Environment variables injected into the YOLO container; key-level merge with project `env:` (project wins on collision) |
 
 All values in `~/.dark-factory/config.yaml` are optional. Set only the ones you want to override.
 
@@ -248,6 +249,33 @@ msg="effective config" model=claude-opus-4-7 modelSource=global hideGit=true hid
 ```
 
 Possible values: `default`, `global`, `project`, `arg`.
+
+### Global env
+
+Set machine-wide environment variables that every project on this machine will receive:
+
+```yaml
+# ~/.dark-factory/config.yaml
+env:
+  ANTHROPIC_BASE_URL: https://my-provider.example.com/v1
+  ANTHROPIC_API_KEY: sk-ant-your-key-here   # only safe here — this file is not committed
+```
+
+**Key-level merge**: the project `.dark-factory.yaml` can add or override individual keys without replacing the whole map. Project values win on collision. Non-overlapping keys from both layers are passed to the container.
+
+```yaml
+# .dark-factory.yaml  (project file — committed to git)
+env:
+  GOPATH: /home/node/go   # adds a key; global keys still flow through
+```
+
+**Key name rules**: keys must match `^[A-Z_][A-Z0-9_]*$`. Any key that does not match causes config load to fail with an error naming the offending key.
+
+**Secrets**: literal secret values (API keys, tokens) are permitted in the global home file because it is never committed. Never put literal secrets in `.dark-factory.yaml` — that file is tracked by git and may be read by anyone with repo access.
+
+**Permission warning**: if `~/.dark-factory/config.yaml` has group or world read/write permissions, dark-factory logs a warning at startup and recommends `chmod 600 ~/.dark-factory/config.yaml`. Loading continues regardless.
+
+**Effective config log**: the startup `effective config` log line reports `envFromGlobal`, `envProjectOverrides`, and `envProjectOnly` showing which keys came from which layer. Values are never logged.
 
 ## Per-Project Container Limit
 

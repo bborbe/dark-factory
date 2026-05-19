@@ -31,6 +31,8 @@ Currently supported in `~/.dark-factory/config.yaml`:
 - `maxContainers` — concurrency cap on this machine
 - `autoRelease` — "I always want auto-release"
 - `dirtyFileThreshold` — personal tolerance for repo mess
+- `env` — machine-wide environment variables injected into every YOLO container (key-level merge; project values override global values per key)
+  - **Secrets exception**: the global home file (`~/.dark-factory/config.yaml`) is not committed and may carry literal secret values in `env:`. The project file (`.dark-factory.yaml`) is repo-tracked and must never carry literal secrets — the existing validation rejects known secret patterns.
 
 Planned but not yet supported globally (project-only today):
 
@@ -48,7 +50,7 @@ Inherently per-repo. No sane global default exists.
 - `prompts.*Dir`, `specs.*Dir` — directory layout
 - `projectName` — auto-resolved from repo
 - `serverPort` — collision-prone, set per project
-- `extraMounts`, `env` — repo-specific
+- `extraMounts` — repo-specific (global override not supported; each project mounts its own paths)
 - `additionalInstructions`, `validationPrompt` — per-codebase guidance
 
 ### C. Per-invocation (arg-only)
@@ -153,7 +155,8 @@ Codify `SecretField` tag on struct fields. Validate, redact, resolve at access. 
 
 - Project-shape (category B) fields stay project-only
 - Lifecycle dirs stay project-only (extreme repo-shape)
-- `extraMounts`, `env`, `notifications.*` — too structured for global override; per-project only
+- `env: now supported globally` with key-level merge (project values override global per key); see Category A above
+- `extraMounts`, `notifications.*` — too structured for global override; per-project only
 
 ## Open Questions
 

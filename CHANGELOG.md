@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.163.1
+
+- docs: Document global `env` layering in `config-layering.md` — move `env` from project-only to Category A, add key-level merge semantics, secrets exception, and update Out-of-scope section; add `### Global env` subsection to `configuration.md` with example yaml, key-name rules, secrets guidance, permission warning, and effective-config log description
+
 ## v0.163.0
 
 - feat: Support global env vars in `~/.dark-factory/config.yaml`; project env overrides per-key (key-level merge, project wins). Env keys must match `^[A-Z_][A-Z0-9_]*$`. Effective-config log line reports env keys by source layer (`envFromGlobal`, `envProjectOverrides`, `envProjectOnly`). Home config file emits warning when group/world readable.

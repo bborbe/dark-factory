@@ -7,6 +7,18 @@ id = "GHSA-x744-4wpc-v9h2"
 reason = "github.com/docker/docker indirect dep, no fix available"
 
 [[IgnoredVulns]]
+id = "GHSA-rg2x-37c3-w2rh"
+reason = "github.com/docker/docker indirect dep, no fix available"
+
+[[IgnoredVulns]]
+id = "GHSA-vp62-88p7-qqf5"
+reason = "github.com/docker/docker indirect dep, no fix available"
+
+[[IgnoredVulns]]
+id = "GHSA-x86f-5xw2-fm2r"
+reason = "github.com/docker/docker indirect dep, no fix available"
+
+[[IgnoredVulns]]
 id = "GO-2026-4923"
 reason = "go.etcd.io/bbolt v1.4.3 dep, no fix available"
 

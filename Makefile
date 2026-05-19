@@ -93,7 +93,10 @@ gosec:
 trivy:
 	trivy fs \
 	--db-repository ghcr.io/aquasecurity/trivy-db \
+	$(if $(wildcard .trivyignore),--ignorefile .trivyignore,$(if $(wildcard $(ROOTDIR)/.trivyignore),--ignorefile $(ROOTDIR)/.trivyignore,)) \
+	$(if $(wildcard .trivy-secret.yaml),--secret-config .trivy-secret.yaml,$(if $(wildcard $(ROOTDIR)/.trivy-secret.yaml),--secret-config $(ROOTDIR)/.trivy-secret.yaml,)) \
 	--scanners vuln,secret \
+	--skip-dirs vendor \
 	--quiet \
 	--no-progress \
 	--disable-telemetry \

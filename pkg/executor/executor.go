@@ -132,7 +132,7 @@ func (e *dockerExecutor) Execute(
 	e.removeContainerIfExists(ctx, containerName)
 	promptBaseName := extractPromptBaseName(containerName, e.projectName)
 	claudeConfigDir := e.claudeDir
-	if err := validateClaudeAuth(ctx, claudeConfigDir); err != nil {
+	if err := validateClaudeAuth(ctx, claudeConfigDir, e.env); err != nil {
 		return err
 	}
 	cmd := e.buildDockerCommand(
@@ -575,11 +575,22 @@ func (e *dockerExecutor) buildHideGitArgs(projectRoot string) []string {
 }
 
 // validateClaudeAuth checks that the Claude config directory contains a valid OAuth token.
-// If ANTHROPIC_API_KEY is set, the check is skipped (API key auth does not need OAuth).
+// The check is skipped when any of:
+//   - host env ANTHROPIC_API_KEY is set (API key auth path, no OAuth needed)
+//   - merged container env declares alt-provider routing: ANTHROPIC_BASE_URL and
+//     ANTHROPIC_AUTH_TOKEN are both non-empty (e.g. MiniMax via Anthropic-compatible API)
+//
 // Supports both legacy (.claude.json oauthAccount.accessToken) and current
 // (.credentials.json claudeAiOauth.accessToken) token locations.
-func validateClaudeAuth(ctx context.Context, configDir string) error {
+func validateClaudeAuth(ctx context.Context, configDir string, env map[string]string) error {
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		return nil
+	}
+
+	// Alt-provider auth (e.g. MiniMax): if the merged container env declares a
+	// non-Anthropic base URL together with an auth token, OAuth on disk is not
+	// required — the container authenticates via env at request time.
+	if env["ANTHROPIC_BASE_URL"] != "" && env["ANTHROPIC_AUTH_TOKEN"] != "" {
 		return nil
 	}
 

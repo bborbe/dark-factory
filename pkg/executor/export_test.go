@@ -167,8 +167,8 @@ func WaitUntilDeadlineForTest(
 }
 
 // ValidateClaudeAuthForTest exposes validateClaudeAuth for external test packages.
-func ValidateClaudeAuthForTest(ctx context.Context, configDir string) error {
-	return validateClaudeAuth(ctx, configDir)
+func ValidateClaudeAuthForTest(ctx context.Context, configDir string, env map[string]string) error {
+	return validateClaudeAuth(ctx, configDir, env)
 }
 
 // ResolveExtraMountSrcForTest exposes resolveExtraMountSrc for external test packages.

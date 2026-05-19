@@ -1807,14 +1807,14 @@ This has frontmatter.`
 		Context("when ANTHROPIC_API_KEY is set", func() {
 			It("skips the check and returns no error", func() {
 				GinkgoT().Setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-				err := executor.ValidateClaudeAuthForTest(ctx, "/nonexistent/path")
+				err := executor.ValidateClaudeAuthForTest(ctx, "/nonexistent/path", nil)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
 		Context("when no config files exist", func() {
 			It("returns error with fix hint", func() {
-				err := executor.ValidateClaudeAuthForTest(ctx, "/nonexistent/path")
+				err := executor.ValidateClaudeAuthForTest(ctx, "/nonexistent/path", nil)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 				Expect(
@@ -1833,7 +1833,7 @@ This has frontmatter.`
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = executor.ValidateClaudeAuthForTest(ctx, tempDir)
+				err = executor.ValidateClaudeAuthForTest(ctx, tempDir, nil)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -1848,7 +1848,7 @@ This has frontmatter.`
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = executor.ValidateClaudeAuthForTest(ctx, tempDir)
+				err = executor.ValidateClaudeAuthForTest(ctx, tempDir, nil)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 			})
@@ -1864,7 +1864,7 @@ This has frontmatter.`
 				)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = executor.ValidateClaudeAuthForTest(ctx, tempDir)
+				err = executor.ValidateClaudeAuthForTest(ctx, tempDir, nil)
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -1875,7 +1875,7 @@ This has frontmatter.`
 				err := os.WriteFile(configFile, []byte(`{}`), 0600)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = executor.ValidateClaudeAuthForTest(ctx, tempDir)
+				err = executor.ValidateClaudeAuthForTest(ctx, tempDir, nil)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 				Expect(err.Error()).To(ContainSubstring("CLAUDE_CONFIG_DIR=" + tempDir + " claude"))
@@ -1888,7 +1888,56 @@ This has frontmatter.`
 				err := os.WriteFile(configFile, []byte(`{"oauthAccount":{"accessToken":""}}`), 0600)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = executor.ValidateClaudeAuthForTest(ctx, tempDir)
+				err = executor.ValidateClaudeAuthForTest(ctx, tempDir, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+			})
+		})
+
+		Context("when alt-provider env provides both BASE_URL and AUTH_TOKEN", func() {
+			It("skips OAuth check and returns no error", func() {
+				configDir := GinkgoT().TempDir()
+				env := map[string]string{
+					"ANTHROPIC_BASE_URL":   "https://example.com",
+					"ANTHROPIC_AUTH_TOKEN": "sk-x",
+				}
+				err := executor.ValidateClaudeAuthForTest(ctx, configDir, env)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when alt-provider env has only ANTHROPIC_BASE_URL", func() {
+			It("falls through to OAuth check and returns error", func() {
+				configDir := GinkgoT().TempDir()
+				env := map[string]string{
+					"ANTHROPIC_BASE_URL": "https://example.com",
+				}
+				err := executor.ValidateClaudeAuthForTest(ctx, configDir, env)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+			})
+		})
+
+		Context("when alt-provider env has only ANTHROPIC_AUTH_TOKEN", func() {
+			It("falls through to OAuth check and returns error", func() {
+				configDir := GinkgoT().TempDir()
+				env := map[string]string{
+					"ANTHROPIC_AUTH_TOKEN": "sk-x",
+				}
+				err := executor.ValidateClaudeAuthForTest(ctx, configDir, env)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
+			})
+		})
+
+		Context("when alt-provider env has both keys set to empty strings", func() {
+			It("falls through to OAuth check and returns error", func() {
+				configDir := GinkgoT().TempDir()
+				env := map[string]string{
+					"ANTHROPIC_BASE_URL":   "",
+					"ANTHROPIC_AUTH_TOKEN": "",
+				}
+				err := executor.ValidateClaudeAuthForTest(ctx, configDir, env)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("Claude OAuth token missing or expired"))
 			})

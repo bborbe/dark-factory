@@ -1,11 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Extended validateClaudeAuth to accept a merged env map and short-circuit when both ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN are non-empty, enabling alt-provider routing without requiring OAuth on disk.
 container: dark-factory-exec-395-validate-claude-auth-alt-provider
 dark-factory-version: v0.162.0
 created: "2026-05-19T22:30:00Z"
 queued: "2026-05-19T20:01:39Z"
 started: "2026-05-19T20:07:09Z"
+completed: "2026-05-19T20:12:21Z"
 ---
 
 <summary>

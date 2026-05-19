@@ -8,7 +8,7 @@ Set up a new or existing project to use the dark-factory pipeline.
 
 - **dark-factory** installed (`go install github.com/bborbe/dark-factory@latest`)
 - **Docker** running
-- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.6.3`)
+- **claude-yolo image** pulled (`docker pull docker.io/bborbe/claude-yolo:v0.7.0`)
 - **~/.claude-yolo/** configured (see main README)
 
 ## Step 1: Choose Workflow

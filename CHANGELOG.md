@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.163.2
+
+- chore: Bump default container image to claude-yolo:v0.7.0 (adds api.minimax.io to tinyproxy egress allowlist for MiniMax Anthropic-compatible API)
+
 ## v0.163.1
 
 - docs: Document global `env` layering in `config-layering.md` — move `env` from project-only to Category A, add key-level merge semantics, secrets exception, and update Out-of-scope section; add `### Global env` subsection to `configuration.md` with example yaml, key-name rules, secrets guidance, permission warning, and effective-config log description

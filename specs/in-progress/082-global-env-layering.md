@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-05-19T16:03:22Z"
 generating: "2026-05-19T16:19:08Z"
 prompted: "2026-05-19T16:32:32Z"
+verifying: "2026-05-19T17:06:36Z"
 branch: dark-factory/global-env-layering
 ---
 

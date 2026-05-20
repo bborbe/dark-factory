@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [083-bug-get-next-version-ignores-changelog]
 summary: Fixed getNextVersion to bump from max(highest_tag, highest_changelog) instead of highest tag alone, preventing semver regression when a CHANGELOG vX.Y.Z heading is written above the highest git tag; added six new Ginkgo tests covering all cases including slog.Warn capture for the orphan case; updated existing test that encoded the old (buggy) behavior.
 container: dark-factory-exec-397-fix-get-next-version-ignores-changelog
@@ -7,6 +7,7 @@ dark-factory-version: v0.162.0
 created: "2026-05-20T18:15:00Z"
 queued: "2026-05-20T18:21:19Z"
 started: "2026-05-20T18:21:20Z"
+completed: "2026-05-20T18:26:39Z"
 branch: dark-factory/bug-get-next-version-ignores-changelog
 ---
 

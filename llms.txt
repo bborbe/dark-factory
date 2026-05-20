@@ -1,0 +1,34 @@
+# Dark Factory
+> Spec-driven, prompt-executed automation pipeline. Specs describe behavior, prompts execute atomic changes, the YOLO agent runs them in a container.
+
+## Authoring
+- [Spec Writing](docs/spec-writing.md): Behavioral contracts for features and fixes — Goal, Constraints, Failure Modes, Acceptance Criteria
+- [Prompt Writing](docs/prompt-writing.md): Atomic, verifiable changes — XML sections, Detail Levels (1-5), boundary tests
+- [Scenario Writing](docs/scenario-writing.md): End-to-end acceptance tests — Task → Scenario → Spec → Prompts
+- [Bug Workflow](docs/bug-workflow.md): File, triage, fix, and verify bugs — `kind: bug` frontmatter, Reproduction section
+- [Code Review Prompts](docs/code-review-prompts.md): Generate prompts that review services and produce fix prompts
+
+## Verification & Quality
+- [Definition of Done](docs/dod.md): Self-review checklist after implementation
+- [Spec Verification](docs/spec-verification.md): Human-confirmed acceptance criteria before spec completes
+- [Documentation Placement](docs/documentation.md): Specs / prompts / project docs / coding plugin docs — where each kind of knowledge lives
+
+## Configuration & Setup
+- [Init Project](docs/init-project.md): Set up a new or existing project for the dark-factory pipeline
+- [Configuration](docs/configuration.md): `.dark-factory.yaml` fields and defaults
+- [Config Layering](docs/config-layering.md): Field-precedence chain across user / project / env / flag layers
+- [CLAUDE.md Guide](docs/claude-md-guide.md): Dark-factory additions to the general CLAUDE.md guide
+- [YOLO Container Setup](docs/yolo-container-setup.md): claude-yolo Docker container, mounts, credentials
+
+## Operations
+- [Architecture Flow](docs/architecture-flow.md): How specs and prompts move through the pipeline, what runs where
+- [Workflows](docs/workflows.md): Separation × delivery — direct-to-base vs PR, tagged release vs not
+- [Running](docs/running.md): Start dark-factory, monitor execution, handle failures, complete specs
+- [Troubleshooting](docs/troubleshooting.md): Reading prompt-failure errors and recovering
+
+## Releases
+- [Release Process](docs/release-process.md): Releasing user-project services through dark-factory
+- [Releasing Dark Factory](docs/releasing-dark-factory.md): Ship a new version of dark-factory itself — mandatory before `make install`
+
+## Reference
+- [Bitbucket Server API Reference](docs/bitbucket-server-api-reference.md): Implementing Bitbucket Server as a dark-factory git provider

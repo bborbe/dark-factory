@@ -5,7 +5,9 @@
 package git_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -167,35 +169,38 @@ var _ = Describe("Git", func() {
 			},
 		)
 
-		It("GetNextVersion uses git tags when tags exist, ignoring CHANGELOG.md", func() {
-			// Create CHANGELOG.md with higher version than tag
-			err := os.WriteFile(
-				filepath.Join(tempDir, "CHANGELOG.md"),
-				[]byte("# Changelog\n\n## v9.9.9\n\n- Some feature\n"),
-				0600,
-			)
-			Expect(err).NotTo(HaveOccurred())
+		It(
+			"GetNextVersion bumps from max(tag, changelog) when CHANGELOG has orphan version above tag",
+			func() {
+				// CHANGELOG has v9.9.9 which is above the tag v1.2.3 — should bump from changelog.
+				err := os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("# Changelog\n\n## v9.9.9\n\n- Some feature\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
 
-			cmd := exec.Command("git", "add", ".")
-			cmd.Dir = tempDir
-			err = cmd.Run()
-			Expect(err).NotTo(HaveOccurred())
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
 
-			cmd = exec.Command("git", "commit", "-m", "initial")
-			cmd.Dir = tempDir
-			err = cmd.Run()
-			Expect(err).NotTo(HaveOccurred())
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
 
-			// Tag with lower version than CHANGELOG
-			cmd = exec.Command("git", "tag", "v1.2.3")
-			cmd.Dir = tempDir
-			err = cmd.Run()
-			Expect(err).NotTo(HaveOccurred())
+				// Tag with lower version than CHANGELOG
+				cmd = exec.Command("git", "tag", "v1.2.3")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
 
-			version, err := r.GetNextVersion(ctx, git.PatchBump)
-			Expect(err).To(BeNil())
-			Expect(version).To(Equal("v1.2.4"))
-		})
+				version, err := r.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v9.9.10"))
+			},
+		)
 
 		It("CommitCompletedFile commits a new file", func() {
 			// Create initial commit
@@ -605,6 +610,205 @@ var _ = Describe("Git", func() {
 				version, err := git.GetNextVersion(ctx, git.PatchBump)
 				Expect(err).To(BeNil())
 				Expect(version).To(Equal("v0.2.1")) // Should use v0.2.0, ignoring invalid tags
+			})
+		})
+
+		Context("orphan changelog above highest tag", Serial, func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "tag", "v0.64.2")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("## v0.65.0\n\n- feat: something\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("bumps from changelog version and emits slog.Warn (PatchBump)", func() {
+				var logBuf bytes.Buffer
+				handler := slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelWarn})
+				origDefault := slog.Default()
+				slog.SetDefault(slog.New(handler))
+				defer slog.SetDefault(origDefault)
+
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.65.1"))
+				Expect(logBuf.String()).To(ContainSubstring("v0.65.0"))
+				Expect(logBuf.String()).To(ContainSubstring("v0.64.2"))
+			})
+		})
+
+		Context("orphan changelog above highest tag - minor bump", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "tag", "v0.64.2")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("## v0.65.0\n\n- feat: something\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("bumps minor from changelog version (MinorBump)", func() {
+				version, err := git.GetNextVersion(ctx, git.MinorBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.66.0"))
+			})
+		})
+
+		Context("tag equals changelog version", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "tag", "v0.64.2")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("## v0.64.2\n\n- fix: something\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("bumps from tag (byte-identical to pre-fix behavior)", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.64.3"))
+			})
+		})
+
+		Context("tag above changelog version", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "tag", "v0.65.0")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("## v0.10.0\n\n- fix: old\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("bumps from tag when tag is above changelog", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.65.1"))
+			})
+		})
+
+		Context("no tags with changelog", func() {
+			BeforeEach(func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				err = os.WriteFile(
+					filepath.Join(tempDir, "CHANGELOG.md"),
+					[]byte("## v0.10.0\n\n- feat: something\n"),
+					0600,
+				)
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("bumps from changelog when no git tags exist", func() {
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.10.1"))
+			})
+		})
+
+		Context("no tags no changelog", func() {
+			It("returns v0.1.0 as default", func() {
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test"), 0600)
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd := exec.Command("git", "add", ".")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				cmd = exec.Command("git", "commit", "-m", "initial")
+				cmd.Dir = tempDir
+				err = cmd.Run()
+				Expect(err).NotTo(HaveOccurred())
+
+				version, err := git.GetNextVersion(ctx, git.PatchBump)
+				Expect(err).To(BeNil())
+				Expect(version).To(Equal("v0.1.0"))
 			})
 		})
 	})

@@ -354,43 +354,57 @@ func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
 		versions = append(versions, version)
 	}
 
-	// If no valid semver tags exist, fall back to CHANGELOG.md
-	if len(versions) == 0 {
-		changelogVersion, err := latestVersionFromChangelog(ctx)
-		if err != nil || changelogVersion == nil {
-			return "v0.1.0", nil
+	// Find the maximum version among git tags (if any).
+	var maxTagVersion *SemanticVersionNumber
+	if len(versions) > 0 {
+		mv := versions[0]
+		for _, v := range versions[1:] {
+			if mv.Less(v) {
+				mv = v
+			}
 		}
-		var nextVersion SemanticVersionNumber
-		switch bump {
-		case MinorBump:
-			nextVersion = changelogVersion.BumpMinor()
-		case PatchBump:
-			nextVersion = changelogVersion.BumpPatch()
-		default:
-			nextVersion = changelogVersion.BumpPatch()
-		}
-		return nextVersion.String(), nil
+		maxTagVersion = &mv
 	}
 
-	// Find the maximum version using proper semver comparison
-	maxVersion := versions[0]
-	for _, v := range versions[1:] {
-		if maxVersion.Less(v) {
-			maxVersion = v
-		}
+	// Read CHANGELOG.md unconditionally. latestVersionFromChangelog returns nil when
+	// the file is missing or contains no valid version headings; that is expected.
+	changelogVersion, _ := latestVersionFromChangelog(ctx)
+
+	// Compute base version: max(highest_tag, highest_changelog).
+	var base SemanticVersionNumber
+	switch {
+	case maxTagVersion == nil && changelogVersion == nil:
+		return "v0.1.0", nil
+	case maxTagVersion == nil:
+		base = *changelogVersion
+	case changelogVersion == nil:
+		base = *maxTagVersion
+	case maxTagVersion.Less(*changelogVersion):
+		// CHANGELOG has an orphan version above the highest git tag.
+		// Warn so the operator can see the divergence in .dark-factory.log,
+		// then reconcile by bumping from the changelog version.
+		slog.Warn(
+			"changelog has orphan version above highest tag; bumping from changelog to avoid semver regression",
+			"orphan_version",
+			changelogVersion.String(),
+			"highest_tag",
+			maxTagVersion.String(),
+		)
+		base = *changelogVersion
+	default:
+		base = *maxTagVersion
 	}
 
-	// Apply the appropriate bump
+	// Apply the appropriate bump.
 	var nextVersion SemanticVersionNumber
 	switch bump {
 	case MinorBump:
-		nextVersion = maxVersion.BumpMinor()
+		nextVersion = base.BumpMinor()
 	case PatchBump:
-		nextVersion = maxVersion.BumpPatch()
+		nextVersion = base.BumpPatch()
 	default:
-		nextVersion = maxVersion.BumpPatch()
+		nextVersion = base.BumpPatch()
 	}
-
 	return nextVersion.String(), nil
 }
 

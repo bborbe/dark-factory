@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
 HOSTNAME ?= $(shell hostname -s)
 ROOTDIR ?= $(shell git rev-parse --show-toplevel)
@@ -9,8 +11,26 @@ LDFLAGS := -X github.com/bborbe/dark-factory/pkg/version.Version=$(VERSION)
 default: precommit
 
 .PHONY: precommit
-precommit: ensure format generate test check addlicense check-changelog
+precommit: ensure format generate test check addlicense check-changelog check-links
 	@echo "ready to commit"
+
+.PHONY: check-links
+check-links:
+	@echo "Checking links in README.md and llms.txt..."
+	@EXIT=0; \
+	for file in README.md llms.txt; do \
+		[ ! -f "$$file" ] && continue; \
+		while read -r link; do \
+			target=$${link%%#*}; \
+			[ -z "$$target" ] && continue; \
+			if [ ! -e "$$target" ]; then \
+				echo "BROKEN: $$file -> $$link"; \
+				EXIT=1; \
+			fi; \
+		done < <(grep -oE '\]\([^)]+\)' "$$file" 2>/dev/null | sed 's/^](//; s/)$$//' | grep -v '^http' | grep -v '^mailto:'); \
+	done; \
+	if [ "$$EXIT" -eq 1 ]; then exit 1; fi; \
+	echo "All links OK"
 
 .PHONY: check-changelog
 check-changelog:

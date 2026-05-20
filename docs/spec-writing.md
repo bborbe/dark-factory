@@ -1,17 +1,23 @@
 # Spec Writing Guide
 
-A spec is a behavioral contract for a multi-prompt feature. It describes what the system should do, not how the code should look.
+A spec is a behavioral contract for a feature or fix. It describes what the system should do, not how the code should look.
+
+## Why Spec by Default
+
+A spec gives you **acceptance criteria + a verification phase** (`/dark-factory:verify-spec`) that proves the feature or fix actually works at runtime — not just that the code compiles or `make precommit` passes. Prompts produce code; specs produce evidence. For anything where "does it behave correctly?" matters, the spec's verification harness is the value.
 
 ## When to Write a Spec
 
-| Situation | Spec needed? |
-|-----------|-------------|
-| Multi-prompt feature (3+ prompts) | Yes |
-| Unclear edge cases or failure modes | Yes |
-| Touching shared interfaces | Yes |
-| Bug report with reproduction | Yes — see [bug-workflow.md](bug-workflow.md) |
-| Single-file fix, obvious change | No — write a prompt directly |
-| Config change, version bump | No — write a prompt directly |
+**Default: write a spec.** Skip the spec only for trivial mechanical changes where `make precommit` is the sole observable that matters.
+
+| Situation | Spec? |
+|-----------|-------|
+| New feature (any size) | **Yes** — AC verification proves it works |
+| Bug fix | **Yes** — Reproduction + AC locks down the regression (see [bug-workflow.md](bug-workflow.md)) |
+| Multi-prompt change | Yes |
+| Touching shared interfaces / failure modes | Yes |
+| Trivial mechanical change (version bump, rename, formatting) | No — prompt directly |
+| Config field with no behavior change | No — prompt directly |
 
 For bugs specifically, see [bug-workflow.md](bug-workflow.md) — adds `kind: bug` frontmatter, mandatory Reproduction section, and verification rules that go beyond standard spec verification.
 
@@ -19,7 +25,7 @@ For bugs specifically, see [bug-workflow.md](bug-workflow.md) — adds `kind: bu
 
 Use the Claude Code command:
 
-```
+```text
 /dark-factory:create-spec
 ```
 
@@ -282,7 +288,7 @@ The pyramid: broad base of unit tests, smaller layer of integration tests, narro
 
 Always audit before approving:
 
-```
+```text
 /dark-factory:audit-spec specs/my-feature.md
 ```
 

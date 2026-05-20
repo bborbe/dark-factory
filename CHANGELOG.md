@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.163.5
+
+- fix: `getNextVersion` now bumps from `max(highest_tag, highest_changelog)` to prevent semver regression when a CHANGELOG `## vX.Y.Z` heading is written above the highest git tag; emits `slog.Warn` when orphan version detected
+
 ## v0.163.4
 
 - chore: Bump default container image to claude-yolo:v0.8.1 (ANTHROPIC_MODEL-aware model resolution for alt-provider routing + one-shot prompt-file permission fix)

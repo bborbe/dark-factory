@@ -4,8 +4,10 @@ A prompt is a markdown file that tells the YOLO agent what to build. Each prompt
 
 ## When to Write Prompts Manually
 
-- **Simple standalone task** (1-2 prompts, no spec needed) — write directly
-- **Spec exists** — daemon auto-generates prompts from approved specs, but you can also write them manually for finer control
+Most work goes through a spec ([spec-writing.md](spec-writing.md)) — the spec's acceptance criteria + verification phase prove the change actually works at runtime, not just that the code compiles. Write a prompt directly only when:
+
+- **Trivial mechanical change** — version bump, rename, formatting, dependency update where `make precommit` is the only observable that matters
+- **Generating from an approved spec** — the daemon does this automatically, but you can write prompts manually for finer control
 
 ## Creating a Prompt
 
@@ -291,7 +293,7 @@ Same surface (verify the GitHub bot account matches `BOT_GITHUB_LOGIN` before po
 
 **Level 1 — Very Detailed**
 
-```
+```text
 ## Step 4 — Implement BotIdentityCheck
 
 Create function `func CheckBotIdentity(ctx context.Context, client HTTPClient, expectedLogin string) error`:
@@ -318,7 +320,7 @@ Create function `func CheckBotIdentity(ctx context.Context, client HTTPClient, e
 
 **Level 3 — Medium (default)**
 
-```
+```text
 ## Bot identity check (DB#4 in spec 027)
 
 Contract:
@@ -343,10 +345,10 @@ Test (use DescribeTable):
 
 **Level 5 — Very Rough**
 
-```
+```text
 ## Bot identity check
 
-The agent self-checks that the GitHub PAT belongs to `pr-review-of-ben`
+The agent self-checks that the GitHub PAT belongs to `my-bot-account`
 before posting any review. Mismatch → refuse + diagnostic.
 
 verification: make precommit
@@ -355,6 +357,17 @@ verification: make precommit
 **Cost:** The agent might invent the function in the wrong package, miss the retry-policy integration, or choose a different error sentinel. Works for spike/exploration; needs rewrite for production.
 
 When in doubt, write **Level 3** and let audit suggest tightening to Level 2 if the agent would be likely to drift.
+
+### State the why, not just the what
+
+`<objective>` should answer *why this change matters* in one clause, not just what to build. Models reason better when they know the purpose — same effort, fewer wrong abstractions.
+
+```
+BAD:  Add a validation command field to project config.
+GOOD: Add a validation command field to project config so projects can enforce repo-specific checks (e.g. `make precommit`) before a prompt is marked complete.
+```
+
+The "why" also constrains the agent: if it considers a shortcut that breaks the stated purpose, it has a reason to reject it.
 
 ### Anchor by name, not line number
 
@@ -377,7 +390,7 @@ Smaller prompts succeed more often. Group coupled behaviors together, but don't 
 
 Dark-factory runs prompts in a Docker container. Never use absolute paths (`/Users/...`) or home-relative paths (`~/...`).
 
-**Exception**: Files under the mounted claude config use the in-container path `~/.claude/plugins/...`, NOT the host path `~/.claude-yolo/plugins/...`. See [yolo-container-setup.md](yolo-container-setup.md#project-workspace-mount).
+**Exception**: Files under the mounted claude config use the in-container path `/home/node/.claude/plugins/...`, NOT the host path `~/.claude-yolo/plugins/...`. See [yolo-container-setup.md](yolo-container-setup.md#project-workspace-mount).
 
 ### Cross-repo references
 
@@ -434,7 +447,7 @@ A broad class of bug: new code passes every unit test because the tests verify t
 
 Dep bump: `go get foo@v1.2.3 && go mod tidy` — that's it.
 
-Exception: if the repo commits `vendor/`, document that deviation in the prompt. See `go-build-args-guide.md#vendor-handling`.
+Exception: if the repo commits `vendor/`, document that deviation in the prompt.
 
 ### Add imports before tidying
 

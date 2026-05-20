@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-05-20T18:06:56Z"
 generating: "2026-05-20T18:08:10Z"
 prompted: "2026-05-20T18:13:09Z"
 verifying: "2026-05-20T18:26:40Z"
+completed: "2026-05-20T18:37:01Z"
 branch: dark-factory/bug-get-next-version-ignores-changelog
 ---
 

@@ -163,3 +163,16 @@ Tolerable but degrading. Every time a prompt writes a versioned CHANGELOG headin
 - vault-cli incident: `c86f20e` → orphan `## v0.65.0`; `c130211` → orphan tag `v0.64.3`; `de39cca` → manual fix to `v0.65.1`.
 - Source: `pkg/git/git.go:332` (`getNextVersion`), `pkg/git/git.go:357-369` (existing fallback that already parses CHANGELOG).
 - Helper: `latestVersionFromChangelog(ctx)` — already exists in `pkg/git/git.go`.
+
+## Verification Result
+
+**Verified:** 2026-05-20T18:36:30Z (HEAD 11159fe)
+**Binary:** /tmp/dark-factory-11159fe (built from HEAD)
+**Scenario:** Sandbox replay in /tmp/df-083-sandbox (git init, tag v0.64.2, CHANGELOG `## v0.65.0`). Replay program imported `pkg/git` from HEAD, chdir'd into sandbox, called `GetNextVersion(ctx, PatchBump)`. Plus 6 Ginkgo contexts in `pkg/git/git_test.go` and `make precommit`.
+**Evidence:**
+- Sandbox `GetNextVersion(PatchBump)` returned `v0.65.1` (Reproduction expected); negative `git tag --list 'v0.64.3'` was empty.
+- `.dark-factory.log` Warn line: `level=WARN msg="changelog has orphan version above highest tag; bumping from changelog to avoid semver regression" orphan_version=v0.65.0 highest_tag=v0.64.2`.
+- `pkg/git/git.go:371` reads `latestVersionFromChangelog(ctx)` unconditionally outside any `len(versions)==0` branch.
+- Ginkgo `Git GetNextVersion` contexts `orphan changelog above highest tag`, `orphan changelog above highest tag - minor bump`, `tag equals changelog version`, `tag above changelog version`, `no tags with changelog`, `no tags no changelog`: `Ran 6 of 241 Specs ... 6 Passed | 0 Failed`.
+- `make precommit` exited 0 ("ready to commit").
+**Verdict:** PASS

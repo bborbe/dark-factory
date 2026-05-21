@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.164.1
+
+- docs: Document worktree/submodule + `hideGit` failure mode in `troubleshooting.md`
+
 ## v0.164.0
 
 - plugin: sync — spec-writing / prompt-writing / configuration / config-layering / releasing-dark-factory / init-project / yolo-container-setup doc refinements; prompt-auditor agent tweak

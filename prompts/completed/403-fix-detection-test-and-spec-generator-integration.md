@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [084-fail-fast-on-worktree-without-hidegit]
 summary: Added stat-error detection test case and replaced source-text count assertion with behavioral table test for resolveSpecGeneratorHideGit
 container: dark-factory-exec-403-fix-detection-test-and-spec-generator-integration
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-22T00:30:00Z"
 queued: "2026-05-21T22:31:28Z"
 started: "2026-05-21T22:31:29Z"
+completed: "2026-05-21T22:41:43Z"
 branch: dark-factory/fail-fast-on-worktree-without-hidegit
 ---
 

@@ -145,6 +145,14 @@ func (r *runner) Run(ctx context.Context) error {
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
 
+	// Git safety checks — skip when hideGit is enabled (container won't use git).
+	// 1. Refuse to start from a worktree or submodule CWD — the .git pointer
+	//    points to the parent repo's worktrees/ directory, which is not mounted.
+	// 2. Abort if .git/index.lock exists — all git operations will fail.
+	if err := r.checkGitSafety(ctx); err != nil {
+		return err
+	}
+
 	if r.logWriter != nil {
 		if closer, ok := r.logWriter.(io.Closer); ok {
 			defer closer.Close()
@@ -159,17 +167,6 @@ func (r *runner) Run(ctx context.Context) error {
 
 	if r.startupLogger != nil {
 		r.startupLogger()
-	}
-
-	// Abort if .git/index.lock exists — all git operations will fail.
-	// Skip the check when hideGit is enabled (container won't use git).
-	if !r.hideGit {
-		if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
-			return errors.Errorf(
-				ctx,
-				".git/index.lock exists — remove it before starting the daemon (another git process may be running)",
-			)
-		}
 	}
 
 	// Set up signal handling
@@ -261,6 +258,26 @@ func (r *runner) startupDeps() StartupDeps {
 		Mover:                 r.mover,
 		CurrentDateTimeGetter: r.currentDateTimeGetter,
 	}
+}
+
+// checkGitSafety verifies git safety conditions before starting:
+//  1. Refuse to start from a worktree or submodule CWD — the .git pointer
+//     points to the parent repo's worktrees/ directory, which is not mounted.
+//  2. Abort if .git/index.lock exists — all git operations will fail.
+func (r *runner) checkGitSafety(ctx context.Context) error {
+	if r.hideGit {
+		return nil
+	}
+	if err := DetectWorktreeOrSubmodule(ctx); err != nil {
+		return errors.Wrap(ctx, err, "worktree/submodule CWD detected")
+	}
+	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
+		return errors.Errorf(
+			ctx,
+			".git/index.lock exists — remove it before starting the daemon (another git process may be running)",
+		)
+	}
+	return nil
 }
 
 // healthCheckLoop runs the periodic container health check loop.

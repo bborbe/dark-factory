@@ -1,6 +1,7 @@
 ---
-status: executing
+status: committing
 spec: [084-fail-fast-on-worktree-without-hidegit]
+summary: Added fail-fast worktree/submodule detection gate in pkg/runner/ that refuses to start dark-factory from a worktree or submodule CWD without hideGit=true
 container: dark-factory-exec-400-fail-fast-worktree-detection
 dark-factory-version: v0.164.0
 created: "2026-05-21T21:45:00Z"

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.164.3
+
+- fix: Fail-fast worktree/submodule detection — dark-factory now refuses to start from a worktree or submodule CWD (where `.git` is a regular file) without `hideGit=true`, before any container is launched. Error message names the condition, remediation (`hideGit=true`), and references `docs/troubleshooting.md` and the `PR via Pre-Created Worktree` runbook.
+
 ## v0.164.2
 
 - fix: SpecGenerator now uses `cfg.Workflow == config.WorkflowWorktree || cfg.HideGit` for `hideGit` parameter, matching prompt executor behavior

@@ -1165,6 +1165,235 @@ var _ = Describe("Runner", func() {
 		})
 	})
 
+	Describe("detectWorktreeOrSubmodule", func() {
+		var origDir string
+
+		BeforeEach(func() {
+			var err error
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			_ = os.Chdir(origDir)
+		})
+
+		It("worktree: returns ErrWorktreeOrSubmodule when .git is a regular file", func() {
+			tmpDir, err := os.MkdirTemp("", "worktree-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			Expect(os.Chdir(tmpDir)).To(Succeed())
+			Expect(os.WriteFile(".git", []byte("\n"), 0600)).To(Succeed())
+
+			err = runner.DetectWorktreeOrSubmodule(context.Background())
+			Expect(err).To(MatchError(runner.ErrWorktreeOrSubmodule))
+		})
+
+		It(
+			"submodule: returns ErrWorktreeOrSubmodule when .git is a gitdir reference file",
+			func() {
+				tmpDir, err := os.MkdirTemp("", "submodule-test-*")
+				Expect(err).NotTo(HaveOccurred())
+				defer func() { _ = os.RemoveAll(tmpDir) }()
+
+				Expect(os.Chdir(tmpDir)).To(Succeed())
+				Expect(
+					os.WriteFile(".git", []byte("gitdir: ../.git/modules/foo"), 0600),
+				).To(Succeed())
+
+				err = runner.DetectWorktreeOrSubmodule(context.Background())
+				Expect(err).To(MatchError(runner.ErrWorktreeOrSubmodule))
+			},
+		)
+
+		It("regular repo: returns nil when .git is a directory", func() {
+			tmpDir, err := os.MkdirTemp("", "regular-repo-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			Expect(os.Chdir(tmpDir)).To(Succeed())
+			Expect(os.MkdirAll(".git", 0755)).To(Succeed())
+
+			err = runner.DetectWorktreeOrSubmodule(context.Background())
+			Expect(err).To(BeNil())
+		})
+
+		It("non-git dir: returns nil when .git does not exist", func() {
+			tmpDir, err := os.MkdirTemp("", "non-git-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			Expect(os.Chdir(tmpDir)).To(Succeed())
+
+			err = runner.DetectWorktreeOrSubmodule(context.Background())
+			Expect(err).To(BeNil())
+		})
+
+		It("symlink to directory: returns nil when .git is a symlink to a directory", func() {
+			tmpDir, err := os.MkdirTemp("", "symlink-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { _ = os.RemoveAll(tmpDir) }()
+
+			Expect(os.Chdir(tmpDir)).To(Succeed())
+			Expect(os.MkdirAll(".real-git", 0755)).To(Succeed())
+			Expect(os.Symlink(".real-git", ".git")).To(Succeed())
+
+			err = runner.DetectWorktreeOrSubmodule(context.Background())
+			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("worktree gating", func() {
+		var (
+			gitTempDir string
+			origDir    string
+		)
+
+		BeforeEach(func() {
+			var err error
+			gitTempDir, err = os.MkdirTemp("", "runner-worktree-gating-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			_ = os.Chdir(origDir)
+			if gitTempDir != "" {
+				_ = os.RemoveAll(gitTempDir)
+			}
+		})
+
+		makeWorktreeRunner := func(hideGit bool) runner.Runner {
+			return runner.NewRunner(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil, // server
+				nil, // specWatcher
+				"",
+				containerChecker,
+				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				&mocks.FileMover{},
+				0,
+				nil, // containerStopper
+				nil, // startupLogger
+				hideGit,
+				nil, // preflightChecker
+				nil, // logWriter
+			)
+		}
+
+		It("refuses to start from worktree CWD when hideGit=false", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(gitTempDir, ".git"), []byte("\n"), 0600),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+
+			r := makeWorktreeRunner(false)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("worktree"))
+			Expect(err.Error()).To(ContainSubstring("hideGit"))
+		})
+
+		It("starts successfully from worktree CWD when hideGit=true", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(gitTempDir, ".git"), []byte("\n"), 0600),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := makeWorktreeRunner(true)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+		})
+
+		It("refuses to start from submodule CWD when hideGit=false", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(
+					filepath.Join(gitTempDir, ".git"),
+					[]byte("gitdir: ../.git/modules/foo"),
+					0600,
+				),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+
+			r := makeWorktreeRunner(false)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("worktree"))
+			Expect(err.Error()).To(ContainSubstring("hideGit"))
+		})
+
+		It("starts successfully from regular repo CWD regardless of hideGit", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(gitTempDir, ".git"), 0755)).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			for _, hideGit := range []bool{true, false} {
+				r := makeWorktreeRunner(hideGit)
+				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+				defer runCancel()
+
+				err := r.Run(runCtx)
+				Expect(err).To(BeNil())
+			}
+		})
+	})
+
 	Describe("startup preflight", func() {
 		var preflightChecker *mocks.PreflightChecker
 

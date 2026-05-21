@@ -12,7 +12,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -384,19 +383,24 @@ var _ = Describe("Factory", func() {
 	})
 
 	Describe("hideGit fragment wiring", func() {
-		const resolvedHideGitExpr = "workflow == config.WorkflowWorktree || hideGit"
-
-		It("passes the same hideGit expression to both executor and enricher", func() {
-			_, sourceFile, _, ok := runtime.Caller(0)
-			Expect(ok).To(BeTrue())
-			factoryGoPath := filepath.Join(filepath.Dir(sourceFile), "factory.go")
-			content, err := os.ReadFile(factoryGoPath)
-			Expect(err).NotTo(HaveOccurred())
-			count := strings.Count(string(content), resolvedHideGitExpr)
-			Expect(
-				count,
-			).To(Equal(2), "enricher and executor must use the same resolved hideGit expression")
-		})
+		DescribeTable(
+			"resolveSpecGeneratorHideGit",
+			func(cfg config.Config, want bool) {
+				Expect(factory.ResolveSpecGeneratorHideGitForTest(cfg)).To(Equal(want))
+			},
+			Entry("default config -> false", config.Config{}, false),
+			Entry("HideGit=true -> true", config.Config{HideGit: true}, true),
+			Entry(
+				"Workflow=worktree -> true",
+				config.Config{Workflow: config.WorkflowWorktree},
+				true,
+			),
+			Entry(
+				"both set -> true",
+				config.Config{HideGit: true, Workflow: config.WorkflowWorktree},
+				true,
+			),
+		)
 
 		It("enricher emits hideGit guidance fragment when hideGit=true", func() {
 			releaser := &mocks.Releaser{}

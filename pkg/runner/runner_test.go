@@ -1242,6 +1242,29 @@ var _ = Describe("Runner", func() {
 			err = runner.DetectWorktreeOrSubmodule(context.Background())
 			Expect(err).To(BeNil())
 		})
+
+		It("stat-error: returns wrapped error when .git is unreadable (parent dir EACCES)", func() {
+			parentDir, err := os.MkdirTemp("", "stat-error-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer func() {
+				_ = os.Chmod(parentDir, 0755)
+				_ = os.RemoveAll(parentDir)
+			}()
+
+			workDir := filepath.Join(parentDir, "work")
+			Expect(os.MkdirAll(workDir, 0755)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(workDir, ".git"), []byte("\n"), 0600)).To(Succeed())
+			Expect(os.Chdir(workDir)).To(Succeed())
+
+			// Drop all permissions on the current directory — Lstat(".git") now fails with EACCES
+			// because the kernel rejects directory traversal on a mode-0000 directory.
+			Expect(os.Chmod(workDir, 0000)).To(Succeed())
+
+			err = runner.DetectWorktreeOrSubmodule(context.Background())
+			Expect(err).To(HaveOccurred())
+			Expect(err).NotTo(MatchError(runner.ErrWorktreeOrSubmodule))
+			Expect(err.Error()).To(ContainSubstring("lstat .git failed"))
+		})
 	})
 
 	Describe("worktree gating", func() {

@@ -630,6 +630,14 @@ func CreateOneShotRunner(
 	)
 }
 
+// resolveSpecGeneratorHideGit computes the effective hideGit value the
+// spec-generator's docker executor receives. Mirrors the expression at
+// line 891 (prompt-executor wiring) — both must agree so spec-generation
+// and prompt-execution containers see the same workspace shape.
+func resolveSpecGeneratorHideGit(cfg config.Config) bool {
+	return cfg.Workflow == config.WorkflowWorktree || cfg.HideGit
+}
+
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
 func CreateSpecGenerator(
 	cfg config.Config,
@@ -651,7 +659,7 @@ func CreateSpecGenerator(
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(),
-			cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
+			resolveSpecGeneratorHideGit(cfg),
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,

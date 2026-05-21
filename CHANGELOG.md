@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.166.1
+
+- test: Add stat-error detection test case to `DetectWorktreeOrSubmodule` exercising the EACCES path when `.git` is inaccessible
+- test: Replace source-text count assertion in factory tests with behavioral `DescribeTable` testing `resolveSpecGeneratorHideGit` across four input shapes
+
 ## v0.166.0
 
 - feat: Wire `workflow == config.WorkflowWorktree || hideGit` to `promptenricher.NewEnricher` in `factory.CreateProcessor`, matching the expression passed to `executor.NewDockerExecutor` — the enricher guidance fragment now appears in emitted prompts when `hideGit=true`

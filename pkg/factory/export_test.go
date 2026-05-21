@@ -17,3 +17,7 @@ var BuildIdleLoggerForTest = func(
 ) func(context.Context, context.CancelFunc) {
 	return buildIdleLogger(idleLogInterval, queueInterval, emit)
 }
+
+// ResolveSpecGeneratorHideGitForTest exposes the package-private helper for
+// black-box tests in factory_test.go.
+var ResolveSpecGeneratorHideGitForTest = resolveSpecGeneratorHideGit

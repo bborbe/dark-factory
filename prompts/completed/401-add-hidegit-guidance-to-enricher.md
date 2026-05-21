@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [085-auto-inject-hidegit-guidance]
 summary: Added hideGit parameter to promptenricher.NewEnricher with guidance fragment prepended when true
 container: dark-factory-exec-401-add-hidegit-guidance-to-enricher
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-21T21:45:00Z"
 queued: "2026-05-21T21:43:02Z"
 started: "2026-05-21T21:57:49Z"
+completed: "2026-05-21T22:06:21Z"
 branch: dark-factory/auto-inject-hidegit-guidance
 ---
 

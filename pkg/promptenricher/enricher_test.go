@@ -31,7 +31,7 @@ var _ = Describe("Enricher", func() {
 		resolverMock.ResolveReturns("", false, nil)
 	})
 
-	newEnricher := func(additionalInstructions, testCommand, validationCommand, validationPromptCriteria string) promptenricher.Enricher {
+	newEnricher := func(additionalInstructions, testCommand, validationCommand, validationPromptCriteria string, hideGit bool) promptenricher.Enricher {
 		return promptenricher.NewEnricher(
 			releaser,
 			additionalInstructions,
@@ -39,72 +39,73 @@ var _ = Describe("Enricher", func() {
 			validationCommand,
 			validationPromptCriteria,
 			resolverMock,
+			hideGit,
 		)
 	}
 
 	Describe("Enrich", func() {
 		It("appends completion report suffix to content", func() {
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("base content"))
 			Expect(result).To(ContainSubstring(report.MarkerStart))
 		})
 
 		It("prepends additionalInstructions when non-empty", func() {
-			enricher := newEnricher("extra instructions", "", "", "")
+			enricher := newEnricher("extra instructions", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(HavePrefix("extra instructions\n\nbase content"))
 		})
 
 		It("does not prepend additionalInstructions when empty", func() {
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(HavePrefix("base content"))
 		})
 
 		It("appends changelog suffix when HasChangelog returns true", func() {
 			releaser.HasChangelogReturns(true)
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("Update CHANGELOG.md"))
 		})
 
 		It("does not append changelog suffix when HasChangelog returns false", func() {
 			releaser.HasChangelogReturns(false)
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Update CHANGELOG.md"))
 		})
 
 		It("appends test command suffix when testCommand is non-empty", func() {
-			enricher := newEnricher("", "make test", "", "")
+			enricher := newEnricher("", "make test", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("make test"))
 			Expect(result).To(ContainSubstring("Fast Feedback Command"))
 		})
 
 		It("does not append test command suffix when testCommand is empty", func() {
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Fast Feedback Command"))
 		})
 
 		It("appends validation suffix when validationCommand is non-empty", func() {
-			enricher := newEnricher("", "", "make precommit", "")
+			enricher := newEnricher("", "", "make precommit", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("make precommit"))
 			Expect(result).To(ContainSubstring("Project Validation Command"))
 		})
 
 		It("does not append validation suffix when validationCommand is empty", func() {
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Validation Command"))
 		})
 
 		It("appends validation prompt suffix when resolver returns criteria", func() {
 			resolverMock.ResolveReturns("# My Criteria\n- item one", true, nil)
-			enricher := newEnricher("", "", "", "some-criteria-value")
+			enricher := newEnricher("", "", "", "some-criteria-value", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).To(ContainSubstring("My Criteria"))
 			Expect(result).To(ContainSubstring("Project Quality Criteria"))
@@ -112,14 +113,14 @@ var _ = Describe("Enricher", func() {
 
 		It("does not append validation prompt suffix when resolver returns false", func() {
 			resolverMock.ResolveReturns("", false, nil)
-			enricher := newEnricher("", "", "", "")
+			enricher := newEnricher("", "", "", "", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Quality Criteria"))
 		})
 
 		It("does not append validation prompt suffix when resolver returns error", func() {
 			resolverMock.ResolveReturns("", false, fmt.Errorf("read error"))
-			enricher := newEnricher("", "", "", "bad-path")
+			enricher := newEnricher("", "", "", "bad-path", false)
 			result := enricher.Enrich(ctx, "base content")
 			Expect(result).NotTo(ContainSubstring("Project Quality Criteria"))
 		})
@@ -127,7 +128,7 @@ var _ = Describe("Enricher", func() {
 		It("preserves suffix ordering: report, changelog, test, validation, criteria", func() {
 			releaser.HasChangelogReturns(true)
 			resolverMock.ResolveReturns("my criteria", true, nil)
-			enricher := newEnricher("", "make test", "make precommit", "my criteria")
+			enricher := newEnricher("", "make test", "make precommit", "my criteria", false)
 			result := enricher.Enrich(ctx, "base content")
 
 			reportIdx := indexOf(result, report.MarkerStart)
@@ -136,6 +137,64 @@ var _ = Describe("Enricher", func() {
 			validationIdx := indexOf(result, "Project Validation Command")
 			criteriaIdx := indexOf(result, "Project Quality Criteria")
 
+			Expect(reportIdx).To(BeNumerically("<", changelogIdx))
+			Expect(changelogIdx).To(BeNumerically("<", testIdx))
+			Expect(testIdx).To(BeNumerically("<", validationIdx))
+			Expect(validationIdx).To(BeNumerically("<", criteriaIdx))
+		})
+
+		It("prepends hideGit fragment when hideGit=true and additionalInstructions is set", func() {
+			enricher := newEnricher("PROJECT_HEADER", "", "", "", true)
+			result := enricher.Enrich(ctx, "PROMPT_BODY")
+			Expect(result).To(ContainSubstring("PROJECT_HEADER"))
+			Expect(result).To(ContainSubstring("hideGit=true active"))
+			Expect(result).To(ContainSubstring("PROMPT_BODY"))
+			headerIdx := indexOf(result, "PROJECT_HEADER")
+			fragmentIdx := indexOf(result, "hideGit=true active")
+			promptIdx := indexOf(result, "PROMPT_BODY")
+			Expect(headerIdx).To(BeNumerically("<", fragmentIdx))
+			Expect(fragmentIdx).To(BeNumerically("<", promptIdx))
+		})
+
+		It(
+			"prepends hideGit fragment when hideGit=true and additionalInstructions is empty",
+			func() {
+				enricher := newEnricher("", "", "", "", true)
+				result := enricher.Enrich(ctx, "PROMPT_BODY")
+				Expect(result).To(ContainSubstring("hideGit=true active"))
+				Expect(result).To(ContainSubstring("PROMPT_BODY"))
+				fragmentIdx := indexOf(result, "hideGit=true active")
+				promptIdx := indexOf(result, "PROMPT_BODY")
+				Expect(fragmentIdx).To(BeNumerically("<", promptIdx))
+				Expect(result).To(HavePrefix("hideGit=true active"))
+			},
+		)
+
+		It("does not prepend hideGit fragment when hideGit=false", func() {
+			enricher := newEnricher("", "", "", "", false)
+			result := enricher.Enrich(ctx, "PROMPT_BODY")
+			Expect(result).NotTo(ContainSubstring("hideGit=true active"))
+			Expect(result).To(HavePrefix("PROMPT_BODY"))
+		})
+
+		It("preserves suffix ordering with hideGit fragment", func() {
+			releaser.HasChangelogReturns(true)
+			resolverMock.ResolveReturns("my criteria", true, nil)
+			enricher := newEnricher("HEADER", "make test", "make precommit", "my criteria", true)
+			result := enricher.Enrich(ctx, "PROMPT_BODY")
+
+			headerIdx := indexOf(result, "HEADER")
+			fragmentIdx := indexOf(result, "hideGit=true active")
+			promptIdx := indexOf(result, "PROMPT_BODY")
+			reportIdx := indexOf(result, report.MarkerStart)
+			changelogIdx := indexOf(result, "Update CHANGELOG.md")
+			testIdx := indexOf(result, "Fast Feedback Command")
+			validationIdx := indexOf(result, "Project Validation Command")
+			criteriaIdx := indexOf(result, "Project Quality Criteria")
+
+			Expect(headerIdx).To(BeNumerically("<", fragmentIdx))
+			Expect(fragmentIdx).To(BeNumerically("<", promptIdx))
+			Expect(promptIdx).To(BeNumerically("<", reportIdx))
 			Expect(reportIdx).To(BeNumerically("<", changelogIdx))
 			Expect(changelogIdx).To(BeNumerically("<", testIdx))
 			Expect(testIdx).To(BeNumerically("<", validationIdx))

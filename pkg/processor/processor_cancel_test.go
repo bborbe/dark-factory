@@ -93,6 +93,7 @@ func newProcessorWithMockWatcher(
 			"",
 			"",
 			validationprompt.NewResolver(),
+			false,
 		),
 		committingrecoverer.NewRecoverer(mgr, nil, nil, "", false),
 		scanner,

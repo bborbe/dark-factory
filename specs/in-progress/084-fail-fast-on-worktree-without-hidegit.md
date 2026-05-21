@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-05-21T20:47:27Z"
 generating: "2026-05-21T21:19:49Z"
 prompted: "2026-05-21T21:22:44Z"
+verifying: "2026-05-21T21:57:47Z"
 branch: dark-factory/fail-fast-on-worktree-without-hidegit
 ---
 

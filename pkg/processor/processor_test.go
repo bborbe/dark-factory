@@ -142,6 +142,7 @@ func newTestProcessor(
 			validationCommand,
 			validationPrompt,
 			validationprompt.NewResolver(),
+			false,
 		),
 		committingrecoverer.NewRecoverer(mgr, rel, autoCompleter, completedDir, autoRelease),
 		scanner,

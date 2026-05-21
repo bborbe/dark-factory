@@ -958,6 +958,7 @@ func CreateProcessor(
 			validationCommand,
 			validationPrompt,
 			validationprompt.NewResolver(),
+			false,
 		),
 		committingrecoverer.NewRecoverer(
 			promptManager,

@@ -689,6 +689,7 @@ var _ = Describe("Processor", func() {
 					"",
 					"",
 					validationprompt.NewResolver(),
+					false,
 				),
 				committingrecoverer.NewRecoverer(
 					manager,

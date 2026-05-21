@@ -13,6 +13,12 @@ import (
 	"github.com/bborbe/dark-factory/pkg/validationprompt"
 )
 
+const hideGitGuidanceFragment = `hideGit=true active: /workspace/.git appears as a character device when the dark-factory hideGit mode is active. This is intentional behavior of the dark-factory YOLO container - it is not a broken or corrupt repository. The mask prevents the agent from accidentally using git commands that would conflict with dark-factory's workflow management.
+
+When hideGit=true active, GOFLAGS=-buildvcs=false is typically already set in the container environment, so go test, errcheck, gosec, golangci-lint, and other static analysis tools work normally without git version control metadata. You do not need to work around this.
+
+Regardless of how /workspace/.git appears (as a directory, character device, or any other file type), run the project's precommit gate (make precommit or the equivalent validation command) to validate your changes before reporting completion. Do not skip or bypass the validation because of .git's appearance.`
+
 //counterfeiter:generate -o ../../mocks/prompt-enricher.go --fake-name PromptEnricher . Enricher
 
 // Enricher prepends additionalInstructions and appends machine-parseable suffixes
@@ -31,6 +37,7 @@ func NewEnricher(
 	validationCommand string,
 	validationPromptCriteria string,
 	validationPromptResolver validationprompt.Resolver,
+	hideGit bool,
 ) Enricher {
 	return &enricher{
 		releaser:                 releaser,
@@ -39,6 +46,7 @@ func NewEnricher(
 		validationCommand:        validationCommand,
 		validationPromptCriteria: validationPromptCriteria,
 		validationPromptResolver: validationPromptResolver,
+		hideGit:                  hideGit,
 	}
 }
 
@@ -49,13 +57,19 @@ type enricher struct {
 	validationCommand        string
 	validationPromptCriteria string
 	validationPromptResolver validationprompt.Resolver
+	hideGit                  bool
 }
 
 // Enrich prepends additionalInstructions and appends machine-parseable suffixes.
 func (e *enricher) Enrich(ctx context.Context, content string) string {
+	prefix := ""
 	if e.additionalInstructions != "" {
-		content = e.additionalInstructions + "\n\n" + content
+		prefix = e.additionalInstructions + "\n\n"
 	}
+	if e.hideGit {
+		prefix = prefix + hideGitGuidanceFragment + "\n\n"
+	}
+	content = prefix + content
 	// Append completion report suffix to make output machine-parseable
 	content = content + report.Suffix()
 	// Append changelog instructions when the project has a CHANGELOG.md

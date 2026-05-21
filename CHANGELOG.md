@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.165.0
+
+- feat: Add `hideGit` parameter to `promptenricher.NewEnricher` — when `true`, `Enrich` prepends a guidance fragment after `additionalInstructions` explaining that `/workspace/.git` appears as a character device by design, `GOFLAGS=-buildvcs=false` is typically set, and to run `make precommit` regardless of `.git`'s appearance
+
 ## v0.164.3
 
 - fix: Fail-fast worktree/submodule detection — dark-factory now refuses to start from a worktree or submodule CWD (where `.git` is a regular file) without `hideGit=true`, before any container is launched. Error message names the condition, remediation (`hideGit=true`), and references `docs/troubleshooting.md` and the `PR via Pre-Created Worktree` runbook.

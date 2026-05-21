@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [084-fail-fast-on-worktree-without-hidegit]
 summary: Added worktree/submodule + hideGit failure mode documentation to troubleshooting.md
 container: dark-factory-exec-398-add-worktree-troubleshooting-docs
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-21T21:45:02Z"
 queued: "2026-05-21T21:33:34Z"
 started: "2026-05-21T21:33:35Z"
+completed: "2026-05-21T21:34:18Z"
 branch: dark-factory/fail-fast-on-worktree-without-hidegit
 ---
 

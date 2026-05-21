@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [085-auto-inject-hidegit-guidance]
 summary: Wired resolved hideGit expression to promptenricher.NewEnricher in factory.CreateProcessor, added integration tests verifying fragment emission, and documented the behavior in troubleshooting.md
 container: dark-factory-exec-402-wire-hidegit-into-factory-and-test
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-21T21:45:00Z"
 queued: "2026-05-21T21:43:03Z"
 started: "2026-05-21T22:06:23Z"
+completed: "2026-05-21T22:11:11Z"
 branch: dark-factory/auto-inject-hidegit-guidance
 ---
 

@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [084-fail-fast-on-worktree-without-hidegit]
 summary: Replaced hardcoded false with cfg.Workflow == config.WorkflowWorktree || cfg.HideGit for hideGit parameter in CreateSpecGenerator, matching prompt executor pattern at line 891
 container: dark-factory-exec-399-fix-factory-hideGit-plumbing
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-21T21:45:01Z"
 queued: "2026-05-21T21:33:35Z"
 started: "2026-05-21T21:34:20Z"
+completed: "2026-05-21T21:40:09Z"
 branch: dark-factory/fail-fast-on-worktree-without-hidegit
 ---
 

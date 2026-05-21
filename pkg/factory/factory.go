@@ -651,7 +651,7 @@ func CreateSpecGenerator(
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(),
-			false, // hideGit — spec generators never need .git masking
+			cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,

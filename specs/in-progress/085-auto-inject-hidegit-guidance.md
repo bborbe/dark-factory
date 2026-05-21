@@ -1,10 +1,11 @@
 ---
-status: generating
+status: prompted
 tags:
     - dark-factory
     - spec
 approved: "2026-05-21T21:33:31Z"
 generating: "2026-05-21T21:33:31Z"
+prompted: "2026-05-21T21:35:13Z"
 branch: dark-factory/auto-inject-hidegit-guidance
 ---
 

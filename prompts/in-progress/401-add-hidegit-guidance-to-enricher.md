@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [085-auto-inject-hidegit-guidance]
 created: "2026-05-21T21:45:00Z"
+queued: "2026-05-21T21:43:02Z"
 branch: dark-factory/auto-inject-hidegit-guidance
 ---
 
@@ -55,7 +56,14 @@ Read `pkg/report/report.go` — to understand the existing suffix pattern (e.g.,
      ```
      CRITICAL: do NOT append the fragment to `content` after the existing prepend block — that would place the fragment AFTER the prompt body, contradicting the spec's required ordering (`additionalInstructions → fragment → PROMPT_BODY`) and breaking the requirement-2 tests. The fragment must be part of the prefix chain, not a separate append.
 
-2. In `pkg/promptenricher/enricher_test.go`:
+2. Update the OTHER `promptenricher.NewEnricher` call sites to pass `false` for the new `hideGit` parameter (preserves current behavior; the wire-hidegit-into-factory prompt updates the factory site to the resolved expression):
+   - `pkg/factory/factory.go:954` — pass `false` as the last argument here. The sibling `085-wire-hidegit-into-factory-and-test.md` prompt will replace this `false` with the resolved expression `workflow == config.WorkflowWorktree || hideGit`. For now this prompt only adds the parameter to keep compilation green.
+   - `pkg/processor/processor_test.go:138` — pass `false` (test default).
+   - `pkg/processor/processor_retry_test.go:685` — pass `false` (test default).
+   - `pkg/processor/processor_cancel_test.go:89` — pass `false` (test default).
+   Without these updates `make precommit` fails at the compile step because the constructor signature changed.
+
+3. In `pkg/promptenricher/enricher_test.go`:
    Add new test cases in the existing `Describe("Enrich", ...)` block:
    - `It("prepends hideGit fragment when hideGit=true and additionalInstructions is set", ...)` — construct enricher with `hideGit=true` and `additionalInstructions="PROJECT_HEADER"`, call `Enrich(ctx, "PROMPT_BODY")`, assert the result contains `PROJECT_HEADER`, the fragment's distinctive marker, and `PROMPT_BODY` in that order using `indexOf` for position comparisons
    - `It("prepends hideGit fragment when hideGit=true and additionalInstructions is empty", ...)` — construct enricher with `hideGit=true` and no additionalInstructions, call `Enrich(ctx, "PROMPT_BODY")`, assert the result contains the fragment marker followed by `PROMPT_BODY`

@@ -33,6 +33,18 @@ The `dark-factory prompt show <id>` output also shows the full error under the `
 **Resolution for dirty-tree failures:** commit or stash the listed files in the project
 worktree, then run `dark-factory prompt retry` to re-queue the failed prompt.
 
+### hideGit guidance fragment
+
+When `hideGit=true` is configured (either explicitly in `.dark-factory.yaml` or automatically
+when running from a git worktree), every emitted prompt includes a guidance fragment
+explaining that `/workspace/.git` appears as a character device by design. The fragment
+instructs the agent to run `make precommit` regardless of how `.git` appears and notes that
+static analysis tools work normally in this mode.
+
+This behavior is intentional and the fragment cannot be disabled separately from `hideGit`
+itself. Set `hideGit: false` in `.dark-factory.yaml` to suppress the fragment (and the
+character-device masking).
+
 ## Running dark-factory from a git worktree or submodule
 
 When dark-factory is started from a git worktree (where `.git` is a regular file pointing to

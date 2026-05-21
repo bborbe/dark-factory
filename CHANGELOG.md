@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.166.0
+
+- feat: Wire `workflow == config.WorkflowWorktree || hideGit` to `promptenricher.NewEnricher` in `factory.CreateProcessor`, matching the expression passed to `executor.NewDockerExecutor` — the enricher guidance fragment now appears in emitted prompts when `hideGit=true`
+- test: Add factory integration tests verifying the enricher and executor receive identical `hideGit` expressions, and that the guidance fragment is emitted when `hideGit=true` and suppressed when `hideGit=false`
+- docs: Document `hideGit` guidance fragment behavior in `docs/troubleshooting.md`
+
 ## v0.165.0
 
 - feat: Add `hideGit` parameter to `promptenricher.NewEnricher` — when `true`, `Enrich` prepends a guidance fragment after `additionalInstructions` explaining that `/workspace/.git` appears as a character device by design, `GOFLAGS=-buildvcs=false` is typically set, and to run `make precommit` regardless of `.git`'s appearance

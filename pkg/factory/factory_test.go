@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/factory"
@@ -28,6 +30,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
+	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -377,6 +380,63 @@ var _ = Describe("Factory", func() {
 			Expect(output).NotTo(ContainSubstring("project-wins"))
 			Expect(output).NotTo(ContainSubstring("global-val"))
 			Expect(output).NotTo(ContainSubstring("pv"))
+		})
+	})
+
+	Describe("hideGit fragment wiring", func() {
+		const resolvedHideGitExpr = "workflow == config.WorkflowWorktree || hideGit"
+
+		It("passes the same hideGit expression to both executor and enricher", func() {
+			_, sourceFile, _, ok := runtime.Caller(0)
+			Expect(ok).To(BeTrue())
+			factoryGoPath := filepath.Join(filepath.Dir(sourceFile), "factory.go")
+			content, err := os.ReadFile(factoryGoPath)
+			Expect(err).NotTo(HaveOccurred())
+			count := strings.Count(string(content), resolvedHideGitExpr)
+			Expect(
+				count,
+			).To(Equal(2), "enricher and executor must use the same resolved hideGit expression")
+		})
+
+		It("enricher emits hideGit guidance fragment when hideGit=true", func() {
+			releaser := &mocks.Releaser{}
+			releaser.HasChangelogReturns(false)
+			resolverMock := &mocks.Resolver{}
+			resolverMock.ResolveReturns("", false, nil)
+
+			enricher := promptenricher.NewEnricher(
+				releaser,
+				"",
+				"",
+				"",
+				"",
+				resolverMock,
+				true,
+			)
+			result := enricher.Enrich(context.Background(), "PROMPT_BODY")
+			Expect(result).To(ContainSubstring("character device"))
+			Expect(result).To(ContainSubstring("hideGit=true active"))
+			Expect(result).NotTo(ContainSubstring("hideGit=true active\n\nPROMPT_BODY"))
+		})
+
+		It("enricher does not emit hideGit guidance fragment when hideGit=false", func() {
+			releaser := &mocks.Releaser{}
+			releaser.HasChangelogReturns(false)
+			resolverMock := &mocks.Resolver{}
+			resolverMock.ResolveReturns("", false, nil)
+
+			enricher := promptenricher.NewEnricher(
+				releaser,
+				"",
+				"",
+				"",
+				"",
+				resolverMock,
+				false,
+			)
+			result := enricher.Enrich(context.Background(), "PROMPT_BODY")
+			Expect(result).NotTo(ContainSubstring("hideGit=true active"))
+			Expect(result).To(HavePrefix("PROMPT_BODY"))
 		})
 	})
 

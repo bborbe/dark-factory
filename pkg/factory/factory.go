@@ -958,7 +958,7 @@ func CreateProcessor(
 			validationCommand,
 			validationPrompt,
 			validationprompt.NewResolver(),
-			false,
+			workflow == config.WorkflowWorktree || hideGit,
 		),
 		committingrecoverer.NewRecoverer(
 			promptManager,

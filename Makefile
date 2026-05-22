@@ -1,3 +1,5 @@
+include tools.env
+
 SHELL := /bin/bash
 
 BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
@@ -85,9 +87,9 @@ errcheck:
 
 .PHONY: vulncheck
 vulncheck:
-	@go run -mod=mod golang.org/x/vuln/cmd/govulncheck -format json $(shell go list -mod=mod ./... | grep -v /vendor/) 2>&1 | \
+	@go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) -format json $(shell go list -mod=mod ./... | grep -v /vendor/) 2>&1 | \
 		jq -e 'select(.finding != null and .finding.osv != "GO-2026-4923" and .finding.osv != "GO-2026-4514" and .finding.osv != "GO-2022-0470" and .finding.osv != "GO-2026-4772" and .finding.osv != "GO-2026-4771")' > /dev/null 2>&1 && \
-		{ echo "Unexpected vulnerabilities found"; go run -mod=mod golang.org/x/vuln/cmd/govulncheck $(shell go list -mod=mod ./... | grep -v /vendor/); exit 1; } || \
+		{ echo "Unexpected vulnerabilities found"; go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) -show verbose $(shell go list -mod=mod ./... | grep -v /vendor/); exit 1; } || \
 		echo "No unignored vulnerabilities found"
 
 .PHONY: osv-scanner

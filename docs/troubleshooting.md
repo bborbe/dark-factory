@@ -65,3 +65,43 @@ See the 'PR via Pre-Created Worktree' runbook for the canonical workflow.
 
 Auto-enabling `hideGit` when a worktree is detected was considered but rejected in favor of
 explicit configuration.
+
+## Preflight baseline failure on daemon start
+
+When the daemon starts, it runs `preflightCommand` (typically `make precommit`) against the
+current tree. If that command exits non-zero, the daemon logs:
+
+```
+level=ERROR msg="preflight: baseline check FAILED — prompts will not start until baseline is fixed"
+level=ERROR msg="preflight baseline broken — dark-factory exiting. Fix the tree (e.g. run the failing command manually), then restart dark-factory."
+```
+
+Common cause: `vulncheck` or `lint` fails because a transitive dependency has a newly-disclosed
+CVE that the project's pinned version no longer covers (e.g. `golang.org/x/net` < v0.55.0 after
+GO-2026-5025…5030 dropped). The fix is to bump the affected modules.
+
+**Resolution: run `updater all`** from the project root. The `updater` tool walks every Go module
+under the current directory and bumps the affected modules to their latest tagged version via
+`go get <module>@latest` — one targeted upgrade per direct dependency. After `updater all`
+completes and you've merged its branch, run `make precommit` locally to confirm the tree is
+green, then restart the daemon.
+
+For projects without a published `updater` binary, run the equivalent manually — one targeted
+`go get <module>@latest` per affected module, then `go mod tidy`:
+
+```bash
+go get golang.org/x/net@latest
+go get golang.org/x/crypto@latest
+go mod tidy
+make precommit
+```
+
+**Never use `go get -u`.** It upgrades every direct AND indirect (transitive) dependency in the
+module graph — far more than the vuln scanner flagged. That broad sweep can pull in unrelated
+breaking changes from deep in the graph, leaving you to diagnose churn that has nothing to do
+with the original CVE. Targeted `go get <module>@latest` upgrades only the named module (and
+the minimal set of indirects required to satisfy it), keeping the diff small and reviewable.
+
+If `make precommit` still fails after dependency bumps, the failure is not a vuln drift — read
+the error output and fix it before restarting the daemon. The daemon is intentionally strict
+about baseline health so prompts never execute against a broken tree.

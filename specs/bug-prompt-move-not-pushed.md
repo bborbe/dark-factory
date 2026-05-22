@@ -102,12 +102,12 @@ After every successful prompt execution — across all four workflow modes — t
 - [ ] All four workflow modes (`direct`, `branch`, `clone`, `worktree`) move the prompt file BEFORE the work commit — evidence: `git log -p --name-status <work-commit-sha>` on a PR produced by each workflow mode shows BOTH the code change AND a `R prompts/in-progress/<id>.md  prompts/completed/<id>.md` rename entry in the SAME commit
 - [ ] After a PR merge produced by each workflow mode, `git ls-tree origin/master prompts/in-progress/ | grep <id>` returns empty (exit code 1 from grep) AND `git ls-tree origin/master prompts/completed/ | grep <id>` returns exactly one line — evidence: shell exit codes and grep output
 - [ ] No second unpushed move-commit exists after a successful prompt run — evidence: `git log origin/master..HEAD --oneline` is empty after the workflow completes
-- [ ] Ginkgo tests cover all four workflow modes for the move-before-commit ordering — evidence: `ginkgo -v ./pkg/processor/ 2>&1 | grep -iE 'move.*before.*commit'` returns ≥1 matching line per workflow mode (≥4 total)
-- [ ] Failure-mode behavior for "work commit fails after move" is exercised by a test — evidence: `ginkgo -v ./pkg/processor/ 2>&1 | grep -iE 'commit fail.*roll(back|ed)|commit fail.*warn'` returns ≥1 line
+- [ ] Ginkgo tests cover all four workflow modes for the move-before-commit ordering — evidence: `ginkgo -v ./pkg/processor/ 2>&1 | grep -iE 'move.*before.*commit'` returns ≥1 matching line per workflow mode (≥4 total); each matching test must invoke `git log --name-status` (or equivalent porcelain) on the produced commit and assert that the output contains both a non-prompt file modification AND the `R prompts/in-progress/<id>.md  prompts/completed/<id>.md` rename — naming alone is not sufficient
+- [ ] Failure-mode behavior for "work commit fails after move" is exercised by a test that asserts the file is restored to `prompts/in-progress/<id>.md` with `status: in_progress` — evidence: `ginkgo -v ./pkg/processor/ 2>&1 | grep -iE 'commit fail.*roll(back|ed)'` returns ≥1 line; test body must assert post-condition file path AND frontmatter contents
 - [ ] Failure-mode behavior for "push fails after commit" is exercised by a test — evidence: `ginkgo -v ./pkg/processor/ 2>&1 | grep -iE 'push fail.*after.*move'` returns ≥1 line
 - [ ] `MoveToCompleted` external contract preserved — evidence: existing unit tests in `pkg/prompt/` pass unchanged: `go test ./pkg/prompt/... -count=1` exits 0
 - [ ] `make precommit` exits 0 from the dark-factory repo root after the fix lands — evidence: shell exit code
-- [ ] BRO-20203 (lib-crypto) repro no longer shows divergence after a prompt PR merges — evidence: a new integration or scenario test replays the original repro and asserts that `origin/master` after merge contains the prompt only under `completed/`. Test name must contain `bro-20203` or `lib-crypto-divergence` so it can be located via `grep`.
+- [ ] BRO-20203 repro (originating Jira ticket from the Brogrammers tracker; observed on `lib-crypto`) no longer shows divergence after a prompt PR merges — evidence: a new integration or scenario test replays the original repro and asserts that `origin/master` after merge contains the prompt only under `completed/`. Test name must contain `bro-20203` or `lib-crypto-divergence` so it can be located via `grep`.
 
 ## Verification
 
@@ -145,4 +145,4 @@ go test ./... -count=1
 
 ## Do-Nothing Option
 
-Master diverges from local daemon state on every prompt run. The "diff + prompt = technical how" contract stays silently broken. Operators must either (a) accept that prompts on master are local-only metadata and document this explicitly in `docs/workflows.md`, or (b) build an out-of-band reconciliation job that periodically pushes the missing move-commits to master — which itself can race with new prompt executions and is strictly more complex than fixing the ordering.
+Divergence continues on every prompt run; the alternative is an out-of-band reconciliation job, which is strictly more complex than fixing the ordering and can race with new executions.

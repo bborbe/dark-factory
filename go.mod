@@ -12,7 +12,7 @@ require (
 	github.com/bborbe/errors v1.5.13
 	github.com/bborbe/http v1.26.12
 	github.com/bborbe/log v1.6.13
-	github.com/bborbe/run v1.9.26
+	github.com/bborbe/run v1.9.27
 	github.com/bborbe/time v1.27.0
 	github.com/bborbe/validation v1.4.13
 	github.com/fsnotify/fsnotify v1.10.1

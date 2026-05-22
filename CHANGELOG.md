@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.167.1
+
+- Update github.com/bborbe/run v1.9.24 → v1.9.26
+- Add tools.env with canonical tool version pins
+- Update Makefile to use versioned tool invocations via tools.env
+
 ## v0.167.0
 
 - refactor: Extract `checkGitSafety` from `(*runner)` method to package-level `CheckGitSafety(ctx, hideGit)` function shared by daemon and one-shot runners

@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.168.1
+
+- bump github.com/bborbe/run v1.9.26 → v1.9.27
+- bump golang.org/x/net v0.54.0 → v0.55.0
+- bump golang.org/x/sys v0.44.0 → v0.45.0
+
 ## v0.168.0
 
 - Add sibling-coverage rule to prompt-auditor agent — catches the AC6-class bug where a prompt edits one entry point's setup logic (e.g. `runner.Run`) but misses parallel implementations (e.g. `oneShotRunner.Run`); flags via four detection heuristics (same-package method parity, entry-point name pairs, spec multi-subcommand signals, helper-extraction asymmetry)

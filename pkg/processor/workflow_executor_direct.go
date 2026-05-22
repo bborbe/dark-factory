@@ -59,29 +59,32 @@ func (e *directWorkflowExecutor) Complete(
 	return nil
 }
 
-// completeCommit performs the two-phase git commit for the direct workflow:
-// (1) commit all work files, (2) move prompt to completed and commit the move.
-// Both phases use CommitWithRetry. Returns an error if any phase exhausts all retries.
+// completeCommit performs the single-phase git commit for the direct workflow.
+// The prompt file is moved to completed/ before the work commit; both land in one commit.
+// Uses CommitWithRetry for the work commit. Returns an error if the phase exhausts all retries.
 func (e *directWorkflowExecutor) completeCommit(
 	gitCtx, ctx context.Context,
 	pf *prompt.PromptFile,
 	title, promptPath, completedPath string,
 ) error {
-	// Phase 1: commit all code changes (vendor, source, etc.) with retry.
-	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
-		return handleDirectWorkflow(retryCtx, ctx, e.deps, title, "")
-	}); err != nil {
-		return errors.Wrap(ctx, err, "commit work files")
-	}
-
-	// Phase 2: move prompt to completed/ (sets status: completed, physically moves the file).
+	// Move prompt to completed/ before the work commit (sets status: completed, physically moves the file).
 	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
 	slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
-	// Phase 3: auto-complete specs (best-effort, non-blocking).
-	// Must run AFTER MoveToCompleted so allLinkedPromptsCompleted can see this
+	// Commit all code changes with retry. If the commit fails, roll the prompt file back to in-progress/ first.
+	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+		return handleDirectWorkflow(retryCtx, ctx, e.deps, title, "")
+	}); err != nil {
+		if rollbackErr := e.deps.PromptManager.RollbackMoveToCompleted(ctx, completedPath, e.deps.FileMover); rollbackErr != nil {
+			slog.Error("rollback after commit failure failed", "error", rollbackErr)
+		}
+		return errors.Wrap(ctx, err, "handle direct workflow (rolled back move)")
+	}
+
+	// Auto-complete specs (best-effort, non-blocking).
+	// Must run AFTER the successful commit so allLinkedPromptsCompleted can see this
 	// prompt in the completed dir.
 	for _, specID := range pf.Specs() {
 		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
@@ -89,20 +92,7 @@ func (e *directWorkflowExecutor) completeCommit(
 		}
 	}
 
-	// Phase 4: commit the prompt-file move with retry.
-	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
-		return e.deps.Releaser.CommitCompletedFile(retryCtx, completedPath)
-	}); err != nil {
-		// The file is now in completed/ but the git commit failed.
-		// The recovery path (processCommittingPrompts) handles this:
-		// it will detect no dirty work files and just commit the prompt move.
-		return errors.Wrap(ctx, err, "commit completed file")
-	}
-
-	// Phase 5: push the branch when autoRelease is enabled.
-	// Single push covers both Phase 1's work commit (when CommitOnly was used)
-	// and Phase 4's prompt-move commit. Idempotent with CommitAndRelease's
-	// internal push (changelog path).
+	// Push the branch when autoRelease is enabled.
 	if e.deps.AutoRelease {
 		if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
 			return e.deps.Releaser.PushBranch(retryCtx)

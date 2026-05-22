@@ -21,6 +21,7 @@ type PromptManager interface {
 	FindPromptStatusInProgress(ctx context.Context, number int) string
 	SetStatus(ctx context.Context, path string, status string) error
 	MoveToCompleted(ctx context.Context, path string) error
+	RollbackMoveToCompleted(ctx context.Context, completedPath string, mover prompt.FileMover) error
 	MoveToCancelled(ctx context.Context, path string) error
 	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
 	SetPRURL(ctx context.Context, path string, url string) error

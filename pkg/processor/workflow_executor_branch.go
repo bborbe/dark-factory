@@ -7,6 +7,7 @@ package processor
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -96,7 +97,8 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 // CleanupOnError is a no-op for the branch workflow — no isolated directory to remove.
 func (e *branchWorkflowExecutor) CleanupOnError(_ context.Context) {}
 
-// Complete moves prompt to completed, commits, restores the default branch, and handles PR/merge.
+// Complete moves prompt to completed, creates a combined commit on the feature branch,
+// restores the default branch, and handles PR/merge.
 func (e *branchWorkflowExecutor) Complete(
 	gitCtx, ctx context.Context,
 	pf *prompt.PromptFile,
@@ -104,15 +106,32 @@ func (e *branchWorkflowExecutor) Complete(
 ) error {
 	featureBranch := e.inPlaceBranch
 
-	if err := moveToCompletedAndCommit(ctx, gitCtx, e.deps, pf, promptPath, completedPath); err != nil {
+	// Move prompt to completed/ before the work commit (sets status: completed, physically moves the file).
+	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		e.restoreDefaultBranch(ctx)
-		return errors.Wrap(ctx, err, "move to completed and commit")
+		return errors.Wrap(ctx, err, "move to completed")
+	}
+	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+
+	// Create a combined commit (work changes + prompt move) on the feature branch.
+	// Roll back the move BEFORE restoring the default branch if the commit fails.
+	if err := handleDirectWorkflow(gitCtx, ctx, e.deps, title, featureBranch); err != nil {
+		if rollbackErr := e.deps.PromptManager.RollbackMoveToCompleted(ctx, completedPath, e.deps.FileMover); rollbackErr != nil {
+			slog.Error("rollback after commit failure failed", "error", rollbackErr)
+		}
+		e.restoreDefaultBranch(ctx)
+		return errors.Wrap(ctx, err, "handle direct workflow on feature branch (rolled back move)")
 	}
 
-	if err := handleDirectWorkflow(gitCtx, ctx, e.deps, title, featureBranch); err != nil {
-		e.restoreDefaultBranch(ctx)
-		return errors.Wrap(ctx, err, "handle direct workflow")
+	// Auto-complete specs (best-effort, non-blocking).
+	// Must run AFTER the successful commit so allLinkedPromptsCompleted can see this
+	// prompt in the completed dir.
+	for _, specID := range pf.Specs() {
+		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
+			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
+		}
 	}
+
 	e.restoreDefaultBranch(ctx)
 
 	if featureBranch == "" {

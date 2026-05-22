@@ -568,17 +568,27 @@ func (s *stubWorkflowReleaser) PushBranch(_ context.Context) error {
 
 // stubWorkflowManager tracks MoveToCompleted and HasQueuedPromptsOnBranch.
 type stubWorkflowManager struct {
-	moveToCompletedCount    int
-	moveToCompletedErr      error
-	hasQueuedOnBranchResult bool
-	hasQueuedOnBranchErr    error
-	existingPRURL           string
-	setPRURLCount           int
+	moveToCompletedCount         int
+	moveToCompletedErr           error
+	rollbackMoveToCompletedCount int
+	hasQueuedOnBranchResult      bool
+	hasQueuedOnBranchErr         error
+	existingPRURL                string
+	setPRURLCount                int
 }
 
 func (s *stubWorkflowManager) MoveToCompleted(_ context.Context, _ string) error {
 	s.moveToCompletedCount++
 	return s.moveToCompletedErr
+}
+
+func (s *stubWorkflowManager) RollbackMoveToCompleted(
+	_ context.Context,
+	_ string,
+	_ prompt.FileMover,
+) error {
+	s.rollbackMoveToCompletedCount++
+	return nil
 }
 
 func (s *stubWorkflowManager) MoveToCancelled(_ context.Context, _ string) error { return nil }
@@ -716,6 +726,7 @@ var _ = Describe("processor workflow routing", func() {
 			Cloner:        stubCl,
 			Worktreer:     stubWt,
 			Releaser:      stubRel,
+			FileMover:     stubRel,
 			PromptManager: stubMgr,
 			AutoCompleter: &stubAutoCompleter{},
 		}
@@ -919,7 +930,7 @@ var _ = Describe("processor workflow routing", func() {
 
 	// 11g: handleAfterIsolatedCommit — pr false skips PR creation
 	Describe("11g: handleAfterIsolatedCommit — pr false skips PR creation", func() {
-		It("pushes branch and moves to completed without creating a PR", func() {
+		It("pushes branch and does not create a PR", func() {
 			stubBr.commitsAhead = 1
 			deps := makeDeps(false)
 			pf := newPromptFile("")
@@ -934,14 +945,12 @@ var _ = Describe("processor workflow routing", func() {
 
 			Expect(stubBr.pushCount).To(Equal(1))
 			Expect(stubPR.createCount).To(Equal(0))
-			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
-			Expect(stubRel.commitFileCount).To(Equal(1))
 		})
 	})
 
 	// 11g2: handleAfterIsolatedCommit — zero commits skips push
 	Describe("11g2: handleAfterIsolatedCommit — zero commits skips push", func() {
-		It("skips push and PR, moves directly to completed", func() {
+		It("logs a warning and returns without push or PR", func() {
 			stubBr.commitsAhead = 0
 			deps := makeDeps(true) // pr=true to verify it's also skipped
 			pf := newPromptFile("")
@@ -956,8 +965,6 @@ var _ = Describe("processor workflow routing", func() {
 
 			Expect(stubBr.pushCount).To(Equal(0))
 			Expect(stubPR.createCount).To(Equal(0))
-			Expect(stubMgr.moveToCompletedCount).To(Equal(1))
-			Expect(stubRel.commitFileCount).To(Equal(1))
 		})
 	})
 
@@ -1294,22 +1301,27 @@ var _ = Describe("processor workflow routing", func() {
 		},
 	)
 
-	// 11q: branchWorkflowExecutor.Complete — error in moveToCompletedAndCommit restores default branch
+	// 11q: branchWorkflowExecutor.Complete — error in handleDirectWorkflow restores branch
 	Describe("11q: branchWorkflowExecutor Complete — error in commit restores branch", func() {
-		It("restores default branch when moveToCompletedAndCommit fails", func() {
-			deps := makeDeps(false)
-			stubRel.commitFileErr = stderrors.New("commit failed")
-			rawExec, ok := NewBranchWorkflowExecutor(deps).(*branchWorkflowExecutor)
-			Expect(ok).To(BeTrue())
-			rawExec.inPlaceBranch = "feature/error-branch"
-			rawExec.inPlaceDefaultBranch = "main"
-			pf := newPromptFile("feature/error-branch")
+		It(
+			"restores default branch when handleDirectWorkflow fails and rolls back the move",
+			func() {
+				deps := makeDeps(false)
+				stubRel.commitOnlyErr = stderrors.New("commit failed")
+				rawExec, ok := NewBranchWorkflowExecutor(deps).(*branchWorkflowExecutor)
+				Expect(ok).To(BeTrue())
+				rawExec.inPlaceBranch = "feature/error-branch"
+				rawExec.inPlaceDefaultBranch = "main"
+				pf := newPromptFile("feature/error-branch")
 
-			err := rawExec.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
-			Expect(err).To(HaveOccurred())
-			// restoreDefaultBranch should have been called (Switch to "main")
-			Expect(stubBr.switchCount).To(BeNumerically(">=", 1))
-		})
+				err := rawExec.Complete(ctx, ctx, pf, "test title", promptPath, completedPath)
+				Expect(err).To(HaveOccurred())
+				// restoreDefaultBranch should have been called (Switch to "main")
+				Expect(stubBr.switchCount).To(BeNumerically(">=", 1))
+				// RollbackMoveToCompleted should have been called
+				Expect(stubMgr.rollbackMoveToCompletedCount).To(Equal(1))
+			},
+		)
 	})
 
 	// 11r: savePRURLToFrontmatter — preserves existing PR URL

@@ -7,7 +7,6 @@ package processor
 import (
 	"context"
 	"log/slog"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,30 +48,6 @@ func buildPRBody(pf *prompt.PromptFile) string {
 	}
 	parts = append(parts, "Automated by dark-factory")
 	return strings.Join(parts, "\n\n")
-}
-
-// moveToCompletedAndCommit moves the prompt to completed/, triggers spec auto-complete, and commits.
-func moveToCompletedAndCommit(
-	ctx context.Context,
-	gitCtx context.Context,
-	deps WorkflowDeps,
-	pf *prompt.PromptFile,
-	promptPath string,
-	completedPath string,
-) error {
-	if err := deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed")
-	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
-	for _, specID := range pf.Specs() {
-		if err := deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
-		}
-	}
-	if err := deps.Releaser.CommitCompletedFile(gitCtx, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "commit completed file")
-	}
-	return nil
 }
 
 // findOrCreatePR checks for an existing open PR on the branch, creates one if absent.
@@ -195,7 +170,6 @@ func handleAutoMergeForClone(
 	gitCtx context.Context,
 	ctx context.Context,
 	deps WorkflowDeps,
-	pf *prompt.PromptFile,
 	branchName string,
 	promptPath string,
 	completedPath string,
@@ -208,22 +182,20 @@ func handleAutoMergeForClone(
 	}
 	if hasMore {
 		slog.Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
-		if err := moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath); err != nil {
-			return errors.Wrap(ctx, err, "move to completed and commit")
-		}
 		savePRURLToFrontmatter(gitCtx, deps, completedPath, prURL)
 		return nil
 	}
 	if err := deps.PRMerger.WaitAndMerge(gitCtx, prURL); err != nil {
 		return errors.Wrap(ctx, err, "wait and merge PR")
 	}
-	if err := moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed and commit")
-	}
+	// The feature branch (including the completed prompt file) is merged into default
+	// via PostMergeActions; no separate move/commit needed.
 	return PostMergeActions(gitCtx, ctx, deps, title)
 }
 
 // handleAfterIsolatedCommit handles push + optional PR + prompt lifecycle for clone/worktree.
+// The prompt file move was already committed as part of the combined commit in the
+// clone/worktree Complete method.
 func handleAfterIsolatedCommit(
 	gitCtx context.Context,
 	ctx context.Context,
@@ -246,14 +218,17 @@ func handleAfterIsolatedCommit(
 		return errors.Wrap(ctx, err, "count commits ahead")
 	}
 	if ahead == 0 {
-		slog.Info("no new commits on branch — skipping push/PR", "branch", branchName)
-		return moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath)
+		// Unexpected: clone/worktree completed a commit but parent sees zero ahead.
+		// The prompt file move was already committed in the isolated environment.
+		slog.WarnContext(ctx, "after-isolated-commit-no-ahead-commits", "branch", branchName)
+		return nil
 	}
 	if err := deps.Brancher.Push(gitCtx, branchName); err != nil {
 		return errors.Wrap(ctx, err, "push branch")
 	}
 	if !deps.PR {
-		return moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath)
+		// No PR: prompt move was already committed in the isolated environment.
+		return nil
 	}
 	prURL, err := findOrCreatePR(gitCtx, ctx, deps, branchName, title, pf)
 	if err != nil {
@@ -264,16 +239,12 @@ func handleAfterIsolatedCommit(
 			gitCtx,
 			ctx,
 			deps,
-			pf,
 			branchName,
 			promptPath,
 			completedPath,
 			prURL,
 			title,
 		)
-	}
-	if err := moveToCompletedAndCommit(ctx, gitCtx, deps, pf, promptPath, completedPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed and commit")
 	}
 	savePRURLToFrontmatter(gitCtx, deps, completedPath, prURL)
 	return nil

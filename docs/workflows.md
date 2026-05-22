@@ -159,6 +159,19 @@ autoMerge: false  # manual merge
 defaultBranch: main
 ```
 
+## Changing workflow flags mid-execution
+
+Workflow is bound to a prompt when its `Setup` first runs — persisted via `branch:` frontmatter (or absence of it) plus clone/worktree directory presence. Restarting the daemon with different `--set workflow=...` flags does **not** retroactively re-route in-flight prompts; the daemon re-attaches to the running container and lets the prompt finish under its original workflow.
+
+This can silently produce direct-to-master commits when the operator expected a PR. To change workflow flags safely:
+
+1. Drain in-flight prompts (wait for completion), **or**
+2. Cancel + requeue affected prompts under the new workflow.
+
+## Lifecycle
+
+All workflow modes use the lifecycle **move → stage → commit → push**. The prompt file is renamed from `prompts/in-progress/<id>.md` to `prompts/completed/<id>.md` before the work commit is staged, so a single commit (and a single push) carries both the code change and the rename. If the work commit fails, the rename is rolled back; the on-disk state always matches what HEAD reflects.
+
 ## Implementation notes
 
 - `workflow: direct` + `workflow: branch` share the same parent repo at `/workspace` — container has a real `.git/`

@@ -530,6 +530,54 @@ var _ = Describe("Prompt", func() {
 		})
 	})
 
+	Describe("RollbackMoveToCompleted", func() {
+		var (
+			mgr           *prompt.Manager
+			inProgressDir string
+			completedDir  string
+		)
+
+		BeforeEach(func() {
+			inProgressDir = filepath.Join(tempDir, "in-progress")
+			completedDir = filepath.Join(tempDir, "completed")
+			err := os.MkdirAll(inProgressDir, 0750)
+			Expect(err).To(BeNil())
+			err = os.MkdirAll(completedDir, 0750)
+			Expect(err).To(BeNil())
+			mgr = prompt.NewManager(
+				"", // inboxDir not needed
+				inProgressDir,
+				completedDir,
+				"", // cancelledDir not needed
+				&simpleMover{},
+				nil, // currentDateTimeGetter not needed
+			)
+		})
+
+		It("rolls back a completed move to in-progress with status committing", func() {
+			// Setup: a prompt file at completedDir with status: completed
+			completedPath := createPromptFile(completedDir, "123-x.md", "completed")
+
+			// Execute: call RollbackMoveToCompleted
+			err := mgr.RollbackMoveToCompleted(ctx, completedPath, &simpleMover{})
+			Expect(err).To(BeNil())
+
+			// Assert: file no longer exists at completedPath
+			_, err = os.Stat(completedPath)
+			Expect(os.IsNotExist(err)).To(BeTrue())
+
+			// Assert: file now exists at inProgressDir/123-x.md
+			restoredPath := filepath.Join(inProgressDir, "123-x.md")
+			_, err = os.Stat(restoredPath)
+			Expect(err).To(BeNil())
+
+			// Assert: restored prompt has status: committing
+			restoredPF, err := mgr.Load(ctx, restoredPath)
+			Expect(err).To(BeNil())
+			Expect(string(restoredPF.Frontmatter.Status)).To(Equal("committing"))
+		})
+	})
+
 })
 
 var _ = Describe("rejected status", func() {

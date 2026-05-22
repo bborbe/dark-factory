@@ -72,6 +72,7 @@ type WorkflowDeps struct {
 	PromptManager PromptManager
 	AutoCompleter spec.AutoCompleter
 	Releaser      git.Releaser
+	FileMover     prompt.FileMover
 	VersionGetter version.Getter
 	Brancher      git.Brancher
 	PRCreator     git.PRCreator

@@ -95,12 +95,21 @@ func (e *worktreeWorkflowExecutor) CleanupOnError(ctx context.Context) {
 	}
 }
 
-// Complete commits in the worktree, chdirs back, removes the worktree, then handles push/PR.
+// Complete moves the prompt to completed/, commits in the worktree, chdirs back,
+// removes the worktree, then handles push/PR via handleAfterIsolatedCommit.
+// No rollback on failure: the worktree is discarded on cleanup; original prompt path untouched.
 func (e *worktreeWorkflowExecutor) Complete(
 	gitCtx, ctx context.Context,
 	pf *prompt.PromptFile,
 	title, promptPath, completedPath string,
 ) error {
+	// Move prompt to completed/ inside the worktree (sets status: completed, physically moves the file).
+	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
+		return errors.Wrap(ctx, err, "move to completed")
+	}
+	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+
+	// Single combined commit: work changes + prompt move.
 	if err := e.deps.Releaser.CommitOnly(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit changes")
 	}
@@ -109,6 +118,7 @@ func (e *worktreeWorkflowExecutor) Complete(
 		return errors.Wrap(ctx, err, "chdir back to original directory")
 	}
 
+	// no rollback needed: worktree is discarded on cleanup; original prompt path untouched
 	if err := e.deps.Worktreer.Remove(gitCtx, e.worktreePath); err != nil {
 		slog.Warn("failed to remove worktree", "path", e.worktreePath, "error", err)
 	}

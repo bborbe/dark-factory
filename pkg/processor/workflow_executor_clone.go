@@ -95,20 +95,29 @@ func (e *cloneWorkflowExecutor) CleanupOnError(ctx context.Context) {
 	}
 }
 
-// Complete commits in the clone, chdirs back, removes the clone, then handles push/PR.
+// Complete moves the prompt to completed/, commits in the clone, pushes, chdirs back,
+// removes the clone, then handles push/PR via handleAfterIsolatedCommit.
+// No rollback on failure: the clone is discarded on cleanup; original prompt path untouched.
 func (e *cloneWorkflowExecutor) Complete(
 	gitCtx, ctx context.Context,
 	pf *prompt.PromptFile,
 	title, promptPath, completedPath string,
 ) error {
+	// Move prompt to completed/ inside the clone (sets status: completed, physically moves the file).
+	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
+		return errors.Wrap(ctx, err, "move to completed")
+	}
+	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+
+	// Single combined commit: work changes + prompt move.
 	if err := e.deps.Releaser.CommitOnly(gitCtx, title); err != nil {
 		return errors.Wrap(ctx, err, "commit changes")
 	}
 
-	// Push from inside the clone while the feature branch is still locally
-	// visible. The parent repo has never seen this branch; pushing here ensures
-	// it exists on origin before the clone is removed and handleAfterIsolatedCommit
-	// runs CommitsAhead against the parent repo.
+	// Push from inside the clone while the feature branch is still locally visible.
+	// The parent repo has never seen this branch; pushing here ensures it exists on
+	// origin before the clone is removed and handleAfterIsolatedCommit runs
+	// CommitsAhead against the parent repo.
 	if err := e.deps.Brancher.Push(gitCtx, e.branchName); err != nil {
 		return errors.Wrap(ctx, err, "push branch from clone")
 	}
@@ -117,6 +126,7 @@ func (e *cloneWorkflowExecutor) Complete(
 		return errors.Wrap(ctx, err, "chdir back to original directory")
 	}
 
+	// no rollback needed: clone is discarded on cleanup; original prompt path untouched
 	if err := e.deps.Cloner.Remove(gitCtx, e.clonePath); err != nil {
 		slog.Warn("failed to remove clone", "path", e.clonePath, "error", err)
 	}

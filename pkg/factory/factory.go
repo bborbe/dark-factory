@@ -794,12 +794,14 @@ func CreateWorkflowExecutor(
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
 	promptDirPrefixes []string,
+	fileMover prompt.FileMover,
 ) processor.WorkflowExecutor {
 	deps := processor.WorkflowDeps{
 		ProjectName:        projectName,
 		PromptManager:      promptManager,
 		AutoCompleter:      autoCompleter,
 		Releaser:           releaser,
+		FileMover:          fileMover,
 		Brancher:           brancher,
 		PRCreator:          prCreator,
 		Cloner:             git.NewCloner(),
@@ -883,7 +885,7 @@ func CreateProcessor(
 		workflow, pr, brancher, prCreator, prMerger,
 		autoMerge, autoRelease,
 		projectName, promptManager, releaser, autoCompleter,
-		promptDirPrefixes,
+		promptDirPrefixes, releaser,
 	)
 	exec := executor.NewDockerExecutor(
 		containerImage,

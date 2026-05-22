@@ -125,6 +125,19 @@ type ProcessorPromptManager struct {
 	moveToCompletedReturnsOnCall map[int]struct {
 		result1 error
 	}
+	RollbackMoveToCompletedStub        func(context.Context, string, prompt.FileMover) error
+	rollbackMoveToCompletedMutex       sync.RWMutex
+	rollbackMoveToCompletedArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 prompt.FileMover
+	}
+	rollbackMoveToCompletedReturns struct {
+		result1 error
+	}
+	rollbackMoveToCompletedReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SetPRURLStub        func(context.Context, string, string) error
 	setPRURLMutex       sync.RWMutex
 	setPRURLArgsForCall []struct {
@@ -720,6 +733,69 @@ func (fake *ProcessorPromptManager) MoveToCompletedReturnsOnCall(i int, result1 
 		})
 	}
 	fake.moveToCompletedReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompleted(arg1 context.Context, arg2 string, arg3 prompt.FileMover) error {
+	fake.rollbackMoveToCompletedMutex.Lock()
+	ret, specificReturn := fake.rollbackMoveToCompletedReturnsOnCall[len(fake.rollbackMoveToCompletedArgsForCall)]
+	fake.rollbackMoveToCompletedArgsForCall = append(fake.rollbackMoveToCompletedArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 prompt.FileMover
+	}{arg1, arg2, arg3})
+	stub := fake.RollbackMoveToCompletedStub
+	fakeReturns := fake.rollbackMoveToCompletedReturns
+	fake.recordInvocation("RollbackMoveToCompleted", []interface{}{arg1, arg2, arg3})
+	fake.rollbackMoveToCompletedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompletedCallCount() int {
+	fake.rollbackMoveToCompletedMutex.RLock()
+	defer fake.rollbackMoveToCompletedMutex.RUnlock()
+	return len(fake.rollbackMoveToCompletedArgsForCall)
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompletedCalls(stub func(context.Context, string, prompt.FileMover) error) {
+	fake.rollbackMoveToCompletedMutex.Lock()
+	defer fake.rollbackMoveToCompletedMutex.Unlock()
+	fake.RollbackMoveToCompletedStub = stub
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompletedArgsForCall(i int) (context.Context, string, prompt.FileMover) {
+	fake.rollbackMoveToCompletedMutex.RLock()
+	defer fake.rollbackMoveToCompletedMutex.RUnlock()
+	argsForCall := fake.rollbackMoveToCompletedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompletedReturns(result1 error) {
+	fake.rollbackMoveToCompletedMutex.Lock()
+	defer fake.rollbackMoveToCompletedMutex.Unlock()
+	fake.RollbackMoveToCompletedStub = nil
+	fake.rollbackMoveToCompletedReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *ProcessorPromptManager) RollbackMoveToCompletedReturnsOnCall(i int, result1 error) {
+	fake.rollbackMoveToCompletedMutex.Lock()
+	defer fake.rollbackMoveToCompletedMutex.Unlock()
+	fake.RollbackMoveToCompletedStub = nil
+	if fake.rollbackMoveToCompletedReturnsOnCall == nil {
+		fake.rollbackMoveToCompletedReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.rollbackMoveToCompletedReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

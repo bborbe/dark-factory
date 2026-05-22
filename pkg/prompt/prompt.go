@@ -1062,6 +1062,41 @@ func content(
 	return pf.Content()
 }
 
+// RollbackMoveToCompleted is the inverse of MoveToCompleted.
+// It moves a prompt file from pm.completedDir back to pm.inProgressDir
+// and restores its frontmatter status to CommittingPromptStatus
+// (the state the prompt was in immediately before MoveToCompleted ran).
+// Used by workflow executors when the work commit fails after the move.
+func (pm *Manager) RollbackMoveToCompleted(
+	ctx context.Context,
+	completedPath string,
+	mover FileMover,
+) error {
+	originalPath := filepath.Join(pm.inProgressDir, filepath.Base(completedPath))
+
+	// Load and update frontmatter before moving
+	pf, err := load(ctx, completedPath, pm.currentDateTimeGetter)
+	if err != nil {
+		return errors.Wrap(ctx, err, "load prompt for rollback")
+	}
+	pf.Frontmatter.Status = string(CommittingPromptStatus)
+	if err := pf.Save(ctx); err != nil {
+		return errors.Wrap(ctx, err, "save frontmatter for rollback")
+	}
+
+	if err := mover.MoveFile(ctx, completedPath, originalPath); err != nil {
+		return errors.Wrap(ctx, err, "rollback move to completed")
+	}
+
+	slog.InfoContext(
+		ctx,
+		"move-rolled-back-after-commit-failure",
+		"file",
+		filepath.Base(completedPath),
+	)
+	return nil
+}
+
 // MoveToCompleted sets status to "completed" and moves a prompt file to the completed directory.
 // This ensures files in completed/ always have the correct status.
 func moveToCompleted(

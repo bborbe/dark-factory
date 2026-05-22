@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.168.2
+
+- fix: prompt move from `in-progress/` to `completed/` is now part of the same commit as the code change, so master no longer diverges from the local daemon view after a PR merge (spec 086, addresses BRO-20203 lib-crypto repro)
+
 ## v0.168.1
 
 - bump github.com/bborbe/run v1.9.26 → v1.9.27

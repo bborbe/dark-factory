@@ -1,10 +1,13 @@
 ---
-status: idea
-kind: bug
+status: prompted
 tags:
-  - dark-factory
-  - spec
-  - bug
+    - dark-factory
+    - spec
+    - bug
+approved: "2026-05-22T18:31:40Z"
+generating: "2026-05-22T18:31:40Z"
+prompted: "2026-05-22T18:34:30Z"
+branch: dark-factory/bug-prompt-move-not-pushed
 ---
 
 ## Summary

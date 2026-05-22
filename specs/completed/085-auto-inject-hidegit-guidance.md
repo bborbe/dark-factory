@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-05-21T21:33:31Z"
 generating: "2026-05-21T21:33:31Z"
 prompted: "2026-05-21T21:35:13Z"
 verifying: "2026-05-21T22:11:11Z"
+completed: "2026-05-22T07:23:54Z"
 branch: dark-factory/auto-inject-hidegit-guidance
 ---
 

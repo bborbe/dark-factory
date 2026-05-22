@@ -8,6 +8,17 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.168.0
+
+- Add sibling-coverage rule to prompt-auditor agent — catches the AC6-class bug where a prompt edits one entry point's setup logic (e.g. `runner.Run`) but misses parallel implementations (e.g. `oneShotRunner.Run`); flags via four detection heuristics (same-package method parity, entry-point name pairs, spec multi-subcommand signals, helper-extraction asymmetry)
+- Refactor vulncheck Makefile target with VULNCHECK_IGNORE variable and jq-based filtering for clearer ignore list management
+- Add license header to mocks/mocks.go
+- Complete spec 084 (fail-fast on worktree without hideGit) — moved to specs/completed/
+- Complete spec 085 (auto-inject hideGit guidance) — moved to specs/completed/
+- Add scenario 021: daemon refuses to start from worktree CWD without hideGit (covers AC1, AC5, AC7)
+- Add scenario 022: dark-factory run refuses to start from worktree CWD without hideGit (covers AC6 regression guard)
+- Bump plugin version 0.164.0 → 0.168.0 (sync with binary stream — prompt-auditor agent change)
+
 ## v0.167.1
 
 - Update github.com/bborbe/run v1.9.24 → v1.9.26

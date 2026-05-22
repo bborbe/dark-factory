@@ -183,6 +183,61 @@ Exception: if the target repo commits `vendor/` and the prompt declares that dev
 
 **Test-only package-level mutable state:** flag any `var X = default` + `SetX()` test-helper pair (often paired with a `sync.Mutex` for `-race`). Production deps belong in the constructor, not package scope. See `go-composition.md` "Anti-Pattern: Test-Only Package-Level Mutable State". Critical if introduced by this prompt; Recommendation if extending existing usage.
 
+**Sibling-coverage check (entry-point parity):**
+
+A broad class of bug: a prompt adds a precondition, gate, or behavior change to ONE function — but a parallel/sibling implementation in the same package exposes the same surface to a different caller, and the sibling is silently bypassed. Tests for the edited function pass; the sibling code path is broken at runtime against the production binary's other entry point.
+
+**Rule:** when a prompt modifies a function whose responsibility is "set up / gate / validate" for a runtime entry point, the auditor MUST verify that all sibling entry points either (a) share the same modified code path, or (b) are explicitly addressed by the prompt or a sibling prompt in the same spec.
+
+**Detection heuristics (the auditor runs these via Bash):**
+
+1. **Same-package method parity** — for each `(receiver).Method(ctx)` the prompt edits, grep for other receivers in the same package with the same method name:
+   ```bash
+   rg -n 'func \([a-zA-Z]+ \*?[A-Z][a-zA-Z]+\) <MethodName>\(' <pkg-dir>/
+   ```
+   If ≥2 matches and the prompt edits only one, flag.
+
+2. **Entry-point pair detection** — common naming pairs that indicate parallel runtime entry points:
+   - `Run`, `RunOnce`, `RunOneShot`, `RunForever`, `Serve`, `Start`, `Execute`
+   - `Handle`, `HandleHTTP`, `HandleStream`, `HandleBatch`
+   - `Process`, `ProcessOne`, `ProcessAll`, `ProcessAsync`
+   - `Create*` and `CreateOneShot*` factory pairs
+
+   If the prompt edits one method and the package has a sibling matching these patterns, flag.
+
+3. **Spec language signal** — if the linked spec's Goal, Desired Behavior, or AC text names MULTIPLE subcommands / modes / entry points (e.g. "daemon and run", "both sync and async paths", "all CLI commands"), and the prompt's `<requirements>` only modifies ONE, flag as Critical.
+   ```bash
+   grep -nE '(daemon|run|sync|async|batch|stream|HTTP|gRPC) (and|or|/) (daemon|run|sync|async|batch|stream|HTTP|gRPC)' <spec-file>
+   ```
+
+4. **Helper extraction asymmetry** — if the prompt extracts a method-local helper to a package-level function (e.g. `(r *runner).checkX()` → `CheckX(ctx, deps...)`), grep for other receivers that have inline equivalents of the original logic and should now also call the helper:
+   ```bash
+   rg -n '<key inline code substring from original method>' <pkg-dir>/
+   ```
+   Each match outside the edited file is a sibling that may need to switch to the new helper.
+
+**What satisfies this rule:**
+
+- Prompt explicitly enumerates ALL sibling entry points and either updates them or documents why they don't need the change.
+- Prompt extracts the modified logic to a shared helper AND updates every caller of the original inline code.
+- A sibling prompt in the same spec batch (`grep -l 'spec: \["<NNN>-' prompts/`) covers the sibling.
+
+**What does NOT satisfy this rule:**
+
+- "The sibling is tested separately" — separate tests don't prove behavior parity.
+- "The sibling will pick up the change automatically" — verify via a grep that the call site genuinely shares the helper, not a similarly-named-but-distinct one.
+- Silence — if the prompt doesn't mention the sibling at all, the auditor must assume it was missed.
+
+**Severity:**
+
+- Flag as **Critical Issue** when the linked spec explicitly names multiple entry points (heuristic 3) and only one is covered.
+- Flag as **Critical Issue** when heuristic 1 or 2 finds a sibling and the prompt makes no statement about it.
+- Flag as **Recommendation** when the sibling exists but the spec context makes it ambiguous whether the change should apply (e.g. one entry point is deprecated, or the sibling has fundamentally different semantics).
+
+**Canonical example:** spec 084 (dark-factory) added a worktree/submodule gate to `(r *runner).Run` (the daemon entry point) at `pkg/runner/runner.go`. The prompt extracted no shared helper and didn't mention `(r *oneShotRunner).Run` at `pkg/runner/oneshot.go` (the `dark-factory run` entry point). All initial tests passed; runtime verification of AC6 caught it — `dark-factory run` from a worktree bypassed the gate. A follow-up prompt was needed to extract `CheckGitSafety` to a package-level function and call it from both runners. The sibling-coverage check (heuristic 1: `rg 'func \(.*\) Run\(' pkg/runner/`) would have surfaced `oneShotRunner.Run` at audit time.
+
+**Root cause framing:** the deeper problem is *implicit duplication of setup logic across entry points*. The narrow sibling-grep rule catches the most common symptom (parallel method receivers in the same package). The deeper fix is structural — extract shared setup into a helper called by every entry point — and that's a recommendation the auditor can also make when it detects the pattern.
+
 **Filename-content alignment:**
 - Filename should describe the primary change, not a secondary or defensive addition
 - Compare filename against `<objective>` and `<summary>` — the filename should match the main intent
@@ -324,6 +379,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] New constants / strings that flow through library validators have a test calling the validator (or N/A)
 - [x/!] No `go mod vendor` in `<requirements>` or `<verification>` (vendor is a build-time concern, not a prompt concern — see Wasted vendor regeneration)
 - [x/!] No cross-repo writes: prompt does not clone a remote other than the project's own AND then push / `gh pr create` against it (work would be lost when container exits)
+- [x/!] Sibling entry points covered: if prompt edits a setup/gate/validation function with parallel implementations in the same package (e.g. `runner.Run` + `oneShotRunner.Run`, `Process` + `ProcessOne`), all siblings are addressed or a shared helper is extracted
 
 ## Documentation Placement
 - [x/!] No inlined reusable patterns (>10 lines) that should be in a doc

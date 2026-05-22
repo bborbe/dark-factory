@@ -45,6 +45,7 @@ func NewOneShotRunner(
 	autoApprove bool,
 	slugMigrator slugmigrator.Migrator,
 	mover prompt.FileMover,
+	hideGit bool,
 	startupLogger func(),
 ) OneShotRunner {
 	return &oneShotRunner{
@@ -65,6 +66,7 @@ func NewOneShotRunner(
 		autoApprove:           autoApprove,
 		slugMigrator:          slugMigrator,
 		mover:                 mover,
+		hideGit:               hideGit,
 		startupLogger:         startupLogger,
 	}
 }
@@ -88,6 +90,7 @@ type oneShotRunner struct {
 	autoApprove           bool
 	slugMigrator          slugmigrator.Migrator
 	mover                 prompt.FileMover
+	hideGit               bool
 	startupLogger         func()
 }
 
@@ -105,6 +108,14 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 	}()
 
 	slog.Info("acquired lock", "file", ".dark-factory.lock")
+
+	// Git safety checks — skip when hideGit is enabled (container won't use git).
+	// 1. Refuse to start from a worktree or submodule CWD — the .git pointer
+	//    points to the parent repo's worktrees/ directory, which is not mounted.
+	// 2. Abort if .git/index.lock exists — all git operations will fail.
+	if err := CheckGitSafety(ctx, r.hideGit); err != nil {
+		return errors.Wrap(ctx, err, "git safety check failed")
+	}
 
 	if r.startupLogger != nil {
 		r.startupLogger()

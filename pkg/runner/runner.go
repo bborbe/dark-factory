@@ -149,7 +149,7 @@ func (r *runner) Run(ctx context.Context) error {
 	// 1. Refuse to start from a worktree or submodule CWD — the .git pointer
 	//    points to the parent repo's worktrees/ directory, which is not mounted.
 	// 2. Abort if .git/index.lock exists — all git operations will fail.
-	if err := r.checkGitSafety(ctx); err != nil {
+	if err := CheckGitSafety(ctx, r.hideGit); err != nil {
 		return err
 	}
 
@@ -260,12 +260,16 @@ func (r *runner) startupDeps() StartupDeps {
 	}
 }
 
-// checkGitSafety verifies git safety conditions before starting:
+// CheckGitSafety verifies git safety conditions before starting either
+// the daemon or a one-shot run:
 //  1. Refuse to start from a worktree or submodule CWD — the .git pointer
 //     points to the parent repo's worktrees/ directory, which is not mounted.
 //  2. Abort if .git/index.lock exists — all git operations will fail.
-func (r *runner) checkGitSafety(ctx context.Context) error {
-	if r.hideGit {
+//
+// Skips both checks when hideGit is true (the operator has explicitly opted
+// into the .git mask, so the worktree pointer is hidden anyway).
+func CheckGitSafety(ctx context.Context, hideGit bool) error {
+	if hideGit {
 		return nil
 	}
 	if err := DetectWorktreeOrSubmodule(ctx); err != nil {

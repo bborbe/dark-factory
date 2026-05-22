@@ -626,6 +626,7 @@ func CreateOneShotRunner(
 		autoApprove,
 		migrator,
 		releaser,
+		cfg.HideGit,
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 	)
 }

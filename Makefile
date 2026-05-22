@@ -73,7 +73,7 @@ check: lint vet errcheck vulncheck osv-scanner gosec trivy
 
 .PHONY: lint
 lint:
-	go run -mod=mod github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --allow-parallel-runners --config .golangci.yml ./...
+	GOLANGCI_LINT_CACHE=$(ROOTDIR)/.golangci-cache go run -mod=mod github.com/golangci/golangci-lint/v2/cmd/golangci-lint run --allow-parallel-runners --config .golangci.yml ./...
 
 .PHONY: vet
 vet:

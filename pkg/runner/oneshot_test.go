@@ -76,6 +76,7 @@ var _ = Describe("OneShotRunner", func() {
 			false,
 			&mocks.SpecSlugMigrator{},
 			&mocks.FileMover{},
+			false, // hideGit
 			nil,
 		)
 	}
@@ -279,6 +280,7 @@ var _ = Describe("OneShotRunner", func() {
 				false,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				false, // hideGit
 				nil,
 			)
 
@@ -324,6 +326,7 @@ var _ = Describe("OneShotRunner", func() {
 				false,
 				&mocks.SpecSlugMigrator{},
 				&mocks.FileMover{},
+				false, // hideGit
 				nil,
 			)
 

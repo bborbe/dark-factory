@@ -2,6 +2,7 @@
 /.cursorignore
 /.dark-factory.lock
 /.dark-factory.log
+/.golangci-cache/
 /.gemini/
 /.idea
 /.mcp-*

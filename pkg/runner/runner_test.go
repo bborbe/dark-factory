@@ -1417,6 +1417,141 @@ var _ = Describe("Runner", func() {
 		})
 	})
 
+	Describe("worktree gating for one-shot run", func() {
+		var (
+			gitTempDir string
+			origDir    string
+		)
+
+		BeforeEach(func() {
+			var err error
+			gitTempDir, err = os.MkdirTemp("", "runner-worktree-gating-test-*")
+			Expect(err).NotTo(HaveOccurred())
+
+			origDir, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			_ = os.Chdir(origDir)
+			if gitTempDir != "" {
+				_ = os.RemoveAll(gitTempDir)
+			}
+		})
+
+		makeOneShotRunner := func(hideGit bool) runner.OneShotRunner {
+			return runner.NewOneShotRunner(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				processor,
+				nil, // specGenerator
+				libtime.NewCurrentDateTime(),
+				containerChecker,
+				false, // autoApprove
+				&mocks.SpecSlugMigrator{},
+				&mocks.FileMover{},
+				hideGit,
+				nil, // startupLogger
+			)
+		}
+
+		It("refuses to start from worktree CWD when hideGit=false", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(gitTempDir, ".git"), []byte("\n"), 0600),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+
+			r := makeOneShotRunner(false)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("worktree"))
+			Expect(err.Error()).To(ContainSubstring("hideGit"))
+		})
+
+		It("starts successfully from worktree CWD when hideGit=true", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(filepath.Join(gitTempDir, ".git"), []byte("\n"), 0600),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := makeOneShotRunner(true)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+		})
+
+		It("refuses to start from submodule CWD when hideGit=false", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(
+				os.WriteFile(
+					filepath.Join(gitTempDir, ".git"),
+					[]byte("gitdir: ../.git/modules/foo"),
+					0600,
+				),
+			).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+
+			r := makeOneShotRunner(false)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("worktree"))
+			Expect(err.Error()).To(ContainSubstring("hideGit"))
+		})
+
+		It("starts successfully from regular repo CWD regardless of hideGit", func() {
+			Expect(os.Chdir(gitTempDir)).To(Succeed())
+			Expect(os.MkdirAll(filepath.Join(gitTempDir, ".git"), 0755)).To(Succeed())
+
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			for _, hideGit := range []bool{true, false} {
+				r := makeOneShotRunner(hideGit)
+				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+				defer runCancel()
+
+				err := r.Run(runCtx)
+				Expect(err).To(BeNil())
+			}
+		})
+	})
+
 	Describe("startup preflight", func() {
 		var preflightChecker *mocks.PreflightChecker
 

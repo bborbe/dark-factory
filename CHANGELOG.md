@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.167.0
+
+- refactor: Extract `checkGitSafety` from `(*runner)` method to package-level `CheckGitSafety(ctx, hideGit)` function shared by daemon and one-shot runners
+- feat: Add `hideGit` field to `oneShotRunner` and call `CheckGitSafety` gate in `oneShotRunner.Run` after lock acquisition — `dark-factory run` now refuses to start from a worktree/submodule CWD without `hideGit=true`, matching daemon behavior (spec 084 AC6)
+- test: Add worktree gating integration tests for one-shot run path: worktree+hideGit=false refuses, worktree+hideGit=true passes, submodule+hideGit=false refuses, regular repo always passes
+
 ## v0.166.1
 
 - test: Add stat-error detection test case to `DetectWorktreeOrSubmodule` exercising the EACCES path when `.git` is inaccessible

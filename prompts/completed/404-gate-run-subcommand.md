@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [084-fail-fast-on-worktree-without-hidegit]
 summary: Extracted checkGitSafety to package-level CheckGitSafety shared by daemon and one-shot runners; added hideGit field and gate call to oneShotRunner; added integration tests for one-shot worktree gating
 container: dark-factory-exec-404-gate-run-subcommand
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-22T00:50:00Z"
 queued: "2026-05-21T22:57:16Z"
 started: "2026-05-22T05:48:50Z"
+completed: "2026-05-22T05:56:35Z"
 branch: dark-factory/fail-fast-on-worktree-without-hidegit
 ---
 

@@ -1,5 +1,5 @@
 ---
-status: committing
+status: completed
 spec: [086-bug-prompt-move-not-pushed]
 summary: Refactored prompt lifecycle across all four workflow modes so the move from in-progress/ to completed/ happens before the work commit, with rollback on failure
 container: dark-factory-exec-405-spec-086-move-before-commit
@@ -7,6 +7,7 @@ dark-factory-version: v0.164.0
 created: "2026-05-22T00:00:00Z"
 queued: "2026-05-22T18:43:12Z"
 started: "2026-05-22T18:43:14Z"
+completed: "2026-05-22T19:04:42Z"
 branch: dark-factory/bug-prompt-move-not-pushed
 ---
 

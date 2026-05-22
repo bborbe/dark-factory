@@ -1,9 +1,13 @@
 ---
-status: approved
+status: cancelled
 spec: [086-bug-prompt-move-not-pushed]
+container: dark-factory-exec-406-spec-086-tests
+dark-factory-version: v0.164.0
 created: "2026-05-22T00:00:00Z"
 queued: "2026-05-22T18:43:12Z"
+started: "2026-05-22T19:04:44Z"
 branch: dark-factory/bug-prompt-move-not-pushed
+cancelled: "2026-05-22T21:06:48Z"
 ---
 
 <summary>

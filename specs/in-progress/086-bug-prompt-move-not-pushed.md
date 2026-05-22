@@ -1,5 +1,5 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ tags:
 approved: "2026-05-22T18:31:40Z"
 generating: "2026-05-22T18:31:40Z"
 prompted: "2026-05-22T18:34:30Z"
+verifying: "2026-05-22T21:16:39Z"
 branch: dark-factory/bug-prompt-move-not-pushed
 ---
 

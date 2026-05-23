@@ -86,6 +86,10 @@ These flags stack on top of any isolation mode.
 
 **Tagging is gated on `CHANGELOG.md` presence**, independent of `autoRelease`. With `autoRelease: true` and no `CHANGELOG.md`, commits are still pushed but no version bump or tag is produced.
 
+**For protected-master projects, do NOT set `autoRelease: true`.** Branch protection will reject the tag push (and any direct push to master) immediately after the PR is merged. Instead, ship code changes via a PR workflow (`workflow: branch | clone | worktree` + `pr: true`, optionally with `autoMerge: true`) and delegate release/tagging to a separate pipeline — e.g. the **GitHub Release Agent**, which watches merged commits on master and creates releases asynchronously with its own elevated permissions. The split also matches branch-protection reality at most orgs: PR-merge permissions are usually less restrictive than tag-push permissions, so they naturally belong in different pipelines.
+
+**Protected master is not 100% supported today** — the PR produced by each prompt run contains the prompt's work commit only (code change + that single prompt's `in-progress → completed` rename). Other spec/prompt admin work (new prompt files written by spec generation, status flips like `idea → approved`, spec lifecycle transitions like `prompted → verifying → completed`) accumulates as uncommitted changes in the original repo's working tree. On unprotected master those changes get committed and pushed directly; on protected master they need their own PR. There is no built-in mechanism today to bundle spec/prompt admin into the prompt's PR. Tracked in `specs/ideas/protected-master-admin-bundle.md` — describes the problem only, no chosen solution.
+
 Invalid:
 - `workflow: direct` with `pr: true` — no feature branch exists to open a PR from; validation rejects.
 - `pr: true` + `autoMerge: false` + `autoRelease: true` for any non-direct workflow — `autoRelease` requires tagging the merged commit on master, but `autoMerge: false` means the branch is never merged automatically; validation rejects with three actionable resolutions: set `autoMerge: true`, or set `autoRelease: false`, or set `pr: false`.

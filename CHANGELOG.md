@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.170.0
+
+- feat: add `disableAutoGeneratePrompts` config field threaded through all config layers (default, global, project, CLI --set) for gating spec watcher auto-generation
+
 ## v0.169.0
 
 - test: add ginkgo coverage for the clone/worktree sync helper (`syncPromptFileToOriginalRepo`) — idempotent destination-exists path, move-on-source-present path, and the `clone-sync-mismatch` error when both source and destination are absent (spec 087)

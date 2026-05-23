@@ -148,6 +148,8 @@ func LogEffectiveConfig(
 		"hideGitSource", sources.HideGit,
 		"autoApprovePrompts", cfg.AutoApprovePrompts,
 		"autoApprovePromptsSource", sources.AutoApprovePrompts,
+		"disableAutoGeneratePrompts", cfg.DisableAutoGeneratePrompts,
+		"disableAutoGeneratePromptsSource", sources.DisableAutoGeneratePrompts,
 		"dirtyFileThreshold", cfg.DirtyFileThreshold,
 		"dirtyFileThresholdSource", sources.DirtyFileThreshold,
 		"promptsInboxDir", cfg.Prompts.InboxDir,

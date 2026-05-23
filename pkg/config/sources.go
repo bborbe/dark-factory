@@ -8,13 +8,14 @@ package config
 // Valid values for each field are: "default", "global", "project", "arg".
 // Zero value (empty string) is treated the same as "default" by callers.
 type FieldSources struct {
-	HideGit            string
-	AutoRelease        string
-	DirtyFileThreshold string
-	Model              string
-	MaxContainers      string
-	Workflow           string
-	PR                 string
-	AutoMerge          string
-	AutoApprovePrompts string
+	HideGit                    string
+	AutoRelease                string
+	DirtyFileThreshold         string
+	Model                      string
+	MaxContainers              string
+	Workflow                   string
+	PR                         string
+	AutoMerge                  string
+	AutoApprovePrompts         string
+	DisableAutoGeneratePrompts string
 }

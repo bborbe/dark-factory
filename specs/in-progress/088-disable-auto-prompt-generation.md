@@ -1,10 +1,12 @@
 ---
-status: approved
+status: prompted
 tags:
     - dark-factory
     - spec
     - config
 approved: "2026-05-23T22:16:46Z"
+generating: "2026-05-23T22:18:37Z"
+prompted: "2026-05-23T22:22:38Z"
 branch: dark-factory/disable-auto-prompt-generation
 ---
 

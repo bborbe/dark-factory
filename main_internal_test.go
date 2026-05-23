@@ -265,6 +265,27 @@ var _ = Describe("applyGlobalOverrides", func() {
 			Expect(cfg.AutoApprovePrompts).To(BeFalse())
 		},
 	)
+
+	It("applies global disableAutoGeneratePrompts when project did not set it", func() {
+		cfg := config.Defaults()
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.DisableAutoGeneratePrompts = &t
+		proj := config.LayeredProjectOverrides{}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.DisableAutoGeneratePrompts).To(BeTrue())
+	})
+
+	It("does not overwrite project disableAutoGeneratePrompts=false with global true", func() {
+		cfg := config.Defaults()
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.DisableAutoGeneratePrompts = &t
+		f := false
+		proj := config.LayeredProjectOverrides{DisableAutoGeneratePrompts: &f}
+		applyGlobalOverrides(&cfg, global, proj)
+		Expect(cfg.DisableAutoGeneratePrompts).To(BeFalse())
+	})
 })
 
 var _ = Describe("applyArgOverrides", func() {
@@ -346,6 +367,38 @@ var _ = Describe("computeFieldSources", func() {
 		Expect(s.AutoRelease).To(Equal("default"))
 		Expect(s.DirtyFileThreshold).To(Equal("default"))
 		Expect(s.AutoApprovePrompts).To(Equal("default"))
+		Expect(s.DisableAutoGeneratePrompts).To(Equal("default"))
+	})
+
+	It(
+		"returns global for disableAutoGeneratePrompts when global sets it and project does not",
+		func() {
+			global := globalconfig.GlobalConfig{MaxContainers: 3}
+			t := true
+			global.DisableAutoGeneratePrompts = &t
+			proj := config.LayeredProjectOverrides{}
+			s := computeFieldSources(global, proj)
+			Expect(s.DisableAutoGeneratePrompts).To(Equal("global"))
+		},
+	)
+
+	It("returns project for disableAutoGeneratePrompts when project explicitly sets false", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		t := true
+		global.DisableAutoGeneratePrompts = &t
+		f := false
+		proj := config.LayeredProjectOverrides{DisableAutoGeneratePrompts: &f}
+		s := computeFieldSources(global, proj)
+		Expect(s.DisableAutoGeneratePrompts).To(Equal("project"))
+	})
+
+	It("returns project for disableAutoGeneratePrompts when project explicitly sets true", func() {
+		global := globalconfig.GlobalConfig{MaxContainers: 3}
+		proj := config.LayeredProjectOverrides{}
+		t := true
+		proj.DisableAutoGeneratePrompts = &t
+		s := computeFieldSources(global, proj)
+		Expect(s.DisableAutoGeneratePrompts).To(Equal("project"))
 	})
 
 	It("returns global when global sets model and project does not", func() {
@@ -554,6 +607,54 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "yes"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("invalid bool"))
+		Expect(err.Error()).To(ContainSubstring("true or false"))
+	})
+
+	It("sets disableAutoGeneratePrompts=true and marks source=arg", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"disableAutoGeneratePrompts": "true"},
+			),
+		).To(Succeed())
+		Expect(cfg.DisableAutoGeneratePrompts).To(BeTrue())
+		Expect(sources.DisableAutoGeneratePrompts).To(Equal("arg"))
+	})
+
+	It("sets disableAutoGeneratePrompts=false and marks source=arg", func() {
+		cfg := config.Defaults()
+		cfg.DisableAutoGeneratePrompts = true
+		sources := config.FieldSources{}
+		Expect(
+			applySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"daemon",
+				map[string]string{"disableAutoGeneratePrompts": "false"},
+			),
+		).To(Succeed())
+		Expect(cfg.DisableAutoGeneratePrompts).To(BeFalse())
+		Expect(sources.DisableAutoGeneratePrompts).To(Equal("arg"))
+	})
+
+	It("rejects disableAutoGeneratePrompts=yes (strict bool)", func() {
+		cfg := config.Defaults()
+		sources := config.FieldSources{}
+		err := applySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"disableAutoGeneratePrompts": "yes"},
+		)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid bool"))
 		Expect(err.Error()).To(ContainSubstring("true or false"))

@@ -555,6 +555,9 @@ func applyGlobalOverrides(
 	if global.AutoApprovePrompts != nil && proj.AutoApprovePrompts == nil {
 		cfg.AutoApprovePrompts = *global.AutoApprovePrompts
 	}
+	if global.DisableAutoGeneratePrompts != nil && proj.DisableAutoGeneratePrompts == nil {
+		cfg.DisableAutoGeneratePrompts = *global.DisableAutoGeneratePrompts
+	}
 }
 
 // computeFieldSources determines which config layer provided each of the layered user-pref fields.
@@ -567,14 +570,15 @@ func computeFieldSources(
 	proj config.LayeredProjectOverrides,
 ) config.FieldSources {
 	s := config.FieldSources{
-		HideGit:            "default",
-		AutoRelease:        "default",
-		DirtyFileThreshold: "default",
-		Model:              "default",
-		Workflow:           "default",
-		PR:                 "default",
-		AutoMerge:          "default",
-		AutoApprovePrompts: "default",
+		HideGit:                    "default",
+		AutoRelease:                "default",
+		DirtyFileThreshold:         "default",
+		Model:                      "default",
+		Workflow:                   "default",
+		PR:                         "default",
+		AutoMerge:                  "default",
+		AutoApprovePrompts:         "default",
+		DisableAutoGeneratePrompts: "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -591,6 +595,9 @@ func computeFieldSources(
 	if global.AutoApprovePrompts != nil {
 		s.AutoApprovePrompts = "global"
 	}
+	if global.DisableAutoGeneratePrompts != nil {
+		s.DisableAutoGeneratePrompts = "global"
+	}
 	// Project overrides global (project wins)
 	if proj.Model != nil {
 		s.Model = "project"
@@ -606,6 +613,9 @@ func computeFieldSources(
 	}
 	if proj.AutoApprovePrompts != nil {
 		s.AutoApprovePrompts = "project"
+	}
+	if proj.DisableAutoGeneratePrompts != nil {
+		s.DisableAutoGeneratePrompts = "project"
 	}
 	if proj.MaxContainers != nil {
 		s.MaxContainers = "project"
@@ -679,6 +689,7 @@ var supportedSetKeys = []string{
 	"workflow",
 	"pr",
 	"autoMerge",
+	"disableAutoGeneratePrompts",
 }
 
 // parseSetFlags scans rawArgs for --set key=value occurrences, collects them into a
@@ -755,6 +766,13 @@ func applyOneSetOverride(
 		}
 		cfg.HideGit = b
 		sources.HideGit = "arg"
+	case "disableAutoGeneratePrompts":
+		b, err := parseStrictBool(ctx, key, value)
+		if err != nil {
+			return err
+		}
+		cfg.DisableAutoGeneratePrompts = b
+		sources.DisableAutoGeneratePrompts = "arg"
 	case "autoRelease":
 		b, err := parseStrictBool(ctx, key, value)
 		if err != nil {

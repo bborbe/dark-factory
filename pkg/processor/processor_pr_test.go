@@ -419,8 +419,12 @@ var _ = Describe("Processor", func() {
 
 				// WaitAndMerge must NOT be called
 				Expect(prMerger.WaitAndMergeCallCount()).To(Equal(0))
-				// Prompt must be moved to completed
-				Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
+				// Prompt must be moved to completed. Clone workflow (post spec 087) invokes
+				// MoveToCompleted TWICE on the same mocked manager: once inside the clone
+				// (executor's pre-commit move) and once in the original repo (sync-back).
+				// In real usage these target two distinct file trees; here they share the
+				// same mock instance, so the count is 2.
+				Expect(manager.MoveToCompletedCallCount()).To(Equal(2))
 
 				cancel()
 			},

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.168.4
+
+- fix: clone and worktree workflows now mirror the in-progress → completed rename into the original repo after push, so the daemon's local view matches `origin/master` and `savePRURLToFrontmatter` no longer errors (spec 087, follow-up to spec 086)
+
 ## v0.168.3
 
 - update golang.org/x/crypto v0.51.0 → v0.52.0

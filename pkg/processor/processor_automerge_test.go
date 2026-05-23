@@ -687,10 +687,13 @@ DARK-FACTORY-REPORT -->`), 0600)
 			return prCreator.CreateCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
-		// MoveToCompleted should be called (normal flow)
+		// MoveToCompleted should be called twice in the clone flow (post spec 087):
+		// once inside the clone (executor's pre-commit move) and once in the original
+		// repo (sync-back). Both calls hit the same mocked manager here; in real usage
+		// they target two distinct file trees.
 		Eventually(func() int {
 			return manager.MoveToCompletedCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(2))
 
 		cancel()
 	})

@@ -124,6 +124,23 @@ func (e *worktreeWorkflowExecutor) Complete(
 	}
 	e.cleanedUp = true
 
+	if syncErr := syncPromptFileToOriginalRepo(
+		ctx,
+		e.deps.PromptManager,
+		promptPath,
+		completedPath,
+	); syncErr != nil {
+		slog.WarnContext(ctx,
+			"clone-sync-mismatch",
+			"promptPath", promptPath,
+			"completedPath", completedPath,
+			"remoteBranch", e.branchName,
+			"error", syncErr.Error(),
+			"hint", "remote has the rename; run `git pull` on the original repo to catch up",
+		)
+		// success-with-warning: do not propagate; remote is already correct.
+	}
+
 	return handleAfterIsolatedCommit(
 		gitCtx,
 		ctx,

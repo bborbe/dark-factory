@@ -103,6 +103,16 @@ Every prompt MUST have these XML sections:
 - Not duplicating completed prompts
 - In inbox (`prompts/`), not in `prompts/in-progress/`
 
+**YAGNI pass (scope-creep detector):**
+- For every config field, opt-out flag, tunable threshold, branch in requirements, or test case in the prompt, ask: **does the linked spec's Goal / Desired Behavior actually demand this?** If not, it's scope creep introduced by the prompt-writer (or inherited from a spec that should have been flagged earlier).
+- Common offenders the auditor must catch:
+  - Per-feature opt-out flag (`disableX: bool`, `lgtmOnNoConcerns: bool`) that disables the very behavior the spec/prompt ships — the escape hatch rejects the Goal
+  - Configurability for variations no caller has asked for ("operators might want to…")
+  - Multiple defaults / tunable thresholds with no named consumer
+  - Test cases that exercise the opt-out path of a non-existent flag (sign the flag itself was made up)
+- Flag as **Recommendation** by default; flag as **Critical** when the knob directly negates the spec's Goal.
+- Suggested fix wording: "Remove `<knob>`; if a future consumer demands this variation, file a separate spec/prompt. The spec's Non-goals section should explicitly reject this variation so the decision is durable."
+
 **Test Coverage:**
 - If requirements modify or create code, prompt MUST address testing
 - New code (new files/packages): require ≥80% statement coverage
@@ -397,6 +407,12 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 |-----------|------|--------|
 | e.g. Handler returns WithError | `go-http-handler.md` | Compliant / Violation |
 | Test-only package-level mutable state (no `var X` + `SetX` setter pair where constructor injection would work) | `go-time-injection.md` | Compliant / Violation |
+
+## YAGNI Pass
+- [x/!] No opt-out flag for the very behavior the prompt ships (escape hatch rejects the Goal)
+- [x/!] Every config field / threshold / branch is demanded by the linked spec's Goal or Desired Behavior
+- [x/!] No "future-proofing" knobs without a named concrete consumer
+- If hits: list each finding with line number, the YAGNI pattern (opt-out flag / unrequested config / tunable threshold / etc.), and the suggested removal. Severity = Recommendation by default, Critical when the knob negates the spec's Goal.
 
 ## Critical Issues
 [MUST fix before approving — includes guideline violations]

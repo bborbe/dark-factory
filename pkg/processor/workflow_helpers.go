@@ -7,6 +7,7 @@ package processor
 import (
 	"context"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -191,6 +192,46 @@ func handleAutoMergeForClone(
 	// The feature branch (including the completed prompt file) is merged into default
 	// via PostMergeActions; no separate move/commit needed.
 	return PostMergeActions(gitCtx, ctx, deps, title)
+}
+
+// syncPromptFileToOriginalRepo mirrors the in-progress → completed rename into the
+// ORIGINAL repo AFTER the combined commit has already been pushed from an isolated
+// clone/worktree. It is filesystem-only: no git calls, no remote operations.
+//
+// Idempotent:
+//   - If the file is already at completedPath, this is a no-op (debug log).
+//   - If the file is missing at promptPath AND missing at completedPath, the original
+//     repo's view has truly diverged from the pushed remote; the function returns a
+//     wrapped "clone-sync-mismatch" error so the caller can WARN.
+//
+// On rename failure, returns the wrapped error so the caller can log
+// "clone-sync-mismatch" and continue with success-with-warning semantics.
+func syncPromptFileToOriginalRepo(
+	ctx context.Context,
+	promptMgr PromptManager,
+	promptPath, completedPath string,
+) error {
+	// Already mirrored — idempotent no-op.
+	if _, err := os.Stat(completedPath); err == nil {
+		slog.DebugContext(ctx, "sync-already-at-completed", "path", completedPath)
+		return nil
+	}
+
+	// File not yet mirrored — perform the rename via MoveToCompleted.
+	if _, err := os.Stat(promptPath); err == nil {
+		if err := promptMgr.MoveToCompleted(ctx, promptPath); err != nil {
+			return errors.Wrap(ctx, err, "sync prompt file to original repo")
+		}
+		return nil
+	}
+
+	// Both source and destination absent — true divergence.
+	return errors.Errorf(
+		ctx,
+		"clone-sync-mismatch: prompt absent at both %s and %s",
+		promptPath,
+		completedPath,
+	)
 }
 
 // handleAfterIsolatedCommit handles push + optional PR + prompt lifecycle for clone/worktree.

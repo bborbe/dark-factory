@@ -51,10 +51,11 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
 
 4. **Write spec content** following template below
 
-5. **Validate** against preflight checklist AND the three self-check passes:
+5. **Validate** against preflight checklist AND the four self-check passes:
    - **Adversarial laziness**: read the spec assuming the laziest possible implementation. If a no-op or hardcoded fake satisfies every AC, tighten the ACs before reporting.
    - **Hedge-word grep**: scan the spec for `should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`; resolve each or mark "agent decides at impl time" explicitly.
    - **Evidence-shape check**: every AC names how the verifier will observe pass — exit code, log line, file content, HTTP status, kafka message, metric, cluster state, or file artifact.
+   - **YAGNI pass**: re-read the Goal. For every config field, opt-out flag, tunable threshold, or branch in Desired Behavior, ask: "Does removing this still satisfy the Goal? Does the Problem section name a concrete consumer demanding this variation?" If the answer to the first is **yes** or to the second is **no**, remove it before saving. Common offenders to delete on sight: per-feature opt-out flags that disable the very behavior the spec ships (an escape hatch on the Goal is itself a regression), unrequested configurability, tunable thresholds with no named consumer, "future-proof" knobs. When removing, add a one-line note to Non-goals so the rejection is durable: `- Do NOT add <knob> — invariant; if a future consumer demands variation, that's a separate spec.`
 
 6. **Report** file path and suggest `/audit-spec` before approving
 </workflow>

@@ -82,6 +82,30 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - One independently deployable behavior change per spec
 - Two features with different do-nothing arguments = two specs
 
+## YAGNI Pass (scope-creep detector)
+
+**Run this check on every spec.** Specs frequently grow optional knobs, opt-out flags, future-proof configuration, and tunable thresholds that no concrete consumer has asked for. These add test surface, doc burden, rollback complexity, and mental load — without serving the Problem the spec was written to solve.
+
+For every config field, opt-out flag, threshold variable, branch in Desired Behavior, table column, or AC introduced by the spec, ask:
+
+1. **Does removing this still satisfy the Goal?** If yes → it is YAGNI. Flag.
+2. **Does the Problem section name a concrete consumer demanding this variation?** If no → it is YAGNI. Flag.
+3. **Is this an opt-out / disable switch for the feature itself?** If yes → the switch rejects the Goal. Flag (almost always).
+
+**Common YAGNI patterns to call out:**
+
+- **Per-feature opt-out flag** ("`lgtmOnNoConcerns: bool`", "`disableX: true`") — if the feature IS the goal, the flag rejects the goal. The escape hatch is itself a regression.
+- **Configurability for un-asked-for variations** ("operators might want to tune the threshold") — until a concrete operator names the use case, it's future-proofing for an imagined consumer.
+- **Multiple defaults / tunable thresholds** — one sensible default beats one config field plus tests plus docs.
+- **"It's just X more lines"** — cost isn't lines, it's test surface, config schema drift, rollback paths, mental model size. A field once added rarely gets removed.
+- **Section growth without behavioral change** — spec length per behavioral change should stay roughly constant. If the spec is long but the actual behavior change is small, padding has crept in.
+
+**How to flag YAGNI findings:**
+
+- **Recommendation severity** by default — most YAGNI items are scope creep, not blockers
+- **Critical severity** only when the YAGNI item directly negates the spec's Goal (e.g. an opt-out switch on the very behavior the spec is shipping)
+- Suggested fix wording: "Remove `<knob>`; if a future consumer demands this variation, file a separate spec. Add the rejection to the spec's Non-goals section so the decision is durable."
+
 ## Project Fit (CRITICAL — flag at top of report if spec is in the wrong project)
 
 **A spec must live in the dark-factory project whose repo it modifies.** Each dark-factory project mounts exactly ONE git repo into the container and owns write credentials only for that repo's remote. A spec that targets a different repo's code will spawn prompts that clone-and-push cross-repo, which fails on credentials and irrecoverably loses any local commit when the container exits.
@@ -508,6 +532,11 @@ Adjustments:
 ## Evidence Shape per AC
 - [x/!] Each AC declares an observable evidence shape (exit code, log line, file diff, HTTP status, kafka message, metric, etc.)
 - If gaps: list AC numbers with suggested evidence shape
+
+## YAGNI Pass
+- [x/!] Every config field, opt-out flag, threshold, or branch in Desired Behavior is demanded by a concrete consumer in the Problem section
+- [x/!] No opt-out switches on the very behavior the spec ships (an opt-out for the spec's Goal is itself a regression)
+- If hits: list each finding with line number, the YAGNI pattern (opt-out flag / unrequested configurability / tunable threshold / etc.), and the suggested removal. Severity = Recommendation by default, Critical only when the knob negates the Goal.
 
 ## Spec vs Prompt Fitness
 [Only include this section if 3+ smells apply. Otherwise omit.]

@@ -176,6 +176,10 @@ This can silently produce direct-to-master commits when the operator expected a 
 
 All workflow modes use the lifecycle **move → stage → commit → push**. The prompt file is renamed from `prompts/in-progress/<id>.md` to `prompts/completed/<id>.md` before the work commit is staged, so a single commit (and a single push) carries both the code change and the rename. If the work commit fails, the rename is rolled back; the on-disk state always matches what HEAD reflects.
 
+### Post-push mirror for clone and worktree
+
+After a **clone** or **worktree** workflow completes, the prompt file rename (`in-progress/` → `completed/`) exists only inside the isolated clone/worktree and was committed and pushed from there. The original repo on the host still shows the prompt at `in-progress/<id>.md`. To keep the daemon's local view in sync with `origin/master`, dark-factory performs a **post-push mirror**: after the push succeeds and the isolated working tree is destroyed, the daemon calls `MoveToCompleted` against the original repo's `in-progress/` path from the original repo's CWD. This is a filesystem-only operation (no git commit, no remote fetch/push). If the file is already at `completed/<id>.md` in the original repo (e.g., operator pulled in the meantime), the mirror is a no-op. If the rename fails (e.g., original repo is on a different branch), dark-factory logs `clone-sync-mismatch` at WARN level and returns success — the remote is already correct, and the operator can recover with `git pull`.
+
 ## Implementation notes
 
 - `workflow: direct` + `workflow: branch` share the same parent repo at `/workspace` — container has a real `.git/`

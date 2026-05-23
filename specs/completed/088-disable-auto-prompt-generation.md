@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -8,6 +8,7 @@ approved: "2026-05-23T22:16:46Z"
 generating: "2026-05-23T22:18:37Z"
 prompted: "2026-05-23T22:22:38Z"
 verifying: "2026-05-23T22:45:50Z"
+completed: "2026-05-23T23:02:33Z"
 branch: dark-factory/disable-auto-prompt-generation
 ---
 

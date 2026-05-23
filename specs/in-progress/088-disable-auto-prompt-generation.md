@@ -1,5 +1,5 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ tags:
 approved: "2026-05-23T22:16:46Z"
 generating: "2026-05-23T22:18:37Z"
 prompted: "2026-05-23T22:22:38Z"
+verifying: "2026-05-23T22:45:50Z"
 branch: dark-factory/disable-auto-prompt-generation
 ---
 
@@ -137,3 +138,20 @@ grep -n 'disableAutoGeneratePrompts' main.go README.md docs/configuration.md
 ## Do-Nothing Option
 
 Without this flag, every spec approve auto-fires a generator container. The operator has no cheap way to pause that step — the only workaround (keep the spec at `specs/` instead of moving to `specs/in-progress/`) bypasses every other watcher hook. Operators who want to review-then-generate either accept the cost of running the generator and discarding its output, or live with a half-broken workflow. The fix is one bool, layered through the existing precedence machinery — bounded, mechanical, and removes the only friction in the approve-then-review path.
+
+## Verification Result
+
+**Verified:** 2026-05-23T23:00:46Z (HEAD aa8e2ce)
+**Binary:** /tmp/dark-factory-aa8e2ce (dark-factory dev)
+**Scenario:** None — mechanical verification via grep + go test (per spec's "Scenario coverage: None").
+**Evidence:**
+- `pkg/config/config.go:119` `DisableAutoGeneratePrompts bool` with `yaml:"disableAutoGeneratePrompts,omitempty"`
+- `pkg/config/loader.go:122` `*bool` partial; merge branch at `:381-382`
+- `pkg/specwatcher/watcher.go:157-164` gates `generator.Generate` with INFO log `spec approved — auto-generation disabled, run /dark-factory:generate-prompts-for-spec <spec-path> manually`
+- `pkg/specwatcher/watcher_test.go:421,452,489,521` — new tests assert zero generator calls when flag=true (both file-event and scan-existing paths) and default-false unchanged
+- `pkg/factory/factory.go:152` effective-config log emits `disableAutoGeneratePromptsSource`
+- `main.go:692` allowed-keys; `:769` switch; `:987,1009` help text; tests at `main_internal_test.go:615/631/648` cover true/false/strict-reject
+- `README.md:153` lists key in user-level defaults; `docs/configuration.md:446,461,466,471-472,476,490-491` heading + example + log-line snippet
+- `make precommit` exit 0; `go test ./pkg/config/...` PASS; `go test ./pkg/specwatcher/...` PASS; `go test .` PASS
+- Code shipped in release v0.171.0/v0.171.1 (HEAD aa8e2ce)
+**Verdict:** PASS

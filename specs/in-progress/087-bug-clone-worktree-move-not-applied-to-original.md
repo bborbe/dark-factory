@@ -1,10 +1,13 @@
 ---
+status: prompted
 tags:
-  - dark-factory
-  - spec
-  - bug
-status: idea
-kind: bug
+    - dark-factory
+    - spec
+    - bug
+approved: "2026-05-23T08:54:53Z"
+generating: "2026-05-23T08:54:54Z"
+prompted: "2026-05-23T09:00:18Z"
+branch: dark-factory/bug-clone-worktree-move-not-applied-to-original
 ---
 
 ## Summary
@@ -101,7 +104,8 @@ Clone and worktree workflows end with the ORIGINAL repo's prompt at `prompts/com
 - Direct workflow MUST continue to produce a single combined commit (no regression in spec 086).
 - Branch workflow MUST continue to produce a single combined commit (no regression in spec 086).
 - Clone and worktree workflows MUST NOT add a second git commit in the ORIGINAL repo for the post-push rename — the rename is already in the pushed combined commit, so this is a filesystem-only operation.
-- No new bypass paths for branch protection.
+- The order of operations established by spec 086 (rename → work commit → push) MUST NOT change. This spec adds a filesystem mirror operation in the ORIGINAL repo AFTER push succeeds, never before.
+- The post-push original-repo rename MUST be filesystem-only — no git commands that touch the remote (push, fetch, merge); only local rename + frontmatter update.
 - The post-push original-repo rename MUST be idempotent: if the prompt is already at `prompts/completed/<id>.md`, the operation succeeds without error.
 - See `docs/bug-workflow.md` for the bug spec lifecycle.
 
@@ -112,9 +116,9 @@ Clone and worktree workflows end with the ORIGINAL repo's prompt at `prompts/com
 | Original-repo rename fails after clone/worktree push succeeded | WARN `clone-sync-mismatch` naming both paths; workflow does not crash; remote is ahead of local | non-zero return from the post-push rename | reversible | Operator runs `git pull` on the original repo to catch up |
 | File already at `prompts/completed/<id>.md` in original (idempotent re-run) | No-op success; debug log noting already-at-destination | rename detects same source/dest or destination already exists | reversible | n/a |
 | Clone/worktree removed but chdir back to original failed | Workflow fails fast; original prompt untouched at `in-progress/`; no partial rename | chdir error returned | reversible | Operator restarts daemon |
-| Daemon crash between remote push and original-repo rename | On next startup, daemon observes: remote `master` has prompt at `completed/`, original has prompt at `in-progress/`. Daemon emits `clone-sync-mismatch` WARN with recovery instructions (auto-sync via `git pull` is a follow-up). | mismatch between `git log origin/master` for the prompt and local filesystem state | reversible | Operator `git pull` on original repo OR daemon-startup recovery (follow-up spec) |
+| Daemon crash between remote push and original-repo rename | Original repo left at `in-progress/` while remote has prompt at `completed/` (same end-state as the bug this spec fixes). On the next prompt run, the existing `clone-sync-mismatch` WARN path surfaces the divergence to the operator. Automatic startup-time detection is out of scope (Non-goal #3). | operator-driven: next prompt run emits `clone-sync-mismatch` WARN, OR operator notices via `git ls-tree origin/master prompts/completed/<id>.md` returning a hit while local has it at in-progress | reversible | Operator `git pull` on original repo to catch up |
 | External `gh`/git unavailable during push | Existing push-failure handling applies — combined commit not pushed, no original-repo rename attempted, prompt stays at `in-progress/` in both original and clone | push exit code non-zero | reversible | Operator retries when network/`gh` restored |
-| Concurrent daemon instances on same repo | Second instance observes prompt already at `completed/` (idempotent path), no-op; or observes mid-rename and fails fast on stale state | lock file or git index state | partial | Daemon-instance lock (existing); second instance defers |
+| Concurrent daemon instances on same repo | Prevented by the existing single-instance daemon lock (`.dark-factory.lock`). A second instance fails to acquire the lock and exits before doing any work — concurrent rename in the original is not reachable. | `dark-factory daemon` exits non-zero with "lock held by pid N" | n/a (prevented) | First daemon must exit or be killed; second can then start |
 
 ## Acceptance Criteria
 
@@ -123,7 +127,8 @@ Clone and worktree workflows end with the ORIGINAL repo's prompt at `prompts/com
 - [ ] `savePRURLToFrontmatter` no longer errors with `no such file or directory` after a clone or worktree run — evidence: `grep -c "failed to save PR URL to frontmatter" <daemon.log>` returns 0 after a scenario 002 run.
 - [ ] The post-push rename in the original repo produces no additional git commit — evidence: after the scenario run, `git -C <original-repo> log origin/master..HEAD --oneline` returns empty output (no local-only commits).
 - [ ] Direct workflow continues to produce a single combined commit — evidence: scenario 001 (direct mode) run shows exactly one commit added to master containing both the code change and the prompt rename (`git log -1 --stat` lists both).
-- [ ] Branch workflow continues to produce a single combined commit — evidence: existing pkg/processor ginkgo tests for branch mode pass; new ginkgo assertion that the branch's tip commit contains both the code change and the rename.
+- [ ] Branch workflow's existing ginkgo tests pass unchanged — evidence: `go test ./pkg/processor/ -run 'TestProcessor' -count=1` exits 0 with the same set of `branchWorkflowExecutor` test descriptions as today.
+- [ ] Branch workflow's tip commit still contains both the code change and the prompt rename — evidence: the existing spec-086 ginkgo test `branchWorkflowExecutor moves prompt before commit` still asserts `git log --name-status` shows both `M <code>` and `R prompts/in-progress/<id>.md → prompts/completed/<id>.md` in the same commit.
 - [ ] Idempotent rerun — evidence: a ginkgo unit test that invokes the original-repo move twice on the same prompt succeeds on the second call (no error) and emits a debug log indicating already-at-destination.
 - [ ] Failure of the original-repo rename does not crash the workflow — evidence: a ginkgo test that injects a rename failure after push asserts the workflow returns success-with-warning AND the daemon log contains a line matching `clone-sync-mismatch`.
 - [ ] New integration test covers clone + worktree original-repo move — evidence: a ginkgo test drives `cloneWorkflowExecutor.Complete` and `worktreeWorkflowExecutor.Complete` end-to-end against a bare remote and asserts the ORIGINAL repo's filesystem has `prompts/completed/<id>.md` present and `prompts/in-progress/<id>.md` absent.

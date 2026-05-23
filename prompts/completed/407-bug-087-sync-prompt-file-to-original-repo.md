@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [087-bug-clone-worktree-move-not-applied-to-original]
+container: dark-factory-exec-407-bug-087-sync-prompt-file-to-original-repo
+dark-factory-version: v0.164.0
 created: "2026-05-23T00:00:00Z"
 queued: "2026-05-23T09:14:52Z"
+started: "2026-05-23T09:17:08Z"
+completed: "2026-05-23T10:09:58Z"
 branch: dark-factory/bug-clone-worktree-move-not-applied-to-original
 ---
 

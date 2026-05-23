@@ -417,4 +417,134 @@ var _ = Describe("SpecWatcher", func() {
 
 		cancel()
 	})
+
+	It("does NOT call generator when disableAutoGenerate is true on new file event", func() {
+		gen := &mocks.SpecGenerator{}
+		gen.GenerateReturns(nil)
+
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+			true, // disableAutoGenerate = true
+		)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		time.Sleep(100 * time.Millisecond)
+
+		specFile := filepath.Join(inProgressDir, "gated-spec.md")
+		content := "---\nstatus: approved\n---\n# Gated Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		// Generator should NOT be called within 2 seconds
+		Consistently(func() int {
+			return gen.GenerateCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(0))
+
+		cancel()
+	})
+
+	It("logs INFO message when disableAutoGenerate is true", func() {
+		handler := &captureHandler{}
+		origLogger := slog.Default()
+		slog.SetDefault(slog.New(handler))
+		defer slog.SetDefault(origLogger)
+
+		gen := &mocks.SpecGenerator{}
+
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+			true, // disableAutoGenerate = true
+		)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		time.Sleep(100 * time.Millisecond)
+
+		specFile := filepath.Join(inProgressDir, "log-spec.md")
+		content := "---\nstatus: approved\n---\n# Log Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() []string {
+			return handler.Messages()
+		}, 2*time.Second, 50*time.Millisecond).Should(
+			ContainElement(ContainSubstring("auto-generation disabled")),
+		)
+
+		cancel()
+	})
+
+	It(
+		"does NOT call generator when disableAutoGenerate is true for pre-existing spec on startup",
+		func() {
+			gen := &mocks.SpecGenerator{}
+			gen.GenerateReturns(nil)
+
+			// Create spec BEFORE starting the watcher.
+			specFile := filepath.Join(inProgressDir, "pre-existing-gated.md")
+			content := "---\nstatus: approved\n---\n# Pre-existing Gated Spec\n"
+			err := os.WriteFile(specFile, []byte(content), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			w := specwatcher.NewSpecWatcher(
+				inProgressDir,
+				gen,
+				200*time.Millisecond,
+				libtime.NewCurrentDateTime(),
+				true, // disableAutoGenerate = true
+			)
+
+			go func() {
+				_ = w.Watch(ctx)
+			}()
+
+			// Generator should NOT be called on startup scan
+			Consistently(func() int {
+				return gen.GenerateCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(0))
+
+			cancel()
+		},
+	)
+
+	It("calls generator when disableAutoGenerate is false (default behavior)", func() {
+		gen := &mocks.SpecGenerator{}
+		gen.GenerateReturns(nil)
+
+		w := specwatcher.NewSpecWatcher(
+			inProgressDir,
+			gen,
+			200*time.Millisecond,
+			libtime.NewCurrentDateTime(),
+			false, // disableAutoGenerate = false (default)
+		)
+
+		go func() {
+			_ = w.Watch(ctx)
+		}()
+
+		time.Sleep(100 * time.Millisecond)
+
+		specFile := filepath.Join(inProgressDir, "enabled-spec.md")
+		content := "---\nstatus: approved\n---\n# Enabled Spec\n"
+		err := os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(func() int {
+			return gen.GenerateCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
+
+		cancel()
+	})
 })

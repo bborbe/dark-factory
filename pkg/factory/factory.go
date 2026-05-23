@@ -692,6 +692,7 @@ func CreateSpecWatcher(
 		gen,
 		time.Duration(cfg.DebounceMs)*time.Millisecond,
 		currentDateTimeGetter,
+		cfg.DisableAutoGeneratePrompts,
 	)
 }
 

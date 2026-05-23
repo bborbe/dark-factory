@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.0
+
+- feat: gate spec watcher auto-generation behind `disableAutoGeneratePrompts` config flag — when enabled, watcher logs INFO skip message instead of calling generator
+
 ## v0.170.0
 
 - feat: add `disableAutoGeneratePrompts` config field threaded through all config layers (default, global, project, CLI --set) for gating spec watcher auto-generation

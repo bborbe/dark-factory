@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [088-disable-auto-prompt-generation]
+summary: Gate spec watcher auto-generation behind disableAutoGeneratePrompts config flag — when enabled, watcher logs INFO skip message instead of calling generator
+container: dark-factory-exec-410-spec-088-watcher-gating
+dark-factory-version: v0.169.0
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-23T22:30:51Z"
+started: "2026-05-23T22:39:07Z"
+completed: "2026-05-23T22:43:02Z"
 branch: dark-factory/disable-auto-prompt-generation
 ---
 

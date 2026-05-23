@@ -984,7 +984,7 @@ func printRunHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, disableAutoGeneratePrompts\n"+
 			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
 			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+
@@ -1006,7 +1006,7 @@ func printDaemonHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, disableAutoGeneratePrompts\n"+
 			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
 			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+

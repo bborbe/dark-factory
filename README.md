@@ -150,7 +150,7 @@ model: claude-sonnet-4-6                             # Claude model
 claudeDir: ~/.claude-yolo                            # host claude config dir (default: ~/.claude-yolo)
 ```
 
-**User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`. Precedence: default ← global ← project ← CLI arg.
+**User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`, `disableAutoGeneratePrompts`. Precedence: default ← global ← project ← CLI arg.
 
 **Per-invocation CLI flags** for `run`/`daemon`: `--model NAME`, `--hide-git`, `--no-hide-git`, `--max-containers N`, `--skip-preflight`, `--auto-approve`. Override yaml without editing files.
 

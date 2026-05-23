@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [088-disable-auto-prompt-generation]
+summary: Document disableAutoGeneratePrompts flag in README.md, docs/configuration.md (--set table and new subsection), and main.go CLI help text
+container: dark-factory-exec-411-spec-088-documentation
+dark-factory-version: v0.169.0
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-23T22:30:51Z"
+started: "2026-05-23T22:43:06Z"
+completed: "2026-05-23T22:45:47Z"
 branch: dark-factory/disable-auto-prompt-generation
 ---
 

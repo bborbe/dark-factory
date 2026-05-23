@@ -443,12 +443,57 @@ Supported keys and types:
 | `workflow` | enum (`direct` \| `branch` \| `worktree` \| `clone`) | `--set workflow=branch` |
 | `pr` | bool (`true` or `false`) | `--set pr=true` |
 | `autoMerge` | bool (`true` or `false`) | `--set autoMerge=false` |
+| `disableAutoGeneratePrompts` | bool (`true` or `false`) | `--set disableAutoGeneratePrompts=true` |
+
+When set to `true`, the spec watcher will NOT auto-fire the generator container when a spec is approved. Use `/dark-factory:generate-prompts-for-spec <spec-path>` to trigger generation manually.
 
 Bool fields accept only `true` or `false` (case-sensitive). Values like `1`, `0`, `yes`, `no` are rejected. Unknown keys exit non-zero with an error listing the supported keys.
 
 The `workflow: pr` legacy yaml value is **not** accepted via `--set`. Use `--set workflow=clone --set pr=true` instead (the yaml loader maps the legacy value at load time; the arg layer intentionally does not reproduce that mapping).
 
 Priority: `--set` arg > project config > global config > default.
+
+### Disable Auto Prompt Generation
+
+Suppress the automatic spec-to-prompts generation that fires when a spec moves to `status: approved`.
+
+```yaml
+disableAutoGeneratePrompts: true
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `disableAutoGeneratePrompts` | `false` (enabled) | When `true`, the spec watcher will NOT auto-fire the generator container when a spec is approved. Operators run `/dark-factory:generate-prompts-for-spec <spec-path>` manually to trigger generation. |
+
+**When to use**: You want to approve a spec to lock its contents but defer prompt generation — review the generated prompts before the container runs, run with custom args, or skip generation entirely for spec-only experiments.
+
+**Behavior**:
+- `disableAutoGeneratePrompts: false` (default): Approving a spec triggers the generator container. Prompts appear in `prompts/` automatically.
+- `disableAutoGeneratePrompts: true`: Approving a spec logs an INFO line and does NOT start the generator. The spec stays at `status: approved` in `specs/in-progress/`.
+
+**Expected log line** (INFO level):
+```
+spec approved — auto-generation disabled, run /dark-factory:generate-prompts-for-spec <spec-path> manually
+```
+
+**Manual invocation** (when flag is `true`):
+```bash
+# Trigger generation for a specific spec
+/dark-factory:generate-prompts-for-spec <spec-path>
+
+# Example: trigger for spec 088
+/dark-factory:generate-prompts-for-spec specs/in-progress/088-disable-auto-prompt-generation.md
+```
+
+**Per-invocation override** (no yaml editing needed):
+```bash
+dark-factory daemon --set disableAutoGeneratePrompts=true
+dark-factory run --set disableAutoGeneratePrompts=false
+```
+
+**Layering precedence**: default (`false`) ← global (`~/.dark-factory/config.yaml`) ← project (`.dark-factory.yaml`) ← CLI (`--set`). Matches `hideGit`, `autoRelease`, and other user-pref fields.
+
+**Note**: This only affects the automatic trigger. The `commands/generate-prompts-for-spec.md` command on the host always works regardless of this flag.
 
 ## Common Patterns
 

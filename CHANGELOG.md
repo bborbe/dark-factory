@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.1
+
+- docs: document `disableAutoGeneratePrompts` in README.md "User-level defaults" paragraph, `--set` table in docs/configuration.md, and CLI help text in main.go
+
 ## v0.171.0
 
 - feat: gate spec watcher auto-generation behind `disableAutoGeneratePrompts` config flag — when enabled, watcher logs INFO skip message instead of calling generator

@@ -5,8 +5,10 @@
 package processor_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -226,3 +228,185 @@ func (w *realWorktreer) Remove(ctx context.Context, path string) error {
 	cmd.Dir = w.originalDir
 	return cmd.Run()
 }
+
+// NOTE: integration-level "sync failure" injection was removed for the same
+// reason as in workflow_executor_clone_test.go — see the comment there.
+// Failure-path coverage lives in workflow_helpers_internal_test.go.
+
+var _ = Describe("worktreeWorkflowExecutor syncs prompt file to original repo", func() {
+	It(
+		"syncs prompt file to original repo after successful push (sync prompt file to original repo)",
+		func() {
+			ctx := context.Background()
+			_, originalDir := setupBareRemoteWithWorktree(GinkgoT())
+
+			// Create prompt directories in originalDir
+			promptsInProgress := filepath.Join(originalDir, "prompts", "in-progress")
+			promptsCompleted := filepath.Join(originalDir, "prompts", "completed")
+			Expect(os.MkdirAll(promptsInProgress, 0750)).To(Succeed())
+			Expect(os.MkdirAll(promptsCompleted, 0750)).To(Succeed())
+
+			promptPath := filepath.Join(promptsInProgress, "001-test.md")
+			completedPath := filepath.Join(promptsCompleted, "001-test.md")
+			codeFile := filepath.Join(originalDir, "code.go")
+
+			// Write prompt file and code file BEFORE Setup
+			writePromptFileWt(promptPath, "committing")
+			writeFileWt(codeFile, "package main\n")
+
+			// Commit the files so they exist in git history (required for rename detection)
+			cmd := exec.CommandContext(ctx, "git", "add", ".")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+			cmd = exec.CommandContext(ctx, "git", "commit", "-m", "initial files")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+
+			// Change to originalDir before Setup
+			originalCwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalCwd) })
+			Expect(os.Chdir(originalDir)).To(Succeed())
+
+			// Create prompt manager
+			promptMgr := prompt.NewManager(
+				filepath.Join(originalDir, "prompts", "inbox"),
+				promptsInProgress,
+				promptsCompleted,
+				"",
+				&osFileMover{},
+				libtime.NewCurrentDateTime(),
+			)
+
+			rel := &realGitReleaser{workDir: originalDir}
+			deps := processor.WorkflowDeps{
+				PromptManager: promptMgr,
+				AutoCompleter: &stubAutoCompleter{},
+				Releaser:      rel,
+				Brancher:      &realBrancher{workDir: originalDir},
+				Worktreer:     &realWorktreer{originalDir: originalDir},
+				ProjectName:   "test-project",
+			}
+			executor := processor.NewWorktreeWorkflowExecutor(deps)
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+
+			err = executor.Setup(ctx, "001-test", pf)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Modify code file in worktree
+			writeFileWt(codeFile, "package main // modified\n")
+
+			err = executor.Complete(ctx, ctx, pf, "test commit", promptPath, completedPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// (a) completed/ file present in ORIGINAL
+			_, err = os.Stat(completedPath)
+			Expect(err).NotTo(HaveOccurred(), "completed file MUST exist in ORIGINAL after sync")
+
+			// (b) in-progress/ file absent in ORIGINAL
+			_, err = os.Stat(promptPath)
+			Expect(
+				os.IsNotExist(err),
+			).To(BeTrue(), "in-progress file MUST NOT exist in ORIGINAL after sync")
+		},
+	)
+})
+
+var _ = Describe("worktreeWorkflowExecutor sync failure", func() {
+	It(
+		"emits clone-sync-mismatch WARN and returns success when sync fails after push",
+		func() {
+			ctx := context.Background()
+			bareDir, originalDir := setupBareRemoteWithWorktree(GinkgoT())
+
+			// Create prompt directories in originalDir
+			promptsInProgress := filepath.Join(originalDir, "prompts", "in-progress")
+			promptsCompleted := filepath.Join(originalDir, "prompts", "completed")
+			Expect(os.MkdirAll(promptsInProgress, 0750)).To(Succeed())
+			Expect(os.MkdirAll(promptsCompleted, 0750)).To(Succeed())
+
+			promptPath := filepath.Join(promptsInProgress, "001-test.md")
+			completedPath := filepath.Join(promptsCompleted, "001-test.md")
+			codeFile := filepath.Join(originalDir, "code.go")
+
+			// Write prompt file and code file BEFORE Setup
+			writePromptFileWt(promptPath, "committing")
+			writeFileWt(codeFile, "package main\n")
+
+			// Commit the files so they exist in git history (required for rename detection)
+			cmd := exec.CommandContext(ctx, "git", "add", ".")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+			cmd = exec.CommandContext(ctx, "git", "commit", "-m", "initial files")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+
+			// Pre-create completedPath as a DIRECTORY to cause EISDIR on rename
+			Expect(os.MkdirAll(completedPath, 0750)).To(Succeed())
+
+			// Install a capturing slog handler
+			logBuf := &bytes.Buffer{}
+			prevDefault := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+			DeferCleanup(func() { slog.SetDefault(prevDefault) })
+
+			// Change to originalDir before Setup
+			originalCwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalCwd) })
+			Expect(os.Chdir(originalDir)).To(Succeed())
+
+			// Create prompt manager
+			promptMgr := prompt.NewManager(
+				filepath.Join(originalDir, "prompts", "inbox"),
+				promptsInProgress,
+				promptsCompleted,
+				"",
+				&osFileMover{},
+				libtime.NewCurrentDateTime(),
+			)
+
+			rel := &realGitReleaser{workDir: originalDir}
+			deps := processor.WorkflowDeps{
+				PromptManager: promptMgr,
+				AutoCompleter: &stubAutoCompleter{},
+				Releaser:      rel,
+				Brancher:      &realBrancher{workDir: originalDir},
+				Worktreer:     &realWorktreer{originalDir: originalDir},
+				ProjectName:   "test-project",
+			}
+			executor := processor.NewWorktreeWorkflowExecutor(deps)
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+
+			err = executor.Setup(ctx, "001-test", pf)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Modify code file in worktree
+			writeFileWt(codeFile, "package main // modified\n")
+
+			err = executor.Complete(ctx, ctx, pf, "test commit", promptPath, completedPath)
+			Expect(err).NotTo(HaveOccurred(), "Complete MUST return nil (success-with-warning), NOT propagate the rename error")
+			logs := logBuf.String()
+			Expect(logs).To(ContainSubstring("clone-sync-mismatch"))
+			Expect(logs).To(ContainSubstring(promptPath))
+			Expect(logs).To(ContainSubstring(completedPath))
+
+			// Remote was pushed successfully despite local sync failure (push happens BEFORE the sync attempt):
+			out, gErr := exec.CommandContext(ctx, "git", "-C", bareDir, "branch", "--list", "dark-factory/001-test").CombinedOutput()
+			Expect(gErr).NotTo(HaveOccurred())
+			Expect(strings.TrimSpace(string(out))).NotTo(BeEmpty())
+		},
+	)
+})

@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- test: add ginkgo coverage for the clone/worktree sync helper (`syncPromptFileToOriginalRepo`) — idempotent destination-exists path, move-on-source-present path, and the `clone-sync-mismatch` error when both source and destination are absent (spec 087)
+- test: integration coverage for clone + worktree end-to-end producing a single combined commit on the remote with the prompt at `prompts/completed/<id>.md` and no local commits ahead of `origin/master`
+
 ## v0.168.4
 
 - fix: clone and worktree workflows now mirror the in-progress → completed rename into the original repo after push, so the daemon's local view matches `origin/master` and `savePRURLToFrontmatter` no longer errors (spec 087, follow-up to spec 086)

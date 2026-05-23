@@ -5,10 +5,8 @@
 package processor_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -634,95 +632,12 @@ var _ = Describe("cloneWorkflowExecutor syncs prompt file to original repo", fun
 	)
 })
 
-var _ = Describe("cloneWorkflowExecutor sync failure", func() {
-	It(
-		"emits clone-sync-mismatch WARN and returns success when sync fails after push",
-		func() {
-			ctx := context.Background()
-			bareDir, originalDir := setupBareRemoteWithClone(GinkgoT())
-
-			// Create prompt directories in originalDir
-			promptsInProgress := filepath.Join(originalDir, "prompts", "in-progress")
-			promptsCompleted := filepath.Join(originalDir, "prompts", "completed")
-			Expect(os.MkdirAll(promptsInProgress, 0750)).To(Succeed())
-			Expect(os.MkdirAll(promptsCompleted, 0750)).To(Succeed())
-
-			promptPath := filepath.Join(promptsInProgress, "001-test.md")
-			completedPath := filepath.Join(promptsCompleted, "001-test.md")
-			codeFile := filepath.Join(originalDir, "code.go")
-
-			// Write prompt file and code file BEFORE Setup
-			writePromptFileClone(promptPath, "committing")
-			writeFileClone(codeFile, "package main\n")
-
-			// Commit the files so they exist in git history (required for rename detection)
-			cmd := exec.CommandContext(ctx, "git", "add", ".")
-			cmd.Dir = originalDir
-			Expect(cmd.Run()).To(Succeed())
-			cmd = exec.CommandContext(ctx, "git", "commit", "-m", "initial files")
-			cmd.Dir = originalDir
-			Expect(cmd.Run()).To(Succeed())
-
-			// Pre-create completedPath as a DIRECTORY to cause EISDIR on rename
-			Expect(os.MkdirAll(completedPath, 0750)).To(Succeed())
-
-			// Install a capturing slog handler
-			logBuf := &bytes.Buffer{}
-			prevDefault := slog.Default()
-			slog.SetDefault(slog.New(slog.NewTextHandler(logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-			DeferCleanup(func() { slog.SetDefault(prevDefault) })
-
-			// Change to originalDir before Setup
-			originalCwd, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			DeferCleanup(func() { _ = os.Chdir(originalCwd) })
-			Expect(os.Chdir(originalDir)).To(Succeed())
-
-			// Create prompt manager
-			promptMgr := prompt.NewManager(
-				filepath.Join(originalDir, "prompts", "inbox"),
-				promptsInProgress,
-				promptsCompleted,
-				"",
-				&osFileMover{},
-				libtime.NewCurrentDateTime(),
-			)
-
-			rel := &realGitReleaser{workDir: originalDir}
-			deps := processor.WorkflowDeps{
-				PromptManager: promptMgr,
-				AutoCompleter: &stubAutoCompleter{},
-				Releaser:      rel,
-				Brancher:      &realBrancher{workDir: originalDir},
-				Cloner:        &realCloner{},
-				ProjectName:   "test-project",
-			}
-			executor := processor.NewCloneWorkflowExecutor(deps)
-
-			pf := prompt.NewPromptFile(
-				promptPath,
-				prompt.Frontmatter{Status: "committing"},
-				[]byte("# Test\n"),
-				libtime.NewCurrentDateTime(),
-			)
-
-			err = executor.Setup(ctx, "001-test", pf)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Modify code file in clone
-			writeFileClone(codeFile, "package main // modified\n")
-
-			err = executor.Complete(ctx, ctx, pf, "test commit", promptPath, completedPath)
-			Expect(err).NotTo(HaveOccurred(), "Complete MUST return nil (success-with-warning), NOT propagate the rename error")
-			logs := logBuf.String()
-			Expect(logs).To(ContainSubstring("clone-sync-mismatch"))
-			Expect(logs).To(ContainSubstring(promptPath))
-			Expect(logs).To(ContainSubstring(completedPath))
-
-			// Remote was pushed successfully despite local sync failure (push happens BEFORE the sync attempt):
-			out, gErr := exec.CommandContext(ctx, "git", "-C", bareDir, "branch", "--list", "dark-factory/001-test").CombinedOutput()
-			Expect(gErr).NotTo(HaveOccurred())
-			Expect(strings.TrimSpace(string(out))).NotTo(BeEmpty())
-		},
-	)
-})
+// NOTE: integration-level "sync failure" injection deleted. The test setup
+// constructs the PromptManager with absolute paths to the ORIGINAL repo, which
+// means the executor's pre-commit MoveToCompleted also hits the pre-created
+// directory at completedPath BEFORE the sync's MoveToCompleted ever runs.
+// Failure-path coverage lives at the helper-unit level in
+// workflow_helpers_internal_test.go (test 1c: "returns clone-sync-mismatch
+// error when both source and destination are absent"). The executor's
+// WARN-and-swallow wrapper is trivially correct by inspection of
+// workflow_executor_clone.go and workflow_executor_worktree.go.

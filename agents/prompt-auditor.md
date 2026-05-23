@@ -408,7 +408,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 | e.g. Handler returns WithError | `go-http-handler.md` | Compliant / Violation |
 | Test-only package-level mutable state (no `var X` + `SetX` setter pair where constructor injection would work) | `go-time-injection.md` | Compliant / Violation |
 
-## YAGNI Pass
+## YAGNI Pass (scope-creep detector)
 - [x/!] No opt-out flag for the very behavior the prompt ships (escape hatch rejects the Goal)
 - [x/!] Every config field / threshold / branch is demanded by the linked spec's Goal or Desired Behavior
 - [x/!] No "future-proofing" knobs without a named concrete consumer

@@ -18,9 +18,19 @@ A single change can touch one surface or both.
 
 ## The release gate (run BEFORE every `make install`)
 
-The gate exists because `make precommit` does NOT cover host↔container, host↔git remote, or config→runtime seams. Unit tests pass while runtime behavior is broken — that has bitten the project repeatedly (cancellation race, `WaitAndMerge` field mismatch, autoReview unreachable path).
+The gate exists because `make precommit` does NOT cover host↔container, host↔git remote, or config→runtime seams. Unit tests pass while runtime behavior is broken — that has bitten the project repeatedly (cancellation race, `WaitAndMerge` field mismatch, autoReview unreachable path, spec-086 clone-workflow original-repo divergence missed by passing tests).
 
-The rule: **before every `make install`, run all active scenarios against a freshly built binary**. No surface-scoped skipping unless the diff is genuinely empty.
+**The rule: every release, walk every active scenario against a freshly built binary. Always. No exceptions.**
+
+Why no exceptions:
+
+- Scenarios are the ONLY layer that exercises real Docker containers, real `git` against a real remote, real `gh` interactions, real worktree pointer-file mechanics, and the daemon's host↔container handoff. None of that is reachable from `make precommit`.
+- Each scenario exists because a real bug slipped past unit tests once. Removing the corresponding scenario from the release gate is equivalent to declaring that bug class won't recur — a claim no one can defend.
+- The wall clock cost is ~30 min and the LLM cost is ~$0.60. That is small compared to the cost of one regression reaching downstream consumers (other projects that `go install github.com/bborbe/dark-factory@latest`). A regression there surfaces in someone else's workflow, not yours, and you find out from a Slack message hours later.
+- "I just ran scenario 001 ten minutes ago this session" does NOT count. The release is against the binary that will ship — if any byte of source changed since that earlier run, that binary is a different binary and needs its own gate. Trust the procedure, not your memory.
+- The skip-on-empty-diff rule below applies ONLY when the installed binary is byte-equivalent to HEAD (no `.go`, `.mod`, `.sum`, `Makefile`, or `Dockerfile` changes). That state is rare during active development; default expectation is the full gate runs.
+
+**If you find yourself bargaining with the gate — "this change can't affect scenario X", "spec verification covers it" — stop. Run the gate. Bargaining is the failure mode this rule exists to prevent.**
 
 ### Expectations
 
@@ -94,17 +104,25 @@ If any active scenario fails: do **not** proceed to install. Fix the regression 
 | Container name collision / wrong project segment | `pkg/generator/`, `pkg/processor/` spawn sites |
 | Plugin fields stale after release | `.claude-plugin/plugin.json` + both `marketplace.json` version fields drifted |
 
-### When the diff is empty
+### When the diff is empty (the ONLY skip — and verify it, do not assume)
 
-The one valid skip: nothing on the binary surface changed since the installed binary.
+There is exactly one valid skip: the installed binary is byte-equivalent to HEAD because nothing on the binary surface (`.go`, `.mod`, `.sum`, `Makefile`, `Dockerfile`) changed. Verify by running the diff command BEFORE deciding to skip — never skip from memory or intuition:
 
 ```bash
 INSTALLED=$(dark-factory --version | awk '{print $NF}')
 git diff "$INSTALLED"..HEAD --name-only | grep -E '\.(go|mod|sum)$|^Makefile$|^Dockerfile$'
 # empty output → installed binary is byte-equivalent to /tmp/new-dark-factory → skip
+# any line of output → walk the FULL gate, no partial sweep
 ```
 
-This is the ONLY documented skip. Do not invent others ("docs-only changes shouldn't break anything") — surface mappings are fragile and have been wrong before. If `INSTALLED` is far behind HEAD (e.g., several auto-releases happened without an install), the diff will be large and the skip does NOT apply — walk the full gate.
+This is the ONLY documented skip. Do not invent others:
+
+- "docs-only changes shouldn't break anything" — false; doc edits can land alongside binary edits in the same diff
+- "I just ran the gate ten minutes ago" — false; any commit since invalidates that result
+- "this is a small change" — false; the smallest binary changes have produced the worst regressions in this project
+- "only test files changed" — go test file changes don't ship, BUT the diff filter doesn't distinguish test from non-test; if `.go` files appear, walk the gate (the cost of a false positive run is ~30 min, the cost of skipping a real regression is far higher)
+
+If `INSTALLED` is far behind HEAD (e.g., several auto-releases happened without an install), the diff will be large and the skip does NOT apply — walk the full gate. The auto-release daemon advances the installed-source distance silently; do not let that distance accumulate without a gate pass.
 
 ## Version alignment check (release-time)
 

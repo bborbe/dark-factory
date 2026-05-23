@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -8,6 +8,7 @@ approved: "2026-05-23T08:54:53Z"
 generating: "2026-05-23T08:54:54Z"
 prompted: "2026-05-23T09:00:18Z"
 verifying: "2026-05-23T11:30:00Z"
+completed: "2026-05-23T12:42:15Z"
 branch: dark-factory/bug-clone-worktree-move-not-applied-to-original
 ---
 

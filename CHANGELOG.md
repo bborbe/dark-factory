@@ -8,10 +8,18 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.169.0
 
 - test: add ginkgo coverage for the clone/worktree sync helper (`syncPromptFileToOriginalRepo`) — idempotent destination-exists path, move-on-source-present path, and the `clone-sync-mismatch` error when both source and destination are absent (spec 087)
 - test: integration coverage for clone + worktree end-to-end producing a single combined commit on the remote with the prompt at `prompts/completed/<id>.md` and no local commits ahead of `origin/master`
+- agents: YAGNI pass added to spec-creator + prompt-auditor — guidance to keep specs/prompts scoped to actual requirements, no speculative extras
+- agents: prompt-creator + spec-auditor updated alongside the YAGNI guidance
+- docs(workflows): post-push mirror section added for clone + worktree (spec 087); protected-master callout warns against `autoRelease: true` and points to the separate GitHub Release Agent pipeline; protected-master spec/prompt admin gap documented inline
+- docs(troubleshooting): added preflight-baseline-failure section with `updater all` resolution path and the `go get -u` anti-pattern explanation
+- docs(releasing-dark-factory): tightened the release-gate rule — every release walks every active scenario, no in-session shortcuts; the only valid skip is byte-equivalent binary verified by `git diff $INSTALLED..HEAD`
+- specs/ideas: `protected-master-admin-bundle.md` describes the gap where spec/prompt admin work doesn't land in PRs on protected-master projects (no solution chosen)
+- specs/ideas: `spec-lifecycle-transition-from-all-workflows.md` describes the gap where `prompted → verifying` only fires from direct + branch executors (not clone, worktree, or `prompt complete`)
+- plugin: version bumped from 0.168.0 → 0.169.0 to align with binary CHANGELOG after agents/ + docs/ changes
 
 ## v0.168.4
 

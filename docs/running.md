@@ -21,7 +21,7 @@ dark-factory daemon
 | Iterating on failures (retry → fix → retry) | `daemon` | Auto-picks up retried prompts without restarting |
 | Single prompt, want quick feedback | `run` | Exits when done — no cleanup needed |
 | CI/automation | `run` | Predictable lifecycle, exits with status code |
-| Spec-based flow (auto-generated prompts) | `daemon` | Watches for new prompts as spec generates them |
+| Spec-based flow (auto-generated prompts) | `daemon` | Watches for new prompts as spec generates them (see [Two ways to generate prompts](#two-ways-to-generate-prompts-from-an-approved-spec)) |
 
 **Rule of thumb:** Use `daemon` when you'll be iterating or have multiple prompts. Use `run` for a single known prompt where you want it to finish and exit.
 
@@ -35,6 +35,59 @@ dark-factory daemon
 Don't run in the foreground (blocks your session) or detached with `&` (loses lifecycle tracking).
 
 **Multiple projects:** Each project has its own lock file — you can run one daemon per project simultaneously.
+
+## Two ways to generate prompts from an approved spec
+
+When `dark-factory spec approve <name>` moves a spec to `status: approved`, prompts can be generated two ways. Both produce the same artifacts in `prompts/in-progress/`; they differ only in *who decides when generation runs*.
+
+| | Auto (default) | Manual |
+|---|----------------|--------|
+| **Trigger** | Daemon's spec watcher fires the generator container as soon as the spec hits `approved` | Operator invokes `/dark-factory:generate-prompts-for-spec <spec-path>` from a Claude Code session |
+| **Config** | `disableAutoGeneratePrompts: false` (default) | `disableAutoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.dark-factory/config.yaml`, or `--set disableAutoGeneratePrompts=true` |
+| **Daemon role** | Generator + auditor + approver + executor all in one continuous loop | Daemon only executes prompts after the operator queues them; spec stays at `status: approved` until the operator acts |
+| **Latency** | Seconds after `spec approve` | Whenever the operator runs the command |
+| **LLM cost timing** | Spent immediately on approve | Deferred until operator decides |
+
+### When to pick auto
+
+- **Hands-off batch work** — multiple approved specs land overnight; daemon chews through them without intervention.
+- **You trust the spec already** — audit happened during `/dark-factory:audit-spec` and you don't expect the generator output to need a pre-execution review.
+- **You want the daemon never idle** — fastest path from "spec approved" to "PR open".
+
+Cost: if the spec turns out to be subtly wrong, you pay the generation tokens before noticing. Interrupting mid-generation is also more disruptive (cancel the container, reset the spec).
+
+### When to pick manual
+
+- **You want to re-read the spec one more time** before paying generation cost.
+- **You're approving specs in bulk but only want to generate one at a time** (e.g., staggered review).
+- **You're experimenting** — approve a spec to lock its contents, but defer or skip generation entirely.
+- **The generator is being upgraded** (new model, new prompt template) and you want to pick the moment to switch.
+
+Cost: more steps. The spec sits at `status: approved` indefinitely until you remember to run the command. Easy to leave a queued spec stranded.
+
+### Switching modes
+
+Per-project (persistent):
+
+```yaml
+# .dark-factory.yaml
+disableAutoGeneratePrompts: true   # or false
+```
+
+Per-invocation (no yaml editing):
+
+```bash
+dark-factory daemon --set disableAutoGeneratePrompts=true
+dark-factory run    --set disableAutoGeneratePrompts=false
+```
+
+Manual command (when auto is disabled):
+
+```bash
+/dark-factory:generate-prompts-for-spec specs/in-progress/088-disable-auto-prompt-generation.md
+```
+
+Field reference and layering precedence: [configuration.md § Disable Auto Prompt Generation](configuration.md#disable-auto-prompt-generation).
 
 ## Monitoring
 

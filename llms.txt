@@ -2,9 +2,9 @@
 > Spec-driven, prompt-executed automation pipeline. Specs describe behavior, prompts execute atomic changes, the YOLO agent runs them in a container.
 
 ## Authoring
-- [Spec Writing](docs/spec-writing.md): Behavioral contracts for features and fixes — Goal, Constraints, Failure Modes, Acceptance Criteria
-- [Prompt Writing](docs/prompt-writing.md): Atomic, verifiable changes — XML sections, Detail Levels (1-5), boundary tests
-- [Scenario Writing](docs/scenario-writing.md): End-to-end acceptance tests — Task → Scenario → Spec → Prompts
+- [Spec Writing](docs/rules/spec-writing.md): Behavioral contracts for features and fixes — Goal, Constraints, Failure Modes, Acceptance Criteria
+- [Prompt Writing](docs/rules/prompt-writing.md): Atomic, verifiable changes — XML sections, Detail Levels (1-5), boundary tests
+- [Scenario Writing](docs/rules/scenario-writing.md): End-to-end acceptance tests — Task → Scenario → Spec → Prompts
 - [Bug Workflow](docs/bug-workflow.md): File, triage, fix, and verify bugs — `kind: bug` frontmatter, Reproduction section
 - [Code Review Prompts](docs/code-review-prompts.md): Generate prompts that review services and produce fix prompts
 

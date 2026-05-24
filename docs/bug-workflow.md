@@ -6,7 +6,7 @@ How to file, triage, fix, and verify bugs in dark-factory.
 
 ## Why specs, not a new artifact
 
-A bug report is a behavioral contract: "the system DOES X, but it SHOULD do Y." That's exactly what specs already are (see [spec-writing.md](spec-writing.md)). The lifecycle (idea → draft → approved → prompted → verifying → completed) maps cleanly onto bug triage:
+A bug report is a behavioral contract: "the system DOES X, but it SHOULD do Y." That's exactly what specs already are (see [spec-writing.md](rules/spec-writing.md)). The lifecycle (idea → draft → approved → prompted → verifying → completed) maps cleanly onto bug triage:
 
 | Lifecycle | Bug meaning |
 |-----------|-------------|
@@ -110,7 +110,7 @@ Same as feature specs:
 dark-factory spec approve <bug-name>
 ```
 
-The daemon generates fix prompts from the spec. Each prompt should be atomic — one observable behavior change per prompt — same rules as feature prompts ([prompt-writing.md](prompt-writing.md)).
+The daemon generates fix prompts from the spec. Each prompt should be atomic — one observable behavior change per prompt — same rules as feature prompts ([prompt-writing.md](rules/prompt-writing.md)).
 
 ## Verification (the critical bug-specific step)
 
@@ -170,7 +170,7 @@ specs/bug-prompt-status-flips-completed-on-failure.md
 
 ## See also
 
-- [spec-writing.md](spec-writing.md) — full spec structure and rules
+- [spec-writing.md](rules/spec-writing.md) — full spec structure and rules
 - [spec-verification.md](spec-verification.md) — verification procedure (applies to both feature and bug specs)
-- [prompt-writing.md](prompt-writing.md) — how fix prompts are structured
+- [prompt-writing.md](rules/prompt-writing.md) — how fix prompts are structured
 - [running.md](running.md) — daemon, CLI commands, status checks

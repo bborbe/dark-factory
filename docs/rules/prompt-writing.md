@@ -390,7 +390,7 @@ Smaller prompts succeed more often. Group coupled behaviors together, but don't 
 
 Dark-factory runs prompts in a Docker container. Never use absolute paths (`/Users/...`) or home-relative paths (`~/...`).
 
-**Exception**: Files under the mounted claude config use the in-container path `/home/node/.claude/plugins/...`, NOT the host path `~/.claude-yolo/plugins/...`. See [yolo-container-setup.md](yolo-container-setup.md#project-workspace-mount).
+**Exception**: Files under the mounted claude config use the in-container path `/home/node/.claude/plugins/...`, NOT the host path `~/.claude-yolo/plugins/...`. See [yolo-container-setup.md](../yolo-container-setup.md#project-workspace-mount).
 
 ### Cross-repo references
 
@@ -565,4 +565,4 @@ Never manually edit the `status:` frontmatter — always use the CLI commands.
 
 ## Next Steps
 
-- Run the pipeline: [running.md](running.md)
+- Run the pipeline: [running.md](../running.md)

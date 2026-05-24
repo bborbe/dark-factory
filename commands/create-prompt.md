@@ -16,7 +16,7 @@ If $ARGUMENTS is a task description:
 
 **Before writing requirements, the agent MUST:**
 
-1. Read `docs/prompt-writing.md` "Detail Levels" section (5-level spectrum from very-detailed to very-rough).
+1. Read `docs/rules/prompt-writing.md` "Detail Levels" section (5-level spectrum from very-detailed to very-rough).
 2. Run pattern-discovery searches for each surface the prompt will touch:
    - `rg -l 'errors\.Wrapf|fmt\.Errorf' pkg/ internal/` — error wrapping style
    - `rg -l 'http\.NewRequestWithContext' pkg/` — HTTP client construction

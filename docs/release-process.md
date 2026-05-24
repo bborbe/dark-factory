@@ -123,5 +123,5 @@ A prompt that touches only Go code does not require the plugin procedure.
 
 - [configuration.md](configuration.md) — `autoRelease` field semantics
 - [workflows.md](workflows.md) — combinations table (workflow × pr × autoMerge × autoRelease)
-- [scenario-writing.md](scenario-writing.md) — how to write scenarios that gate the release
+- [scenario-writing.md](rules/scenario-writing.md) — how to write scenarios that gate the release
 - `CLAUDE.md` — concise rule for "scenarios before `make install`"

@@ -160,5 +160,5 @@ dark-factory daemon
 ## Next Steps
 
 - Configure your project: [configuration.md](configuration.md) — all config fields, validation, notifications, providers
-- Write a spec: [spec-writing.md](spec-writing.md)
-- Write a prompt: [prompt-writing.md](prompt-writing.md)
+- Write a spec: [spec-writing.md](rules/spec-writing.md)
+- Write a prompt: [prompt-writing.md](rules/prompt-writing.md)

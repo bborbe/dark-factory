@@ -276,7 +276,7 @@ When chaining: a step that depends on the previous one (commit → tag → push 
 ## See also
 
 - [release-process.md](release-process.md) — autoRelease behavior in projects that USE dark-factory (not how dark-factory itself ships)
-- [scenario-writing.md](scenario-writing.md) — how to write the scenarios this gate runs
+- [scenario-writing.md](rules/scenario-writing.md) — how to write the scenarios this gate runs
 - [configuration.md](configuration.md) — `autoRelease` field semantics
 - [workflows.md](workflows.md) — workflow × pr × autoMerge × autoRelease combinations
 - `CLAUDE.md` "Before `make install`" — the concise rule that points back to this doc

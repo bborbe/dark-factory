@@ -4,9 +4,9 @@ argument-hint: <feature-or-scenario-description>
 allowed-tools: [Read, Write, Glob, Bash, AskUserQuestion]
 ---
 
-Create a dark-factory scenario following `docs/scenario-writing.md`.
+Create a dark-factory scenario following `docs/rules/scenario-writing.md`.
 
-1. Read `docs/scenario-writing.md` for format, status lifecycle, and writing rules
+1. Read `docs/rules/scenario-writing.md` for format, status lifecycle, and writing rules
 2. Determine next scenario number from existing files in `scenarios/`
 3. Gather requirements from $ARGUMENTS (or interactively if empty)
 4. Write scenario file to `scenarios/NNN-<name>.md` with:

@@ -180,6 +180,6 @@ The spec stays in `verifying` until verification passes. Re-run verification aft
 
 ## Reference
 
-- Spec lifecycle: [spec-writing.md](spec-writing.md#spec-status-lifecycle)
+- Spec lifecycle: [spec-writing.md](rules/spec-writing.md#spec-status-lifecycle)
 - Running the pipeline: [running.md](running.md)
 - Definition of done: [dod.md](dod.md)

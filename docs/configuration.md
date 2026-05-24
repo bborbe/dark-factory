@@ -465,7 +465,7 @@ disableAutoGeneratePrompts: true
 |-------|---------|---------|
 | `disableAutoGeneratePrompts` | `false` (enabled) | When `true`, the spec watcher will NOT auto-fire the generator container when a spec is approved. Operators run `/dark-factory:generate-prompts-for-spec <spec-path>` manually to trigger generation. |
 
-**When to use**: You want to approve a spec to lock its contents but defer prompt generation — review the generated prompts before the container runs, run with custom args, or skip generation entirely for spec-only experiments.
+**When to use**: You want to approve a spec to lock its contents but defer prompt generation — review the generated prompts before the container runs, run with custom args, or skip generation entirely for spec-only experiments. See [running.md § Two ways to generate prompts](running.md#two-ways-to-generate-prompts-from-an-approved-spec) for the auto-vs-manual comparison and decision guidance.
 
 **Behavior**:
 - `disableAutoGeneratePrompts: false` (default): Approving a spec triggers the generator container. Prompts appear in `prompts/` automatically.

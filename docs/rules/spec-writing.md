@@ -13,13 +13,13 @@ A spec gives you **acceptance criteria + a verification phase** (`/dark-factory:
 | Situation | Spec? |
 |-----------|-------|
 | New feature (any size) | **Yes** — AC verification proves it works |
-| Bug fix | **Yes** — Reproduction + AC locks down the regression (see [bug-workflow.md](bug-workflow.md)) |
+| Bug fix | **Yes** — Reproduction + AC locks down the regression (see [bug-workflow.md](../bug-workflow.md)) |
 | Multi-prompt change | Yes |
 | Touching shared interfaces / failure modes | Yes |
 | Trivial mechanical change (version bump, rename, formatting) | No — prompt directly |
 | Config field with no behavior change | No — prompt directly |
 
-For bugs specifically, see [bug-workflow.md](bug-workflow.md) — adds `kind: bug` frontmatter, mandatory Reproduction section, and verification rules that go beyond standard spec verification.
+For bugs specifically, see [bug-workflow.md](../bug-workflow.md) — adds `kind: bug` frontmatter, mandatory Reproduction section, and verification rules that go beyond standard spec verification.
 
 ## Creating a Spec
 
@@ -264,7 +264,7 @@ Before approving, verify the spec answers all of these:
 - [ ] What could go wrong?
 - [ ] What must not regress?
 - [ ] How will we know it's done?
-- [ ] **Default: no new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Add a scenario only when (a) unit/integration tests genuinely cannot reach the behavior, (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. See `docs/scenario-writing.md` for the full rule. If unsure: NO scenario.
+- [ ] **Default: no new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Add a scenario only when (a) unit/integration tests genuinely cannot reach the behavior, (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. See `docs/rules/scenario-writing.md` for the full rule. If unsure: NO scenario.
 
 If the spec can't answer these in under a page, it's underdesigned or too large.
 
@@ -278,7 +278,7 @@ Specs drive three defense layers. Keep them scoped correctly:
 | Integration test | Prompt | Dispatch-path round-trip, registry lookup, serialization through real code | **Most specs** — covers what unit can't |
 | End-to-end scenario | Spec + scenario | Real deployment behavior, multi-service interactions, boundaries no test harness can fake | **Rare** — only when the bottom two layers genuinely cannot reach the behavior |
 
-The pyramid: broad base of unit tests, smaller layer of integration tests, narrow tip of E2E scenarios. Most specs ship with prompt-level tests only. A scenario is justified only when integration tests can't reach the behavior — see `docs/scenario-writing.md` for the four-condition test.
+The pyramid: broad base of unit tests, smaller layer of integration tests, narrow tip of E2E scenarios. Most specs ship with prompt-level tests only. A scenario is justified only when integration tests can't reach the behavior — see `docs/rules/scenario-writing.md` for the four-condition test.
 
 **Example where a scenario IS justified:** spec 068 — the clone workflow crashed with `exit 128` at runtime after the clone was deleted. Unit tests passed. The bug was a control-flow ordering issue that no test double could catch. The scenario locks it down.
 
@@ -309,7 +309,7 @@ This moves the spec from `specs/` to `specs/in-progress/`, assigns a number, and
 | `approved` | `specs/in-progress/` | Ready for prompt generation | `dark-factory spec approve` |
 | `prompted` | `specs/in-progress/` | Prompts generated | Auto (dark-factory) |
 | `verifying` | `specs/in-progress/` | All linked prompts completed | Auto (dark-factory) |
-| `completed` | `specs/completed/` | Acceptance criteria verified | `/dark-factory:verify-spec` (preferred — see [spec-verification.md](spec-verification.md)) or manual `dark-factory spec complete` |
+| `completed` | `specs/completed/` | Acceptance criteria verified | `/dark-factory:verify-spec` (preferred — see [spec-verification.md](../spec-verification.md)) or manual `dark-factory spec complete` |
 
 Completed specs are immutable. If behavior changes later, create a new spec.
 
@@ -317,5 +317,5 @@ Completed specs are immutable. If behavior changes later, create a new spec.
 
 - Prompts are auto-generated from the spec by the daemon
 - Or write prompts manually: [prompt-writing.md](prompt-writing.md)
-- Run the pipeline: [running.md](running.md)
-- Bug reports: [bug-workflow.md](bug-workflow.md)
+- Run the pipeline: [running.md](../running.md)
+- Bug reports: [bug-workflow.md](../bug-workflow.md)

@@ -152,6 +152,8 @@ claudeDir: ~/.claude-yolo                            # host claude config dir (d
 
 **User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`, `disableAutoGeneratePrompts`. Precedence: default ← global ← project ← CLI arg.
 
+**Spec→prompts can be auto or manual.** Default: the daemon auto-generates prompts when a spec is approved. Set `disableAutoGeneratePrompts: true` to defer generation and invoke `/dark-factory:generate-prompts-for-spec <spec-path>` by hand. See [docs/running.md § Two ways to generate prompts](docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for tradeoffs.
+
 **Per-invocation CLI flags** for `run`/`daemon`: `--model NAME`, `--hide-git`, `--no-hide-git`, `--max-containers N`, `--skip-preflight`, `--auto-approve`. Override yaml without editing files.
 
 See [docs/configuration.md](docs/configuration.md) for all config fields, the full layering precedence, and patterns like running on an existing manual worktree.
@@ -193,10 +195,10 @@ your-project/
 | [Architecture & Flow](docs/architecture-flow.md) | End-to-end execution flow, what runs where |
 | [Configuration](docs/configuration.md) | All config fields, validation, notifications, providers |
 | [Init Project](docs/init-project.md) | Set up a new project for dark-factory |
-| [Spec Writing](docs/spec-writing.md) | Write behavioral specs for multi-prompt features |
-| [Prompt Writing](docs/prompt-writing.md) | Write effective prompts for the YOLO agent |
+| [Spec Writing](docs/rules/spec-writing.md) | Write behavioral specs for multi-prompt features |
+| [Prompt Writing](docs/rules/prompt-writing.md) | Write effective prompts for the YOLO agent |
 | [Running](docs/running.md) | Start, monitor, and troubleshoot the pipeline |
-| [Scenario Writing](docs/scenario-writing.md) | Write end-to-end verification checklists |
+| [Scenario Writing](docs/rules/scenario-writing.md) | Write end-to-end verification checklists |
 | [YOLO Container Setup](docs/yolo-container-setup.md) | Set up `~/.claude-yolo/` config directory |
 | [CLAUDE.md Guide](docs/claude-md-guide.md) | Write project CLAUDE.md files for dark-factory |
 | [Definition of Done](docs/dod.md) | Quality criteria for validationPrompt |

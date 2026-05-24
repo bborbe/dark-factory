@@ -87,7 +87,7 @@ Rung 2 — verification via the audit tool:
 - [ ] `coding:audit-agent` on each of the five agent files reports zero critical structural issues — evidence: invoke `coding:audit-agent` against each of `agents/spec-creator.md`, `agents/spec-auditor.md`, `agents/prompt-creator.md`, `agents/prompt-auditor.md`, `agents/spec-verifier.md`; each report's `## Critical Issues` section is empty or reads `None.`.
 - [ ] Each of the five files scores 8/10 or higher — evidence: per-file audit report header line matches the regex `Score: (8|9|10)/10`.
 
-**Scenario coverage — NO new scenario.** Structural agent-metadata changes do not touch any runtime behavior. They are verified by re-running the auditor against the edited files; a scenario file would duplicate that assertion without exercising any production code path. The four-condition test from `docs/scenario-writing.md` fails on conditions 1 and 4 (unit/grep-level verification is sufficient; no concrete named runtime regression risk).
+**Scenario coverage — NO new scenario.** Structural agent-metadata changes do not touch any runtime behavior. They are verified by re-running the auditor against the edited files; a scenario file would duplicate that assertion without exercising any production code path. The four-condition test from `docs/rules/scenario-writing.md` fails on conditions 1 and 4 (unit/grep-level verification is sufficient; no concrete named runtime regression risk).
 
 ## Verification
 

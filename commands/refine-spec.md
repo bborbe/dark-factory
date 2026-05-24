@@ -68,7 +68,7 @@ Wait for the user's pick (or acceptance of the recommendation).
 3. No existing scenario covers the same code path.
 4. The regression risk is concrete and named ("if this breaks at runtime, an operator hits X" — specific, not "in case something breaks").
 
-If unsure, NO scenario. The unit and integration tests in the implementation prompt are sufficient for the typical spec. See `docs/scenario-writing.md` for the full rule.
+If unsure, NO scenario. The unit and integration tests in the implementation prompt are sufficient for the typical spec. See `docs/rules/scenario-writing.md` for the full rule.
 
 ### 6. Create stub specs for split-out concerns
 

@@ -312,7 +312,7 @@ For each match:
 **Grandfathering:** specs already in `specs/in-progress/` or `specs/completed/` are not retroactively flagged — only specs in the `specs/` inbox (status `idea` or `draft`) under active edit. The auditor MUST check the spec's directory and skip the check entirely on in-progress/completed files.
 
 Flag pattern in report:
-> AC #N ("...text...") queries deployed system (matches `kubectlquant -n dev get jobs`) but lacks the `**Post-Deploy (Rung-N):**` marker and `deploy_check:` / `deploy_target:` evidence lines. The spec-verifier's Phase 0.5 will refuse with a spec-format error. Add the marker and the two evidence lines (see `docs/spec-writing.md#post-deploy-acs`).
+> AC #N ("...text...") queries deployed system (matches `kubectlquant -n dev get jobs`) but lacks the `**Post-Deploy (Rung-N):**` marker and `deploy_check:` / `deploy_target:` evidence lines. The spec-verifier's Phase 0.5 will refuse with a spec-format error. Add the marker and the two evidence lines (see `docs/rules/spec-writing.md#post-deploy-acs`).
 
 ## Adversarial Laziness Pass (always run — verdict drives scoring at -2, individual under-specified ACs are Recommendations)
 
@@ -399,13 +399,13 @@ Flag pattern:
 
 ## Scenario Coverage
 
-**Authoritative reference: `docs/scenario-writing.md`.** Always cross-check scenario decisions against that doc — do not reason from auditor heuristics alone.
+**Authoritative reference: `docs/rules/scenario-writing.md`.** Always cross-check scenario decisions against that doc — do not reason from auditor heuristics alone.
 
 **Default: NO scenario.** Most specs ship with unit + integration tests in the prompt only. Scenarios are slow, brittle, expensive — adding one per spec inverts the test pyramid.
 
 ### When to flag a scenario gap
 
-A scenario is justified ONLY when ALL FOUR of these hold (lifted from `docs/scenario-writing.md`):
+A scenario is justified ONLY when ALL FOUR of these hold (lifted from `docs/rules/scenario-writing.md`):
 
 1. **Unit and integration tests genuinely cannot reach the behavior** — real Docker output, real `gh pr view` rendering, real `kubectl` cluster state. Things that need a real external system, not a test double. NOT "the change touches a seam."
 2. **The behavior is load-bearing for an essential user journey** — daemon starts, PR opens correctly E2E. Not "every config field that flows to runtime."
@@ -431,7 +431,7 @@ These shapes deserve a moment of "should I check the four conditions?" but do NO
 
 If your reasoning starts with "this is a seam, therefore scenario", you have applied the lazy shortcut the doc warns against. Apply the four-condition test instead.
 
-### Canonical YES (from `docs/scenario-writing.md`)
+### Canonical YES (from `docs/rules/scenario-writing.md`)
 
 - **Spec 015** — Kafka `CommandOperation` constant passed struct-shape tests but was rejected at runtime by the cqrs regex. Real publish through the dev cluster was the only way to surface this.
 - **Spec 068** — clone-workflow `exit 128` from a control-flow ordering bug post-clone-deletion. No test double caught it.
@@ -439,7 +439,7 @@ If your reasoning starts with "this is a seam, therefore scenario", you have app
 
 Each one: load-bearing, **runtime-only failure mode**, no test double can fake the boundary.
 
-### Canonical NO (from `docs/scenario-writing.md`)
+### Canonical NO (from `docs/rules/scenario-writing.md`)
 
 - A new public method on a struct, with a unit test asserting its return value.
 - A new config field whose handler is unit-tested AND whose effect is also unit-tested.
@@ -492,7 +492,7 @@ Adjustments:
 **Status**: [Excellent | Good | Needs Improvement | Significant Issues]
 
 ## Scenario Coverage
-- [x/!] Default is NO scenario. Flag ONLY if ALL FOUR conditions in `docs/scenario-writing.md` hold (unit/integration tests genuinely cannot reach + load-bearing user journey + no existing coverage + concrete named regression risk) AND the spec has no scenario reference. Watch-flags alone (Kafka op, CRD field, HTTP route) are NOT sufficient. (or N/A)
+- [x/!] Default is NO scenario. Flag ONLY if ALL FOUR conditions in `docs/rules/scenario-writing.md` hold (unit/integration tests genuinely cannot reach + load-bearing user journey + no existing coverage + concrete named regression risk) AND the spec has no scenario reference. Watch-flags alone (Kafka op, CRD field, HTTP route) are NOT sufficient. (or N/A)
 
 ## Project Fit
 - [x/!] Spec's code-modification targets match this dark-factory project's own repo (no cross-repo file paths or `git clone <other-remote>` references — see Project Fit section)

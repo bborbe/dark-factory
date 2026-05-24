@@ -19,8 +19,8 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
 - Specs describe behavior, not code
 - No struct names, function signatures, or file paths unless they are frozen constraints
 - The test: "Would this still make sense to a non-developer?"
-- **Every Acceptance Criterion must declare an evidence shape** (exit code / log line / file diff / HTTP status / kafka message / metric / cluster state / file artifact). See `docs/spec-writing.md` "Evidence Shape per Acceptance Criterion".
-- **Avoid hedge words** (`should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`) — each must resolve to a concrete rule or be explicitly marked "agent decides at impl time". See `docs/spec-writing.md` "Hedge Words to Avoid".
+- **Every Acceptance Criterion must declare an evidence shape** (exit code / log line / file diff / HTTP status / kafka message / metric / cluster state / file artifact). See `docs/rules/spec-writing.md` "Evidence Shape per Acceptance Criterion".
+- **Avoid hedge words** (`should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`) — each must resolve to a concrete rule or be explicitly marked "agent decides at impl time". See `docs/rules/spec-writing.md` "Hedge Words to Avoid".
 - NEVER manually set frontmatter status — use `dark-factory spec approve`
 - ALWAYS use paths exactly as provided by the caller — never resolve or modify `~` or any path component
 </constraints>
@@ -108,7 +108,7 @@ config compatibility, invariants.
 
 ## Failure Modes
 
-Minimum table: `Trigger | Expected behavior | Recovery`. For specs touching network I/O, persistent state, or shared resources, add optional columns: **Detection** (how does the operator know the failure occurred?), **Reversibility** (reversible / irreversible / partial), **Concurrency** (what if two instances or a mid-action crash?). See `docs/spec-writing.md` "Failure Modes — Optional Columns".
+Minimum table: `Trigger | Expected behavior | Recovery`. For specs touching network I/O, persistent state, or shared resources, add optional columns: **Detection** (how does the operator know the failure occurred?), **Reversibility** (reversible / irreversible / partial), **Concurrency** (what if two instances or a mid-action crash?). See `docs/rules/spec-writing.md` "Failure Modes — Optional Columns".
 
 For specs with real-world side effects, cover at least one row per category: external unavailability, schema drift, partial-progress crash, rate limiting, resource exhaustion, clock skew.
 
@@ -127,7 +127,7 @@ For specs with real-world side effects, cover at least one row per category: ext
 
 ## Acceptance Criteria
 
-Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
+Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/rules/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
 
 Example AC (replace with your own — keep the evidence-shape pattern):
 
@@ -135,7 +135,7 @@ Example AC (replace with your own — keep the evidence-shape pattern):
 - [ ]
 - [ ]
 
-**Scenario coverage — default: NO new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Scenarios are E2E tests at the top of the test pyramid — slow, brittle, expensive — and should be rare. Add a scenario AC only when ALL of these hold: (a) unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam"), (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. If unsure: NO scenario. See `docs/scenario-writing.md` "When to Write a Scenario" for the canonical rule.
+**Scenario coverage — default: NO new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Scenarios are E2E tests at the top of the test pyramid — slow, brittle, expensive — and should be rare. Add a scenario AC only when ALL of these hold: (a) unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam"), (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. If unsure: NO scenario. See `docs/rules/scenario-writing.md` "When to Write a Scenario" for the canonical rule.
 
 ## Verification
 

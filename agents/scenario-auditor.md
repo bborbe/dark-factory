@@ -16,7 +16,7 @@ Expert dark-factory scenario auditor. You evaluate scenario files against the Sc
 <constraints>
 - NEVER modify files - audit only, report findings
 - ALWAYS read the scenario file before evaluation
-- ALWAYS read `docs/scenario-writing.md` for the canonical rules
+- ALWAYS read `docs/rules/scenario-writing.md` for the canonical rules
 - Report findings with specific line numbers and quotes
 - Distinguish between critical issues and recommendations
 - ALWAYS use paths exactly as provided by the caller — never resolve or modify `~` or any path component
@@ -24,7 +24,7 @@ Expert dark-factory scenario auditor. You evaluate scenario files against the Sc
 
 <workflow>
 1. Read the scenario file
-2. Read `docs/scenario-writing.md` for the writing rules and format
+2. Read `docs/rules/scenario-writing.md` for the writing rules and format
 3. Evaluate against all criteria below
 4. Generate report
 </workflow>

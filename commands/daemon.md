@@ -10,6 +10,7 @@ Start dark-factory daemon in background for the current project.
 2. Check if a daemon is already running: `cat .dark-factory.lock 2>/dev/null`
    - If lock exists, check if PID is alive: `kill -0 $(cat .dark-factory.lock) 2>/dev/null`
    - If alive, inform user daemon is already running and show `dark-factory status`, then stop
+   - If dead, **do NOT delete the lock file** — the lock is flock-based and the new daemon will acquire it automatically when it starts. Proceed directly to step 3.
 3. Start daemon via Bash tool with `run_in_background: true` and `timeout: 600000`:
    ```
    dark-factory daemon

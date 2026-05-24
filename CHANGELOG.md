@@ -12,6 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - docs: reorganize `docs/spec-writing.md`, `docs/prompt-writing.md`, `docs/scenario-writing.md` under `docs/rules/` to separate agent-loadable writing rules from operator/architecture/reference docs; update all live cross-references (README.md, agents/, commands/, docs/) — historical CHANGELOG/specs-completed/prompts-completed entries intentionally left at original paths
 - docs: add "Two ways to generate prompts from an approved spec" section to `docs/running.md` with auto-vs-manual comparison table, when-to-pick guidance, cost/benefit, and switching examples; cross-link from README.md, docs/configuration.md "Disable Auto Prompt Generation", and `commands/generate-prompts-for-spec.md`
+- fix(commands/daemon.md): clarify the dead-PID branch — agent must NOT `rm .dark-factory.lock` when the previous daemon's PID is dead. The lock is flock-based; the new daemon acquires it automatically on start.
 
 ## v0.171.1
 

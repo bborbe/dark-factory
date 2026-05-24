@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Full code review generated 18 fix prompts for Critical/Important findings across security (HTTP timeouts, shell injection), concurrency (race condition), architecture (factory pattern, SRP), error handling, GoDoc, testing, and shell scripts
+container: dark-factory-exec-412-code-review-dark-factory
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T10:22:28Z"
 queued: "2026-05-24T11:09:33Z"
+started: "2026-05-24T11:12:16Z"
+completed: "2026-05-24T11:24:57Z"
 ---
 
 <summary>

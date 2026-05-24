@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.171.2
 
 - docs: reorganize `docs/spec-writing.md`, `docs/prompt-writing.md`, `docs/scenario-writing.md` under `docs/rules/` to separate agent-loadable writing rules from operator/architecture/reference docs; update all live cross-references (README.md, agents/, commands/, docs/) — historical CHANGELOG/specs-completed/prompts-completed entries intentionally left at original paths
 - docs: add "Two ways to generate prompts from an approved spec" section to `docs/running.md` with auto-vs-manual comparison table, when-to-pick guidance, cost/benefit, and switching examples; cross-link from README.md, docs/configuration.md "Disable Auto Prompt Generation", and `commands/generate-prompts-for-spec.md`

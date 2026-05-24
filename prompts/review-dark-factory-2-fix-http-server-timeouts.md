@@ -4,35 +4,40 @@ created: "2026-05-24T00:00:00Z"
 ---
 
 <summary>
-- Added ReadTimeout, WriteTimeout, IdleTimeout, and MaxHeaderBytes to the HTTP server in factory.go
-- Prevents slow-client resource exhaustion attacks where malicious clients hold connections indefinitely
-- Set reasonable defaults: 15s read/write, 60s idle, 1MB max header
+- Verify `libhttp.NewServer` defaults match desired security posture (30s read/write, 60s idle, 1MB header)
+- If shorter timeouts wanted, pass `WithReadTimeout`/`WithWriteTimeout` option functions
+- If defaults are acceptable, document the audit finding and close the prompt as no-op
+- Prevents slow-client resource exhaustion attacks
 </summary>
 
 <objective>
-Add HTTP server timeouts to prevent unbounded resource consumption by slow clients.
+Confirm HTTP server has sensible timeout configuration. The server is created via `libhttp.NewServer(addr, mux)` at `pkg/factory/factory.go:1064`, which already applies defaults (ReadTimeout 30s, WriteTimeout 30s, IdleTimeout 60s, MaxHeaderBytes 1MB). Verify these are sufficient; if not, override via option functions.
 </objective>
 
 <context>
 Read `CLAUDE.md` for project conventions.
 
 Files to read before making changes:
-- `pkg/factory/factory.go` — line ~1046 where `&http.Server{Handler: mux}` is created, look for `server.Serve(listener)`
+- `pkg/factory/factory.go` — line ~1064 where `libhttp.NewServer(addr, mux)` is called
+- The `github.com/bborbe/http` package source (in vendor or `$GOPATH/pkg/mod`) — `http_server.go`, look at `CreateServerOptions` default values
 </context>
 
 <requirements>
-1. In `pkg/factory/factory.go`, find where the HTTP server is created (around line 1046).
-2. Add timeouts to the server struct:
-   ```go
-   &http.Server{
-       Handler:        mux,
-       ReadTimeout:    15 * time.Second,
-       WriteTimeout:   15 * time.Second,
-       IdleTimeout:    60 * time.Second,
-       MaxHeaderBytes: 1 << 20, // 1MB
-   }
-   ```
-3. Ensure `time` is imported.
+1. Read the `libhttp.NewServer` source to confirm default timeouts: ReadTimeout/WriteTimeout 30s, IdleTimeout 60s, MaxHeaderBytes 1MB.
+
+2. Decide: are these defaults sufficient for dark-factory's threat model?
+   - If YES: this prompt is a no-op. Add a comment near `libhttp.NewServer(addr, mux)` in `pkg/factory/factory.go` documenting that defaults are intentionally accepted, then exit.
+   - If NO: override with option functions, e.g.:
+     ```go
+     runFunc := libhttp.NewServer(addr, mux,
+         func(o *libhttp.ServerOptions) {
+             o.ReadTimeout = 15 * time.Second
+             o.WriteTimeout = 15 * time.Second
+         },
+     )
+     ```
+
+3. Do NOT replace `libhttp.NewServer` with a raw `&http.Server{}` literal — that bypasses the wrapper's shutdown handling.
 </requirements>
 
 <constraints>

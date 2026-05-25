@@ -1,9 +1,10 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-05-25T20:01:28Z"
+verifying: "2026-05-25T20:35:30Z"
 branch: dark-factory/cli-spec-mark-prompted
 ---
 

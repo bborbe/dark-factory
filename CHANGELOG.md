@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.3
+
+- fix: use sync/atomic.Bool for cancelledByUser in processor.go to fix data race between goroutines
+
 ## v0.171.2
 
 - docs: reorganize `docs/spec-writing.md`, `docs/prompt-writing.md`, `docs/scenario-writing.md` under `docs/rules/` to separate agent-loadable writing rules from operator/architecture/reference docs; update all live cross-references (README.md, agents/, commands/, docs/) — historical CHANGELOG/specs-completed/prompts-completed entries intentionally left at original paths

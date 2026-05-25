@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced cancelledByUser bool with sync/atomic.Bool to fix data race in processor.go
+container: dark-factory-exec-413-review-dark-factory-1-fix-processor-race
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T14:52:36Z"
+completed: "2026-05-25T14:55:52Z"
 ---
 
 <summary>

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -386,20 +387,20 @@ func (p *processor) runContainer(
 
 	// Track whether cancellation closed before Execute returned.
 	// A bool written by the select goroutine and read after Execute blocks — no overlap.
-	cancelledByUser := false
+	var cancelledByUser atomic.Bool
 	go func() {
 		select {
 		case <-execCtx.Done():
 			return
 		case <-cancelledCh:
-			cancelledByUser = true
+			cancelledByUser.Store(true)
 			execCancel()
 		}
 	}()
 
 	execErr := p.executor.Execute(execCtx, content, logFile, containerName.String())
 
-	if cancelledByUser {
+	if cancelledByUser.Load() {
 		slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
 		return true, nil
 	}

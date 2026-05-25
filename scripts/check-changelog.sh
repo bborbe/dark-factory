@@ -17,8 +17,6 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
 CHANGELOG="CHANGELOG.md"
-SEMVER_LINE='Please choose versions by [Semantic Versioning]'
-MAJOR_LINE='* MAJOR version when you make incompatible API changes,'
 
 ok=true
 

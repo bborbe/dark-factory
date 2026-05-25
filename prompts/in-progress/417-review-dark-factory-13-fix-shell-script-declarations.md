@@ -1,7 +1,12 @@
 ---
-status: approved
+status: committing
+summary: Removed unused SEMVER_LINE and MAJOR_LINE variables from scripts/check-changelog.sh
+container: dark-factory-exec-417-review-dark-factory-13-fix-shell-script-declarations
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T15:03:47Z"
+completed: "2026-05-25T15:04:02Z"
 ---
 
 <summary>

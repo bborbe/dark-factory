@@ -1,7 +1,12 @@
 ---
-status: approved
+status: failed
+container: dark-factory-exec-425-review-dark-factory-4-fix-shell-script-cd
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:16:05Z"
+completed: "2026-05-25T19:17:37Z"
+lastFailReason: 'validate completion report: completion report status: partial'
 ---
 
 <summary>

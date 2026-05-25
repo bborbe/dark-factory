@@ -51,7 +51,7 @@ scenario_setup() {
   export HOME="$WORK_DIR/home"
   mkdir -p "$HOME/.dark-factory"
   trap 'rm -rf "$WORK_DIR"' EXIT
-  cd "$WORK_DIR"
+  cd "$WORK_DIR" || exit 1
   git init -q .
   printf '%s' "$yaml" > .dark-factory.yaml
   mkdir -p prompts/in-progress prompts/completed prompts/log \
@@ -82,7 +82,7 @@ setup_sandbox_copy() {
   WORK_DIR=$(mktemp -d)
   trap 'rm -rf "$WORK_DIR"' EXIT
   cp -r "$sandbox_src" "$WORK_DIR/$subdir"
-  cd "$WORK_DIR/$subdir"
+  cd "$WORK_DIR/$subdir" || exit 1
   printf '%s' "$yaml" > .dark-factory.yaml
   git init --bare "$WORK_DIR/remote.git" >/dev/null 2>&1
   git remote set-url origin "$WORK_DIR/remote.git"

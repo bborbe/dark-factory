@@ -116,3 +116,25 @@ dark-factory spec mark-prompted <completed-fixture-id>
 ## Do-Nothing Option
 
 If we don't ship this: after spec 089 lands, every spec the operator generates prompts for via the manual command stays at `status: approved` permanently. `dark-factory status`, `IsActive()`, the lifecycle reporting in `dark-factory list`, and any downstream automation keyed on spec status all report wrong state for the majority of specs. Operators either ignore the status drift (compounding over time and eroding trust in `dark-factory status`) or hand-edit frontmatter (forbidden by project rules). Not acceptable — the manual command becomes the default path post-089, so the gap immediately becomes the common case rather than an edge case.
+
+## Verification Result
+
+**Verified:** 2026-05-25T21:03:49Z (HEAD b80021e)
+**Binary:** /tmp/dark-factory-b80021e (built from HEAD)
+**Scenario:** CLI-only verification — `dark-factory spec mark-prompted` exercised against fixture specs in `/tmp/df-verify-090` (approved, generating, prompted, completed, draft, unknown-id), plus doc-grep checks, plus full `make precommit`.
+**Evidence:**
+- AC1: `spec mark-prompted <id>       Mark a spec as prompted (transitions approved/generating to prompted)` appears in both `dark-factory spec --help` (line 9) and `dark-factory --help` (line 27).
+- AC2/3/4: approved fixture (999) → exit 0, file contains `status: prompted`, `generating: "2026-05-25T20:58:53Z"`, `prompted: "2026-05-25T20:58:53Z"`.
+- AC5: ginkgo test "produces byte-identical frontmatter to the generator two-step SetStatus sequence" PASS (230 Passed | 0 Failed in `pkg/cmd`).
+- AC6: generating fixture (998) → exit 0, `status: prompted` + `prompted:` timestamp.
+- AC7: prompted fixture (997) re-run → exit 0, stdout `already prompted: 997-prompted-fixture.md`, mtime unchanged (1779742683 before and after).
+- AC8: completed (995) → exit 1, stderr `spec cannot be marked prompted from status "completed"`.
+- AC9: draft (996) → exit 1, stderr `spec cannot be marked prompted from status "draft"`.
+- AC10: unknown id → exit 1, stderr `find spec file: spec not found: does-not-exist-id-9876`.
+- AC11: `commands/generate-prompts-for-spec.md` line 43 `dark-factory spec mark-prompted <spec-basename>`.
+- AC12: `commands/generate-prompts-for-spec.md` lines 48-52 declare skip conditions (prompt-creator failure / zero new prompt files) and cite `handleNoNewFiles`.
+- AC13: `docs/running.md` lines 47, 66, 90, 265 describe the `mark-prompted` transition in the manual flow.
+- AC14: `make precommit` → EXIT=0 (`ready to commit`).
+- AC15: `git diff master..HEAD -- pkg/spec/spec.go` returns no lines (specTransitions untouched).
+- AC16: `git diff master..HEAD -- pkg/generator/generator.go` returns no lines.
+**Verdict:** PASS

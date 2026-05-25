@@ -36,3 +36,21 @@ Return: the creator's summary, followed by the per-prompt audit reports verbatim
 ```
 
 This front-loads the audit so the human reviewer sees the findings alongside the prompts without running `/audit-prompt` manually.
+
+**Finally, transition the spec to `prompted`:** after the per-prompt audit pass completes (regardless of individual audit findings — finding-collection is non-blocking), invoke
+
+```bash
+dark-factory spec mark-prompted <spec-basename>
+```
+
+where `<spec-basename>` is the input spec's filename without `.md`. This closes the lifecycle gap — without it, the spec sits at `status: approved` forever while its prompts move through the queue.
+
+**Skip conditions** (do NOT run `spec mark-prompted` when):
+- The prompt-creator agent reported failure.
+- The prompt-creator wrote zero new prompt files.
+
+In both skip cases, surface the creator's report unchanged and exit — leaving the spec at its current status so the operator can inspect and re-run. This matches the auto path's `handleNoNewFiles` behavior in `pkg/generator/generator.go` (no `prompted` transition when zero files were produced).
+
+The `spec mark-prompted` call is idempotent: if the spec is already in `status: prompted` (e.g. a previous run already transitioned it, or the daemon's auto path ran first when `autoGeneratePrompts: true`), the subcommand exits 0 with stdout `already prompted: <basename>` and the manual command continues normally. No special handling needed for re-runs.
+
+**Race-window note:** the mark-prompted step is invoked unconditionally — there is no config check for `autoGeneratePrompts`. The idempotent CLI handles the "auto path already marked it" case cleanly. However, if the daemon is actively running the auto path for the SAME spec at the moment the operator triggers the manual command, both paths may race to write `status: prompted`. Last writer wins; no data corruption (single-file atomic `Save`). Operators should avoid running the manual command on a spec the daemon is currently processing.

@@ -44,7 +44,7 @@ When `dark-factory spec approve <name>` moves a spec to `status: approved`, prom
 |---|----------------|--------|
 | **Trigger** | Daemon's spec watcher fires the generator container as soon as the spec hits `approved` | Operator invokes `/dark-factory:generate-prompts-for-spec <spec-path>` from a Claude Code session |
 | **Config** | `autoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.dark-factory/config.yaml`, or `--set autoGeneratePrompts=true` | `autoGeneratePrompts: false` (default) |
-| **Daemon role** | Generator + auditor + approver + executor all in one continuous loop | Daemon only executes prompts after the operator queues them; spec stays at `status: approved` until the operator acts |
+| **Daemon role** | Generator + auditor + approver + executor all in one continuous loop | Daemon only executes prompts after the operator queues them; the manual command transitions the spec to `status: prompted` on success — same lifecycle outcome as the auto path |
 | **Latency** | Seconds after `spec approve` | Whenever the operator runs the command |
 | **LLM cost timing** | Spent immediately on approve | Deferred until operator decides |
 
@@ -63,7 +63,7 @@ Cost: if the spec turns out to be subtly wrong, you pay the generation tokens be
 - **You're experimenting** — approve a spec to lock its contents, but defer or skip generation entirely.
 - **The generator is being upgraded** (new model, new prompt template) and you want to pick the moment to switch.
 
-Cost: more steps. The spec sits at `status: approved` indefinitely until you remember to run the command. Easy to leave a queued spec stranded.
+Cost: more steps — you must remember to run the manual command, and until you do, the spec sits at `status: approved`. Once the manual command runs, the spec transitions to `status: prompted` automatically via `dark-factory spec mark-prompted` — same final state as the auto path.
 
 ### Switching modes
 
@@ -86,6 +86,8 @@ Manual command (when auto is disabled):
 ```bash
 /dark-factory:generate-prompts-for-spec specs/in-progress/088-disable-auto-prompt-generation.md
 ```
+
+On success this command also transitions the spec from `approved` to `prompted` (via `dark-factory spec mark-prompted`), so the spec's lifecycle status matches the auto path.
 
 Field reference and layering precedence: [configuration.md § Disable Auto Prompt Generation](configuration.md#disable-auto-prompt-generation).
 
@@ -260,3 +262,4 @@ This means you can run `dark-factory spec list` from any subdirectory of a proje
 | `dark-factory spec list` | List specs with status |
 | `dark-factory spec approve <name>` | Approve a spec |
 | `dark-factory spec complete <name>` | Mark verified spec as done |
+| `dark-factory spec mark-prompted <name>` | Transition a spec to `prompted` (used by the manual generation flow) |

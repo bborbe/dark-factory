@@ -1,8 +1,13 @@
 ---
-status: approved
+status: committing
 spec: ["090"]
+summary: Wired spec mark-prompted CLI into manual generation flow command file and updated docs/running.md to reflect the same approved→prompted lifecycle transition for both auto and manual paths
+container: dark-factory-exec-433-spec-090-wire-mark-prompted-into-manual-flow
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-25T20:30:01Z"
 queued: "2026-05-25T20:21:28Z"
+started: "2026-05-25T20:32:48Z"
+completed: "2026-05-25T20:35:17Z"
 ---
 
 <summary>

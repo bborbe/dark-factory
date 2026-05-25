@@ -241,6 +241,10 @@ func (c Config) Validate(ctx context.Context) error {
 			"preflightInterval",
 			validation.HasValidationFunc(c.validatePreflightInterval),
 		),
+		validation.Name(
+			"preflightCommand",
+			validation.HasValidationFunc(c.validatePreflightCommand),
+		),
 		validation.Name("queueInterval", validation.HasValidationFunc(c.validateQueueInterval)),
 		validation.Name("sweepInterval", validation.HasValidationFunc(c.validateSweepInterval)),
 		validation.Name("idleLogInterval", validation.HasValidationFunc(c.validateIdleLogInterval)),
@@ -341,6 +345,27 @@ func (c Config) validateMaxPromptDuration(ctx context.Context) error {
 			"maxPromptDuration %q is not a valid duration: %v",
 			c.MaxPromptDuration,
 			err,
+		)
+	}
+	return nil
+}
+
+// preflightCommandPattern allows alphanumeric characters, dashes, underscores, slashes, colons, dots, equals signs, and spaces.
+// Shell metacharacters like |, ;, &, <, >, $, `, ", ', \, (, ), *, ?, [, ], {, }, !, #, %, ^, and newline are rejected.
+const preflightCommandPattern = `^[a-zA-Z0-9_\-/:.= ]+$`
+
+var preflightCommandRegex = regexp.MustCompile(preflightCommandPattern)
+
+// validatePreflightCommand rejects shell metacharacters in preflightCommand.
+func (c Config) validatePreflightCommand(ctx context.Context) error {
+	if c.PreflightCommand == "" {
+		return nil
+	}
+	if !preflightCommandRegex.MatchString(c.PreflightCommand) {
+		return errors.Errorf(
+			ctx,
+			"preflightCommand %q contains invalid characters; only alphanumeric, dash, underscore, slash, colon, dot, equals, and space are allowed",
+			c.PreflightCommand,
 		)
 	}
 	return nil

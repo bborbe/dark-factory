@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix: Add shell metacharacter validation for preflightCommand in config validation to prevent command injection
+
 ## v0.171.6
 
 - refactor: Split oversized Manager in pkg/prompt/prompt.go into focused types: PromptStatusManager (status mutations), PromptScanner (directory queries), PromptMover (file operations), PromptFileLoader (file I/O); extract PrepareRollback/RollbackMove from RollbackMoveToCompleted

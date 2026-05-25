@@ -120,7 +120,7 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 // with --dangerously-skip-permissions, which preflight does not use.
 // Returns combined stdout+stderr output and nil on success, or output + error on failure.
 func (c *checker) runInContainer(ctx context.Context) (string, error) {
-	// #nosec G204 -- command is from trusted project config (.dark-factory.yaml)
+	// #nosec G204 -- preflightCommand validated by Config.validatePreflightCommand to contain only safe characters
 	cmd := exec.CommandContext(ctx, "sh", "-c", c.command)
 	cmd.Dir = c.projectRoot
 	output, err := cmd.CombinedOutput()

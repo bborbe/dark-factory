@@ -1021,6 +1021,72 @@ var _ = Describe("Config", func() {
 			})
 		})
 
+		Describe("preflightCommand validation", func() {
+			validBase := config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+			}
+
+			DescribeTable("accepts valid preflightCommand",
+				func(cmd string) {
+					cfg := validBase
+					cfg.PreflightCommand = cmd
+					Expect(cfg.Validate(ctx)).To(Succeed())
+				},
+				Entry("simple command", "echo hello"),
+				Entry("make precommit", "make precommit"),
+				Entry("go test ./...", "go test ./..."),
+				Entry("true command", "true"),
+				Entry("with dashes", "make-test"),
+				Entry("with underscores", "make_test"),
+				Entry("with slashes", "make/test"),
+				Entry("with colons", "make:test"),
+				Entry("with dots", "make.test"),
+				Entry("with equals", "make=precommit"),
+				Entry("empty string is allowed", ""),
+			)
+
+			DescribeTable("rejects preflightCommand with shell metacharacters",
+				func(cmd string) {
+					cfg := validBase
+					cfg.PreflightCommand = cmd
+					err := cfg.Validate(ctx)
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("preflightCommand"))
+				},
+				Entry("pipe", "echo hello | bash"),
+				Entry("semicolon", "echo hello; rm -rf /"),
+				Entry("ampersand", "echo hello &"),
+				Entry("less than", "cat < file"),
+				Entry("greater than", "echo hello > file"),
+				Entry("parentheses", "$(echo hello)"),
+				Entry("dollar paren", "${VAR}"),
+				Entry("backtick", "`echo hello`"),
+				Entry("backslash", "echo hello\\"),
+				Entry("double quote", `echo "hello"`),
+				Entry("single quote", "echo 'hello'"),
+				Entry("asterisk", "echo *"),
+				Entry("question mark", "echo ?"),
+				Entry("bracket open", "echo [a]"),
+				Entry("bracket close", "echo [a]"),
+				Entry("brace open", "echo {a}"),
+				Entry("brace close", "echo {a}"),
+				Entry("exclamation", "echo !"),
+				Entry("hash", "echo #"),
+				Entry("percent", "echo %"),
+				Entry("caret", "echo ^"),
+				Entry("newline", "echo hello\nworld"),
+			)
+		})
+
 		Describe("project field", func() {
 			validBase := config.Config{
 				Workflow: config.WorkflowDirect,

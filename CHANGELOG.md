@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.4
+
+- refactor: replace manual test fakes with Counterfeiter-generated mocks in pkg/preflightconditions/conditions_test.go and pkg/containerslot/manager_test.go
+
 ## v0.171.3
 
 - fix: use sync/atomic.Bool for cancelledByUser in processor.go to fix data race between goroutines

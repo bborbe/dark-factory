@@ -14,87 +14,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 )
-
-// stubContainerCounter is a minimal ContainerCounter for tests.
-type stubContainerCounter struct {
-	callCount int32
-	fn        func(n int) (int, error)
-}
-
-func (s *stubContainerCounter) CountRunning(_ context.Context) (int, error) {
-	n := int(atomic.AddInt32(&s.callCount, 1))
-	return s.fn(n)
-}
-
-func (s *stubContainerCounter) calls() int {
-	return int(atomic.LoadInt32(&s.callCount))
-}
-
-// fakeContainerLock is a test fake for containerlock.ContainerLock.
-type fakeContainerLock struct {
-	mu               sync.Mutex
-	acquireCallCount int32
-	releaseCallCount int32
-	acquireErr       error
-	acquireStub      func(context.Context) error
-	releaseStub      func(context.Context) error
-}
-
-func (f *fakeContainerLock) Acquire(ctx context.Context) error {
-	atomic.AddInt32(&f.acquireCallCount, 1)
-	f.mu.Lock()
-	stub := f.acquireStub
-	err := f.acquireErr
-	f.mu.Unlock()
-	if stub != nil {
-		return stub(ctx)
-	}
-	return err
-}
-
-func (f *fakeContainerLock) Release(ctx context.Context) error {
-	atomic.AddInt32(&f.releaseCallCount, 1)
-	f.mu.Lock()
-	stub := f.releaseStub
-	f.mu.Unlock()
-	if stub != nil {
-		return stub(ctx)
-	}
-	return nil
-}
-
-func (f *fakeContainerLock) acquireCalls() int {
-	return int(atomic.LoadInt32(&f.acquireCallCount))
-}
-
-func (f *fakeContainerLock) releaseCalls() int {
-	return int(atomic.LoadInt32(&f.releaseCallCount))
-}
-
-// fakeContainerChecker is a test fake for executor.ContainerChecker.
-type fakeContainerChecker struct {
-	// waitCh is closed by the test to unblock WaitUntilRunning.
-	waitCh    chan struct{}
-	callCount int32
-}
-
-func (f *fakeContainerChecker) IsRunning(_ context.Context, _ string) (bool, error) {
-	return true, nil
-}
-
-func (f *fakeContainerChecker) WaitUntilRunning(
-	_ context.Context,
-	_ string,
-	_ time.Duration,
-) error {
-	atomic.AddInt32(&f.callCount, 1)
-	if f.waitCh != nil {
-		<-f.waitCh
-	}
-	return nil
-}
 
 const pollInterval = 10 * time.Millisecond
 
@@ -114,39 +36,45 @@ var _ = Describe("Manager", func() {
 
 	Describe("Acquire — nil lock (no locking)", func() {
 		It("returns immediately when maxContainers is 0", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 0, nil }}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, nil)
 			m := containerslot.NewManager(nil, counter, nil, 0, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
-			Expect(counter.calls()).To(Equal(0))
+			Expect(counter.CountRunningCallCount()).To(Equal(0))
 		})
 
 		It("returns immediately when count is below limit", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 2, nil }}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(2, nil)
 			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
-			Expect(counter.calls()).To(Equal(1))
+			Expect(counter.CountRunningCallCount()).To(Equal(1))
 		})
 
 		It("waits and returns when slot becomes free", func() {
-			counter := &stubContainerCounter{fn: func(n int) (int, error) {
+			var callCount int32
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningCalls(func(_ context.Context) (int, error) {
+				n := int(atomic.AddInt32(&callCount, 1))
 				if n == 1 {
 					return 3, nil
 				}
 				return 2, nil
-			}}
+			})
 			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
-			Expect(counter.calls()).To(Equal(2))
+			Expect(counter.CountRunningCallCount()).To(Equal(2))
 		})
 
 		It("returns ctx.Err() when context is cancelled while waiting", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 3, nil }}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(3, nil)
 			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
 			go func() {
 				time.Sleep(50 * time.Millisecond)
@@ -158,9 +86,8 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("proceeds when counter returns error", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) {
-				return 0, stderrors.New("docker error")
-			}}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, stderrors.New("docker error"))
 			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -170,28 +97,32 @@ var _ = Describe("Manager", func() {
 
 	Describe("Acquire — with lock", func() {
 		It("acquires lock and returns release when slot is free", func() {
-			fakeLock := &fakeContainerLock{}
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 2, nil }}
-			m := containerslot.NewManager(fakeLock, counter, nil, 3, pollInterval)
+			lock := &mocks.ContainerLock{}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(2, nil)
+			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
-			Expect(fakeLock.acquireCalls()).To(Equal(1))
-			Expect(fakeLock.releaseCalls()).To(Equal(0))
+			Expect(lock.AcquireCallCount()).To(Equal(1))
+			Expect(lock.ReleaseCallCount()).To(Equal(0))
 			// release is idempotent
 			release()
-			Expect(fakeLock.releaseCalls()).To(Equal(1))
+			Expect(lock.ReleaseCallCount()).To(Equal(1))
 			release()
-			Expect(fakeLock.releaseCalls()).To(Equal(1))
+			Expect(lock.ReleaseCallCount()).To(Equal(1))
 		})
 
 		It("retries when slot is full then free — key regression", func() {
-			counter := &stubContainerCounter{fn: func(n int) (int, error) {
+			var callCount int32
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningCalls(func(_ context.Context) (int, error) {
+				n := int(atomic.AddInt32(&callCount, 1))
 				if n <= 2 {
 					return 3, nil
 				}
 				return 2, nil
-			}}
+			})
 			var events []string
 			var eventsMu sync.Mutex
 			appendEvent := func(e string) {
@@ -199,24 +130,24 @@ var _ = Describe("Manager", func() {
 				events = append(events, e)
 				eventsMu.Unlock()
 			}
-			fakeLock := &fakeContainerLock{
-				acquireStub: func(_ context.Context) error { appendEvent("A"); return nil },
-				releaseStub: func(_ context.Context) error { appendEvent("R"); return nil },
-			}
-			m := containerslot.NewManager(fakeLock, counter, nil, 3, pollInterval)
+			lock := &mocks.ContainerLock{}
+			lock.AcquireCalls(func(_ context.Context) error { appendEvent("A"); return nil })
+			lock.ReleaseCalls(func(_ context.Context) error { appendEvent("R"); return nil })
+			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(fakeLock.acquireCalls()).To(Equal(3))
-			Expect(fakeLock.releaseCalls()).To(Equal(2))
+			Expect(lock.AcquireCallCount()).To(Equal(3))
+			Expect(lock.ReleaseCallCount()).To(Equal(2))
 			Expect(events).To(Equal([]string{"A", "R", "A", "R", "A"}))
 			release()
-			Expect(fakeLock.releaseCalls()).To(Equal(3))
+			Expect(lock.ReleaseCallCount()).To(Equal(3))
 		})
 
 		It("cancellation during slot-wait releases all acquired locks", func() {
-			fakeLock := &fakeContainerLock{}
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 3, nil }}
-			m := containerslot.NewManager(fakeLock, counter, nil, 3, 50*time.Millisecond)
+			lock := &mocks.ContainerLock{}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(3, nil)
+			m := containerslot.NewManager(lock, counter, nil, 3, 50*time.Millisecond)
 			go func() {
 				time.Sleep(80 * time.Millisecond)
 				cancel()
@@ -224,36 +155,38 @@ var _ = Describe("Manager", func() {
 			_, err := m.Acquire(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(stderrors.Is(err, context.Canceled)).To(BeTrue())
-			Expect(fakeLock.releaseCalls()).To(Equal(fakeLock.acquireCalls()))
+			Expect(lock.ReleaseCallCount()).To(Equal(lock.AcquireCallCount()))
 		})
 
 		It("propagates acquire error", func() {
-			fakeLock := &fakeContainerLock{acquireErr: stderrors.New("flock denied")}
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 0, nil }}
-			m := containerslot.NewManager(fakeLock, counter, nil, 3, pollInterval)
+			lock := &mocks.ContainerLock{}
+			lock.AcquireReturns(stderrors.New("flock denied"))
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, nil)
+			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
 			_, err := m.Acquire(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("flock denied"))
-			Expect(fakeLock.releaseCalls()).To(Equal(0))
+			Expect(lock.ReleaseCallCount()).To(Equal(0))
 		})
 
 		It("tolerates counter error and keeps lock held", func() {
-			fakeLock := &fakeContainerLock{}
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) {
-				return 0, stderrors.New("docker ls failed")
-			}}
-			m := containerslot.NewManager(fakeLock, counter, nil, 3, pollInterval)
+			lock := &mocks.ContainerLock{}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, stderrors.New("docker ls failed"))
+			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
-			Expect(fakeLock.acquireCalls()).To(Equal(1))
-			Expect(fakeLock.releaseCalls()).To(Equal(0))
+			Expect(lock.AcquireCallCount()).To(Equal(1))
+			Expect(lock.ReleaseCallCount()).To(Equal(0))
 		})
 	})
 
 	Describe("ReleaseAfterStart", func() {
 		It("is a no-op when checker is nil", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 0, nil }}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, nil)
 			m := containerslot.NewManager(nil, counter, nil, 0, pollInterval)
 			released := false
 			m.ReleaseAfterStart(ctx, "container-1", func() { released = true })
@@ -263,9 +196,14 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("fires release after WaitUntilRunning unblocks", func() {
-			counter := &stubContainerCounter{fn: func(_ int) (int, error) { return 0, nil }}
+			counter := &mocks.ContainerCounter{}
+			counter.CountRunningReturns(0, nil)
+			checker := &mocks.ContainerChecker{}
 			waitCh := make(chan struct{})
-			checker := &fakeContainerChecker{waitCh: waitCh}
+			checker.WaitUntilRunningCalls(func(_ context.Context, _ string, _ time.Duration) error {
+				<-waitCh
+				return nil
+			})
 			m := containerslot.NewManager(nil, counter, checker, 0, pollInterval)
 
 			released := make(chan struct{})

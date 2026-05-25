@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced 6 manual test fakes with Counterfeiter-generated mocks in pkg/preflightconditions/conditions_test.go and pkg/containerslot/manager_test.go
+container: dark-factory-exec-414-review-dark-factory-10-fix-manual-mocks
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T14:55:56Z"
+completed: "2026-05-25T14:59:31Z"
 ---
 
 <summary>

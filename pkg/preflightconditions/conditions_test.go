@@ -11,53 +11,23 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 )
-
-// fakePreflightChecker is a test stub for preflight.Checker.
-type fakePreflightChecker struct {
-	ok        bool
-	err       error
-	callCount int
-}
-
-func (f *fakePreflightChecker) Check(_ context.Context) (bool, error) {
-	f.callCount++
-	return f.ok, f.err
-}
-
-// fakeGitLockChecker is a test stub for GitLockChecker.
-type fakeGitLockChecker struct {
-	exists bool
-}
-
-func (f *fakeGitLockChecker) Exists() bool { return f.exists }
-
-// fakeDirtyFileChecker is a test stub for DirtyFileChecker.
-type fakeDirtyFileChecker struct {
-	count     int
-	err       error
-	callCount int
-}
-
-func (f *fakeDirtyFileChecker) CountDirtyFiles(_ context.Context) (int, error) {
-	f.callCount++
-	return f.count, f.err
-}
 
 var _ = Describe("Conditions", func() {
 	var (
 		ctx              context.Context
-		preflightChecker *fakePreflightChecker
-		gitLockChecker   *fakeGitLockChecker
-		dirtyChecker     *fakeDirtyFileChecker
+		preflightChecker *mocks.PreflightChecker
+		gitLockChecker   *mocks.GitLockChecker
+		dirtyChecker     *mocks.DirtyFileChecker
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		preflightChecker = &fakePreflightChecker{ok: true}
-		gitLockChecker = &fakeGitLockChecker{}
-		dirtyChecker = &fakeDirtyFileChecker{}
+		preflightChecker = &mocks.PreflightChecker{}
+		gitLockChecker = &mocks.GitLockChecker{}
+		dirtyChecker = &mocks.DirtyFileChecker{}
 	})
 
 	Context("preflight checker", func() {
@@ -69,16 +39,16 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, nil) when preflight passes", func() {
-			preflightChecker.ok = true
+			preflightChecker.CheckReturns(true, nil)
 			c := preflightconditions.NewConditions(preflightChecker, nil, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(skip).To(BeFalse())
-			Expect(preflightChecker.callCount).To(Equal(1))
+			Expect(preflightChecker.CheckCallCount()).To(Equal(1))
 		})
 
 		It("returns (false, ErrPreflightFailed) when preflight returns false", func() {
-			preflightChecker.ok = false
+			preflightChecker.CheckReturns(false, nil)
 			c := preflightconditions.NewConditions(preflightChecker, nil, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).To(HaveOccurred())
@@ -87,7 +57,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, ErrPreflightFailed) when preflight returns an error", func() {
-			preflightChecker.err = stderrors.New("internal error")
+			preflightChecker.CheckReturns(false, stderrors.New("internal error"))
 			c := preflightconditions.NewConditions(preflightChecker, nil, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).To(HaveOccurred())
@@ -98,7 +68,7 @@ var _ = Describe("Conditions", func() {
 
 	Context("git index lock", func() {
 		It("returns (true, nil) when git lock exists", func() {
-			gitLockChecker.exists = true
+			gitLockChecker.ExistsReturns(true)
 			c := preflightconditions.NewConditions(nil, gitLockChecker, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -106,7 +76,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, nil) when git lock does not exist", func() {
-			gitLockChecker.exists = false
+			gitLockChecker.ExistsReturns(false)
 			c := preflightconditions.NewConditions(nil, gitLockChecker, nil, 0)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -127,7 +97,7 @@ var _ = Describe("Conditions", func() {
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(skip).To(BeFalse())
-			Expect(dirtyChecker.callCount).To(Equal(0))
+			Expect(dirtyChecker.CountDirtyFilesCallCount()).To(Equal(0))
 		})
 
 		It("skips dirty file check when checker is nil", func() {
@@ -138,7 +108,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, nil) when dirty count is within threshold", func() {
-			dirtyChecker.count = 5
+			dirtyChecker.CountDirtyFilesReturns(5, nil)
 			c := preflightconditions.NewConditions(nil, nil, dirtyChecker, 10)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -146,7 +116,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, nil) when dirty count equals threshold", func() {
-			dirtyChecker.count = 10
+			dirtyChecker.CountDirtyFilesReturns(10, nil)
 			c := preflightconditions.NewConditions(nil, nil, dirtyChecker, 10)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -154,7 +124,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (true, nil) when dirty count exceeds threshold", func() {
-			dirtyChecker.count = 11
+			dirtyChecker.CountDirtyFilesReturns(11, nil)
 			c := preflightconditions.NewConditions(nil, nil, dirtyChecker, 10)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -162,7 +132,7 @@ var _ = Describe("Conditions", func() {
 		})
 
 		It("returns (false, err) when checker returns an error", func() {
-			dirtyChecker.err = stderrors.New("git error")
+			dirtyChecker.CountDirtyFilesReturns(0, stderrors.New("git error"))
 			c := preflightconditions.NewConditions(nil, nil, dirtyChecker, 10)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).To(HaveOccurred())
@@ -181,8 +151,8 @@ var _ = Describe("Conditions", func() {
 
 	Context("check ordering", func() {
 		It("returns ErrPreflightFailed before checking git lock when preflight fails", func() {
-			preflightChecker.ok = false
-			gitLockChecker.exists = true
+			preflightChecker.CheckReturns(false, nil)
+			gitLockChecker.ExistsReturns(true)
 			c := preflightconditions.NewConditions(
 				preflightChecker,
 				gitLockChecker,
@@ -191,17 +161,17 @@ var _ = Describe("Conditions", func() {
 			)
 			_, err := c.ShouldSkip(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
-			Expect(dirtyChecker.callCount).To(Equal(0))
+			Expect(dirtyChecker.CountDirtyFilesCallCount()).To(Equal(0))
 		})
 
 		It("returns git lock skip before checking dirty files when lock exists", func() {
-			gitLockChecker.exists = true
-			dirtyChecker.count = 100
+			gitLockChecker.ExistsReturns(true)
+			dirtyChecker.CountDirtyFilesReturns(100, nil)
 			c := preflightconditions.NewConditions(nil, gitLockChecker, dirtyChecker, 10)
 			skip, err := c.ShouldSkip(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(skip).To(BeTrue())
-			Expect(dirtyChecker.callCount).To(Equal(0))
+			Expect(dirtyChecker.CountDirtyFilesCallCount()).To(Equal(0))
 		})
 	})
 })

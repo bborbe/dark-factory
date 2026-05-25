@@ -396,6 +396,11 @@ func runSpecCommand(
 			return err
 		}
 		return factory.CreateSpecCompleteCommand(cfg, currentDateTimeGetter).Run(ctx, args)
+	case "mark-prompted":
+		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
+			return err
+		}
+		return factory.CreateSpecMarkPromptedCommand(cfg, currentDateTimeGetter).Run(ctx, args)
 	case "show":
 		if err := validateOneArg(ctx, args, printSpecHelp); err != nil {
 			return err
@@ -961,7 +966,8 @@ func printHelp() {
 			"  spec status            Show spec status\n"+
 			"  spec approve <id>      Approve a spec\n"+
 			"  spec unapprove <id>    Unapprove a spec (move back to inbox, reset to draft)\n"+
-			"  spec complete <id>     Mark a verified spec as completed\n"+
+			"  spec complete <id>        Mark a verified spec as completed\n"+
+			"  spec mark-prompted <id>  Mark a spec as prompted (transitions approved/generating to prompted)\n"+
 			"  spec reject <id> --reason <text>    Reject a spec and all linked prompts (move to rejected/, terminal state)\n"+
 			"  spec show <id>         Show details for a single spec\n\n"+
 			"  scenario list          List scenarios\n"+
@@ -1084,6 +1090,7 @@ func printSpecHelp() {
 			"  approve <id>    Approve a spec\n"+
 			"  unapprove <id>  Unapprove a spec (move back to inbox, reset to draft)\n"+
 			"  complete <id>   Mark a verified spec as completed\n"+
+			"  mark-prompted <id>       Mark a spec as prompted (transitions approved/generating to prompted)\n"+
 			"  reject <id> --reason <text>  Reject a spec and all linked prompts (move to rejected/, terminal state)\n"+
 			"  show <id>       Show details for a single spec\n"+
 			"  <id> formats: padded number (063), unpadded number (63), full basename (063-foo-bar), or basename with .md extension\n",

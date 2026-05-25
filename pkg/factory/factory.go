@@ -1371,6 +1371,19 @@ func CreateSpecCompleteCommand(
 	)
 }
 
+// CreateSpecMarkPromptedCommand creates a SpecMarkPromptedCommand.
+func CreateSpecMarkPromptedCommand(
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) cmd.SpecMarkPromptedCommand {
+	return cmd.NewSpecMarkPromptedCommand(
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		currentDateTimeGetter,
+	)
+}
+
 // CreateCombinedStatusCommand creates a CombinedStatusCommand.
 func CreateCombinedStatusCommand(
 	ctx context.Context,

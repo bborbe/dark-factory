@@ -19,20 +19,20 @@ import (
 
 var _ = Describe("Checker", func() {
 	var (
-		ctx          context.Context
-		fakeNotifier *mocks.Notifier
+		ctx      context.Context
+		notifier *mocks.Notifier
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		fakeNotifier = &mocks.Notifier{}
-		fakeNotifier.NotifyReturns(nil)
+		notifier = &mocks.Notifier{}
+		notifier.NotifyReturns(nil)
 	})
 
 	Describe("disabled (empty command)", func() {
 		It("returns true without calling the runner", func() {
 			runnerCalled := false
-			ch := preflight.NewCheckerWithRunner("", 0, fakeNotifier, "proj",
+			ch := preflight.NewCheckerWithRunner("", 0, notifier, "proj",
 				func(ctx context.Context) (string, error) {
 					runnerCalled = true
 					return "", nil
@@ -42,7 +42,7 @@ var _ = Describe("Checker", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())
 			Expect(runnerCalled).To(BeFalse())
-			Expect(fakeNotifier.NotifyCallCount()).To(Equal(0))
+			Expect(notifier.NotifyCallCount()).To(Equal(0))
 		})
 	})
 
@@ -51,14 +51,14 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
 				8*time.Hour,
-				fakeNotifier,
+				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) { return "ok output", nil },
 			)
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())
-			Expect(fakeNotifier.NotifyCallCount()).To(Equal(0))
+			Expect(notifier.NotifyCallCount()).To(Equal(0))
 		})
 	})
 
@@ -67,7 +67,7 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
 				8*time.Hour,
-				fakeNotifier,
+				notifier,
 				"myproject",
 				func(ctx context.Context) (string, error) {
 					return "lint error on line 42", errors.New(ctx, "exit status 1")
@@ -76,8 +76,8 @@ var _ = Describe("Checker", func() {
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeFalse())
-			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
-			_, event := fakeNotifier.NotifyArgsForCall(0)
+			Expect(notifier.NotifyCallCount()).To(Equal(1))
+			_, event := notifier.NotifyArgsForCall(0)
 			Expect(event.EventType).To(Equal("preflight_failed"))
 			Expect(event.ProjectName).To(Equal("myproject"))
 		})
@@ -89,7 +89,7 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
 				1*time.Hour,
-				fakeNotifier,
+				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
 					callCount++
@@ -108,7 +108,7 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
 				10*time.Millisecond,
-				fakeNotifier,
+				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
 					callCount++
@@ -123,7 +123,7 @@ var _ = Describe("Checker", func() {
 
 		It("re-runs when interval is zero (no caching)", func() {
 			callCount := 0
-			ch := preflight.NewCheckerWithRunner("make precommit", 0, fakeNotifier, "proj",
+			ch := preflight.NewCheckerWithRunner("make precommit", 0, notifier, "proj",
 				func(ctx context.Context) (string, error) {
 					callCount++
 					return "ok", nil
@@ -139,7 +139,7 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
 				1*time.Hour, // huge interval — would cache forever if failures were cached
-				fakeNotifier,
+				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
 					callCount++
@@ -159,12 +159,12 @@ var _ = Describe("Checker", func() {
 
 	Describe("NewChecker constructor", func() {
 		It("returns a non-nil Checker", func() {
-			ch := preflight.NewChecker("", 0, "/tmp", fakeNotifier, "proj")
+			ch := preflight.NewChecker("", 0, "/tmp", notifier, "proj")
 			Expect(ch).NotTo(BeNil())
 		})
 
 		It("disabled checker returns true immediately", func() {
-			ch := preflight.NewChecker("", 0, "/tmp", fakeNotifier, "proj")
+			ch := preflight.NewChecker("", 0, "/tmp", notifier, "proj")
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())
@@ -179,7 +179,7 @@ var _ = Describe("Checker", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make test",
 				0,
-				fakeNotifier,
+				notifier,
 				"proj",
 				runner,
 			)
@@ -187,7 +187,7 @@ var _ = Describe("Checker", func() {
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeFalse())
-			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
+			Expect(notifier.NotifyCallCount()).To(Equal(1))
 		})
 	})
 })

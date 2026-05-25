@@ -10,14 +10,17 @@ import (
 	"io"
 	"strings"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/formatter"
 )
 
+var testDateTimeGetter = libtime.NewCurrentDateTime()
+
 func processLine(jsonLine string) (string, string) {
-	f := formatter.NewFormatter()
+	f := formatter.NewFormatter(testDateTimeGetter)
 	var rawBuf, fmtBuf bytes.Buffer
 	ctx := context.Background()
 	err := f.ProcessStream(ctx, strings.NewReader(jsonLine), &rawBuf, &fmtBuf)
@@ -26,7 +29,7 @@ func processLine(jsonLine string) (string, string) {
 }
 
 func processLines(lines ...string) (string, string) {
-	f := formatter.NewFormatter()
+	f := formatter.NewFormatter(testDateTimeGetter)
 	var rawBuf, fmtBuf bytes.Buffer
 	ctx := context.Background()
 	input := strings.Join(lines, "\n") + "\n"
@@ -233,7 +236,7 @@ var _ = Describe("Formatter", func() {
 
 	Describe("7j. Parse error fallback", func() {
 		It("writes non-JSON line verbatim to both outputs", func() {
-			f := formatter.NewFormatter()
+			f := formatter.NewFormatter(testDateTimeGetter)
 			var rawBuf, fmtBuf bytes.Buffer
 			ctx := context.Background()
 			err := f.ProcessStream(ctx, strings.NewReader("this is not json\n"), &rawBuf, &fmtBuf)
@@ -291,7 +294,7 @@ var _ = Describe("Formatter", func() {
 				`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"file.go\n"}]}}`,
 				`{"type":"result","result":"success","duration_ms":1000,"total_cost_usd":0.001,"usage":{"input_tokens":10,"output_tokens":5}}`,
 			}
-			f := formatter.NewFormatter()
+			f := formatter.NewFormatter(testDateTimeGetter)
 			var rawBuf, fmtBuf bytes.Buffer
 			ctx := context.Background()
 			err := f.ProcessStream(
@@ -314,7 +317,7 @@ var _ = Describe("Formatter", func() {
 			pr, pw := io.Pipe()
 			ctx, cancel := context.WithCancel(context.Background())
 
-			f := formatter.NewFormatter()
+			f := formatter.NewFormatter(testDateTimeGetter)
 			var rawBuf, fmtBuf bytes.Buffer
 			done := make(chan error, 1)
 			go func() {
@@ -338,7 +341,7 @@ var _ = Describe("Formatter", func() {
 		It("writes truncation marker to both outputs without panic", func() {
 			// Build an 11 MB line (no newlines)
 			bigLine := strings.Repeat("x", 11*1024*1024)
-			f := formatter.NewFormatter()
+			f := formatter.NewFormatter(testDateTimeGetter)
 			var rawBuf, fmtBuf bytes.Buffer
 			ctx := context.Background()
 			err := f.ProcessStream(ctx, strings.NewReader(bigLine), &rawBuf, &fmtBuf)

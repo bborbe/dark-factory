@@ -394,10 +394,11 @@ func CreateRunner(
 		} else {
 			preflightChecker = preflight.NewChecker(
 				cfg.PreflightCommand,
-				cfg.ParsedPreflightInterval(),
+				libtime.Duration(cfg.ParsedPreflightInterval()),
 				projectRoot,
 				n,
 				projectName.String(),
+				currentDateTimeGetter,
 			)
 		}
 	}
@@ -539,10 +540,11 @@ func CreateOneShotRunner(
 		} else {
 			osPreflightChecker = preflight.NewChecker(
 				cfg.PreflightCommand,
-				cfg.ParsedPreflightInterval(),
+				libtime.Duration(cfg.ParsedPreflightInterval()),
 				projectRoot,
 				n,
 				projectName.String(),
+				currentDateTimeGetter,
 			)
 		}
 	}
@@ -661,7 +663,7 @@ func CreateSpecGenerator(
 			cfg.ResolvedClaudeDir(),
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
-			formatter.NewFormatter(),
+			formatter.NewFormatter(currentDateTimeGetter),
 			resolveSpecGeneratorHideGit(cfg),
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
@@ -901,7 +903,7 @@ func CreateProcessor(
 		claudeDir,
 		maxPromptDuration,
 		currentDateTimeGetter,
-		formatter.NewFormatter(),
+		formatter.NewFormatter(currentDateTimeGetter),
 		workflow == config.WorkflowWorktree || hideGit,
 	)
 	fh := failurehandler.NewHandler(

@@ -47,7 +47,7 @@ var _ = Describe("DockerExecutor", func() {
 			config.Defaults().ResolvedClaudeDir(),
 			0,
 			libtime.NewCurrentDateTime(),
-			formatter.NewFormatter(),
+			formatter.NewFormatter(libtime.NewCurrentDateTime()),
 			false, // hideGit
 		)
 
@@ -176,7 +176,7 @@ More lines...`
 				config.Defaults().ResolvedClaudeDir(),
 				0,
 				libtime.NewCurrentDateTime(),
-				formatter.NewFormatter(),
+				formatter.NewFormatter(libtime.NewCurrentDateTime()),
 				false, // hideGit
 			)
 			Expect(executor).NotTo(BeNil())
@@ -1481,7 +1481,7 @@ This has frontmatter.`
 				0,
 				libtime.NewCurrentDateTime(),
 				runner,
-				formatter.NewFormatter(),
+				formatter.NewFormatter(libtime.NewCurrentDateTime()),
 				false, // hideGit
 			)
 		}

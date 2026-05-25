@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 )
 
 //counterfeiter:generate -o ../../mocks/formatter.go --fake-name StreamFormatter . Formatter
@@ -35,11 +36,15 @@ type Formatter interface {
 }
 
 // NewFormatter creates a new Formatter.
-func NewFormatter() Formatter {
-	return &streamFormatter{}
+func NewFormatter(currentDateTimeGetter libtime.CurrentDateTimeGetter) Formatter {
+	return &streamFormatter{
+		currentDateTimeGetter: currentDateTimeGetter,
+	}
 }
 
-type streamFormatter struct{}
+type streamFormatter struct {
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
+}
 
 // ProcessStream reads newline-delimited stream-json and writes raw and formatted output.
 func (f *streamFormatter) ProcessStream(
@@ -86,7 +91,7 @@ func (f *streamFormatter) processLine(
 
 	var msg StreamMessage
 	if err := json.Unmarshal(line, &msg); err != nil {
-		formatted := formatTimestamp() + " " + string(line) + "\n"
+		formatted := f.formatTimestamp() + " " + string(line) + "\n"
 		if _, err2 := formattedWriter.Write([]byte(formatted)); err2 != nil {
 			return errors.Wrap(ctx, err2, "write formatted fallback")
 		}
@@ -117,7 +122,7 @@ func (f *streamFormatter) handleScannerError(
 	if _, werr := rawWriter.Write([]byte(marker)); werr != nil {
 		return errors.Wrap(ctx, werr, "write truncation marker to raw log")
 	}
-	if _, werr := formattedWriter.Write([]byte(formatTimestamp() + " " + marker)); werr != nil {
+	if _, werr := formattedWriter.Write([]byte(f.formatTimestamp() + " " + marker)); werr != nil {
 		return errors.Wrap(ctx, werr, "write truncation marker to formatted log")
 	}
 	slog.Warn("formatter scanner error", "error", scanErr)
@@ -125,23 +130,24 @@ func (f *streamFormatter) handleScannerError(
 }
 
 // formatTimestamp returns the current local time formatted as [HH:MM:SS].
-func formatTimestamp() string {
-	return time.Now().Format("[15:04:05]")
+func (f *streamFormatter) formatTimestamp() string {
+	return time.Time(f.currentDateTimeGetter.Now()).Format("[15:04:05]")
 }
 
 func (f *streamFormatter) renderMessage(msg StreamMessage, toolNames map[string]string) string {
+	ts := f.formatTimestamp()
 	switch msg.Type {
 	case "system":
-		return renderSystemInit(msg)
+		return renderSystemInit(msg, ts)
 	case "assistant":
-		return renderAssistant(msg, toolNames)
+		return renderAssistant(msg, toolNames, ts)
 	case "user":
-		return renderUser(msg, toolNames)
+		return renderUser(msg, toolNames, ts)
 	case "result":
-		return renderResult(msg)
+		return renderResult(msg, ts)
 	case "rate_limit_event":
-		return renderRateLimitEvent(msg)
+		return renderRateLimitEvent(msg, ts)
 	default:
-		return formatTimestamp() + " [unknown type: " + msg.Type + "]\n"
+		return ts + " [unknown type: " + msg.Type + "]\n"
 	}
 }

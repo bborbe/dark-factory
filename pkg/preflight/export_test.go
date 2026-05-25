@@ -6,7 +6,8 @@ package preflight
 
 import (
 	"context"
-	"time"
+
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
@@ -14,16 +15,17 @@ import (
 // NewCheckerWithRunner creates a Checker for testing, replacing runInContainer with a fake runner.
 func NewCheckerWithRunner(
 	command string,
-	interval time.Duration,
+	interval libtime.Duration,
 	n notifier.Notifier,
 	projectName string,
 	runner func(ctx context.Context) (string, error),
 ) Checker {
 	c := &checker{
-		command:     command,
-		interval:    interval,
-		notifier:    n,
-		projectName: projectName,
+		command:               command,
+		interval:              interval,
+		notifier:              n,
+		projectName:           projectName,
+		currentDateTimeGetter: libtime.NewCurrentDateTime(),
 	}
 	c.runner = runner
 	return c

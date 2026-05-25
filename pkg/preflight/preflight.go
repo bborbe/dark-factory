@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/notifier"
 )
@@ -28,7 +29,7 @@ type Checker interface {
 
 // cacheEntry stores the result of the last successful preflight run.
 type cacheEntry struct {
-	checkedAt time.Time
+	checkedAt libtime.DateTime
 }
 
 // runnerFn is a function that executes a command and returns its combined output.
@@ -36,13 +37,14 @@ type runnerFn func(ctx context.Context) (string, error)
 
 // checker implements Checker.
 type checker struct {
-	command     string
-	interval    time.Duration
-	projectRoot string
-	notifier    notifier.Notifier
-	projectName string
-	cache       *cacheEntry
-	runner      runnerFn
+	command               string
+	interval              libtime.Duration
+	projectRoot           string
+	notifier              notifier.Notifier
+	projectName           string
+	cache                 *cacheEntry
+	runner                runnerFn
+	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
 // NewChecker creates a new preflight Checker.
@@ -51,19 +53,22 @@ type checker struct {
 // projectRoot is the absolute path of the project directory.
 // n is used to notify humans when the baseline is broken.
 // projectName is the project identifier used in notifications.
+// currentDateTimeGetter provides the current time for cache expiry checks.
 func NewChecker(
 	command string,
-	interval time.Duration,
+	interval libtime.Duration,
 	projectRoot string,
 	n notifier.Notifier,
 	projectName string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) Checker {
 	c := &checker{
-		command:     command,
-		interval:    interval,
-		projectRoot: projectRoot,
-		notifier:    n,
-		projectName: projectName,
+		command:               command,
+		interval:              interval,
+		projectRoot:           projectRoot,
+		notifier:              n,
+		projectName:           projectName,
+		currentDateTimeGetter: currentDateTimeGetter,
 	}
 	c.runner = c.runInContainer
 	return c
@@ -78,13 +83,15 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 	// Cache hit: a successful preflight is reused for `interval` after it ran,
 	// regardless of git activity. Failed results are not cached — operator fixes
 	// must be picked up on the next Check call.
-	if c.cache != nil && c.interval > 0 &&
-		time.Since(c.cache.checkedAt) < c.interval {
-		slog.Debug("preflight: cache hit (time-based)",
-			"age", time.Since(c.cache.checkedAt).Round(time.Second),
-			"interval", c.interval,
-		)
-		return true, nil
+	if c.cache != nil && c.interval > 0 {
+		cacheAge := time.Since(time.Time(c.cache.checkedAt))
+		if cacheAge < time.Duration(c.interval) {
+			slog.Debug("preflight: cache hit (time-based)",
+				"age", cacheAge.Round(time.Second),
+				"interval", c.interval,
+			)
+			return true, nil
+		}
 	}
 
 	slog.Info("preflight: running baseline check", "command", c.command)
@@ -94,7 +101,7 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 
 	if ok {
 		c.cache = &cacheEntry{
-			checkedAt: time.Now(),
+			checkedAt: c.currentDateTimeGetter.Now(),
 		}
 		slog.Info("preflight: baseline check passed")
 		return true, nil

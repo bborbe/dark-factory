@@ -18,9 +18,9 @@ const (
 )
 
 // renderSystemInit renders the system init event.
-func renderSystemInit(msg StreamMessage) string {
+func renderSystemInit(msg StreamMessage, ts string) string {
 	if msg.Subtype != "init" {
-		return formatTimestamp() + " [system: " + msg.Subtype + "]\n"
+		return ts + " [system: " + msg.Subtype + "]\n"
 	}
 	session := msg.SessionID
 	if len(session) > 8 {
@@ -30,11 +30,11 @@ func renderSystemInit(msg StreamMessage) string {
 		session = "(unknown)"
 	}
 	return fmt.Sprintf("%s [init] session=%s model=%s cwd=%s tools=%d\n",
-		formatTimestamp(), session, msg.Model, msg.Cwd, len(msg.Tools))
+		ts, session, msg.Model, msg.Cwd, len(msg.Tools))
 }
 
 // renderResult renders the final result event.
-func renderResult(msg StreamMessage) string {
+func renderResult(msg StreamMessage, ts string) string {
 	var parts []string
 	if msg.Result != nil {
 		parts = append(parts, "result: "+*msg.Result)
@@ -49,14 +49,14 @@ func renderResult(msg StreamMessage) string {
 		parts = append(parts, fmt.Sprintf("tokens: %d in / %d out",
 			*msg.Usage.InputTokens, *msg.Usage.OutputTokens))
 	}
-	return formatTimestamp() + " " + strings.Join(parts, " | ") + "\n"
+	return ts + " " + strings.Join(parts, " | ") + "\n"
 }
 
 // renderAssistant renders an assistant message.
-func renderAssistant(msg StreamMessage, toolNames map[string]string) string {
+func renderAssistant(msg StreamMessage, toolNames map[string]string, ts string) string {
 	var am AssistantMessage
 	if err := json.Unmarshal(msg.Message, &am); err != nil {
-		return formatTimestamp() + " [assistant: parse error]\n"
+		return ts + " [assistant: parse error]\n"
 	}
 
 	var sb strings.Builder
@@ -64,26 +64,26 @@ func renderAssistant(msg StreamMessage, toolNames map[string]string) string {
 		switch block.Type {
 		case "text":
 			if strings.TrimSpace(block.Text) != "" {
-				sb.WriteString(formatTimestamp() + " " + block.Text + "\n")
+				sb.WriteString(ts + " " + block.Text + "\n")
 			}
 		case "thinking":
 			preview := truncate(block.Thinking, 500)
-			sb.WriteString(formatTimestamp() + " 💭 " + preview + "\n")
+			sb.WriteString(ts + " 💭 " + preview + "\n")
 		case "tool_use":
 			toolNames[block.ID] = block.Name
-			sb.WriteString(renderToolUse(block))
+			sb.WriteString(renderToolUse(block, ts))
 		default:
-			sb.WriteString(formatTimestamp() + " [assistant content: " + block.Type + "]\n")
+			sb.WriteString(ts + " [assistant content: " + block.Type + "]\n")
 		}
 	}
 	return sb.String()
 }
 
 // renderUser renders a user message (tool results).
-func renderUser(msg StreamMessage, toolNames map[string]string) string {
+func renderUser(msg StreamMessage, toolNames map[string]string, ts string) string {
 	var um UserMessage
 	if err := json.Unmarshal(msg.Message, &um); err != nil {
-		return formatTimestamp() + " [user: parse error]\n"
+		return ts + " [user: parse error]\n"
 	}
 
 	var sb strings.Builder
@@ -96,13 +96,13 @@ func renderUser(msg StreamMessage, toolNames map[string]string) string {
 			toolName = "(unknown tool)"
 		}
 		isError := block.IsError != nil && *block.IsError
-		sb.WriteString(renderToolResult(block, toolName, isError))
+		sb.WriteString(renderToolResult(block, toolName, isError, ts))
 	}
 	return sb.String()
 }
 
 // renderToolUse renders a tool_use content block following the Python v2 oracle format.
-func renderToolUse(block ContentBlock) string {
+func renderToolUse(block ContentBlock, ts string) string {
 	var inp map[string]json.RawMessage
 	_ = json.Unmarshal(block.Input, &inp)
 	if inp == nil {
@@ -110,7 +110,7 @@ func renderToolUse(block ContentBlock) string {
 	}
 
 	line := formatToolUse(block.Name, inp)
-	return formatTimestamp() + " " + line + "\n"
+	return ts + " " + line + "\n"
 }
 
 // formatToolUse formats a tool use following the Python v2 oracle exactly.
@@ -266,41 +266,41 @@ func formatTodoWrite(inp map[string]json.RawMessage) string {
 }
 
 // renderToolResult renders a tool_result content block following the Python v2 oracle.
-func renderToolResult(block ContentBlock, toolName string, isError bool) string {
+func renderToolResult(block ContentBlock, toolName string, isError bool, ts string) string {
 	text := extractResultPreview(block.Content)
 
 	if isError {
-		return formatTimestamp() + " ⚠ [" + toolName + "] error: " + shorten(text, 400) + "\n"
+		return ts + " ⚠ [" + toolName + "] error: " + shorten(text, 400) + "\n"
 	}
 
 	switch toolName {
 	case "Bash":
-		return renderBashResult(text)
+		return renderBashResult(text, ts)
 	case "Read":
 		lineCount := strings.Count(text, "\n")
-		return fmt.Sprintf("%s   → %d lines read\n", formatTimestamp(), lineCount)
+		return fmt.Sprintf("%s   → %d lines read\n", ts, lineCount)
 	case "Write", "Edit":
-		return renderWriteEditResult(text)
+		return renderWriteEditResult(text, ts)
 	case "Grep":
 		lineCount := strings.Count(text, "\n")
-		return fmt.Sprintf("%s   → %d match lines\n", formatTimestamp(), lineCount)
+		return fmt.Sprintf("%s   → %d match lines\n", ts, lineCount)
 	case "Glob":
 		lineCount := strings.Count(text, "\n")
-		return fmt.Sprintf("%s   → %d files\n", formatTimestamp(), lineCount)
+		return fmt.Sprintf("%s   → %d files\n", ts, lineCount)
 	case "Task", "Agent":
 		lines := strings.SplitN(strings.TrimSpace(text), "\n", 2)
 		first := ""
 		if len(lines) > 0 {
 			first = lines[0]
 		}
-		return formatTimestamp() + "   ← agent reply: " + shorten(first, maxLine) + "\n"
+		return ts + "   ← agent reply: " + shorten(first, maxLine) + "\n"
 	default:
 		return ""
 	}
 }
 
 // renderBashResult renders the result of a Bash tool_use.
-func renderBashResult(text string) string {
+func renderBashResult(text string, ts string) string {
 	lower := strings.ToLower(text)
 	looksFailed := strings.Contains(lower, "error") ||
 		strings.Contains(lower, "exit code") ||
@@ -313,16 +313,16 @@ func renderBashResult(text string) string {
 			start = 0
 		}
 		tail := strings.Join(lines[start:], "\n")
-		return formatTimestamp() + " ⚠ [bash output]\n" + tail + "\n"
+		return ts + " ⚠ [bash output]\n" + tail + "\n"
 	}
 	return ""
 }
 
 // renderWriteEditResult renders the result of a Write or Edit tool_use.
-func renderWriteEditResult(text string) string {
+func renderWriteEditResult(text string, ts string) string {
 	lines := strings.SplitN(strings.TrimSpace(text), "\n", 2)
 	if len(lines) > 0 && lines[0] != "" {
-		return formatTimestamp() + "   → " + shorten(lines[0], 120) + "\n"
+		return ts + "   → " + shorten(lines[0], 120) + "\n"
 	}
 	return ""
 }
@@ -407,14 +407,14 @@ func jsonString(inp map[string]json.RawMessage, key string) string {
 // Fallback (rate_limit_info is nil or missing):
 //
 //	[HH:MM:SS] ⚠ rate-limit event
-func renderRateLimitEvent(msg StreamMessage) string {
+func renderRateLimitEvent(msg StreamMessage, ts string) string {
 	if msg.RateLimitInfo == nil {
-		return formatTimestamp() + " ⚠ rate-limit event\n"
+		return ts + " ⚠ rate-limit event\n"
 	}
 	info := msg.RateLimitInfo
 	utilPct := int(info.Utilization * 100)
 	var sb strings.Builder
-	sb.WriteString(formatTimestamp())
+	sb.WriteString(ts)
 	sb.WriteString(" ⚠ rate-limit: ")
 	sb.WriteString(info.RateLimitType)
 	fmt.Fprintf(&sb, " %d%%", utilPct)

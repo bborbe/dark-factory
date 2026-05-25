@@ -1,7 +1,12 @@
 ---
-status: approved
+status: committing
+summary: Replaced time.Time and time.Now() in pkg/preflight/ and pkg/formatter/ with libtime.DateTime and injected libtime.CurrentDateTimeGetter
+container: dark-factory-exec-424-review-dark-factory-3-fix-time-injection
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:04:38Z"
+completed: "2026-05-25T19:15:50Z"
 ---
 
 <summary>

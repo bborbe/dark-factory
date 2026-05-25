@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.11
+
+- fix: Inject time dependencies in pkg/preflight/ and pkg/formatter/ using libtime pattern
+
 ## v0.171.10
 
 - docs: Document HTTP server timeout defaults as sufficient for dark-factory threat model

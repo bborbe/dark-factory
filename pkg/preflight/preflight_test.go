@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -50,7 +51,7 @@ var _ = Describe("Checker", func() {
 		It("returns true and does not notify", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
-				8*time.Hour,
+				libtime.Duration(8*time.Hour),
 				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) { return "ok output", nil },
@@ -66,7 +67,7 @@ var _ = Describe("Checker", func() {
 		It("returns false and sends preflight_failed notification", func() {
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
-				8*time.Hour,
+				libtime.Duration(8*time.Hour),
 				notifier,
 				"myproject",
 				func(ctx context.Context) (string, error) {
@@ -88,7 +89,7 @@ var _ = Describe("Checker", func() {
 			callCount := 0
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
-				1*time.Hour,
+				libtime.Duration(1*time.Hour),
 				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
@@ -107,7 +108,7 @@ var _ = Describe("Checker", func() {
 			callCount := 0
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
-				10*time.Millisecond,
+				libtime.Duration(10*time.Millisecond),
 				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
@@ -138,7 +139,9 @@ var _ = Describe("Checker", func() {
 			callCount := 0
 			ch := preflight.NewCheckerWithRunner(
 				"make precommit",
-				1*time.Hour, // huge interval — would cache forever if failures were cached
+				libtime.Duration(
+					1*time.Hour,
+				), // huge interval — would cache forever if failures were cached
 				notifier,
 				"proj",
 				func(ctx context.Context) (string, error) {
@@ -159,12 +162,26 @@ var _ = Describe("Checker", func() {
 
 	Describe("NewChecker constructor", func() {
 		It("returns a non-nil Checker", func() {
-			ch := preflight.NewChecker("", 0, "/tmp", notifier, "proj")
+			ch := preflight.NewChecker(
+				"",
+				0,
+				"/tmp",
+				notifier,
+				"proj",
+				libtime.NewCurrentDateTime(),
+			)
 			Expect(ch).NotTo(BeNil())
 		})
 
 		It("disabled checker returns true immediately", func() {
-			ch := preflight.NewChecker("", 0, "/tmp", notifier, "proj")
+			ch := preflight.NewChecker(
+				"",
+				0,
+				"/tmp",
+				notifier,
+				"proj",
+				libtime.NewCurrentDateTime(),
+			)
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ok).To(BeTrue())

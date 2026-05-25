@@ -1,7 +1,11 @@
 ---
+status: executing
 spec: ["090"]
-status: draft
+container: dark-factory-exec-432-spec-090-cli-spec-mark-prompted
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-25T20:30:00Z"
+queued: "2026-05-25T20:21:28Z"
+started: "2026-05-25T20:21:29Z"
 ---
 
 <summary>
@@ -11,7 +15,7 @@ created: "2026-05-25T20:30:00Z"
 - Specs in other states (idea/draft/verifying/completed/rejected/hold) are rejected with a clear error naming the current status.
 - Help text (`dark-factory --help` and `dark-factory spec`) lists the new subcommand alongside `approve` / `complete`.
 - Test coverage mirrors `spec_approve` / `spec_complete` patterns: ginkgo specs covering happy path, idempotent path, and each rejection path.
-- The auto path (`pkg/generator/`) and the state machine (`pkg/spec/spec.go`'s `specTransitions` map) are NOT modified.
+- The existing auto-generation code path and the spec state machine are NOT modified — the new subcommand reuses the existing transition path.
 </summary>
 
 <objective>
@@ -28,7 +32,7 @@ Read `/home/node/.claude/plugins/marketplaces/coding/docs/go-error-wrapping-guid
 Files to read before making changes:
 - `specs/in-progress/090-cli-spec-mark-prompted.md` — full spec, especially Acceptance Criteria and Failure Modes
 - `pkg/spec/spec.go` — `Status` constants (`StatusApproved`, `StatusGenerating`, `StatusPrompted`, etc.), `specTransitions` map (DO NOT MODIFY), `SetStatus`, `Save`, `Load`
-- `pkg/generator/generator.go` lines ~179-228 — the existing `markSpecGenerating` and `executeAndFinalize`/`finalizePrompted` functions; the new subcommand must produce byte-identical frontmatter for the same starting state
+- `pkg/generator/generator.go` lines ~180-280 — the existing `markSpecGenerating` (line 180), `executeAndFinalize` (line 191), and `finalizePrompted` (line 250) functions; the new subcommand must produce byte-identical frontmatter for the same starting state
 - `pkg/cmd/spec_approve.go` — reference shape for a `Spec<Verb>Command` (interface, struct, constructor, `Run(ctx, args)` method)
 - `pkg/cmd/spec_complete.go` — reference for searching all three spec dirs via `FindSpecFileInDirs`
 - `pkg/cmd/spec_finder.go` — `FindSpecFileInDirs(ctx, id, dirs...)` resolver used by spec subcommands
@@ -137,16 +141,21 @@ Files to read before making changes:
 
    m. **Byte-identity test** vs. the generator's `SetStatus` sequence. In the test, given an `approved` fixture, perform the equivalent two `SetStatus` calls directly on a separately-loaded `spec.SpecFile` using the same `currentDateTimeGetter`, `Save` it to a sibling path, and assert the two files are byte-identical. Use a fixed-clock `currentDateTimeGetter` (see step 5) so timestamps are deterministic.
 
-5. **Fixed-clock setup for the byte-identity test**: `github.com/bborbe/time` exposes `CurrentDateTimeGetterFunc` (a func-type adapter for the `CurrentDateTimeGetter` interface). Use it to build a deterministic getter for the byte-identity test:
+5. **Fixed-clock setup for the byte-identity test**: `github.com/bborbe/time` exposes `CurrentDateTimeGetterFunc` (a func-type adapter for the `CurrentDateTimeGetter` interface) at `time_current-datetime.go:16`. Use it to build a deterministic getter for the byte-identity test:
 
    ```go
-   fixed := libtime.ParseDateTime(ctx, "2026-01-01T12:00:00Z") // or any RFC3339 literal
+   import (
+       stdtime "time"
+       libtime "github.com/bborbe/time"
+   )
+
+   fixed := libtime.NewDateTime(2026, stdtime.January, 1, 12, 0, 0, 0, stdtime.UTC)
    fixedClock := libtime.CurrentDateTimeGetterFunc(func() libtime.DateTime { return fixed })
    ```
 
    Inject `fixedClock` into BOTH the CLI command under test AND the parallel manual `SetStatus` sequence in the test, so all timestamps are identical by construction. Do NOT use `libtime.NewCurrentDateTime()` and rely on sub-second windows — that is flaky under CI load. Other tests in the file (status-mismatch, not-found, idempotent) can use `libtime.NewCurrentDateTime()` because they do not assert timestamp equality.
 
-   If `libtime.ParseDateTime` is not the actual parse function name, grep `vendor/github.com/bborbe/time/` for the public DateTime constructor and substitute. The pattern (build a fixed DateTime, wrap it in `CurrentDateTimeGetterFunc`) is the contract — the exact constructor call may differ.
+   If `libtime.NewDateTime` does not exist with this exact arity, check the module source at `$GOPATH/pkg/mod/github.com/bborbe/time@*/time_date-time.go` (or run `go doc github.com/bborbe/time.NewDateTime`) for the current constructor signature. Note: `libtime.ParseDateTime(ctx, "2026-01-01T12:00:00Z")` is an alternative but returns `(*DateTime, error)` — if you use it, deref the pointer and assert no error before passing to the closure. The contract is "build one fixed `libtime.DateTime`, wrap it in `CurrentDateTimeGetterFunc`"; the exact constructor call is implementation detail. This project has NO `vendor/` directory — do not grep there.
 
 6. **Wire the factory**: in `pkg/factory/factory.go`, immediately after `CreateSpecCompleteCommand` (line ~1361-1372), add:
 

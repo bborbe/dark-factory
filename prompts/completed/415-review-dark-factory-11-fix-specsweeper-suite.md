@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added standard Ginkgo suite setup (time.Local, format.TruncatedDiff, suiteConfig.Timeout) and //go:generate counterfeiter directive to pkg/specsweeper/sweeper_suite_test.go
+container: dark-factory-exec-415-review-dark-factory-11-fix-specsweeper-suite
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T14:59:35Z"
+completed: "2026-05-25T15:01:40Z"
 ---
 
 <summary>

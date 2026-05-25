@@ -7,6 +7,7 @@ package processor
 import (
 	"context"
 
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -15,6 +16,35 @@ import (
 )
 
 //counterfeiter:generate -o ../../mocks/workflow_executor.go --fake-name WorkflowExecutor . WorkflowExecutor
+
+// WorkflowExecutorProvider dispenses the appropriate WorkflowExecutor for a given workflow.
+// The dispatch logic lives in Get, keeping factory functions logic-free.
+type WorkflowExecutorProvider interface {
+	Get(ctx context.Context, workflow config.Workflow) WorkflowExecutor
+}
+
+// WorkflowExecutorProviderMap is a simple provider that selects from a pre-built map.
+type WorkflowExecutorProviderMap struct {
+	executors map[config.Workflow]WorkflowExecutor
+}
+
+// NewWorkflowExecutorProviderMap creates a provider from a map of workflow to executor.
+func NewWorkflowExecutorProviderMap(
+	executors map[config.Workflow]WorkflowExecutor,
+) WorkflowExecutorProvider {
+	return &WorkflowExecutorProviderMap{executors: executors}
+}
+
+// Get returns the WorkflowExecutor for the given workflow.
+func (p *WorkflowExecutorProviderMap) Get(
+	_ context.Context,
+	workflow config.Workflow,
+) WorkflowExecutor {
+	if exec, ok := p.executors[workflow]; ok {
+		return exec
+	}
+	return p.executors[config.WorkflowDirect]
+}
 
 // WorkflowExecutor handles the git lifecycle for a single prompt execution.
 // It encapsulates the pre-execution environment setup and post-execution git

@@ -215,22 +215,17 @@ type providerDeps struct {
 	brancher  git.Brancher
 }
 
-// createProviderDeps returns the git provider implementations based on cfg.Provider.
-// For github (or empty): uses gh CLI implementations (existing behavior).
-// For bitbucket-server: uses Bitbucket Server REST API implementations.
+// createProviderDeps returns the git provider implementations for GitHub.
 func createProviderDeps(
-	ctx context.Context,
+	_ context.Context,
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
-	if cfg.Provider == config.ProviderBitbucketServer {
-		return createBitbucketProviderDeps(ctx, cfg, currentDateTimeGetter)
-	}
-	return createGitHubProviderDeps(cfg, currentDateTimeGetter)
+	return CreateGitHubProviderDeps(cfg, currentDateTimeGetter)
 }
 
-// createGitHubProviderDeps returns GitHub gh-CLI-backed implementations.
-func createGitHubProviderDeps(
+// CreateGitHubProviderDeps returns GitHub gh-CLI-backed implementations.
+func CreateGitHubProviderDeps(
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
@@ -293,6 +288,15 @@ func createBitbucketProviderDeps(
 	}
 }
 
+// CreateBitbucketServerProviderDeps returns Bitbucket Server REST API-backed implementations.
+func CreateBitbucketServerProviderDeps(
+	ctx context.Context,
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) providerDeps {
+	return createBitbucketProviderDeps(ctx, cfg, currentDateTimeGetter)
+}
+
 // createSpecSlugMigrator creates a Migrator that resolves bare spec number refs to full slugs.
 func createSpecSlugMigrator(
 	cfg config.Config,
@@ -352,7 +356,10 @@ func CreateRunner(
 	)
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 
-	n := CreateNotifier(cfg)
+	n := CreateNotifier(
+		CreateTelegramNotifier(cfg.ResolvedTelegramBotToken(), cfg.ResolvedTelegramChatID()),
+		CreateDiscordNotifier(cfg.ResolvedDiscordWebhook()),
+	)
 	var srv server.Server
 	if cfg.ServerPort > 0 {
 		srv = CreateServer(
@@ -404,6 +411,7 @@ func CreateRunner(
 	}
 
 	proc := CreateProcessor(
+		ctx,
 		inProgressDir,
 		completedDir,
 		cfg.Prompts.LogDir,
@@ -512,7 +520,10 @@ func CreateOneShotRunner(
 	completedDir := cfg.Prompts.CompletedDir
 	promptManager, releaser := createPromptManager(
 		inboxDir, inProgressDir, completedDir, cfg.Prompts.CancelledDir, currentDateTimeGetter)
-	versionGetter, n := version.NewGetter(ver), CreateNotifier(cfg)
+	versionGetter, n := version.NewGetter(ver), CreateNotifier(
+		CreateTelegramNotifier(cfg.ResolvedTelegramBotToken(), cfg.ResolvedTelegramChatID()),
+		CreateDiscordNotifier(cfg.ResolvedDiscordWebhook()),
+	)
 	projectName := project.Resolve(cfg.ResolvedProjectOverride())
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
@@ -561,6 +572,7 @@ func CreateOneShotRunner(
 		promptManager,
 		CreateLocker("."),
 		CreateProcessor(
+			ctx,
 			inProgressDir,
 			completedDir,
 			cfg.Prompts.LogDir,
@@ -785,9 +797,9 @@ func createAutoCompleter(
 	)
 }
 
-// CreateWorkflowExecutor creates the appropriate WorkflowExecutor based on the config.
+// CreateWorkflowExecutor creates a WorkflowExecutorProvider that dispenses the appropriate
+// WorkflowExecutor for a given workflow.
 func CreateWorkflowExecutor(
-	workflow config.Workflow,
 	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
@@ -800,7 +812,7 @@ func CreateWorkflowExecutor(
 	autoCompleter spec.AutoCompleter,
 	promptDirPrefixes []string,
 	fileMover prompt.FileMover,
-) processor.WorkflowExecutor {
+) processor.WorkflowExecutorProvider {
 	deps := processor.WorkflowDeps{
 		ProjectName:        projectName,
 		PromptManager:      promptManager,
@@ -817,22 +829,19 @@ func CreateWorkflowExecutor(
 		AutoRelease:        autoRelease,
 		IgnorePathPrefixes: promptDirPrefixes,
 	}
-	switch workflow {
-	case config.WorkflowClone:
-		return processor.NewCloneWorkflowExecutor(deps)
-	case config.WorkflowWorktree:
-		return processor.NewWorktreeWorkflowExecutor(deps)
-	case config.WorkflowBranch:
-		return processor.NewBranchWorkflowExecutor(deps)
-	default:
-		return processor.NewDirectWorkflowExecutor(deps)
-	}
+	return processor.NewWorkflowExecutorProviderMap(map[config.Workflow]processor.WorkflowExecutor{
+		config.WorkflowClone:    processor.NewCloneWorkflowExecutor(deps),
+		config.WorkflowWorktree: processor.NewWorktreeWorkflowExecutor(deps),
+		config.WorkflowBranch:   processor.NewBranchWorkflowExecutor(deps),
+		config.WorkflowDirect:   processor.NewDirectWorkflowExecutor(deps),
+	})
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.
 //
 //nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
 func CreateProcessor(
+	ctx context.Context,
 	inProgressDir string,
 	completedDir string,
 	logDir string,
@@ -886,12 +895,13 @@ func CreateProcessor(
 		specsInboxDir, specsInProgressDir, specsCompletedDir,
 		currentDateTimeGetter, projectName, n, promptManager,
 	)
-	workflowExecutor := CreateWorkflowExecutor(
-		workflow, pr, brancher, prCreator, prMerger,
+	workflowExecutorProvider := CreateWorkflowExecutor(
+		pr, brancher, prCreator, prMerger,
 		autoMerge, autoRelease,
 		projectName, promptManager, releaser, autoCompleter,
 		promptDirPrefixes, releaser,
 	)
+	workflowExecutor := workflowExecutorProvider.Get(ctx, workflow)
 	exec := executor.NewDockerExecutor(
 		containerImage,
 		projectName.String(),
@@ -993,18 +1003,25 @@ func CreateProcessor(
 }
 
 // CreateNotifier creates a Notifier from config, or a no-op if no channels are configured.
-func CreateNotifier(cfg config.Config) notifier.Notifier {
-	var notifiers []notifier.Notifier
-	if token := cfg.ResolvedTelegramBotToken(); token != "" {
-		chatID := cfg.ResolvedTelegramChatID()
-		if chatID != "" {
-			notifiers = append(notifiers, notifier.NewTelegramNotifier(token, chatID))
-		}
+// CreateTelegramNotifier creates a Telegram notifier with the given token and chatID.
+func CreateTelegramNotifier(token, chatID string) notifier.Notifier {
+	if token == "" || chatID == "" {
+		return notifier.NewMultiNotifier()
 	}
-	if webhook := cfg.ResolvedDiscordWebhook(); webhook != "" {
-		notifiers = append(notifiers, notifier.NewDiscordNotifier(webhook))
+	return notifier.NewTelegramNotifier(token, chatID)
+}
+
+// CreateDiscordNotifier creates a Discord notifier with the given webhook.
+func CreateDiscordNotifier(webhook string) notifier.Notifier {
+	if webhook == "" {
+		return notifier.NewMultiNotifier()
 	}
-	return notifier.NewMultiNotifier(notifiers...)
+	return notifier.NewDiscordNotifier(webhook)
+}
+
+// CreateNotifier creates a Notifier based on the provided Telegram and Discord notifiers.
+func CreateNotifier(telegram, discord notifier.Notifier) notifier.Notifier {
+	return notifier.NewMultiNotifier(telegram, discord)
 }
 
 // CreateKillCommand creates a KillCommand that stops the running daemon.

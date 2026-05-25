@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Refactored factory pattern: extracted WorkflowExecutorProvider interface, created pure notifier sub-helpers, exported provider creation functions, and updated CreateProcessor signature'
+container: dark-factory-exec-429-review-dark-factory-8-fix-factory-pattern
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:43:33Z"
+completed: "2026-05-25T19:56:08Z"
 ---
 
 <summary>

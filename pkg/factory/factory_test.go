@@ -73,10 +73,11 @@ var _ = Describe("Factory", func() {
 		It("should return a non-nil processor", func() {
 			wakeup := make(chan struct{}, 10)
 			processor := factory.CreateProcessor(
+				context.Background(),
 				cfg.Prompts.InProgressDir,
 				cfg.Prompts.CompletedDir,
 				cfg.Prompts.LogDir,
-				"test-project",
+				project.Name("test-project"),
 				nil, // promptManager not needed for nil check
 				nil, // releaser not needed for nil check
 				nil, // versionGetter not needed for nil check

@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.16
+
+- refactor: Extract switch dispatch from CreateWorkflowExecutor into WorkflowExecutorProvider interface
+- refactor: Extract notifier creation into pure sub-helpers CreateTelegramNotifier and CreateDiscordNotifier
+- refactor: createProviderDeps no longer contains if/else, pure helpers CreateGitHubProviderDeps and CreateBitbucketServerProviderDeps now available
+
 ## v0.171.15
 
 - fix: Replace fmt.Errorf with errors.Errorf in pkg/prompt/prompt.go and pkg/spec/spec.go

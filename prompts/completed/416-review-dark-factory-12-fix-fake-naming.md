@@ -1,12 +1,12 @@
 ---
-status: committing
+status: completed
 summary: Renamed fakeNotifier to notifier in pkg/preflight/preflight_test.go following Counterfeiter mock naming convention
 container: dark-factory-exec-416-review-dark-factory-12-fix-fake-naming
 dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
 started: "2026-05-25T15:01:44Z"
-completed: "2026-05-25T15:03:32Z"
+completed: "2026-05-25T15:03:44Z"
 ---
 
 <summary>

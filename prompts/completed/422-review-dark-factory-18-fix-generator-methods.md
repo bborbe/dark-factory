@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Extracted sequential concerns in dockerSpecGenerator.Generate() into named helpers: isGitLocked(), isGenerationRunning(), resetSpecToApproved()'
+container: dark-factory-exec-422-review-dark-factory-18-fix-generator-methods
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T18:54:06Z"
+completed: "2026-05-25T18:59:39Z"
 ---
 
 <summary>

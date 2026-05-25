@@ -61,6 +61,26 @@ linters:
     maintidx:
       min-maintainability-index: 20
 
+    errcheck:
+      # Match the legacy standalone Makefile `-ignore '(Close|Write|Fprint)'` flag.
+      # Unchecked errors on these common I/O sinks are accepted project-wide.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (io.Writer).Write
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+
+    gosec:
+      # Match the legacy standalone Makefile `-exclude=G104,G115` flag.
+      # G104 (unhandled errors) is covered by errcheck above — avoid double-reporting.
+      # G115 (integer overflow conversion) is too noisy globally; a narrower exception
+      # exists below for pkg/lock/locker.go where it's a verified false positive.
+      excludes:
+        - G104
+        - G115
+
     revive:
       rules:
         # Total-line limit matches the CLAUDE.md rule (file > 2000 lines = smell).

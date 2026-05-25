@@ -99,45 +99,29 @@ func (g *dockerSpecGenerator) buildPromptContent(specPath string) string {
 // Generate runs the /generate-prompts-for-spec slash command for the given spec file,
 // then transitions the spec status to prompted if new prompt files were created.
 func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) error {
-	// Skip if .git/index.lock exists — will retry on next poll cycle
-	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
-		slog.Warn(
-			"git index lock exists, skipping spec generation — will retry next cycle",
-			"spec",
-			filepath.Base(specPath),
-		)
+	if g.isGitLocked() {
 		return nil
 	}
 
-	// a. Build prompt content
 	promptContent := g.buildPromptContent(specPath)
-
-	// b. Derive container name from spec filename
 	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
 	containerName := string(
 		prompt.ContainerName(string(g.projectName) + "-gen-" + specBasename).Sanitize(),
 	)
-
-	// c. Derive log file path
 	logFile := filepath.Join(g.logDir, "gen-"+specBasename+".log")
 
-	// Check if the generation container is already running (dark-factory restarted mid-generation)
-	running, err := g.containerChecker.IsRunning(ctx, containerName)
+	handled, err := g.isGenerationRunning(ctx, specPath, specBasename, containerName, logFile)
 	if err != nil {
-		slog.Warn("failed to check container liveness, starting fresh generation",
-			"container", containerName, "error", err)
-		running = false
+		return err
 	}
-	if running {
-		return g.reattachAndFinalize(ctx, specPath, specBasename, containerName, logFile)
+	if handled {
+		return nil
 	}
 
-	// Mark spec as generating before launching the container
 	if err := g.markSpecGenerating(ctx, specPath); err != nil {
 		return errors.Wrap(ctx, err, "mark spec generating")
 	}
 
-	// Ensure spec is reset to approved on any non-success return (unless cancelled).
 	prompted, err := g.executeAndFinalize(
 		ctx,
 		specPath,
@@ -148,20 +132,48 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 	)
 	if err != nil {
 		if !prompted && ctx.Err() == nil {
-			if resetErr := resetSpecToApproved(context.WithoutCancel(ctx), specPath, g.currentDateTimeGetter); resetErr != nil {
-				slog.Warn("failed to reset spec to approved after generation failure",
-					"spec", specBasename, "error", resetErr)
-			}
+			g.resetSpecToApproved(ctx, specPath)
 		}
 		return errors.Wrap(ctx, err, "execute and finalize")
 	}
 	if !prompted && ctx.Err() == nil {
-		if resetErr := resetSpecToApproved(context.WithoutCancel(ctx), specPath, g.currentDateTimeGetter); resetErr != nil {
-			slog.Warn("failed to reset spec to approved after generation skip",
-				"spec", specBasename, "error", resetErr)
-		}
+		g.resetSpecToApproved(ctx, specPath)
 	}
 	return nil
+}
+
+// isGitLocked returns true if .git/index.lock exists.
+func (g *dockerSpecGenerator) isGitLocked() bool {
+	if _, err := os.Stat(filepath.Join(".", ".git", "index.lock")); err == nil {
+		slog.Warn("git index lock exists, skipping spec generation — will retry next cycle")
+		return true
+	}
+	return false
+}
+
+// isGenerationRunning checks if the generation container is already running and
+// reattaches if so. Returns (true, nil) if reattached, (false, nil) if not running,
+// (false, err) on error checking.
+func (g *dockerSpecGenerator) isGenerationRunning(
+	ctx context.Context,
+	specPath string,
+	specBasename string,
+	containerName string,
+	logFile string,
+) (bool, error) {
+	running, err := g.containerChecker.IsRunning(ctx, containerName)
+	if err != nil {
+		slog.Warn("failed to check container liveness, starting fresh generation",
+			"container", containerName, "error", err)
+		return false, nil
+	}
+	if running {
+		if err := g.reattachAndFinalize(ctx, specPath, specBasename, containerName, logFile); err != nil {
+			return false, errors.Wrap(ctx, err, "reattach to spec generation container")
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 // markSpecGenerating loads the spec and sets its status to generating.
@@ -517,12 +529,16 @@ func (g *dockerSpecGenerator) listPromptsForSpec(
 }
 
 // resetSpecToApproved reloads the spec file and resets its status to approved.
-func resetSpecToApproved(
-	ctx context.Context,
-	specPath string,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) error {
-	sf, err := spec.Load(ctx, specPath, currentDateTimeGetter)
+func (g *dockerSpecGenerator) resetSpecToApproved(ctx context.Context, specPath string) {
+	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
+	if err := g.doResetSpecToApproved(ctx, specPath); err != nil {
+		slog.Warn("failed to reset spec to approved after generation",
+			"spec", specBasename, "error", err)
+	}
+}
+
+func (g *dockerSpecGenerator) doResetSpecToApproved(ctx context.Context, specPath string) error {
+	sf, err := spec.Load(ctx, specPath, g.currentDateTimeGetter)
 	if err != nil {
 		return errors.Wrap(ctx, err, "load spec for reset")
 	}

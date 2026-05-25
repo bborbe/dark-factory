@@ -71,7 +71,7 @@ test:
 	go test -mod=mod -p=$${GO_TEST_PARALLEL:-1} -cover -race $(shell go list -mod=mod ./... | grep -v /vendor/)
 
 .PHONY: check
-check: lint vet errcheck vulncheck osv-scanner gosec trivy
+check: lint vet vulncheck osv-scanner trivy
 
 .PHONY: lint
 lint:
@@ -81,9 +81,9 @@ lint:
 vet:
 	go vet -mod=mod $(shell go list -mod=mod ./... | grep -v /vendor/)
 
-.PHONY: errcheck
-errcheck:
-	go run -mod=mod github.com/kisielk/errcheck -ignore '(Close|Write|Fprint)' $(shell go list -mod=mod ./... | grep -v /vendor/ | grep -v k8s/client)
+# errcheck removed — embedded in golangci-lint (see .golangci.yml).
+# Standalone errcheck@v1.10.0 fatals under Go 1.26+ due to missing NeedDeps in package
+# loader. See docs/troubleshooting.md → "gosec / errcheck internal error under Go 1.26+".
 
 VULNCHECK_IGNORE ?= GO-2026-4923 GO-2026-4514 GO-2022-0470 GO-2026-4772 GO-2026-4771
 
@@ -116,14 +116,9 @@ osv-scanner:
 		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.1 --recursive .; \
 	fi
 
-.PHONY: gosec
-gosec:
-	go run -mod=mod github.com/securego/gosec/v2/cmd/gosec \
-	-exclude=G104,G115 \
-	-quiet \
-	-fmt=summary \
-	-severity=medium \
-	./...
+# gosec removed — embedded in golangci-lint (see .golangci.yml).
+# Standalone gosec v2.26.1 fatals under Go 1.26+ with the same NeedDeps issue as errcheck.
+# See docs/troubleshooting.md → "gosec / errcheck internal error under Go 1.26+".
 
 .PHONY: trivy
 trivy:

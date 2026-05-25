@@ -105,3 +105,65 @@ the minimal set of indirects required to satisfy it), keeping the diff small and
 If `make precommit` still fails after dependency bumps, the failure is not a vuln drift — read
 the error output and fix it before restarting the daemon. The daemon is intentionally strict
 about baseline health so prompts never execute against a broken tree.
+
+## gosec / errcheck internal error under Go 1.26+
+
+**Symptom:** `make precommit` fails inside the YOLO container (passes on host) with:
+
+```
+internal error: package "strconv" without types was imported from "go/build"
+exit status 1
+```
+
+The same error shape (`package "X" without types was imported from "Y"`) appears for the
+standalone `errcheck` target under Go 1.26.
+
+**Root cause:** Both `errcheck` and `gosec` load packages with `Mode: NeedSyntax | NeedTypes
+| NeedTypesInfo` — **without `NeedDeps`**. Under Go 1.26, the typechecker leaves transitive
+dependencies' `Types.Complete()` set to `false`, and `golang.org/x/tools/go/packages` fatals
+when it encounters one. The failure is intermittent because it depends on which packages get
+touched (specifically those pulling in `go/build` transitively, like anything that uses
+`strconv`).
+
+It surfaces in the container and not on the host because module-cache and GOMODCACHE state
+differ — the host happens to have warm types for the affected dep; the container hits the
+cold path.
+
+**Fix:** Drop the standalone `errcheck` and `gosec` targets from `Makefile`. golangci-lint
+embeds both linters with the correct loader (uses `NeedDeps`) and works on Go 1.26+.
+
+Per-project recipe:
+
+1. Remove `errcheck` and `gosec` from `check:` chain in `Makefile`
+2. Delete `.PHONY: errcheck` and `.PHONY: gosec` target blocks
+3. Confirm `.golangci.yml` enables both:
+   ```yaml
+   linters:
+     enable:
+       - errcheck
+       - gosec
+   ```
+4. Migrate any `-ignore` (errcheck) or `-exclude=GXXX` (gosec) flags into
+   `linters-settings`:
+   ```yaml
+   linters-settings:
+     errcheck:
+       exclude-functions:
+         - (io.Closer).Close
+         - (io.Writer).Write
+         - fmt.Fprint
+         - fmt.Fprintf
+         - fmt.Fprintln
+     gosec:
+       excludes:
+         - G104  # unhandled errors (delegated to errcheck)
+         - G115  # integer overflow conversion
+   ```
+5. Run `make precommit` — must pass.
+6. Commit.
+
+**Rejected alternatives:** pin Go to 1.25 (blocks unrelated upgrades), fork the tools and
+add `NeedDeps` (maintenance burden), wait for upstream fix (no ETA as of 2026-05).
+
+**Tracking:** the migration across all 35+ active Go projects is tracked in the personal
+vault task **Drop Standalone errcheck and gosec Makefile Targets**.

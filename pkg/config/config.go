@@ -684,7 +684,7 @@ func (c Config) ResolvedGitHubToken() string {
 	}
 	token := resolveEnvVar(c.GitHub.Token)
 	if token == "" {
-		slog.Warn("github.token configured but env var is empty, using default gh auth")
+		slog.Warn("token env var not set; falling back to default auth")
 	}
 	return token
 }
@@ -699,7 +699,11 @@ func (c Config) ResolvedBitbucketToken() string {
 	}
 	token := os.Getenv(c.Bitbucket.TokenEnv)
 	if token == "" {
-		slog.Warn("bitbucket.tokenEnv configured but env var is empty", "env", c.Bitbucket.TokenEnv)
+		slog.Warn(
+			"token env var not set; falling back to default auth",
+			"env",
+			c.Bitbucket.TokenEnv,
+		)
 	}
 	return token
 }

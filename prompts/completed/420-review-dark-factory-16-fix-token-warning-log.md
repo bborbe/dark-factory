@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced token configuration leak in GitHub and Bitbucket warning messages with opaque fallback message
+container: dark-factory-exec-420-review-dark-factory-16-fix-token-warning-log
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T18:48:22Z"
+completed: "2026-05-25T18:50:43Z"
 ---
 
 <summary>

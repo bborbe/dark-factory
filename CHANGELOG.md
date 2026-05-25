@@ -8,9 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.171.7
 
 - fix: Add shell metacharacter validation for preflightCommand in config validation to prevent command injection
+- fix: Redact token configuration in warning messages to avoid leaking whether a token is configured
 
 ## v0.171.6
 

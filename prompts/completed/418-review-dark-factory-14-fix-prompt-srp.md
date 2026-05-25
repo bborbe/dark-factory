@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Split oversized Manager in pkg/prompt/prompt.go into focused types: PromptStatusManager (status mutations), PromptScanner (directory queries), PromptMover (file operations), PromptFileLoader (file I/O); split RollbackMoveToCompleted into PrepareRollback (state prep) and RollbackMove (I/O)'
+container: dark-factory-exec-418-review-dark-factory-14-fix-prompt-srp
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T15:04:16Z"
+completed: "2026-05-25T15:10:17Z"
 ---
 
 <summary>

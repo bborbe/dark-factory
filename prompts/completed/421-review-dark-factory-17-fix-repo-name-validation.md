@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added repo name validation using regexp before constructing gh api URL in collaborator_fetcher.go to prevent path traversal
+container: dark-factory-exec-421-review-dark-factory-17-fix-repo-name-validation
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T18:50:47Z"
+completed: "2026-05-25T18:54:03Z"
 ---
 
 <summary>

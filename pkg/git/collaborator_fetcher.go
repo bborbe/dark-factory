@@ -8,10 +8,13 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/bborbe/errors"
 )
+
+var repoNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
 
 //counterfeiter:generate -o ../../mocks/collaborator-fetcher.go --fake-name CollaboratorFetcher . CollaboratorFetcher
 
@@ -119,6 +122,9 @@ type ghCollaboratorLister struct {
 }
 
 func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]string, error) {
+	if !repoNameRegexp.MatchString(repoName) {
+		return nil, errors.Errorf(ctx, "invalid repo name %q", repoName)
+	}
 	cmd := exec.CommandContext( //nolint:gosec
 		ctx,
 		"gh",
@@ -126,7 +132,7 @@ func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]str
 		"repos/"+repoName+"/collaborators",
 		"--jq",
 		".[].login",
-	) // #nosec G204 -- repoName from gh CLI, not user input
+	) // #nosec G204 -- repoName validated above
 	if l.ghToken != "" {
 		cmd.Env = append(os.Environ(), "GH_TOKEN="+l.ghToken)
 	}

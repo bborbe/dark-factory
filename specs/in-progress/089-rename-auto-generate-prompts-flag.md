@@ -116,7 +116,7 @@ Not applicable. The change is a local config-field rename + default flip on a CL
 
 **Repo-wide cleanup:**
 
-- [ ] No reference to the old name remains anywhere in the live tree (specs/completed/088 and this spec are the only allowed exceptions) — evidence: `git grep -i 'disableautogenerateprompts' -- ':!specs/completed/088-disable-auto-prompt-generation.md' ':!specs/rename-auto-generate-prompts-flag.md' ':!specs/in-progress/*rename-auto-generate-prompts-flag*' ':!specs/completed/*rename-auto-generate-prompts-flag*'` returns 0 lines.
+- [ ] No reference to the old name remains anywhere in the live code/config/docs tree — evidence: `git grep -i 'disableautogenerateprompts' -- ':!specs/completed/088-disable-auto-prompt-generation.md' ':!specs/**/*rename-auto-generate-prompts-flag*' ':!CHANGELOG.md' ':!main_internal_test.go' ':!prompts/completed/**'` returns 0 lines. Exemptions and rationale: (a) `specs/completed/088*` and the rename-spec files are historical record of the rename itself; (b) `CHANGELOG.md` contains the BREAKING-rename note + immutable legacy 088 entries that necessarily quote the old name; (c) `main_internal_test.go` contains the required negative-test asserting `--set disableAutoGeneratePrompts=true` returns an unknown-key error — the literal string must appear in the fixture; (d) `prompts/completed/**` contains historical prompt artifacts from spec 088 and this spec's own execution prompts — analogous to the `specs/completed/088*` exemption.
 - [ ] `make precommit` exits 0 — evidence: exit code 0.
 
 **Scenario coverage:** None. Same justification as spec 088 — the contract is "watcher calls generator iff `AutoGeneratePrompts == true`", observable via Counterfeiter mock assertions in `pkg/specwatcher/watcher_test.go`. Layering is covered by unit tests in `pkg/config/` and `main_internal_test.go`. No real container, no host integration, no E2E behavior change that is not directly observable via unit-level mocks. Per `docs/scenario-writing.md`, no scenario AC needed.
@@ -137,8 +137,15 @@ grep -nE 'AutoGeneratePrompts' pkg/specwatcher/watcher.go
 grep -nE 'autoGeneratePrompts(Source)?' pkg/factory/factory.go
 grep -n 'autoGeneratePrompts' main.go README.md docs/configuration.md
 
-# Reverse-grep: old name is gone from the live tree (specs/completed/088 + this spec excepted)
-git grep -i 'disableautogenerateprompts' -- ':!specs/completed/088-disable-auto-prompt-generation.md' ':!specs/**/rename-auto-generate-prompts-flag*'
+# Reverse-grep: old name is gone from the live code/config/docs tree.
+# Exemptions: spec 088 archive + this spec's own files; CHANGELOG (BREAKING note + legacy 088 entries);
+# main_internal_test.go (required negative-test fixture); prompts/completed/** (historical artifacts).
+git grep -i 'disableautogenerateprompts' \
+  -- ':!specs/completed/088-disable-auto-prompt-generation.md' \
+     ':!specs/**/*rename-auto-generate-prompts-flag*' \
+     ':!CHANGELOG.md' \
+     ':!main_internal_test.go' \
+     ':!prompts/completed/**'
 ```
 
 The reverse-grep MUST return 0 lines. Any other failure of forward-grep (line count below the asserted threshold) is a defect.
@@ -170,3 +177,17 @@ If the operator wants the pre-rename behavior (auto-gen ON), they add `autoGener
 ## Do-Nothing Option
 
 Keep `disableAutoGeneratePrompts` with auto-gen ON by default. The operator continues to opt out per project, which is the inverse of their actual workflow (most approvals want manual generation). The double-negative naming continues to confuse on every config audit. The cost of doing nothing is low per-incident but recurring; the cost of the rename is one bounded mechanical pass with no migration risk because this is a single-operator repo. Doing nothing is acceptable but strictly worse than the rename.
+
+## Verification Result
+
+**Verified:** 2026-05-25T20:52:41Z (HEAD 90b9667)
+**Binary:** /tmp/dark-factory-90b9667 (built from HEAD)
+**Scenario:** No runtime scenario per spec — observable via unit tests + grep gates.
+**Evidence:**
+- `go test ./pkg/config/...` → 274/274 Ginkgo specs PASS (incl. roundtrip parity Describe)
+- `go test ./pkg/specwatcher/...` → 14/14 specs PASS (gate tests at watcher_test.go:426, 457, 487, 494, 526)
+- `go test .` → 104/104 main suite specs PASS (AutoGeneratePrompts layering at main_internal_test.go:269, 279, 619, 664)
+- Forward-grep: `pkg/config/config.go:119` `AutoGeneratePrompts bool …autoGeneratePrompts,omitempty`; `pkg/config/loader.go:122,186,381-382`; `pkg/specwatcher/watcher.go:160` skip line `auto-generation disabled`; `pkg/factory/factory.go:151-152` log keys; `main.go:697,774,993,1015`; `README.md:153,155`; `docs/configuration.md:446,461,466,471-472,490-491`
+- Reverse-grep `git grep -i disableautogenerateprompts` with exemptions (`:!CHANGELOG.md` `:!main_internal_test.go` `:!prompts/completed/**` `:!specs/completed/088*` `:!specs/**/*rename-auto-generate-prompts-flag*`) → 0 hits
+- `make precommit` → exit 0 ("ready to commit")
+**Verdict:** PASS

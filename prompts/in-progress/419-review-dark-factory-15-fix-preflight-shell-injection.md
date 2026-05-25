@@ -1,12 +1,11 @@
 ---
-status: failed
+status: approved
 container: dark-factory-exec-419-review-dark-factory-15-fix-preflight-shell-injection
 dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
 started: "2026-05-25T18:31:53Z"
 completed: "2026-05-25T18:33:23Z"
-lastFailReason: 'validate completion report: completion report status: partial'
 ---
 
 <summary>

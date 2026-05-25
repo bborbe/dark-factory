@@ -31,14 +31,14 @@ Files to read before making changes:
 
 <requirements>
 
-1. **Update `commands/generate-prompts-for-spec.md`** — add a new final step section that runs `dark-factory spec mark-prompted` on the input spec. Place it AFTER the audit-pass paragraph that ends `...This front-loads the audit so the human reviewer sees the findings alongside the prompts without running /audit-prompt manually.` (currently the last paragraph of the file).
+1. **Update `commands/generate-prompts-for-spec.md`** — add a new final-step section that runs `dark-factory spec mark-prompted` on the input spec. Place it AFTER the audit-pass paragraph that ends `...This front-loads the audit so the human reviewer sees the findings alongside the prompts without running /audit-prompt manually.` (currently the last paragraph of the file).
 
-   Add a new section like this (verbatim — agents that run this command must parse it literally):
+   The block below uses **four backticks** as the outer fence so the inner triple-backtick `bash` block nests cleanly. Copy ONLY the content BETWEEN the four-backtick fences (i.e. the markdown starting with `**Finally, transition...` and ending with `...for re-runs.`) into `commands/generate-prompts-for-spec.md`. Do NOT copy the four-backtick fences themselves — they are only here to delimit the literal content for you.
 
-   ```markdown
+   ````markdown
    **Finally, transition the spec to `prompted`:** after the per-prompt audit pass completes (regardless of individual audit findings — finding-collection is non-blocking), invoke
 
-   ```
+   ```bash
    dark-factory spec mark-prompted <spec-basename>
    ```
 
@@ -50,10 +50,12 @@ Files to read before making changes:
 
    In both skip cases, surface the creator's report unchanged and exit — leaving the spec at its current status so the operator can inspect and re-run. This matches the auto path's `handleNoNewFiles` behavior in `pkg/generator/generator.go` (no `prompted` transition when zero files were produced).
 
-   The `spec mark-prompted` call is idempotent: if the spec is already in `status: prompted` (e.g. a previous run already transitioned it), the subcommand exits 0 with stdout `already prompted: <basename>` and the manual command continues normally. No special handling needed for re-runs.
-   ```
+   The `spec mark-prompted` call is idempotent: if the spec is already in `status: prompted` (e.g. a previous run already transitioned it, or the daemon's auto path ran first when `autoGeneratePrompts: true`), the subcommand exits 0 with stdout `already prompted: <basename>` and the manual command continues normally. No special handling needed for re-runs.
 
-   The triple-backticks for the inner `dark-factory spec mark-prompted <spec-basename>` block render as a fenced code block — keep them. The outer markdown frame uses triple-backticks at the start/end of this requirement; in the actual file, write the inner code block as a normal fenced block (no nesting trick — markdown only nests fences if outer fence uses more backticks; use four backticks for the outer or omit outer fencing if the file content can be added as-is).
+   **Race-window note:** the mark-prompted step is invoked unconditionally — there is no config check for `autoGeneratePrompts`. The idempotent CLI handles the "auto path already marked it" case cleanly. However, if the daemon is actively running the auto path for the SAME spec at the moment the operator triggers the manual command, both paths may race to write `status: prompted`. Last writer wins; no data corruption (single-file atomic `Save`). Operators should avoid running the manual command on a spec the daemon is currently processing.
+   ````
+
+   After writing, verify the destination file renders the inserted block as one paragraph + one fenced `bash` block + one bullet list + two trailing paragraphs (NOT as a code block containing the whole thing). If the render looks wrong, you over-copied the four-backtick fences — remove them.
 
 2. **Naming consistency**: the subcommand argument is the spec basename without `.md`. The CLI also accepts numeric prefix (`090`) and full filename (`090-foo.md`) — but the command file should instruct operators/agents to pass the unambiguous basename form for clarity. The spec AC requires only that `spec mark-prompted` appears in the file (`grep -n 'spec mark-prompted' commands/generate-prompts-for-spec.md` returns ≥1 line).
 

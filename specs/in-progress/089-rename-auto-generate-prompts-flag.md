@@ -1,10 +1,11 @@
 ---
-status: approved
+status: verifying
 tags:
     - dark-factory
     - spec
     - config
 approved: "2026-05-25T19:41:45Z"
+verifying: "2026-05-25T20:14:49Z"
 branch: dark-factory/rename-auto-generate-prompts-flag
 ---
 

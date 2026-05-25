@@ -137,7 +137,16 @@ Files to read before making changes:
 
    m. **Byte-identity test** vs. the generator's `SetStatus` sequence. In the test, given an `approved` fixture, perform the equivalent two `SetStatus` calls directly on a separately-loaded `spec.SpecFile` using the same `currentDateTimeGetter`, `Save` it to a sibling path, and assert the two files are byte-identical. Use a fixed-clock `currentDateTimeGetter` (see step 5) so timestamps are deterministic.
 
-5. **Fixed-clock setup for the byte-identity test**: use the `libtime` package's existing fixed-clock helper. Read `pkg/cmd/spec_complete_test.go` first — if it already uses a fixed clock for any test, copy the same pattern. If it uses `libtime.NewCurrentDateTime()` everywhere, use `libtime.NewCurrentDateTime()` in setup BUT for the byte-identity test specifically construct a deterministic getter. Check `github.com/bborbe/time` for the available constructor (search the vendored module or `grep -rn "currentDateTimeGetter" pkg/spec/` for fixed-time uses). If no deterministic constructor exists in `libtime`, instead use the same `currentDateTimeGetter` instance for both the CLI call and the manual `SetStatus` sequence and assert byte-identity within a single sub-second window: capture `time.Now()` before, run both writes back-to-back, capture `time.Now()` after, and assert the writes happened in the same second so RFC3339 timestamps match. Prefer the deterministic-clock approach if a constructor exists.
+5. **Fixed-clock setup for the byte-identity test**: `github.com/bborbe/time` exposes `CurrentDateTimeGetterFunc` (a func-type adapter for the `CurrentDateTimeGetter` interface). Use it to build a deterministic getter for the byte-identity test:
+
+   ```go
+   fixed := libtime.ParseDateTime(ctx, "2026-01-01T12:00:00Z") // or any RFC3339 literal
+   fixedClock := libtime.CurrentDateTimeGetterFunc(func() libtime.DateTime { return fixed })
+   ```
+
+   Inject `fixedClock` into BOTH the CLI command under test AND the parallel manual `SetStatus` sequence in the test, so all timestamps are identical by construction. Do NOT use `libtime.NewCurrentDateTime()` and rely on sub-second windows — that is flaky under CI load. Other tests in the file (status-mismatch, not-found, idempotent) can use `libtime.NewCurrentDateTime()` because they do not assert timestamp equality.
+
+   If `libtime.ParseDateTime` is not the actual parse function name, grep `vendor/github.com/bborbe/time/` for the public DateTime constructor and substitute. The pattern (build a fixed DateTime, wrap it in `CurrentDateTimeGetterFunc`) is the contract — the exact constructor call may differ.
 
 6. **Wire the factory**: in `pkg/factory/factory.go`, immediately after `CreateSpecCompleteCommand` (line ~1361-1372), add:
 

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Added GoDoc comments to 38 exported items across pkg/factory/factory.go and other packages, updated CHANGELOG.md
+container: dark-factory-exec-427-review-dark-factory-6-fix-factory-godoc
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:32:07Z"
+completed: "2026-05-25T19:35:48Z"
 ---
 
 <summary>

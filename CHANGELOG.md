@@ -8,6 +8,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.14
+
+- docs: Add GoDoc comments to 38 exported items in pkg/factory/factory.go
+- docs: Add GoDoc comments to exported items in pkg/config/workflow.go, pkg/processor/processor.go, pkg/processor/workflow_helpers.go, pkg/formatter/message.go, pkg/server/queue_action_handler.go, and pkg/server/inbox_handler.go
+
 ## v0.171.13
 
 - fix: Use caller's context in slog.Default().Enabled() call in runner.go instead of context.Background()

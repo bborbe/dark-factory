@@ -20,6 +20,7 @@ cd "$WORK_DIR/sandbox"
 cat > .dark-factory.yaml << 'YAML'
 workflow: direct
 autoRelease: false
+autoGeneratePrompts: true
 autoApprovePrompts: true
 maxContainers: 999
 YAML

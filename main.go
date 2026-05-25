@@ -555,8 +555,8 @@ func applyGlobalOverrides(
 	if global.AutoApprovePrompts != nil && proj.AutoApprovePrompts == nil {
 		cfg.AutoApprovePrompts = *global.AutoApprovePrompts
 	}
-	if global.DisableAutoGeneratePrompts != nil && proj.DisableAutoGeneratePrompts == nil {
-		cfg.DisableAutoGeneratePrompts = *global.DisableAutoGeneratePrompts
+	if global.AutoGeneratePrompts != nil && proj.AutoGeneratePrompts == nil {
+		cfg.AutoGeneratePrompts = *global.AutoGeneratePrompts
 	}
 }
 
@@ -570,15 +570,15 @@ func computeFieldSources(
 	proj config.LayeredProjectOverrides,
 ) config.FieldSources {
 	s := config.FieldSources{
-		HideGit:                    "default",
-		AutoRelease:                "default",
-		DirtyFileThreshold:         "default",
-		Model:                      "default",
-		Workflow:                   "default",
-		PR:                         "default",
-		AutoMerge:                  "default",
-		AutoApprovePrompts:         "default",
-		DisableAutoGeneratePrompts: "default",
+		HideGit:             "default",
+		AutoRelease:         "default",
+		DirtyFileThreshold:  "default",
+		Model:               "default",
+		Workflow:            "default",
+		PR:                  "default",
+		AutoMerge:           "default",
+		AutoApprovePrompts:  "default",
+		AutoGeneratePrompts: "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -595,8 +595,8 @@ func computeFieldSources(
 	if global.AutoApprovePrompts != nil {
 		s.AutoApprovePrompts = "global"
 	}
-	if global.DisableAutoGeneratePrompts != nil {
-		s.DisableAutoGeneratePrompts = "global"
+	if global.AutoGeneratePrompts != nil {
+		s.AutoGeneratePrompts = "global"
 	}
 	// Project overrides global (project wins)
 	if proj.Model != nil {
@@ -614,8 +614,8 @@ func computeFieldSources(
 	if proj.AutoApprovePrompts != nil {
 		s.AutoApprovePrompts = "project"
 	}
-	if proj.DisableAutoGeneratePrompts != nil {
-		s.DisableAutoGeneratePrompts = "project"
+	if proj.AutoGeneratePrompts != nil {
+		s.AutoGeneratePrompts = "project"
 	}
 	if proj.MaxContainers != nil {
 		s.MaxContainers = "project"
@@ -689,7 +689,7 @@ var supportedSetKeys = []string{
 	"workflow",
 	"pr",
 	"autoMerge",
-	"disableAutoGeneratePrompts",
+	"autoGeneratePrompts",
 }
 
 // parseSetFlags scans rawArgs for --set key=value occurrences, collects them into a
@@ -766,13 +766,13 @@ func applyOneSetOverride(
 		}
 		cfg.HideGit = b
 		sources.HideGit = "arg"
-	case "disableAutoGeneratePrompts":
+	case "autoGeneratePrompts":
 		b, err := parseStrictBool(ctx, key, value)
 		if err != nil {
 			return err
 		}
-		cfg.DisableAutoGeneratePrompts = b
-		sources.DisableAutoGeneratePrompts = "arg"
+		cfg.AutoGeneratePrompts = b
+		sources.AutoGeneratePrompts = "arg"
 	case "autoRelease":
 		b, err := parseStrictBool(ctx, key, value)
 		if err != nil {
@@ -984,7 +984,7 @@ func printRunHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, disableAutoGeneratePrompts\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, autoGeneratePrompts\n"+
 			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
 			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+
@@ -1006,7 +1006,7 @@ func printDaemonHelp() {
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
-			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, disableAutoGeneratePrompts\n"+
+			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, autoGeneratePrompts\n"+
 			"                          Bool example:   --set hideGit=true  --set pr=true  --set autoMerge=false\n"+
 			"                          Int example:    --set dirtyFileThreshold=5\n"+
 			"                          String example: --set model=claude-opus-4-7  --set workflow=branch\n"+

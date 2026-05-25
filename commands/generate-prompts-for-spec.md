@@ -6,7 +6,7 @@ allowed-tools: Task
 
 Invoke the `prompt-creator` agent to generate prompts from the approved spec.
 
-**When to reach for this command** (vs. letting the daemon auto-generate): you have `disableAutoGeneratePrompts: true` and want to trigger generation for a specific approved spec, or you want to re-generate prompts for a spec whose first attempt was rejected. See [docs/running.md § Two ways to generate prompts](../docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for the auto-vs-manual tradeoffs.
+**When to reach for this command** (vs. letting the daemon auto-generate): you have `autoGeneratePrompts: false` (the default) and want to trigger generation for a specific approved spec, or you want to re-generate prompts for a spec whose first attempt was rejected. See [docs/running.md § Two ways to generate prompts](../docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for the auto-vs-manual tradeoffs.
 
 **Context to pass to the agent:**
 

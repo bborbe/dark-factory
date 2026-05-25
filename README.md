@@ -150,9 +150,9 @@ model: claude-sonnet-4-6                             # Claude model
 claudeDir: ~/.claude-yolo                            # host claude config dir (default: ~/.claude-yolo)
 ```
 
-**User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`, `disableAutoGeneratePrompts`. Precedence: default ← global ← project ← CLI arg.
+**User-level defaults** in `~/.dark-factory/config.yaml` apply across every project that doesn't override them. Supports `model`, `hideGit`, `autoRelease`, `dirtyFileThreshold`, `maxContainers`, `autoGeneratePrompts`. Precedence: default ← global ← project ← CLI arg.
 
-**Spec→prompts can be auto or manual.** Default: the daemon auto-generates prompts when a spec is approved. Set `disableAutoGeneratePrompts: true` to defer generation and invoke `/dark-factory:generate-prompts-for-spec <spec-path>` by hand. See [docs/running.md § Two ways to generate prompts](docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for tradeoffs.
+**Spec→prompts can be auto or manual.** Default: the daemon does NOT auto-generate prompts when a spec is approved — invoke `/dark-factory:generate-prompts-for-spec <spec-path>` by hand. Set `autoGeneratePrompts: true` in `~/.dark-factory/config.yaml`, `.dark-factory.yaml`, or via `--set autoGeneratePrompts=true` to enable auto-generation. See [docs/running.md § Two ways to generate prompts](docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for tradeoffs.
 
 **Per-invocation CLI flags** for `run`/`daemon`: `--model NAME`, `--hide-git`, `--no-hide-git`, `--max-containers N`, `--skip-preflight`, `--auto-approve`. Override yaml without editing files.
 

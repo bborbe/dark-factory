@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.18
+
+- BREAKING: Renamed `disableAutoGeneratePrompts` to `autoGeneratePrompts` everywhere in config, CLI, factory, watcher, and docs. Polarity inverted: `autoGeneratePrompts: true` enables auto-generation, `false` (or unset) disables it. Default flipped from auto-gen ON to auto-gen OFF. Operators with `disableAutoGeneratePrompts` in `~/.dark-factory/config.yaml` or `.dark-factory.yaml` must rewrite to `autoGeneratePrompts: true` to preserve pre-rename behavior.
+
 ## v0.171.17
 
 - refactor: Reorder files to follow Interface → Struct → Constructor pattern in pkg/generator, pkg/queuescanner, pkg/subproc

@@ -93,6 +93,7 @@ var _ = Describe("SpecWatcher", func() {
 				gen,
 				200*time.Millisecond,
 				libtime.NewCurrentDateTime(),
+				true, // autoGenerate = true (gen enabled)
 			)
 
 			go func() {
@@ -170,6 +171,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		go func() {
@@ -208,6 +210,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		go func() {
@@ -242,6 +245,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		errCh := make(chan error, 1)
@@ -322,6 +326,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			50*time.Millisecond,
 			libtime.NewCurrentDateTime(),
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		go func() {
@@ -378,25 +383,31 @@ var _ = Describe("SpecWatcher", func() {
 	It("should work with relative paths", func() {
 		origDir, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
+		relInProgressDir := filepath.Join("specs", "in-progress")
+		absInProgressDir := filepath.Join(tempDir, relInProgressDir)
+		err = os.MkdirAll(absInProgressDir, 0750)
+		Expect(err).NotTo(HaveOccurred())
+		err = os.Chdir(tempDir)
+		Expect(err).NotTo(HaveOccurred())
 		defer func() {
 			_ = os.Chdir(origDir)
 		}()
 
-		err = os.Chdir(tempDir)
-		Expect(err).NotTo(HaveOccurred())
-
-		relInProgressDir := "specs-rel/in-progress"
-		err = os.MkdirAll(relInProgressDir, 0750)
-		Expect(err).NotTo(HaveOccurred())
-
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
+
+		// Create spec BEFORE starting the watcher.
+		specFile := filepath.Join(relInProgressDir, "rel-spec.md")
+		content := "---\nstatus: approved\n---\n# Rel Spec\n"
+		err = os.WriteFile(specFile, []byte(content), 0600)
+		Expect(err).NotTo(HaveOccurred())
 
 		w := specwatcher.NewSpecWatcher(
 			relInProgressDir,
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		go func() {
@@ -405,12 +416,6 @@ var _ = Describe("SpecWatcher", func() {
 
 		time.Sleep(100 * time.Millisecond)
 
-		absInProgressRelDir := filepath.Join(tempDir, relInProgressDir)
-		specFile := filepath.Join(absInProgressRelDir, "rel-spec.md")
-		content := "---\nstatus: approved\n---\n# Rel Spec\n"
-		err = os.WriteFile(specFile, []byte(content), 0600)
-		Expect(err).NotTo(HaveOccurred())
-
 		Eventually(func() int {
 			return gen.GenerateCallCount()
 		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
@@ -418,7 +423,7 @@ var _ = Describe("SpecWatcher", func() {
 		cancel()
 	})
 
-	It("does NOT call generator when disableAutoGenerate is true on new file event", func() {
+	It("does NOT call generator when autoGenerate is false on new file event", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
@@ -427,7 +432,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
-			true, // disableAutoGenerate = true
+			false, // autoGenerate = false (gen disabled)
 		)
 
 		go func() {
@@ -449,7 +454,7 @@ var _ = Describe("SpecWatcher", func() {
 		cancel()
 	})
 
-	It("logs INFO message when disableAutoGenerate is true", func() {
+	It("logs INFO message when autoGenerate is false", func() {
 		handler := &captureHandler{}
 		origLogger := slog.Default()
 		slog.SetDefault(slog.New(handler))
@@ -462,7 +467,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
-			true, // disableAutoGenerate = true
+			false, // autoGenerate = false (gen disabled)
 		)
 
 		go func() {
@@ -486,7 +491,7 @@ var _ = Describe("SpecWatcher", func() {
 	})
 
 	It(
-		"does NOT call generator when disableAutoGenerate is true for pre-existing spec on startup",
+		"does NOT call generator when autoGenerate is false for pre-existing spec on startup",
 		func() {
 			gen := &mocks.SpecGenerator{}
 			gen.GenerateReturns(nil)
@@ -502,7 +507,7 @@ var _ = Describe("SpecWatcher", func() {
 				gen,
 				200*time.Millisecond,
 				libtime.NewCurrentDateTime(),
-				true, // disableAutoGenerate = true
+				false, // autoGenerate = false (gen disabled)
 			)
 
 			go func() {
@@ -518,7 +523,7 @@ var _ = Describe("SpecWatcher", func() {
 		},
 	)
 
-	It("calls generator when disableAutoGenerate is false (default behavior)", func() {
+	It("calls generator when autoGenerate is true", func() {
 		gen := &mocks.SpecGenerator{}
 		gen.GenerateReturns(nil)
 
@@ -527,7 +532,7 @@ var _ = Describe("SpecWatcher", func() {
 			gen,
 			200*time.Millisecond,
 			libtime.NewCurrentDateTime(),
-			false, // disableAutoGenerate = false (default)
+			true, // autoGenerate = true (gen enabled)
 		)
 
 		go func() {

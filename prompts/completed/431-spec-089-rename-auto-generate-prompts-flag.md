@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["089"]
+summary: Renamed disableAutoGeneratePrompts to autoGeneratePrompts with inverted polarity across config, CLI, factory, watcher, tests, and docs. Default flipped from auto-gen ON to OFF.
+container: dark-factory-exec-431-spec-089-rename-auto-generate-prompts-flag
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-25T20:00:00Z"
 queued: "2026-05-25T19:55:50Z"
+started: "2026-05-25T20:00:02Z"
+completed: "2026-05-25T20:14:46Z"
 ---
 
 <summary>

@@ -148,8 +148,8 @@ func LogEffectiveConfig(
 		"hideGitSource", sources.HideGit,
 		"autoApprovePrompts", cfg.AutoApprovePrompts,
 		"autoApprovePromptsSource", sources.AutoApprovePrompts,
-		"disableAutoGeneratePrompts", cfg.DisableAutoGeneratePrompts,
-		"disableAutoGeneratePromptsSource", sources.DisableAutoGeneratePrompts,
+		"autoGeneratePrompts", cfg.AutoGeneratePrompts,
+		"autoGeneratePromptsSource", sources.AutoGeneratePrompts,
 		"dirtyFileThreshold", cfg.DirtyFileThreshold,
 		"dirtyFileThresholdSource", sources.DirtyFileThreshold,
 		"promptsInboxDir", cfg.Prompts.InboxDir,
@@ -706,7 +706,7 @@ func CreateSpecWatcher(
 		gen,
 		time.Duration(cfg.DebounceMs)*time.Millisecond,
 		currentDateTimeGetter,
-		cfg.DisableAutoGeneratePrompts,
+		cfg.AutoGeneratePrompts,
 	)
 }
 

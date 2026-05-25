@@ -31,16 +31,16 @@ func NewLoader() Loader {
 // explicitly set in .dark-factory.yaml. nil means the field was absent from the file
 // (so the default or global value applies). Non-nil means project explicitly set it.
 type LayeredProjectOverrides struct {
-	HideGit                    *bool
-	AutoRelease                *bool
-	DirtyFileThreshold         *int
-	Model                      *string
-	MaxContainers              *int      // included for completeness; maxContainers uses its own precedence path
-	Workflow                   *Workflow // non-nil when .dark-factory.yaml explicitly sets workflow
-	PR                         *bool     // non-nil when .dark-factory.yaml explicitly sets pr
-	AutoMerge                  *bool     // non-nil when .dark-factory.yaml explicitly sets autoMerge
-	AutoApprovePrompts         *bool     // non-nil when .dark-factory.yaml explicitly sets autoApprovePrompts
-	DisableAutoGeneratePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets disableAutoGeneratePrompts
+	HideGit             *bool
+	AutoRelease         *bool
+	DirtyFileThreshold  *int
+	Model               *string
+	MaxContainers       *int      // included for completeness; maxContainers uses its own precedence path
+	Workflow            *Workflow // non-nil when .dark-factory.yaml explicitly sets workflow
+	PR                  *bool     // non-nil when .dark-factory.yaml explicitly sets pr
+	AutoMerge           *bool     // non-nil when .dark-factory.yaml explicitly sets autoMerge
+	AutoApprovePrompts  *bool     // non-nil when .dark-factory.yaml explicitly sets autoApprovePrompts
+	AutoGeneratePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets autoGeneratePrompts
 }
 
 // LoadResult bundles the merged project config with information about which
@@ -104,30 +104,30 @@ type partialConfig struct {
 	VerificationGate  *bool                 `yaml:"verificationGate"`
 	// Removed fields kept as sentinels to detect legacy configs.
 	// loadWithOverrides returns a friendly error if any of these is set.
-	AutoReview                 *bool                `yaml:"autoReview"`
-	AllowedReviewers           []string             `yaml:"allowedReviewers,omitempty"`
-	UseCollaborators           *bool                `yaml:"useCollaborators"`
-	GitHub                     *GitHubConfig        `yaml:"github"`
-	Provider                   *Provider            `yaml:"provider"`
-	Bitbucket                  *BitbucketConfig     `yaml:"bitbucket"`
-	Notifications              *NotificationsConfig `yaml:"notifications"`
-	Env                        map[string]string    `yaml:"env,omitempty"`
-	ExtraMounts                []ExtraMount         `yaml:"extraMounts,omitempty"`
-	ClaudeDir                  *string              `yaml:"claudeDir"`
-	GenerateCommand            *string              `yaml:"generateCommand"`
-	AdditionalInstructions     *string              `yaml:"additionalInstructions,omitempty"`
-	MaxContainers              *int                 `yaml:"maxContainers,omitempty"`
-	DirtyFileThreshold         *int                 `yaml:"dirtyFileThreshold,omitempty"`
-	AutoApprovePrompts         *bool                `yaml:"autoApprovePrompts"`
-	DisableAutoGeneratePrompts *bool                `yaml:"disableAutoGeneratePrompts"`
-	MaxPromptDuration          *string              `yaml:"maxPromptDuration"`
-	AutoRetryLimit             *int                 `yaml:"autoRetryLimit"`
-	HideGit                    *bool                `yaml:"hideGit"`
-	PreflightCommand           *string              `yaml:"preflightCommand"`
-	PreflightInterval          *string              `yaml:"preflightInterval"`
-	QueueInterval              *string              `yaml:"queueInterval"`
-	SweepInterval              *string              `yaml:"sweepInterval"`
-	IdleLogInterval            *string              `yaml:"idleLogInterval"`
+	AutoReview             *bool                `yaml:"autoReview"`
+	AllowedReviewers       []string             `yaml:"allowedReviewers,omitempty"`
+	UseCollaborators       *bool                `yaml:"useCollaborators"`
+	GitHub                 *GitHubConfig        `yaml:"github"`
+	Provider               *Provider            `yaml:"provider"`
+	Bitbucket              *BitbucketConfig     `yaml:"bitbucket"`
+	Notifications          *NotificationsConfig `yaml:"notifications"`
+	Env                    map[string]string    `yaml:"env,omitempty"`
+	ExtraMounts            []ExtraMount         `yaml:"extraMounts,omitempty"`
+	ClaudeDir              *string              `yaml:"claudeDir"`
+	GenerateCommand        *string              `yaml:"generateCommand"`
+	AdditionalInstructions *string              `yaml:"additionalInstructions,omitempty"`
+	MaxContainers          *int                 `yaml:"maxContainers,omitempty"`
+	DirtyFileThreshold     *int                 `yaml:"dirtyFileThreshold,omitempty"`
+	AutoApprovePrompts     *bool                `yaml:"autoApprovePrompts"`
+	AutoGeneratePrompts    *bool                `yaml:"autoGeneratePrompts"`
+	MaxPromptDuration      *string              `yaml:"maxPromptDuration"`
+	AutoRetryLimit         *int                 `yaml:"autoRetryLimit"`
+	HideGit                *bool                `yaml:"hideGit"`
+	PreflightCommand       *string              `yaml:"preflightCommand"`
+	PreflightInterval      *string              `yaml:"preflightInterval"`
+	QueueInterval          *string              `yaml:"queueInterval"`
+	SweepInterval          *string              `yaml:"sweepInterval"`
+	IdleLogInterval        *string              `yaml:"idleLogInterval"`
 }
 
 // Load reads the config file, merges with defaults, validates, and returns the config.
@@ -174,16 +174,16 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 
 	// Capture the 4 layered user-pref fields before merging (pointer = explicitly set in project)
 	overrides := LayeredProjectOverrides{
-		HideGit:                    partial.HideGit,
-		AutoRelease:                partial.AutoRelease,
-		DirtyFileThreshold:         partial.DirtyFileThreshold,
-		Model:                      partial.Model,
-		MaxContainers:              partial.MaxContainers,
-		Workflow:                   partial.Workflow,
-		PR:                         partial.PR,
-		AutoMerge:                  partial.AutoMerge,
-		AutoApprovePrompts:         partial.AutoApprovePrompts,
-		DisableAutoGeneratePrompts: partial.DisableAutoGeneratePrompts,
+		HideGit:             partial.HideGit,
+		AutoRelease:         partial.AutoRelease,
+		DirtyFileThreshold:  partial.DirtyFileThreshold,
+		Model:               partial.Model,
+		MaxContainers:       partial.MaxContainers,
+		Workflow:            partial.Workflow,
+		PR:                  partial.PR,
+		AutoMerge:           partial.AutoMerge,
+		AutoApprovePrompts:  partial.AutoApprovePrompts,
+		AutoGeneratePrompts: partial.AutoGeneratePrompts,
 	}
 
 	// Detect removed config fields and return actionable errors.
@@ -378,8 +378,8 @@ func mergePartialSecurity(cfg *Config, partial *partialConfig) {
 	if partial.HideGit != nil {
 		cfg.HideGit = *partial.HideGit
 	}
-	if partial.DisableAutoGeneratePrompts != nil {
-		cfg.DisableAutoGeneratePrompts = *partial.DisableAutoGeneratePrompts
+	if partial.AutoGeneratePrompts != nil {
+		cfg.AutoGeneratePrompts = *partial.AutoGeneratePrompts
 	}
 }
 

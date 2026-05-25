@@ -43,7 +43,7 @@ When `dark-factory spec approve <name>` moves a spec to `status: approved`, prom
 | | Auto (default) | Manual |
 |---|----------------|--------|
 | **Trigger** | Daemon's spec watcher fires the generator container as soon as the spec hits `approved` | Operator invokes `/dark-factory:generate-prompts-for-spec <spec-path>` from a Claude Code session |
-| **Config** | `disableAutoGeneratePrompts: false` (default) | `disableAutoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.dark-factory/config.yaml`, or `--set disableAutoGeneratePrompts=true` |
+| **Config** | `autoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.dark-factory/config.yaml`, or `--set autoGeneratePrompts=true` | `autoGeneratePrompts: false` (default) |
 | **Daemon role** | Generator + auditor + approver + executor all in one continuous loop | Daemon only executes prompts after the operator queues them; spec stays at `status: approved` until the operator acts |
 | **Latency** | Seconds after `spec approve` | Whenever the operator runs the command |
 | **LLM cost timing** | Spent immediately on approve | Deferred until operator decides |
@@ -71,14 +71,14 @@ Per-project (persistent):
 
 ```yaml
 # .dark-factory.yaml
-disableAutoGeneratePrompts: true   # or false
+autoGeneratePrompts: true   # or false
 ```
 
 Per-invocation (no yaml editing):
 
 ```bash
-dark-factory daemon --set disableAutoGeneratePrompts=true
-dark-factory run    --set disableAutoGeneratePrompts=false
+dark-factory daemon --set autoGeneratePrompts=true
+dark-factory run    --set autoGeneratePrompts=false
 ```
 
 Manual command (when auto is disabled):

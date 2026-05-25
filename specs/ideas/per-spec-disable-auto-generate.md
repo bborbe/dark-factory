@@ -11,7 +11,7 @@ tags:
 
 - Per-spec frontmatter override `disableAutoGenerate: true` on individual spec files, opting out of auto-generation for one spec while leaving the global / project flag at its default.
 - Zero-value (key absent) preserves the global flag's behavior.
-- Touches `pkg/spec/spec.go` `Frontmatter` struct, the watcher's gate check (which today only consults `Config.DisableAutoGeneratePrompts`), and any spec-creation tooling that writes frontmatter.
+- Touches `pkg/spec/spec.go` `Frontmatter` struct, the watcher's gate check (which today only consults `Config.AutoGeneratePrompts`), and any spec-creation tooling that writes frontmatter.
 
 ## See also
 

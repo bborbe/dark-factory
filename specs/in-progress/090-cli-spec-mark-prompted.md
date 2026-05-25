@@ -1,8 +1,10 @@
 ---
+status: approved
 tags:
-  - dark-factory
-  - spec
-status: draft
+    - dark-factory
+    - spec
+approved: "2026-05-25T20:01:28Z"
+branch: dark-factory/cli-spec-mark-prompted
 ---
 
 ## Summary
@@ -38,7 +40,7 @@ After this spec ships, every spec for which prompts have been successfully gener
 4. When the resolved spec is already in `status: prompted`, the subcommand exits 0 and prints a single-line message stating the spec is already prompted (no frontmatter write, idempotent).
 5. When the resolved spec is in any other status (e.g. `idea`, `draft`, `verifying`, `completed`, `rejected`, `hold`), the subcommand exits non-zero with an error message naming the current status and the rule that was violated.
 6. When the spec id-or-name cannot be resolved to exactly one spec, the subcommand exits non-zero with an error message.
-7. The manual command `commands/generate-prompts-for-spec.md` invokes `dark-factory spec mark-prompted` on the input spec as its final step, only after the prompt-creator agent has reported success and produced at least one prompt file. If the prompt-creator wrote zero files or reported failure, the mark-prompted step is skipped (matching the auto path's `handleNoNewFiles` behavior of not marking prompted).
+7. The manual command `commands/generate-prompts-for-spec.md` invokes `dark-factory spec mark-prompted` on the input spec as its final step, only after the prompt-creator agent has reported success and produced at least one prompt file. The success gate is the existing per-prompt audit loop in `commands/generate-prompts-for-spec.md` (the step that runs `prompt-auditor` against each created file); mark-prompted runs after that loop completes without error. If the prompt-creator wrote zero files or reported failure, the mark-prompted step is skipped (matching the auto path's `handleNoNewFiles` behavior of not marking prompted).
 8. `docs/running.md` § "Two ways to generate prompts from an approved spec" describes the manual path as performing the same `approved → prompted` lifecycle transition as the auto path.
 
 ## Constraints

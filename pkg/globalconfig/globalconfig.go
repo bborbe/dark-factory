@@ -43,14 +43,14 @@ var userHomeDir = os.UserHomeDir
 // It is loaded from ~/.dark-factory/config.yaml once at daemon startup.
 // When the file does not exist or the field is omitted, defaults apply.
 type GlobalConfig struct {
-	MaxContainers              int               `yaml:"maxContainers"`
-	HideGit                    *bool             `yaml:"hideGit,omitempty"`
-	AutoRelease                *bool             `yaml:"autoRelease,omitempty"`
-	DirtyFileThreshold         *int              `yaml:"dirtyFileThreshold,omitempty"`
-	Model                      *string           `yaml:"model,omitempty"`
-	AutoApprovePrompts         *bool             `yaml:"autoApprovePrompts,omitempty"`
-	DisableAutoGeneratePrompts *bool             `yaml:"disableAutoGeneratePrompts,omitempty"`
-	Env                        map[string]string `yaml:"env,omitempty"`
+	MaxContainers       int               `yaml:"maxContainers"`
+	HideGit             *bool             `yaml:"hideGit,omitempty"`
+	AutoRelease         *bool             `yaml:"autoRelease,omitempty"`
+	DirtyFileThreshold  *int              `yaml:"dirtyFileThreshold,omitempty"`
+	Model               *string           `yaml:"model,omitempty"`
+	AutoApprovePrompts  *bool             `yaml:"autoApprovePrompts,omitempty"`
+	AutoGeneratePrompts *bool             `yaml:"autoGeneratePrompts,omitempty"`
+	Env                 map[string]string `yaml:"env,omitempty"`
 }
 
 // Validate validates the GlobalConfig fields.
@@ -177,14 +177,14 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 
 	// partial struct to detect which fields were set (vs omitted)
 	var partial struct {
-		MaxContainers              *int              `yaml:"maxContainers"`
-		HideGit                    *bool             `yaml:"hideGit"`
-		AutoRelease                *bool             `yaml:"autoRelease"`
-		DirtyFileThreshold         *int              `yaml:"dirtyFileThreshold"`
-		Model                      *string           `yaml:"model"`
-		AutoApprovePrompts         *bool             `yaml:"autoApprovePrompts"`
-		DisableAutoGeneratePrompts *bool             `yaml:"disableAutoGeneratePrompts"`
-		Env                        map[string]string `yaml:"env,omitempty"`
+		MaxContainers       *int              `yaml:"maxContainers"`
+		HideGit             *bool             `yaml:"hideGit"`
+		AutoRelease         *bool             `yaml:"autoRelease"`
+		DirtyFileThreshold  *int              `yaml:"dirtyFileThreshold"`
+		Model               *string           `yaml:"model"`
+		AutoApprovePrompts  *bool             `yaml:"autoApprovePrompts"`
+		AutoGeneratePrompts *bool             `yaml:"autoGeneratePrompts"`
+		Env                 map[string]string `yaml:"env,omitempty"`
 	}
 	if err := yaml.Unmarshal(data, &partial); err != nil {
 		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: parse config file")
@@ -208,8 +208,8 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	if partial.AutoApprovePrompts != nil {
 		cfg.AutoApprovePrompts = partial.AutoApprovePrompts
 	}
-	if partial.DisableAutoGeneratePrompts != nil {
-		cfg.DisableAutoGeneratePrompts = partial.DisableAutoGeneratePrompts
+	if partial.AutoGeneratePrompts != nil {
+		cfg.AutoGeneratePrompts = partial.AutoGeneratePrompts
 	}
 	if partial.Env != nil {
 		cfg.Env = partial.Env

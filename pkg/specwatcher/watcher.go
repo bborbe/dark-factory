@@ -29,24 +29,25 @@ type SpecWatcher interface {
 }
 
 // NewSpecWatcher creates a new SpecWatcher.
-// An optional bool can be passed as the 5th argument to disable auto-generation.
+// An optional bool can be passed as the 5th argument to enable auto-generation.
+// When the optional arg is omitted, auto-generation defaults to false (disabled).
 func NewSpecWatcher(
 	inProgressDir string,
 	generator generator.SpecGenerator,
 	debounce time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	optionalDisableAutoGenerate ...bool,
+	optionalAutoGenerate ...bool,
 ) SpecWatcher {
-	disableAutoGenerate := false
-	if len(optionalDisableAutoGenerate) > 0 {
-		disableAutoGenerate = optionalDisableAutoGenerate[0]
+	autoGenerate := false
+	if len(optionalAutoGenerate) > 0 {
+		autoGenerate = optionalAutoGenerate[0]
 	}
 	return &specWatcher{
 		inProgressDir:         inProgressDir,
 		generator:             generator,
 		debounce:              debounce,
 		currentDateTimeGetter: currentDateTimeGetter,
-		disableAutoGenerate:   disableAutoGenerate,
+		autoGenerate:          autoGenerate,
 	}
 }
 
@@ -57,7 +58,7 @@ type specWatcher struct {
 	debounce              time.Duration
 	mu                    sync.Mutex
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	disableAutoGenerate   bool
+	autoGenerate          bool
 }
 
 // Watch starts watching the in-progress directory for new spec files.
@@ -154,7 +155,7 @@ func (w *specWatcher) handleFileEvent(ctx context.Context, specPath string) {
 		return
 	}
 
-	if w.disableAutoGenerate {
+	if !w.autoGenerate {
 		slog.Info(
 			"spec approved — auto-generation disabled, run /dark-factory:generate-prompts-for-spec <spec-path> manually",
 			"path",

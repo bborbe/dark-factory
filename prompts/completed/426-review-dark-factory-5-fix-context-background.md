@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced context.Background() with ctx in slog.Default().Enabled() call at pkg/runner/runner.go:161
+container: dark-factory-exec-426-review-dark-factory-5-fix-context-background
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:29:35Z"
+completed: "2026-05-25T19:32:03Z"
 ---
 
 <summary>

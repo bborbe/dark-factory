@@ -158,7 +158,7 @@ func (r *runner) Run(ctx context.Context) error {
 			defer closer.Close()
 		}
 		level := slog.LevelInfo
-		if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			level = slog.LevelDebug
 		}
 		w := io.MultiWriter(os.Stderr, r.logWriter)

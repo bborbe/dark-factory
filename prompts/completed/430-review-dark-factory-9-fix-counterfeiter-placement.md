@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: 'Reordered files to follow Interface → Struct → Constructor pattern: moved NewSpecGenerator after dockerSpecGenerator in generator.go, moved NewScanner after scanner struct in queuescanner.go, moved counterfeiter directive directly above Runner interface in subproc.go, and added refactor entry to CHANGELOG.md'
+container: dark-factory-exec-430-review-dark-factory-9-fix-counterfeiter-placement
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:56:12Z"
+completed: "2026-05-25T19:59:58Z"
 ---
 
 <summary>

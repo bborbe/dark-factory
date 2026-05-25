@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.171.17
+
+- refactor: Reorder files to follow Interface → Struct → Constructor pattern in pkg/generator, pkg/queuescanner, pkg/subproc
+
 ## v0.171.16
 
 - refactor: Extract switch dispatch from CreateWorkflowExecutor into WorkflowExecutorProvider interface

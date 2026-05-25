@@ -17,13 +17,13 @@ import (
 	"github.com/bborbe/run"
 )
 
-//counterfeiter:generate -o ../../mocks/subproc-runner.go --fake-name SubprocRunner . Runner
-
 // Default thresholds for RunWithWarnAndTimeout.
 const (
 	DefaultWarnAfter = 3 * time.Second
 	DefaultTimeout   = 10 * time.Second
 )
+
+//counterfeiter:generate -o ../../mocks/subproc-runner.go --fake-name SubprocRunner . Runner
 
 // Runner runs short subprocesses with warn + timeout semantics.
 type Runner interface {

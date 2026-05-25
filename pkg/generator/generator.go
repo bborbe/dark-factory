@@ -29,6 +29,25 @@ type SpecGenerator interface {
 	Generate(ctx context.Context, specPath string) error
 }
 
+// dockerSpecGenerator implements SpecGenerator using the Docker executor.
+type dockerSpecGenerator struct {
+	projectName            project.Name
+	executor               executor.Executor
+	containerChecker       executor.ContainerChecker
+	inboxDir               string
+	completedDir           string
+	specsDir               string
+	logDir                 string
+	currentDateTimeGetter  libtime.CurrentDateTimeGetter
+	slugMigrator           slugmigrator.Migrator
+	generateCommand        string
+	additionalInstructions string
+	maxPromptDuration      time.Duration
+	promptManager          PromptManager
+	autoApprovePrompts     bool
+	queueDir               string // in-progress dir; prompts are approved into here
+}
+
 // NewSpecGenerator creates a new SpecGenerator that runs the /generate-prompts-for-spec command.
 // containerChecker is used to detect whether a generation container is already running on restart.
 func NewSpecGenerator(
@@ -65,25 +84,6 @@ func NewSpecGenerator(
 		autoApprovePrompts:     autoApprovePrompts,
 		queueDir:               queueDir,
 	}
-}
-
-// dockerSpecGenerator implements SpecGenerator using the Docker executor.
-type dockerSpecGenerator struct {
-	projectName            project.Name
-	executor               executor.Executor
-	containerChecker       executor.ContainerChecker
-	inboxDir               string
-	completedDir           string
-	specsDir               string
-	logDir                 string
-	currentDateTimeGetter  libtime.CurrentDateTimeGetter
-	slugMigrator           slugmigrator.Migrator
-	generateCommand        string
-	additionalInstructions string
-	maxPromptDuration      time.Duration
-	promptManager          PromptManager
-	autoApprovePrompts     bool
-	queueDir               string // in-progress dir; prompts are approved into here
 }
 
 // buildPromptContent assembles the full prompt content for spec generation,

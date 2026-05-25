@@ -55,6 +55,16 @@ type Scanner interface {
 	ClearSkippedCache()
 }
 
+// scanner implements Scanner.
+type scanner struct {
+	promptManager   PromptManager
+	promptProcessor PromptProcessor
+	failureHandler  failurehandler.Handler
+	queueDir        string
+	lastBlockedMsg  string
+	skippedPrompts  map[string]libtime.DateTime // filename → mod time when skipped
+}
+
 // NewScanner creates a new Scanner.
 func NewScanner(
 	promptManager PromptManager,
@@ -69,16 +79,6 @@ func NewScanner(
 		queueDir:        queueDir,
 		skippedPrompts:  make(map[string]libtime.DateTime),
 	}
-}
-
-// scanner implements Scanner.
-type scanner struct {
-	promptManager   PromptManager
-	promptProcessor PromptProcessor
-	failureHandler  failurehandler.Handler
-	queueDir        string
-	lastBlockedMsg  string
-	skippedPrompts  map[string]libtime.DateTime // filename → mod time when skipped
 }
 
 // ClearSkippedCache clears the skip cache so all files are re-evaluated on the next scan.

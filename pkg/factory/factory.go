@@ -1060,7 +1060,8 @@ func CreateServer(
 		libhttp.NewErrorHandler(server.NewCompletedHandler(statusChecker)),
 	)
 
-	// Create server with libhttp (includes sane defaults for timeouts)
+	// Create server with libhttp (sane defaults: ReadHeaderTimeout 10s, ReadTimeout 30s,
+	// WriteTimeout 30s, IdleTimeout 60s, MaxHeaderBytes 1MB — sufficient for dark-factory threat model)
 	runFunc := libhttp.NewServer(addr, mux)
 	return server.NewServer(runFunc)
 }

@@ -1,10 +1,12 @@
 ---
-status: executing
+status: completed
+summary: Verified libhttp.NewServer timeout defaults (ReadHeaderTimeout 10s, ReadTimeout 30s, WriteTimeout 30s, IdleTimeout 60s, MaxHeaderBytes 1MB) are sufficient for dark-factory threat model and documented the decision in code comment and CHANGELOG.md
 container: dark-factory-exec-423-review-dark-factory-2-fix-http-server-timeouts
 dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
 started: "2026-05-25T18:59:43Z"
+completed: "2026-05-25T19:04:34Z"
 ---
 
 <summary>

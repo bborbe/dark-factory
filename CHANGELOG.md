@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.171.12
 
 - fix: Add exit checks to cd commands in scenarios/helper/lib.sh to prevent silent failure on directory change errors
 

@@ -17,10 +17,20 @@ go build -C ~/Documents/workspaces/dark-factory -o /tmp/new-dark-factory .
 WORK_DIR=$(mktemp -d)
 cp -r ~/Documents/workspaces/dark-factory-sandbox "$WORK_DIR/dark-factory-sandbox"
 cd "$WORK_DIR/dark-factory-sandbox"
-cat > .dark-factory.yaml << 'YAML'
+
+# preflightCommand validation rejects shell metacharacters (security hardening),
+# so the command must be a path to an executable, not an inline shell snippet.
+cat > "$WORK_DIR/baseline-fail.sh" << 'SCRIPT'
+#!/bin/sh
+echo BASELINE_BROKEN_MARKER >&2
+exit 1
+SCRIPT
+chmod +x "$WORK_DIR/baseline-fail.sh"
+
+cat > .dark-factory.yaml << YAML
 pr: false
 worktree: false
-preflightCommand: "sh -c 'echo BASELINE_BROKEN_MARKER >&2; exit 1'"
+preflightCommand: "$WORK_DIR/baseline-fail.sh"
 preflightInterval: "0s"
 maxContainers: 999
 YAML
@@ -28,7 +38,8 @@ git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"
 ```
 
-- [ ] `.dark-factory.yaml` sets a failing `preflightCommand` (guaranteed exit 1)
+- [ ] `.dark-factory.yaml` sets a failing `preflightCommand` (path to `baseline-fail.sh`, guaranteed exit 1)
+- [ ] `$WORK_DIR/baseline-fail.sh` exists and is executable
 - [ ] Remote points to local bare repo
 
 ## Confirm baseline gate is active without flag

@@ -631,17 +631,17 @@ var _ = Describe("rejected status", func() {
 	Describe("valid reject transitions succeed", func() {
 		It("idea → rejected", func() {
 			Expect(
-				prompt.IdeaPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+				prompt.IdeaPromptStatus.CanTransitionTo(ctx, prompt.RejectedPromptStatus),
 			).To(Succeed())
 		})
 		It("draft → rejected", func() {
 			Expect(
-				prompt.DraftPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+				prompt.DraftPromptStatus.CanTransitionTo(ctx, prompt.RejectedPromptStatus),
 			).To(Succeed())
 		})
 		It("approved → rejected", func() {
 			Expect(
-				prompt.ApprovedPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+				prompt.ApprovedPromptStatus.CanTransitionTo(ctx, prompt.RejectedPromptStatus),
 			).To(Succeed())
 		})
 	})
@@ -649,17 +649,17 @@ var _ = Describe("rejected status", func() {
 	Describe("no outgoing edges from rejected; non-pre-execution cannot be rejected", func() {
 		It("rejected cannot transition to draft", func() {
 			Expect(
-				prompt.RejectedPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+				prompt.RejectedPromptStatus.CanTransitionTo(ctx, prompt.DraftPromptStatus),
 			).To(HaveOccurred())
 		})
 		It("executing cannot transition to rejected", func() {
 			Expect(
-				prompt.ExecutingPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+				prompt.ExecutingPromptStatus.CanTransitionTo(ctx, prompt.RejectedPromptStatus),
 			).To(HaveOccurred())
 		})
 		It("completed cannot transition to rejected", func() {
 			Expect(
-				prompt.CompletedPromptStatus.CanTransitionTo(prompt.RejectedPromptStatus),
+				prompt.CompletedPromptStatus.CanTransitionTo(ctx, prompt.RejectedPromptStatus),
 			).To(HaveOccurred())
 		})
 	})
@@ -1312,30 +1312,30 @@ var _ = Describe("Frontmatter spec field", func() {
 		Describe("CanTransitionTo", func() {
 			It("allows valid forward transitions", func() {
 				Expect(
-					prompt.IdeaPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+					prompt.IdeaPromptStatus.CanTransitionTo(ctx, prompt.DraftPromptStatus),
 				).To(Succeed())
 				Expect(
-					prompt.DraftPromptStatus.CanTransitionTo(prompt.ApprovedPromptStatus),
+					prompt.DraftPromptStatus.CanTransitionTo(ctx, prompt.ApprovedPromptStatus),
 				).To(Succeed())
 				Expect(
-					prompt.ApprovedPromptStatus.CanTransitionTo(prompt.ExecutingPromptStatus),
+					prompt.ApprovedPromptStatus.CanTransitionTo(ctx, prompt.ExecutingPromptStatus),
 				).To(Succeed())
 				Expect(
-					prompt.FailedPromptStatus.CanTransitionTo(prompt.ApprovedPromptStatus),
+					prompt.FailedPromptStatus.CanTransitionTo(ctx, prompt.ApprovedPromptStatus),
 				).To(Succeed())
 				Expect(
 					prompt.PendingVerificationPromptStatus.CanTransitionTo(
-						prompt.CompletedPromptStatus,
+						ctx, prompt.CompletedPromptStatus,
 					),
 				).To(Succeed())
 			})
 			It("allows unapprove edge: approved → draft", func() {
 				Expect(
-					prompt.ApprovedPromptStatus.CanTransitionTo(prompt.DraftPromptStatus),
+					prompt.ApprovedPromptStatus.CanTransitionTo(ctx, prompt.DraftPromptStatus),
 				).To(Succeed())
 			})
 			It("rejects invalid transition", func() {
-				err := prompt.DraftPromptStatus.CanTransitionTo(prompt.CompletedPromptStatus)
+				err := prompt.DraftPromptStatus.CanTransitionTo(ctx, prompt.CompletedPromptStatus)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(ContainSubstring("draft")))
 				Expect(err).To(MatchError(ContainSubstring("completed")))

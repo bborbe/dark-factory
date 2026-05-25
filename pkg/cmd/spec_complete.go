@@ -57,7 +57,7 @@ func (s *specCompleteCommand) Run(ctx context.Context, args []string) error {
 	// searching all dirs for convenience
 	path, err := FindSpecFileInDirs(ctx, id, s.inboxDir, s.inProgressDir, s.completedDir)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "find spec file")
 	}
 
 	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
@@ -65,7 +65,7 @@ func (s *specCompleteCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusCompleted); err != nil {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(ctx, spec.StatusCompleted); err != nil {
 		return errors.Errorf(
 			ctx,
 			"spec is not in verifying state (current: %s)",

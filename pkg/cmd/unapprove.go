@@ -67,7 +67,7 @@ func (u *unapproveCommand) unapproveFromQueue(ctx context.Context, oldPath strin
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	if err := prompt.PromptStatus(pf.Frontmatter.Status).CanTransitionTo(prompt.DraftPromptStatus); err != nil {
+	if err := prompt.PromptStatus(pf.Frontmatter.Status).CanTransitionTo(ctx, prompt.DraftPromptStatus); err != nil {
 		return errors.Errorf(
 			ctx,
 			"cannot unapprove prompt with status %q: only approved prompts can be unapproved",

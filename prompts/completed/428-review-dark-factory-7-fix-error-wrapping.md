@@ -1,7 +1,12 @@
 ---
-status: approved
+status: completed
+summary: Replaced fmt.Errorf with errors.Errorf and bare return err with errors.Wrap across 14 pkg/ files; added ctx parameter to CanTransitionTo methods; updated all callers and test files
+container: dark-factory-exec-428-review-dark-factory-7-fix-error-wrapping
+dark-factory-version: v0.171.1-3-gd94f1fa
 created: "2026-05-24T00:00:00Z"
 queued: "2026-05-25T14:51:20Z"
+started: "2026-05-25T19:35:52Z"
+completed: "2026-05-25T19:43:29Z"
 ---
 
 <summary>

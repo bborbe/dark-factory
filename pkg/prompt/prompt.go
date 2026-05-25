@@ -136,13 +136,13 @@ var promptTransitions = map[PromptStatus][]PromptStatus{
 
 // CanTransitionTo returns nil if transitioning from s to target is valid,
 // or an error naming both states if the transition is not in the table.
-func (s PromptStatus) CanTransitionTo(target PromptStatus) error {
+func (s PromptStatus) CanTransitionTo(ctx context.Context, target PromptStatus) error {
 	for _, allowed := range promptTransitions[s] {
 		if allowed == target {
 			return nil
 		}
 	}
-	return fmt.Errorf("cannot transition prompt from %q to %q", s, target)
+	return errors.Errorf(ctx, "cannot transition prompt from %q to %q", s, target)
 }
 
 // IsTerminal returns true if the prompt has reached a final, non-actionable state.
@@ -233,7 +233,11 @@ func (s *SpecList) UnmarshalYAML(value *yaml.Node) error {
 		*s = SpecList(slice)
 		return nil
 	default:
-		return fmt.Errorf("unexpected YAML node kind for spec: %v", value.Kind)
+		return errors.Errorf(
+			context.Background(),
+			"unexpected YAML node kind for spec: %v",
+			value.Kind,
+		)
 	}
 }
 

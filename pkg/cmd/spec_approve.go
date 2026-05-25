@@ -55,7 +55,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 	id := args[0]
 	path, err := FindSpecFile(ctx, s.inboxDir, id)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "find spec file")
 	}
 
 	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
@@ -63,7 +63,7 @@ func (s *specApproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusApproved); err != nil {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(ctx, spec.StatusApproved); err != nil {
 		return errors.Errorf(ctx, "spec is already approved")
 	}
 

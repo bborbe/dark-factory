@@ -100,13 +100,13 @@ var specTransitions = map[Status][]Status{
 
 // CanTransitionTo returns nil if transitioning from s to target is valid,
 // or an error naming both states if the transition is not in the table.
-func (s Status) CanTransitionTo(target Status) error {
+func (s Status) CanTransitionTo(ctx context.Context, target Status) error {
 	for _, allowed := range specTransitions[s] {
 		if allowed == target {
 			return nil
 		}
 	}
-	return fmt.Errorf("cannot transition spec from %q to %q", s, target)
+	return errors.Errorf(ctx, "cannot transition spec from %q to %q", s, target)
 }
 
 // IsTerminal returns true if the spec has reached a final, non-actionable state.

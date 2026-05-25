@@ -369,24 +369,24 @@ var _ = Describe("Status lifecycle model", func() {
 
 	Describe("CanTransitionTo", func() {
 		It("allows valid forward transitions", func() {
-			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusDraft)).To(Succeed())
-			Expect(spec.StatusDraft.CanTransitionTo(spec.StatusApproved)).To(Succeed())
-			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusGenerating)).To(Succeed())
-			Expect(spec.StatusGenerating.CanTransitionTo(spec.StatusPrompted)).To(Succeed())
-			Expect(spec.StatusPrompted.CanTransitionTo(spec.StatusVerifying)).To(Succeed())
-			Expect(spec.StatusVerifying.CanTransitionTo(spec.StatusCompleted)).To(Succeed())
+			Expect(spec.StatusIdea.CanTransitionTo(ctx, spec.StatusDraft)).To(Succeed())
+			Expect(spec.StatusDraft.CanTransitionTo(ctx, spec.StatusApproved)).To(Succeed())
+			Expect(spec.StatusApproved.CanTransitionTo(ctx, spec.StatusGenerating)).To(Succeed())
+			Expect(spec.StatusGenerating.CanTransitionTo(ctx, spec.StatusPrompted)).To(Succeed())
+			Expect(spec.StatusPrompted.CanTransitionTo(ctx, spec.StatusVerifying)).To(Succeed())
+			Expect(spec.StatusVerifying.CanTransitionTo(ctx, spec.StatusCompleted)).To(Succeed())
 		})
 		It("allows unapprove edge: approved → draft", func() {
-			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusDraft)).To(Succeed())
+			Expect(spec.StatusApproved.CanTransitionTo(ctx, spec.StatusDraft)).To(Succeed())
 		})
 		It("rejects invalid transition", func() {
-			err := spec.StatusDraft.CanTransitionTo(spec.StatusCompleted)
+			err := spec.StatusDraft.CanTransitionTo(ctx, spec.StatusCompleted)
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(ContainSubstring("draft")))
 			Expect(err).To(MatchError(ContainSubstring("completed")))
 		})
 		It("rejects idea → completed", func() {
-			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusCompleted)).To(HaveOccurred())
+			Expect(spec.StatusIdea.CanTransitionTo(ctx, spec.StatusCompleted)).To(HaveOccurred())
 		})
 	})
 
@@ -520,31 +520,35 @@ var _ = Describe("rejected status", func() {
 
 	Describe("valid reject transitions succeed", func() {
 		It("idea → rejected", func() {
-			Expect(spec.StatusIdea.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+			Expect(spec.StatusIdea.CanTransitionTo(ctx, spec.StatusRejected)).To(Succeed())
 		})
 		It("draft → rejected", func() {
-			Expect(spec.StatusDraft.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+			Expect(spec.StatusDraft.CanTransitionTo(ctx, spec.StatusRejected)).To(Succeed())
 		})
 		It("approved → rejected", func() {
-			Expect(spec.StatusApproved.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+			Expect(spec.StatusApproved.CanTransitionTo(ctx, spec.StatusRejected)).To(Succeed())
 		})
 		It("generating → rejected", func() {
-			Expect(spec.StatusGenerating.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+			Expect(spec.StatusGenerating.CanTransitionTo(ctx, spec.StatusRejected)).To(Succeed())
 		})
 		It("prompted → rejected", func() {
-			Expect(spec.StatusPrompted.CanTransitionTo(spec.StatusRejected)).To(Succeed())
+			Expect(spec.StatusPrompted.CanTransitionTo(ctx, spec.StatusRejected)).To(Succeed())
 		})
 	})
 
 	Describe("no outgoing edges from rejected and non-pre-execution cannot be rejected", func() {
 		It("rejected cannot transition to draft", func() {
-			Expect(spec.StatusRejected.CanTransitionTo(spec.StatusDraft)).To(HaveOccurred())
+			Expect(spec.StatusRejected.CanTransitionTo(ctx, spec.StatusDraft)).To(HaveOccurred())
 		})
 		It("verifying cannot transition to rejected", func() {
-			Expect(spec.StatusVerifying.CanTransitionTo(spec.StatusRejected)).To(HaveOccurred())
+			Expect(
+				spec.StatusVerifying.CanTransitionTo(ctx, spec.StatusRejected),
+			).To(HaveOccurred())
 		})
 		It("completed cannot transition to rejected", func() {
-			Expect(spec.StatusCompleted.CanTransitionTo(spec.StatusRejected)).To(HaveOccurred())
+			Expect(
+				spec.StatusCompleted.CanTransitionTo(ctx, spec.StatusRejected),
+			).To(HaveOccurred())
 		})
 	})
 

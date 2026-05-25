@@ -30,7 +30,7 @@ func DetectWorktreeOrSubmodule(ctx context.Context) error {
 		if os.IsNotExist(err) {
 			return nil
 		}
-		return errors.Wrapf(ctx, err, "lstat .git failed")
+		return errors.Wrap(ctx, err, "lstat .git failed")
 	}
 	if !info.Mode().IsRegular() {
 		return nil

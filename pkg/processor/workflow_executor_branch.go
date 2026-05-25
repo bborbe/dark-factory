@@ -37,7 +37,7 @@ func (e *branchWorkflowExecutor) Setup(
 	pf *prompt.PromptFile,
 ) error {
 	if err := syncWithRemoteViaDeps(ctx, e.deps); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "sync with remote")
 	}
 	branch := pf.Branch()
 	if branch == "" {

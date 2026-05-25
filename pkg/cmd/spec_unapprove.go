@@ -63,7 +63,7 @@ func (s *specUnapproveCommand) Run(ctx context.Context, args []string) error {
 	id := args[0]
 	path, err := FindSpecFile(ctx, s.inProgressDir, id)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "find spec file")
 	}
 
 	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
@@ -71,7 +71,7 @@ func (s *specUnapproveCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "load spec")
 	}
 
-	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(spec.StatusDraft); err != nil {
+	if err := spec.Status(sf.Frontmatter.Status).CanTransitionTo(ctx, spec.StatusDraft); err != nil {
 		return errors.Errorf(
 			ctx,
 			"cannot unapprove spec with status %q: only approved specs can be unapproved",
@@ -81,7 +81,7 @@ func (s *specUnapproveCommand) Run(ctx context.Context, args []string) error {
 
 	// Check for linked prompts before making any changes
 	if err := s.checkLinkedPrompts(ctx, sf.Name); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "check linked prompts")
 	}
 
 	specNum := sf.SpecNumber()

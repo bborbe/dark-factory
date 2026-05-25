@@ -54,7 +54,10 @@ func (s *scenarioShowCommand) Run(ctx context.Context, args []string) error {
 		return errors.Errorf(ctx, "no scenario matching %q", id)
 	case 1:
 		_, err := os.Stdout.Write(matches[0].RawContent)
-		return err
+		if err != nil {
+			return errors.Wrap(ctx, err, "write scenario to stdout")
+		}
+		return nil
 	default:
 		fmt.Fprintf(os.Stderr, "scenario %q matches multiple files:\n", id)
 		for _, sf := range matches {

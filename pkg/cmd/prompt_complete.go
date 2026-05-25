@@ -64,7 +64,7 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 
 	path, err := FindPromptFile(ctx, c.queueDir, args[0])
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "find prompt file")
 	}
 
 	pf, err := c.promptManager.Load(ctx, path)
@@ -105,11 +105,11 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 
 	if !c.pr {
 		if err := c.completeDirectWorkflow(gitCtx, ctx, title); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "complete direct workflow")
 		}
 	} else {
 		if err := c.completePRWorkflow(gitCtx, ctx, pf, title, completedPath); err != nil {
-			return err
+			return errors.Wrap(ctx, err, "complete PR workflow")
 		}
 	}
 

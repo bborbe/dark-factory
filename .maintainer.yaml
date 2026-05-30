@@ -1,0 +1,17 @@
+# Opts this repo into maintainer-bot behaviors. Read per-repo by the maintainer agents.
+#
+# release.autoRelease: when true, the github-release watcher emits a release task
+# when CHANGELOG.md has a non-empty "## Unreleased" section and master has moved;
+# the github-releaser agent then rewrites "## Unreleased" -> "## vX.Y.Z", commits,
+# tags, and pushes directly to the default branch.
+#
+# Absence of this file (or release.autoRelease: false) = opted out (no auto-release).
+#
+# prReviewer.autoApprove: when true, the pr-reviewer agent posts verdict "approve"
+# as an APPROVE review (counts toward branch-protection); false/absent demotes it
+# to a COMMENT. Replaces the legacy .pr-reviewer.yaml (removed in a follow-up once
+# the new pr-reviewer image is deployed to prod).
+release:
+  autoRelease: true
+prReviewer:
+  autoApprove: true

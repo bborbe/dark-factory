@@ -167,6 +167,22 @@ For most library-typed constants, level 1 is sufficient and should be the defaul
 
 **Scope note:** this rule covers prompt-level tests (unit + integration that ship as part of the change). End-to-end deployment verification (dev deploy + smoke tests) is a spec/scenario concern, not a prompt concern — do NOT audit for it here. Enforce it in spec acceptance criteria and scenario coverage instead.
 
+**Container-autonomy (artifact-type boundary) — CRITICAL:**
+
+A prompt must be fully executable by the autonomous dark-factory container agent: it edits files under the one mounted repo, runs build/test/lint, and commits. The container has NO cluster credentials, NO `kubectl`/`kubectlquant`, NO ability to deploy, trigger PRs, or observe live cluster/runtime state.
+
+Flag as **Critical** when a prompt's requirements contain operator-only / runtime steps the container cannot perform, e.g.:
+
+- `kubectl`/`kubectlquant apply|delete|deploy`, `make buca`, image push, or any cluster mutation.
+- "trigger a PR", "observe two pods Running", "watch the logs in dev", or any behavioral observation of a deployed system.
+- An "operator note", "hand this to the operator", or an Operator-vs-Agent step split inside the prompt — that split is the tell that the artifact is the wrong type. Splitting steps does NOT fix it; the operator half does not belong in a prompt at all.
+
+This is distinct from the test scope note above: that defers *who verifies E2E*; this defers *who performs deploy/rollout/runtime work*. Rollout, deploy, and behavioral verification belong to the **spec's verification ladder** (operator-driven `docs/spec-verification.md` / project `verifying-specs.md` rungs) or a **scenario**, never to a prompt.
+
+> **Suggested rejection text:**
+> Container-autonomy violation. Requirement(s) `<n>` instruct `<operator-only op>`, which the read-only dark-factory container agent cannot execute (no cluster creds / no kubectl / no PR-trigger). A prompt that hands off to an operator is the wrong artifact type — splitting "operator" vs "agent" steps does not fix it.
+> **Fix:** remove the rollout/deploy/behavioral-verification steps from the prompt entirely. Move that work to the spec's Verification section (operator-driven rung-2/3) or a scenario. Keep the prompt scoped to the file edits + build/test the container can run unattended.
+
 **Canonical example:** `const X base.CommandOperation = "increment_frontmatter"` (underscores) passed all shape tests but was rejected at publish time by the cqrs regex `^[a-z][a-z-]*$`, causing a silent message-retry loop in dev. A level 1 table test calling `.Validate(ctx)` would have caught it. A level 2 integration test publishing a real command through the cqrs layer would have also caught it, plus the factory-signature bug found in the same release, plus any future boundary violation on the same path.
 
 **No `go mod vendor`:**
@@ -389,6 +405,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] New constants / strings that flow through library validators have a test calling the validator (or N/A)
 - [x/!] No `go mod vendor` in `<requirements>` or `<verification>` (vendor is a build-time concern, not a prompt concern — see Wasted vendor regeneration)
 - [x/!] No cross-repo writes: prompt does not clone a remote other than the project's own AND then push / `gh pr create` against it (work would be lost when container exits)
+- [x/!] Container-autonomous: no operator-only / runtime steps (`kubectl`/`kubectlquant` apply/delete/deploy, `make buca`, image push, "trigger a PR", "observe pods/logs in dev") and no operator-vs-agent step split — a prompt with a labelled "Operator steps" / "hand off to operator" section fails this even if the `kubectl` keywords are absent; that split is the tell. Rollout/deploy/behavioral-verify belongs to the spec verification ladder or a scenario, not a prompt (Critical)
 - [x/!] Sibling entry points covered: if prompt edits a setup/gate/validation function with parallel implementations in the same package (e.g. `runner.Run` + `oneShotRunner.Run`, `Process` + `ProcessOne`), all siblings are addressed or a shared helper is extracted
 
 ## Documentation Placement

@@ -1,4 +1,5 @@
-autoRelease: true
+autoGeneratePrompts: true
+autoRelease: false
 maxContainers: 8
 pr: false
 preflightCommand: "make precommit"

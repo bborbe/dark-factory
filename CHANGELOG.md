@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- chore: Bump default container image to claude-yolo:v0.9.0 (adds `@ast-grep/cli` so projects using the default image have ast-grep available for the doc-driven code-review pipeline's mechanical-rules step)
+
 ## v0.173.0
 
 - release plugin v0.173.0: bundle commands/, agents/, docs/, skills/ updates accumulated through binary v0.172.0 (specs 088 + 089 + 090: `autoGeneratePrompts` rename + default flip, `dark-factory spec mark-prompted` CLI command, manual generate-prompts-for-spec wiring, spec-writing/prompt-writing/scenario-writing guide refinements)

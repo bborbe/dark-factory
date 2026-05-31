@@ -1,12 +1,12 @@
 ---
-status: failed
+status: completed
+summary: Bumped default container image from claude-yolo:v0.8.1 to v0.9.0 in pkg/const.go, README.md, docs/yolo-container-setup.md, docs/init-project.md, docs/configuration.md, and added CHANGELOG.md Unreleased entry
+container: dark-factory-exec-434-bump-default-image-v0-9-0
+dark-factory-version: v0.173.0
 created: "2026-05-31T18:56:44Z"
 queued: "2026-05-31T19:25:28Z"
-completed: "2026-05-31T19:28:20Z"
-lastFailReason: |-
-    setup workflow: git merge origin default branch: merge origin/master: Auto-merging .dark-factory.yaml
-    CONFLICT (content): Merge conflict in .dark-factory.yaml
-    Automatic merge failed; fix conflicts and then commit the result.: exit status 1
+started: "2026-05-31T19:29:37Z"
+completed: "2026-05-31T19:33:10Z"
 ---
 
 <summary>

@@ -1,7 +1,12 @@
 ---
-status: approved
+status: failed
 created: "2026-05-31T18:56:44Z"
 queued: "2026-05-31T19:25:28Z"
+completed: "2026-05-31T19:28:20Z"
+lastFailReason: |-
+    setup workflow: git merge origin default branch: merge origin/master: Auto-merging .dark-factory.yaml
+    CONFLICT (content): Merge conflict in .dark-factory.yaml
+    Automatic merge failed; fix conflicts and then commit the result.: exit status 1
 ---
 
 <summary>

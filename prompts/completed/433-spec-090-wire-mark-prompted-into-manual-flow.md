@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["090"]
+spec: [090-cli-spec-mark-prompted]
 summary: Wired spec mark-prompted CLI into manual generation flow command file and updated docs/running.md to reflect the same approved→prompted lifecycle transition for both auto and manual paths
 container: dark-factory-exec-433-spec-090-wire-mark-prompted-into-manual-flow
 dark-factory-version: v0.171.1-3-gd94f1fa

@@ -1,6 +1,6 @@
 ---
 status: completed
-spec: ["090"]
+spec: [090-cli-spec-mark-prompted]
 summary: Added `dark-factory spec mark-prompted <id>` CLI subcommand that transitions approved/generating specs to prompted state via the existing SetStatus API
 container: dark-factory-exec-432-spec-090-cli-spec-mark-prompted
 dark-factory-version: v0.171.1-3-gd94f1fa

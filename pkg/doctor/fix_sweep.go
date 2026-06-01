@@ -1,0 +1,68 @@
+// Copyright (c) 2026 Benjamin Borbe All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package doctor
+
+import (
+	"context"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/bborbe/dark-factory/pkg/specnum"
+)
+
+// fixPromptedNotSwept calls AutoCompleter.CheckAndComplete for the spec, which
+// transitions it from "prompted" to "verifying" when all linked prompts are terminal.
+func (f *fixer) fixPromptedNotSwept(
+	ctx context.Context,
+	finding Finding,
+	opts ApplyOptions,
+) (applied []AppliedFix, failed []FailedFix) {
+	// TargetPaths is a single path: the spec file.
+	if len(finding.TargetPaths) == 0 {
+		return
+	}
+	specPath := finding.TargetPaths[0]
+	specID := strings.TrimSuffix(filepath.Base(specPath), ".md")
+	// Extract the numeric part for reliable matching.
+	specNum := specnum.Parse(specID)
+	if specNum >= 0 {
+		specID = filepath.Base(specPath)
+		specID = strings.TrimSuffix(specID, ".md")
+	}
+
+	if err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
+		failed = append(failed, FailedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail:      err.Error(),
+		})
+		return
+	}
+
+	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
+		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
+		Category:    finding.Category,
+		Action:      "applied",
+		TargetPaths: finding.TargetPaths,
+		Before:      "status=prompted",
+		After:       "status=verifying",
+	}); err != nil {
+		failed = append(failed, FailedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail:      "audit log write failed: " + err.Error(),
+		})
+		return
+	}
+
+	applied = append(applied, AppliedFix{
+		Category:    finding.Category,
+		TargetPaths: finding.TargetPaths,
+		FixCommand:  finding.FixCommand,
+		AuditLine:   "",
+	})
+	return
+}

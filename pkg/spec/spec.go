@@ -144,6 +144,87 @@ type Frontmatter struct {
 	RejectedReason string   `yaml:"rejected_reason,omitempty"`
 	Branch         string   `yaml:"branch,omitempty"`
 	Issue          string   `yaml:"issue,omitempty"`
+	// PreviousID records the spec number before a renumber operation.
+	// Set once on renumber and preserved on subsequent renumbers so the
+	// original spec number is always recoverable from the frontmatter.
+	// Uses a string so that YAML emits the value unquoted (e.g. "previous_id: 056"
+	// rather than the yaml.v3 default quoted form "previous_id: !!str 056").
+	PreviousID string `yaml:"previous_id,omitempty"`
+}
+
+// MarshalYAML implements yaml.Marshaler for Frontmatter.
+// It builds a yaml.Node tree directly so that PreviousID is emitted with an
+// explicit !!str tag, preventing yaml.v3 from quoting it as a number.
+func (f Frontmatter) MarshalYAML() (interface{}, error) {
+	return f.toYAMLNode(), nil
+}
+
+func (f Frontmatter) toYAMLNode() *yaml.Node {
+	children := make([]*yaml.Node, 0, 16)
+	addScalar := func(key, val string) {
+		children = append(children, &yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"})
+		children = append(children, &yaml.Node{Kind: yaml.ScalarNode, Value: val, Tag: "!!str"})
+	}
+	addSequence := func(key string, vals []string) {
+		if len(vals) == 0 {
+			return
+		}
+		children = append(children, &yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"})
+		seq := &yaml.Node{Kind: yaml.SequenceNode}
+		for _, v := range vals {
+			seq.Content = append(
+				seq.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: v, Tag: "!!str"},
+			)
+		}
+		children = append(children, seq)
+	}
+
+	if f.Status != "" {
+		addScalar("status", f.Status)
+	}
+	if len(f.Tags) > 0 {
+		addSequence("tags", f.Tags)
+	}
+	if f.Approved != "" {
+		addScalar("approved", f.Approved)
+	}
+	if f.Generating != "" {
+		addScalar("generating", f.Generating)
+	}
+	if f.Prompted != "" {
+		addScalar("prompted", f.Prompted)
+	}
+	if f.Verifying != "" {
+		addScalar("verifying", f.Verifying)
+	}
+	if f.Completed != "" {
+		addScalar("completed", f.Completed)
+	}
+	if f.Rejected != "" {
+		addScalar("rejected", f.Rejected)
+	}
+	if f.RejectedReason != "" {
+		addScalar("rejected_reason", f.RejectedReason)
+	}
+	if f.Branch != "" {
+		addScalar("branch", f.Branch)
+	}
+	if f.Issue != "" {
+		addScalar("issue", f.Issue)
+	}
+	if f.PreviousID != "" {
+		children = append(
+			children,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "previous_id", Tag: "!!str"},
+		)
+		children = append(
+			children,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: f.PreviousID, Tag: "!!str"},
+		)
+	}
+
+	return &yaml.Node{Kind: yaml.MappingNode, Content: children}
 }
 
 // SpecFile represents a loaded spec file with frontmatter and body.

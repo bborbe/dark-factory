@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [091-doctor-command]
+container: dark-factory-doctor-exec-436-spec-091-add-doctor-fixer-and-cli
+dark-factory-version: v0.173.0
 created: "2026-06-02T00:00:00Z"
 queued: "2026-06-01T22:42:15Z"
+started: "2026-06-01T23:07:59Z"
+completed: "2026-06-01T23:42:21Z"
 ---
 
 <summary>

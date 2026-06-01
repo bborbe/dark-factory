@@ -19,6 +19,7 @@ import (
 	libtime "github.com/bborbe/time"
 	"gopkg.in/yaml.v3"
 
+	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
@@ -140,6 +141,8 @@ func printCommandHelp(command string) {
 		printSpecHelp()
 	case "scenario":
 		printScenarioHelp()
+	case "doctor":
+		cmd.DoctorHelp()
 	}
 }
 
@@ -185,6 +188,16 @@ func runCommand(
 			return err
 		}
 		return factory.CreateKillCommand(cfg).Run(ctx, args)
+	case "doctor":
+		if err := validateDoctorArgs(ctx, args); err != nil {
+			return err
+		}
+		hours, remaining, err := extractVerifyingStaleHours(ctx, args)
+		if err != nil {
+			return err
+		}
+		return factory.CreateDoctorCommand(ctx, cfg, hours, currentDateTimeGetter).
+			Run(ctx, remaining)
 	case "run":
 		return runRunCommand(
 			ctx,
@@ -681,6 +694,55 @@ func extractAutoApprovePrompts(args []string) (bool, []string) {
 	return false, args
 }
 
+// extractVerifyingStaleHours extracts --verifying-stale-hours=N from args and returns the value (default 24).
+func extractVerifyingStaleHours(ctx context.Context, args []string) (int, []string, error) {
+	for i, arg := range args {
+		if !strings.HasPrefix(arg, "--verifying-stale-hours=") {
+			continue
+		}
+		value := strings.TrimPrefix(arg, "--verifying-stale-hours=")
+		if value == "" {
+			return 0, nil, errors.Errorf(ctx, "--verifying-stale-hours requires a value")
+		}
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			return 0, nil, errors.Errorf(
+				ctx,
+				"--verifying-stale-hours value must be a positive integer, got %q",
+				value,
+			)
+		}
+		if n < 1 {
+			return 0, nil, errors.Errorf(
+				ctx,
+				"--verifying-stale-hours value must be a positive integer, got %d",
+				n,
+			)
+		}
+		remaining := make([]string, 0, len(args)-1)
+		remaining = append(remaining, args[:i]...)
+		remaining = append(remaining, args[i+1:]...)
+		return n, remaining, nil
+	}
+	return 24, args, nil
+}
+
+// validateDoctorArgs rejects unknown flags for the doctor command.
+func validateDoctorArgs(ctx context.Context, args []string) error {
+	for _, arg := range args {
+		switch arg {
+		case "--fix", "--yes", "--help", "-h":
+			continue
+		default:
+			if strings.HasPrefix(arg, "--verifying-stale-hours=") {
+				continue
+			}
+			return errors.Errorf(ctx, "unknown flag: %q", arg)
+		}
+	}
+	return nil
+}
+
 // supportedSetKeys is the authoritative list of yaml-backed user-pref keys
 // accepted by --set. Adding a new yaml field requires a new entry here.
 var supportedSetKeys = []string{
@@ -949,6 +1011,7 @@ func printHelp() {
 			"  run [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...]    Process all queued prompts and exit\n"+
 			"  daemon [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
+			"  doctor [--fix] [--yes] [--verifying-stale-hours=N]  Detect state anomalies (and optionally fix them)\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
 			"  config                 Show effective configuration (defaults + .dark-factory.yaml)\n\n"+
@@ -1168,7 +1231,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, st
 		return debug, "help", "", []string{}, autoApprove, skipPreflight, model
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}, autoApprove, skipPreflight, model
-	case "run", "daemon", "kill", "status", "list", "config":
+	case "run", "daemon", "kill", "status", "list", "config", "doctor":
 		return debug, command, "", rest, autoApprove, skipPreflight, model
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {

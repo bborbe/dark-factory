@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [091-doctor-command]
+summary: Stripped silent startup reconciliation path by deleting reindexAll function and removing mover parameter from Runner/OneShotRunner constructors
+container: dark-factory-doctor-exec-437-spec-091-remove-silent-reconciliation
+dark-factory-version: v0.173.0
 created: "2026-06-02T00:00:00Z"
 queued: "2026-06-01T22:42:15Z"
+started: "2026-06-01T23:42:22Z"
+completed: "2026-06-01T23:52:13Z"
 ---
 
 <summary>

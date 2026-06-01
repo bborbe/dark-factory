@@ -487,7 +487,6 @@ func CreateRunner(
 		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
-		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
@@ -642,7 +641,6 @@ func CreateOneShotRunner(
 		containerChecker,
 		autoApprove,
 		migrator,
-		releaser,
 		cfg.HideGit,
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 	)

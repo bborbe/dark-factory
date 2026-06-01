@@ -87,7 +87,6 @@ var _ = Describe("Runner", func() {
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
-			&mocks.FileMover{},
 			0,
 			nil,
 			nil,
@@ -383,7 +382,6 @@ var _ = Describe("Runner", func() {
 			notifier.NewMultiNotifier(),
 			&mocks.SpecSlugMigrator{},
 			libtime.NewCurrentDateTime(),
-			&mocks.FileMover{},
 			0,
 			nil,
 			nil,
@@ -451,7 +449,6 @@ var _ = Describe("Runner", func() {
 				notifier.NewMultiNotifier(),
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,
 				nil,
@@ -669,7 +666,6 @@ var _ = Describe("Runner", func() {
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,
 				nil,
@@ -752,7 +748,6 @@ var _ = Describe("Runner", func() {
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,
 				nil,
@@ -845,7 +840,6 @@ var _ = Describe("Runner", func() {
 					fakeNotifier,
 					&mocks.SpecSlugMigrator{},
 					libtime.NewCurrentDateTime(),
-					&mocks.FileMover{},
 					0,
 					nil,
 					nil,
@@ -934,7 +928,6 @@ var _ = Describe("Runner", func() {
 				fakeNotifier,
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,
 				nil,
@@ -997,7 +990,6 @@ var _ = Describe("Runner", func() {
 				notifier.NewMultiNotifier(),
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,
 				nil,
@@ -1310,7 +1302,6 @@ var _ = Describe("Runner", func() {
 				notifier.NewMultiNotifier(),
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil, // containerStopper
 				nil, // startupLogger
@@ -1457,7 +1448,6 @@ var _ = Describe("Runner", func() {
 				containerChecker,
 				false, // autoApprove
 				&mocks.SpecSlugMigrator{},
-				&mocks.FileMover{},
 				hideGit,
 				nil, // startupLogger
 			)
@@ -1583,7 +1573,6 @@ var _ = Describe("Runner", func() {
 				notifier.NewMultiNotifier(),
 				&mocks.SpecSlugMigrator{},
 				libtime.NewCurrentDateTime(),
-				&mocks.FileMover{},
 				0,
 				nil,   // containerStopper
 				nil,   // startupLogger

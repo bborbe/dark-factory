@@ -24,7 +24,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
-	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/server"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/specwatcher"
@@ -59,7 +58,6 @@ func NewRunner(
 	n notifier.Notifier,
 	slugMigrator slugmigrator.Migrator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	mover prompt.FileMover,
 	maxPromptDuration time.Duration,
 	containerStopper executor.ContainerStopper,
 	startupLogger func(),
@@ -87,7 +85,6 @@ func NewRunner(
 		notifier:              n,
 		slugMigrator:          slugMigrator,
 		currentDateTimeGetter: currentDateTimeGetter,
-		mover:                 mover,
 		maxPromptDuration:     maxPromptDuration,
 		containerStopper:      containerStopper,
 		startupLogger:         startupLogger,
@@ -118,7 +115,6 @@ type runner struct {
 	notifier              notifier.Notifier
 	slugMigrator          slugmigrator.Migrator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	mover                 prompt.FileMover
 	maxPromptDuration     time.Duration
 	containerStopper      executor.ContainerStopper
 	startupLogger         func()
@@ -175,8 +171,8 @@ func (r *runner) Run(ctx context.Context) error {
 
 	slog.Info("watching for queued prompts", "dir", r.inProgressDir)
 
-	// Run the six shared startup steps (migrateQueueDir, createDirectories,
-	// resumeOrResetExecuting, reindexAll, normalizeFilenames, migrateSpecSlugs).
+	// Run the five shared startup steps (migrateQueueDir, createDirectories,
+	// resumeOrResetExecuting, normalizeFilenames, migrateSpecSlugs).
 	if err := startupSequence(ctx, r.startupDeps()); err != nil {
 		return errors.Wrap(ctx, err, "startup sequence")
 	}
@@ -255,7 +251,6 @@ func (r *runner) startupDeps() StartupDeps {
 		Notifier:              r.notifier,
 		ProjectName:           r.projectName.String(),
 		SlugMigrator:          r.slugMigrator,
-		Mover:                 r.mover,
 		CurrentDateTimeGetter: r.currentDateTimeGetter,
 	}
 }

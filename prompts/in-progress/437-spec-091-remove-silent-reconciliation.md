@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [091-doctor-command]
 created: "2026-06-02T00:00:00Z"
+queued: "2026-06-01T22:42:15Z"
 ---
 
 <summary>
@@ -69,11 +70,11 @@ Files to read end-to-end before editing:
 
 4. **Update `pkg/factory/factory.go`** — the two callers in the factory's `CreateRunner` and `CreateOneShotRunner`:
    - In `CreateRunner` (around line 482–496), the call to `runner.NewRunner(...)` no longer receives the trailing `releaser` argument. The current call passes `releaser,` as one of the last args (line ~489 — verify by reading). Remove that argument. The `releaser` local variable STAYS (it is still used by `CreateProcessor` and other consumers).
-   - In `CreateOneShotRunner` (around line 563), the call to `runner.NewOneShotRunner(...)` no longer receives the trailing `releaser` argument (line ~567 — verify). Remove that argument. The `releaser` local variable STAYS.
+   - In `CreateOneShotRunner` (around line 563), the call to `runner.NewOneShotRunner(...)` no longer receives the trailing `releaser` argument. The `releaser` arg is at **line 581** (verified — line 567 is `cfg.Prompts.LogDir`, NOT the releaser). Remove that line. The `releaser` local variable STAYS.
    - Do NOT remove the `mover` argument from `CreateProcessor` or `CreateWorkflowExecutor` — those are not part of the runner's startup path. The `prompt.FileMover` interface and its callers in `processor` STAY (used for legitimate prompt-execution file moves).
 
 5. **Update test call sites** — these are mechanical edits that drop one argument from each `NewRunner` / `NewOneShotRunner` call:
-   - `/workspace/pkg/runner/runner_test.go` — 10 `runner.NewRunner(...)` call sites at the lines listed in context. Each drops the `mover` argument. Use `git diff` to see the exact form (most pass a `&mocks.ReindexFileMover{}` or a real `prompt.FileMover` mock — drop that line).
+   - `/workspace/pkg/runner/runner_test.go` — 9 `runner.NewRunner(...)` call sites at the lines listed in context AND one extra `NewOneShotRunner(...)` call site at **line 1443** (find via `grep -n 'NewOneShotRunner(' pkg/runner/runner_test.go`). Each drops the `mover` argument. Use `git diff` to see the exact form (most pass a `&mocks.ReindexFileMover{}` or a real `prompt.FileMover` mock — drop that line).
    - `/workspace/pkg/runner/oneshot_test.go` — 3 call sites at lines 61, 265, 311. Same edit.
    - `/workspace/pkg/factory/factory_test.go` — only update tests that explicitly construct a `runner.Runner` or `runner.OneShotRunner` via the constructor (most tests use `factory.CreateRunner` which is the higher-level wrapper and don't need changes). If any test directly calls `runner.NewRunner` / `runner.NewOneShotRunner` and was not already updated, edit it.
    - The trailing argument is identifiable as the LAST positional arg in each call (since the runner constructors were last refactored to take ~20 params; the `mover` arg is the most-recent addition per the history of the constructor).
@@ -81,7 +82,7 @@ Files to read end-to-end before editing:
 6. **Update `docs/architecture-flow.md`** — find the section that documents the daemon's startup sequence (the file is the canonical architecture reference per `/home/node/.claude/plugins/marketplaces/coding/docs/architecture-flow.md` in the in-container doc path). The "Startup" or "Lifecycle" section currently lists 6 steps; update it to 5 and add a one-line note explaining that the silent reindex was removed in spec 091 and that operators run `dark-factory doctor` for the same detection on demand. Cite the spec.
 
 7. **Verify the deletion is complete and clean**:
-   - `cd /workspace && grep -rn 'reindexAll\|RenumberSpecsAfterRemoval' pkg/runner/ pkg/factory/ pkg/specwatcher/ cmd/ main.go` returns 0 lines.
+   - `cd /workspace && grep -rn 'reindexAll\|RenumberSpecsAfterRemoval' pkg/runner/ pkg/factory/ pkg/specwatcher/ pkg/cmd/ main.go` returns 0 lines.
    - `cd /workspace && grep -rn 'Mover:' pkg/runner/lifecycle.go` returns 0 lines (the field is gone from `StartupDeps`).
    - `cd /workspace && grep -rn 'mover prompt.FileMover\|mover:                 mover' pkg/runner/runner.go pkg/runner/oneshot.go` returns 0 lines (the parameter and field are gone).
    - The `reindex` package itself is still present and its tests still pass (it is used by prompt 2's fixer).
@@ -99,7 +100,7 @@ Files to read end-to-end before editing:
 - DO NOT modify `pkg/processor/`, `pkg/specwatcher/`, or `pkg/specsweeper/`. The spec § Constraints: "Daemon behavior change is limited to removing/demoting the silent reconciliation path. No other daemon ticks, watchers, or processors are modified."
 - DO NOT touch any of the prompt 1 or prompt 2 files (`pkg/doctor/`, `pkg/cmd/doctor.go`, `pkg/lock/filelock.go`, `pkg/cmd/doctor_test.go`). This prompt is a pure deletion of legacy code.
 - DO NOT add a CHANGELOG entry in this prompt. The CHANGELOG entry for both the doctor command AND the silent-reconciliation removal is owned by prompt 4 (`docs-and-changelog`). Adding it here would either duplicate prompt 4's entry or split a single changelog concept across two prompts.
-- All edits are mechanical. No new exports, no new interfaces, no new tests beyond updating the existing call sites to match the new constructor signatures. Coverage of unchanged code does not regress (the deleted code had its own tests, which are also deleted — see step 9).
+- All edits are mechanical. No new exports, no new interfaces, no new tests beyond updating the existing call sites to match the new constructor signatures. Coverage of unchanged code does not regress (the deleted code had its own tests, which are also deleted as part of step 5's call-site cleanup; any test file under `pkg/runner/` that exclusively tested the `reindexAll` path is removed in the same edit).
 - Do NOT commit. dark-factory handles git.
 - File mode `0600` for any test-fixture frontmatter writes; `0750` for directories the test creates. Existing project conventions.
 
@@ -108,7 +109,7 @@ Files to read end-to-end before editing:
 <verification>
 - `cd /workspace && make precommit` exits 0.
 - `cd /workspace && go test -count=1 ./pkg/runner/... ./pkg/factory/... ./pkg/reindex/... ./pkg/processor/... ./pkg/spec/... ./pkg/prompt/... ./pkg/cmd/...` exits 0. All existing tests pass.
-- `cd /workspace && grep -rn 'reindexAll\|RenumberSpecsAfterRemoval' pkg/ pkg/factory/ pkg/specwatcher/ cmd/ main.go` returns 0 lines. (The `RenumberSpecsAfterRemoval` in `pkg/spec/normalize.go` is a function definition, not a call site; this grep targets call sites only. The function definition itself stays.)
+- `cd /workspace && grep -rn 'reindexAll\|RenumberSpecsAfterRemoval' pkg/ pkg/factory/ pkg/specwatcher/ pkg/cmd/ main.go` returns 0 lines. (The `RenumberSpecsAfterRemoval` in `pkg/spec/normalize.go` is a function definition, not a call site; this grep targets call sites only. The function definition itself stays.)
 - `cd /workspace && grep -rn 'Mover:                 r.mover\|Mover: r.mover' pkg/` returns 0 lines.
 - `cd /workspace && grep -rn 'mover prompt.FileMover' pkg/runner/runner.go pkg/runner/oneshot.go` returns 0 lines (the parameter is gone from both constructors).
 - `cd /workspace && grep -n 'releaser' pkg/factory/factory.go` still returns ≥1 line (the `releaser` local is still used by `CreateProcessor` / `CreateWorkflowExecutor`).

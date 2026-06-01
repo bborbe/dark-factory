@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [091-doctor-command]
 created: "2026-06-02T00:00:00Z"
+queued: "2026-06-01T22:42:15Z"
 ---
 
 <summary>
@@ -40,7 +41,7 @@ Files to read end-to-end before editing:
 
 <requirements>
 
-1. **Add a new `## Detecting State Anomalies` section to `/workspace/docs/running.md`** — insert it AFTER the `## Two ways to generate prompts from an approved spec` section (which ends at the `## Switching modes` subsection, ~line 90) and BEFORE the `## Versioning` section. The new section uses the same heading level (`##`) and `###` subsections as the surrounding sections.
+1. **Add a new `## Detecting State Anomalies` section to `/workspace/docs/running.md`** — insert it **immediately BEFORE the `## Troubleshooting` section** so the Troubleshooting entry added in step 3 can cross-link to `#detecting-state-anomalies`. Use `grep -n '^## Troubleshooting' docs/running.md` to find the exact line; insert the new `##` heading + content above that line. The new section uses the same heading level (`##`) and `###` subsections as the surrounding sections. Line-number hints in this prompt are advisory only — anchor by heading text, not line number.
 
    The section must contain:
    - A 2-paragraph intro: one paragraph explaining what the command is ("`dark-factory doctor` is a read-only diagnostic that scans your `specs/` and `prompts/` trees for state anomalies — duplicate spec numbers, stale `verifying` timestamps, orphan spec/prompt links, etc.") and one paragraph explaining the workflow ("Run on demand. Exits 0 when the project is clean, 1 with a categorized report when findings exist. Each finding names the affected file paths and a copy-paste command line that an operator can run to fix it manually.").
@@ -49,15 +50,14 @@ Files to read end-to-end before editing:
      - `dark-factory doctor --fix` — scan, prompt `Apply? [y/N]` per finding, apply the safe ones
      - `dark-factory doctor --fix --yes` — same as `--fix` but auto-accepts all confirmations (for scripted cleanup)
      - `dark-factory doctor --verifying-stale-hours=48` — override the default 24h stale-`verifying` threshold
-   - A `### Detection categories` subsection with a 7-row table — one row per category from the spec. The table columns: `Category | What it catches | Fix command the operator can copy-paste`. Anchor each row to the spec's exact wording:
+   - A `### Detection categories` subsection with a 6-row table — one row per category from the spec. The `failed-but-merged` category is **deferred** to a follow-up spec and is NOT documented here (the `prompt.Frontmatter` lacks a commit-SHA field; see spec § Non-goals). The table columns: `Category | What it catches | Fix command the operator can copy-paste`. Anchor each row to the spec's exact wording:
      | Category | Catches | Copy-paste fix |
      |---|---|---|
      | `duplicate-spec-numbers` | Two `.md` files in the same lifecycle dir share a `NNN-` prefix | `dark-factory spec renumber <id-to-move>` |
      | `prompted-but-not-swept` | A spec is in `prompted` state but all its prompts are already `completed`/`rejected`/`cancelled` and it hasn't transitioned to `verifying` | `dark-factory spec sweep <spec-id>` |
      | `verifying-stale` | A spec is in `verifying` with no progress in the last 24h (configurable via `--verifying-stale-hours`) | `dark-factory spec verify <spec-id>` (informational — no auto-fix) |
-     | `orphan-prompt-link` | A prompt's `spec: [NNN]` references a spec id with no `.md` file in any `specs/*/` dir | `dark-factory prompt unlink <prompt-id>` OR `dark-factory prompt relink <prompt-id> <new-spec-id>` |
-     | `failed-but-merged` | A prompt with `status: failed` whose recorded commit SHA is now on `master` | `dark-factory prompt complete <prompt-id> --reason=merged-externally` |
-     | `orphan-in-progress-prompt` | A prompt lives in `prompts/in-progress/` but its parent spec is already `completed` or `rejected` | `dark-factory prompt cancel <prompt-id>` OR `dark-factory prompt complete <prompt-id>` |
+     | `orphan-prompt-link` | A prompt's `spec: [NNN]` references a spec id with no `.md` file in any `specs/*/` dir | `dark-factory prompt unlink <prompt-id>` (relink alternative provided in finding `Detail`) |
+     | `orphan-in-progress-prompt` | A prompt lives in `prompts/in-progress/` but its parent spec is already `completed` or `rejected` | `dark-factory prompt cancel <prompt-id>` |
      | `status-dir-mismatch` | A spec or prompt's `status:` field contradicts the lifecycle directory it lives in (e.g. `status: completed` inside `specs/in-progress/`) | `dark-factory spec move <spec-id>` (or the prompt equivalent) |
    - A `### Audit log` subsection, 2 short paragraphs: one explaining that `dark-factory doctor --fix` appends one line per action to `.dark-factory/doctor.log` (mode 0644) for traceability, and one explaining that the `previous_id` frontmatter field on a renumbered spec records the prior number so the rename is reversible by reading the frontmatter. Cite the spec.
    - A `### Read-only by default` one-sentence note: "`dark-factory doctor` (without `--fix`) never writes to `specs/` or `prompts/`. Safe to run from CI, from a script, or from a Claude Code session — the worst case is a non-zero exit code."
@@ -81,9 +81,9 @@ Files to read end-to-end before editing:
 5. **Add a `## Unreleased` section to `/workspace/CHANGELOG.md`** — insert it ABOVE the `## v0.173.1` line at the top of the file (the file currently has version sections in descending order). The section uses the same `##` heading as version sections and contains exactly these three bullet lines (the third is the silent-reconciliation removal that prompt 3 did — the CHANGELOG entry for prompt 3's deletion is owned by THIS prompt per prompt 3's constraints):
 
    ```
-   - feat: Add `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` command that detects 7 categories of state anomalies in `specs/` and `prompts/` and prints a copy-paste fix line per finding; `--fix` applies the safe mutations under a per-file lock with an audit log at `.dark-factory/doctor.log`. Replaces the silent startup reconciliation that previously renamed spec files on duplicate-number detection.
-   - feat: Renumber fix records `previous_id: NNN` in the renamed spec's frontmatter so the rename is traceable; linked prompt `spec:` fields are rewritten to the new id, prompt filenames are not touched.
-   - fix: Remove silent startup reconciliation — the daemon no longer renumbers spec or prompt files on startup. If a state condition that previously triggered a rename is detected, the daemon continues without writing; operators run `dark-factory doctor` to find and fix such conditions on demand.
+   - feat: Add `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` — detects 6 state-anomaly categories (`duplicate-spec-numbers`, `prompted-but-not-swept`, `verifying-stale`, `orphan-prompt-link`, `orphan-in-progress-prompt`, `status-dir-mismatch`) in `specs/` and `prompts/`, prints a copy-paste fix line per finding.
+   - feat: `dark-factory doctor --fix` applies safe mutations under a per-file lock with audit log at `.dark-factory/doctor.log`. Renumber fix records `previous_id: NNN` (unquoted YAML) in the renamed spec's frontmatter; linked prompt `spec:` fields are rewritten to the new id, prompt filenames untouched.
+   - fix: Remove silent startup reconciliation — the daemon no longer renumbers spec or prompt files on startup. Operators run `dark-factory doctor` to find and fix such conditions on demand.
    ```
 
    Read the changelog-guide.md before writing the entries. The prefix should be `feat:` for the two new-command lines and `fix:` for the deletion line (per the prefix rules: `feat:` for new features → minor bump; `fix:` for behavior change → patch bump). The version bump is auto-determined by dark-factory from the prefixes; this prompt does not need to pick a version.
@@ -94,7 +94,7 @@ Files to read end-to-end before editing:
    - `cd /workspace && grep -n 'silent.*reconcil\|startup reconciliation\|silent startup reconciliation' CHANGELOG.md` returns ≥ 1 line.
    - `cd /workspace && grep -n 'dark-factory doctor' docs/running.md` returns ≥ 3 lines (one in the new section's usage subsection, one in the CLI Reference table, one in the "When to use daemon vs run" paragraph).
 
-7. **Run `cd /workspace && make precommit`** — must pass. The repo's precommit runs markdown linting; fix any reported issues (most likely: line length, blank-line-around-headings, no-trailing-punctuation-in-headings). If the precommit fails on something unrelated to the four files touched, document it in `## Improvements` rather than trying to fix it.
+7. **Run `cd /workspace && make precommit`** — must pass. The repo's precommit runs markdown linting; fix any reported issues (most likely: line length, blank-line-around-headings, no-trailing-punctuation-in-headings). If the precommit fails on something unrelated to the four files touched, leave it alone and call it out in the completion report's blockers list — do NOT attempt to fix unrelated failures in this prompt.
 
 </requirements>
 

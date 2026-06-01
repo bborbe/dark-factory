@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [091-doctor-command]
 created: "2026-06-02T00:00:00Z"
+queued: "2026-06-01T22:42:15Z"
 ---
 
 <summary>
@@ -52,7 +53,18 @@ Files to read end-to-end before writing code:
 <requirements>
 
 1. **Extend `pkg/spec/spec.go` Frontmatter** (additive only — DO NOT touch any existing field):
-   - Add `PreviousID string yaml:"previous_id,omitempty"` to the `Frontmatter` struct at line 134. Use `string` (NOT `int`) so the YAML form `previous_id: 056` is preserved on round-trip — `yaml.Marshal` of an `int` 56 writes `previous_id: 56` (no leading zeros) which would fail the spec's AC line `grep -c '^previous_id: 056' specs/in-progress/057-*.md` returns 1. The existing `Branch string` field is the closest analogue.
+   - Add `PreviousID string yaml:"previous_id,omitempty"` to the `Frontmatter` struct at line 134. Use `string` (NOT `int`) so the YAML form `previous_id: 056` is preserved on round-trip.
+   - **CRITICAL: verify the YAML emitter produces UNQUOTED output.** `gopkg.in/yaml.v3` emits `string "056"` as `previous_id: "056"` (quoted with double-quotes) by default to avoid YAML 1.1 octal interpretation — this BREAKS the spec's AC line `grep -c '^previous_id: 056$' specs/in-progress/057-*.md` returns 1. Add a contract test in `pkg/spec/spec_test.go`:
+     ```go
+     It("PreviousID marshals as bare unquoted YAML (no leading-zero octal quoting)", func() {
+         fm := spec.Frontmatter{PreviousID: "056"}
+         out, err := yaml.Marshal(fm)
+         Expect(err).NotTo(HaveOccurred())
+         Expect(string(out)).To(ContainSubstring("previous_id: 056\n"))
+         Expect(string(out)).NotTo(ContainSubstring(`previous_id: "056"`))
+     })
+     ```
+     If the test fails (it likely will under default yaml.v3 behavior), implement a custom `MarshalYAML()` on `Frontmatter` that encodes `PreviousID` via `yaml.Node{Kind: yaml.ScalarNode, Style: 0, Value: fm.PreviousID, Tag: "!!str"}` — `Style: 0` (default) plus an explicit `!!str` tag forces yaml.v3 to emit unquoted. Confirm by re-running the test.
    - This is the only frontmatter change. The existing `SetBranchIfEmpty` pattern (line 262) is the closest analogue for "set-once-on-rename" semantics; mirror its GoDoc style.
 
 2. **Add `pkg/lock/filelock.go`** (NEW file in the existing `pkg/lock` package — counterfeiter annotation required):
@@ -76,9 +88,9 @@ Files to read end-to-end before writing code:
    - `pkg/doctor/fix_renumber.go` — `CategoryDuplicateSpecNumbers`. For each pair in `finding.TargetPaths`, compute the next free spec number. Approach: call `reindex.NewReindexer(specDirs, f.mover).Reindex(ctx)` to get a `[]Rename`, filter to renames whose `OldPath` is in `finding.TargetPaths`, then for each rename: acquire per-file lock on the OLD path, load the spec via `spec.Load`, set `Frontmatter.PreviousID = fmt.Sprintf("%03d", oldNum)` (use the existing `specnum.Parse`-extracted value, formatted as 3-digit to match the `^previous_id: 056` AC), `Save`, then call `f.mover.MoveFile`. After all renames, call `reindex.UpdateSpecRefs(ctx, renames, promptDirs, f.mover, f.promptManager)` to rewrite prompt frontmatter. If a slot is now taken (slot-churn case from spec § Failure Modes), recompute; if 3 attempts fail, log `failed: slot churn` and continue with the next finding.
    - `pkg/doctor/fix_sweep.go` — `CategoryPromptedNotSwept`. Call `f.autoCompleter.CheckAndComplete(ctx, specID)` where `specID` is extracted from the finding's `TargetPaths` via `filepath.Base` + `strings.TrimSuffix(..., ".md")`. The existing `AutoCompleter` transitions the spec from `prompted` to `verifying` when all linked prompts are completed; if `CheckAndComplete` returns no error, log success. If it returns the "spec not transitioning" silent-no-op behavior, log `skipped: linked prompts not all complete` and continue.
    - `pkg/doctor/fix_verifying_stale.go` — `CategoryVerifyingStale`. NO-OP: this finding is informational only. Log `skipped: verifying-stale is informational; run \`dark-factory spec verify <id>\` manually`. Return a `SkippedFix` with `Detail` set to that message.
-   - `pkg/doctor/fix_unlink.go` — `CategoryOrphanPromptLink`. For each path in `finding.TargetPaths`: acquire per-file lock, load via `f.promptManager.Load`, find the orphan spec id in `Frontmatter.Specs` (it's the spec id named in the finding's `Detail`), rewrite the slice to remove the orphan (preserving any other specs), call `pf.Save(ctx)`. The `FixCommand` is `dark-factory prompt unlink <id>` for the audit log line; the second `dark-factory prompt relink <id> <new-spec-id>` finding is the operator's alternative — the fixer does NOT apply relink automatically (relink requires operator judgment on the new spec id; only unlink is safe to auto-apply).
-   - `pkg/doctor/fix_complete_merged.go` — `CategoryFailedButMerged`. For each path: acquire per-file lock, load via `f.promptManager.Load`, call `pf.MarkCompleted()` (the existing helper at `pkg/prompt/prompt.go:425`), then call `f.promptManager.MoveToCompleted(ctx, path)`. (The spec's `--reason=merged-externally` flag is the copy-paste operator path; the fixer applies the completion directly because the spec's Failure Modes table doesn't require the reason to be persisted to frontmatter.)
-   - `pkg/doctor/fix_orphan_in_progress.go` — `CategoryOrphanInProgressPrompt`. For each path: acquire per-file lock, load via `f.promptManager.Load`. The finding's `Detail` mentions both fix-line verbs (`cancel` and `complete`); apply BOTH fixes in sequence (cancel first, then complete — but only if the prompt is still in a cancellable state). Emit ONE `AppliedFix` entry per fix verb per prompt (2 entries per orphan). For `cancel`: call `pf.MarkCancelled()` and `f.promptManager.MoveToCancelled(ctx, path)`. For `complete`: call `pf.MarkCompleted()` and `f.promptManager.MoveToCompleted(ctx, path)`. If the prompt's status is not in the cancellable set (e.g., already `completed`), skip the cancel and only emit the complete entry.
+   - `pkg/doctor/fix_unlink.go` — `CategoryOrphanPromptLink`. For each path in `finding.TargetPaths`: acquire per-file lock, load via `f.promptManager.Load`, find the orphan spec id in `Frontmatter.Specs` (it's the spec id named in the finding's `Detail`), rewrite the slice to remove the orphan (preserving any other specs), call `pf.Save(ctx)`. The `FixCommand` is `dark-factory prompt unlink <id>` for the audit log line; the relink alternative is provided as text in the finding's `Detail` (per spec DB #6) but the fixer does NOT apply relink automatically (relink requires operator judgment on the new spec id; only unlink is safe to auto-apply).
+   - **No `fix_complete_merged.go`** — `CategoryFailedButMerged` is deferred per spec § Non-goals; do NOT create this file.
+   - `pkg/doctor/fix_orphan_in_progress.go` — `CategoryOrphanInProgressPrompt`. For each path: acquire per-file lock, load via `f.promptManager.Load`. The fixer applies ONLY `cancel` (the safe, reversible default per spec DB #7) — NEVER `complete`. After `MarkCancelled` + `MoveToCancelled`, the file lives at a new path under `prompts/cancelled/`; do NOT then attempt a second mutation. Emit ONE `AppliedFix` entry per orphan. For `cancel`: call `pf.MarkCancelled()` and `f.promptManager.MoveToCancelled(ctx, path)`. If the prompt's status is not in the cancellable set (e.g., already `completed`), emit a `SkippedFix` with `Detail: "prompt no longer cancellable; current status=<status>"`.
    - `pkg/doctor/fix_status_dir_mismatch.go` — `CategoryStatusDirMismatch`. For each path: acquire per-file lock, compute the expected directory from the `Detail` (which names the contradiction), call `os.Rename(path, expectedDir/filepath.Base(path))`. The `os.MkdirAll(expectedDir, 0750)` call must precede the rename if the expected dir does not exist. The fixer handles BOTH spec and prompt variants — read the `FixCommand` prefix (`dark-factory spec move` vs `dark-factory prompt move`) to decide which subdir tree the path belongs to.
    - `parse-errors` (`CategoryParseError`) has NO fixer — log `skipped: parse-errors require manual YAML fix`.
 

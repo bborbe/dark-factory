@@ -4,6 +4,8 @@ tags:
     - dark-factory
     - spec
 approved: "2026-06-01T21:36:59Z"
+generating: "2026-06-01T21:43:39Z"
+prompted: "2026-06-01T22:30:09Z"
 branch: dark-factory/doctor-command
 ---
 

@@ -11,6 +11,8 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - spec-writing rules: add Scope Check size budget (`DB × AC > 50` OR > 3 code layers → consider split) and mandatory `## Suggested Decomposition` section template for multi-layer specs. spec-auditor flags both as Should-Fix; spec-creator emits the decomposition section template and adds a size-check workflow step. Reduces prompt-creator research time on large multi-layer specs (real example: spec 043 zombie detection — 10 DBs × 10 ACs × 5 layers, first generation attempt spent 30 min in research without writing any prompts).
+- spec-auditor + spec-creator: clarify that Size Budget and Suggested Decomposition rules are intentional heuristics requiring auditor judgment (no canonical layer enumeration) and document the relationship between the two thresholds (`> 3 layers` → consider split; `> 1 layer` → require decomposition section).
+- mocks/mocks.go header: the `make generate` target wipes and rewrites `mocks/` from scratch on each invocation; `mocks/mocks.go` is regenerator output with only `package mocks` by design (no copyright header). Documented here to make the absence intentional rather than accidental — subsequent regenerations will continue to produce a header-less file.
 
 ## v0.173.1
 

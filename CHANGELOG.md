@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.174.7
+
+- bump claude-yolo container image to v0.9.1 (Go 1.26.4)
+
 ## v0.174.4
 
 - fix: watch script false-positive alert on prompt filenames containing "failed"

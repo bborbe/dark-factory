@@ -33,6 +33,21 @@ func (f *fixer) fixPromptedNotSwept(
 		specID = strings.TrimSuffix(specID, ".md")
 	}
 
+	// Acquire per-file lock for consistency with the other fix_* functions
+	// (fix_renumber, fix_status_dir_mismatch, fix_orphan_in_progress, fix_unlink).
+	// AutoCompleter may be internally safe, but a doctor --fix run that races
+	// against another writer on the same spec should serialize on the file lock.
+	fl := f.deps.FileLockFactory(specPath)
+	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
+		failed = append(failed, FailedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail:      "lock acquire failed: " + err.Error(),
+		})
+		return
+	}
+	defer fl.Release(ctx)
+
 	if err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
 		failed = append(failed, FailedFix{
 			Category:    finding.Category,

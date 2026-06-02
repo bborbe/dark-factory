@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.174.1
 
 - fix(doctor): drop double-move in `fix_renumber` — reindex.Reindex already moves the file; fixer now operates on `NewPath` after the move (the old "MoveFile after Save" path worked only against mocks).
 - fix(spec): `Load()` surfaces YAML parse errors via `errors.Wrapf` instead of silently returning an empty-frontmatter `SpecFile`; corrupted spec files are now visible to doctor detectors, the generator, and auto-completers.

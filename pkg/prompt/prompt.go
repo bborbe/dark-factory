@@ -1631,7 +1631,7 @@ func findMissingCompleted(_ context.Context, completedDir string, n int) []int {
 // empty, returns true (caller should fall back to global guard at the scanner
 // layer).
 func allPreviousInSpecCompleted(
-	_ context.Context,
+	ctx context.Context,
 	completedDir string,
 	scanDir string,
 	n int,
@@ -1641,7 +1641,7 @@ func allPreviousInSpecCompleted(
 	if specID == "" {
 		return true
 	}
-	pred, ok := findPredecessorInSpec(scanDir, completedDir, n, specID, currentDateTimeGetter)
+	pred, ok := findPredecessorInSpec(ctx, scanDir, completedDir, n, specID, currentDateTimeGetter)
 	if !ok {
 		return true
 	}
@@ -1651,7 +1651,7 @@ func allPreviousInSpecCompleted(
 // findMissingInSpecCompleted returns the predecessor number in the same spec
 // that is NOT in completed/, or -1 if no predecessor exists.
 func findMissingInSpecCompleted(
-	_ context.Context,
+	ctx context.Context,
 	completedDir string,
 	scanDir string,
 	n int,
@@ -1661,7 +1661,7 @@ func findMissingInSpecCompleted(
 	if specID == "" {
 		return -1, nil
 	}
-	pred, ok := findPredecessorInSpec(scanDir, completedDir, n, specID, currentDateTimeGetter)
+	pred, ok := findPredecessorInSpec(ctx, scanDir, completedDir, n, specID, currentDateTimeGetter)
 	if !ok {
 		return -1, nil
 	}
@@ -1684,6 +1684,7 @@ func findMissingInSpecCompleted(
 //
 //nolint:gocognit // two-dir scan + gap detection + highest-below-n tracking; refactor candidate tracked separately
 func findPredecessorInSpec(
+	ctx context.Context,
 	scanDir string,
 	completedDir string,
 	n int,
@@ -1705,7 +1706,7 @@ func findPredecessorInSpec(
 				continue
 			}
 			path := filepath.Join(dir, entry.Name())
-			fm, err := readFrontmatter(context.Background(), path, currentDateTimeGetter)
+			fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
 			if err != nil {
 				continue
 			}

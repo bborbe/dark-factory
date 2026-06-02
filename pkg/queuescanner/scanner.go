@@ -169,8 +169,20 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			pr = candidate
 			break
 		}
-		// Blocked: log once with spec id, then return DONE
-		missing, _ := s.promptManager.FindMissingInSpecCompleted(ctx, candidate.Number(), specID)
+		// Blocked: log once with spec id, then return DONE.
+		// FindMissingInSpecCompleted errors are non-fatal — we know the
+		// candidate is blocked; the error only affects the `missing` field.
+		// Log at V(1) so operators can diagnose if `missing` is unexpectedly empty.
+		missing, mErr := s.promptManager.FindMissingInSpecCompleted(ctx, candidate.Number(), specID)
+		if mErr != nil {
+			slog.WarnContext(
+				ctx,
+				"FindMissingInSpecCompleted failed; `missing` may be empty",
+				"file", filepath.Base(candidate.Path),
+				"spec", specID,
+				"err", mErr,
+			)
+		}
 		s.logBlockedOnce(
 			ctx,
 			candidate,

@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -38,7 +39,11 @@ func (f *fixer) fixPromptedNotSwept(
 		})
 		return
 	}
-	defer func() { _ = fl.Release(ctx) }()
+	defer func() {
+		if err := fl.Release(ctx); err != nil {
+			slog.Warn("doctor: file lock release failed", "path", specPath, "error", err.Error())
+		}
+	}()
 
 	// Audit BEFORE AutoCompleter.CheckAndComplete: a CheckAndComplete failure
 	// leaves the spec unchanged (still status=prompted); an audit failure

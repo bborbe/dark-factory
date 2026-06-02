@@ -130,6 +130,7 @@ func (c *checker) checkPromptDirStatuses(ctx context.Context) ([]Finding, error)
 		inProgressAllowed,
 		"prompts/in-progress/",
 		"{idea, draft, approved, executing, failed, in_review, pending_verification, committing}",
+		true,
 	)
 	if err != nil {
 		return nil, err
@@ -146,6 +147,7 @@ func (c *checker) checkPromptDirStatuses(ctx context.Context) ([]Finding, error)
 		completedAllowed,
 		"prompts/completed/",
 		"{completed, rejected}",
+		true,
 	)
 	if err != nil {
 		return nil, err
@@ -158,6 +160,7 @@ func (c *checker) checkPromptDirStatuses(ctx context.Context) ([]Finding, error)
 		[]prompt.PromptStatus{prompt.CancelledPromptStatus},
 		"prompts/cancelled/",
 		"cancelled",
+		false,
 	)
 	if err != nil {
 		return nil, err
@@ -173,15 +176,16 @@ func (c *checker) checkPromptDir(
 	allowed []prompt.PromptStatus,
 	dirLabel string,
 	allowedLabel string,
+	plural bool,
 ) ([]Finding, error) {
 	paths, err := scanDirsForPrompts(ctx, []string{dir})
 	if err != nil {
 		return nil, err
 	}
 	var findings []Finding
-	allowedSuffix := "only statuses " + allowedLabel + " are allowed in that directory"
-	if !strings.HasPrefix(allowedLabel, "{") {
-		allowedSuffix = "only status " + allowedLabel + " is allowed in that directory"
+	allowedSuffix := "only status " + allowedLabel + " is allowed in that directory"
+	if plural {
+		allowedSuffix = "only statuses " + allowedLabel + " are allowed in that directory"
 	}
 	for _, path := range paths {
 		pf, err := c.deps.PromptManager.Load(ctx, path)

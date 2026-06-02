@@ -25,6 +25,20 @@ type AuditEntry struct {
 	After       string
 }
 
+// FormatAuditLine renders one tab-separated audit line for entry.
+// Format: <rfc3339>\t<Category>\t<action>\t<targets>\t<before>\t<after>\n
+func FormatAuditLine(entry AuditEntry) string {
+	return fmt.Sprintf(
+		"%s\t%s\t%s\t%s\t%s\t%s\n",
+		entry.Timestamp.Format(time.RFC3339),
+		entry.Category,
+		entry.Action,
+		strings.Join(entry.TargetPaths, " "),
+		entry.Before,
+		entry.After,
+	)
+}
+
 // WriteAuditEntry appends one tab-separated line to the file at path.
 // The directory containing path is created with mode 0750 if missing.
 // The file is created with mode 0600 if missing and appended to otherwise.
@@ -37,16 +51,7 @@ func WriteAuditEntry(ctx context.Context, path string, entry AuditEntry) error {
 		}
 	}
 
-	// Format: <rfc3339>\t<Category>\t<action>\t<targets>\t<before>\t<after>\n
-	line := fmt.Sprintf(
-		"%s\t%s\t%s\t%s\t%s\t%s\n",
-		entry.Timestamp.Format(time.RFC3339),
-		entry.Category,
-		entry.Action,
-		strings.Join(entry.TargetPaths, " "),
-		entry.Before,
-		entry.After,
-	)
+	line := FormatAuditLine(entry)
 
 	// #nosec G304 -- path is operator-controlled audit log path
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)

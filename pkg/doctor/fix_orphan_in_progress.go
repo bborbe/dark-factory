@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -47,7 +48,11 @@ func (f *fixer) applyOrphanInProgressPath(
 			Detail:      "lock acquire failed: " + err.Error(),
 		}
 	}
-	defer func() { _ = fl.Release(ctx) }()
+	defer func() {
+		if err := fl.Release(ctx); err != nil {
+			slog.Warn("doctor: file lock release failed", "path", path, "error", err.Error())
+		}
+	}()
 
 	pf, err := f.deps.PromptManager.Load(ctx, path)
 	if err != nil {

@@ -46,7 +46,9 @@ func (f *fixer) fixDuplicateSpecNumbers(
 	preAcquiredLocks := make([]lock.FileLock, 0, len(finding.TargetPaths))
 	defer func() {
 		for _, fl := range preAcquiredLocks {
-			_ = fl.Release(ctx)
+			if err := fl.Release(ctx); err != nil {
+				slog.Warn("doctor: file lock release failed (renumber cycle)", "error", err.Error())
+			}
 		}
 	}()
 	if ff := f.acquireOldPathLocks(ctx, &preAcquiredLocks, finding, specDirs, opts.FileLockTimeout); ff != nil {
@@ -209,15 +211,16 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 	// evidence that the operator attempted the rename — the post-state can
 	// be reconciled by reading the file (which still has the OLD content).
 	now := time.Time(f.deps.CurrentDateTimeGetter.Now())
-	auditLine := renderAuditLine(now, finding, rn.OldPath, rn.NewPath)
-	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
+	entry := AuditEntry{
 		Timestamp:   now,
 		Category:    finding.Category,
 		Action:      "applied",
 		TargetPaths: []string{rn.OldPath, rn.NewPath},
 		Before:      filepath.Base(rn.OldPath),
 		After:       filepath.Base(rn.NewPath),
-	}); err != nil {
+	}
+	auditLine := FormatAuditLine(entry)
+	if err := WriteAuditEntry(ctx, opts.AuditLogPath, entry); err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,
 			TargetPaths: []string{rn.OldPath},
@@ -239,16 +242,4 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 		FixCommand:  finding.FixCommand,
 		AuditLine:   auditLine,
 	}, nil
-}
-
-func renderAuditLine(now time.Time, finding Finding, before, after string) string {
-	return fmt.Sprintf(
-		"%s\t%s\tapplied\t%s %s\t%s\t%s\n",
-		now.Format(time.RFC3339),
-		finding.Category,
-		before,
-		after,
-		filepath.Base(before),
-		filepath.Base(after),
-	)
 }

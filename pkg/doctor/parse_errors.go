@@ -59,43 +59,35 @@ func scanDirsForPrompts(ctx context.Context, promptDirs []string) ([]string, err
 }
 
 func (c *checker) scanParseErrors(ctx context.Context) ([]Finding, error) {
-	specDirs := []string{
+	specPaths, err := scanDirsForSpecs(ctx, []string{
 		c.deps.SpecsInboxDir,
 		c.deps.SpecsInProgressDir,
 		c.deps.SpecsCompletedDir,
 		c.deps.SpecsRejectedDir,
+	})
+	if err != nil {
+		return nil, err
 	}
-	promptDirs := []string{
+	promptPaths, err := scanDirsForPrompts(ctx, []string{
 		c.deps.PromptsInboxDir,
 		c.deps.PromptsInProgressDir,
 		c.deps.PromptsCompletedDir,
 		c.deps.PromptsCancelledDir,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	var findings []Finding
-
-	for _, dir := range append(specDirs, promptDirs...) {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, errors.Wrap(ctx, err, "read directory: "+dir)
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-			path := filepath.Join(dir, entry.Name())
-			if err := checkFileParseError(path); err != nil {
-				findings = append(findings, Finding{
-					Category:    CategoryParseError,
-					TargetPaths: []string{path},
-					SpecID:      "",
-					Detail:      "YAML parse error: " + err.Error(),
-					FixCommand:  "Fix the YAML by hand, then re-run `dark-factory doctor`",
-				})
-			}
+	for _, path := range append(specPaths, promptPaths...) {
+		if err := checkFileParseError(path); err != nil {
+			findings = append(findings, Finding{
+				Category:    CategoryParseError,
+				TargetPaths: []string{path},
+				SpecID:      "",
+				Detail:      "YAML parse error: " + err.Error(),
+				FixCommand:  "Fix the YAML by hand, then re-run `dark-factory doctor`",
+			})
 		}
 	}
 

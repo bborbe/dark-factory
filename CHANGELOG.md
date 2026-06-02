@@ -8,6 +8,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.174.4
+
+- fix: watch script false-positive alert on prompt filenames containing "failed"
+- update go 1.26.3→1.26.4
+- update anthropic-sdk-go v1.38.0→v1.46.0, openai-go v3.32.0→v3.37.0
+- update grpc v1.80.0→v1.81.1, otel v1.41.0→v1.44.0
+- update gosec, googleapis, golang.org/x and other indirect deps
+
 ## v0.174.3
 
 - fix(skills/watch): swallow grep no-match exit in stuck-prompt detector so the watcher survives polls while the daemon is in spec-generation mode (no "executing since" line in status); previously `set -euo pipefail` killed the watcher on the first poll.

@@ -175,6 +175,48 @@ var _ = Describe("VerifyingStale", func() {
 		}
 		Expect(staleFindings).To(BeEmpty())
 	})
+
+	It("returns a finding when verifying timestamp is unparseable", func() {
+		createSpecFileWithVerifying(
+			filepath.Join(specsDir, "inbox"),
+			"001-feature.md",
+			"verifying",
+			"not-a-date",
+		)
+
+		deps := doctor.Deps{
+			SpecsInboxDir:        filepath.Join(specsDir, "inbox"),
+			SpecsInProgressDir:   filepath.Join(specsDir, "in-progress"),
+			SpecsCompletedDir:    filepath.Join(specsDir, "completed"),
+			SpecsRejectedDir:     filepath.Join(specsDir, "rejected"),
+			PromptsInboxDir:      filepath.Join(promptsDir, "inbox"),
+			PromptsInProgressDir: filepath.Join(promptsDir, "in-progress"),
+			PromptsCompletedDir:  filepath.Join(promptsDir, "completed"),
+			PromptsCancelledDir:  filepath.Join(promptsDir, "cancelled"),
+			SpecLister: spec.NewLister(
+				libtime.NewCurrentDateTime(),
+				filepath.Join(specsDir, "inbox"),
+			),
+			PromptManager:         pm,
+			CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
+			VerifyingStaleHours:   24,
+		}
+
+		checker := doctor.NewChecker(deps)
+		findings, err := checker.Check(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
+		var staleFindings []doctor.Finding
+		for _, f := range findings {
+			if f.Category == doctor.CategoryVerifyingStale {
+				staleFindings = append(staleFindings, f)
+			}
+		}
+		Expect(staleFindings).To(HaveLen(1))
+		Expect(staleFindings[0].Detail).To(ContainSubstring("unparseable"))
+		Expect(staleFindings[0].Detail).To(ContainSubstring("not-a-date"))
+		Expect(staleFindings[0].FixCommand).To(ContainSubstring("dark-factory spec verify"))
+	})
 })
 
 func createSpecFileWithVerifying(dir, filename, status, verifying string) {

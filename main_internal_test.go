@@ -961,3 +961,87 @@ var _ = Describe("applySetOverrides", func() {
 		Expect(sources.Workflow).To(Equal("arg"))
 	})
 })
+
+var _ = Describe("extractVerifyingStaleHours", func() {
+	ctx := context.Background()
+
+	It("returns default 24 and original args when flag absent", func() {
+		n, remaining, err := extractVerifyingStaleHours(ctx, []string{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(24))
+		Expect(remaining).To(BeEmpty())
+	})
+
+	It("returns parsed value with --verifying-stale-hours=48", func() {
+		n, remaining, err := extractVerifyingStaleHours(ctx, []string{"--verifying-stale-hours=48"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(48))
+		Expect(remaining).To(BeEmpty())
+	})
+
+	It("returns error on empty value (--verifying-stale-hours=)", func() {
+		_, _, err := extractVerifyingStaleHours(ctx, []string{"--verifying-stale-hours="})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("requires a value"))
+	})
+
+	It("returns error on non-integer value", func() {
+		_, _, err := extractVerifyingStaleHours(ctx, []string{"--verifying-stale-hours=abc"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("positive integer"))
+	})
+
+	It("returns error on value less than 1", func() {
+		_, _, err := extractVerifyingStaleHours(ctx, []string{"--verifying-stale-hours=0"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("positive integer"))
+	})
+
+	It("strips flag from remaining args, preserving other args", func() {
+		n, remaining, err := extractVerifyingStaleHours(ctx, []string{"--fix", "--verifying-stale-hours=48", "other"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(n).To(Equal(48))
+		Expect(remaining).To(Equal([]string{"--fix", "other"}))
+	})
+})
+
+var _ = Describe("validateDoctorArgs", func() {
+	ctx := context.Background()
+
+	It("returns nil for empty args", func() {
+		Expect(validateDoctorArgs(ctx, []string{})).To(Succeed())
+	})
+
+	It("accepts --fix", func() {
+		Expect(validateDoctorArgs(ctx, []string{"--fix"})).To(Succeed())
+	})
+
+	It("accepts --yes", func() {
+		Expect(validateDoctorArgs(ctx, []string{"--yes"})).To(Succeed())
+	})
+
+	It("accepts --fix --yes combined", func() {
+		Expect(validateDoctorArgs(ctx, []string{"--fix", "--yes"})).To(Succeed())
+	})
+
+	It("accepts --verifying-stale-hours=24", func() {
+		Expect(validateDoctorArgs(ctx, []string{"--verifying-stale-hours=24"})).To(Succeed())
+	})
+
+	It("accepts --help and -h", func() {
+		Expect(validateDoctorArgs(ctx, []string{"--help"})).To(Succeed())
+		Expect(validateDoctorArgs(ctx, []string{"-h"})).To(Succeed())
+	})
+
+	It("returns error on unknown flag", func() {
+		err := validateDoctorArgs(ctx, []string{"--unknown"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown flag"))
+	})
+
+	It("returns error on positional argument", func() {
+		err := validateDoctorArgs(ctx, []string{"some-positional"})
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown flag"))
+	})
+})

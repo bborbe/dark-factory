@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [091-doctor-command]
+container: dark-factory-doctor-exec-440-spec-091-review-fix-coverage
+dark-factory-version: v0.173.0
 created: "2026-06-02T00:00:00Z"
 queued: "2026-06-02T06:58:24Z"
+started: "2026-06-02T07:19:59Z"
+completed: "2026-06-02T08:09:07Z"
 branch: feature/doctor-command
 ---
 

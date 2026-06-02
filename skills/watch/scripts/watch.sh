@@ -71,8 +71,11 @@ while true; do
     break
   fi
 
-  # Alert: stuck >15 minutes
-  MINS=$(echo "$STATUS" | grep "executing since" | grep -o '[0-9]*m' | tr -d 'm')
+  # Alert: stuck >15 minutes.
+  # `|| true` swallows grep's exit 1 when "executing since" is absent
+  # (e.g. daemon is in spec-generation mode, not prompt-execution mode);
+  # without it `set -euo pipefail` kills the watcher on every poll.
+  MINS=$(echo "$STATUS" | grep "executing since" | grep -o '[0-9]*m' | tr -d 'm' || true)
   if [ -n "$MINS" ] && [ "$MINS" -ge 15 ]; then
     echo "ALERT: STUCK >15min on $CURRENT"
     afplay /System/Library/Sounds/Basso.aiff

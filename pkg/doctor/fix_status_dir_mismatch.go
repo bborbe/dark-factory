@@ -6,7 +6,6 @@ package doctor
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,11 +78,7 @@ func (f *fixer) applyStatusDirMismatchPath(
 			Detail:      "lock acquire failed: " + err.Error(),
 		}
 	}
-	defer func() {
-		if err := fl.Release(ctx); err != nil {
-			slog.Warn("doctor: file lock release failed", "path", path, "error", err.Error())
-		}
-	}()
+	defer releaseLock(ctx, fl, path)
 
 	if err := os.MkdirAll(expectedDir, 0750); err != nil {
 		return nil, &FailedFix{

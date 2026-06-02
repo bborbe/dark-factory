@@ -34,7 +34,7 @@ dark-factory daemon
 
 Don't run in the foreground (blocks your session) or detached with `&` (loses lifecycle tracking).
 
-**Multiple projects:** Each project has its own lock file — you can run one daemon per project simultaneously.
+**Multiple projects:** Each project has its own lock file — you can run one daemon per project simultaneously. **After a spec renumber or external-reference drift**, run `dark-factory doctor` from the project root before resuming the daemon — it surfaces stale external references the daemon can no longer auto-fix. See [Detecting State Anomalies](#detecting-state-anomalies).
 
 ## Two ways to generate prompts from an approved spec
 
@@ -218,11 +218,42 @@ After each successful prompt, spend 2 minutes:
 | Vague prompt → wrong output? | More specificity next time |
 | Missing project convention? | Update project CLAUDE.md |
 
+## Detecting State Anomalies
+
+`dark-factory doctor` is a read-only diagnostic that scans your `specs/` and `prompts/` trees for state anomalies — duplicate spec numbers, stale `verifying` timestamps, orphan spec/prompt links, and more. Run on demand. It exits 0 when the project is clean, 1 with a categorized report when findings exist. Each finding names the affected file paths and a copy-paste command line that an operator can run to fix it manually.
+
+### Usage
+
+- `dark-factory doctor` — scan and report; exit 0 when clean, 1 with findings
+- `dark-factory doctor --fix` — scan, prompt `Apply? [y/N]` per finding, apply safe fixes
+- `dark-factory doctor --fix --yes` — same as `--fix` but auto-accepts all confirmations (for scripted cleanup)
+- `dark-factory doctor --verifying-stale-hours=48` — override the default 24h stale-`verifying` threshold
+
+### Detection categories
+
+| Category | What it catches | Copy-paste fix |
+|---|---|---|
+| `duplicate-spec-numbers` | Two `.md` files in the same lifecycle dir share a `NNN-` prefix | `dark-factory spec renumber <id-to-move>` |
+| `prompted-but-not-swept` | A spec is in `prompted` state but all its prompts are already `completed`/`rejected`/`cancelled` and it hasn't transitioned to `verifying` | `dark-factory spec sweep <spec-id>` |
+| `verifying-stale` | A spec is in `verifying` with no progress in the last 24h (configurable via `--verifying-stale-hours`) | `dark-factory spec verify <spec-id>` (informational — no auto-fix) |
+| `orphan-prompt-link` | A prompt's `spec: [NNN]` references a spec id with no `.md` file in any `specs/*/` dir | `dark-factory prompt unlink <prompt-id>` (relink alternative provided in finding `Detail`) |
+| `orphan-in-progress-prompt` | A prompt lives in `prompts/in-progress/` but its parent spec is already `completed` or `rejected` | `dark-factory prompt cancel <prompt-id>` |
+| `status-dir-mismatch` | A spec or prompt's `status:` field contradicts the lifecycle directory it lives in (e.g. `status: completed` inside `specs/in-progress/`) | `dark-factory spec move <spec-id>` (or the prompt equivalent) |
+
+### Audit log
+
+`dark-factory doctor --fix` appends one line per action to `.dark-factory/doctor.log` (mode 0644) for traceability. Each line contains timestamp (RFC3339), finding category, target file path(s), action taken, before-state, and after-state. When a spec is renumbered, the `previous_id` frontmatter field on the renamed spec records the prior number so the rename is reversible by reading the frontmatter.
+
+### Read-only by default
+
+`dark-factory doctor` (without `--fix`) never writes to `specs/` or `prompts/`. Safe to run from CI, from a script, or from a Claude Code session — the worst case is a non-zero exit code.
+
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
 | Lock error on start | Another instance running — check `cat .dark-factory.lock` |
+| Stale external references after a spec renumber (PR description, commit message, vault task) | Run `dark-factory doctor` to see affected files; the daemon no longer silently renumbers specs on startup — see [Detecting State Anomalies](#detecting-state-anomalies) |
 | Prompt not picked up | Must be in `prompts/in-progress/`, use `dark-factory prompt approve` |
 | Failed prompt blocks queue | Fix prompt/code, then `dark-factory prompt retry` |
 | Container not found | Ensure claude-yolo image is pulled |
@@ -263,3 +294,4 @@ This means you can run `dark-factory spec list` from any subdirectory of a proje
 | `dark-factory spec approve <name>` | Approve a spec |
 | `dark-factory spec complete <name>` | Mark verified spec as done |
 | `dark-factory spec mark-prompted <name>` | Transition a spec to `prompted` (used by the manual generation flow) |
+| `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` | Detect (and optionally fix) state anomalies in `specs/` and `prompts/` |

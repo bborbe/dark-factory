@@ -11,6 +11,9 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - refactor: Move all os.ReadDir calls to shared helpers in pkg/doctor/parse_errors.go (constraint: only parse_errors.go may call os.ReadDir)
+- feat: Add `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` — detects 6 state-anomaly categories (`duplicate-spec-numbers`, `prompted-but-not-swept`, `verifying-stale`, `orphan-prompt-link`, `orphan-in-progress-prompt`, `status-dir-mismatch`) in `specs/` and `prompts/`, prints a copy-paste fix line per finding.
+- feat: `dark-factory doctor --fix` applies safe mutations under a per-file lock with audit log at `.dark-factory/doctor.log`. Renumber fix records `previous_id: NNN` (unquoted YAML) in the renamed spec's frontmatter; linked prompt `spec:` fields are rewritten to the new id, prompt filenames untouched.
+- fix: Remove silent startup reconciliation — the daemon no longer renumbers spec or prompt files on startup. Operators run `dark-factory doctor` to find and fix such conditions on demand.
 
 ## v0.173.1
 

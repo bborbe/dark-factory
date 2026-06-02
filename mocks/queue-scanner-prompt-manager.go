@@ -47,7 +47,7 @@ type QueueScannerPromptManager struct {
 	findMissingCompletedReturnsOnCall map[int]struct {
 		result1 []int
 	}
-	FindMissingInSpecCompletedStub        func(context.Context, int, string) (int, error)
+	FindMissingInSpecCompletedStub        func(context.Context, int, string) int
 	findMissingInSpecCompletedMutex       sync.RWMutex
 	findMissingInSpecCompletedArgsForCall []struct {
 		arg1 context.Context
@@ -56,11 +56,9 @@ type QueueScannerPromptManager struct {
 	}
 	findMissingInSpecCompletedReturns struct {
 		result1 int
-		result2 error
 	}
 	findMissingInSpecCompletedReturnsOnCall map[int]struct {
 		result1 int
-		result2 error
 	}
 	FindPromptStatusInProgressStub        func(context.Context, int) string
 	findPromptStatusInProgressMutex       sync.RWMutex
@@ -305,7 +303,7 @@ func (fake *QueueScannerPromptManager) FindMissingCompletedReturnsOnCall(i int, 
 	}{result1}
 }
 
-func (fake *QueueScannerPromptManager) FindMissingInSpecCompleted(arg1 context.Context, arg2 int, arg3 string) (int, error) {
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompleted(arg1 context.Context, arg2 int, arg3 string) int {
 	fake.findMissingInSpecCompletedMutex.Lock()
 	ret, specificReturn := fake.findMissingInSpecCompletedReturnsOnCall[len(fake.findMissingInSpecCompletedArgsForCall)]
 	fake.findMissingInSpecCompletedArgsForCall = append(fake.findMissingInSpecCompletedArgsForCall, struct {
@@ -321,9 +319,9 @@ func (fake *QueueScannerPromptManager) FindMissingInSpecCompleted(arg1 context.C
 		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1
 }
 
 func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCallCount() int {
@@ -332,7 +330,7 @@ func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCallCount() int
 	return len(fake.findMissingInSpecCompletedArgsForCall)
 }
 
-func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCalls(stub func(context.Context, int, string) (int, error)) {
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCalls(stub func(context.Context, int, string) int) {
 	fake.findMissingInSpecCompletedMutex.Lock()
 	defer fake.findMissingInSpecCompletedMutex.Unlock()
 	fake.FindMissingInSpecCompletedStub = stub
@@ -345,30 +343,27 @@ func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedArgsForCall(i i
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturns(result1 int, result2 error) {
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturns(result1 int) {
 	fake.findMissingInSpecCompletedMutex.Lock()
 	defer fake.findMissingInSpecCompletedMutex.Unlock()
 	fake.FindMissingInSpecCompletedStub = nil
 	fake.findMissingInSpecCompletedReturns = struct {
 		result1 int
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
-func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturnsOnCall(i int, result1 int, result2 error) {
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturnsOnCall(i int, result1 int) {
 	fake.findMissingInSpecCompletedMutex.Lock()
 	defer fake.findMissingInSpecCompletedMutex.Unlock()
 	fake.FindMissingInSpecCompletedStub = nil
 	if fake.findMissingInSpecCompletedReturnsOnCall == nil {
 		fake.findMissingInSpecCompletedReturnsOnCall = make(map[int]struct {
 			result1 int
-			result2 error
 		})
 	}
 	fake.findMissingInSpecCompletedReturnsOnCall[i] = struct {
 		result1 int
-		result2 error
-	}{result1, result2}
+	}{result1}
 }
 
 func (fake *QueueScannerPromptManager) FindPromptStatusInProgress(arg1 context.Context, arg2 int) string {

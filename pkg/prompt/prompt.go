@@ -24,6 +24,7 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	"github.com/bborbe/validation"
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -754,12 +755,13 @@ func (p PromptScanner) AllPreviousInSpecCompleted(ctx context.Context, n int, sp
 
 // FindMissingInSpecCompleted returns the number of the predecessor prompt
 // within the same spec that is NOT in completed/, or -1 if no predecessor
-// exists for the candidate. Walks in-progress/ AND completed/.
+// exists for the candidate. Walks in-progress/ AND completed/. Filesystem
+// failures during the walk are logged at V(1) and treated as "no predecessor".
 func (p PromptScanner) FindMissingInSpecCompleted(
 	ctx context.Context,
 	n int,
 	specID string,
-) (int, error) {
+) int {
 	return findMissingInSpecCompleted(
 		ctx,
 		p.completedDir,
@@ -1013,10 +1015,7 @@ func (pm *Manager) GetBlockedPrompt(ctx context.Context) (int, string, int, bool
 		}
 		specID := specs[0]
 		if !pm.promptScanner.AllPreviousInSpecCompleted(ctx, number, specID) {
-			missing, err := pm.promptScanner.FindMissingInSpecCompleted(ctx, number, specID)
-			if err != nil {
-				return number, "previous-prompt-missing", 0, true
-			}
+			missing := pm.promptScanner.FindMissingInSpecCompleted(ctx, number, specID)
 			if missing > 0 {
 				return number, "previous-prompt-not-completed", missing, true
 			}
@@ -1036,7 +1035,7 @@ func (pm *Manager) FindMissingInSpecCompleted(
 	ctx context.Context,
 	n int,
 	specID string,
-) (int, error) {
+) int {
 	return pm.promptScanner.FindMissingInSpecCompleted(ctx, n, specID)
 }
 
@@ -1649,7 +1648,10 @@ func allPreviousInSpecCompleted(
 }
 
 // findMissingInSpecCompleted returns the predecessor number in the same spec
-// that is NOT in completed/, or -1 if no predecessor exists.
+// that is NOT in completed/, or -1 if no predecessor exists. Filesystem failures
+// during the scan are logged at V(1) and treated as "no predecessor found" —
+// the queue-advance guard then fails open per the safety-vs-noise tradeoff
+// documented on findPredecessorInSpec.
 func findMissingInSpecCompleted(
 	ctx context.Context,
 	completedDir string,
@@ -1657,18 +1659,18 @@ func findMissingInSpecCompleted(
 	n int,
 	specID string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) (int, error) {
+) int {
 	if specID == "" {
-		return -1, nil
+		return -1
 	}
 	pred, ok := findPredecessorInSpec(ctx, scanDir, completedDir, n, specID, currentDateTimeGetter)
 	if !ok {
-		return -1, nil
+		return -1
 	}
 	if isNumberInCompletedDir(completedDir, pred) {
-		return -1, nil
+		return -1
 	}
-	return pred, nil
+	return pred
 }
 
 // findPredecessorInSpec walks both scanDir (in-progress/) and completedDir for
@@ -1695,6 +1697,16 @@ func findPredecessorInSpec(
 	for _, dir := range []string{scanDir, completedDir} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
+			// Logged at V(1) but treated as "directory empty for this spec":
+			// the safety-vs-noise tradeoff is intentional — a transient ENOENT
+			// on a yet-to-be-created completed/ dir is normal; a persistent
+			// filesystem failure shows up at V(1) for the operator to diagnose
+			// while the queue-advance guard fails open (caller's existing
+			// completed/ check still gates the actual advance).
+			glog.V(1).Infof(
+				"findPredecessorInSpec: ReadDir failed for dir=%s spec=%s n=%d: %v",
+				dir, specID, n, err,
+			)
 			continue
 		}
 		for _, entry := range entries {
@@ -1708,6 +1720,14 @@ func findPredecessorInSpec(
 			path := filepath.Join(dir, entry.Name())
 			fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
 			if err != nil {
+				// Same safety-vs-noise tradeoff: a parse failure on one
+				// prompt file's frontmatter doesn't sink the daemon — the
+				// candidate is skipped from the per-spec set, but the
+				// operator gets a V(1) signal if it persists.
+				glog.V(1).Infof(
+					"findPredecessorInSpec: readFrontmatter failed for path=%s spec=%s: %v",
+					path, specID, err,
+				)
 				continue
 			}
 			if !specListContains(fm.Specs, specID) {
@@ -1729,9 +1749,16 @@ func findPredecessorInSpec(
 }
 
 // isNumberInCompletedDir returns true if a file with the given number exists in completedDir.
+// Returns false on filesystem error (fail-closed: caller treats false as "not completed" →
+// queue-advance guard blocks). The error is logged at V(1) so operators can distinguish a
+// real read failure from a legitimate "not in completed yet" answer.
 func isNumberInCompletedDir(completedDir string, num int) bool {
 	entries, err := os.ReadDir(completedDir)
 	if err != nil {
+		glog.V(1).Infof(
+			"isNumberInCompletedDir: ReadDir failed for dir=%s num=%d: %v",
+			completedDir, num, err,
+		)
 		return false
 	}
 	prefix := fmt.Sprintf("%03d-", num)

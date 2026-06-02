@@ -678,8 +678,8 @@ func (s *stubWorkflowManager) FindMissingInSpecCompleted(
 	_ context.Context,
 	_ int,
 	_ string,
-) (int, error) {
-	return -1, nil
+) int {
+	return -1
 }
 
 func (s *stubWorkflowManager) FindPromptStatusInProgress(_ context.Context, _ int) string {

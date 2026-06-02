@@ -32,5 +32,5 @@ type PromptManager interface {
 	// the scanner with this manager. Kept as declarations on the interface so
 	// counterfeiter generates stubs in the mock.
 	AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool
-	FindMissingInSpecCompleted(ctx context.Context, n int, specID string) (int, error)
+	FindMissingInSpecCompleted(ctx context.Context, n int, specID string) int
 }

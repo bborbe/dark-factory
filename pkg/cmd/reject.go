@@ -73,7 +73,8 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 	if status == prompt.RejectedPromptStatus {
 		return errors.Errorf(ctx, "%s is already rejected", filepath.Base(path))
 	}
-	if !status.IsRejectable() && status != prompt.FailedPromptStatus {
+	allowed := status.IsRejectable() || status == prompt.FailedPromptStatus
+	if !allowed {
 		return errors.Errorf(
 			ctx,
 			"cannot reject prompt with status %q — allowed: idea, draft, approved, failed",

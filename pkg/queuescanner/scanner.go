@@ -43,7 +43,7 @@ type PromptManager interface {
 	SetStatus(ctx context.Context, path string, status string) error
 	// Per-spec predecessor lookup (spec 092)
 	AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool
-	FindMissingInSpecCompleted(ctx context.Context, n int, specID string) (int, error)
+	FindMissingInSpecCompleted(ctx context.Context, n int, specID string) int
 }
 
 // Scanner drives the queue-scan loop: list queued, validate, dispatch to PromptProcessor, handle blockers.
@@ -170,19 +170,11 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			break
 		}
 		// Blocked: log once with spec id, then return DONE.
-		// FindMissingInSpecCompleted errors are non-fatal — we know the
-		// candidate is blocked; the error only affects the `missing` field.
-		// Log at V(1) so operators can diagnose if `missing` is unexpectedly empty.
-		missing, mErr := s.promptManager.FindMissingInSpecCompleted(ctx, candidate.Number(), specID)
-		if mErr != nil {
-			slog.WarnContext(
-				ctx,
-				"FindMissingInSpecCompleted failed; `missing` may be empty",
-				"file", filepath.Base(candidate.Path),
-				"spec", specID,
-				"err", mErr,
-			)
-		}
+		// FindMissingInSpecCompleted treats filesystem failures as
+		// "no predecessor" (logged at V(1) inside the prompt package);
+		// missing < 0 means the `missing=` field is omitted from the
+		// operator-facing log line.
+		missing := s.promptManager.FindMissingInSpecCompleted(ctx, candidate.Number(), specID)
 		s.logBlockedOnce(
 			ctx,
 			candidate,

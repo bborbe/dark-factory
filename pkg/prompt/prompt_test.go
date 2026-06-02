@@ -559,9 +559,7 @@ var _ = Describe("Prompt", func() {
 			)
 			// 224 of spec 058 is missing
 			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeFalse())
-			missing, err := mgr.FindMissingInSpecCompleted(ctx, 225, "058")
-			Expect(err).To(BeNil())
-			Expect(missing).To(Equal(224))
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(224))
 		})
 
 		It("returns true when no predecessor exists in same spec", func() {
@@ -573,9 +571,7 @@ var _ = Describe("Prompt", func() {
 			)
 			// No 22x in any directory
 			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeTrue())
-			missing, err := mgr.FindMissingInSpecCompleted(ctx, 225, "058")
-			Expect(err).To(BeNil())
-			Expect(missing).To(Equal(-1))
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(-1))
 		})
 
 		It("ignores a failed prompt in a different spec", func() {
@@ -607,9 +603,7 @@ var _ = Describe("Prompt", func() {
 			// (the global-predecessor would have reported 224, but here 224 is in
 			// spec 056 and should NOT be conflated with 224 in spec 058).
 			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeFalse())
-			missing, err := mgr.FindMissingInSpecCompleted(ctx, 225, "058")
-			Expect(err).To(BeNil())
-			Expect(missing).To(Equal(224))
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(224))
 		})
 
 		It("returns true for a candidate with no spec field (empty specID)", func() {

@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.174.3
 
 - fix(skills/watch): swallow grep no-match exit in stuck-prompt detector so the watcher survives polls while the daemon is in spec-generation mode (no "executing since" line in status); previously `set -euo pipefail` killed the watcher on the first poll.
 

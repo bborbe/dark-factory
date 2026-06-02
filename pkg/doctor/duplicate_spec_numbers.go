@@ -40,7 +40,6 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 		// Later (lex last) file is the one to renumber.
 		idToMove := names[len(names)-1]                     // e.g. "019-feature.md"
 		idToMoveStem := strings.TrimSuffix(idToMove, ".md") // e.g. "019-feature"
-		otherNames := names[:len(names)-1]
 
 		// Build detail parts describing all colliding files.
 		var detailParts []string
@@ -73,12 +72,14 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 			)
 		}
 
-		targets := append([]string(nil), otherNames...)
-		sort.Strings(targets)
-
+		// TargetPaths is the spec to renumber (lex-last loser), NOT the survivors.
+		// The fixer's filterRelevantRenames matches reindex's emitted OldPath
+		// against filepath.Join(specDir, targetPath); reindex moves the LOSER,
+		// so TargetPaths must name that file. Detail still lists all colliding
+		// files for operator visibility.
 		findings = append(findings, Finding{
 			Category:    CategoryDuplicateSpecNumbers,
-			TargetPaths: targets,
+			TargetPaths: []string{idToMove},
 			SpecID:      idToMoveStem,
 			Detail:      "duplicate spec number across: " + strings.Join(detailParts, "; "),
 			FixCommand:  "dark-factory spec renumber " + idToMoveStem,

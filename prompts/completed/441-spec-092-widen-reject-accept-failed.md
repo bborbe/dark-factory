@@ -1,14 +1,13 @@
 ---
-status: failed
+status: completed
 spec: [092-daemon-blocked-queue-ux]
 container: dark-factory-blocked-queue-exec-441-spec-092-widen-reject-accept-failed
 dark-factory-version: v0.174.1-dirty
 created: "2026-06-02T19:24:09Z"
 queued: "2026-06-02T20:16:12Z"
 started: "2026-06-02T20:17:26Z"
-completed: "2026-06-02T20:25:06Z"
+completed: "2026-06-02T20:43:34Z"
 branch: dark-factory/daemon-blocked-queue-ux
-lastFailReason: 'validate completion report: completion report status: failed'
 ---
 
 <summary>

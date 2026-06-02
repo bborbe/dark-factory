@@ -37,34 +37,34 @@ var _ = Describe("DoctorCommand", func() {
 
 	Describe("Run", func() {
 		It("returns error for unknown flag", func() {
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--unknown-flag"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unknown flag"))
 		})
 
 		It("shows help for --help", func() {
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--help"})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("shows help for -h", func() {
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"-h"})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("returns no findings when checker returns empty", func() {
 			fakeChecker.CheckReturns([]doctor.Finding{}, nil)
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("returns error when checker fails", func() {
 			fakeChecker.CheckReturns(nil, context.DeadlineExceeded)
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doctor check failed"))
@@ -79,7 +79,7 @@ var _ = Describe("DoctorCommand", func() {
 					Detail:      "spec 001 has duplicate number",
 				},
 			}, nil)
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doctor found 1 finding"))
@@ -107,7 +107,7 @@ var _ = Describe("DoctorCommand", func() {
 				Failed:  []doctor.FailedFix{},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix"})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fakeFixer.ApplyCallCount()).To(Equal(1))
@@ -134,7 +134,7 @@ var _ = Describe("DoctorCommand", func() {
 				Failed: []doctor.FailedFix{},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix", "--yes"})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -154,7 +154,7 @@ var _ = Describe("DoctorCommand", func() {
 			}, nil)
 			fakeFixer.ApplyReturns(doctor.ApplyResult{}, context.DeadlineExceeded)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("fixer apply failed"))
@@ -181,7 +181,7 @@ var _ = Describe("DoctorCommand", func() {
 				},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("fixer had 1 failure"))
@@ -207,7 +207,7 @@ var _ = Describe("DoctorCommand", func() {
 				Failed:  []doctor.FailedFix{},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix"})
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -232,7 +232,7 @@ var _ = Describe("DoctorCommand", func() {
 				Failed: []doctor.FailedFix{},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{"--fix"})
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -253,7 +253,7 @@ var _ = Describe("DoctorCommand", func() {
 				},
 			}, nil)
 
-			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer, 24)
+			doctorCmd := cmd.NewDoctorCommand(fakeChecker, fakeFixer)
 			err := doctorCmd.Run(ctx, []string{}) // no --fix
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("doctor found 2 finding"))

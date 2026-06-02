@@ -40,6 +40,14 @@ const CategoryStatusDirMismatch Category = "status-dir-mismatch"
 // CategoryParseError indicates a file's YAML frontmatter could not be parsed.
 const CategoryParseError Category = "parse-errors"
 
+//counterfeiter:generate -o ../../mocks/doctor-prompt-manager.go --fake-name DoctorPromptManager . PromptManager
+
+// PromptManager is the subset of prompt.Manager that the doctor package uses.
+type PromptManager interface {
+	Load(ctx context.Context, path string) (*prompt.PromptFile, error)
+	MoveToCancelled(ctx context.Context, path string) error
+}
+
 // Finding represents a detected anomaly in spec or prompt files.
 type Finding struct {
 	// Category is the type of anomaly detected.
@@ -72,7 +80,7 @@ type Deps struct {
 	PromptsCompletedDir   string
 	PromptsCancelledDir   string
 	SpecLister            spec.Lister
-	PromptManager         *prompt.Manager
+	PromptManager         PromptManager
 	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
 	VerifyingStaleHours   int
 }

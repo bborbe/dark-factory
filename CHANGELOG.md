@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.174.0
 
 - refactor: Move all os.ReadDir calls to shared helpers in pkg/doctor/parse_errors.go (constraint: only parse_errors.go may call os.ReadDir)
 - feat: Add `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` — detects 6 state-anomaly categories (`duplicate-spec-numbers`, `prompted-but-not-swept`, `verifying-stale`, `orphan-prompt-link`, `orphan-in-progress-prompt`, `status-dir-mismatch`) in `specs/` and `prompts/`, prints a copy-paste fix line per finding.

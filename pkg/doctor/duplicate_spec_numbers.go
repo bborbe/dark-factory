@@ -56,12 +56,10 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 			stem := strings.TrimSuffix(name, ".md")
 			status := "unknown"
 			// Find the spec to get status and linked-prompt count.
-			var specPath string
 			for _, d := range specDirs {
 				p := d + "/" + name
 				if sf, err := spec.Load(ctx, p, c.deps.CurrentDateTimeGetter); err == nil {
 					status = sf.Frontmatter.Status
-					specPath = p
 					break
 				}
 			}
@@ -76,7 +74,6 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 				detailParts,
 				name+" (status: "+status+", linked-prompts: "+itoa(total)+")",
 			)
-			_ = specPath
 		}
 
 		targets := make([]string, 0, len(otherNames))

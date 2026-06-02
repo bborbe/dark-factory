@@ -24,24 +24,21 @@ type DoctorCommand interface {
 	Run(ctx context.Context, args []string) error
 }
 
-// doctorCommand implements DoctorCommand.
-type doctorCommand struct {
-	checker             doctor.Checker
-	fixer               doctor.Fixer
-	verifyingStaleHours int
-}
-
 // NewDoctorCommand creates a new DoctorCommand.
 func NewDoctorCommand(
 	checker doctor.Checker,
 	fixer doctor.Fixer,
-	verifyingStaleHours int,
 ) DoctorCommand {
 	return &doctorCommand{
-		checker:             checker,
-		fixer:               fixer,
-		verifyingStaleHours: verifyingStaleHours,
+		checker: checker,
+		fixer:   fixer,
 	}
+}
+
+// doctorCommand implements DoctorCommand.
+type doctorCommand struct {
+	checker doctor.Checker
+	fixer   doctor.Fixer
 }
 
 // Run executes the doctor command.
@@ -73,7 +70,6 @@ func (d *doctorCommand) Run(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	// Group findings by category for display.
 	byCategory := groupFindingsByCategory(findings)
 	for cat, catFindings := range byCategory {
 		fmt.Fprintf(os.Stdout, "%s\n", cat)
@@ -100,7 +96,6 @@ func (d *doctorCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "fixer apply failed")
 	}
 
-	// Print result summary.
 	if len(result.Applied) > 0 {
 		fmt.Fprintf(os.Stdout, "applied %d fix(es)\n", len(result.Applied))
 	}
@@ -126,7 +121,6 @@ func groupFindingsByCategory(findings []doctor.Finding) map[doctor.Category][]do
 	for _, f := range findings {
 		result[f.Category] = append(result[f.Category], f)
 	}
-	// Sort categories for stable output.
 	cats := make([]doctor.Category, 0, len(result))
 	for cat := range result {
 		cats = append(cats, cat)

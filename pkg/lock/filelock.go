@@ -59,18 +59,18 @@ func (f *fileLock) Acquire(ctx context.Context, timeout time.Duration) error {
 			if time.Now().After(deadline) {
 				return errors.Errorf(ctx, "lock acquire timeout: %s", f.lockPath)
 			}
-			if f.tryAcquire() == nil {
+			if f.tryAcquire(ctx) == nil {
 				return nil
 			}
 		}
 	}
 }
 
-func (f *fileLock) tryAcquire() error {
+func (f *fileLock) tryAcquire(ctx context.Context) error {
 	// #nosec G304 -- path is derived from caller-controlled target path + ".lock" suffix
 	fd, err := os.OpenFile(f.lockPath, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return errors.Wrap(context.Background(), err, "open lock file")
+		return errors.Wrap(ctx, err, "open lock file")
 	}
 
 	if err := syscall.Flock( //nolint:gosec // G115: File descriptor conversion is safe
@@ -78,7 +78,7 @@ func (f *fileLock) tryAcquire() error {
 		syscall.LOCK_EX|syscall.LOCK_NB,
 	); err != nil {
 		_ = fd.Close()
-		return errors.Errorf(context.Background(), "flock failed: %v", err)
+		return errors.Errorf(ctx, "flock failed: %v", err)
 	}
 
 	f.fd = fd

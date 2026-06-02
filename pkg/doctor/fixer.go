@@ -75,7 +75,6 @@ type FixerDeps struct {
 	AutoCompleter         spec.AutoCompleter
 	Mover                 prompt.FileMover
 	FileLockFactory       func(path string) lock.FileLock
-	GitRunner             GitRunner
 	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
@@ -90,9 +89,6 @@ type Fixer interface {
 func NewFixer(deps FixerDeps) Fixer {
 	if deps.FileLockFactory == nil {
 		deps.FileLockFactory = lock.NewFileLock
-	}
-	if deps.GitRunner == nil {
-		deps.GitRunner = &noopGitRunner{}
 	}
 	return &fixer{deps: deps}
 }
@@ -201,25 +197,4 @@ func (f *fixer) readLine(r io.Reader) (string, error) {
 		return strings.TrimSpace(scanner.Text()), scanner.Err()
 	}
 	return "", scanner.Err()
-}
-
-// GitRunner is the subset of subproc.Runner used by the fixer.
-type GitRunner interface {
-	RunWithWarnAndTimeout(
-		ctx context.Context,
-		op string,
-		name string,
-		args ...string,
-	) ([]byte, error)
-}
-
-type noopGitRunner struct{}
-
-func (n *noopGitRunner) RunWithWarnAndTimeout(
-	ctx context.Context,
-	op string,
-	name string,
-	args ...string,
-) ([]byte, error) {
-	return nil, nil
 }

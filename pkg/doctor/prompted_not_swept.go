@@ -92,6 +92,9 @@ func (c *checker) linkedPromptsAllTerminal(ctx context.Context, specID string) (
 			return false, total, nil
 		}
 	}
+	if total == 0 {
+		return false, 0, nil
+	}
 	return true, total, nil
 }
 

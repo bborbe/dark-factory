@@ -62,8 +62,6 @@ var _ = Describe("Fixer", func() {
 		fakeSpecLister.SummaryReturns(&spec.Summary{}, nil)
 		fakeAutoCompleter := &mocks.AutoCompleter{}
 		fakeAutoCompleter.CheckAndCompleteReturns(nil)
-		fakeGitRunner := &mocks.SubprocRunner{}
-		fakeGitRunner.RunWithWarnAndTimeoutReturns(nil, nil)
 		fakeFileLock := &mocks.LockFileLock{}
 		fakeFileLock.AcquireReturns(nil)
 		fakeFileLock.ReleaseReturns(nil)
@@ -95,7 +93,6 @@ var _ = Describe("Fixer", func() {
 			AutoCompleter:         fakeAutoCompleter,
 			Mover:                 fakeMover,
 			FileLockFactory:       func(path string) lock.FileLock { return fakeFileLock },
-			GitRunner:             fakeGitRunner,
 			CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
 		}
 	}

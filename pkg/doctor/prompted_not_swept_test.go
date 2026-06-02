@@ -124,6 +124,37 @@ var _ = Describe("PromptedNotSwept", func() {
 		Expect(sweptFindings).To(BeEmpty())
 	})
 
+	It("does not fire on a prompted spec with zero linked prompts", func() {
+		createSpecFile(filepath.Join(specsDir, "inbox"), "001-feature.md", "prompted")
+
+		deps := doctor.Deps{
+			SpecsInboxDir:         filepath.Join(specsDir, "inbox"),
+			SpecsInProgressDir:    filepath.Join(specsDir, "in-progress"),
+			SpecsCompletedDir:     filepath.Join(specsDir, "completed"),
+			SpecsRejectedDir:      filepath.Join(specsDir, "rejected"),
+			PromptsInboxDir:       filepath.Join(promptsDir, "inbox"),
+			PromptsInProgressDir:  filepath.Join(promptsDir, "in-progress"),
+			PromptsCompletedDir:   filepath.Join(promptsDir, "completed"),
+			PromptsCancelledDir:   filepath.Join(promptsDir, "cancelled"),
+			SpecLister:            spec.NewLister(currentTime, filepath.Join(specsDir, "inbox")),
+			PromptManager:         pm,
+			CurrentDateTimeGetter: currentTime,
+			VerifyingStaleHours:   24,
+		}
+
+		checker := doctor.NewChecker(deps)
+		findings, err := checker.Check(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
+		var sweptFindings []doctor.Finding
+		for _, f := range findings {
+			if f.Category == doctor.CategoryPromptedNotSwept {
+				sweptFindings = append(sweptFindings, f)
+			}
+		}
+		Expect(sweptFindings).To(BeEmpty())
+	})
+
 	It("returns no finding when a spec is not in prompted status", func() {
 		createSpecFile(filepath.Join(specsDir, "inbox"), "001-feature.md", "idea")
 		createPromptFile(filepath.Join(promptsDir, "completed"), "001-first.md", "completed", "001")

@@ -18,18 +18,12 @@ func (f *fixer) fixStatusDirMismatch(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied []AppliedFix, failed []FailedFix) {
-	// The Detail field encodes the contradiction. e.g.:
-	//   "spec in specs/in-progress/ has status completed ..."
-	//   "prompt in prompts/in-progress/ has status completed ..."
-	// We parse the FixCommand prefix to determine whether this is a spec or prompt.
 	fixCmd := finding.FixCommand
 	var expectedDir string
 	var filename string
 
 	if strings.HasPrefix(fixCmd, "dark-factory spec move ") {
 		specID := strings.TrimPrefix(fixCmd, "dark-factory spec move ")
-		// Determine expected dir from the finding's Detail by parsing the mismatch description.
-		// The Detail for specs is: "spec in X/ has status Y but only statuses {Z} are allowed in that directory"
 		expectedDir = f.expectedSpecDir(finding.Detail)
 		if expectedDir == "" {
 			failed = append(failed, FailedFix{
@@ -62,66 +56,77 @@ func (f *fixer) fixStatusDirMismatch(
 	}
 
 	for _, path := range finding.TargetPaths {
-		fl := f.deps.FileLockFactory(path)
-		if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: []string{path},
-				Detail:      "lock acquire failed: " + err.Error(),
-			})
-			continue
+		af, ff := f.applyStatusDirMismatchPath(ctx, path, expectedDir, filename, finding, opts)
+		if af != nil {
+			applied = append(applied, *af)
 		}
-		defer fl.Release(ctx)
-
-		// Ensure expected dir exists.
-		if err := os.MkdirAll(expectedDir, 0750); err != nil {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: []string{path},
-				Detail:      "create directory failed: " + err.Error(),
-			})
-			continue
+		if ff != nil {
+			failed = append(failed, *ff)
 		}
-
-		dest := filepath.Join(expectedDir, filename)
-		if err := os.Rename(path, dest); err != nil {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: []string{path},
-				Detail:      "rename failed: " + err.Error(),
-			})
-			continue
-		}
-
-		if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
-			Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
-			Category:    finding.Category,
-			Action:      "applied",
-			TargetPaths: []string{path, dest},
-			Before:      filepath.Base(path),
-			After:       filepath.Base(dest),
-		}); err != nil {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: []string{path},
-				Detail:      "audit log write failed: " + err.Error(),
-			})
-			continue
-		}
-
-		applied = append(applied, AppliedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{path, dest},
-			FixCommand:  finding.FixCommand,
-			AuditLine:   "",
-		})
 	}
 
 	return
 }
 
+func (f *fixer) applyStatusDirMismatchPath(
+	ctx context.Context,
+	path string,
+	expectedDir string,
+	filename string,
+	finding Finding,
+	opts ApplyOptions,
+) (applied *AppliedFix, failed *FailedFix) {
+	fl := f.deps.FileLockFactory(path)
+	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "lock acquire failed: " + err.Error(),
+		}
+	}
+	defer fl.Release(ctx)
+
+	if err := os.MkdirAll(expectedDir, 0750); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "create directory failed: " + err.Error(),
+		}
+	}
+
+	dest := filepath.Join(expectedDir, filename)
+	if err := os.Rename(path, dest); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "rename failed: " + err.Error(),
+		}
+	}
+
+	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
+		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
+		Category:    finding.Category,
+		Action:      "applied",
+		TargetPaths: []string{path, dest},
+		Before:      filepath.Base(path),
+		After:       filepath.Base(dest),
+	}); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "audit log write failed: " + err.Error(),
+		}
+	}
+
+	return &AppliedFix{
+		Category:    finding.Category,
+		TargetPaths: []string{path, dest},
+		FixCommand:  finding.FixCommand,
+		AuditLine:   "",
+	}, nil
+}
+
 // expectedSpecDir determines the correct spec directory from the Detail string.
-// The Detail for specs always names the current (wrong) directory and the allowed statuses.
 func (f *fixer) expectedSpecDir(detail string) string {
 	if strings.Contains(detail, "specs/in-progress/") {
 		if strings.Contains(detail, "status completed") {

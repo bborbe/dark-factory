@@ -1,11 +1,13 @@
 ---
-status: prompted
+status: completed
 tags:
     - dark-factory
     - spec
 approved: "2026-06-01T21:36:59Z"
 generating: "2026-06-01T21:43:39Z"
 prompted: "2026-06-01T22:30:09Z"
+verifying: "2026-06-02T05:53:46Z"
+completed: "2026-06-02T05:54:01Z"
 branch: dark-factory/doctor-command
 ---
 

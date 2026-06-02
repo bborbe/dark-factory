@@ -1150,7 +1150,7 @@ func CreateDoctorCommand(
 		promptManager,
 	)
 
-	checker := doctor.NewChecker(doctor.Deps{
+	deps := doctor.Deps{
 		SpecsInboxDir:         cfg.Specs.InboxDir,
 		SpecsInProgressDir:    cfg.Specs.InProgressDir,
 		SpecsCompletedDir:     cfg.Specs.CompletedDir,
@@ -1163,31 +1163,19 @@ func CreateDoctorCommand(
 		PromptManager:         promptManager,
 		CurrentDateTimeGetter: currentDateTimeGetter,
 		VerifyingStaleHours:   verifyingStaleHours,
-	})
+	}
+
+	checker := doctor.NewChecker(deps)
 
 	fixer := doctor.NewFixer(doctor.FixerDeps{
-		Deps: doctor.Deps{
-			SpecsInboxDir:         cfg.Specs.InboxDir,
-			SpecsInProgressDir:    cfg.Specs.InProgressDir,
-			SpecsCompletedDir:     cfg.Specs.CompletedDir,
-			SpecsRejectedDir:      cfg.Specs.RejectedDir,
-			PromptsInboxDir:       cfg.Prompts.InboxDir,
-			PromptsInProgressDir:  cfg.Prompts.InProgressDir,
-			PromptsCompletedDir:   cfg.Prompts.CompletedDir,
-			PromptsCancelledDir:   cfg.Prompts.CancelledDir,
-			SpecLister:            specLister,
-			PromptManager:         promptManager,
-			CurrentDateTimeGetter: currentDateTimeGetter,
-			VerifyingStaleHours:   verifyingStaleHours,
-		},
+		Deps:                  deps,
 		AutoCompleter:         autoCompleter,
 		Mover:                 releaser,
 		FileLockFactory:       lock.NewFileLock,
-		GitRunner:             subproc.NewRunner(),
 		CurrentDateTimeGetter: currentDateTimeGetter,
 	})
 
-	return cmd.NewDoctorCommand(checker, fixer, verifyingStaleHours)
+	return cmd.NewDoctorCommand(checker, fixer)
 }
 
 // CreateListCommand creates a ListCommand.

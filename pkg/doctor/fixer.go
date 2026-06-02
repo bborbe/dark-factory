@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/project"
@@ -72,10 +71,9 @@ type ApplyResult struct {
 // and adds the mutating-phase dependencies.
 type FixerDeps struct {
 	Deps
-	AutoCompleter         spec.AutoCompleter
-	Mover                 prompt.FileMover
-	FileLockFactory       func(path string) lock.FileLock
-	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
+	AutoCompleter   spec.AutoCompleter
+	Mover           prompt.FileMover
+	FileLockFactory func(path string) lock.FileLock
 }
 
 //counterfeiter:generate -o ../../mocks/doctor-fixer.go --fake-name DoctorFixer . Fixer

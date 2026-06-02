@@ -1168,11 +1168,10 @@ func CreateDoctorCommand(
 	checker := doctor.NewChecker(deps)
 
 	fixer := doctor.NewFixer(doctor.FixerDeps{
-		Deps:                  deps,
-		AutoCompleter:         autoCompleter,
-		Mover:                 releaser,
-		FileLockFactory:       lock.NewFileLock,
-		CurrentDateTimeGetter: currentDateTimeGetter,
+		Deps:            deps,
+		AutoCompleter:   autoCompleter,
+		Mover:           releaser,
+		FileLockFactory: lock.NewFileLock,
 	})
 
 	return cmd.NewDoctorCommand(checker, fixer)

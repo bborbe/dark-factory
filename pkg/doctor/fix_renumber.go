@@ -7,6 +7,7 @@ package doctor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -84,8 +85,15 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		}
 	}
 
-	_, err = reindex.UpdateSpecRefs(ctx, renames, promptDirs, f.deps.Mover, f.deps.PromptManager)
-	if err != nil {
+	// UpdateSpecRefs failures are best-effort: the renames have already succeeded
+	// on disk, so the renumber itself is durable. Stale prompt spec-refs are
+	// surfaced by the orphan-prompt-link detector on the next `dark-factory doctor`
+	// run, so the operator gets a recovery path. Log the error so it is
+	// diagnosable from daemon logs / CI output; do not propagate.
+	if _, refsErr := reindex.UpdateSpecRefs(ctx, renames, promptDirs, f.deps.Mover, f.deps.PromptManager); refsErr != nil {
+		slog.Warn("doctor: UpdateSpecRefs failed (best-effort, continuing)",
+			"error", refsErr.Error(),
+			"renames", len(renames))
 	}
 
 	return
@@ -97,22 +105,28 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied *AppliedFix, failed *FailedFix) {
-	fl := f.deps.FileLockFactory(rn.OldPath)
+	// reindex.Reindex has already moved the file from OldPath → NewPath via the
+	// shared FileMover before this method is called. We operate on NewPath here:
+	// lock it, load the spec from its new location, record PreviousID in the
+	// frontmatter, and save it back. The historical "MoveFile after Save" call
+	// at this layer was a double-move that worked only against mocks (no-op) and
+	// failed against real filesystems (Load couldn't find the already-moved file).
+	fl := f.deps.FileLockFactory(rn.NewPath)
 	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath},
+			TargetPaths: []string{rn.OldPath, rn.NewPath},
 			Detail:      "lock acquire failed: " + err.Error(),
 		}
 	}
 	defer fl.Release(ctx)
 
 	oldNum := specnum.Parse(strings.TrimSuffix(filepath.Base(rn.OldPath), ".md"))
-	sf, err := spec.Load(ctx, rn.OldPath, f.deps.CurrentDateTimeGetter)
+	sf, err := spec.Load(ctx, rn.NewPath, f.deps.CurrentDateTimeGetter)
 	if err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath},
+			TargetPaths: []string{rn.OldPath, rn.NewPath},
 			Detail:      "load failed: " + err.Error(),
 		}
 	}
@@ -121,16 +135,8 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 	if err := sf.Save(ctx); err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath},
+			TargetPaths: []string{rn.OldPath, rn.NewPath},
 			Detail:      "save failed: " + err.Error(),
-		}
-	}
-
-	if err := f.deps.Mover.MoveFile(ctx, rn.OldPath, rn.NewPath); err != nil {
-		return nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath},
-			Detail:      "move failed: " + err.Error(),
 		}
 	}
 

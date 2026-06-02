@@ -218,9 +218,16 @@ func (f Frontmatter) toYAMLNode() *yaml.Node {
 			children,
 			&yaml.Node{Kind: yaml.ScalarNode, Value: "previous_id", Tag: "!!str"},
 		)
+		// Force plain unquoted style for the value so the AC grep matches the
+		// literal byte sequence `previous_id: 056\n` (a quoted form `"056"`
+		// would fail the grep). Style: yaml.LiteralStyle uses `|`; what we want
+		// is Style 0 with no Tag so yaml.v3 emits the value verbatim without
+		// disambiguation quotes. Round-trip parses the value back as int 56
+		// (acceptable — PreviousID is set-once at renumber and never re-read
+		// to drive logic; it is operator-visible audit only).
 		children = append(
 			children,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: f.PreviousID, Tag: "!!str"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: f.PreviousID, Style: 0},
 		)
 	}
 

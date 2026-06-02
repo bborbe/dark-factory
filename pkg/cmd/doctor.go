@@ -17,7 +17,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/doctor"
 )
 
-// counterfeiter:generate -o ../../mocks/doctor-command.go --fake-name DoctorCommand . DoctorCommand
+//counterfeiter:generate -o ../../mocks/doctor-command.go --fake-name DoctorCommand . DoctorCommand
 
 // DoctorCommand executes the doctor subcommand.
 type DoctorCommand interface {

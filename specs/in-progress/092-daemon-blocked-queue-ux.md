@@ -1,6 +1,8 @@
 ---
-status: approved
+status: prompted
 approved: "2026-06-02T19:07:50Z"
+generating: "2026-06-02T19:18:51Z"
+prompted: "2026-06-02T19:46:12Z"
 branch: dark-factory/daemon-blocked-queue-ux
 ---
 

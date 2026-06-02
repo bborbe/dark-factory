@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [092-daemon-blocked-queue-ux]
+container: dark-factory-blocked-queue-exec-443-spec-092-status-blocked-line
+dark-factory-version: v0.174.1-dirty
 created: "2026-06-02T19:24:09Z"
 queued: "2026-06-02T20:16:12Z"
+started: "2026-06-02T21:42:36Z"
+completed: "2026-06-02T21:56:25Z"
 branch: dark-factory/daemon-blocked-queue-ux
 ---
 

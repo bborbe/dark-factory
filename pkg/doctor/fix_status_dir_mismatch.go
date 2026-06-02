@@ -95,14 +95,10 @@ func (f *fixer) applyStatusDirMismatchPath(
 	}
 
 	dest := filepath.Join(expectedDir, filename)
-	if err := os.Rename(path, dest); err != nil {
-		return nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{path},
-			Detail:      "rename failed: " + err.Error(),
-		}
-	}
 
+	// Audit BEFORE the mutating os.Rename: audit failure leaves the file in
+	// place with no orphan trail; rename failure leaves the file in place
+	// with the audit recording the attempt.
 	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
 		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
 		Category:    finding.Category,
@@ -115,6 +111,14 @@ func (f *fixer) applyStatusDirMismatchPath(
 			Category:    finding.Category,
 			TargetPaths: []string{path},
 			Detail:      "audit log write failed: " + err.Error(),
+		}
+	}
+
+	if err := os.Rename(path, dest); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "rename failed: " + err.Error(),
 		}
 	}
 

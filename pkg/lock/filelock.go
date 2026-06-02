@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -38,7 +39,11 @@ func NewFileLock(path string) FileLock {
 
 type fileLock struct {
 	lockPath string
-	fd       *os.File
+	// mu guards fd against concurrent Acquire/Release on the same FileLock
+	// instance. Without it, the Go memory model forbids the unsynchronized
+	// read+write pattern even when the application logic appears serial.
+	mu sync.Mutex
+	fd *os.File
 }
 
 // Acquire implements FileLock.Acquire.
@@ -81,7 +86,9 @@ func (f *fileLock) tryAcquire(ctx context.Context) error {
 		return errors.Errorf(ctx, "flock failed: %v", err)
 	}
 
+	f.mu.Lock()
 	f.fd = fd
+	f.mu.Unlock()
 	return nil
 }
 
@@ -100,12 +107,16 @@ func (f *fileLock) tryAcquire(ctx context.Context) error {
 //     certain we no longer hold the lock; another process can recreate the
 //     same lock file safely.
 func (f *fileLock) Release(ctx context.Context) error {
-	if f.fd == nil {
+	// Atomically take ownership of fd under the mutex so concurrent Release
+	// calls cannot both capture the same fd (double-close).
+	f.mu.Lock()
+	fd := f.fd
+	f.fd = nil
+	f.mu.Unlock()
+
+	if fd == nil {
 		return nil
 	}
-	fd := f.fd
-	lockPath := f.lockPath
-	f.fd = nil
 
 	// Close first (this implicitly releases the flock). If close fails the
 	// lock is in an indeterminate state; surface the error to the caller.
@@ -113,13 +124,14 @@ func (f *fileLock) Release(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "close lock file")
 	}
 
-	// Remove the lock file so the directory stays clean. By now the fd is
-	// closed and the lock is released; the os.Remove window is narrow and
-	// non-load-bearing for correctness.
-	if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(ctx, err, "remove lock file")
-	}
-
+	// Lock-file cleanup is intentionally omitted to avoid the TOCTOU window
+	// where another process could flock the same file between our Close and
+	// our Remove — we'd then delete a live lock file belonging to that
+	// process. Leaving the lock file in place is correct: flock holds are
+	// per-fd, not per-inode, so a leftover lock file does not prevent the
+	// next Acquire from succeeding. Disk cost is negligible (the file is
+	// empty), and ops can `find . -name "*.lock" -delete` if cosmetic
+	// cleanup is wanted.
 	return nil
 }
 

@@ -72,6 +72,25 @@ func (f *fixer) applyOrphanInProgressPath(
 		}, nil
 	}
 
+	// Write audit BEFORE the mutating sequence. If audit fails, no mutation;
+	// if subsequent mutation fails, the audit shows intent + a FailedFix is
+	// returned, leaving the operator with a reconcilable trail.
+	beforeStatus := pf.Frontmatter.Status
+	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
+		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
+		Category:    finding.Category,
+		Action:      "applied",
+		TargetPaths: []string{path},
+		Before:      "status=" + beforeStatus,
+		After:       "status=cancelled",
+	}); err != nil {
+		return nil, nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "audit log write failed: " + err.Error(),
+		}
+	}
+
 	pf.MarkCancelled()
 	if err := pf.Save(ctx); err != nil {
 		return nil, nil, &FailedFix{
@@ -86,21 +105,6 @@ func (f *fixer) applyOrphanInProgressPath(
 			Category:    finding.Category,
 			TargetPaths: []string{path},
 			Detail:      "move to cancelled failed: " + err.Error(),
-		}
-	}
-
-	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
-		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
-		Category:    finding.Category,
-		Action:      "applied",
-		TargetPaths: []string{path},
-		Before:      "status=" + pf.Frontmatter.Status,
-		After:       "status=cancelled",
-	}); err != nil {
-		return nil, nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{path},
-			Detail:      "audit log write failed: " + err.Error(),
 		}
 	}
 

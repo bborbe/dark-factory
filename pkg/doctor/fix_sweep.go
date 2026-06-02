@@ -48,15 +48,9 @@ func (f *fixer) fixPromptedNotSwept(
 	}
 	defer fl.Release(ctx)
 
-	if err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
-		failed = append(failed, FailedFix{
-			Category:    finding.Category,
-			TargetPaths: finding.TargetPaths,
-			Detail:      err.Error(),
-		})
-		return
-	}
-
+	// Audit BEFORE AutoCompleter.CheckAndComplete: a CheckAndComplete failure
+	// leaves the spec unchanged (still status=prompted); an audit failure
+	// before any mutation leaves the operator with no orphan state.
 	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
 		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
 		Category:    finding.Category,
@@ -69,6 +63,15 @@ func (f *fixer) fixPromptedNotSwept(
 			Category:    finding.Category,
 			TargetPaths: finding.TargetPaths,
 			Detail:      "audit log write failed: " + err.Error(),
+		})
+		return
+	}
+
+	if err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
+		failed = append(failed, FailedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail:      err.Error(),
 		})
 		return
 	}

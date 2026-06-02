@@ -104,6 +104,23 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		return
 	}
 
+	// Lock every NewPath now that we know what reindex picked. The freed
+	// number slot is a fresh path with no pre-acquired lock; a concurrent
+	// writer could claim it between reindex and our Save. Held until function
+	// return alongside the pre-acquired OldPath locks.
+	for _, rn := range relevantRenames {
+		fl := f.deps.FileLockFactory(rn.NewPath)
+		if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
+			failed = append(failed, FailedFix{
+				Category:    finding.Category,
+				TargetPaths: []string{rn.NewPath},
+				Detail:      "lock acquire failed (post-reindex NewPath): " + err.Error(),
+			})
+			return
+		}
+		preAcquiredLocks = append(preAcquiredLocks, fl)
+	}
+
 	for _, rn := range relevantRenames {
 		af, ff := f.applyDuplicateSpecNumbersRename(ctx, rn, finding, opts)
 		if af != nil {
@@ -157,22 +174,16 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 	}
 
 	sf.Frontmatter.PreviousID = fmt.Sprintf("%03d", oldNum)
-	if err := sf.Save(ctx); err != nil {
-		return nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath, rn.NewPath},
-			Detail:      "save failed: " + err.Error(),
-		}
-	}
 
-	auditLine := renderAuditLine(
-		time.Time(f.deps.CurrentDateTimeGetter.Now()),
-		finding,
-		rn.OldPath,
-		rn.NewPath,
-	)
+	// Write the audit entry BEFORE Save so a Save failure cannot leave a
+	// durable mutation without an audit trail. If audit write fails, no
+	// mutation occurs; if Save subsequently fails, the audit entry is the
+	// evidence that the operator attempted the rename — the post-state can
+	// be reconciled by reading the file (which still has the OLD content).
+	now := time.Time(f.deps.CurrentDateTimeGetter.Now())
+	auditLine := renderAuditLine(now, finding, rn.OldPath, rn.NewPath)
 	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
-		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
+		Timestamp:   now,
 		Category:    finding.Category,
 		Action:      "applied",
 		TargetPaths: []string{rn.OldPath, rn.NewPath},
@@ -183,6 +194,14 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 			Category:    finding.Category,
 			TargetPaths: []string{rn.OldPath},
 			Detail:      "audit log write failed: " + err.Error(),
+		}
+	}
+
+	if err := sf.Save(ctx); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{rn.OldPath, rn.NewPath},
+			Detail:      "save failed: " + err.Error(),
 		}
 	}
 

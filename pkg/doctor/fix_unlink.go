@@ -75,17 +75,12 @@ func (f *fixer) applyOrphanPromptLinkPath(
 	}
 	pf.Frontmatter.Specs = newSpecs
 
-	if err := pf.Save(ctx); err != nil {
-		return nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{path},
-			Detail:      "save failed: " + err.Error(),
-		}
-	}
-
 	before := "specs contained " + orphanSpecID
 	after := "specs no longer contain " + orphanSpecID
 
+	// Audit BEFORE pf.Save: audit failure leaves the in-memory pf change
+	// unsaved (no on-disk mutation); save failure after audit leaves the
+	// audit recording the intent + a FailedFix in the result.
 	if err := WriteAuditEntry(ctx, opts.AuditLogPath, AuditEntry{
 		Timestamp:   time.Time(f.deps.CurrentDateTimeGetter.Now()),
 		Category:    finding.Category,
@@ -98,6 +93,14 @@ func (f *fixer) applyOrphanPromptLinkPath(
 			Category:    finding.Category,
 			TargetPaths: []string{path},
 			Detail:      "audit log write failed: " + err.Error(),
+		}
+	}
+
+	if err := pf.Save(ctx); err != nil {
+		return nil, &FailedFix{
+			Category:    finding.Category,
+			TargetPaths: []string{path},
+			Detail:      "save failed: " + err.Error(),
 		}
 	}
 

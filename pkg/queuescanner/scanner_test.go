@@ -462,7 +462,7 @@ var _ = Describe("Scanner", func() {
 				mgr.ListQueuedReturns([]prompt.Prompt{pr222}, nil)
 				// Per-spec returns false (221 is missing)
 				mgr.AllPreviousInSpecCompletedReturns(false)
-				mgr.FindMissingInSpecCompletedReturns(221, nil)
+				mgr.FindMissingInSpecCompletedReturns(221)
 
 				completed, err := s.ScanAndProcess(ctx)
 				Expect(err).NotTo(HaveOccurred())
@@ -488,7 +488,7 @@ var _ = Describe("Scanner", func() {
 				pr222 := prompt.Prompt{Path: path, Status: prompt.ApprovedPromptStatus}
 				mgr.ListQueuedReturns([]prompt.Prompt{pr222}, nil)
 				mgr.AllPreviousInSpecCompletedReturns(false)
-				mgr.FindMissingInSpecCompletedReturns(221, nil)
+				mgr.FindMissingInSpecCompletedReturns(221)
 
 				// Capture slog output
 				var logBuf bytes.Buffer

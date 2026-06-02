@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.174.4
 
 - feat(prompt): widen `dark-factory prompt reject` to accept prompts in `failed` state — adds `OriginalStatus` field to frontmatter, new `StampRejectedWithOriginal` helper, and idempotent re-run after partial move; eliminates manual `git mv failed→completed` workaround (rejects prompts move to `prompts/rejected/` with `originalStatus: failed` preserved alongside `status: rejected` and `rejectedReason: <text>`).
 

@@ -18,39 +18,12 @@ func (f *fixer) fixStatusDirMismatch(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied []AppliedFix, failed []FailedFix) {
-	fixCmd := finding.FixCommand
-	var expectedDir string
-	var filename string
-
-	if strings.HasPrefix(fixCmd, "dark-factory spec move ") {
-		specID := strings.TrimPrefix(fixCmd, "dark-factory spec move ")
-		expectedDir = f.expectedSpecDir(finding.Detail)
-		if expectedDir == "" {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: finding.TargetPaths,
-				Detail:      "could not determine expected directory from detail",
-			})
-			return
-		}
-		filename = specID + ".md"
-	} else if strings.HasPrefix(fixCmd, "dark-factory prompt move ") {
-		promptID := strings.TrimPrefix(fixCmd, "dark-factory prompt move ")
-		filename = promptID + ".md"
-		expectedDir = f.expectedPromptDir(finding.Detail)
-		if expectedDir == "" {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: finding.TargetPaths,
-				Detail:      "could not determine expected directory from detail",
-			})
-			return
-		}
-	} else {
+	expectedDir, filename, dispatchErr := f.dispatchStatusDirMismatch(finding)
+	if dispatchErr != "" {
 		failed = append(failed, FailedFix{
 			Category:    finding.Category,
 			TargetPaths: finding.TargetPaths,
-			Detail:      "unknown FixCommand: " + fixCmd,
+			Detail:      dispatchErr,
 		})
 		return
 	}
@@ -66,6 +39,27 @@ func (f *fixer) fixStatusDirMismatch(
 	}
 
 	return
+}
+
+// dispatchStatusDirMismatch returns (expectedDir, filename, "") on success
+// or ("", "", errorDetail) when the FixCommand cannot be resolved.
+func (f *fixer) dispatchStatusDirMismatch(finding Finding) (string, string, string) {
+	fixCmd := finding.FixCommand
+	if specID, ok := strings.CutPrefix(fixCmd, "dark-factory spec move "); ok {
+		expectedDir := f.expectedSpecDir(finding.Detail)
+		if expectedDir == "" {
+			return "", "", "could not determine expected directory from detail"
+		}
+		return expectedDir, specID + ".md", ""
+	}
+	if promptID, ok := strings.CutPrefix(fixCmd, "dark-factory prompt move "); ok {
+		expectedDir := f.expectedPromptDir(finding.Detail)
+		if expectedDir == "" {
+			return "", "", "could not determine expected directory from detail"
+		}
+		return expectedDir, promptID + ".md", ""
+	}
+	return "", "", "unknown FixCommand: " + fixCmd
 }
 
 func (f *fixer) applyStatusDirMismatchPath(
@@ -84,7 +78,7 @@ func (f *fixer) applyStatusDirMismatchPath(
 			Detail:      "lock acquire failed: " + err.Error(),
 		}
 	}
-	defer fl.Release(ctx)
+	defer func() { _ = fl.Release(ctx) }()
 
 	if err := os.MkdirAll(expectedDir, 0750); err != nil {
 		return nil, &FailedFix{

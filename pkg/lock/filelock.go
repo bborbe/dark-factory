@@ -140,13 +140,13 @@ func FileLockPath(targetPath string) string {
 	return targetPath + ".lock"
 }
 
-// EnsureDirExists creates the directory containing path with mode 0755 if it does not exist.
+// EnsureDirExists creates the directory containing path with mode 0750 if it does not exist.
 func EnsureDirExists(ctx context.Context, path string) error {
 	dir := filepath.Dir(path)
 	if dir == "" || dir == "." {
 		return nil
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return errors.Wrap(ctx, err, "create directory")
 	}
 	return nil

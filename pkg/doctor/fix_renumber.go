@@ -42,32 +42,16 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		f.deps.PromptsCancelledDir,
 	}
 
-	// Acquire locks on every TargetPath BEFORE reindex so a concurrent writer
-	// cannot mutate the colliding file between reindex's move and our subsequent
-	// load. Locks are held for the entire renumber cycle (reindex + per-rename
-	// frontmatter rewrites + UpdateSpecRefs) and released when this function
-	// returns. Order: lex-sorted basenames to avoid lock-ordering deadlock when
-	// two doctor instances run concurrently on overlapping finding sets.
+	// Acquire locks on every TargetPath BEFORE reindex (see helper for rationale).
 	preAcquiredLocks := make([]lock.FileLock, 0, len(finding.TargetPaths))
 	defer func() {
 		for _, fl := range preAcquiredLocks {
 			_ = fl.Release(ctx)
 		}
 	}()
-	for _, t := range finding.TargetPaths {
-		for _, dir := range specDirs {
-			candidatePath := filepath.Join(dir, t)
-			fl := f.deps.FileLockFactory(candidatePath)
-			if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
-				failed = append(failed, FailedFix{
-					Category:    finding.Category,
-					TargetPaths: []string{candidatePath},
-					Detail:      "lock acquire failed (pre-reindex): " + err.Error(),
-				})
-				return
-			}
-			preAcquiredLocks = append(preAcquiredLocks, fl)
-		}
+	if ff := f.acquireOldPathLocks(ctx, &preAcquiredLocks, finding, specDirs, opts.FileLockTimeout); ff != nil {
+		failed = append(failed, *ff)
+		return
 	}
 
 	r := reindex.NewReindexer(specDirs, f.deps.Mover)
@@ -81,44 +65,14 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		return
 	}
 
-	if len(renames) == 0 {
-		return
-	}
-
-	oldPathSet := make(map[string]bool)
-	for _, t := range finding.TargetPaths {
-		for _, dir := range specDirs {
-			path := filepath.Join(dir, t)
-			oldPathSet[path] = true
-		}
-	}
-
-	var relevantRenames []reindex.Rename
-	for _, r := range renames {
-		if oldPathSet[r.OldPath] {
-			relevantRenames = append(relevantRenames, r)
-		}
-	}
-
+	relevantRenames := filterRelevantRenames(renames, finding.TargetPaths, specDirs)
 	if len(relevantRenames) == 0 {
 		return
 	}
 
-	// Lock every NewPath now that we know what reindex picked. The freed
-	// number slot is a fresh path with no pre-acquired lock; a concurrent
-	// writer could claim it between reindex and our Save. Held until function
-	// return alongside the pre-acquired OldPath locks.
-	for _, rn := range relevantRenames {
-		fl := f.deps.FileLockFactory(rn.NewPath)
-		if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
-			failed = append(failed, FailedFix{
-				Category:    finding.Category,
-				TargetPaths: []string{rn.NewPath},
-				Detail:      "lock acquire failed (post-reindex NewPath): " + err.Error(),
-			})
-			return
-		}
-		preAcquiredLocks = append(preAcquiredLocks, fl)
+	if ff := f.acquireNewPathLocks(ctx, &preAcquiredLocks, finding, relevantRenames, opts.FileLockTimeout); ff != nil {
+		failed = append(failed, *ff)
+		return
 	}
 
 	for _, rn := range relevantRenames {
@@ -134,8 +88,7 @@ func (f *fixer) fixDuplicateSpecNumbers(
 	// UpdateSpecRefs failures are best-effort: the renames have already succeeded
 	// on disk, so the renumber itself is durable. Stale prompt spec-refs are
 	// surfaced by the orphan-prompt-link detector on the next `dark-factory doctor`
-	// run, so the operator gets a recovery path. Log the error so it is
-	// diagnosable from daemon logs / CI output; do not propagate.
+	// run, so the operator gets a recovery path.
 	if _, refsErr := reindex.UpdateSpecRefs(ctx, renames, promptDirs, f.deps.Mover, f.deps.PromptManager); refsErr != nil {
 		slog.Warn("doctor: UpdateSpecRefs failed (best-effort, continuing)",
 			"error", refsErr.Error(),
@@ -143,6 +96,81 @@ func (f *fixer) fixDuplicateSpecNumbers(
 	}
 
 	return
+}
+
+// acquireOldPathLocks locks every TargetPath BEFORE reindex so a concurrent
+// writer cannot mutate the colliding file between reindex's move and our
+// subsequent load. Locks are held for the entire renumber cycle and released
+// when fixDuplicateSpecNumbers returns. Order: lex-sorted basenames to avoid
+// lock-ordering deadlock when two doctor instances race on overlapping findings.
+func (f *fixer) acquireOldPathLocks(
+	ctx context.Context,
+	locks *[]lock.FileLock,
+	finding Finding,
+	specDirs []string,
+	timeout time.Duration,
+) *FailedFix {
+	for _, t := range finding.TargetPaths {
+		for _, dir := range specDirs {
+			candidatePath := filepath.Join(dir, t)
+			fl := f.deps.FileLockFactory(candidatePath)
+			if err := fl.Acquire(ctx, timeout); err != nil {
+				return &FailedFix{
+					Category:    finding.Category,
+					TargetPaths: []string{candidatePath},
+					Detail:      "lock acquire failed (pre-reindex): " + err.Error(),
+				}
+			}
+			*locks = append(*locks, fl)
+		}
+	}
+	return nil
+}
+
+// acquireNewPathLocks locks every NewPath now that reindex's picks are known.
+// The freed number slot is a fresh path with no pre-acquired lock; a concurrent
+// writer could claim it between reindex and our Save.
+func (f *fixer) acquireNewPathLocks(
+	ctx context.Context,
+	locks *[]lock.FileLock,
+	finding Finding,
+	renames []reindex.Rename,
+	timeout time.Duration,
+) *FailedFix {
+	for _, rn := range renames {
+		fl := f.deps.FileLockFactory(rn.NewPath)
+		if err := fl.Acquire(ctx, timeout); err != nil {
+			return &FailedFix{
+				Category:    finding.Category,
+				TargetPaths: []string{rn.NewPath},
+				Detail:      "lock acquire failed (post-reindex NewPath): " + err.Error(),
+			}
+		}
+		*locks = append(*locks, fl)
+	}
+	return nil
+}
+
+func filterRelevantRenames(
+	renames []reindex.Rename,
+	targetPaths, specDirs []string,
+) []reindex.Rename {
+	if len(renames) == 0 {
+		return nil
+	}
+	oldPathSet := make(map[string]bool)
+	for _, t := range targetPaths {
+		for _, dir := range specDirs {
+			oldPathSet[filepath.Join(dir, t)] = true
+		}
+	}
+	var relevant []reindex.Rename
+	for _, r := range renames {
+		if oldPathSet[r.OldPath] {
+			relevant = append(relevant, r)
+		}
+	}
+	return relevant
 }
 
 func (f *fixer) applyDuplicateSpecNumbersRename(

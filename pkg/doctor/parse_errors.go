@@ -58,26 +58,6 @@ func scanDirsForPrompts(ctx context.Context, promptDirs []string) ([]string, err
 	return paths, nil
 }
 
-// specFilePaths returns all spec file paths from the configured spec directories.
-func (c *checker) specFilePaths(ctx context.Context) ([]string, error) {
-	return scanDirsForSpecs(ctx, []string{
-		c.deps.SpecsInboxDir,
-		c.deps.SpecsInProgressDir,
-		c.deps.SpecsCompletedDir,
-		c.deps.SpecsRejectedDir,
-	})
-}
-
-// promptFilePaths returns all prompt file paths from the configured prompt directories.
-func (c *checker) promptFilePaths(ctx context.Context) ([]string, error) {
-	return scanDirsForPrompts(ctx, []string{
-		c.deps.PromptsInboxDir,
-		c.deps.PromptsInProgressDir,
-		c.deps.PromptsCompletedDir,
-		c.deps.PromptsCancelledDir,
-	})
-}
-
 func (c *checker) scanParseErrors(ctx context.Context) ([]Finding, error) {
 	specDirs := []string{
 		c.deps.SpecsInboxDir,

@@ -55,7 +55,7 @@ func (f *fixer) applyOrphanPromptLinkPath(
 			Detail:      "lock acquire failed: " + err.Error(),
 		}
 	}
-	defer fl.Release(ctx)
+	defer func() { _ = fl.Release(ctx) }()
 
 	pf, err := f.deps.PromptManager.Load(ctx, path)
 	if err != nil {

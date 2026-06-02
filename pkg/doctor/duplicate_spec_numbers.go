@@ -26,10 +26,7 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 	if err != nil {
 		return nil, err
 	}
-	groups, err := scanSpecsByNumberPrefix(paths)
-	if err != nil {
-		return nil, err
-	}
+	groups := scanSpecsByNumberPrefix(paths)
 
 	specDirs = []string{
 		c.deps.SpecsInboxDir,
@@ -76,10 +73,7 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 			)
 		}
 
-		targets := make([]string, 0, len(otherNames))
-		for _, name := range otherNames {
-			targets = append(targets, name)
-		}
+		targets := append([]string(nil), otherNames...)
 		sort.Strings(targets)
 
 		findings = append(findings, Finding{
@@ -108,7 +102,7 @@ func itoa(i int) string {
 }
 
 // scanSpecsByNumberPrefix scans spec file paths and groups them by numeric prefix.
-func scanSpecsByNumberPrefix(paths []string) (map[int][]string, error) {
+func scanSpecsByNumberPrefix(paths []string) map[int][]string {
 	result := make(map[int][]string)
 	for _, path := range paths {
 		name := filepath.Base(path)
@@ -118,5 +112,5 @@ func scanSpecsByNumberPrefix(paths []string) (map[int][]string, error) {
 		}
 		result[num] = append(result[num], name)
 	}
-	return result, nil
+	return result
 }

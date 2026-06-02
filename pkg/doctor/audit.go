@@ -26,13 +26,13 @@ type AuditEntry struct {
 }
 
 // WriteAuditEntry appends one tab-separated line to the file at path.
-// The directory containing path is created with mode 0755 if missing.
-// The file is created with mode 0644 if missing and appended to otherwise.
+// The directory containing path is created with mode 0750 if missing.
+// The file is created with mode 0600 if missing and appended to otherwise.
 func WriteAuditEntry(ctx context.Context, path string, entry AuditEntry) error {
 	// Ensure directory exists.
 	dir := filepath.Dir(path)
 	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0750); err != nil {
 			return errors.Wrap(ctx, err, "create audit log directory")
 		}
 	}
@@ -49,7 +49,7 @@ func WriteAuditEntry(ctx context.Context, path string, entry AuditEntry) error {
 	)
 
 	// #nosec G304 -- path is operator-controlled audit log path
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return errors.Wrap(ctx, err, "open audit log")
 	}

@@ -114,7 +114,6 @@ func (c *checker) checkSpecDirStatuses(ctx context.Context) ([]Finding, error) {
 func (c *checker) checkPromptDirStatuses(ctx context.Context) ([]Finding, error) {
 	var findings []Finding
 
-	// prompts/in-progress/ allowed statuses.
 	inProgressAllowed := []prompt.PromptStatus{
 		prompt.IdeaPromptStatus,
 		prompt.DraftPromptStatus,
@@ -125,76 +124,82 @@ func (c *checker) checkPromptDirStatuses(ctx context.Context) ([]Finding, error)
 		prompt.PendingVerificationPromptStatus,
 		prompt.CommittingPromptStatus,
 	}
-
-	inProgressPaths, err := scanDirsForPrompts(ctx, []string{c.deps.PromptsInProgressDir})
+	f, err := c.checkPromptDir(
+		ctx,
+		c.deps.PromptsInProgressDir,
+		inProgressAllowed,
+		"prompts/in-progress/",
+		"{idea, draft, approved, executing, failed, in_review, pending_verification, committing}",
+	)
 	if err != nil {
 		return nil, err
 	}
-	for _, path := range inProgressPaths {
-		pf, err := c.deps.PromptManager.Load(ctx, path)
-		if err != nil {
-			continue
-		}
-		if !isAllowedPromptStatus(pf.Frontmatter.Status, inProgressAllowed) {
-			promptStem := strings.TrimSuffix(filepath.Base(path), ".md")
-			findings = append(findings, Finding{
-				Category:    CategoryStatusDirMismatch,
-				TargetPaths: []string{pf.Path},
-				SpecID:      "",
-				Detail:      "prompt in prompts/in-progress/ has status " + pf.Frontmatter.Status + " but only statuses {idea, draft, approved, executing, failed, in_review, pending_verification, committing} are allowed in that directory",
-				FixCommand:  "dark-factory prompt move " + promptStem,
-			})
-		}
-	}
+	findings = append(findings, f...)
 
-	// prompts/completed/ allowed: completed or rejected.
 	completedAllowed := []prompt.PromptStatus{
 		prompt.CompletedPromptStatus,
 		prompt.RejectedPromptStatus,
 	}
-	completedPaths, err := scanDirsForPrompts(ctx, []string{c.deps.PromptsCompletedDir})
+	f, err = c.checkPromptDir(
+		ctx,
+		c.deps.PromptsCompletedDir,
+		completedAllowed,
+		"prompts/completed/",
+		"{completed, rejected}",
+	)
 	if err != nil {
 		return nil, err
 	}
-	for _, path := range completedPaths {
+	findings = append(findings, f...)
+
+	f, err = c.checkPromptDir(
+		ctx,
+		c.deps.PromptsCancelledDir,
+		[]prompt.PromptStatus{prompt.CancelledPromptStatus},
+		"prompts/cancelled/",
+		"cancelled",
+	)
+	if err != nil {
+		return nil, err
+	}
+	findings = append(findings, f...)
+
+	return findings, nil
+}
+
+func (c *checker) checkPromptDir(
+	ctx context.Context,
+	dir string,
+	allowed []prompt.PromptStatus,
+	dirLabel string,
+	allowedLabel string,
+) ([]Finding, error) {
+	paths, err := scanDirsForPrompts(ctx, []string{dir})
+	if err != nil {
+		return nil, err
+	}
+	var findings []Finding
+	allowedSuffix := "only statuses " + allowedLabel + " are allowed in that directory"
+	if !strings.HasPrefix(allowedLabel, "{") {
+		allowedSuffix = "only status " + allowedLabel + " is allowed in that directory"
+	}
+	for _, path := range paths {
 		pf, err := c.deps.PromptManager.Load(ctx, path)
 		if err != nil {
 			continue
 		}
-		if !isAllowedPromptStatus(pf.Frontmatter.Status, completedAllowed) {
-			promptStem := strings.TrimSuffix(filepath.Base(path), ".md")
-			findings = append(findings, Finding{
-				Category:    CategoryStatusDirMismatch,
-				TargetPaths: []string{pf.Path},
-				SpecID:      "",
-				Detail:      "prompt in prompts/completed/ has status " + pf.Frontmatter.Status + " but only statuses {completed, rejected} are allowed in that directory",
-				FixCommand:  "dark-factory prompt move " + promptStem,
-			})
-		}
-	}
-
-	// prompts/cancelled/ allowed: cancelled.
-	cancelledPaths, err := scanDirsForPrompts(ctx, []string{c.deps.PromptsCancelledDir})
-	if err != nil {
-		return nil, err
-	}
-	for _, path := range cancelledPaths {
-		pf, err := c.deps.PromptManager.Load(ctx, path)
-		if err != nil {
+		if isAllowedPromptStatus(pf.Frontmatter.Status, allowed) {
 			continue
 		}
-		if pf.Frontmatter.Status != string(prompt.CancelledPromptStatus) {
-			promptStem := strings.TrimSuffix(filepath.Base(path), ".md")
-			findings = append(findings, Finding{
-				Category:    CategoryStatusDirMismatch,
-				TargetPaths: []string{pf.Path},
-				SpecID:      "",
-				Detail:      "prompt in prompts/cancelled/ has status " + pf.Frontmatter.Status + " but only status cancelled is allowed in that directory",
-				FixCommand:  "dark-factory prompt move " + promptStem,
-			})
-		}
+		promptStem := strings.TrimSuffix(filepath.Base(path), ".md")
+		findings = append(findings, Finding{
+			Category:    CategoryStatusDirMismatch,
+			TargetPaths: []string{pf.Path},
+			SpecID:      "",
+			Detail:      "prompt in " + dirLabel + " has status " + pf.Frontmatter.Status + " but " + allowedSuffix,
+			FixCommand:  "dark-factory prompt move " + promptStem,
+		})
 	}
-
 	return findings, nil
 }
 

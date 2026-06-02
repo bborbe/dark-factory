@@ -46,7 +46,7 @@ func (f *fixer) fixPromptedNotSwept(
 		})
 		return
 	}
-	defer fl.Release(ctx)
+	defer func() { _ = fl.Release(ctx) }()
 
 	// Audit BEFORE AutoCompleter.CheckAndComplete: a CheckAndComplete failure
 	// leaves the spec unchanged (still status=prompted); an audit failure

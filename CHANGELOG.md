@@ -8,6 +8,23 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix(doctor): drop double-move in `fix_renumber` — reindex.Reindex already moves the file; fixer now operates on `NewPath` after the move (the old "MoveFile after Save" path worked only against mocks).
+- fix(spec): `Load()` surfaces YAML parse errors via `errors.Wrapf` instead of silently returning an empty-frontmatter `SpecFile`; corrupted spec files are now visible to doctor detectors, the generator, and auto-completers.
+- fix(lock): `filelock.Release` reorders Close before flock(LOCK_UN) (closing the fd implicitly releases all flock holds); add `sync.Mutex` to guard `fd` against concurrent Acquire/Release; drop the os.Remove TOCTOU window.
+- fix(doctor): audit-before-mutation in all five fix_* functions — audit entry written before any durable mutation so a crash leaves the audit recording intent with no orphan on-disk state.
+- fix(doctor): `fix_renumber` pre-acquires per-file locks on every TargetPath BEFORE reindex AND on every NewPath after reindex — closes the race window where a concurrent process could mutate a moved file.
+- fix(doctor): `fix_sweep` now acquires per-file lock for consistency with the other four fix_* functions.
+- fix(project): `FindRoot` canonicalizes paths via `filepath.EvalSymlinks` so a malicious parent-symlink cannot redirect downstream writes (audit log, .dark-factory directory).
+- fix(audit): `WriteAuditEntry` calls `f.Sync()` before close — guarantees audit-trail durability across crashes.
+- fix(doctor): replace non-existent `dark-factory spec verify <id>` reference with `/dark-factory:verify-spec <id>` slash skill in `verifying-stale` fix-line.
+- chore(cmd): drop dead `verifyingStaleHours` field from `doctorCommand`; reorder struct after constructor.
+- chore(doctor): dedupe `doctor.Deps` in factory; drop duplicate `CurrentDateTimeGetter` from `FixerDeps` (embedded in `Deps`); remove dead `GitRunner` dependency.
+- chore(doctor): drop hardcoded relative audit-log path in `cmd/doctor.go`; resolve via `project.FindRoot` so the path is CWD-invariant.
+- fix(counterfeiter): drop stray leading space in 4 `//counterfeiter:generate` directives — `go generate` did not recognize the space-prefixed form, silently dropping three mocks.
+- test(doctor): coverage additions for `fix_renumber` branches, `verifying_stale` unparseable timestamp, `status-dir-mismatch` happy paths, and `main_internal_test` for the CLI flag helpers.
+
 ## v0.174.0
 
 - refactor: Move all os.ReadDir calls to shared helpers in pkg/doctor/parse_errors.go (constraint: only parse_errors.go may call os.ReadDir)

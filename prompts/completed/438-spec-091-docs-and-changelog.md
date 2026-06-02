@@ -1,13 +1,12 @@
 ---
-status: failed
+status: completed
 spec: [091-doctor-command]
 container: dark-factory-doctor-exec-438-spec-091-docs-and-changelog
 dark-factory-version: v0.173.0
 created: "2026-06-02T00:00:00Z"
 queued: "2026-06-01T22:42:15Z"
 started: "2026-06-01T23:52:15Z"
-completed: "2026-06-01T23:54:59Z"
-lastFailReason: 'validate completion report: completion report status: failed'
+completed: "2026-06-02T05:53:37Z"
 ---
 
 <summary>

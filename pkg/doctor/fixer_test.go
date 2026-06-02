@@ -148,7 +148,7 @@ var _ = Describe("Fixer", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{"/path/to/spec.md"},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "verifying-stale spec",
 				},
 			}
@@ -172,7 +172,7 @@ var _ = Describe("Fixer", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{"/path/to/spec.md"},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "verifying-stale",
 				},
 			}
@@ -281,7 +281,7 @@ var _ = Describe("Fixer", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{filepath.Join(specsDir, "inbox", "001-feature.md")},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "spec has been verifying for 48 hours",
 				},
 			}
@@ -293,7 +293,7 @@ var _ = Describe("Fixer", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Skipped).To(HaveLen(1))
 			Expect(result.Skipped[0].Detail).To(ContainSubstring("verifying-stale"))
-			Expect(result.Skipped[0].Detail).To(ContainSubstring("dark-factory spec verify"))
+			Expect(result.Skipped[0].Detail).To(ContainSubstring("/dark-factory:verify-spec"))
 		})
 	})
 
@@ -611,16 +611,13 @@ var _ = Describe("Fixer", func() {
 			})
 		})
 
-		PContext("when spec file frontmatter is unparseable (load failure)", func() {
-			// PENDING: `spec.Load` swallows YAML parse errors by design (returns an
-			// empty-frontmatter SpecFile with nil error — see pkg/spec/spec.go:289-296),
-			// so the `load failed` branch in fix_renumber.go is only triggerable via
-			// an I/O failure on os.ReadFile — not deterministically reachable from
-			// a test without OS-level tricks (perms 0o000 fail under containerized
-			// roots, NUL-byte paths fail before reaching Load, etc.). Either:
-			//   a) Add a `ParseError` sentinel to spec.Load and re-enable this test, OR
-			//   b) Accept that the branch is reachable only by real-world disk failure
-			//      and keep this test pending as documentation of the gap.
+		Context("when spec file frontmatter is unparseable (load failure)", func() {
+			// `spec.Load` now surfaces YAML parse errors via errors.Wrapf
+			// (commit cb211af, addressing pr-reviewer review-2 CRITICAL finding).
+			// The `load failed` branch in fix_renumber.go is reachable from this
+			// test by writing malformed YAML into the loser fixture: reindex
+			// moves the file to NewPath, the fixer's Load on NewPath surfaces
+			// the parse error and produces a FailedFix.
 			It("returns a FailedFix with load failed detail", func() {
 				Expect(os.WriteFile(
 					filepath.Join(specsInProgressDir, "056-aaa.md"),
@@ -910,7 +907,7 @@ var _ = Describe("Fixer", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{filepath.Join(specsDir, "inbox", "001-feature.md")},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "spec has been verifying for 100 hours",
 				},
 			}

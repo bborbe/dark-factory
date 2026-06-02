@@ -133,7 +133,7 @@ var _ = Describe("VerifyingStale", func() {
 			}
 		}
 		Expect(staleFindings).To(HaveLen(1))
-		Expect(staleFindings[0].FixCommand).To(ContainSubstring("dark-factory spec verify"))
+		Expect(staleFindings[0].FixCommand).To(ContainSubstring("/dark-factory:verify-spec"))
 	})
 
 	It("returns no finding when verifying timestamp is recent", func() {
@@ -215,7 +215,7 @@ var _ = Describe("VerifyingStale", func() {
 		Expect(staleFindings).To(HaveLen(1))
 		Expect(staleFindings[0].Detail).To(ContainSubstring("unparseable"))
 		Expect(staleFindings[0].Detail).To(ContainSubstring("not-a-date"))
-		Expect(staleFindings[0].FixCommand).To(ContainSubstring("dark-factory spec verify"))
+		Expect(staleFindings[0].FixCommand).To(ContainSubstring("/dark-factory:verify-spec"))
 	})
 })
 

@@ -164,7 +164,7 @@ func (f *fixer) applyFinding(
 		skipped = append(skipped, SkippedFix{
 			Category:    finding.Category,
 			TargetPaths: finding.TargetPaths,
-			Detail:      "verifying-stale is informational; run `dark-factory spec verify <id>` manually",
+			Detail:      "verifying-stale is informational; run `/dark-factory:verify-spec <id>` manually",
 		})
 		return
 	case CategoryOrphanPromptLink:

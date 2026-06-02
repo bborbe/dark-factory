@@ -91,7 +91,7 @@ var _ = Describe("DoctorCommand", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{"/path/to/spec.md"},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "spec has been verifying too long",
 				},
 			}, nil)
@@ -100,7 +100,7 @@ var _ = Describe("DoctorCommand", func() {
 					{
 						Category:    doctor.CategoryVerifyingStale,
 						TargetPaths: []string{"/path/to/spec.md"},
-						FixCommand:  "dark-factory spec verify 001",
+						FixCommand:  "/dark-factory:verify-spec 001",
 					},
 				},
 				Skipped: []doctor.SkippedFix{},
@@ -217,7 +217,7 @@ var _ = Describe("DoctorCommand", func() {
 				{
 					Category:    doctor.CategoryVerifyingStale,
 					TargetPaths: []string{"/path/to/spec.md"},
-					FixCommand:  "dark-factory spec verify 001",
+					FixCommand:  "/dark-factory:verify-spec 001",
 					Detail:      "spec verifying too long",
 				},
 			}, nil)

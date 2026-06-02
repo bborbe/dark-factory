@@ -48,7 +48,7 @@ func (c *checker) detectVerifyingStale(ctx context.Context) ([]Finding, error) {
 				TargetPaths: []string{sf.Path},
 				SpecID:      sf.Name,
 				Detail:      "spec is in verifying status but Verifying timestamp is empty",
-				FixCommand:  "dark-factory spec verify " + sf.Name,
+				FixCommand:  "/dark-factory:verify-spec " + sf.Name,
 			})
 			continue
 		}
@@ -60,7 +60,7 @@ func (c *checker) detectVerifyingStale(ctx context.Context) ([]Finding, error) {
 				TargetPaths: []string{sf.Path},
 				SpecID:      sf.Name,
 				Detail:      "Verifying timestamp unparseable: " + verifyingStr,
-				FixCommand:  "dark-factory spec verify " + sf.Name,
+				FixCommand:  "/dark-factory:verify-spec " + sf.Name,
 			})
 			continue
 		}
@@ -73,7 +73,7 @@ func (c *checker) detectVerifyingStale(ctx context.Context) ([]Finding, error) {
 				Detail: "spec has been in verifying status for more than " + itoa(
 					staleHours,
 				) + " hours (since " + verifyingStr + ")",
-				FixCommand: "dark-factory spec verify " + sf.Name,
+				FixCommand: "/dark-factory:verify-spec " + sf.Name,
 			})
 		}
 	}

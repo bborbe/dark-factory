@@ -15,7 +15,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/processor"
-	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 )
 
@@ -44,7 +43,6 @@ func NewOneShotRunner(
 	containerChecker executor.ContainerChecker,
 	autoApprove bool,
 	slugMigrator slugmigrator.Migrator,
-	mover prompt.FileMover,
 	hideGit bool,
 	startupLogger func(),
 ) OneShotRunner {
@@ -65,7 +63,6 @@ func NewOneShotRunner(
 		containerChecker:      containerChecker,
 		autoApprove:           autoApprove,
 		slugMigrator:          slugMigrator,
-		mover:                 mover,
 		hideGit:               hideGit,
 		startupLogger:         startupLogger,
 	}
@@ -89,7 +86,6 @@ type oneShotRunner struct {
 	containerChecker      executor.ContainerChecker
 	autoApprove           bool
 	slugMigrator          slugmigrator.Migrator
-	mover                 prompt.FileMover
 	hideGit               bool
 	startupLogger         func()
 }
@@ -121,8 +117,8 @@ func (r *oneShotRunner) Run(ctx context.Context) error {
 		r.startupLogger()
 	}
 
-	// Run the six shared startup steps (migrateQueueDir, createDirectories,
-	// resumeOrResetExecuting, reindexAll, normalizeFilenames, migrateSpecSlugs).
+	// Run the five shared startup steps (migrateQueueDir, createDirectories,
+	// resumeOrResetExecuting, normalizeFilenames, migrateSpecSlugs).
 	if err := startupSequence(ctx, r.startupDeps()); err != nil {
 		return errors.Wrap(ctx, err, "startup sequence")
 	}
@@ -153,7 +149,6 @@ func (r *oneShotRunner) startupDeps() StartupDeps {
 		Notifier:              nil, // oneshot has no notifier field
 		ProjectName:           "",  // oneshot has no projectName field
 		SlugMigrator:          r.slugMigrator,
-		Mover:                 r.mover,
 		CurrentDateTimeGetter: r.currentDateTimeGetter,
 	}
 }

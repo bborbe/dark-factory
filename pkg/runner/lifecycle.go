@@ -17,7 +17,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/prompt"
-	"github.com/bborbe/dark-factory/pkg/reindex"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -39,18 +38,16 @@ type StartupDeps struct {
 	Notifier              notifier.Notifier // may be nil (oneshot passes nil)
 	ProjectName           string            // may be empty (oneshot passes "")
 	SlugMigrator          slugmigrator.Migrator
-	Mover                 prompt.FileMover
 	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
-// startupSequence runs the six startup steps shared by both Runner and OneShotRunner.
+// startupSequence runs the five startup steps shared by both Runner and OneShotRunner.
 // Steps:
 //  1. migrateQueueDir — migrate prompts/queue/ → prompts/in-progress/ if needed
 //  2. createDirectories — ensure all eight lifecycle dirs exist
 //  3. resumeOrResetExecuting — selectively resume or reset stuck executing prompts
-//  4. reindexAll — resolve cross-directory number conflicts
-//  5. normalizeFilenames — normalize in-progress filenames
-//  6. migrateSpecSlugs — replace bare spec number refs with full slugs
+//  4. normalizeFilenames — normalize in-progress filenames
+//  5. migrateSpecSlugs — replace bare spec number refs with full slugs
 //
 // Daemon-only steps (resumeOrResetGenerating, processor.ResumeExecuting) are NOT
 // included here because they are interleaved between steps 3 and 4 only in the
@@ -79,17 +76,6 @@ func startupSequence(ctx context.Context, deps StartupDeps) error {
 		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
-	specDirs := []string{
-		deps.SpecsInboxDir,
-		deps.SpecsInProgressDir,
-		deps.SpecsCompletedDir,
-		deps.SpecsLogDir,
-	}
-	promptDirs := []string{deps.InboxDir, deps.InProgressDir, deps.CompletedDir, deps.LogDir}
-	if err := reindexAll(ctx, specDirs, promptDirs, deps.Mover, deps.PromptManager); err != nil {
-		return errors.Wrap(ctx, err, "reindex files")
-	}
-
 	if err := normalizeFilenames(ctx, deps.PromptManager, deps.InProgressDir); err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
@@ -98,40 +84,6 @@ func startupSequence(ctx context.Context, deps StartupDeps) error {
 		deps.InboxDir, deps.InProgressDir, deps.CompletedDir, deps.LogDir,
 	}); err != nil {
 		return errors.Wrap(ctx, err, "migrate spec slugs")
-	}
-
-	return nil
-}
-
-// reindexAll runs the full reindex sequence:
-//  1. Reindex spec dirs (resolve cross-directory spec number conflicts)
-//  2. Update spec cross-references in prompt dirs (propagate spec renames)
-//  3. Reindex prompt dirs (resolve cross-directory prompt number conflicts)
-func reindexAll(
-	ctx context.Context,
-	specDirs []string,
-	promptDirs []string,
-	mover prompt.FileMover,
-	pm PromptManager,
-) error {
-	// Step 1: Reindex spec files
-	specReindexer := reindex.NewReindexer(specDirs, mover)
-	specRenames, err := specReindexer.Reindex(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, "reindex spec files")
-	}
-
-	// Step 2: Propagate spec renames to prompt cross-references
-	if len(specRenames) > 0 {
-		if _, err := reindex.UpdateSpecRefs(ctx, specRenames, promptDirs, mover, pm); err != nil {
-			return errors.Wrap(ctx, err, "update spec refs")
-		}
-	}
-
-	// Step 3: Reindex prompt files
-	promptReindexer := reindex.NewReindexer(promptDirs, mover)
-	if _, err := promptReindexer.Reindex(ctx); err != nil {
-		return errors.Wrap(ctx, err, "reindex prompt files")
 	}
 
 	return nil

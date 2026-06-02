@@ -27,6 +27,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/doctor"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/formatter"
@@ -486,7 +487,6 @@ func CreateRunner(
 		specWatcher, projectName,
 		containerChecker, n, migrator,
 		currentDateTimeGetter,
-		releaser,
 		cfg.ParsedMaxPromptDuration(),
 		executor.NewDockerContainerStopper(),
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
@@ -641,7 +641,6 @@ func CreateOneShotRunner(
 		containerChecker,
 		autoApprove,
 		migrator,
-		releaser,
 		cfg.HideGit,
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 	)
@@ -1114,6 +1113,68 @@ func CreateStatusCommand(
 	formatter := status.NewFormatter()
 
 	return cmd.NewStatusCommand(statusChecker, formatter)
+}
+
+// CreateDoctorCommand creates a DoctorCommand with all required dependencies.
+func CreateDoctorCommand(
+	ctx context.Context,
+	cfg config.Config,
+	verifyingStaleHours int,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) cmd.DoctorCommand {
+	promptManager, releaser := createPromptManager(
+		cfg.Prompts.InboxDir,
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		cfg.Prompts.CancelledDir,
+		currentDateTimeGetter,
+	)
+
+	specLister := spec.NewLister(
+		currentDateTimeGetter,
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		cfg.Specs.RejectedDir,
+	)
+
+	autoCompleter := spec.NewAutoCompleter(
+		cfg.Prompts.InProgressDir,
+		cfg.Prompts.CompletedDir,
+		cfg.Specs.InboxDir,
+		cfg.Specs.InProgressDir,
+		cfg.Specs.CompletedDir,
+		currentDateTimeGetter,
+		cfg.ProjectName,
+		notifier.NewMultiNotifier(),
+		promptManager,
+	)
+
+	deps := doctor.Deps{
+		SpecsInboxDir:         cfg.Specs.InboxDir,
+		SpecsInProgressDir:    cfg.Specs.InProgressDir,
+		SpecsCompletedDir:     cfg.Specs.CompletedDir,
+		SpecsRejectedDir:      cfg.Specs.RejectedDir,
+		PromptsInboxDir:       cfg.Prompts.InboxDir,
+		PromptsInProgressDir:  cfg.Prompts.InProgressDir,
+		PromptsCompletedDir:   cfg.Prompts.CompletedDir,
+		PromptsCancelledDir:   cfg.Prompts.CancelledDir,
+		SpecLister:            specLister,
+		PromptManager:         promptManager,
+		CurrentDateTimeGetter: currentDateTimeGetter,
+		VerifyingStaleHours:   verifyingStaleHours,
+	}
+
+	checker := doctor.NewChecker(deps)
+
+	fixer := doctor.NewFixer(doctor.FixerDeps{
+		Deps:            deps,
+		AutoCompleter:   autoCompleter,
+		Mover:           releaser,
+		FileLockFactory: lock.NewFileLock,
+	})
+
+	return cmd.NewDoctorCommand(checker, fixer)
 }
 
 // CreateListCommand creates a ListCommand.

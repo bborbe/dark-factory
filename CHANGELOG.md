@@ -8,6 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## v0.174.0
+
+- refactor: Move all os.ReadDir calls to shared helpers in pkg/doctor/parse_errors.go (constraint: only parse_errors.go may call os.ReadDir)
+- feat: Add `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` — detects 6 state-anomaly categories (`duplicate-spec-numbers`, `prompted-but-not-swept`, `verifying-stale`, `orphan-prompt-link`, `orphan-in-progress-prompt`, `status-dir-mismatch`) in `specs/` and `prompts/`, prints a copy-paste fix line per finding.
+- feat: `dark-factory doctor --fix` applies safe mutations under a per-file lock with audit log at `.dark-factory/doctor.log`. Renumber fix records `previous_id: NNN` (unquoted YAML) in the renamed spec's frontmatter; linked prompt `spec:` fields are rewritten to the new id, prompt filenames untouched.
+- fix: Remove silent startup reconciliation — the daemon no longer renumbers spec or prompt files on startup. Operators run `dark-factory doctor` to find and fix such conditions on demand.
+
 ## v0.173.2
 
 - spec-writing rules: add Scope Check size budget (`DB × AC > 50` OR > 3 code layers → consider split) and mandatory `## Suggested Decomposition` section template for multi-layer specs. spec-auditor flags both as Should-Fix; spec-creator emits the decomposition section template and adds a size-check workflow step. Reduces prompt-creator research time on large multi-layer specs (real example: spec 043 zombie detection — 10 DBs × 10 ACs × 5 layers, first generation attempt spent 30 min in research without writing any prompts).

@@ -46,8 +46,6 @@ var _ = Describe("startupSequence", func() {
 		slugMigrator = &mocks.SpecSlugMigrator{}
 		slugMigrator.MigrateDirsReturns(nil)
 
-		mover := &mocks.FileMover{}
-
 		deps = runner.StartupDepsForTest{
 			InboxDir:              filepath.Join(promptsBase, "inbox"),
 			InProgressDir:         filepath.Join(promptsBase, "in-progress"),
@@ -60,7 +58,6 @@ var _ = Describe("startupSequence", func() {
 			PromptManager:         mgr,
 			ContainerChecker:      containerChecker,
 			SlugMigrator:          slugMigrator,
-			Mover:                 mover,
 			CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
 		}
 	})

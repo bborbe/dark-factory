@@ -82,6 +82,47 @@ Expert dark-factory spec auditor. You evaluate spec files against the preflight 
 - One independently deployable behavior change per spec
 - Two features with different do-nothing arguments = two specs
 
+## Size Budget (Should-Fix flag)
+
+A spec's research load on the prompt-creator scales with `Desired Behaviors × Acceptance Criteria` AND with the number of code layers touched. Past a threshold, the prompt-creator burns context on exploration before writing any prompts.
+
+**Heuristic, not algorithmic.** Like every Should-Fix in this auditor, the layer count requires auditor judgment — the examples below are illustrative, not exhaustive. Flag the spec if a reasonable reader would count > 3 distinct concerns; don't get stuck arguing about whether "tests" is its own layer. The goal is to surface large specs to the human reviewer, not to mechanize the decision.
+
+**Mechanical check:**
+
+1. Count Desired Behaviors (`grep -c '^[0-9]\+\.' <spec-file>` against the `## Desired Behavior` section, or scan numbered list manually).
+2. Count Acceptance Criteria (`grep -c '^- \[ \]' <spec-file>` against the `## Acceptance Criteria` section).
+3. Estimate touched code layers: each distinct concern is one layer. Examples — publishers (`result_publisher.go`), classifiers (`job_watcher.go`), background goroutines (new sweeper), CRD/admission (new field + validation), tests (new envtest harness). A doctrine doc reference does NOT count as a layer.
+
+**Flag as Should-Fix when** `DB × AC > 50` OR `layers > 3`:
+
+> Spec size budget exceeded: `<DB>` Desired Behaviors × `<AC>` Acceptance Criteria = `<product>` (threshold: 50), touching `<N>` code layers (threshold: 3). Prompt-creator will spend disproportionate context on cross-layer research. Consider splitting along the natural seams listed in the Suggested Decomposition section (if present) or along the layer boundaries (publishers / classifier / sweeper / CRD / tests).
+
+**Don't flag as Critical** — the spec may still be correct and shippable; just slower to generate prompts from. Critical is reserved for blockers (wrong project, scope-creep YAGNI, doctrine collisions).
+
+## Suggested Decomposition Section (Should-Fix flag)
+
+**Relationship to Size Budget above.** Two related thresholds, two different actions:
+
+| Trigger | Action |
+|---|---|
+| `DB × AC > 50` OR > 3 layers | Consider splitting into multiple specs (Size Budget) |
+| > 1 layer OR > 5 Desired Behaviors (and not split) | Require a `## Suggested Decomposition` section |
+
+A spec that touches 2-3 layers is acceptable as a single spec but should encode the prompt decomposition; a spec at > 3 layers is large enough that splitting becomes a better default. The two checks compose — a large multi-layer spec triggers both: Size Budget surfaces the size, Suggested Decomposition keeps the prompt-creator's research bounded if you keep the spec whole.
+
+For specs that touch > 1 code layer OR have > 5 Desired Behaviors, the spec MUST include a `## Suggested Decomposition` section enumerating how the work splits into prompts. This encodes the author's mental model so the prompt-creator doesn't re-derive it from scratch (saves 10-30 minutes of exploration on the first attempt).
+
+**Required shape** — a table with columns `# | Prompt focus | Covers DBs | Covers ACs | Depends on`. One row per prompt, typically 3-6 total. See `docs/rules/spec-writing.md` "Suggested Decomposition" for the canonical template.
+
+**Flag as Should-Fix when** the section is missing on a multi-layer spec:
+
+> Multi-layer spec (`<N>` layers / `<DB>` Desired Behaviors) missing the `## Suggested Decomposition` section. Without it, the prompt-creator must re-derive the ordering from the DB/AC mapping — typically 10-30 minutes of exploration that the spec author could encode in 5 minutes of typing. Add the section with one row per intended prompt.
+
+**Don't flag** when the spec is single-layer + ≤ 5 DBs — the prompt-creator's defaults are fine.
+
+
+
 ## YAGNI Pass (scope-creep detector)
 
 **Run this check on every spec.** Specs frequently grow optional knobs, opt-out flags, future-proof configuration, and tunable thresholds that no concrete consumer has asked for. These add test surface, doc burden, rollback complexity, and mental load — without serving the Problem the spec was written to solve.

@@ -1634,6 +1634,8 @@ func findMissingInSpecCompleted(
 // the caller reports that number as missing. This matches the "missing
 // predecessor" test contract: 225 in in-progress, 223 in completed, 224 absent
 // → predecessor is 224 (the undeclared n-1), and is reported missing.
+//
+//nolint:gocognit // two-dir scan + gap detection + highest-below-n tracking; refactor candidate tracked separately
 func findPredecessorInSpec(
 	scanDir string,
 	completedDir string,

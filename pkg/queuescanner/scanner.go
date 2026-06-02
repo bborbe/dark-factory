@@ -120,6 +120,8 @@ func (s *scanner) ScanAndProcess(ctx context.Context) (int, error) {
 // Returns (true, nil) when the scan loop should stop (queue empty, blocked, or preflight broken).
 // Returns (false, nil) to continue scanning for the next prompt.
 // Returns (true, err) when a fatal error requires the daemon to stop.
+//
+//nolint:gocognit // per-spec filter loop + multi-stage guard checks + log gating; refactor candidate tracked separately
 func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 	queued, err := s.promptManager.ListQueued(ctx)
 	if err != nil {
@@ -279,7 +281,8 @@ func (s *scanner) logBlockedOnce(
 	if key == s.lastBlockedMsg {
 		return
 	}
-	slog.Info(
+	slog.InfoContext(
+		ctx,
 		"prompt blocked",
 		"file", filepath.Base(pr.Path),
 		"reason", reason,

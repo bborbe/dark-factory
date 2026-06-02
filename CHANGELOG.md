@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.174.5
 
 - feat(queuescanner): per-spec predecessor lookup — `prompt.PromptScanner.AllPreviousInSpecCompleted` and `FindMissingInSpecCompleted` walk in-progress/ AND completed/ for the same spec, the queue-advance loop in `pkg/queuescanner/scanner.go` iterates candidates and picks the first whose per-spec guard passes (alphabetical tiebreak from `ListQueued`), and the `prompt blocked` log line now carries `spec=<id>`. A failed prompt on one spec no longer blocks unrelated specs (spec 092).
 - feat(prompt): `Manager.AllPreviousInSpecCompleted` and `Manager.FindMissingInSpecCompleted` delegate to the new scanner methods.

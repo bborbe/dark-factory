@@ -78,7 +78,7 @@ type FixerDeps struct {
 	CurrentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
-// counterfeiter:generate -o ../../mocks/doctor-fixer.go --fake-name DoctorFixer . Fixer
+//counterfeiter:generate -o ../../mocks/doctor-fixer.go --fake-name DoctorFixer . Fixer
 
 // Fixer applies fixes for anomalies detected by Checker.
 type Fixer interface {

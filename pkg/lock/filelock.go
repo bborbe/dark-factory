@@ -14,7 +14,7 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// counterfeiter:generate -o ../../mocks/lock-file-lock.go --fake-name LockFileLock . FileLock
+//counterfeiter:generate -o ../../mocks/lock-file-lock.go --fake-name LockFileLock . FileLock
 
 // FileLock provides exclusive file-based locking with a per-path lock file.
 // Unlike Locker (which locks a project-wide .dark-factory.lock), FileLock is

@@ -62,7 +62,7 @@ type Finding struct {
 	FixCommand string
 }
 
-// counterfeiter:generate -o ../../mocks/doctor-checker.go --fake-name DoctorChecker . Checker
+//counterfeiter:generate -o ../../mocks/doctor-checker.go --fake-name DoctorChecker . Checker
 
 // Checker detects state anomalies in spec and prompt files.
 type Checker interface {

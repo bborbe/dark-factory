@@ -59,5 +59,12 @@ func WriteAuditEntry(ctx context.Context, path string, entry AuditEntry) error {
 		return errors.Wrap(ctx, err, "write audit entry")
 	}
 
+	// fsync before close so a crash between write and close cannot lose the audit
+	// entry while leaving the underlying mutation durable. Audit trail durability
+	// is load-bearing for --fix postmortem recovery.
+	if err := f.Sync(); err != nil {
+		return errors.Wrap(ctx, err, "fsync audit log")
+	}
+
 	return nil
 }

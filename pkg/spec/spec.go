@@ -287,12 +287,7 @@ func Load(
 	yamlV3Format := frontmatter.NewFormat("---", "---", yaml.Unmarshal)
 	body, err := frontmatter.Parse(bytes.NewReader(content), &fm, yamlV3Format)
 	if err != nil {
-		return &SpecFile{
-			Path:                  path,
-			Name:                  name,
-			Body:                  content,
-			currentDateTimeGetter: currentDateTimeGetter,
-		}, nil
+		return nil, errors.Wrapf(ctx, err, "parse spec frontmatter %s", path)
 	}
 
 	return &SpecFile{

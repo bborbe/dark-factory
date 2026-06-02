@@ -87,9 +87,12 @@ func (d *doctorCommand) Run(ctx context.Context, args []string) error {
 		)
 	}
 
+	// Empty AuditLogPath defers to fixer.Apply's default, which resolves the
+	// project root via project.FindRoot — invariant against the CWD the
+	// operator invokes doctor from (a hardcoded relative path here would
+	// write into ./.dark-factory/doctor.log when run from a subdirectory).
 	result, err := d.fixer.Apply(ctx, findings, doctor.ApplyOptions{
 		Yes:             yesMode,
-		AuditLogPath:    ".dark-factory/doctor.log",
 		FileLockTimeout: 5 * time.Second,
 	})
 	if err != nil {

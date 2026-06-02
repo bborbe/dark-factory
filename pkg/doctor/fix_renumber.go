@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/reindex"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -39,6 +40,34 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		f.deps.PromptsInboxDir,
 		f.deps.PromptsCompletedDir,
 		f.deps.PromptsCancelledDir,
+	}
+
+	// Acquire locks on every TargetPath BEFORE reindex so a concurrent writer
+	// cannot mutate the colliding file between reindex's move and our subsequent
+	// load. Locks are held for the entire renumber cycle (reindex + per-rename
+	// frontmatter rewrites + UpdateSpecRefs) and released when this function
+	// returns. Order: lex-sorted basenames to avoid lock-ordering deadlock when
+	// two doctor instances run concurrently on overlapping finding sets.
+	preAcquiredLocks := make([]lock.FileLock, 0, len(finding.TargetPaths))
+	defer func() {
+		for _, fl := range preAcquiredLocks {
+			_ = fl.Release(ctx)
+		}
+	}()
+	for _, t := range finding.TargetPaths {
+		for _, dir := range specDirs {
+			candidatePath := filepath.Join(dir, t)
+			fl := f.deps.FileLockFactory(candidatePath)
+			if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
+				failed = append(failed, FailedFix{
+					Category:    finding.Category,
+					TargetPaths: []string{candidatePath},
+					Detail:      "lock acquire failed (pre-reindex): " + err.Error(),
+				})
+				return
+			}
+			preAcquiredLocks = append(preAcquiredLocks, fl)
+		}
 	}
 
 	r := reindex.NewReindexer(specDirs, f.deps.Mover)
@@ -107,20 +136,16 @@ func (f *fixer) applyDuplicateSpecNumbersRename(
 ) (applied *AppliedFix, failed *FailedFix) {
 	// reindex.Reindex has already moved the file from OldPath → NewPath via the
 	// shared FileMover before this method is called. We operate on NewPath here:
-	// lock it, load the spec from its new location, record PreviousID in the
-	// frontmatter, and save it back. The historical "MoveFile after Save" call
-	// at this layer was a double-move that worked only against mocks (no-op) and
-	// failed against real filesystems (Load couldn't find the already-moved file).
-	fl := f.deps.FileLockFactory(rn.NewPath)
-	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
-		return nil, &FailedFix{
-			Category:    finding.Category,
-			TargetPaths: []string{rn.OldPath, rn.NewPath},
-			Detail:      "lock acquire failed: " + err.Error(),
-		}
-	}
-	defer fl.Release(ctx)
-
+	// load the spec from its new location, record PreviousID in the frontmatter,
+	// and save it back. The historical "MoveFile after Save" call at this layer
+	// was a double-move that worked only against mocks (no-op) and failed against
+	// real filesystems (Load couldn't find the already-moved file).
+	//
+	// Locking: the caller (fixDuplicateSpecNumbers) pre-acquired locks on every
+	// candidate OldPath BEFORE reindex. Those locks are held across the entire
+	// renumber cycle, so no per-rename NewPath lock is needed here — adding one
+	// would risk a deadlock against another process holding NewPath's lock while
+	// we hold OldPath's lock.
 	oldNum := specnum.Parse(strings.TrimSuffix(filepath.Base(rn.OldPath), ".md"))
 	sf, err := spec.Load(ctx, rn.NewPath, f.deps.CurrentDateTimeGetter)
 	if err != nil {

@@ -86,25 +86,37 @@ func (f *fileLock) tryAcquire(ctx context.Context) error {
 }
 
 // Release implements FileLock.Release.
+//
+// Ordering invariants:
+//  1. Capture the fd locally; null out `f.fd` BEFORE any syscall so repeated
+//     Release() calls are idempotent and a partial failure doesn't leave a
+//     half-released state for the next Release attempt.
+//  2. Close() before Flock(LOCK_UN): closing the fd implicitly releases all
+//     flock locks held on it (Linux/macOS man flock(2)). If we Unlock first
+//     and then Close fails, the lock IS released but the caller would see
+//     "release succeeded but resource leaked". Closing first guarantees the
+//     lock is gone regardless of subsequent step outcomes.
+//  3. Only then attempt os.Remove on the lock file. By that point we are
+//     certain we no longer hold the lock; another process can recreate the
+//     same lock file safely.
 func (f *fileLock) Release(ctx context.Context) error {
 	if f.fd == nil {
 		return nil
 	}
-
-	if err := syscall.Flock( //nolint:gosec // G115: File descriptor conversion is safe
-		int(f.fd.Fd()),
-		syscall.LOCK_UN,
-	); err != nil {
-		return errors.Wrap(ctx, err, "unlock file")
-	}
-
-	if err := f.fd.Close(); err != nil {
-		return errors.Wrap(ctx, err, "close lock file")
-	}
+	fd := f.fd
+	lockPath := f.lockPath
 	f.fd = nil
 
-	// Remove the lock file so the directory stays clean.
-	if err := os.Remove(f.lockPath); err != nil && !os.IsNotExist(err) {
+	// Close first (this implicitly releases the flock). If close fails the
+	// lock is in an indeterminate state; surface the error to the caller.
+	if err := fd.Close(); err != nil {
+		return errors.Wrap(ctx, err, "close lock file")
+	}
+
+	// Remove the lock file so the directory stays clean. By now the fd is
+	// closed and the lock is released; the os.Remove window is narrow and
+	// non-load-bearing for correctness.
+	if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(ctx, err, "remove lock file")
 	}
 

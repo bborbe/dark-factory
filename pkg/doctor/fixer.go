@@ -100,6 +100,10 @@ func (f *fixer) Apply(
 	findings []Finding,
 	opts ApplyOptions,
 ) (ApplyResult, error) {
+	// Early return: nothing to do, skip all defaulting + project-root lookup.
+	if len(findings) == 0 {
+		return ApplyResult{}, nil
+	}
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
 	}

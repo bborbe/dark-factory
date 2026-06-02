@@ -72,6 +72,19 @@ func (f *fileLock) Acquire(ctx context.Context, timeout time.Duration) error {
 }
 
 func (f *fileLock) tryAcquire(ctx context.Context) error {
+	// Hold the mutex across the entire open+flock+assign so two goroutines
+	// racing on the same fileLock cannot both succeed and overwrite f.fd,
+	// orphaning the loser's fd (which remains flock'd but unreachable from
+	// Release on this fileLock). The open+flock is a few syscalls; holding
+	// the mutex over it is cheap and removes the race.
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.fd != nil {
+		// Another goroutine on this fileLock already acquired; treat as success.
+		return nil
+	}
+
 	// #nosec G304 -- path is derived from caller-controlled target path + ".lock" suffix
 	fd, err := os.OpenFile(f.lockPath, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
@@ -86,9 +99,7 @@ func (f *fileLock) tryAcquire(ctx context.Context) error {
 		return errors.Errorf(ctx, "flock failed: %v", err)
 	}
 
-	f.mu.Lock()
 	f.fd = fd
-	f.mu.Unlock()
 	return nil
 }
 

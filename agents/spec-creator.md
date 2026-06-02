@@ -51,13 +51,15 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
 
 5. **Write spec content** following template below
 
-6. **Validate** against preflight checklist AND the four self-check passes:
+6. **Size check** — count Desired Behaviors, Acceptance Criteria, and code layers touched. If `DB × AC > 50` OR layers > 3, either split into 2-3 specs along natural seams (publisher fix vs new classifier vs new background goroutine, etc.) OR add a `## Suggested Decomposition` section enumerating the prompts (table with columns `# | Prompt focus | Covers DBs | Covers ACs | Depends on`). Multi-layer specs without this section force the prompt-creator into 10-30 min of cross-layer research before it can write anything. See `docs/rules/spec-writing.md` "Scope Check" and "Suggested Decomposition".
+
+7. **Validate** against preflight checklist AND the four self-check passes:
    - **Adversarial laziness**: read the spec assuming the laziest possible implementation. If a no-op or hardcoded fake satisfies every AC, tighten the ACs before reporting.
    - **Hedge-word grep**: scan the spec for `should / appropriate / reasonable / as needed / where applicable / if necessary / etc.`; resolve each or mark "agent decides at impl time" explicitly.
    - **Evidence-shape check**: every AC names how the verifier will observe pass — exit code, log line, file content, HTTP status, kafka message, metric, cluster state, or file artifact.
    - **YAGNI pass**: re-read the Goal. For every config field, opt-out flag, tunable threshold, or branch in Desired Behavior, ask: "Does removing this still satisfy the Goal? Does the Problem section name a concrete consumer demanding this variation?" If the answer to the first is **yes** or to the second is **no**, remove it before saving. Common offenders to delete on sight: per-feature opt-out flags that disable the very behavior the spec ships (an escape hatch on the Goal is itself a regression), unrequested configurability, tunable thresholds with no named consumer, "future-proof" knobs. When removing, add a one-line note to Non-goals so the rejection is durable: `- Do NOT add <knob> — invariant; if a future consumer demands variation, that's a separate spec.`
 
-7. **Report** file path and suggest `/audit-spec` before approving
+8. **Report** file path and suggest `/audit-spec` before approving
 </workflow>
 
 <spec_template>
@@ -145,6 +147,17 @@ Exact commands and expected results:
 make precommit
 ```
 
+## Suggested Decomposition
+
+(REQUIRED for specs touching > 1 code layer or with > 5 Desired Behaviors. Skip otherwise.)
+
+| # | Prompt focus | Covers DBs | Covers ACs | Depends on |
+|---|---|---|---|---|
+| 1 | <focused scope> | <DB numbers> | <AC numbers> | — |
+| 2 | <focused scope> | <DB numbers> | <AC numbers> | prompt 1 |
+
+Rationale: one or two sentences on why this ordering — what each prompt builds on, where cycles would be a problem.
+
 ## Do-Nothing Option
 
 What happens if we don't do this? Is the current approach acceptable?
@@ -167,6 +180,7 @@ If the spec can't answer these in under a page, it's underdesigned or too large.
 
 <scope_rules>
 - Desired behaviors: 3-8 (too few = just write a prompt; too many = split)
+- `DB × AC > 50` OR > 3 code layers → either split into 2-3 specs OR add a `## Suggested Decomposition` table (see workflow step 6)
 - One independently deployable behavior change per spec
 - Two features with different do-nothing arguments = two specs
 - Contains struct names or file paths that aren't frozen constraints? → too implementation-level, push details to prompts

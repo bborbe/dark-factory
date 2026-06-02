@@ -95,8 +95,42 @@ When a spec needs technical detail (API endpoints, protocol formats) that would 
 ## Scope Check
 
 - **Desired behaviors > 8?** Look for a natural split
+- **Desired Behaviors × Acceptance Criteria > 50?** The spec is multiplying its own surface — strong signal to split into 2-3 specs along natural seams (publisher fix vs new classifier vs new background goroutine, etc.).
+- **Touches > 3 code layers** (e.g. publisher + classifier + CRD + sweeper + tests)? Same signal — each layer is its own concern. The prompt-creator will need to research each one independently; a single spec forces it to hold the whole graph in memory at once.
 - **Two features with different do-nothing arguments?** Split into separate specs
 - **Contains struct names or file paths that aren't frozen constraints?** Too implementation-level — push details to prompts
+
+When in doubt, split. A 6-DB / 5-AC spec generates prompts in minutes; a 10-DB / 10-AC spec spent 30 min in research without writing on its first attempt (real example: agent zombie detection). The cost of splitting is one extra `approve` round; the cost of not splitting is open-ended.
+
+## Suggested Decomposition (mandatory for multi-layer specs)
+
+When a spec touches > 1 code layer or has > 5 Desired Behaviors, include a `## Suggested Decomposition` section enumerating how the work should split into prompts. This encodes the human's mental model so the prompt-creator doesn't have to re-derive it.
+
+**Shape:**
+
+```markdown
+## Suggested Decomposition
+
+Prompts should be generated in this order — each row is a single prompt with a clear scope.
+
+| # | Prompt focus | Covers DBs | Covers ACs | Depends on |
+|---|---|---|---|---|
+| 1 | Doctrine-correct publishers | 1, 2 | 1-3 | — |
+| 2 | Pod-state classifier | 3, 8, 9 | 4 | prompt 1 (uses publishers) |
+| 3 | CRD knobs + admission validation | 5, 6 | 6, 8 | — |
+| 4 | Deadline sweeper goroutine | 4, 7 | 5, 7 | prompts 1, 3 |
+| 5 | envtest for ImagePullBackOff | — | 9 | prompt 2 |
+
+Rationale: prompt 1 establishes the publishing contract; prompts 2 and 3 can run independently after; prompt 4 needs both; prompt 5 is a test-only addition on top.
+```
+
+**Rules:**
+
+- One row per prompt — typically 3-6 total.
+- Each row maps to specific DB / AC numbers so coverage is auditable.
+- "Depends on" makes ordering explicit. The daemon executes prompts in filename order (`1-`, `2-`, …) — your decomposition determines that order.
+- A spec without a Suggested Decomposition section is acceptable for single-layer single-behavior specs; the prompt-creator may produce a single prompt or split as it sees fit.
+- The auditor flags multi-layer specs missing this section as Should-Fix.
 
 ## Evidence Shape per Acceptance Criterion
 

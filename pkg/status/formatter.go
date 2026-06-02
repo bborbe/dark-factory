@@ -27,6 +27,8 @@ func NewFormatter() Formatter {
 }
 
 // Format formats status in human-readable format.
+//
+//nolint:gocognit // multi-section status formatter with conditional blocks; refactor candidate tracked separately
 func (f *formatter) Format(st *Status) string {
 	var b strings.Builder
 
@@ -71,6 +73,26 @@ func (f *formatter) Format(st *Status) string {
 		}
 	} else {
 		b.WriteString("  Queue:      0 prompts\n")
+	}
+
+	// Blocked line (spec 092) — only rendered when a blocker is active.
+	if st.Blocked != nil {
+		if st.Blocked.Missing > 0 {
+			fmt.Fprintf(
+				&b,
+				"Blocked:  %03d (reason=%s, missing=%03d)\n",
+				st.Blocked.Number,
+				st.Blocked.Reason,
+				st.Blocked.Missing,
+			)
+		} else {
+			fmt.Fprintf(
+				&b,
+				"Blocked:  %03d (reason=%s)\n",
+				st.Blocked.Number,
+				st.Blocked.Reason,
+			)
+		}
 	}
 
 	// Completed

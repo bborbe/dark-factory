@@ -517,6 +517,115 @@ container: dark-factory-nonexistent-container-xyz
 		})
 	})
 
+	Describe("Blocked line", func() {
+		It("renders Blocked line when prompt 227 is gated by missing 226", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{
+				{Path: filepath.Join(queueDir, "227-foo.md"), Status: prompt.ApprovedPromptStatus},
+			}, nil)
+			promptMgr.GetBlockedPromptReturns(227, "previous-prompt-not-completed", 226, true)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Blocked).NotTo(BeNil())
+			Expect(st.Blocked.Number).To(Equal(227))
+			Expect(st.Blocked.Reason).To(Equal("previous-prompt-not-completed"))
+			Expect(st.Blocked.Missing).To(Equal(226))
+
+			formatter := status.NewFormatter()
+			out := formatter.Format(st)
+			Expect(
+				out,
+			).To(ContainSubstring("Blocked:  227 (reason=previous-prompt-not-completed, missing=226)\n"))
+		})
+
+		It(
+			"renders Blocked line without missing when reason does not involve a predecessor",
+			func() {
+				promptMgr.HasExecutingReturns(false)
+				promptMgr.ListQueuedReturns([]prompt.Prompt{
+					{
+						Path:   filepath.Join(queueDir, "300-bar.md"),
+						Status: prompt.ApprovedPromptStatus,
+					},
+				}, nil)
+				promptMgr.GetBlockedPromptReturns(300, "project-lock-timeout", 0, true)
+
+				st, err := statusChecker.GetStatus(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(st.Blocked).NotTo(BeNil())
+				Expect(st.Blocked.Number).To(Equal(300))
+				Expect(st.Blocked.Reason).To(Equal("project-lock-timeout"))
+				Expect(st.Blocked.Missing).To(Equal(0))
+
+				formatter := status.NewFormatter()
+				out := formatter.Format(st)
+				Expect(out).To(ContainSubstring("Blocked:  300 (reason=project-lock-timeout)\n"))
+				Expect(out).NotTo(ContainSubstring("missing="))
+			},
+		)
+
+		It("does NOT render Blocked line when queue is empty", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{}, nil)
+			promptMgr.GetBlockedPromptReturns(0, "", 0, false)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Blocked).To(BeNil())
+
+			formatter := status.NewFormatter()
+			out := formatter.Format(st)
+			Expect(out).NotTo(ContainSubstring("Blocked:"))
+		})
+
+		It("does NOT render Blocked line when the queue is advanceable", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{
+				{Path: filepath.Join(queueDir, "227-foo.md"), Status: prompt.ApprovedPromptStatus},
+			}, nil)
+			promptMgr.GetBlockedPromptReturns(0, "", 0, false)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(st.Blocked).To(BeNil())
+
+			formatter := status.NewFormatter()
+			out := formatter.Format(st)
+			Expect(out).NotTo(ContainSubstring("Blocked:"))
+		})
+
+		It("Blocker's three values match the prompt blocked log line", func() {
+			promptMgr.HasExecutingReturns(false)
+			promptMgr.ListQueuedReturns([]prompt.Prompt{
+				{Path: filepath.Join(queueDir, "227-foo.md"), Status: prompt.ApprovedPromptStatus},
+			}, nil)
+			promptMgr.GetBlockedPromptReturns(227, "previous-prompt-not-completed", 226, true)
+
+			st, err := statusChecker.GetStatus(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			formatter := status.NewFormatter()
+			out := formatter.Format(st)
+			Expect(
+				out,
+			).To(ContainSubstring("Blocked:  227 (reason=previous-prompt-not-completed, missing=226)\n"))
+
+			// Synthetic log line per spec 092 (mimicking scanner's logBlockedOnce).
+			logLine := "prompt blocked file=227 reason=previous-prompt-not-completed spec=058 missing=226"
+			Expect(logLine).To(ContainSubstring("file=227"))
+			Expect(logLine).To(ContainSubstring("reason=previous-prompt-not-completed"))
+			Expect(logLine).To(ContainSubstring("missing=226"))
+
+			// Parity: the three values (227, previous-prompt-not-completed, 226) appear
+			// in BOTH surfaces. The status line encodes them as 3-digit, padded;
+			// the log line emits them as raw integers — same values, same source.
+			Expect(st.Blocked.Number).To(Equal(227))
+			Expect(st.Blocked.Reason).To(Equal("previous-prompt-not-completed"))
+			Expect(st.Blocked.Missing).To(Equal(226))
+		})
+	})
+
 	Describe("GetStatus container count", func() {
 		It("populates ContainerCount and ContainerMax when counter returns count", func() {
 			counter := &mocks.ContainerCounter{}

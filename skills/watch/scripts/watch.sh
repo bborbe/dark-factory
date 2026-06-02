@@ -56,7 +56,10 @@ while true; do
   echo "$(date +%H:%M:%S) | Queue: $QUEUE | Completed: $COMPLETED | Current: $CURRENT"
 
   # Alert: prompt failed
-  if echo "$STATUS" | grep -q "failed"; then
+  # Use `prompt list` as the source of truth — string-matching against
+  # `dark-factory status` output false-positives on filenames containing
+  # "failed" (e.g. a prompt named `widen-reject-accept-failed.md`).
+  if dark-factory prompt list 2>/dev/null | grep -qE "^\s*[0-9]+.*\s+failed\s*$"; then
     echo "ALERT: PROMPT FAILED!"
     afplay /System/Library/Sounds/Sosumi.aiff
     afplay /System/Library/Sounds/Sosumi.aiff

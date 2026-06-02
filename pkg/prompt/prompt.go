@@ -979,6 +979,53 @@ func (pm *Manager) FindPromptStatusInProgress(ctx context.Context, number int) s
 	return pm.promptScanner.FindPromptStatusInProgress(ctx, number)
 }
 
+// GetBlockedPrompt scans queued prompts and returns the first one whose per-spec
+// predecessor is not completed. Returns (0, "", 0, false) if no blocker is active
+// or if no candidates exist. The decision is delegated to the exported
+// AllPreviousInSpecCompleted / FindMissingInSpecCompleted helpers — this method
+// does not re-implement the guard.
+//
+//nolint:gocognit // per-spec scan + predecessor lookup + reason classification; refactor candidate tracked separately
+func (pm *Manager) GetBlockedPrompt(ctx context.Context) (int, string, int, bool) {
+	queued, err := pm.ListQueued(ctx)
+	if err != nil {
+		return 0, "", 0, false
+	}
+	for _, candidate := range queued {
+		number := candidate.Number()
+		if number < 0 {
+			continue
+		}
+		pf, err := pm.Load(ctx, candidate.Path)
+		if err != nil {
+			return number, "prompt-file-read-error", 0, true
+		}
+		specs := pf.Specs()
+		if len(specs) == 0 {
+			if !pm.promptScanner.AllPreviousCompleted(ctx, number) {
+				missing := pm.promptScanner.FindMissingCompleted(ctx, number)
+				if len(missing) > 0 {
+					return number, "previous-prompt-not-completed", missing[0], true
+				}
+				return number, "previous-prompt-missing", 0, true
+			}
+			continue
+		}
+		specID := specs[0]
+		if !pm.promptScanner.AllPreviousInSpecCompleted(ctx, number, specID) {
+			missing, err := pm.promptScanner.FindMissingInSpecCompleted(ctx, number, specID)
+			if err != nil {
+				return number, "previous-prompt-missing", 0, true
+			}
+			if missing > 0 {
+				return number, "previous-prompt-not-completed", missing, true
+			}
+			return number, "previous-prompt-missing", 0, true
+		}
+	}
+	return 0, "", 0, false
+}
+
 // AllPreviousInSpecCompleted checks if the predecessor prompt in the same spec is completed.
 func (pm *Manager) AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool {
 	return pm.promptScanner.AllPreviousInSpecCompleted(ctx, n, specID)

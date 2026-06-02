@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -70,7 +71,7 @@ func (c *checker) detectVerifyingStale(ctx context.Context) ([]Finding, error) {
 				Category:    CategoryVerifyingStale,
 				TargetPaths: []string{sf.Path},
 				SpecID:      sf.Name,
-				Detail: "spec has been in verifying status for more than " + itoa(
+				Detail: "spec has been in verifying status for more than " + strconv.Itoa(
 					staleHours,
 				) + " hours (since " + verifyingStr + ")",
 				FixCommand: "/dark-factory:verify-spec " + sf.Name,

@@ -13,16 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bborbe/errors"
+	libtime "github.com/bborbe/time"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/doctor"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
-
-	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Fixer", func() {
@@ -408,15 +408,15 @@ var _ = Describe("Fixer", func() {
 					parentDir = specsDir
 					switch destField {
 					case "SpecsCompletedDir":
-						destDir = deps.Deps.SpecsCompletedDir
+						destDir = deps.SpecsCompletedDir
 					case "SpecsRejectedDir":
-						destDir = deps.Deps.SpecsRejectedDir
+						destDir = deps.SpecsRejectedDir
 					}
 				} else {
 					parentDir = promptsDir
 					switch destField {
 					case "PromptsCompletedDir":
-						destDir = deps.Deps.PromptsCompletedDir
+						destDir = deps.PromptsCompletedDir
 					}
 				}
 				srcPath := filepath.Join(parentDir, sourceSubdir, filename)
@@ -456,27 +456,39 @@ var _ = Describe("Fixer", func() {
 				Expect(string(auditContent)).To(ContainSubstring("status-dir-mismatch"))
 				Expect(string(auditContent)).To(ContainSubstring("applied"))
 			},
-			Entry("spec in-progress + status completed -> SpecsCompletedDir",
-				"spec", "in-progress", "SpecsCompletedDir",
+			Entry(
+				"spec in-progress + status completed -> SpecsCompletedDir",
+				"spec",
+				"in-progress",
+				"SpecsCompletedDir",
 				"056-foo.md",
 				"dark-factory spec move 056-foo",
-				"spec in specs/in-progress/ has status completed but only statuses {idea, draft, approved, generating, prompted, verifying} are allowed in that directory"),
-			Entry("spec in-progress + status rejected -> SpecsRejectedDir",
-				"spec", "in-progress", "SpecsRejectedDir",
+				"spec in specs/in-progress/ has status completed but only statuses {idea, draft, approved, generating, prompted, verifying} are allowed in that directory",
+			),
+			Entry(
+				"spec in-progress + status rejected -> SpecsRejectedDir",
+				"spec",
+				"in-progress",
+				"SpecsRejectedDir",
 				"057-foo.md",
 				"dark-factory spec move 057-foo",
-				"spec in specs/in-progress/ has status rejected but only statuses {idea, draft, approved, generating, prompted, verifying} are allowed in that directory"),
-			Entry("prompt in-progress + status completed -> PromptsCompletedDir",
-				"prompt", "in-progress", "PromptsCompletedDir",
+				"spec in specs/in-progress/ has status rejected but only statuses {idea, draft, approved, generating, prompted, verifying} are allowed in that directory",
+			),
+			Entry(
+				"prompt in-progress + status completed -> PromptsCompletedDir",
+				"prompt",
+				"in-progress",
+				"PromptsCompletedDir",
 				"1-foo.md",
 				"dark-factory prompt move 1-foo",
-				"prompt in prompts/in-progress/ has status completed but only statuses {idea, draft, approved, executing, failed, in_review, pending_verification, committing} are allowed in that directory"),
+				"prompt in prompts/in-progress/ has status completed but only statuses {idea, draft, approved, executing, failed, in_review, pending_verification, committing} are allowed in that directory",
+			),
 		)
 	})
 
 	Describe("fixDuplicateSpecNumbers", func() {
 		var (
-			specsInProgressDir string
+			specsInProgressDir   string
 			promptsInProgressDir string
 		)
 
@@ -524,7 +536,9 @@ var _ = Describe("Fixer", func() {
 				Expect(result.Applied[0].TargetPaths).To(HaveLen(2))
 
 				// FileMover called once
-				Expect(deps.Mover.(*mocks.FileMover).MoveFileCallCount()).To(Equal(1))
+				mover, ok := deps.Mover.(*mocks.FileMover)
+				Expect(ok).To(BeTrue())
+				Expect(mover.MoveFileCallCount()).To(Equal(1))
 
 				// Audit log written
 				auditContent, err := os.ReadFile(auditPath)
@@ -651,40 +665,45 @@ var _ = Describe("Fixer", func() {
 		})
 
 		Context("when reindex's move fails", func() {
-			It("returns a FailedFix with reindex failed detail (move error surfaces via reindex)", func() {
-				// Collision fixture
-				Expect(os.WriteFile(
-					filepath.Join(specsInProgressDir, "056-aaa.md"),
-					[]byte("---\nstatus: idea\n---\n# A"), 0644)).To(Succeed())
-				Expect(os.WriteFile(
-					filepath.Join(specsInProgressDir, "056-bar.md"),
-					[]byte("---\nstatus: idea\n---\n# Bar"), 0644)).To(Succeed())
+			It(
+				"returns a FailedFix with reindex failed detail (move error surfaces via reindex)",
+				func() {
+					// Collision fixture
+					Expect(os.WriteFile(
+						filepath.Join(specsInProgressDir, "056-aaa.md"),
+						[]byte("---\nstatus: idea\n---\n# A"), 0644)).To(Succeed())
+					Expect(os.WriteFile(
+						filepath.Join(specsInProgressDir, "056-bar.md"),
+						[]byte("---\nstatus: idea\n---\n# Bar"), 0644)).To(Succeed())
 
-				deps := makeDeps()
-				// Reindex is the only MoveFile caller post-refactor; injecting a failing
-				// Mover surfaces the error through reindex, not through the fixer's
-				// per-rename loop (which no longer calls MoveFile).
-				fakeMover := &mocks.FileMover{}
-				fakeMover.MoveFileReturns(errors.New(ctx, "rename failed: device or resource busy"))
-				deps.Mover = fakeMover
-				fixer := doctor.NewFixer(deps)
+					deps := makeDeps()
+					// Reindex is the only MoveFile caller post-refactor; injecting a failing
+					// Mover surfaces the error through reindex, not through the fixer's
+					// per-rename loop (which no longer calls MoveFile).
+					fakeMover := &mocks.FileMover{}
+					fakeMover.MoveFileReturns(
+						errors.New(ctx, "rename failed: device or resource busy"),
+					)
+					deps.Mover = fakeMover
+					fixer := doctor.NewFixer(deps)
 
-				result, err := fixer.Apply(ctx, []doctor.Finding{
-					{
-						Category:    doctor.CategoryDuplicateSpecNumbers,
-						TargetPaths: []string{"056-bar.md"},
-						SpecID:      "056-aaa",
-						FixCommand:  "dark-factory spec renumber 056-bar",
-					},
-				}, doctor.ApplyOptions{
-					Yes:             true,
-					AuditLogPath:    auditPath,
-					FileLockTimeout: 5 * time.Second,
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result.Failed).To(HaveLen(1))
-				Expect(result.Failed[0].Detail).To(ContainSubstring("reindex failed"))
-			})
+					result, err := fixer.Apply(ctx, []doctor.Finding{
+						{
+							Category:    doctor.CategoryDuplicateSpecNumbers,
+							TargetPaths: []string{"056-bar.md"},
+							SpecID:      "056-aaa",
+							FixCommand:  "dark-factory spec renumber 056-bar",
+						},
+					}, doctor.ApplyOptions{
+						Yes:             true,
+						AuditLogPath:    auditPath,
+						FileLockTimeout: 5 * time.Second,
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.Failed).To(HaveLen(1))
+					Expect(result.Failed[0].Detail).To(ContainSubstring("reindex failed"))
+				},
+			)
 		})
 
 		Context("when audit log write fails", func() {
@@ -937,7 +956,7 @@ var _ = Describe("Fixer", func() {
 				fakeMover,
 				libtime.NewCurrentDateTime(),
 			)
-			deps.Deps.PromptManager = pm
+			deps.PromptManager = pm
 
 			fixer := doctor.NewFixer(deps)
 
@@ -982,7 +1001,7 @@ var _ = Describe("Fixer", func() {
 				fakeMover,
 				libtime.NewCurrentDateTime(),
 			)
-			deps.Deps.PromptManager = pm
+			deps.PromptManager = pm
 
 			fixer := doctor.NewFixer(deps)
 

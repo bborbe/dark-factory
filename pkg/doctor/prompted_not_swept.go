@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
@@ -54,7 +55,7 @@ func (c *checker) detectPromptedNotSwept(ctx context.Context) ([]Finding, error)
 			Category:    CategoryPromptedNotSwept,
 			TargetPaths: []string{sf.Path},
 			SpecID:      sf.Name,
-			Detail: "spec status is prompted but all " + itoa(
+			Detail: "spec status is prompted but all " + strconv.Itoa(
 				total,
 			) + " linked prompt(s) are terminal",
 			FixCommand: "dark-factory spec sweep " + sf.Name,

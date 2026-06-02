@@ -6,8 +6,10 @@ package doctor
 
 import (
 	"context"
+	"log/slog"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -26,17 +28,7 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 	if err != nil {
 		return nil, err
 	}
-	groups, err := scanSpecsByNumberPrefix(paths)
-	if err != nil {
-		return nil, err
-	}
-
-	specDirs = []string{
-		c.deps.SpecsInboxDir,
-		c.deps.SpecsInProgressDir,
-		c.deps.SpecsCompletedDir,
-		c.deps.SpecsRejectedDir,
-	}
+	groups := scanSpecsByNumberPrefix(paths)
 
 	var findings []Finding
 	for _, names := range groups {
@@ -69,17 +61,19 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 				c.deps.PromptsInProgressDir,
 				c.deps.PromptsCompletedDir,
 			)
-			_, total, _ := counter.CountBySpec(ctx, stem)
+			_, total, countErr := counter.CountBySpec(ctx, stem)
+			if countErr != nil {
+				slog.Warn("doctor: CountBySpec failed; reporting linked-prompts as 0",
+					"spec", stem,
+					"error", countErr.Error())
+			}
 			detailParts = append(
 				detailParts,
-				name+" (status: "+status+", linked-prompts: "+itoa(total)+")",
+				name+" (status: "+status+", linked-prompts: "+strconv.Itoa(total)+")",
 			)
 		}
 
-		targets := make([]string, 0, len(otherNames))
-		for _, name := range otherNames {
-			targets = append(targets, name)
-		}
+		targets := append([]string(nil), otherNames...)
 		sort.Strings(targets)
 
 		findings = append(findings, Finding{
@@ -93,22 +87,8 @@ func (c *checker) detectDuplicateSpecNumbers(ctx context.Context) ([]Finding, er
 	return findings, nil
 }
 
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var b [20]byte
-	pos := len(b)
-	for i > 0 {
-		pos--
-		b[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	return string(b[pos:])
-}
-
 // scanSpecsByNumberPrefix scans spec file paths and groups them by numeric prefix.
-func scanSpecsByNumberPrefix(paths []string) (map[int][]string, error) {
+func scanSpecsByNumberPrefix(paths []string) map[int][]string {
 	result := make(map[int][]string)
 	for _, path := range paths {
 		name := filepath.Base(path)
@@ -118,5 +98,5 @@ func scanSpecsByNumberPrefix(paths []string) (map[int][]string, error) {
 		}
 		result[num] = append(result[num], name)
 	}
-	return result, nil
+	return result
 }

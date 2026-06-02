@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/bborbe/dark-factory/pkg/specnum"
 )
 
 // fixPromptedNotSwept calls AutoCompleter.CheckAndComplete for the spec, which
@@ -26,12 +24,6 @@ func (f *fixer) fixPromptedNotSwept(
 	}
 	specPath := finding.TargetPaths[0]
 	specID := strings.TrimSuffix(filepath.Base(specPath), ".md")
-	// Extract the numeric part for reliable matching.
-	specNum := specnum.Parse(specID)
-	if specNum >= 0 {
-		specID = filepath.Base(specPath)
-		specID = strings.TrimSuffix(specID, ".md")
-	}
 
 	// Acquire per-file lock for consistency with the other fix_* functions
 	// (fix_renumber, fix_status_dir_mismatch, fix_orphan_in_progress, fix_unlink).
@@ -46,7 +38,7 @@ func (f *fixer) fixPromptedNotSwept(
 		})
 		return
 	}
-	defer fl.Release(ctx)
+	defer releaseLock(ctx, fl, specPath)
 
 	// Audit BEFORE AutoCompleter.CheckAndComplete: a CheckAndComplete failure
 	// leaves the spec unchanged (still status=prompted); an audit failure

@@ -43,7 +43,7 @@ var _ = Describe("WriteAuditEntry", func() {
 
 		stat, err := os.Stat(auditPath)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stat.Mode().Perm()).To(Equal(os.FileMode(0644)))
+		Expect(stat.Mode().Perm()).To(Equal(os.FileMode(0600)))
 	})
 
 	It("writes a tab-separated line to the file", func() {

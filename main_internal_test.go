@@ -998,7 +998,10 @@ var _ = Describe("extractVerifyingStaleHours", func() {
 	})
 
 	It("strips flag from remaining args, preserving other args", func() {
-		n, remaining, err := extractVerifyingStaleHours(ctx, []string{"--fix", "--verifying-stale-hours=48", "other"})
+		n, remaining, err := extractVerifyingStaleHours(
+			ctx,
+			[]string{"--fix", "--verifying-stale-hours=48", "other"},
+		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(n).To(Equal(48))
 		Expect(remaining).To(Equal([]string{"--fix", "other"}))

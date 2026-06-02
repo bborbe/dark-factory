@@ -244,6 +244,7 @@ func (s *SpecList) UnmarshalYAML(value *yaml.Node) error {
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
 	Status             string   `yaml:"status"`
+	OriginalStatus     string   `yaml:"originalStatus,omitempty"`
 	Specs              SpecList `yaml:"spec,omitempty,flow"`
 	Summary            string   `yaml:"summary,omitempty"`
 	Container          string   `yaml:"container,omitempty"`
@@ -446,6 +447,18 @@ func (pf *PromptFile) StampRejected(reason string) {
 	}
 	pf.Frontmatter.RejectedReason = reason
 	pf.Frontmatter.Status = string(RejectedPromptStatus)
+}
+
+// StampRejectedWithOriginal sets the rejected timestamp and reason, marks status as rejected,
+// and preserves the prompt's prior status (typically "failed") in the originalStatus field.
+// Used by the reject command when rejecting a prompt from a non-pre-execution state.
+func (pf *PromptFile) StampRejectedWithOriginal(reason, originalStatus string) {
+	if pf.Frontmatter.Rejected == "" {
+		pf.Frontmatter.Rejected = pf.now().UTC().Format(time.RFC3339)
+	}
+	pf.Frontmatter.RejectedReason = reason
+	pf.Frontmatter.Status = string(RejectedPromptStatus)
+	pf.Frontmatter.OriginalStatus = originalStatus
 }
 
 // MarkPendingVerification sets status to pending_verification.

@@ -1,16 +1,14 @@
 ---
 status: failed
 spec: [092-daemon-blocked-queue-ux]
+container: dark-factory-blocked-queue-exec-441-spec-092-widen-reject-accept-failed
+dark-factory-version: v0.174.1-dirty
 created: "2026-06-02T19:24:09Z"
 queued: "2026-06-02T20:16:12Z"
-completed: "2026-06-02T20:16:14Z"
+started: "2026-06-02T20:17:26Z"
+completed: "2026-06-02T20:25:06Z"
 branch: dark-factory/daemon-blocked-queue-ux
-lastFailReason: |-
-    setup workflow: git merge origin default branch: merge origin/master: error: Your local changes to the following files would be overwritten by merge:
-    	mocks/mocks.go
-    Please commit your changes or stash them before you merge.
-    Aborting
-    Merge with strategy ort failed.: exit status 2
+lastFailReason: 'validate completion report: completion report status: failed'
 ---
 
 <summary>

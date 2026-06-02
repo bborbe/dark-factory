@@ -59,7 +59,7 @@ func (r *rejectCommand) Run(ctx context.Context, args []string) error {
 }
 
 func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error {
-	path, err := FindPromptFileInDirs(ctx, id, r.inboxDir, r.inProgressDir)
+	path, err := FindPromptFileInDirs(ctx, id, r.inboxDir, r.inProgressDir, r.rejectedDir)
 	if err != nil {
 		return errors.Errorf(ctx, "prompt not found: %s", id)
 	}
@@ -73,15 +73,19 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 	if status == prompt.RejectedPromptStatus {
 		return errors.Errorf(ctx, "%s is already rejected", filepath.Base(path))
 	}
-	if !status.IsRejectable() {
+	if !status.IsRejectable() && status != prompt.FailedPromptStatus {
 		return errors.Errorf(
 			ctx,
-			"cannot reject prompt with status %q — pre-execution states only (idea, draft, approved)",
+			"cannot reject prompt with status %q — allowed: idea, draft, approved, failed",
 			pf.Frontmatter.Status,
 		)
 	}
 
-	pf.StampRejected(reason)
+	if status == prompt.FailedPromptStatus {
+		pf.StampRejectedWithOriginal(reason, string(prompt.FailedPromptStatus))
+	} else {
+		pf.StampRejected(reason)
+	}
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}

@@ -112,6 +112,7 @@ var _ = Describe("Processor", func() {
 				manager.ListQueuedReturnsOnCall(0, queued, nil)
 				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				manager.AllPreviousCompletedReturns(true)
+				manager.AllPreviousInSpecCompletedReturns(true)
 				executor.ExecuteReturns(nil)
 				releaser.HasChangelogReturns(false)
 
@@ -196,6 +197,7 @@ var _ = Describe("Processor", func() {
 				}
 				manager.ListQueuedReturnsOnCall(0, queued, nil)
 				manager.AllPreviousCompletedReturns(true)
+				manager.AllPreviousInSpecCompletedReturns(true)
 				executor.ExecuteReturns(stderrors.New("execution failed"))
 
 				p := newTestProcessor(

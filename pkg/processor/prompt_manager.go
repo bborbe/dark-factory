@@ -26,4 +26,11 @@ type PromptManager interface {
 	HasQueuedPromptsOnBranch(ctx context.Context, branch string, excludePath string) (bool, error)
 	SetPRURL(ctx context.Context, path string, url string) error
 	FindCommitting(ctx context.Context) ([]string, error)
+	// AllPreviousInSpecCompleted and FindMissingInSpecCompleted are required so
+	// that *mocks.ProcessorPromptManager also satisfies queuescanner.PromptManager
+	// (spec 092). The processor itself does not call these — it only constructs
+	// the scanner with this manager. Kept as declarations on the interface so
+	// counterfeiter generates stubs in the mock.
+	AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool
+	FindMissingInSpecCompleted(ctx context.Context, n int, specID string) (int, error)
 }

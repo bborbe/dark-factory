@@ -92,6 +92,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
@@ -164,6 +165,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			brancher.FetchReturns(stderrors.New("fetch failed"))
 
 			p := newTestProcessor(
@@ -236,6 +238,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			brancher.FetchReturns(nil)
 			brancher.MergeOriginDefaultReturns(stderrors.New("merge conflict"))
 
@@ -332,6 +335,7 @@ var _ = Describe("Processor", func() {
 				nil,
 			)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
@@ -422,6 +426,7 @@ var _ = Describe("Processor", func() {
 				nil,
 			)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)

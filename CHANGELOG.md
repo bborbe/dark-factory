@@ -8,6 +8,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- feat(queuescanner): per-spec predecessor lookup — `prompt.PromptScanner.AllPreviousInSpecCompleted` and `FindMissingInSpecCompleted` walk in-progress/ AND completed/ for the same spec, the queue-advance loop in `pkg/queuescanner/scanner.go` iterates candidates and picks the first whose per-spec guard passes (alphabetical tiebreak from `ListQueued`), and the `prompt blocked` log line now carries `spec=<id>`. A failed prompt on one spec no longer blocks unrelated specs (spec 092).
+- feat(prompt): `Manager.AllPreviousInSpecCompleted` and `Manager.FindMissingInSpecCompleted` delegate to the new scanner methods.
+- test(prompt,queuescanner): unit tests for the per-spec helpers (happy path, missing predecessor, gap detection, cross-spec non-interference, empty-spec-id fallback, `specnum.Parse` normalization) and ginkgo tests for the queue-advance loop (cross-spec advance, deterministic tiebreak, missing-predecessor block, spec id in log line, multi-spec malformed). Concurrent reject+advance lock test exercises `lock.NewFileLock` acquire/release.
+
 ## v0.174.4
 
 - feat(prompt): widen `dark-factory prompt reject` to accept prompts in `failed` state — adds `OriginalStatus` field to frontmatter, new `StampRejectedWithOriginal` helper, and idempotent re-run after partial move; eliminates manual `git mv failed→completed` workaround (rejects prompts move to `prompts/rejected/` with `originalStatus: failed` preserved alongside `status: rejected` and `rejectedReason: <text>`).

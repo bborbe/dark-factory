@@ -111,6 +111,7 @@ var _ = Describe("Processor", func() {
 				return pf, nil
 			}
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
@@ -203,6 +204,7 @@ DARK-FACTORY-REPORT -->
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
@@ -288,6 +290,7 @@ DARK-FACTORY-REPORT -->
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			// Mock executor writes log with failed report
 			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
@@ -371,6 +374,7 @@ DARK-FACTORY-REPORT -->
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			// Mock executor writes log with partial report
 			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
@@ -453,6 +457,7 @@ DARK-FACTORY-REPORT -->
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
 				logContent := `dark-factory: executing prompt
@@ -535,6 +540,7 @@ DARK-FACTORY-REPORT -->
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
@@ -617,6 +623,7 @@ more output
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			// Mock executor writes log with success report but non-zero verification exit code
 			executor.ExecuteStub = func(_ context.Context, _ string, logFile string, _ string) error {
@@ -700,6 +707,7 @@ DARK-FACTORY-REPORT -->
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)

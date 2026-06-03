@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.175.0
 
 - feat(status): surface the queue-advance guard's refusal in `dark-factory status` — new `Blocked` field on `Status` and a `Blocked:  NNN (reason=<reason>[, missing=MMM])` line under `Queue:` when the daemon refuses to advance; absent on empty or advanceable queues so existing parsers see byte-identical output. `status.PromptManager` gains `GetBlockedPrompt`, implemented on `*prompt.Manager` by delegating to the per-spec `AllPreviousInSpecCompleted` / `FindMissingInSpecCompleted` helpers (spec 092).
 - feat(queuescanner): per-spec predecessor lookup — `prompt.PromptScanner.AllPreviousInSpecCompleted` and `FindMissingInSpecCompleted` walk in-progress/ AND completed/ for the same spec, the queue-advance loop in `pkg/queuescanner/scanner.go` iterates candidates and picks the first whose per-spec guard passes (alphabetical tiebreak from `ListQueued`), and the `prompt blocked` log line now carries `spec=<id>`. A failed prompt on one spec no longer blocks unrelated specs (spec 092).

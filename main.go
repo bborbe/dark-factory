@@ -350,10 +350,16 @@ func runPromptCommand(
 		return factory.CreateRequeueCommand(cfg, currentDateTimeGetter).
 			Run(ctx, []string{"--failed"})
 	case "complete":
-		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
+		forceRelease, remaining := extractForceRelease(args)
+		if err := validateOneArg(ctx, remaining, printPromptHelp); err != nil {
 			return err
 		}
-		return factory.CreatePromptCompleteCommand(ctx, cfg, currentDateTimeGetter).Run(ctx, args)
+		return factory.CreatePromptCompleteCommand(
+			ctx,
+			cfg,
+			currentDateTimeGetter,
+			forceRelease,
+		).Run(ctx, remaining)
 	case "unapprove":
 		if err := validateOneArg(ctx, args, printPromptHelp); err != nil {
 			return err
@@ -684,6 +690,21 @@ func extractMaxContainers(ctx context.Context, args []string) (int, []string, er
 func extractAutoApprovePrompts(args []string) (bool, []string) {
 	for i, arg := range args {
 		if arg != "--auto-approve-prompts" {
+			continue
+		}
+		remaining := make([]string, 0, len(args)-1)
+		remaining = append(remaining, args[:i]...)
+		remaining = append(remaining, args[i+1:]...)
+		return true, remaining
+	}
+	return false, args
+}
+
+// extractForceRelease removes --release from args and reports whether it was set.
+// The flag is a presence flag: its appearance means true. No value argument is consumed.
+func extractForceRelease(args []string) (bool, []string) {
+	for i, arg := range args {
+		if arg != "--release" {
 			continue
 		}
 		remaining := make([]string, 0, len(args)-1)
@@ -1136,7 +1157,9 @@ func printPromptHelp() {
 			"  requeue <id>    Reset a prompt's status to queued\n"+
 			"  cancel <id>     Cancel an approved or executing prompt\n"+
 			"  retry           Shorthand for prompt requeue --failed\n"+
-			"  complete <id>   Complete a prompt (triggers commit/push)\n"+
+			"  complete <id> [--release]\n"+
+			"                  Complete a prompt (commits locally; on master+autoRelease: tag+push;\n"+
+			"                  --release forces release on any branch)\n"+
 			"  unapprove <id>  Unapprove a prompt (move back to inbox, reset to draft)\n"+
 			"  reject <id> --reason <text>  Reject a prompt (move to rejected/, terminal state)\n"+
 			"  show <id>       Show details for a single prompt\n"+

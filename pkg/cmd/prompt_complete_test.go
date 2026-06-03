@@ -51,6 +51,9 @@ var _ = Describe("PromptCompleteCommand", func() {
 		}
 		releaser = &mocks.Releaser{}
 		brancher = &mocks.Brancher{}
+		brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
+			return "master", nil
+		}
 		prCreator = &mocks.PRCreator{}
 
 		ctx = context.Background()
@@ -60,7 +63,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 		_ = os.RemoveAll(tempDir)
 	})
 
-	makeCmd := func(pr bool) cmd.PromptCompleteCommand {
+	makeCmd := func(pr, autoRelease, forceRelease bool) cmd.PromptCompleteCommand {
 		return cmd.NewPromptCompleteCommand(
 			queueDir,
 			completedDir,
@@ -69,12 +72,14 @@ var _ = Describe("PromptCompleteCommand", func() {
 			pr,
 			brancher,
 			prCreator,
+			autoRelease,
+			forceRelease,
 		)
 	}
 
 	Context("no args", func() {
 		It("returns usage error", func() {
-			err := makeCmd(false).Run(ctx, []string{})
+			err := makeCmd(false, false, false).Run(ctx, []string{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("usage: dark-factory prompt complete"))
 		})
@@ -82,7 +87,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 
 	Context("prompt not found", func() {
 		It("returns error", func() {
-			err := makeCmd(false).Run(ctx, []string{"999-nonexistent"})
+			err := makeCmd(false, false, false).Run(ctx, []string{"999-nonexistent"})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -93,7 +98,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			err := os.WriteFile(testFile, []byte("---\nstatus: approved\n---\n# Test\n"), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("prompt cannot be completed"))
 			Expect(err.Error()).To(ContainSubstring("approved"))
@@ -111,7 +116,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -131,7 +136,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -151,7 +156,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -175,52 +180,13 @@ var _ = Describe("PromptCompleteCommand", func() {
 			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
 			Expect(releaser.CommitCompletedFileCallCount()).To(Equal(1))
 			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
 			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
-		})
-	})
-
-	Context("prompt in pending_verification state, workflow direct, CHANGELOG with feat", func() {
-		It("calls CommitAndRelease with MinorBump", func() {
-			testFile := filepath.Join(queueDir, "080-test.md")
-			err := os.WriteFile(
-				testFile,
-				[]byte("---\nstatus: pending_verification\n---\n# My Test Prompt\n"),
-				0600,
-			)
-			Expect(err).NotTo(HaveOccurred())
-
-			// Create a CHANGELOG.md in tempDir and change to it
-			changelogContent := "# Changelog\n\n## Unreleased\n\n- feat: add something new\n\n## v1.0.0\n\n- fix: old fix\n"
-			origDir, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			err = os.WriteFile(
-				filepath.Join(tempDir, "CHANGELOG.md"),
-				[]byte(changelogContent),
-				0600,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			err = os.Chdir(tempDir)
-			Expect(err).NotTo(HaveOccurred())
-			defer func() { _ = os.Chdir(origDir) }()
-
-			promptManager.MoveToCompletedReturns(nil)
-			releaser.CommitCompletedFileReturns(nil)
-			releaser.HasChangelogReturns(true)
-			releaser.CommitAndReleaseReturns(nil)
-
-			err = makeCmd(false).Run(ctx, []string{"080-test.md"})
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(1))
-			_, bump := releaser.CommitAndReleaseArgsForCall(0)
-			Expect(bump).To(Equal(git.MinorBump))
-			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 		})
 	})
 
@@ -242,7 +208,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			brancher.PushReturns(nil)
 			prCreator.CreateReturns("https://github.com/owner/repo/pull/1", nil)
 
-			err = makeCmd(true).Run(ctx, []string{"080-test.md"})
+			err = makeCmd(true, true, false).Run(ctx, []string{"080-test.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(promptManager.MoveToCompletedCallCount()).To(Equal(1))
@@ -269,12 +235,143 @@ var _ = Describe("PromptCompleteCommand", func() {
 			brancher.PushReturns(nil)
 			prCreator.CreateReturns("https://github.com/owner/repo/pull/2", nil)
 
-			err = makeCmd(true).Run(ctx, []string{"080-my-feature.md"})
+			err = makeCmd(true, true, false).Run(ctx, []string{"080-my-feature.md"})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(brancher.PushCallCount()).To(Equal(1))
 			_, pushedBranch := brancher.PushArgsForCall(0)
 			Expect(pushedBranch).To(Equal("dark-factory/080-my-feature"))
+		})
+	})
+
+	Context("feature branch + autoRelease=true + no --release", func() {
+		BeforeEach(func() {
+			brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
+				return "feature-x", nil
+			}
+		})
+		It("calls CommitOnly and does NOT call CommitAndRelease", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(
+				testFile,
+				[]byte("---\nstatus: pending_verification\n---\n# Test\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.CommitOnlyReturns(nil)
+
+			err = makeCmd(false, true, false).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("feature branch + autoRelease=true + --release flag", func() {
+		BeforeEach(func() {
+			brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
+				return "feature-x", nil
+			}
+		})
+		It("calls CommitAndRelease with bump determined from CHANGELOG", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(
+				testFile,
+				[]byte("---\nstatus: pending_verification\n---\n# Test\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			changelogContent := "# Changelog\n\n## Unreleased\n\n- feat: add something new\n\n## v1.0.0\n\n- fix: old fix\n"
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(
+				filepath.Join(tempDir, "CHANGELOG.md"),
+				[]byte(changelogContent),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(origDir) })
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.CommitAndReleaseReturns(nil)
+
+			err = makeCmd(false, true, true).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(1))
+			_, bump := releaser.CommitAndReleaseArgsForCall(0)
+			Expect(bump).To(Equal(git.MinorBump))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("master + autoRelease=false + no --release", func() {
+		It("calls CommitOnly and does NOT call CommitAndRelease", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(
+				testFile,
+				[]byte("---\nstatus: pending_verification\n---\n# Test\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.CommitOnlyReturns(nil)
+
+			err = makeCmd(false, false, false).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(1))
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(0))
+		})
+	})
+
+	Context("master + autoRelease=true + no --release", func() {
+		It("calls CommitAndRelease when autoRelease=true on master", func() {
+			testFile := filepath.Join(queueDir, "080-test.md")
+			err := os.WriteFile(
+				testFile,
+				[]byte("---\nstatus: pending_verification\n---\n# Test\n"),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			changelogContent := "# Changelog\n\n## Unreleased\n\n- feat: add something new\n\n## v1.0.0\n\n- fix: old fix\n"
+			origDir, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			err = os.WriteFile(
+				filepath.Join(tempDir, "CHANGELOG.md"),
+				[]byte(changelogContent),
+				0600,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			err = os.Chdir(tempDir)
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(origDir) })
+
+			promptManager.MoveToCompletedReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(true)
+			releaser.CommitAndReleaseReturns(nil)
+
+			err = makeCmd(false, true, false).Run(ctx, []string{"080-test.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(1))
+			_, bump := releaser.CommitAndReleaseArgsForCall(0)
+			Expect(bump).To(Equal(git.MinorBump))
+			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 		})
 	})
 })

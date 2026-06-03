@@ -1233,6 +1233,7 @@ func CreatePromptCompleteCommand(
 	ctx context.Context,
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	forceRelease bool,
 ) cmd.PromptCompleteCommand {
 	promptManager, releaser := createPromptManager(
 		cfg.Prompts.InboxDir,
@@ -1250,6 +1251,8 @@ func CreatePromptCompleteCommand(
 		cfg.PR,
 		deps.brancher,
 		deps.prCreator,
+		cfg.AutoRelease,
+		forceRelease,
 	)
 }
 

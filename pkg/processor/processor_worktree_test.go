@@ -103,6 +103,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(nil)
@@ -224,6 +225,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(nil)
 			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
@@ -323,6 +325,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(nil)
@@ -428,6 +431,7 @@ var _ = Describe("Processor", func() {
 			)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			// Mock worktree.Add to create the actual directory
 			cloner.CloneStub = func(_ context.Context, _, destDir string, _ string) error {
 				return os.MkdirAll(destDir, 0750)
@@ -515,6 +519,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(nil)
@@ -611,6 +616,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.CommitOnlyReturns(nil)
@@ -694,6 +700,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(1, nil, nil)
 			manager.SetStatusReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			cloner.CloneReturns(stderrors.New("clone failed"))
 
 			p := newTestProcessor(

@@ -37,17 +37,20 @@ type Status struct {
 	GeneratingContainer string   `json:"generating_container,omitempty"`
 	QueueCount          int      `json:"queue_count"`
 	QueuedPrompts       []string `json:"queued_prompts"`
-	CommittingPrompts   []string `json:"committing_prompts,omitempty"`
-	CommittingCount     int      `json:"committing_count,omitempty"`
-	CompletedCount      int      `json:"completed_count"`
-	ContainerCount      int      `json:"container_count,omitempty"`
-	ContainerMax        int      `json:"container_max,omitempty"`
-	DaemonLogFile       string   `json:"daemon_log_file,omitempty"`
-	LastLogFile         string   `json:"last_log_file,omitempty"`
-	LastLogSize         int64    `json:"last_log_size,omitempty"`
-	GitIndexLock        bool     `json:"git_index_lock,omitempty"`
-	DirtyFileCount      int      `json:"dirty_file_count,omitempty"`
-	DirtyFileThreshold  int      `json:"dirty_file_threshold,omitempty"`
+	// Blocked describes the queue-advance guard's refusal to advance (spec 092).
+	// Omitted from JSON and text output when no blocker is active.
+	Blocked            *Blocked `json:"blocked,omitempty"`
+	CommittingPrompts  []string `json:"committing_prompts,omitempty"`
+	CommittingCount    int      `json:"committing_count,omitempty"`
+	CompletedCount     int      `json:"completed_count"`
+	ContainerCount     int      `json:"container_count,omitempty"`
+	ContainerMax       int      `json:"container_max,omitempty"`
+	DaemonLogFile      string   `json:"daemon_log_file,omitempty"`
+	LastLogFile        string   `json:"last_log_file,omitempty"`
+	LastLogSize        int64    `json:"last_log_size,omitempty"`
+	GitIndexLock       bool     `json:"git_index_lock,omitempty"`
+	DirtyFileCount     int      `json:"dirty_file_count,omitempty"`
+	DirtyFileThreshold int      `json:"dirty_file_threshold,omitempty"`
 
 	// Skipped flags — true when the corresponding subprocess call was
 	// cancelled at timeout. Callers should NOT treat the zero value of
@@ -63,6 +66,13 @@ type QueuedPrompt struct {
 	Name  string `json:"name"`
 	Title string `json:"title"`
 	Size  int64  `json:"size"`
+}
+
+// Blocked describes a queue-advance guard refusal (spec 092).
+type Blocked struct {
+	Number  int    `json:"number"`            // The prompt number being gated (3-digit, e.g. 227)
+	Reason  string `json:"reason"`            // One of: previous-prompt-not-completed, previous-prompt-missing, prompt-frontmatter-parse-error, prompt-file-read-error, project-lock-timeout
+	Missing int    `json:"missing,omitempty"` // The prompt number the guard expected to find (omitted when not applicable)
 }
 
 // CompletedPrompt represents a completed prompt with metadata.
@@ -167,6 +177,17 @@ func (s *checker) GetStatus(ctx context.Context) (*Status, error) {
 		status.QueuedPrompts = append(status.QueuedPrompts, filepath.Base(p.Path))
 	}
 	status.QueueCount = len(queued)
+
+	// Detect a blocked prompt (queue-advance guard refusal).
+	if status.QueueCount > 0 {
+		if number, reason, missing, ok := s.promptMgr.GetBlockedPrompt(ctx); ok {
+			status.Blocked = &Blocked{
+				Number:  number,
+				Reason:  reason,
+				Missing: missing,
+			}
+		}
+	}
 
 	// Count completed prompts
 	completedCount, err := s.countMarkdownFiles(s.completedDir)

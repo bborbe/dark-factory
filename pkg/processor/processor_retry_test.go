@@ -167,6 +167,7 @@ var _ = Describe("Processor", func() {
 				manager.ListQueuedReturnsOnCall(0, queued, nil)
 				manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 				manager.AllPreviousCompletedReturns(true)
+				manager.AllPreviousInSpecCompletedReturns(true)
 				executor.ExecuteReturns(stderrors.New("execution failed"))
 
 				p := newProcWithNotifierAndRetryLimit(notifier.NewMultiNotifier(), 3)
@@ -204,6 +205,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProcWithNotifierAndRetryLimit(
@@ -251,6 +253,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProcWithNotifierAndRetryLimit(n, 0) // autoRetryLimit=0 → standard failure
@@ -341,6 +344,7 @@ var _ = Describe("Processor", func() {
 				manager.ListQueuedReturnsOnCall(0, queued, nil)
 				manager.ListQueuedReturnsOnCall(1, nil, nil)
 				manager.AllPreviousCompletedReturns(true)
+				manager.AllPreviousInSpecCompletedReturns(true)
 				brancher.FetchReturns(stderrors.New("fetch failed"))
 
 				// processPrompt now calls manager.Load before Setup (sync). Configure it to
@@ -360,11 +364,12 @@ var _ = Describe("Processor", func() {
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// handlePromptFailure must NOT be called — daemon stopped on post-execution failure.
-				// processPrompt calls Load once (count=1) before Setup; handlePromptFailure would
-				// call Load a second time (count=2). Consistently ensures Load is called exactly once.
+				// The scanner calls Load once (for spec-id lookup) and ProcessPrompt calls Load
+				// once (for content); handlePromptFailure would add a third Load call.
+				// Consistently ensures Load is called exactly twice (no handlePromptFailure).
 				Consistently(func() int {
 					return manager.LoadCallCount()
-				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(1))
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(2))
 
 				cancel()
 			},
@@ -386,6 +391,7 @@ var _ = Describe("Processor", func() {
 				manager.ListQueuedReturnsOnCall(0, queued, nil)
 				manager.ListQueuedReturnsOnCall(1, nil, nil)
 				manager.AllPreviousCompletedReturns(true)
+				manager.AllPreviousInSpecCompletedReturns(true)
 				brancher.FetchReturns(stderrors.New("fetch failed"))
 
 				p := newProc()
@@ -413,6 +419,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)
@@ -501,6 +508,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			// Simulate a hanging fetch — block until context is cancelled
 			brancher.FetchStub = func(fetchCtx context.Context) error {

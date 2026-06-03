@@ -24,6 +24,7 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	"github.com/bborbe/validation"
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -244,6 +245,7 @@ func (s *SpecList) UnmarshalYAML(value *yaml.Node) error {
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
 	Status             string   `yaml:"status"`
+	OriginalStatus     string   `yaml:"originalStatus,omitempty"`
 	Specs              SpecList `yaml:"spec,omitempty,flow"`
 	Summary            string   `yaml:"summary,omitempty"`
 	Container          string   `yaml:"container,omitempty"`
@@ -446,6 +448,18 @@ func (pf *PromptFile) StampRejected(reason string) {
 	}
 	pf.Frontmatter.RejectedReason = reason
 	pf.Frontmatter.Status = string(RejectedPromptStatus)
+}
+
+// StampRejectedWithOriginal sets the rejected timestamp and reason, marks status as rejected,
+// and preserves the prompt's prior status (typically "failed") in the originalStatus field.
+// Used by the reject command when rejecting a prompt from a non-pre-execution state.
+func (pf *PromptFile) StampRejectedWithOriginal(reason, originalStatus string) {
+	if pf.Frontmatter.Rejected == "" {
+		pf.Frontmatter.Rejected = pf.now().UTC().Format(time.RFC3339)
+	}
+	pf.Frontmatter.RejectedReason = reason
+	pf.Frontmatter.Status = string(RejectedPromptStatus)
+	pf.Frontmatter.OriginalStatus = originalStatus
 }
 
 // MarkPendingVerification sets status to pending_verification.
@@ -719,6 +733,45 @@ func (p PromptScanner) FindMissingCompleted(ctx context.Context, n int) []int {
 	return findMissingCompleted(ctx, p.completedDir, n)
 }
 
+// AllPreviousInSpecCompleted checks if the predecessor prompt within the same spec
+// is in the completed directory. Specifically: walks in-progress/ AND completed/
+// for files whose spec field includes specID and whose number is strictly less
+// than n; the highest such number M is the predecessor; returns true iff M is in
+// completed/.
+//
+// If no predecessor is found (candidate is the first prompt of its spec),
+// returns true (no predecessor to check). If specID is empty, returns true
+// (caller should fall back to global guard at the scanner layer).
+func (p PromptScanner) AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool {
+	return allPreviousInSpecCompleted(
+		ctx,
+		p.completedDir,
+		p.inProgressDir,
+		n,
+		specID,
+		p.currentDateTimeGetter,
+	)
+}
+
+// FindMissingInSpecCompleted returns the number of the predecessor prompt
+// within the same spec that is NOT in completed/, or -1 if no predecessor
+// exists for the candidate. Walks in-progress/ AND completed/. Filesystem
+// failures during the walk are logged at V(1) and treated as "no predecessor".
+func (p PromptScanner) FindMissingInSpecCompleted(
+	ctx context.Context,
+	n int,
+	specID string,
+) int {
+	return findMissingInSpecCompleted(
+		ctx,
+		p.completedDir,
+		p.inProgressDir,
+		n,
+		specID,
+		p.currentDateTimeGetter,
+	)
+}
+
 // PromptMover handles file movement operations for prompt files.
 type PromptMover struct {
 	inProgressDir         string
@@ -926,6 +979,64 @@ func (pm *Manager) FindMissingCompleted(ctx context.Context, n int) []int {
 // FindPromptStatusInProgress looks up a prompt by number in the in-progress directory and returns its frontmatter status.
 func (pm *Manager) FindPromptStatusInProgress(ctx context.Context, number int) string {
 	return pm.promptScanner.FindPromptStatusInProgress(ctx, number)
+}
+
+// GetBlockedPrompt scans queued prompts and returns the first one whose per-spec
+// predecessor is not completed. Returns (0, "", 0, false) if no blocker is active
+// or if no candidates exist. The decision is delegated to the exported
+// AllPreviousInSpecCompleted / FindMissingInSpecCompleted helpers — this method
+// does not re-implement the guard.
+//
+//nolint:gocognit // per-spec scan + predecessor lookup + reason classification; refactor candidate tracked separately
+func (pm *Manager) GetBlockedPrompt(ctx context.Context) (int, string, int, bool) {
+	queued, err := pm.ListQueued(ctx)
+	if err != nil {
+		return 0, "", 0, false
+	}
+	for _, candidate := range queued {
+		number := candidate.Number()
+		if number < 0 {
+			continue
+		}
+		pf, err := pm.Load(ctx, candidate.Path)
+		if err != nil {
+			return number, "prompt-file-read-error", 0, true
+		}
+		specs := pf.Specs()
+		if len(specs) == 0 {
+			if !pm.promptScanner.AllPreviousCompleted(ctx, number) {
+				missing := pm.promptScanner.FindMissingCompleted(ctx, number)
+				if len(missing) > 0 {
+					return number, "previous-prompt-not-completed", missing[0], true
+				}
+				return number, "previous-prompt-missing", 0, true
+			}
+			continue
+		}
+		specID := specs[0]
+		if !pm.promptScanner.AllPreviousInSpecCompleted(ctx, number, specID) {
+			missing := pm.promptScanner.FindMissingInSpecCompleted(ctx, number, specID)
+			if missing > 0 {
+				return number, "previous-prompt-not-completed", missing, true
+			}
+			return number, "previous-prompt-missing", 0, true
+		}
+	}
+	return 0, "", 0, false
+}
+
+// AllPreviousInSpecCompleted checks if the predecessor prompt in the same spec is completed.
+func (pm *Manager) AllPreviousInSpecCompleted(ctx context.Context, n int, specID string) bool {
+	return pm.promptScanner.AllPreviousInSpecCompleted(ctx, n, specID)
+}
+
+// FindMissingInSpecCompleted returns the predecessor number in the same spec that is NOT completed.
+func (pm *Manager) FindMissingInSpecCompleted(
+	ctx context.Context,
+	n int,
+	specID string,
+) int {
+	return pm.promptScanner.FindMissingInSpecCompleted(ctx, n, specID)
 }
 
 // HasQueuedPromptsOnBranch returns true if any queued prompt (other than excludePath)
@@ -1508,6 +1619,177 @@ func findMissingCompleted(_ context.Context, completedDir string, n int) []int {
 	}
 	sort.Ints(missing)
 	return missing
+}
+
+// allPreviousInSpecCompleted checks if the predecessor prompt in the same spec
+// is in the completed directory. The predecessor is the largest declared number
+// strictly less than n in the same spec; that number must exist in completed/.
+// A gap (e.g. 224 missing between 223 and 225) is detected: the predecessor is
+// 224 (the undeclared number just below n), and "missing from completed" blocks
+// the candidate. If no predecessor exists at all, returns true. If specID is
+// empty, returns true (caller should fall back to global guard at the scanner
+// layer).
+func allPreviousInSpecCompleted(
+	ctx context.Context,
+	completedDir string,
+	scanDir string,
+	n int,
+	specID string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) bool {
+	if specID == "" {
+		return true
+	}
+	pred, ok := findPredecessorInSpec(ctx, scanDir, completedDir, n, specID, currentDateTimeGetter)
+	if !ok {
+		return true
+	}
+	return isNumberInCompletedDir(completedDir, pred)
+}
+
+// findMissingInSpecCompleted returns the predecessor number in the same spec
+// that is NOT in completed/, or -1 if no predecessor exists. Filesystem failures
+// during the scan are logged at V(1) and treated as "no predecessor found" —
+// the queue-advance guard then fails open per the safety-vs-noise tradeoff
+// documented on findPredecessorInSpec.
+func findMissingInSpecCompleted(
+	ctx context.Context,
+	completedDir string,
+	scanDir string,
+	n int,
+	specID string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) int {
+	if specID == "" {
+		return -1
+	}
+	pred, ok := findPredecessorInSpec(ctx, scanDir, completedDir, n, specID, currentDateTimeGetter)
+	if !ok {
+		return -1
+	}
+	if isNumberInCompletedDir(completedDir, pred) {
+		return -1
+	}
+	return pred
+}
+
+// findPredecessorInSpec walks both scanDir (in-progress/) and completedDir for
+// prompt files whose spec field includes specID and whose number is strictly
+// less than n. Returns the highest such number and true, or (-1, false) if no
+// such prompt exists.
+//
+// The returned number is the largest declared prompt for this spec below n. If
+// the declared largest is < n-1, the implicit predecessor is n-1 (a gap), and
+// the caller reports that number as missing. This matches the "missing
+// predecessor" test contract: 225 in in-progress, 223 in completed, 224 absent
+// → predecessor is 224 (the undeclared n-1), and is reported missing.
+//
+//nolint:gocognit // two-dir scan + gap detection + highest-below-n tracking; refactor candidate tracked separately
+func findPredecessorInSpec(
+	ctx context.Context,
+	scanDir string,
+	completedDir string,
+	n int,
+	specID string,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) (int, bool) {
+	highest := -1
+	for _, dir := range []string{scanDir, completedDir} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			// Logged at V(1) but treated as "directory empty for this spec":
+			// the safety-vs-noise tradeoff is intentional — a transient ENOENT
+			// on a yet-to-be-created completed/ dir is normal; a persistent
+			// filesystem failure shows up at V(1) for the operator to diagnose
+			// while the queue-advance guard fails open (caller's existing
+			// completed/ check still gates the actual advance).
+			glog.V(1).Infof(
+				"findPredecessorInSpec: ReadDir failed for dir=%s spec=%s n=%d: %v",
+				dir, specID, n, err,
+			)
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
+			num := extractNumberFromFilename(entry.Name())
+			if num < 0 || num >= n {
+				continue
+			}
+			path := filepath.Join(dir, entry.Name())
+			fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
+			if err != nil {
+				// Same safety-vs-noise tradeoff: a parse failure on one
+				// prompt file's frontmatter doesn't sink the daemon — the
+				// candidate is skipped from the per-spec set, but the
+				// operator gets a V(1) signal if it persists.
+				glog.V(1).Infof(
+					"findPredecessorInSpec: readFrontmatter failed for path=%s spec=%s: %v",
+					path, specID, err,
+				)
+				continue
+			}
+			if !specListContains(fm.Specs, specID) {
+				continue
+			}
+			if num > highest {
+				highest = num
+			}
+		}
+	}
+	// If the largest declared is less than n-1, the immediate predecessor
+	// (n-1) is undeclared — treat it as the predecessor and report it as
+	// missing. This implements "gap detection": e.g. 223 in completed, 225
+	// queued, 224 absent → predecessor is 224, not in completed → block.
+	if highest >= 0 && highest < n-1 {
+		return n - 1, true
+	}
+	return highest, highest >= 0
+}
+
+// isNumberInCompletedDir returns true if a file with the given number exists in completedDir.
+// Returns false on filesystem error (fail-closed: caller treats false as "not completed" →
+// queue-advance guard blocks). The error is logged at V(1) so operators can distinguish a
+// real read failure from a legitimate "not in completed yet" answer.
+func isNumberInCompletedDir(completedDir string, num int) bool {
+	entries, err := os.ReadDir(completedDir)
+	if err != nil {
+		glog.V(1).Infof(
+			"isNumberInCompletedDir: ReadDir failed for dir=%s num=%d: %v",
+			completedDir, num, err,
+		)
+		return false
+	}
+	prefix := fmt.Sprintf("%03d-", num)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// specListContains returns true if specID matches any entry in the spec list.
+// Comparison uses specnum.Parse to normalize numeric prefixes ("058" == "058-foo-bar" == 58).
+// When specnum.Parse returns -1 for both sides (no numeric prefix), falls back to string equality.
+func specListContains(specs SpecList, specID string) bool {
+	target := specnum.Parse(specID)
+	for _, s := range specs {
+		if target >= 0 {
+			if specnum.Parse(s) == target {
+				return true
+			}
+		} else {
+			if s == specID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // FindPromptStatus looks up a prompt by number in the given directory and returns its frontmatter status.

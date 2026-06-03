@@ -186,4 +186,145 @@ var _ = Describe("RejectCommand", func() {
 			Expect(err.Error()).To(ContainSubstring("usage: dark-factory prompt reject"))
 		})
 	})
+
+	Describe("Reject from failed state", func() {
+		It(
+			"moves failed prompt from in-progress to rejected and writes originalStatus: failed",
+			func() {
+				promptFile := filepath.Join(inProgressDir, "226-spec-056-foo-failed.md")
+				Expect(os.WriteFile(
+					promptFile,
+					[]byte("---\nstatus: failed\n---\n# Failed prompt"),
+					0600,
+				)).To(Succeed())
+
+				err := rejectCmd.Run(
+					ctx,
+					[]string{
+						"226-spec-056-foo-failed.md",
+						"--reason",
+						"orphan from sibling worktree",
+					},
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Source gone
+				_, err = os.Stat(promptFile)
+				Expect(os.IsNotExist(err)).To(BeTrue())
+
+				// File present in rejected/ — assert via typed frontmatter, not string-match
+				dest := filepath.Join(rejectedDir, "226-spec-056-foo-failed.md")
+				pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+				pf, err := pm.Load(ctx, dest)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(pf.Frontmatter.Status).To(Equal("rejected"))
+				Expect(pf.Frontmatter.OriginalStatus).To(Equal("failed"))
+				Expect(pf.Frontmatter.RejectedReason).To(Equal("orphan from sibling worktree"))
+			},
+		)
+	})
+
+	Describe("Pre-execution reject leaves originalStatus empty", func() {
+		It("rejects a draft prompt without writing originalStatus field", func() {
+			promptFile := filepath.Join(inboxDir, "004-draft-pre.md")
+			Expect(os.WriteFile(
+				promptFile,
+				[]byte("---\nstatus: draft\n---\n# Draft"),
+				0600,
+			)).To(Succeed())
+
+			err := rejectCmd.Run(ctx, []string{"004-draft-pre.md", "--reason", "noop"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(rejectedDir, "004-draft-pre.md")
+			pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+			pf, err := pm.Load(ctx, dest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
+			Expect(pf.Frontmatter.RejectedReason).To(Equal("noop"))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal(""))
+		})
+	})
+
+	Describe("Hostile reason round-trip", func() {
+		It("round-trips a hostile reason containing colon and newline through frontmatter", func() {
+			promptFile := filepath.Join(inProgressDir, "226-hostile.md")
+			Expect(os.WriteFile(
+				promptFile,
+				[]byte("---\nstatus: failed\n---\n# Hostile"),
+				0600,
+			)).To(Succeed())
+
+			err := rejectCmd.Run(ctx, []string{"226-hostile.md", "--reason", "a: b\nc"})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Read it back via a fresh PromptFile
+			dest := filepath.Join(rejectedDir, "226-hostile.md")
+			pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+			pf, err := pm.Load(ctx, dest)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(pf.Frontmatter.RejectedReason).To(Equal("a: b\nc"))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal("failed"))
+			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
+		})
+	})
+
+	Describe("Re-run after partial move", func() {
+		It("completes frontmatter rewrite on re-run after partial move to rejected/", func() {
+			promptFile := filepath.Join(rejectedDir, "226-partial.md")
+			// Simulate the partial-move state: file is in rejected/ but frontmatter still says failed
+			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
+			Expect(os.WriteFile(
+				promptFile,
+				[]byte("---\nstatus: failed\n---\n# Partial"),
+				0600,
+			)).To(Succeed())
+
+			err := rejectCmd.Run(ctx, []string{"226-partial.md", "--reason", "complete it"})
+			Expect(err).NotTo(HaveOccurred())
+
+			pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+			pf, err := pm.Load(ctx, promptFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal("failed"))
+			Expect(pf.Frontmatter.RejectedReason).To(Equal("complete it"))
+		})
+
+		It("returns 'already rejected' on a re-run after full rewrite", func() {
+			promptFile := filepath.Join(rejectedDir, "226-done.md")
+			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
+			Expect(os.WriteFile(
+				promptFile,
+				[]byte(
+					"---\nstatus: rejected\noriginalStatus: failed\nrejected_reason: x\n---\n# Done",
+				),
+				0600,
+			)).To(Succeed())
+
+			err := rejectCmd.Run(ctx, []string{"226-done.md", "--reason", "again"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("already rejected"))
+		})
+	})
+
+	Describe("Reject idea does not write originalStatus", func() {
+		It("rejects an idea prompt without writing originalStatus", func() {
+			promptFile := filepath.Join(inboxDir, "005-idea.md")
+			Expect(
+				os.WriteFile(promptFile, []byte("---\nstatus: idea\n---\n# Idea"), 0600),
+			).To(Succeed())
+
+			err := rejectCmd.Run(ctx, []string{"005-idea.md", "--reason", "no"})
+			Expect(err).NotTo(HaveOccurred())
+
+			dest := filepath.Join(rejectedDir, "005-idea.md")
+			pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+			pf, err := pm.Load(ctx, dest)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal(""))
+		})
+	})
 })

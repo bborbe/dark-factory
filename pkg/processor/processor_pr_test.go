@@ -121,6 +121,8 @@ var _ = Describe("Processor", func() {
 			}
 			brancher.PushReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			manager.MoveToCompletedReturns(nil)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
@@ -562,6 +564,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(0, queued, nil)
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(stderrors.New("execution failed"))
 
 			p := newProc()
@@ -607,6 +610,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)
@@ -686,6 +690,7 @@ var _ = Describe("Processor", func() {
 			manager.SetStatusReturns(nil)
 			manager.MoveToCompletedReturns(nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			executor.ExecuteReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
 			releaser.HasChangelogReturns(false)

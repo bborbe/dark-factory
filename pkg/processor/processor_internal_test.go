@@ -666,6 +666,22 @@ func (s *stubWorkflowManager) AllPreviousCompleted(_ context.Context, _ int) boo
 
 func (s *stubWorkflowManager) FindMissingCompleted(_ context.Context, _ int) []int { return nil }
 
+func (s *stubWorkflowManager) AllPreviousInSpecCompleted(
+	_ context.Context,
+	_ int,
+	_ string,
+) bool {
+	return false
+}
+
+func (s *stubWorkflowManager) FindMissingInSpecCompleted(
+	_ context.Context,
+	_ int,
+	_ string,
+) int {
+	return -1
+}
+
 func (s *stubWorkflowManager) FindPromptStatusInProgress(_ context.Context, _ int) string {
 	return ""
 }

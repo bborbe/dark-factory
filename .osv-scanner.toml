@@ -29,3 +29,15 @@ reason = "go.etcd.io/bbolt v1.4.3 dep, no fix available"
 [[IgnoredVulns]]
 id = "GHSA-xmrv-pmrh-hhx2"
 reason = "aws-sdk-go-v2 s3/eventstream, upgrade pending"
+
+[[IgnoredVulns]]
+id = "GO-2026-5037"
+reason = "Go stdlib crypto/x509, fix in Go 1.26.4 — separate version bump task"
+
+[[IgnoredVulns]]
+id = "GO-2026-5038"
+reason = "Go stdlib mime, fix in Go 1.26.4 — separate version bump task"
+
+[[IgnoredVulns]]
+id = "GO-2026-5039"
+reason = "Go stdlib net/textproto, fix in Go 1.26.4 — separate version bump task"

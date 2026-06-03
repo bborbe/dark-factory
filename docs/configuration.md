@@ -36,6 +36,8 @@ For the full matrix, container semantics, and choosing a mode, see [workflows.md
 
 `autoRelease` semantics: When `false` (default), commits stay local (no push, no tag). When `true` and `CHANGELOG.md` exists, commits are pushed AND `## Unreleased` is bumped to `## vX.Y.Z` with a tag pushed. When `true` without `CHANGELOG.md`, commits are pushed but no tag is created. Works in all workflows.
 
+`dark-factory prompt complete <id>` honours `autoRelease` and adds a branch-context safety default: on any non-`master` branch, completion commits but does NOT release, regardless of `autoRelease`, unless the operator passes `--release` explicitly. The flag overrides both the branch default and `autoRelease=false`. See [running.md § prompt complete --release](running.md#prompt-complete---release) for the operator-facing description.
+
 ## Validation
 
 Two complementary validation mechanisms run after each prompt completes:

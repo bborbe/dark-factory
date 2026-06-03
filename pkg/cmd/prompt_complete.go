@@ -33,6 +33,8 @@ type promptCompleteCommand struct {
 	pr            bool
 	brancher      git.Brancher
 	prCreator     git.PRCreator
+	autoRelease   bool
+	forceRelease  bool
 }
 
 // NewPromptCompleteCommand creates a new PromptCompleteCommand.
@@ -44,6 +46,8 @@ func NewPromptCompleteCommand(
 	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
+	autoRelease bool,
+	forceRelease bool,
 ) PromptCompleteCommand {
 	return &promptCompleteCommand{
 		queueDir:      queueDir,
@@ -53,6 +57,8 @@ func NewPromptCompleteCommand(
 		pr:            pr,
 		brancher:      brancher,
 		prCreator:     prCreator,
+		autoRelease:   autoRelease,
+		forceRelease:  forceRelease,
 	}
 }
 
@@ -103,8 +109,26 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 		return errors.Wrap(ctx, err, "commit completed file")
 	}
 
+	// Detect current branch and decide release vs commit-only.
+	branch, shouldRelease, err := c.evaluateReleaseGate(gitCtx)
+	if err != nil {
+		return errors.Wrap(ctx, err, "detect current branch")
+	}
+	if !shouldRelease {
+		reason := "autoRelease=false"
+		if c.autoRelease && !c.forceRelease && branch != "master" {
+			reason = fmt.Sprintf("branch is %q, pass --release to force release", branch)
+		}
+		slog.Info("prompt complete: commit-only", "reason", reason, "branch", branch)
+		if err := c.releaser.CommitOnly(gitCtx, title); err != nil {
+			return errors.Wrap(ctx, err, "commit")
+		}
+		fmt.Printf("completed: %s\n", filepath.Base(path))
+		return nil
+	}
+
 	if !c.pr {
-		if err := c.completeDirectWorkflow(gitCtx, ctx, title); err != nil {
+		if err := c.completeDirectWorkflow(gitCtx, ctx, title, shouldRelease); err != nil {
 			return errors.Wrap(ctx, err, "complete direct workflow")
 		}
 	} else {
@@ -117,11 +141,31 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
+// evaluateReleaseGate detects the current branch and decides whether to release.
+// Returns the current branch name and shouldRelease = (autoRelease && (forceRelease || branch == "master")).
+func (c *promptCompleteCommand) evaluateReleaseGate(gitCtx context.Context) (string, bool, error) {
+	branch, err := c.brancher.CurrentBranch(gitCtx)
+	if err != nil {
+		return "", false, err
+	}
+	shouldRelease := c.autoRelease && (c.forceRelease || branch == "master")
+	return branch, shouldRelease, nil
+}
+
 // completeDirectWorkflow handles commit/release for the direct workflow.
 func (c *promptCompleteCommand) completeDirectWorkflow(
 	gitCtx, ctx context.Context,
 	title string,
+	shouldRelease bool,
 ) error {
+	if !shouldRelease {
+		if err := c.releaser.CommitOnly(gitCtx, title); err != nil {
+			return errors.Wrap(ctx, err, "commit")
+		}
+		slog.Info("committed changes")
+		return nil
+	}
+
 	if !c.releaser.HasChangelog(gitCtx) {
 		if err := c.releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit")

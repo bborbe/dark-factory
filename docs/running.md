@@ -178,6 +178,19 @@ approve prompt → daemon executes → commit → (push if autoRelease) → (tag
 - Queue multiple prompts at once — they execute sequentially
 - Review with `git log -1` and `git diff HEAD~1`
 
+## prompt complete --release
+
+`dark-factory prompt complete <id>` completes the prompt, commits the file move, and then either releases or commits-only based on the current state.
+
+| State | `autoRelease` | Branch | Result |
+|-------|---------------|--------|--------|
+| `--release` passed | any | any | Full release: CHANGELOG rewrite, tag, push |
+| not set | `false` (or `--set autoRelease=false`) | any | Commit-only — no push, no tag, no CHANGELOG rewrite |
+| not set | `true` | `master` | Full release (today's behaviour) |
+| not set | `true` | non-master | Commit-only with INFO log: `branch is "<name>", pass --release to force release` |
+
+The branch-context default prevents accidental version bumps on multi-prompt feature branches — the operator only releases once, on `master`, after merge. To release from a non-`master` branch, pass `--release` explicitly.
+
 ## Workflow: Branch / Worktree / Clone
 
 `workflow: branch | worktree | clone` puts work on a feature branch. With `pr: true`, dark-factory pushes and opens a PR; with `pr: false`, the branch stays local (or pushed without a PR for `clone`). The isolation mode (`branch`, `worktree`, `clone`) controls where the working tree lives — see [workflows.md](workflows.md) for the matrix.

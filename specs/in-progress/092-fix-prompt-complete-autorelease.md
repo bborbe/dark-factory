@@ -1,6 +1,8 @@
 ---
-status: approved
-approved: "2026-06-02T23:02:48Z"
+status: prompted
+approved: "2026-06-03T05:48:03Z"
+generating: "2026-06-02T23:08:04Z"
+prompted: "2026-06-03T06:01:09Z"
 branch: dark-factory/fix-prompt-complete-autorelease
 ---
 

@@ -100,6 +100,7 @@ var _ = Describe("Processor", func() {
 			manager.ListQueuedReturnsOnCall(1, queued, nil)
 			manager.ListQueuedReturnsOnCall(2, []prompt.Prompt{}, nil)
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 
 			p := newTestProcessor(
 				promptsDir,
@@ -186,6 +187,7 @@ var _ = Describe("Processor", func() {
 				}
 			}
 			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
 			// Fail fast after shouldSkipPrompt passes to keep test simple
 			brancher.FetchReturns(stderrors.New("fetch failed after retry"))
 
@@ -250,6 +252,7 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)
@@ -332,6 +335,7 @@ var _ = Describe("Processor", func() {
 			nil,
 		)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(stderrors.New("move failed"))
 
 		p := newTestProcessor(
@@ -466,6 +470,7 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(stderrors.New("commit completed file failed"))
@@ -545,6 +550,7 @@ var _ = Describe("Processor", func() {
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)
@@ -642,6 +648,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)
@@ -728,6 +735,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)
@@ -811,6 +819,7 @@ DARK-FACTORY-REPORT -->`), 0600)
 		manager.ListQueuedReturnsOnCall(0, queued, nil)
 		manager.ListQueuedReturnsOnCall(1, nil, nil)
 		manager.AllPreviousCompletedReturns(true)
+		manager.AllPreviousInSpecCompletedReturns(true)
 		manager.MoveToCompletedReturns(nil)
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)

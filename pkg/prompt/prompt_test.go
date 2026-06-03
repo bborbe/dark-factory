@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/specnum"
 )
 
 // simpleMover is a test implementation that uses os.Rename
@@ -477,6 +478,156 @@ var _ = Describe("Prompt", func() {
 					FindMissingCompleted(ctx, 3)
 				Expect(result).To(Equal([]int{1, 2}))
 			})
+		})
+	})
+
+	Describe("AllPreviousInSpecCompleted", func() {
+		var (
+			inProgressDir string
+			completedDir  string
+			mgr           *prompt.Manager
+		)
+
+		BeforeEach(func() {
+			inProgressDir = filepath.Join(tempDir, "in-progress")
+			completedDir = filepath.Join(tempDir, "completed")
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+			mgr = prompt.NewManager("", inProgressDir, completedDir, "", nil, nil)
+		})
+
+		// createPromptFileWithSpec creates a file with the given name, status, and
+		// optional spec list.
+		createPromptFileWithSpec := func(
+			dir string,
+			filename string,
+			status string,
+			specs []string,
+		) string {
+			content := "---\n"
+			if status != "" {
+				content += "status: " + status + "\n"
+			}
+			if len(specs) > 0 {
+				if len(specs) == 1 {
+					content += "spec: " + specs[0] + "\n"
+				} else {
+					content += "spec: ["
+					for i, s := range specs {
+						if i > 0 {
+							content += ", "
+						}
+						content += s
+					}
+					content += "]\n"
+				}
+			}
+			content += "---\n\n# Test Prompt\n\nContent here.\n"
+			path := filepath.Join(dir, filename)
+			Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+			return path
+		}
+
+		It("returns true when predecessor in same spec is in completed/", func() {
+			createPromptFileWithSpec(
+				inProgressDir,
+				"225-spec-058-foo.md",
+				"queued",
+				[]string{"058"},
+			)
+			createPromptFileWithSpec(
+				completedDir,
+				"224-spec-058-bar.md",
+				"completed",
+				[]string{"058"},
+			)
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeTrue())
+		})
+
+		It("returns false when predecessor in same spec is missing", func() {
+			createPromptFileWithSpec(
+				inProgressDir,
+				"225-spec-058-foo.md",
+				"queued",
+				[]string{"058"},
+			)
+			createPromptFileWithSpec(
+				completedDir,
+				"223-spec-058-bar.md",
+				"completed",
+				[]string{"058"},
+			)
+			// 224 of spec 058 is missing
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeFalse())
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(224))
+		})
+
+		It("returns true when no predecessor exists in same spec", func() {
+			createPromptFileWithSpec(
+				inProgressDir,
+				"225-spec-058-foo.md",
+				"queued",
+				[]string{"058"},
+			)
+			// No 22x in any directory
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeTrue())
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(-1))
+		})
+
+		It("ignores a failed prompt in a different spec", func() {
+			// The candidate belongs to spec 058; the failed prompt belongs to spec 056
+			createPromptFileWithSpec(
+				inProgressDir,
+				"225-spec-058-foo.md",
+				"queued",
+				[]string{"058"},
+			)
+			createPromptFileWithSpec(
+				inProgressDir,
+				"224-spec-056-blocker.md",
+				"failed",
+				[]string{"056"},
+			)
+			createPromptFileWithSpec(
+				completedDir,
+				"223-spec-058-predecessor.md",
+				"completed",
+				[]string{"058"},
+			)
+			// The old global guard would block 225 because 224 (in spec 056) is failed.
+			// The new per-spec guard scopes the lookup to spec 058 only: the failed
+			// 224 in spec 056 is correctly ignored.
+			// For spec 058: 225 is the candidate, 224 of spec 058 is undeclared (gap),
+			// 223 of spec 058 is in completed. The predecessor is 224, which is
+			// missing — and FindMissingInSpecCompleted should report 224, NOT 226
+			// (the global-predecessor would have reported 224, but here 224 is in
+			// spec 056 and should NOT be conflated with 224 in spec 058).
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeFalse())
+			Expect(mgr.FindMissingInSpecCompleted(ctx, 225, "058")).To(Equal(224))
+		})
+
+		It("returns true for a candidate with no spec field (empty specID)", func() {
+			createPromptFileWithSpec(inProgressDir, "225-no-spec.md", "queued", nil)
+			// Empty specID — caller should fall back to global guard
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "")).To(BeTrue())
+		})
+
+		It("treats bare and full spec ids as equivalent (specnum.Parse normalization)", func() {
+			createPromptFileWithSpec(inProgressDir, "225-foo.md", "queued", []string{"058"})
+			createPromptFileWithSpec(
+				completedDir,
+				"224-foo.md",
+				"completed",
+				[]string{"058-some-slug"},
+			)
+			Expect(mgr.AllPreviousInSpecCompleted(ctx, 225, "058")).To(BeTrue())
+		})
+
+		It("verifies specnum.Parse normalization (sanity)", func() {
+			// Sanity-check the parsing primitives the new helper relies on.
+			Expect(specnumParse("058")).To(Equal(58))
+			Expect(specnumParse("092-foo-bar")).To(Equal(92))
+			Expect(specnumParse("foo-bar")).To(Equal(-1))
 		})
 	})
 
@@ -1414,3 +1565,5 @@ var _ = Describe("Frontmatter spec field", func() {
 		})
 	})
 })
+
+func specnumParse(s string) int { return specnum.Parse(s) }

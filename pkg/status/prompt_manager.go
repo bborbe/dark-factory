@@ -19,4 +19,8 @@ type PromptManager interface {
 	ReadFrontmatter(ctx context.Context, path string) (*prompt.Frontmatter, error)
 	HasExecuting(ctx context.Context) bool
 	FindCommitting(ctx context.Context) ([]string, error)
+	// GetBlockedPrompt scans the queue and returns the first queued prompt whose
+	// per-spec predecessor is not completed. Returns (0, "", 0, false) if no
+	// blocker is active.
+	GetBlockedPrompt(ctx context.Context) (number int, reason string, missing int, ok bool)
 }

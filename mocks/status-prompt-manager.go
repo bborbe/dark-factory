@@ -23,6 +23,23 @@ type StatusPromptManager struct {
 		result1 []string
 		result2 error
 	}
+	GetBlockedPromptStub        func(context.Context) (int, string, int, bool)
+	getBlockedPromptMutex       sync.RWMutex
+	getBlockedPromptArgsForCall []struct {
+		arg1 context.Context
+	}
+	getBlockedPromptReturns struct {
+		result1 int
+		result2 string
+		result3 int
+		result4 bool
+	}
+	getBlockedPromptReturnsOnCall map[int]struct {
+		result1 int
+		result2 string
+		result3 int
+		result4 bool
+	}
 	HasExecutingStub        func(context.Context) bool
 	hasExecutingMutex       sync.RWMutex
 	hasExecutingArgsForCall []struct {
@@ -141,6 +158,76 @@ func (fake *StatusPromptManager) FindCommittingReturnsOnCall(i int, result1 []st
 		result1 []string
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *StatusPromptManager) GetBlockedPrompt(arg1 context.Context) (int, string, int, bool) {
+	fake.getBlockedPromptMutex.Lock()
+	ret, specificReturn := fake.getBlockedPromptReturnsOnCall[len(fake.getBlockedPromptArgsForCall)]
+	fake.getBlockedPromptArgsForCall = append(fake.getBlockedPromptArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.GetBlockedPromptStub
+	fakeReturns := fake.getBlockedPromptReturns
+	fake.recordInvocation("GetBlockedPrompt", []interface{}{arg1})
+	fake.getBlockedPromptMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3, ret.result4
+	}
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3, fakeReturns.result4
+}
+
+func (fake *StatusPromptManager) GetBlockedPromptCallCount() int {
+	fake.getBlockedPromptMutex.RLock()
+	defer fake.getBlockedPromptMutex.RUnlock()
+	return len(fake.getBlockedPromptArgsForCall)
+}
+
+func (fake *StatusPromptManager) GetBlockedPromptCalls(stub func(context.Context) (int, string, int, bool)) {
+	fake.getBlockedPromptMutex.Lock()
+	defer fake.getBlockedPromptMutex.Unlock()
+	fake.GetBlockedPromptStub = stub
+}
+
+func (fake *StatusPromptManager) GetBlockedPromptArgsForCall(i int) context.Context {
+	fake.getBlockedPromptMutex.RLock()
+	defer fake.getBlockedPromptMutex.RUnlock()
+	argsForCall := fake.getBlockedPromptArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *StatusPromptManager) GetBlockedPromptReturns(result1 int, result2 string, result3 int, result4 bool) {
+	fake.getBlockedPromptMutex.Lock()
+	defer fake.getBlockedPromptMutex.Unlock()
+	fake.GetBlockedPromptStub = nil
+	fake.getBlockedPromptReturns = struct {
+		result1 int
+		result2 string
+		result3 int
+		result4 bool
+	}{result1, result2, result3, result4}
+}
+
+func (fake *StatusPromptManager) GetBlockedPromptReturnsOnCall(i int, result1 int, result2 string, result3 int, result4 bool) {
+	fake.getBlockedPromptMutex.Lock()
+	defer fake.getBlockedPromptMutex.Unlock()
+	fake.GetBlockedPromptStub = nil
+	if fake.getBlockedPromptReturnsOnCall == nil {
+		fake.getBlockedPromptReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 string
+			result3 int
+			result4 bool
+		})
+	}
+	fake.getBlockedPromptReturnsOnCall[i] = struct {
+		result1 int
+		result2 string
+		result3 int
+		result4 bool
+	}{result1, result2, result3, result4}
 }
 
 func (fake *StatusPromptManager) HasExecuting(arg1 context.Context) bool {

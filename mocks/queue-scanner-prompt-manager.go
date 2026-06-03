@@ -22,6 +22,19 @@ type QueueScannerPromptManager struct {
 	allPreviousCompletedReturnsOnCall map[int]struct {
 		result1 bool
 	}
+	AllPreviousInSpecCompletedStub        func(context.Context, int, string) bool
+	allPreviousInSpecCompletedMutex       sync.RWMutex
+	allPreviousInSpecCompletedArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+		arg3 string
+	}
+	allPreviousInSpecCompletedReturns struct {
+		result1 bool
+	}
+	allPreviousInSpecCompletedReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	FindMissingCompletedStub        func(context.Context, int) []int
 	findMissingCompletedMutex       sync.RWMutex
 	findMissingCompletedArgsForCall []struct {
@@ -33,6 +46,19 @@ type QueueScannerPromptManager struct {
 	}
 	findMissingCompletedReturnsOnCall map[int]struct {
 		result1 []int
+	}
+	FindMissingInSpecCompletedStub        func(context.Context, int, string) int
+	findMissingInSpecCompletedMutex       sync.RWMutex
+	findMissingInSpecCompletedArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+		arg3 string
+	}
+	findMissingInSpecCompletedReturns struct {
+		result1 int
+	}
+	findMissingInSpecCompletedReturnsOnCall map[int]struct {
+		result1 int
 	}
 	FindPromptStatusInProgressStub        func(context.Context, int) string
 	findPromptStatusInProgressMutex       sync.RWMutex
@@ -152,6 +178,69 @@ func (fake *QueueScannerPromptManager) AllPreviousCompletedReturnsOnCall(i int, 
 	}{result1}
 }
 
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompleted(arg1 context.Context, arg2 int, arg3 string) bool {
+	fake.allPreviousInSpecCompletedMutex.Lock()
+	ret, specificReturn := fake.allPreviousInSpecCompletedReturnsOnCall[len(fake.allPreviousInSpecCompletedArgsForCall)]
+	fake.allPreviousInSpecCompletedArgsForCall = append(fake.allPreviousInSpecCompletedArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.AllPreviousInSpecCompletedStub
+	fakeReturns := fake.allPreviousInSpecCompletedReturns
+	fake.recordInvocation("AllPreviousInSpecCompleted", []interface{}{arg1, arg2, arg3})
+	fake.allPreviousInSpecCompletedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompletedCallCount() int {
+	fake.allPreviousInSpecCompletedMutex.RLock()
+	defer fake.allPreviousInSpecCompletedMutex.RUnlock()
+	return len(fake.allPreviousInSpecCompletedArgsForCall)
+}
+
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompletedCalls(stub func(context.Context, int, string) bool) {
+	fake.allPreviousInSpecCompletedMutex.Lock()
+	defer fake.allPreviousInSpecCompletedMutex.Unlock()
+	fake.AllPreviousInSpecCompletedStub = stub
+}
+
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompletedArgsForCall(i int) (context.Context, int, string) {
+	fake.allPreviousInSpecCompletedMutex.RLock()
+	defer fake.allPreviousInSpecCompletedMutex.RUnlock()
+	argsForCall := fake.allPreviousInSpecCompletedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompletedReturns(result1 bool) {
+	fake.allPreviousInSpecCompletedMutex.Lock()
+	defer fake.allPreviousInSpecCompletedMutex.Unlock()
+	fake.AllPreviousInSpecCompletedStub = nil
+	fake.allPreviousInSpecCompletedReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *QueueScannerPromptManager) AllPreviousInSpecCompletedReturnsOnCall(i int, result1 bool) {
+	fake.allPreviousInSpecCompletedMutex.Lock()
+	defer fake.allPreviousInSpecCompletedMutex.Unlock()
+	fake.AllPreviousInSpecCompletedStub = nil
+	if fake.allPreviousInSpecCompletedReturnsOnCall == nil {
+		fake.allPreviousInSpecCompletedReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.allPreviousInSpecCompletedReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
+}
+
 func (fake *QueueScannerPromptManager) FindMissingCompleted(arg1 context.Context, arg2 int) []int {
 	fake.findMissingCompletedMutex.Lock()
 	ret, specificReturn := fake.findMissingCompletedReturnsOnCall[len(fake.findMissingCompletedArgsForCall)]
@@ -211,6 +300,69 @@ func (fake *QueueScannerPromptManager) FindMissingCompletedReturnsOnCall(i int, 
 	}
 	fake.findMissingCompletedReturnsOnCall[i] = struct {
 		result1 []int
+	}{result1}
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompleted(arg1 context.Context, arg2 int, arg3 string) int {
+	fake.findMissingInSpecCompletedMutex.Lock()
+	ret, specificReturn := fake.findMissingInSpecCompletedReturnsOnCall[len(fake.findMissingInSpecCompletedArgsForCall)]
+	fake.findMissingInSpecCompletedArgsForCall = append(fake.findMissingInSpecCompletedArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+		arg3 string
+	}{arg1, arg2, arg3})
+	stub := fake.FindMissingInSpecCompletedStub
+	fakeReturns := fake.findMissingInSpecCompletedReturns
+	fake.recordInvocation("FindMissingInSpecCompleted", []interface{}{arg1, arg2, arg3})
+	fake.findMissingInSpecCompletedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCallCount() int {
+	fake.findMissingInSpecCompletedMutex.RLock()
+	defer fake.findMissingInSpecCompletedMutex.RUnlock()
+	return len(fake.findMissingInSpecCompletedArgsForCall)
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedCalls(stub func(context.Context, int, string) int) {
+	fake.findMissingInSpecCompletedMutex.Lock()
+	defer fake.findMissingInSpecCompletedMutex.Unlock()
+	fake.FindMissingInSpecCompletedStub = stub
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedArgsForCall(i int) (context.Context, int, string) {
+	fake.findMissingInSpecCompletedMutex.RLock()
+	defer fake.findMissingInSpecCompletedMutex.RUnlock()
+	argsForCall := fake.findMissingInSpecCompletedArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturns(result1 int) {
+	fake.findMissingInSpecCompletedMutex.Lock()
+	defer fake.findMissingInSpecCompletedMutex.Unlock()
+	fake.FindMissingInSpecCompletedStub = nil
+	fake.findMissingInSpecCompletedReturns = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *QueueScannerPromptManager) FindMissingInSpecCompletedReturnsOnCall(i int, result1 int) {
+	fake.findMissingInSpecCompletedMutex.Lock()
+	defer fake.findMissingInSpecCompletedMutex.Unlock()
+	fake.FindMissingInSpecCompletedStub = nil
+	if fake.findMissingInSpecCompletedReturnsOnCall == nil {
+		fake.findMissingInSpecCompletedReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.findMissingInSpecCompletedReturnsOnCall[i] = struct {
+		result1 int
 	}{result1}
 }
 

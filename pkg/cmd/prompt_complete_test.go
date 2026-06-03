@@ -261,7 +261,6 @@ var _ = Describe("PromptCompleteCommand", func() {
 
 			promptManager.MoveToCompletedReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
-			releaser.HasChangelogReturns(false)
 			releaser.CommitOnlyReturns(nil)
 
 			err = makeCmd(false, true, false).Run(ctx, []string{"080-test.md"})
@@ -278,7 +277,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 				return "feature-x", nil
 			}
 		})
-		It("calls CommitAndRelease", func() {
+		It("calls CommitAndRelease with bump determined from CHANGELOG", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(
 				testFile,
@@ -287,7 +286,6 @@ var _ = Describe("PromptCompleteCommand", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a CHANGELOG.md in tempDir and change to it
 			changelogContent := "# Changelog\n\n## Unreleased\n\n- feat: add something new\n\n## v1.0.0\n\n- fix: old fix\n"
 			origDir, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
@@ -299,7 +297,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			err = os.Chdir(tempDir)
 			Expect(err).NotTo(HaveOccurred())
-			defer func() { _ = os.Chdir(origDir) }()
+			DeferCleanup(func() { _ = os.Chdir(origDir) })
 
 			promptManager.MoveToCompletedReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)
@@ -310,16 +308,13 @@ var _ = Describe("PromptCompleteCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(releaser.CommitAndReleaseCallCount()).To(Equal(1))
+			_, bump := releaser.CommitAndReleaseArgsForCall(0)
+			Expect(bump).To(Equal(git.MinorBump))
 			Expect(releaser.CommitOnlyCallCount()).To(Equal(0))
 		})
 	})
 
 	Context("master + autoRelease=false + no --release", func() {
-		BeforeEach(func() {
-			brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
-				return "master", nil
-			}
-		})
 		It("calls CommitOnly and does NOT call CommitAndRelease", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(
@@ -343,12 +338,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 	})
 
 	Context("master + autoRelease=true + no --release", func() {
-		BeforeEach(func() {
-			brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
-				return "master", nil
-			}
-		})
-		It("calls CommitAndRelease (regression: master+autoRelease=true unchanged)", func() {
+		It("calls CommitAndRelease when autoRelease=true on master", func() {
 			testFile := filepath.Join(queueDir, "080-test.md")
 			err := os.WriteFile(
 				testFile,
@@ -357,7 +347,6 @@ var _ = Describe("PromptCompleteCommand", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a CHANGELOG.md in tempDir and change to it
 			changelogContent := "# Changelog\n\n## Unreleased\n\n- feat: add something new\n\n## v1.0.0\n\n- fix: old fix\n"
 			origDir, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
@@ -369,7 +358,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			err = os.Chdir(tempDir)
 			Expect(err).NotTo(HaveOccurred())
-			defer func() { _ = os.Chdir(origDir) }()
+			DeferCleanup(func() { _ = os.Chdir(origDir) })
 
 			promptManager.MoveToCompletedReturns(nil)
 			releaser.CommitCompletedFileReturns(nil)

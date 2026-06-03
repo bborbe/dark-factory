@@ -128,7 +128,7 @@ func (c *promptCompleteCommand) Run(ctx context.Context, args []string) error {
 	}
 
 	if !c.pr {
-		if err := c.completeDirectWorkflow(gitCtx, ctx, title, shouldRelease); err != nil {
+		if err := c.completeDirectWorkflow(gitCtx, ctx, title); err != nil {
 			return errors.Wrap(ctx, err, "complete direct workflow")
 		}
 	} else {
@@ -153,19 +153,11 @@ func (c *promptCompleteCommand) evaluateReleaseGate(gitCtx context.Context) (str
 }
 
 // completeDirectWorkflow handles commit/release for the direct workflow.
+// The caller (Run) guarantees the release gate is open before this is invoked.
 func (c *promptCompleteCommand) completeDirectWorkflow(
 	gitCtx, ctx context.Context,
 	title string,
-	shouldRelease bool,
 ) error {
-	if !shouldRelease {
-		if err := c.releaser.CommitOnly(gitCtx, title); err != nil {
-			return errors.Wrap(ctx, err, "commit")
-		}
-		slog.Info("committed changes")
-		return nil
-	}
-
 	if !c.releaser.HasChangelog(gitCtx) {
 		if err := c.releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit")

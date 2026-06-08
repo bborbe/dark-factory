@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.177.0
 
 - feat(spec-writing): make spec authoring verification-first at write time, not just audit time. The `spec-creator` agent's `<spec_template>` block now orders sections Summary → Problem → Goal → Non-goals → **Acceptance Criteria** → **Verification** → **Desired Behavior** → Constraints → Failure Modes → Security → Suggested Decomposition → Do-Nothing Option (AC + Verification promoted from end-of-template to immediately after Non-goals). The `<workflow>` step 2 (Gather requirements) inserts an explicit verification ask between "Goal" and "what behaviors": *"For that goal, what observable proof would convince you it's reached? Each proof needs an evidence shape — exit code / log line / file diff / HTTP status / kafka message / metric / cluster state / file artifact."* `docs/rules/spec-writing.md` opens its `## Spec Structure` section with the verification-first ordering principle (*"Write the proof before the behavior. If you can't describe how you'd verify the goal, you don't yet know what the spec is asking for."*) and reorders the `### Sections` list to match. The recursive-demonstration spec at `specs/verification-first-spec-authoring.md` is itself authored in the new order, providing first concrete instance of the discipline. `spec-auditor` enforcement and `spec-verifier` execution paths are unchanged — the auditor's section checks are presence-based and order-agnostic, so legacy specs in `specs/in-progress/` and `specs/completed/` continue to pass without modification.
 

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix(commands/run-prompt): drop explicit `name: run-prompt` from frontmatter so the command registers under the plugin namespace as `/dark-factory:run-prompt`, matching every other dark-factory command. Previously it appeared bare as `/run-prompt`, breaking the `/dark-factory:` picker prefix discovery.
+
 ## v0.176.0
 
 - fix(prompt): `dark-factory prompt complete <id>` now honours `cfg.AutoRelease` and the new `--release` flag. By default, completion on a non-master branch is commit-only (no CHANGELOG rewrite, no tag, no push) regardless of `autoRelease`; pass `--release` to force release on any branch. The daemon executor path is unchanged.

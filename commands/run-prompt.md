@@ -1,5 +1,4 @@
 ---
-name: run-prompt
 description: Execute prompt directly in YOLO container (simplified for one-shot headless execution)
 argument-hint: <prompt-number-or-path>
 allowed-tools: [Read, Write, Edit, Bash, Grep, Glob]

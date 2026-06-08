@@ -6,19 +6,10 @@ The headline reason to use prompts/specs: **safe unattended execution** in a YOL
 
 ### What to do
 
-1. **Choose a flow** — the decision is about *what artifact deserves to be committed alongside the change*, not size:
-
-| Kind of change | Flow | What gets committed |
-|----------------|------|---------------------|
-| Doc / config / yaml — no code | **Direct** — edit + commit yourself, no dark-factory | Just the diff |
-| Code change of any size | **Prompt** — write a prompt, audit, approve, daemon executes | Prompt + diff (technical "how") → [docs/prompt-writing.md](docs/prompt-writing.md) |
-| Feature delivering business value | **Spec → prompts** — write spec, audit, approve, daemon auto-generates prompts, audit each, approve, daemon executes | Spec + prompts + diff (business "why" + technical "how") → [docs/spec-writing.md](docs/spec-writing.md) |
-
-Decide by: **Is code changing?** No → direct. Yes → prompt or spec. **Is there a business-level "why" that deserves its own document?** No → prompt. Yes → spec first.
-
-The prompt/spec split is **business-why vs technical-how**, not big vs small. A 50-prompt mechanical refactor stays prompts. A 1-prompt user-visible feature may still warrant a spec.
+1. **Choose a flow** — read [docs/choosing-a-flow.md](docs/choosing-a-flow.md). Single source of truth for direct vs prompt vs spec; do not duplicate the decision here. Default for markdown / docs / configs / small scripts is **direct edits, no dark-factory**.
 
 2. **Read the relevant guide before starting** — every time, not from memory:
+   - Choosing direct vs prompt vs spec → read [docs/choosing-a-flow.md](docs/choosing-a-flow.md)
    - Architecture & flow → read [docs/architecture-flow.md](docs/architecture-flow.md)
    - Writing a spec → read [docs/spec-writing.md](docs/spec-writing.md)
    - Writing prompts → read [docs/prompt-writing.md](docs/prompt-writing.md)

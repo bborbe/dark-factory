@@ -26,17 +26,7 @@ Read individual files on-demand when a spec/prompt needs the matching pattern.
 Report:
 - **Three-flow decision table** — emit verbatim, this is the most load-bearing decision a user makes. The headline reason to use prompts/specs is **safe unattended execution** in a YOLO Claude container with permission checks disabled — queue work and step away. The split is about *what artifact deserves to be committed alongside the change*, not size or complexity:
 
-  | Kind of change | Flow | What gets committed |
-  |----------------|------|---------------------|
-  | Doc / config / yaml — no code | **Direct** — edit + commit yourself | Just the diff |
-  | Code change of any size | **Prompt** — write a prompt, audit, approve, daemon executes | Prompt + diff (technical "how" record) |
-  | Feature delivering business value | **Spec → prompts** — write spec, audit, approve, daemon auto-generates prompts, audit each, approve, daemon executes | Spec + prompts + diff (business "why" + technical "how") |
-
-  Decide by: **Is code changing?** No → direct. Yes → prompt or spec. **Is there a business-level "why" that deserves its own document?** No → prompt. Yes → spec.
-
-  The split between prompt and spec is **business-why vs technical-how**, NOT big vs small. A 50-prompt mechanical refactor stays prompts. A 1-prompt user-visible feature may still warrant a spec.
-
-  See `architecture-flow.md` "Choosing a Flow" for the canonical version.
+  **Canonical source: [`docs/choosing-a-flow.md`](../docs/choosing-a-flow.md). Point users at it — do NOT restate the decision in this summary; restating is exactly what drove historic drift across CLAUDE.md, spec-writing.md, and prompt-writing.md.** Headline reason for prompts/specs is **safe unattended execution** in a YOLO Claude container; pick direct when ceremony adds no value (markdown / docs / configs / small scripts).
 - **Dark-factory workflow rules** — key lifecycle/CLI rules learned
 - **Project docs available** — filename + one-line topic per file
 - **Coding plugin docs available** — filenames only (grouped by language if helpful)

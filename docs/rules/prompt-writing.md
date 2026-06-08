@@ -2,12 +2,13 @@
 
 A prompt is a markdown file that tells the YOLO agent what to build. Each prompt produces one atomic, verifiable change.
 
-## When to Write Prompts Manually
+## When to Write a Prompt
 
-Most work goes through a spec ([spec-writing.md](spec-writing.md)) — the spec's acceptance criteria + verification phase prove the change actually works at runtime, not just that the code compiles. Write a prompt directly only when:
+**This document does NOT decide direct vs prompt vs spec.** That decision lives in [../choosing-a-flow.md](../choosing-a-flow.md) — the single source of truth. Read it first to confirm a prompt is the right flow.
 
-- **Trivial mechanical change** — version bump, rename, formatting, dependency update where `make precommit` is the only observable that matters
-- **Generating from an approved spec** — the daemon does this automatically, but you can write prompts manually for finer control
+In short: write a prompt when the change is a code change that does NOT carry a business-level "why" that deserves its own document. Markdown / docs / configs / small operator scripts → direct edits, not prompts. Features with a real business-why → spec first. See the canonical decision doc.
+
+You may also write prompts manually for finer control over decomposition from an approved spec (the daemon does this automatically by default).
 
 ## Creating a Prompt
 

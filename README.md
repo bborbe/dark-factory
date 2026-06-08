@@ -192,6 +192,7 @@ your-project/
 
 | Guide | Purpose |
 |-------|---------|
+| **[Choosing a Flow](docs/choosing-a-flow.md)** | **Canonical decision: direct vs prompt vs spec. Start here.** |
 | [Architecture & Flow](docs/architecture-flow.md) | End-to-end execution flow, what runs where |
 | [Configuration](docs/configuration.md) | All config fields, validation, notifications, providers |
 | [Init Project](docs/init-project.md) | Set up a new project for dark-factory |

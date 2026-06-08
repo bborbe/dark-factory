@@ -2,24 +2,19 @@
 
 A spec is a behavioral contract for a feature or fix. It describes what the system should do, not how the code should look.
 
-## Why Spec by Default
-
-A spec gives you **acceptance criteria + a verification phase** (`/dark-factory:verify-spec`) that proves the feature or fix actually works at runtime — not just that the code compiles or `make precommit` passes. Prompts produce code; specs produce evidence. For anything where "does it behave correctly?" matters, the spec's verification harness is the value.
-
 ## When to Write a Spec
 
-**Default: write a spec.** Skip the spec only for trivial mechanical changes where `make precommit` is the sole observable that matters.
+**This document does NOT decide direct vs prompt vs spec.** That decision lives in [../choosing-a-flow.md](../choosing-a-flow.md) — the single source of truth. Read it first to confirm a spec is the right flow.
 
-| Situation | Spec? |
-|-----------|-------|
-| New feature (any size) | **Yes** — AC verification proves it works |
-| Bug fix | **Yes** — Reproduction + AC locks down the regression (see [bug-workflow.md](../bug-workflow.md)) |
-| Multi-prompt change | Yes |
-| Touching shared interfaces / failure modes | Yes |
-| Trivial mechanical change (version bump, rename, formatting) | No — prompt directly |
-| Config field with no behavior change | No — prompt directly |
+In short: write a spec when the change carries a business-level "why" that deserves its own durable in-repo document, OR when it's a bug fix (`kind: bug`) where the reproduction + regression-lock deserves the spec format (see [../bug-workflow.md](../bug-workflow.md)). Otherwise prefer a prompt or direct edit — see the canonical decision doc.
 
-For bugs specifically, see [bug-workflow.md](../bug-workflow.md) — adds `kind: bug` frontmatter, mandatory Reproduction section, and verification rules that go beyond standard spec verification.
+## What a spec gives you
+
+Once you've decided a spec is the right flow, it provides:
+
+- **Acceptance criteria + a verification phase** (`/dark-factory:verify-spec`) that proves the feature or fix actually works at runtime — not just that `make precommit` passes. Prompts produce code; specs produce evidence.
+- **Decomposition into prompts** — the daemon auto-generates prompts from the approved spec; you audit each before execution.
+- **Bug-specific verification** — see [../bug-workflow.md](../bug-workflow.md) for the `kind: bug` extensions (reproduction section, regression-lock rules).
 
 ## Creating a Spec
 

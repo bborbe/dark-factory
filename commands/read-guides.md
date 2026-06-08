@@ -24,7 +24,7 @@ Read individual files on-demand when a spec/prompt needs the matching pattern.
 ## Step 4: Summarize
 
 Report:
-- **Three-flow decision table** — emit verbatim, this is the most load-bearing decision a user makes. The headline reason to use prompts/specs is **safe unattended execution** in a YOLO Claude container with permission checks disabled — queue work and step away. The split is about *what artifact deserves to be committed alongside the change*, not size or complexity:
+- **Three-flow decision pointer** — point the user at the canonical decision doc; this is the most load-bearing decision a user makes, so route them to one source instead of any restatement here.
 
   **Canonical source: [`docs/choosing-a-flow.md`](../docs/choosing-a-flow.md). Point users at it — do NOT restate the decision in this summary; restating is exactly what drove historic drift across CLAUDE.md, spec-writing.md, and prompt-writing.md.** Headline reason for prompts/specs is **safe unattended execution** in a YOLO Claude container; pick direct when ceremony adds no value (markdown / docs / configs / small scripts).
 - **Dark-factory workflow rules** — key lifecycle/CLI rules learned

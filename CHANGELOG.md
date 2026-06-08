@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- docs: add `docs/manual-mode.md` documenting the operator-paced 6-step slash-command chain (create-spec → audit-spec → generate-prompts-for-spec → audit-prompt → run-prompt → verify-spec). Covers when to pick manual mode vs the daemon, trade-offs table, worked example, and failure-recovery notes per step. No code change.
+
 ## v0.176.1
 
 - fix(commands/run-prompt): drop explicit `name: run-prompt` from frontmatter so the command registers under the plugin namespace as `/dark-factory:run-prompt`, matching every other dark-factory command. Previously it appeared bare as `/run-prompt`, breaking the `/dark-factory:` picker prefix discovery.

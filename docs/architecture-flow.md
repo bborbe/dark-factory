@@ -25,20 +25,7 @@ How dark-factory processes specs and prompts, what runs where, and how each comp
 
 ## Choosing a Flow
 
-The decision is about **what artifact deserves to be committed alongside the change**, not size or complexity.
-
-| Kind of change | Flow | What gets committed | Why this flow |
-|----------------|------|---------------------|---------------|
-| Doc / config / yaml — no code | **Direct** — edit + commit yourself, no dark-factory | Just the diff | Ceremony adds no value when there are no tests to run, no business "why" to document, and the change is self-explanatory |
-| Code change of any size | **Prompt** — write a prompt, audit, approve, daemon executes | Prompt (technical instructions) + diff | The prompt provides structure: tests run, auto-commit, auto-release. The committed prompt is the technical "how" record. Even a 5-line refactor benefits from the structure. |
-| Feature delivering business value | **Spec → prompts** — write spec, audit, approve, daemon auto-generates prompts, audit each, approve, daemon executes | Spec (business "why") + prompts (technical "how") + diff | The spec is the durable record of *why this feature exists* — it captures the business-level decision before the technical decomposition. Prompts handle the mechanical breakdown. |
-
-### How to decide
-
-- **Is there code changing?** No → direct. Yes → prompt or spec.
-- **Is there a business-level "why" that deserves its own document?** No → prompt is enough. Yes → spec first, then prompts.
-
-The split between prompt and spec is **business-why vs technical-how**, not big vs small. A 50-prompt mechanical refactor without business framing is still prompts. A 1-prompt feature that adds user-visible behavior may still warrant a spec to capture the rationale.
+**Canonical decision lives in [choosing-a-flow.md](choosing-a-flow.md).** Read it. Do not duplicate the decision here — drift across files is what caused historic confusion.
 
 ### Why the prompt flow exists at all
 
@@ -49,16 +36,6 @@ Once you have that, the rest follows:
 - **Documentation** — committed prompts and specs survive long after the implementation context is gone. Future readers answer "what changed and why" from the artifact, not by reverse-engineering a diff.
 - **Decomposition** (specs only) — writing a spec forces you to think through edge cases, failure modes, and acceptance criteria before code exists. Surfaces design errors cheaply.
 - **Token savings** — dark-factory containers run Sonnet for implementation; interactive Claude Code sessions run Opus. Mechanical work flows to the cheaper model.
-
-### Examples
-
-- **Direct**: bump K8s memory, fix README typo, single-line config tweak in yaml
-- **Prompt**: bug fix, single CLI flag, single struct addition, 5-line refactor with tests, new env var with fixed default, mechanical extraction
-- **Spec → prompts**: new field across watcher+controller+agent that delivers a user-visible capability, refactor that changes a contract, feature spanning multiple services where the rationale matters
-
-### Direct flow caveat
-
-dark-factory's own CLAUDE.md says "Never code directly." That rule is for code changes — direct flow is for doc-only edits, comment fixes, and config tweaks where the dark-factory ceremony adds no value. If code is changing, use a prompt.
 
 ## End-to-End Flow
 

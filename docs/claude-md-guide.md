@@ -38,24 +38,9 @@ Copy this section verbatim into every dark-factory project. Adjust only the guid
 
 The headline reason to use prompts/specs: **safe unattended execution**. They run inside a YOLO Claude container with permission checks disabled, sandboxed from the host. Queue work, step away, come back to commits — no "Approve this Bash command?" interruptions. Documentation, decomposition (specs), and token savings (Sonnet vs Opus) follow as side benefits.
 
-The decision is about **what artifact deserves to be committed alongside the change**, not size or complexity.
-
 ### Choosing a Flow
 
-| Kind of change | Flow | What gets committed | Why this flow |
-|----------------|------|---------------------|---------------|
-| Doc / config / yaml -- no code | **Direct** -- edit + commit yourself | Just the diff | Ceremony adds no value when there are no tests to run and no business "why" to document |
-| Code change of any size | **Prompt** -- write a prompt, audit, approve, daemon executes | Prompt + diff | The prompt provides structure (tests run, auto-commit, auto-release) and is the technical "how" record. Even small refactors benefit. |
-| Feature delivering business value | **Spec -> prompts** -- write spec, audit, approve, daemon auto-generates prompts, audit each, approve, daemon executes | Spec + prompts + diff | The spec is the durable record of *why this feature exists*. Prompts handle the mechanical breakdown. |
-
-### How to decide
-
-- **Is there code changing?** No -> direct. Yes -> prompt or spec.
-- **Is there a business-level "why" that deserves its own document?** No -> prompt is enough. Yes -> spec first.
-
-The split between prompt and spec is **business-why vs technical-how**, not big vs small. A 50-prompt mechanical refactor stays prompts. A 1-prompt user-visible feature may still warrant a spec.
-
-Examples: direct = bump K8s memory, fix README typo. Prompt = bug fix, single CLI flag, 5-line refactor with tests. Spec -> prompts = user-visible feature across services.
+**Canonical decision lives in [choosing-a-flow.md](choosing-a-flow.md).** Read it. Do not restate the decision in CLAUDE.md you author — link to the canonical doc instead. Restating is what historically caused drift across CLAUDE.md / spec-writing.md / prompt-writing.md.
 
 ### Complete Flow
 

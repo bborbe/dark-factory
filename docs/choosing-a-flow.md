@@ -59,7 +59,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 - A behavior change that affects observable contract (verdict semantics, API shape, downstream consumers)
 - A bug fix where the *reproduction* and *regression-lock* deserve permanent record (see [bug-workflow.md](bug-workflow.md))
 - A multi-prompt change where the cross-prompt rationale would be lost in any single prompt
-- A feature whose verification deserves the `/dark-factory:verify-spec` three-rung ladder (rung-1 unit; rung-2 dev k8s; rung-3 prod)
+- A feature whose verification needs the structured evidence pass that `/dark-factory:verify-spec` enforces — fresh runtime observation, not just "tests pass" (see [spec-verification.md](spec-verification.md))
 - Anything that future-you will want to find by grepping `specs/completed/` for "why does this exist"
 
 ## Boundary cases (the ones that cause confusion)
@@ -70,7 +70,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 | Bash operator script in a Go project (`bin/foo.sh`, ~50 LOC) | **Direct** | No precommit test gate worth the prompt ceremony |
 | README update that *adds* a code example | **Direct** | Code is illustrative; the README is the artifact |
 | Documentation PR that *describes* a system invariant the agents must honor | **Direct** | Doc-only; cite the invariant in the relevant code's docstring or test |
-| A test-only PR adding regression coverage for an existing bug | **Spec (kind: bug)** | Per `bug-workflow.md` — the reproduction belongs in a spec |
+| A test-only PR adding regression coverage for an existing bug | **Spec (kind: bug)** preferred; **Prompt** acceptable if the bug already has a closed spec | If a fix is going through a `kind: bug` spec, the reproduction lives there per [bug-workflow.md](bug-workflow.md). A standalone regression test for a bug that already shipped a fix is a smaller surface — a prompt is fine. |
 | Adding a counterfeiter `//go:generate` annotation + regenerating mocks | **Prompt** | Mechanical, but it's code and runs through tests |
 | Adding a `## Unreleased` CHANGELOG entry alongside a code change | Part of the **prompt/spec** for the code change | Not its own flow |
 | Updating `go.mod` dependency version | **Direct** if the bump is patch-only and `make test` was run by hand; **Prompt** if the bump requires code edits |
@@ -104,4 +104,5 @@ The artifact persists in the repo. Choose the flow whose artifact a future reade
 - How to write a spec (after deciding to write one) → [rules/spec-writing.md](rules/spec-writing.md)
 - How to write a prompt (after deciding to write one) → [rules/prompt-writing.md](rules/prompt-writing.md)
 - Bug-specific spec rules → [bug-workflow.md](bug-workflow.md)
+- Verifying a spec actually works at runtime → [spec-verification.md](spec-verification.md)
 - Running the daemon, lifecycle → [running.md](running.md)

@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- docs: address PR #21 review nits on `docs/choosing-a-flow.md`. Remove the maintainer-project-specific "three-rung ladder" jargon from the verification bullet — replace with a generic reference to `spec-verification.md`. Soften the boundary-case row for "test-only regression PR adding bug coverage" — spec is preferred but a prompt is acceptable when the bug already shipped a fix (the cited `bug-workflow.md` doesn't strictly mandate a spec for the standalone regression case). Add `spec-verification.md` to the Related section so the verify-spec reference in §Concrete Examples has a target.
+
 ## v0.176.3
 
 - docs: consolidate the direct vs prompt vs spec authoring decision into a single canonical guide `docs/choosing-a-flow.md`. Demote the decision tables previously restated across `CLAUDE.md`, `docs/architecture-flow.md`, `docs/rules/spec-writing.md`, `docs/rules/prompt-writing.md`, `docs/claude-md-guide.md`, and `commands/read-guides.md` to short pointers at the canonical doc — eliminates the drift that previously had spec-writing.md saying "default: spec" while CLAUDE.md said "code = prompt by default." Adds concrete examples per row, a boundary-cases table (SKILL.md / bash scripts / READMEs with code / agent files), anti-patterns, and a clarifying note that "direct" (this guide) ≠ dark-factory's `workflow: direct` config (an isolation/landing concept covered in `workflows.md`). README Documentation table links the canonical doc first.

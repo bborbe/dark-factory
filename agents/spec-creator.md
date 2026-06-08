@@ -32,9 +32,11 @@ Expert dark-factory spec writer. You create behavioral specifications that descr
    - Touching shared interfaces → Yes
    - Single-file fix, config change → No (skip to create-prompt)
 
-2. **Gather requirements** from arguments or interactively:
+2. **Gather requirements** from arguments or interactively, **in this order** (verification-first — ask the proof before the behavior):
    - What problem are we solving?
-   - What should the end state look like?
+   - What should the end state look like? (Goal)
+   - **For that goal, what observable proof would convince you it's reached? Each proof needs an evidence shape — exit code / log line / file diff / HTTP status / kafka message / metric / cluster state / file artifact.** (Acceptance Criteria + Verification)
+   - What desired behaviors must be produced for those observations to fire?
    - What must NOT change?
    - What can go wrong?
 
@@ -93,9 +95,31 @@ What this work will NOT do. Prevents scope creep across prompts.
 
 -
 
+## Acceptance Criteria
+
+Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/rules/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
+
+**Write the AC before the Desired Behavior.** Naming the observable proof first anchors the rest of the spec — Desired Behavior is then what work has to happen for these checks to fire.
+
+Example AC (replace with your own — keep the evidence-shape pattern):
+
+- [ ] `make precommit` exits 0 in the changed module — evidence: exit code
+- [ ]
+- [ ]
+
+**Scenario coverage — default: NO new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Scenarios are E2E tests at the top of the test pyramid — slow, brittle, expensive — and should be rare. Add a scenario AC only when ALL of these hold: (a) unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam"), (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. If unsure: NO scenario. See `docs/rules/scenario-writing.md` "When to Write a Scenario" for the canonical rule.
+
+## Verification
+
+Exact commands and expected results:
+
+```
+make precommit
+```
+
 ## Desired Behavior
 
-Numbered observable outcomes:
+Numbered observable outcomes — what the system does to make the Acceptance Criteria fire:
 
 1.
 2.
@@ -126,26 +150,6 @@ For specs with real-world side effects, cover at least one row per category: ext
 - What crosses trust boundaries?
 - What can hang, retry forever, or race?
 - What data/path/input must be validated?
-
-## Acceptance Criteria
-
-Binary, testable statements. **Each AC must declare its evidence shape** — the observable artifact the verifier will demand. Bad: "Unit test covers X" (test plan, not evidence). Good: "`grep -n 'pattern' file.md` returns line ≥1" / "topic `foo` receives one message with key `K`" / "`kubectl get pod` shows Running". See `docs/rules/spec-writing.md` "Evidence Shape per Acceptance Criterion" for the full table of shapes.
-
-Example AC (replace with your own — keep the evidence-shape pattern):
-
-- [ ] `make precommit` exits 0 in the changed module — evidence: exit code
-- [ ]
-- [ ]
-
-**Scenario coverage — default: NO new scenario.** Most specs are satisfied by unit + integration tests in the implementation prompt. Scenarios are E2E tests at the top of the test pyramid — slow, brittle, expensive — and should be rare. Add a scenario AC only when ALL of these hold: (a) unit and integration tests genuinely cannot reach the behavior (real Docker, real `gh`, real cluster — not just "touches a seam"), (b) the behavior is load-bearing for an essential user journey, (c) no existing scenario covers it, and (d) the regression risk is concrete and named. If unsure: NO scenario. See `docs/rules/scenario-writing.md` "When to Write a Scenario" for the canonical rule.
-
-## Verification
-
-Exact commands and expected results:
-
-```
-make precommit
-```
 
 ## Suggested Decomposition
 

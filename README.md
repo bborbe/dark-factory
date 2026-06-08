@@ -198,6 +198,7 @@ your-project/
 | [Spec Writing](docs/rules/spec-writing.md) | Write behavioral specs for multi-prompt features |
 | [Prompt Writing](docs/rules/prompt-writing.md) | Write effective prompts for the YOLO agent |
 | [Running](docs/running.md) | Start, monitor, and troubleshoot the pipeline |
+| [Manual Mode](docs/manual-mode.md) | Operator-paced slash-command chain — no Go binary, no daemon |
 | [Scenario Writing](docs/rules/scenario-writing.md) | Write end-to-end verification checklists |
 | [YOLO Container Setup](docs/yolo-container-setup.md) | Set up `~/.claude-yolo/` config directory |
 | [CLAUDE.md Guide](docs/claude-md-guide.md) | Write project CLAUDE.md files for dark-factory |

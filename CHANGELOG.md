@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.176.4
 
 - docs: address PR #21 review nits on `docs/choosing-a-flow.md`. Remove the maintainer-project-specific "three-rung ladder" jargon from the verification bullet — replace with a generic reference to `spec-verification.md`. Soften the boundary-case row for "test-only regression PR adding bug coverage" — spec is preferred but a prompt is acceptable when the bug already shipped a fix (the cited `bug-workflow.md` doesn't strictly mandate a spec for the standalone regression case). Add `spec-verification.md` to the Related section so the verify-spec reference in §Concrete Examples has a target.
 

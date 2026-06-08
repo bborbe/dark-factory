@@ -43,6 +43,12 @@ Use lowercase-kebab-case. Never number filenames — dark-factory assigns number
 
 ## Spec Structure
 
+**Write the proof before the behavior.** Specs are authored top-down for readability (Summary → Problem → Goal → Non-goals), but the load-bearing pivot happens immediately after Non-goals: write the **Acceptance Criteria** (with evidence shape per AC) and the **Verification** commands *before* you write Desired Behavior. The proof anchors the rest of the spec — Desired Behavior is then what work has to happen for those checks to fire, not a free-standing wishlist that the AC pass tries to retrofit.
+
+If you can't describe how you'd verify the goal — concretely, with an evidence shape — you don't yet know what the spec is asking for. Stop and answer the verification question before drafting behaviors. This is the cheapest moment to catch wrong-target specs: at write time, before the auditor sees them, before any prompt-creator wastes research cycles, before `spec-verifier` rejects the verification phase at the most expensive point in the pipeline.
+
+The section order below reflects this: Acceptance Criteria and Verification sit immediately after Non-goals; Desired Behavior follows.
+
 ### Frontmatter
 
 ```yaml
@@ -62,19 +68,20 @@ Fill these sections, answering four questions:
 3. **What can go wrong?** → Failure Modes section
 4. **Should we do this at all?** → Do-Nothing Option
 
-Then fill the remaining sections:
+Fill the sections in this order — verification-first (proof anchors behavior):
 
 - **Summary** — 3-5 bullet points, plain language, no code references
 - **Problem** — one paragraph, why this matters
 - **Goal** — the finished system, not the changes
 - **Non-goals** — what this work will NOT do
-- **Desired Behavior** — numbered observable outcomes (3-8)
+- **Acceptance Criteria** — binary, testable checkboxes; each AC declares its evidence shape
+- **Verification** — exact commands (`make precommit`)
+- **Desired Behavior** — numbered observable outcomes (3-8) — *what makes the AC checks fire*
 - **Constraints** — interfaces, tests, config format, behavior that must not change
 - **Failure Modes** — table: trigger → expected behavior → recovery
-- **Do-Nothing Option** — cost of not doing this
 - **Security / Abuse** — if HTTP, files, or user input involved
-- **Acceptance Criteria** — binary, testable checkboxes
-- **Verification** — exact commands (`make precommit`)
+- **Suggested Decomposition** — required for multi-layer specs or > 5 Desired Behaviors
+- **Do-Nothing Option** — cost of not doing this
 
 **The ratio:** 70% what/why/constraints, 30% how.
 

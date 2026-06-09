@@ -169,7 +169,7 @@ GOOD (container path): ~/.claude/plugins/marketplaces/coding/docs/go-testing-gui
 ## Pulling the Container Image
 
 ```bash
-docker pull docker.io/bborbe/claude-yolo:v0.9.0
+docker pull docker.io/bborbe/claude-yolo:v0.10.1
 ```
 
 Or build from source:

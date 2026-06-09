@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.177.1
 
 - chore(deps): bump default claude-yolo container image from `v0.9.1` to `v0.10.1`. Updates `pkg.DefaultContainerImage` (the single source of truth) plus the v0.9.0/v0.9.1 references in `README.md`, `docs/configuration.md`, `docs/init-project.md`, and `docs/yolo-container-setup.md`. Historical version strings inside `specs/completed/` and `prompts/completed/` and the regex-fixture versions in `pkg/config/config_loader_test.go`, `pkg/globalconfig/globalconfig.go`, and `main_internal_test.go` are intentionally untouched — they document past behavior or pin specific parser inputs.
 

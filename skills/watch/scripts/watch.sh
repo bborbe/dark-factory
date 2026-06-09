@@ -5,9 +5,19 @@ set -euo pipefail
 # Polls every 60s, plays macOS sounds on state changes.
 #
 # Sounds:
-#   3x Sosumi = prompt failed — check log, fix, retry
-#   Basso     = stuck >15min — may need intervention
+#   3x Sosumi = prompt failed (or silent + stuck) — check log, fix, retry
+#   Basso     = stuck — may need intervention; fired by either
+#               (a) elapsed-time threshold (>=15min on "executing since"), or
+#               (b) container-log quietness (>=10min elapsed AND <5 log lines
+#                   in the last 3min — covers BOTH gen and exec modes)
 #   Glass     = all prompts complete
+#
+# Liveness probe rationale: elapsed-time alone produces false positives on
+# legitimately slow specs (a heavy gen container can run 12-18min on a 10-DB
+# spec) and misses stuck gen containers entirely (the old "executing since"
+# grep matches only exec mode, never gen). We use docker logs activity as
+# the primary liveness signal; elapsed time is just the gate that decides
+# when to check.
 
 # Auto-detect project directory
 if [ -n "${1:-}" ]; then
@@ -74,7 +84,7 @@ while true; do
     break
   fi
 
-  # Alert: stuck >15 minutes.
+  # Alert: stuck >15 minutes (exec mode, elapsed-time fallback).
   # `|| true` swallows grep's exit 1 when "executing since" is absent
   # (e.g. daemon is in spec-generation mode, not prompt-execution mode);
   # without it `set -euo pipefail` kills the watcher on every poll.
@@ -82,6 +92,51 @@ while true; do
   if [ -n "$MINS" ] && [ "$MINS" -ge 15 ]; then
     echo "ALERT: STUCK >15min on $CURRENT"
     afplay /System/Library/Sounds/Basso.aiff
+  fi
+
+  # Liveness probe: covers BOTH gen and exec modes.
+  # Resolve the active container from `Container: <name> (running)` in the
+  # `dark-factory status` output. Skip cleanly if docker is unavailable or
+  # the container line is absent (daemon idle).
+  CONTAINER=$(echo "$STATUS" | grep -E '^[[:space:]]*Container:' | perl -pe 's/.*Container:\s*([^[:space:]]+).*/$1/' || true)
+  if [ -n "$CONTAINER" ] && command -v docker >/dev/null 2>&1; then
+    # `docker ps` reports container age in a human-readable form ("14 minutes",
+    # "About a minute", "About an hour", "2 hours"). We parse the leading
+    # integer and unit; "About an hour" (docker's literal output for the
+    # 45-90min window) maps to 60 so the probe still fires there. Anything
+    # shorter ("seconds", "About a minute") rounds to 0 — no probe.
+    # Name filter is anchored (^/name$) — unanchored is substring match and
+    # can return another container's uptime.
+    RUNNING_FOR=$(docker ps --filter "name=^/${CONTAINER}\$" --format '{{.RunningFor}}' 2>/dev/null || true)
+    ELAPSED_MIN=0
+    if [[ "$RUNNING_FOR" =~ ^([0-9]+)[[:space:]]minute ]]; then
+      ELAPSED_MIN="${BASH_REMATCH[1]}"
+    elif [[ "$RUNNING_FOR" =~ ^([0-9]+)[[:space:]]hour ]]; then
+      ELAPSED_MIN=$(( BASH_REMATCH[1] * 60 ))
+    elif [[ "$RUNNING_FOR" =~ ^About[[:space:]]an[[:space:]]hour ]]; then
+      ELAPSED_MIN=60
+    fi
+    if [ "$ELAPSED_MIN" -ge 10 ]; then
+      # Count log lines in the last 3 minutes. Healthy containers emit
+      # tool-use / tool-result JSON every few seconds → dozens of lines.
+      # Stuck containers go silent → 0-4 lines.
+      # `{ ... || true; }` breaks the pipefail chain: a failing `docker logs`
+      # (container gone between ps and logs, daemon hung) must not kill the
+      # watcher, and a trailing `|| echo 0` would CONCATENATE with wc's
+      # already-emitted "0" into a non-integer "0\n0".
+      LOG_LINES=$({ docker logs --since=3m "$CONTAINER" 2>/dev/null || true; } | wc -l | tr -d ' ')
+      if [ "$LOG_LINES" -lt 5 ]; then
+        if [ "$ELAPSED_MIN" -ge 15 ] && [ "$LOG_LINES" -eq 0 ]; then
+          echo "ALERT: SILENT + STUCK — $CONTAINER quiet for >=3min at ${ELAPSED_MIN}m (0 log lines)"
+          afplay /System/Library/Sounds/Sosumi.aiff
+          afplay /System/Library/Sounds/Sosumi.aiff
+          afplay /System/Library/Sounds/Sosumi.aiff
+          break
+        fi
+        echo "ALERT: QUIET — $CONTAINER only $LOG_LINES log lines in last 3min at ${ELAPSED_MIN}m"
+        afplay /System/Library/Sounds/Basso.aiff
+      fi
+    fi
   fi
 
   sleep 60

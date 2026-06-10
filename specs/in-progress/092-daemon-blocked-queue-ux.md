@@ -110,3 +110,18 @@ Rationale: prompt 1 is a self-contained CLI widening usable by prompt 2's lock t
 ## Do-Nothing Option
 
 Keep the current behavior: operators read `.dark-factory.log`, `git mv` failed prompts to `completed/` to unblock the queue, and accept that any failed prompt on any spec can silently stall every later-numbered spec for an unbounded duration. The 2026-06-02 incident cost 40 minutes on a single operator on a single block; fleet rollout multiplies that. The state-integrity cost (audit trail lies about `failed` prompts being `completed`) compounds across every workaround. Not acceptable.
+
+## Verification Result
+
+**Verified:** 2026-06-10T20:28:22Z (HEAD 0360c93)
+**Binary:** /tmp/dark-factory-0360c93 (built from HEAD, contains 972ac17 — PR #24 remediation)
+**Scenario:** No new scenario; all 11 ACs replayed live against the fresh binary + race-tested integration suites over temp sandbox prompt fixtures (real prompts/ left untouched).
+**Evidence:**
+- AC1: `make precommit` exit 0 ("ready to commit"); `go test -race` ok on pkg/{status,prompt,processor,queuescanner,cmd}.
+- AC2/3/4: live `dark-factory status` emitted `Blocked: 227 (reason=previous-prompt-not-completed, missing=226)` (regex match=1); empty + advanceable queues produced `grep -c '^Blocked:'`=0.
+- AC5/6: live `prompt reject` exit 0 on failed→rejected and draft→rejected; yq readback status=rejected, originalStatus=failed/draft, rejectedReason verbatim.
+- AC7/8: scanner per-spec tests pass under -race — spec B advances while spec A blocked (negative assertion holds); lower global number 221 selected over 223.
+- AC9: real reject-vs-advance concurrency test passes under -race — exactly one final on-disk state, valid frontmatter, both sides log "lock acquired"; production lock+post-lock re-read in reject.go:111-126 & scanner.go:241-295.
+- AC10: `--reason "$(printf 'a: b\nc')"` round-trips byte-identical via yq (block scalar |-); no frontmatter corruption.
+- AC11: shared constant prompt.ReasonPreviousPromptNotCompleted feeds both the daemon log line (test asserts `reason=previous-prompt-not-completed`) and the live status Blocked line — identical token, no drift.
+**Verdict:** PASS

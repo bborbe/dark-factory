@@ -408,6 +408,54 @@ var _ = Describe("Scanner", func() {
 			})
 		})
 
+		Context("per-prompt lock acquire timeout", func() {
+			It("ends the scan, logs project-lock-timeout once, processes nothing", func() {
+				path := writeFile(
+					"230-spec-060-locked.md",
+					promptFrontmatterWithSpec(prompt.ApprovedPromptStatus, []string{"060"}),
+				)
+				pr := prompt.Prompt{Path: path, Status: prompt.ApprovedPromptStatus}
+				mgr.ListQueuedReturns([]prompt.Prompt{pr}, nil)
+				mgr.AllPreviousCompletedReturns(true)
+				mgr.AllPreviousInSpecCompletedReturns(true)
+
+				lockMock := &mocks.LockFileLock{}
+				lockMock.AcquireReturns(stderrors.New("lock acquire timeout"))
+				s = queuescanner.NewScanner(
+					mgr, pp, failureHandler, queueDir,
+					func(string) lockpkg.FileLock { return lockMock },
+					10*time.Millisecond,
+				)
+
+				var logBuf bytes.Buffer
+				original := slog.Default()
+				slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+				defer slog.SetDefault(original)
+
+				completed, err := s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				// The timeout branch must END the scan (return true): a false
+				// return hot-loops on the same locked candidate within one
+				// ScanAndProcess call — blocking lockTimeout per iteration,
+				// inflating the completed counter, and starving other specs.
+				Expect(completed).To(Equal(0))
+				Expect(pp.ProcessPromptCallCount()).To(Equal(0))
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonProjectLockTimeout),
+				))
+
+				// Dedupe survives the failed acquire: a second scan against the
+				// same stuck lock must not re-log the blocked line (the key is
+				// cleared only after a successful acquire).
+				logBuf.Reset()
+				_, err = s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(logBuf.String()).NotTo(ContainSubstring(
+					string(prompt.ReasonProjectLockTimeout),
+				))
+			})
+		})
+
 		Context("per-spec predecessor lookup", func() {
 			makePrompt := func(name string, status prompt.PromptStatus, specList []string) prompt.Prompt {
 				path := writeFile(

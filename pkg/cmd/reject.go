@@ -86,6 +86,23 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 		return errors.Errorf(ctx, "prompt not found: %s", id)
 	}
 
+	// Fast-fail BEFORE the lock: during execution the scanner holds the
+	// per-prompt lock for the whole container run (minutes), so blocking
+	// lockTimeout only to report "cannot reject executing" is a UX
+	// regression. This read is advisory — the post-lock Load below
+	// re-validates on authoritative state.
+	if pre, preErr := r.promptManager.Load(ctx, path); preErr == nil {
+		preStatus := prompt.PromptStatus(pre.Frontmatter.Status)
+		if preStatus != prompt.RejectedPromptStatus &&
+			!preStatus.IsRejectable() && preStatus != prompt.FailedPromptStatus {
+			return errors.Errorf(
+				ctx,
+				"cannot reject prompt with status %q — allowed: idea, draft, approved, failed",
+				pre.Frontmatter.Status,
+			)
+		}
+	}
+
 	// Acquire the per-prompt file lock BEFORE loading the file. The Load
 	// below is the post-lock re-read: it observes whatever the daemon (or
 	// another operator) wrote last, then we stamp + save + rename under

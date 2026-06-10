@@ -225,11 +225,6 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 		return !skipped, nil
 	}
 
-	// Clear the dedupe entry for the prompt we are about to process so a
-	// future re-block (after the prompt re-enters the queue) logs again.
-	// Other blocked prompts' entries are left in place.
-	s.clearBlockedKey(pr.Path)
-
 	// Acquire the per-prompt file lock right before handing the candidate
 	// to the processor. This serializes the advance with a concurrent
 	// `prompt reject` on the same file (spec 092 AC "concurrent-reject-
@@ -241,7 +236,11 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 		// blocked-log path with the project-lock-timeout reason so the
 		// operator sees a stable token in `dark-factory status` (this
 		// wires the previously-dead ReasonProjectLockTimeout constant
-		// in pkg/prompt). Re-poll on the next cycle.
+		// in pkg/prompt). End this scan (true) — returning false would
+		// hot-loop on the same locked candidate within this
+		// ScanAndProcess call (blocking lockTimeout per iteration,
+		// inflating the completed counter, starving other specs); the
+		// daemon's next poll cycle retries instead.
 		s.logBlockedOnce(
 			ctx,
 			pr,
@@ -249,8 +248,15 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			prompt.ReasonProjectLockTimeout,
 			"",
 		)
-		return false, nil
+		return true, nil
 	}
+
+	// Clear the dedupe entry for the prompt we are about to process so a
+	// future re-block (after the prompt re-enters the queue) logs again.
+	// Other blocked prompts' entries are left in place. Done only after a
+	// successful acquire — clearing before a failed acquire would wipe the
+	// project-lock-timeout dedupe key the branch above just set.
+	s.clearBlockedKey(pr.Path)
 	defer func() {
 		if relErr := fl.Release(ctx); relErr != nil {
 			slog.Warn(

@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-10T14:27:36Z"
 generating: "2026-06-10T14:27:36Z"
 prompted: "2026-06-10T14:37:53Z"
 verifying: "2026-06-10T15:46:29Z"
+completed: "2026-06-10T20:29:10Z"
 branch: dark-factory/bug-spec-092-contract-violations
 ---
 

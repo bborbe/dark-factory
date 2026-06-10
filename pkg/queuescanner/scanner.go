@@ -133,32 +133,40 @@ func (s *scanner) ScanAndProcess(ctx context.Context) (int, error) {
 		default:
 		}
 
-		done, err := s.processSingleQueued(ctx)
+		done, processed, err := s.processSingleQueued(ctx)
 		if err != nil {
 			return completed, err
 		}
 		if done {
 			return completed, nil
 		}
-		completed++
+		// Count only genuine completions: skipped candidates (stale after
+		// post-lock re-read) and failed prompts continue the scan but are
+		// NOT progress — inflating the count feeds fake progress into the
+		// one-shot no-progress detection (NothingToDoCallback).
+		if processed {
+			completed++
+		}
 	}
 }
 
 // processSingleQueued picks the next queued prompt and processes it.
-// Returns (true, nil) when the scan loop should stop (queue empty, blocked, or preflight broken).
-// Returns (false, nil) to continue scanning for the next prompt.
-// Returns (true, err) when a fatal error requires the daemon to stop.
+// Returns done=true when the scan loop should stop (queue empty, blocked,
+// lock timeout, or preflight broken). done=false continues scanning for the
+// next prompt; processed reports whether a prompt was genuinely processed
+// (skips and failures continue the scan with processed=false). A non-nil
+// error requires the daemon to stop.
 //
 //nolint:gocognit,funlen // per-spec filter loop + multi-stage guard checks + log gating + lock acquire/re-read path (spec 092); refactor candidate tracked separately
-func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
+func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	queued, err := s.promptManager.ListQueued(ctx)
 	if err != nil {
-		return true, errors.Wrap(ctx, err, "list queued prompts")
+		return true, false, errors.Wrap(ctx, err, "list queued prompts")
 	}
 
 	if len(queued) == 0 {
 		slog.Debug("queue scan complete", "queuedCount", 0)
-		return true, nil
+		return true, false, nil
 	}
 
 	slog.Debug("queue scan complete", "queuedCount", len(queued))
@@ -173,7 +181,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 	skipped := false
 	for _, candidate := range queued {
 		if err := s.autoSetQueuedStatus(ctx, &candidate); err != nil {
-			return true, errors.Wrap(ctx, err, "auto-set queued status")
+			return true, false, errors.Wrap(ctx, err, "auto-set queued status")
 		}
 		if s.shouldSkipPrompt(ctx, candidate) {
 			skipped = true
@@ -183,7 +191,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 		if err != nil {
 			// Malformed prompt frontmatter — treat as blocked, surface via logBlockedOnce
 			s.logBlockedOnce(ctx, candidate, "", prompt.ReasonPromptFrontmatterParseError, "")
-			return true, nil
+			return true, false, nil
 		}
 		if specID == "" {
 			// No spec field — fall back to global guard. Prompts without a spec
@@ -222,7 +230,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 	if pr.Path == "" {
 		// If at least one candidate was skipped, re-poll to allow other prompts
 		// to be picked up on the next cycle. Otherwise no candidate is ready.
-		return !skipped, nil
+		return !skipped, false, nil
 	}
 
 	// Acquire the per-prompt file lock right before handing the candidate
@@ -248,7 +256,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			prompt.ReasonProjectLockTimeout,
 			"",
 		)
-		return true, nil
+		return true, false, nil
 	}
 
 	// Clear the dedupe entry for the prompt we are about to process so a
@@ -283,7 +291,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			"file",
 			filepath.Base(pr.Path),
 		)
-		return false, nil
+		return false, false, nil
 	}
 	status := prompt.PromptStatus(pf.Frontmatter.Status)
 	if !status.IsPreExecution() {
@@ -294,7 +302,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			"status",
 			pf.Frontmatter.Status,
 		)
-		return false, nil
+		return false, false, nil
 	}
 	// Mirror the candidate's now-fresh status into the struct the
 	// processor will receive, so downstream code does not act on a stale
@@ -308,16 +316,16 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 	if err := s.promptProcessor.ProcessPrompt(ctx, pr); err != nil {
 		if stderrors.Is(err, preflightconditions.ErrPreflightFailed) {
 			// Baseline is broken — propagate so the runner terminates dark-factory.
-			return false, err
+			return false, false, err
 		}
 		if stopErr := s.failureHandler.Handle(ctx, pr.Path, err); stopErr != nil {
-			return true, stopErr
+			return true, false, stopErr
 		}
-		return false, nil // re-queued or permanently failed — process next prompt
+		return false, false, nil // re-queued or permanently failed — keep scanning, NOT progress
 	}
 
 	slog.Info("watching for queued prompts", "dir", s.queueDir)
-	return false, nil
+	return false, true, nil
 }
 
 // readSpecID loads the prompt and returns its spec id. If the frontmatter has

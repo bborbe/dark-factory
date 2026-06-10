@@ -169,7 +169,11 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			pr = candidate
 			break
 		}
-		// Blocked: log once with spec id, then return DONE.
+		// Blocked: log once with spec id, then continue to the next
+		// candidate. Cross-spec independence: a blocked spec A must not
+		// prevent an unrelated spec B from advancing. Per spec 092 AC
+		// "Per-spec ordering allows unrelated spec to advance" and
+		// spec 094 test gap 4.
 		// FindMissingInSpecCompleted treats filesystem failures as
 		// "no predecessor" (logged at V(1) inside the prompt package);
 		// missing < 0 means the `missing=` field is omitted from the
@@ -182,7 +186,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			prompt.ReasonPreviousPromptNotCompleted,
 			missingStr(missing),
 		)
-		return true, nil
+		continue
 	}
 	if pr.Path == "" {
 		// If at least one candidate was skipped, re-poll to allow other prompts

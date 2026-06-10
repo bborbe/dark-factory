@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [094-bug-spec-092-contract-violations]
+container: dark-factory-spec092-fix-exec-447-spec-094-regression-lock-tests
+dark-factory-version: v0.177.1
 created: "2026-06-10T15:10:00Z"
 queued: "2026-06-10T14:39:29Z"
+started: "2026-06-10T15:22:23Z"
+completed: "2026-06-10T15:46:29Z"
 branch: dark-factory/bug-spec-092-contract-violations
 ---
 

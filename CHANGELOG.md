@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.178.2
 
 - fix(status): `Blocked:` line now matches the spec-092 contract exactly — `Blocked: NNN (reason=..., missing=MMM)` with a single space after the colon and bare (non-zero-padded) prompt numbers. Previously emitted `Blocked:  %03d` (double space, zero-padded), which broke the spec's anchored regex and any operator tooling parsing the documented format. Test assertions in `pkg/status/status_test.go` updated to the spec format.
 

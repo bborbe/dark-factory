@@ -84,6 +84,11 @@ while true; do
     break
   fi
 
+  # At most one Basso per poll cycle: at >=15min stuck in exec mode the
+  # elapsed-time branch below AND the liveness branch both qualify — without
+  # this guard the sound plays twice in quick succession.
+  BASSO_FIRED=0
+
   # Alert: stuck >15 minutes (exec mode, elapsed-time fallback).
   # `|| true` swallows grep's exit 1 when "executing since" is absent
   # (e.g. daemon is in spec-generation mode, not prompt-execution mode);
@@ -92,13 +97,15 @@ while true; do
   if [ -n "$MINS" ] && [ "$MINS" -ge 15 ]; then
     echo "ALERT: STUCK >15min on $CURRENT"
     afplay /System/Library/Sounds/Basso.aiff
+    BASSO_FIRED=1
   fi
 
   # Liveness probe: covers BOTH gen and exec modes.
   # Resolve the active container from `Container: <name> (running)` in the
   # `dark-factory status` output. Skip cleanly if docker is unavailable or
-  # the container line is absent (daemon idle).
-  CONTAINER=$(echo "$STATUS" | grep -E '^[[:space:]]*Container:' | perl -pe 's/.*Container:\s*([^[:space:]]+).*/$1/' || true)
+  # the container line is absent (daemon idle). `head -n1` hardens against
+  # a future formatter emitting multiple Container: lines.
+  CONTAINER=$(echo "$STATUS" | grep -E '^[[:space:]]*Container:' | head -n1 | perl -pe 's/.*Container:\s*([^[:space:]]+).*/$1/' || true)
   if [ -n "$CONTAINER" ] && command -v docker >/dev/null 2>&1; then
     # `docker ps` reports container age in a human-readable form ("14 minutes",
     # "About a minute", "About an hour", "2 hours"). We parse the leading
@@ -134,7 +141,9 @@ while true; do
           break
         fi
         echo "ALERT: QUIET — $CONTAINER only $LOG_LINES log lines in last 3min at ${ELAPSED_MIN}m"
-        afplay /System/Library/Sounds/Basso.aiff
+        if [ "$BASSO_FIRED" -eq 0 ]; then
+          afplay /System/Library/Sounds/Basso.aiff
+        fi
       fi
     fi
   fi

@@ -66,7 +66,7 @@ func newProcessorWithMockWatcher(
 		0,
 	)
 	ppForwarder := &lazyProcessorForwarder{}
-	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, "")
+	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, "", nil, 0)
 
 	proc := processor.NewProcessor(
 		exec,

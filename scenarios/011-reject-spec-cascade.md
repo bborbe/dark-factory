@@ -99,7 +99,7 @@ ls prompts/in-progress/ prompts/rejected/
 
 - [ ] `prompts/in-progress/` does NOT contain either throwaway prompt
 - [ ] `prompts/rejected/` contains both `990-throwaway-feature-a.md` and `991-throwaway-feature-b.md`
-- [ ] Each rejected prompt's frontmatter has `status: rejected`, `rejected:` (RFC3339), and `rejected_reason: scenario regression test`
+- [ ] Each rejected prompt's frontmatter has `status: rejected`, `rejected:` (RFC3339), and `rejectedReason: scenario regression test`
 
 ### List commands hide rejected by default; --all shows them
 

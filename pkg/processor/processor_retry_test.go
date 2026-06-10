@@ -364,12 +364,14 @@ var _ = Describe("Processor", func() {
 				}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 				// handlePromptFailure must NOT be called — daemon stopped on post-execution failure.
-				// The scanner calls Load once (for spec-id lookup) and ProcessPrompt calls Load
-				// once (for content); handlePromptFailure would add a third Load call.
-				// Consistently ensures Load is called exactly twice (no handlePromptFailure).
+				// The scanner calls Load three times: (1) for spec-id lookup, (2) for the
+				// post-lock re-read (spec 092 AC "concurrent-reject-advance"), and
+				// (3) inside ProcessPrompt for the prompt's content. handlePromptFailure
+				// would add a fourth Load call. Consistently ensures Load is called
+				// exactly three times (no handlePromptFailure).
 				Consistently(func() int {
 					return manager.LoadCallCount()
-				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(2))
+				}, 500*time.Millisecond, 50*time.Millisecond).Should(Equal(3))
 
 				cancel()
 			},
@@ -667,6 +669,8 @@ var _ = Describe("Processor", func() {
 				sweepPPForwarder,
 				sweepFH,
 				sweepQueueDir,
+				nil,
+				0,
 			)
 			sweepProc := processor.NewProcessor(
 				executor,

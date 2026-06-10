@@ -198,7 +198,7 @@ func (s *specRejectCommand) rejectLinkedPrompt(ctx context.Context, ppath, reaso
 		return errors.Wrap(ctx, err, "load prompt")
 	}
 
-	pf.StampRejected(reason)
+	pf.StampRejectedWithOriginal(reason, pf.Frontmatter.Status)
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}

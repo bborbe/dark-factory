@@ -937,7 +937,14 @@ func CreateProcessor(
 	// Two-phase wiring: scanner → proc.ProcessPrompt → scanner.
 	// The lazyPromptProcessor closes the loop inside factory where wiring belongs.
 	ppForwarder := &lazyPromptProcessor{}
-	scanner := queuescanner.NewScanner(promptManager, ppForwarder, fh, dirs.Queue)
+	scanner := queuescanner.NewScanner(
+		promptManager,
+		ppForwarder,
+		fh,
+		dirs.Queue,
+		lock.NewFileLock,
+		0,
+	)
 	proc := processor.NewProcessor(
 		exec,
 		promptManager,
@@ -1394,6 +1401,8 @@ func CreateRejectCommand(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.RejectedDir,
 		promptManager,
+		lock.NewFileLock,
+		0,
 	)
 }
 

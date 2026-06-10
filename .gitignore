@@ -14,9 +14,11 @@
 /data
 /gha-creds-*.json
 /prompts/.dark-factory.lock
+/prompts/**/*.md.lock
 /prompts/log/
 /specs/log/
 /vendor
 coverage.html
 coverage.out
 /CLAUDE.md
+.daemon-session.log

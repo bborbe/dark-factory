@@ -8,16 +8,21 @@ import (
 	"bytes"
 	"context"
 	stderrors "errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 	"time"
 
+	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/cmd"
 	lockpkg "github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -59,10 +64,27 @@ var _ = Describe("Scanner", func() {
 		pp = &mocks.PromptProcessor{}
 		failureHandler = &mocks.FailureHandler{}
 
-		// Default: Load returns error (no pending verification files)
-		mgr.LoadReturns(nil, stderrors.New("not found"))
+		// Default: Load returns a valid pre-execution PromptFile.
+		//
+		// The scanner takes a per-prompt lock right before handing the
+		// candidate to the processor, then re-reads the prompt via
+		// PromptManager.Load. Returning a valid file with
+		// status=approved makes the post-lock re-read see an advanceable
+		// candidate, so existing tests asserting on ProcessPrompt
+		// continue to pass. Tests that want to simulate a stale or
+		// moved file override this stub.
+		mgr.LoadStub = func(
+			_ context.Context, path string,
+		) (*prompt.PromptFile, error) {
+			return prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{Status: string(prompt.ApprovedPromptStatus)},
+				[]byte("# Test\n"),
+				nil,
+			), nil
+		}
 
-		s = queuescanner.NewScanner(mgr, pp, failureHandler, queueDir)
+		s = queuescanner.NewScanner(mgr, pp, failureHandler, queueDir, nil, 0)
 	})
 
 	AfterEach(func() {
@@ -386,6 +408,54 @@ var _ = Describe("Scanner", func() {
 			})
 		})
 
+		Context("per-prompt lock acquire timeout", func() {
+			It("ends the scan, logs project-lock-timeout once, processes nothing", func() {
+				path := writeFile(
+					"230-spec-060-locked.md",
+					promptFrontmatterWithSpec(prompt.ApprovedPromptStatus, []string{"060"}),
+				)
+				pr := prompt.Prompt{Path: path, Status: prompt.ApprovedPromptStatus}
+				mgr.ListQueuedReturns([]prompt.Prompt{pr}, nil)
+				mgr.AllPreviousCompletedReturns(true)
+				mgr.AllPreviousInSpecCompletedReturns(true)
+
+				lockMock := &mocks.LockFileLock{}
+				lockMock.AcquireReturns(stderrors.New("lock acquire timeout"))
+				s = queuescanner.NewScanner(
+					mgr, pp, failureHandler, queueDir,
+					func(string) lockpkg.FileLock { return lockMock },
+					10*time.Millisecond,
+				)
+
+				var logBuf bytes.Buffer
+				original := slog.Default()
+				slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+				defer slog.SetDefault(original)
+
+				completed, err := s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				// The timeout branch must END the scan (return true): a false
+				// return hot-loops on the same locked candidate within one
+				// ScanAndProcess call — blocking lockTimeout per iteration,
+				// inflating the completed counter, and starving other specs.
+				Expect(completed).To(Equal(0))
+				Expect(pp.ProcessPromptCallCount()).To(Equal(0))
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonProjectLockTimeout),
+				))
+
+				// Dedupe survives the failed acquire: a second scan against the
+				// same stuck lock must not re-log the blocked line (the key is
+				// cleared only after a successful acquire).
+				logBuf.Reset()
+				_, err = s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(logBuf.String()).NotTo(ContainSubstring(
+					string(prompt.ReasonProjectLockTimeout),
+				))
+			})
+		})
+
 		Context("per-spec predecessor lookup", func() {
 			makePrompt := func(name string, status prompt.PromptStatus, specList []string) prompt.Prompt {
 				path := writeFile(
@@ -424,6 +494,102 @@ var _ = Describe("Scanner", func() {
 					Expect(pp.ProcessPromptCallCount()).To(Equal(1))
 					// 226 is alphabetic-first; both are valid choices given the per-spec
 					// guard. The KEY assertion: at least one was processed.
+				},
+			)
+
+			It(
+				"processes spec B candidate while spec A is blocked by failed/missing predecessor",
+				func() {
+					// Spec 094 AC "cross-spec-advance": one spec's queue must not
+					// block an unrelated spec's queue. The test sets up spec A
+					// genuinely blocked (predecessor failed/missing) and spec B
+					// advanceable, and asserts BOTH that B is processed AND that A
+					// is not — the negative assertion is the regression lock.
+					// Wire Load to surface the spec field so the per-spec guard
+					// is exercised (default LoadReturns would fall through to
+					// the legacy global guard and mask the per-spec behavior).
+					pr226 := makePrompt(
+						"226-spec-A-blocker.md",
+						prompt.ApprovedPromptStatus,
+						[]string{"A"},
+					)
+					pr230 := makePrompt(
+						"230-spec-B-advanceable.md",
+						prompt.ApprovedPromptStatus,
+						[]string{"B"},
+					)
+					mgr.LoadStub = func(
+						_ context.Context, path string,
+					) (*prompt.PromptFile, error) {
+						switch filepath.Base(path) {
+						case "226-spec-A-blocker.md":
+							return prompt.NewPromptFile(
+								path,
+								prompt.Frontmatter{
+									Status: string(prompt.ApprovedPromptStatus),
+									Specs:  prompt.SpecList{"A"},
+								},
+								[]byte("# Test\n"),
+								nil,
+							), nil
+						case "230-spec-B-advanceable.md":
+							return prompt.NewPromptFile(
+								path,
+								prompt.Frontmatter{
+									Status: string(prompt.ApprovedPromptStatus),
+									Specs:  prompt.SpecList{"B"},
+								},
+								[]byte("# Test\n"),
+								nil,
+							), nil
+						}
+						return nil, stderrors.New("not found")
+					}
+					mgr.ListQueuedReturnsOnCall(0, []prompt.Prompt{pr226, pr230}, nil)
+					mgr.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+					// Spec A's predecessor 225 is failed/missing → blocked.
+					mgr.AllPreviousInSpecCompletedStub = func(
+						_ context.Context, _ int, specID string,
+					) bool {
+						if specID == "A" {
+							return false // spec A's predecessor is failed/missing
+						}
+						return true // spec B's predecessor is complete
+					}
+					mgr.FindMissingInSpecCompletedStub = func(
+						_ context.Context, _ int, specID string,
+					) int {
+						if specID == "A" {
+							return 225 // spec A is blocked by missing 225
+						}
+						return 0
+					}
+					// Legacy global guard stub (unused here — Load surfaces
+					// the spec field so the per-spec guard is consulted — but
+					// the scanner still consults this when no spec field is
+					// present, so keep it honest).
+					mgr.AllPreviousCompletedReturns(true)
+					pp.ProcessPromptReturns(nil)
+
+					completed, err := s.ScanAndProcess(ctx)
+					Expect(err).NotTo(HaveOccurred())
+
+					// POSITIVE: spec B's candidate was processed.
+					Expect(completed).To(Equal(1))
+					Expect(pp.ProcessPromptCallCount()).To(Equal(1))
+					_, processed := pp.ProcessPromptArgsForCall(0)
+					Expect(processed.Path).To(HaveSuffix("230-spec-B-advanceable.md"))
+
+					// NEGATIVE: spec A's candidate was NOT processed.
+					// (Removing this assertion is the regression-flagged
+					// weakening from spec 094 Failure Mode "Cross-spec test
+					// weakened".) We assert this by inspecting every
+					// ProcessPrompt call: only spec B's path was ever passed
+					// in. Spec A's path is absent.
+					for i := 0; i < pp.ProcessPromptCallCount(); i++ {
+						_, arg := pp.ProcessPromptArgsForCall(i)
+						Expect(arg.Path).NotTo(HaveSuffix("226-spec-A-blocker.md"))
+					}
 				},
 			)
 
@@ -533,7 +699,63 @@ var _ = Describe("Scanner", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completed).To(Equal(0))
 				Expect(pp.ProcessPromptCallCount()).To(Equal(0))
-				Expect(logBuf.String()).To(ContainSubstring("malformed frontmatter"))
+				// Spec 094 AC "scanner-log-enum": the canonical
+				// frontmatter-parse-error token is emitted, not the
+				// historical human string. Both surfaces (scanner log
+				// and status) source the token from the same constant
+				// in pkg/prompt.
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonPromptFrontmatterParseError),
+				))
+				Expect(logBuf.String()).NotTo(ContainSubstring("malformed frontmatter"))
+			})
+
+			It("emits the hyphenated reason token in the blocked log line", func() {
+				// Spec 094 AC "scanner-log-enum": the scanner's blocked-log
+				// line must emit the hyphenated enum shared with status
+				// (`reason=previous-prompt-not-completed`), not the spaced
+				// human string. Both surfaces source the token from
+				// `prompt.ReasonPreviousPromptNotCompleted`; a regression
+				// that hardcoded the spaced literal would fail this test.
+				path := writeFile(
+					"222-spec-056-foo.md",
+					promptFrontmatterWithSpec(prompt.ApprovedPromptStatus, []string{"056"}),
+				)
+				pf := prompt.NewPromptFile(
+					path,
+					prompt.Frontmatter{
+						Status: string(prompt.ApprovedPromptStatus),
+						Specs:  prompt.SpecList{"056"},
+					},
+					[]byte("# Test\n"),
+					nil,
+				)
+				mgr.LoadReturns(pf, nil)
+				pr := prompt.Prompt{Path: path, Status: prompt.ApprovedPromptStatus}
+				mgr.ListQueuedReturns([]prompt.Prompt{pr}, nil)
+				mgr.AllPreviousInSpecCompletedReturns(false)
+				mgr.FindMissingInSpecCompletedReturns(221)
+
+				// Capture slog output via the same TextHandler shape the
+				// daemon uses. SetDefault swap is local to this It and
+				// restored by the deferred SetDefault.
+				var logBuf bytes.Buffer
+				original := slog.Default()
+				slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+				defer slog.SetDefault(original)
+
+				_, err := s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Positive: the hyphenated enum token (sourced from the
+				// shared constant in pkg/prompt) appears in the log line.
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonPreviousPromptNotCompleted),
+				))
+				// Negative: the spaced human string is gone. A regression
+				// that hardcoded "previous prompt not completed" inside
+				// logBlockedOnce would fail this assertion.
+				Expect(logBuf.String()).NotTo(ContainSubstring("previous prompt not completed"))
 			})
 		})
 	})
@@ -606,7 +828,7 @@ var _ = Describe("Scanner", func() {
 
 		Context("queue dir does not exist", func() {
 			BeforeEach(func() {
-				s = queuescanner.NewScanner(mgr, pp, failureHandler, "/nonexistent/path")
+				s = queuescanner.NewScanner(mgr, pp, failureHandler, "/nonexistent/path", nil, 0)
 			})
 
 			It("returns false gracefully", func() {
@@ -673,11 +895,17 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 		return
 	}
 	It("serializes reject and advance via project lock — no double-write", func() {
-		// This test exercises the lock-acquisition pattern (fileLock) that prompt
-		// 1 widens. It does not invoke the reject command directly (which
-		// requires full CLI wiring) — it tests the scanner invariant that
-		// ScanAndProcess respects an external holder of the same lock.
-		// Setup: a real prompt file at queueDir, a lock path
+		// Lock-primitive test: only the FileLock primitive is
+		// exercised. The companion "serializes a real reject
+		// against a real scanner advance" test below wires up
+		// the real cmd.NewRejectCommand and a real
+		// queuescanner.Scanner over a real prompt fixture and
+		// is the regression-lock test for the spec-092
+		// concurrent-reject-advance contract. This test stays
+		// as a focused unit test of the lock primitive
+		// itself — the only failure mode it covers is
+		// "external holder of the lock blocks a fresh Acquire
+		// within the timeout".
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -711,4 +939,281 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 		Expect(otherLock.Acquire(ctx, 5*time.Second)).To(Succeed())
 		Expect(otherLock.Release(ctx)).To(Succeed())
 	})
+
+	It(
+		"serializes a real reject against a real scanner advance on one prompt fixture",
+		func() {
+			// Spec 092 AC "concurrent-reject-advance": a real prompt
+			// reject and a real scanner advance on the same prompt file
+			// must serialize under the per-prompt file lock. Exactly one
+			// final on-disk state, no corruption, the loser observes the
+			// post-lock state. This test exercises the actual reject
+			// command + actual scanner against a real prompt fixture.
+			// Both contenders take the same lock.NewFileLock on the
+			// prompt path, so the assertion that fails if the production
+			// lock from step 3 is removed is: "exactly one final
+			// on-disk state" (a torn save/rename interleaving would
+			// leave the file in BOTH in-progress/ and rejected/).
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			dir, err := os.MkdirTemp("", "concurrent-reject-real-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(dir)
+
+			// Build a real prompt.NewManager for the scanner contender
+			// so the scanner's processSingleQueued exercises the real
+			// file-locking, Load, IsPreExecution, etc. path — not a
+			// mock. completedDir and cancelledDir are separate temp
+			// dirs because the scanner's helpers consult them via
+			// AllPreviousCompleted etc.
+			inboxDir := filepath.Join(dir, "inbox")
+			inProgressDir := filepath.Join(dir, "in-progress")
+			rejectedDir := filepath.Join(dir, "rejected")
+			completedDir := filepath.Join(dir, "completed")
+			cancelledDir := filepath.Join(dir, "cancelled")
+			Expect(os.MkdirAll(inboxDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
+			Expect(os.MkdirAll(cancelledDir, 0750)).To(Succeed())
+
+			// Use number 001 so the scanner's AllPreviousCompleted(1)
+			// returns true vacuously (no predecessors) — the scanner
+			// must actually pick this candidate for the lock to be
+			// exercised on the contention path. status: approved is
+			// pre-execution (IsPreExecution() == true) and the
+			// post-lock re-read will see it as still advanceable
+			// after a non-reject contender wins; status: failed
+			// would be filtered by ListQueued, so the scanner would
+			// never pick it.
+			promptPath := filepath.Join(inProgressDir, "001-test.md")
+			Expect(os.WriteFile(promptPath, []byte(
+				"---\nstatus: approved\n---\n# Test\n",
+			), 0600)).To(Succeed())
+
+			realMgr := prompt.NewManager(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				cancelledDir,
+				nil,
+				libtime.NewCurrentDateTime(),
+			)
+			// Use a mock PromptManager so we can control
+			// ListQueued to return the file exactly once — the
+			// scanner's outer loop would otherwise pick the
+			// same file on every iteration in a tight loop and
+			// starve the reject goroutine. Load and
+			// AllPreviousCompleted delegate to the real
+			// prompt.NewManager so the post-lock re-read sees
+			// the actual on-disk state (file gone vs. file
+			// present, status approved vs. status rejected).
+			localMgr := &mocks.QueueScannerPromptManager{}
+			listQueuedCallCount := 0
+			localMgr.ListQueuedStub = func(_ context.Context) (
+				[]prompt.Prompt,
+				error,
+			) {
+				listQueuedCallCount++
+				if listQueuedCallCount == 1 {
+					return []prompt.Prompt{{
+						Path:   promptPath,
+						Status: prompt.ApprovedPromptStatus,
+					}}, nil
+				}
+				return nil, nil
+			}
+			localMgr.LoadStub = func(
+				_ context.Context, path string,
+			) (*prompt.PromptFile, error) {
+				return realMgr.Load(ctx, path)
+			}
+			localMgr.AllPreviousCompletedStub = func(
+				_ context.Context, n int,
+			) bool {
+				return realMgr.AllPreviousCompleted(ctx, n)
+			}
+			// Failure handler mock — the scanner never calls it on
+			// the "skip post-lock" path (ProcessPrompt is never
+			// invoked), but we pass a real-shaped mock so the
+			// interface is satisfied.
+			failureHandler := &mocks.FailureHandler{}
+			failureHandler.HandleReturns(nil)
+			// PromptProcessor mock. Returns nil without moving
+			// the file. The real production scanner would move
+			// the file to completed/ via processor.rel, but
+			// moving the file here would hide the file from the
+			// reject's FindPromptFileInDirs (which only searches
+			// inbox, in-progress, rejected — not completed).
+			// Keeping the file in in-progress/ lets the reject
+			// find it and complete the rename, so the test
+			// can assert the final state.
+			promptProcessor := &mocks.PromptProcessor{}
+			promptProcessor.ProcessPromptReturns(nil)
+
+			// The scanner's lockTimeout must be long enough that
+			// the scanner waits for the reject to release the
+			// lock. The starter-lock pre-acquire (see below)
+			// forces both contenders to queue on the lock
+			// simultaneously; once the starter releases, the
+			// reject takes the lock, finishes, then the scanner
+			// takes it. 5s is safely above the reject's working
+			// time but well below the test's overall timeout.
+			localScanner := queuescanner.NewScanner(
+				localMgr,
+				promptProcessor,
+				failureHandler,
+				inProgressDir,
+				nil,
+				5*time.Second,
+			)
+
+			// Real reject command against the temp dirs, using the
+			// same NewRejectCommand constructor the production code
+			// uses. fileLockFactory=nil defaults to lock.NewFileLock
+			// inside NewRejectCommand — same primitive the scanner
+			// uses, so both contenders race on the same
+			// <promptPath>.lock file.
+			rejectCmd := cmd.NewRejectCommand(
+				inboxDir,
+				inProgressDir,
+				rejectedDir,
+				realMgr,
+				nil,
+				5*time.Second,
+			)
+
+			// Capture slog output across BOTH goroutines via the
+			// default logger. The slog-capture idiom here replaces
+			// the process-wide default; both the scanner and the
+			// reject command write to the same buffer.
+			var logBuf bytes.Buffer
+			originalLogger := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+			defer slog.SetDefault(originalLogger)
+
+			// Pre-acquire the per-prompt lock with a third-party
+			// FileLock so both contenders are forced to block on
+			// their own Acquire until we release it. Without this,
+			// the reject's FindPromptFileInDirs + Acquire is
+			// shorter than the scanner's HasPendingVerification
+			// + ListQueued + candidate-selection + Acquire path,
+			// so the reject wins the race before the scanner
+			// reaches its lock acquire — and the scanner's
+			// "lock acquired" line is never logged. The starter
+			// lock guarantees both sides log "lock acquired".
+			starterLock := lockpkg.NewFileLock(promptPath)
+			Expect(starterLock.Acquire(ctx, 5*time.Second)).To(Succeed())
+
+			// Sync barrier: both goroutines start together, then race.
+			var wg sync.WaitGroup
+			wg.Add(2)
+
+			rejectErrCh := make(chan error, 1)
+			scannerErrCh := make(chan error, 1)
+			go func() {
+				defer wg.Done()
+				rejectErrCh <- rejectCmd.Run(
+					ctx, []string{"001-test.md", "--reason", "concurrent"},
+				)
+			}()
+
+			go func() {
+				defer wg.Done()
+				// The scanner's ScanAndProcess will run until
+				// ListQueued returns empty (the mock returns
+				// empty after the first call). The scanner's
+				// `lockTimeout` is 5s so it doesn't bail out
+				// before the reject releases the lock.
+				_, err := localScanner.ScanAndProcess(ctx)
+				scannerErrCh <- err
+			}()
+
+			// Give both goroutines a moment to reach their
+			// fl.Acquire calls (both are blocked there because
+			// the starter holds the lock), then release the
+			// starter so the race is fair.
+			time.Sleep(50 * time.Millisecond)
+			Expect(starterLock.Release(ctx)).To(Succeed())
+
+			wg.Wait()
+
+			// Drain the result channels to avoid goroutine leak.
+			rejectErr := <-rejectErrCh
+			scannerErr := <-scannerErrCh
+
+			// REGRESSION LOCK. Exactly one final on-disk state. If
+			// the per-prompt file lock is removed from either side,
+			// a save-after-rename interleaving leaves the file in
+			// BOTH in-progress/ and rejected/ — this assertion
+			// catches that.
+			inProgressCount := 0
+			rejectedCount := 0
+			if _, statErr := os.Stat(promptPath); statErr == nil {
+				inProgressCount = 1
+			}
+			rejectedPath := filepath.Join(rejectedDir, "001-test.md")
+			if _, statErr := os.Stat(rejectedPath); statErr == nil {
+				rejectedCount = 1
+			}
+			Expect(inProgressCount+rejectedCount).To(Equal(1),
+				"prompt must end in exactly one of in-progress/ or rejected/ — "+
+					"a torn save/rename would leave it in both. "+
+					"inProgress=%d rejected=%d",
+				inProgressCount, rejectedCount,
+			)
+
+			// The winning file's bytes parse as valid frontmatter
+			// (not a torn write).
+			finalPath := promptPath
+			if rejectedCount == 1 {
+				finalPath = rejectedPath
+			}
+			pm := prompt.NewManager(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				cancelledDir,
+				nil,
+				libtime.NewCurrentDateTime(),
+			)
+			pf, loadErr := pm.Load(ctx, finalPath)
+			Expect(loadErr).NotTo(HaveOccurred(),
+				"final on-disk state must parse as valid frontmatter")
+			Expect(pf.Frontmatter.Status).NotTo(BeEmpty(),
+				"final on-disk state must have a non-empty status")
+
+			// Both sides logged `lock acquired` (the spec-092
+			// evidence grep). Each side may log it more than once
+			// (the scanner iterates the outer loop), so we count
+			// >= 2.
+			Expect(strings.Count(logBuf.String(), "lock acquired")).
+				To(BeNumerically(">=", 2),
+					fmt.Sprintf(
+						"both reject and advance must have logged 'lock acquired' — "+
+							"buffer:\n%s\nscannerErr: %v\nrejectErr: %v",
+						logBuf.String(),
+						scannerErr,
+						rejectErr,
+					))
+
+			// The loser observed the post-lock state. Either:
+			//  (a) reject won: file is in rejected/, scanner
+			//      re-read returned an error (file gone) → no
+			//      error from scanner.
+			//  (b) scanner won first: scanner's post-lock re-read
+			//      showed status=failed (not pre-execution) →
+			//      skip; reject then acquired the lock, saw
+			//      status=failed, allowed reject → no error
+			//      from reject.
+			// In both orderings both sides return nil. The
+			// invariant: the loser side did NOT corrupt the file
+			// (caught by the exactly-one assertion above) and did
+			// NOT propagate an error.
+			Expect(scannerErr).NotTo(HaveOccurred(),
+				"scanner must not error on the post-lock skip path")
+			Expect(rejectErr).NotTo(HaveOccurred(),
+				"reject must not error when it wins the rename race")
+		},
+	)
 })

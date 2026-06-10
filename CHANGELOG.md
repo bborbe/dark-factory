@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.178.0
 
 - feat(skills/watch): liveness-based stuck detection — at >=10min elapsed (gen or exec mode), inspect the active container via `docker logs --since=3m | wc -l`. <5 lines → Basso (likely stuck); 0 lines + >=15min elapsed → 3x Sosumi + break (silent stuck, treat as failure). Eliminates the false positive on legitimately slow gen runs (12-18min on heavy specs) and closes the gen-mode coverage gap that the elapsed-time-only `executing since` check missed. Falls back gracefully when docker is unavailable.
 

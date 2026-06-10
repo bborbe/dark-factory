@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	stderrors "errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -533,7 +534,63 @@ var _ = Describe("Scanner", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(completed).To(Equal(0))
 				Expect(pp.ProcessPromptCallCount()).To(Equal(0))
-				Expect(logBuf.String()).To(ContainSubstring("malformed frontmatter"))
+				// Spec 094 AC "scanner-log-enum": the canonical
+				// frontmatter-parse-error token is emitted, not the
+				// historical human string. Both surfaces (scanner log
+				// and status) source the token from the same constant
+				// in pkg/prompt.
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonPromptFrontmatterParseError),
+				))
+				Expect(logBuf.String()).NotTo(ContainSubstring("malformed frontmatter"))
+			})
+
+			It("emits the hyphenated reason token in the blocked log line", func() {
+				// Spec 094 AC "scanner-log-enum": the scanner's blocked-log
+				// line must emit the hyphenated enum shared with status
+				// (`reason=previous-prompt-not-completed`), not the spaced
+				// human string. Both surfaces source the token from
+				// `prompt.ReasonPreviousPromptNotCompleted`; a regression
+				// that hardcoded the spaced literal would fail this test.
+				path := writeFile(
+					"222-spec-056-foo.md",
+					promptFrontmatterWithSpec(prompt.ApprovedPromptStatus, []string{"056"}),
+				)
+				pf := prompt.NewPromptFile(
+					path,
+					prompt.Frontmatter{
+						Status: string(prompt.ApprovedPromptStatus),
+						Specs:  prompt.SpecList{"056"},
+					},
+					[]byte("# Test\n"),
+					nil,
+				)
+				mgr.LoadReturns(pf, nil)
+				pr := prompt.Prompt{Path: path, Status: prompt.ApprovedPromptStatus}
+				mgr.ListQueuedReturns([]prompt.Prompt{pr}, nil)
+				mgr.AllPreviousInSpecCompletedReturns(false)
+				mgr.FindMissingInSpecCompletedReturns(221)
+
+				// Capture slog output via the same TextHandler shape the
+				// daemon uses. SetDefault swap is local to this It and
+				// restored by the deferred SetDefault.
+				var logBuf bytes.Buffer
+				original := slog.Default()
+				slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+				defer slog.SetDefault(original)
+
+				_, err := s.ScanAndProcess(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Positive: the hyphenated enum token (sourced from the
+				// shared constant in pkg/prompt) appears in the log line.
+				Expect(logBuf.String()).To(ContainSubstring(
+					fmt.Sprintf("reason=%s", prompt.ReasonPreviousPromptNotCompleted),
+				))
+				// Negative: the spaced human string is gone. A regression
+				// that hardcoded "previous prompt not completed" inside
+				// logBlockedOnce would fail this assertion.
+				Expect(logBuf.String()).NotTo(ContainSubstring("previous prompt not completed"))
 			})
 		})
 	})

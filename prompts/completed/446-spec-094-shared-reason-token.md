@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [094-bug-spec-092-contract-violations]
+summary: Replaced spaced human reason strings in the scanner's logBlockedOnce with hyphenated enum tokens sourced from five new shared Reason* constants in pkg/prompt; GetBlockedPrompt and the parity test now reference the same symbols (drift becomes a compile error). Added a new scanner test pinning reason=previous-prompt-not-completed; updated multi-spec malformed test to assert reason=prompt-frontmatter-parse-error; both Blocked format strings in formatter.go are byte-stable.
+container: dark-factory-spec092-fix-exec-446-spec-094-shared-reason-token
+dark-factory-version: v0.177.1
 created: "2026-06-10T15:05:00Z"
 queued: "2026-06-10T14:39:29Z"
+started: "2026-06-10T15:14:11Z"
+completed: "2026-06-10T15:22:21Z"
 branch: dark-factory/bug-spec-092-contract-violations
 ---
 

@@ -153,7 +153,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 		specID, err := s.readSpecID(ctx, candidate)
 		if err != nil {
 			// Malformed prompt frontmatter — treat as blocked, surface via logBlockedOnce
-			s.logBlockedOnce(ctx, candidate, "", "malformed frontmatter", "")
+			s.logBlockedOnce(ctx, candidate, "", prompt.ReasonPromptFrontmatterParseError, "")
 			return true, nil
 		}
 		if specID == "" {
@@ -179,7 +179,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, error) {
 			ctx,
 			candidate,
 			specID,
-			"previous prompt not completed",
+			prompt.ReasonPreviousPromptNotCompleted,
 			missingStr(missing),
 		)
 		return true, nil

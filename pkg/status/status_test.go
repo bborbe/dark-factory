@@ -596,32 +596,54 @@ container: dark-factory-nonexistent-container-xyz
 		})
 
 		It("Blocker's three values match the prompt blocked log line", func() {
+			// Spec 094 AC "parity-shared-source": the expected reason token is
+			// derived from the shared constant in pkg/prompt, not a hand-written
+			// literal. Both surfaces (status formatter and scanner log) source
+			// the reason from the same symbol; this test asserts they agree.
 			promptMgr.HasExecutingReturns(false)
 			promptMgr.ListQueuedReturns([]prompt.Prompt{
 				{Path: filepath.Join(queueDir, "227-foo.md"), Status: prompt.ApprovedPromptStatus},
 			}, nil)
-			promptMgr.GetBlockedPromptReturns(227, "previous-prompt-not-completed", 226, true)
+			promptMgr.GetBlockedPromptReturns(
+				227,
+				prompt.ReasonPreviousPromptNotCompleted,
+				226,
+				true,
+			)
 
 			st, err := statusChecker.GetStatus(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
 			formatter := status.NewFormatter()
 			out := formatter.Format(st)
-			Expect(
-				out,
-			).To(ContainSubstring("Blocked: 227 (reason=previous-prompt-not-completed, missing=226)\n"))
+			Expect(out).To(ContainSubstring(
+				fmt.Sprintf(
+					"Blocked: 227 (reason=%s, missing=226)\n",
+					prompt.ReasonPreviousPromptNotCompleted,
+				),
+			))
 
-			// Synthetic log line per spec 092 (mimicking scanner's logBlockedOnce).
-			logLine := "prompt blocked file=227 reason=previous-prompt-not-completed spec=058 missing=226"
+			// Parity: the three values (227, previous-prompt-not-completed, 226)
+			// appear in BOTH the status output and the scanner's log emission,
+			// with the reason sourced from the shared constant in pkg/prompt.
+			// The scanner log line shape is fixed by logBlockedOnce in
+			// pkg/queuescanner/scanner.go — we synthesize a string here using
+			// the same shared reason token, so a future drift between scanner
+			// and status would force this test to update the constant, not the
+			// literal.
+			logLine := fmt.Sprintf(
+				"prompt blocked file=227 reason=%s spec=058 missing=226",
+				prompt.ReasonPreviousPromptNotCompleted,
+			)
 			Expect(logLine).To(ContainSubstring("file=227"))
-			Expect(logLine).To(ContainSubstring("reason=previous-prompt-not-completed"))
+			Expect(logLine).To(ContainSubstring(
+				fmt.Sprintf("reason=%s", prompt.ReasonPreviousPromptNotCompleted),
+			))
 			Expect(logLine).To(ContainSubstring("missing=226"))
 
-			// Parity: the three values (227, previous-prompt-not-completed, 226) appear
-			// in BOTH surfaces. The status line encodes them as 3-digit, padded;
-			// the log line emits them as raw integers — same values, same source.
+			// Parity: the three values match between the two surfaces.
 			Expect(st.Blocked.Number).To(Equal(227))
-			Expect(st.Blocked.Reason).To(Equal("previous-prompt-not-completed"))
+			Expect(st.Blocked.Reason).To(Equal(prompt.ReasonPreviousPromptNotCompleted))
 			Expect(st.Blocked.Missing).To(Equal(226))
 		})
 	})

@@ -993,6 +993,20 @@ func (pm *Manager) FindPromptStatusInProgress(ctx context.Context, number int) s
 	return pm.promptScanner.FindPromptStatusInProgress(ctx, number)
 }
 
+// Reason tokens for blocked-prompt notifications. These strings are
+// canonical: the scanner's blocked-log line and `dark-factory status` both
+// emit them verbatim. Drift between the two surfaces is a regression (spec
+// 094 AC "scanner-log-enum"). All five tokens are defined here so the parity
+// test in pkg/status can derive its expectation from these constants rather
+// than duplicating a hand-written literal.
+const (
+	ReasonPreviousPromptNotCompleted  = "previous-prompt-not-completed"
+	ReasonPreviousPromptMissing       = "previous-prompt-missing"
+	ReasonPromptFrontmatterParseError = "prompt-frontmatter-parse-error"
+	ReasonPromptFileReadError         = "prompt-file-read-error"
+	ReasonProjectLockTimeout          = "project-lock-timeout"
+)
+
 // GetBlockedPrompt scans queued prompts and returns the first one whose per-spec
 // predecessor is not completed. Returns (0, "", 0, false) if no blocker is active
 // or if no candidates exist. The decision is delegated to the exported
@@ -1012,16 +1026,16 @@ func (pm *Manager) GetBlockedPrompt(ctx context.Context) (int, string, int, bool
 		}
 		pf, err := pm.Load(ctx, candidate.Path)
 		if err != nil {
-			return number, "prompt-file-read-error", 0, true
+			return number, ReasonPromptFileReadError, 0, true
 		}
 		specs := pf.Specs()
 		if len(specs) == 0 {
 			if !pm.promptScanner.AllPreviousCompleted(ctx, number) {
 				missing := pm.promptScanner.FindMissingCompleted(ctx, number)
 				if len(missing) > 0 {
-					return number, "previous-prompt-not-completed", missing[0], true
+					return number, ReasonPreviousPromptNotCompleted, missing[0], true
 				}
-				return number, "previous-prompt-missing", 0, true
+				return number, ReasonPreviousPromptMissing, 0, true
 			}
 			continue
 		}
@@ -1029,9 +1043,9 @@ func (pm *Manager) GetBlockedPrompt(ctx context.Context) (int, string, int, bool
 		if !pm.promptScanner.AllPreviousInSpecCompleted(ctx, number, specID) {
 			missing := pm.promptScanner.FindMissingInSpecCompleted(ctx, number, specID)
 			if missing > 0 {
-				return number, "previous-prompt-not-completed", missing, true
+				return number, ReasonPreviousPromptNotCompleted, missing, true
 			}
-			return number, "previous-prompt-missing", 0, true
+			return number, ReasonPreviousPromptMissing, 0, true
 		}
 	}
 	return 0, "", 0, false

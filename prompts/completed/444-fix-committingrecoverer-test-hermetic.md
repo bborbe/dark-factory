@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [093-bug-committingrecoverer-tests-commit-real-repo]
+summary: 'Made pkg/committingrecoverer Ginkgo suite hermetic: shared BeforeEach now sandboxes every spec into a temp git repo, added assertNotInRealRepo guard that fails when cwd resolves to the real repo, and added a negative-evidence spec proving the guard fires. All 13 specs pass; make precommit exits 0; hermeticity proof shows zero new commits and unchanged working-tree status with a dirty real repo.'
+container: dark-factory-exec-444-fix-committingrecoverer-test-hermetic
+dark-factory-version: v0.177.1
 created: "2026-06-10T10:00:00Z"
 queued: "2026-06-10T09:43:50Z"
+started: "2026-06-10T09:46:39Z"
+completed: "2026-06-10T10:04:53Z"
 ---
 
 <summary>

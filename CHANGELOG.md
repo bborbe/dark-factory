@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix(committingrecoverer): make Ginkgo suite hermetic against the real repo — every spec in `pkg/committingrecoverer/recoverer_test.go` now runs with cwd inside a sandbox temp git repo (via the shared `BeforeEach` chdir), and a suite-level guard (`assertNotInRealRepo`) fails loudly with a message naming the real-repo cwd if a spec ever reaches the package-level dirty/commit helpers without the sandbox chdir. Stops the recurring data-corruption bug where mid-`precommit` the suite committed the developer's uncommitted working tree onto a live PR branch with the message `Test prompt` (last reproduced on `2e57ae5` and `a779152`). Production behavior, `NewRecoverer` signature, and all callers in `pkg/factory` and the three processor test files are unchanged. Cross-package audit confirms no other `_test.go` reaches the same escape (`grep -rln 'git.HasDirtyFiles|git.CommitAll|git.CommitWithRetry' pkg/ --include='*_test.go'` returns only `pkg/git/git_test.go`).
+
 ## v0.178.0
 
 - feat(skills/watch): liveness-based stuck detection — at >=10min elapsed (gen or exec mode), inspect the active container via `docker logs --since=3m | wc -l`. <5 lines → Basso (likely stuck); 0 lines + >=15min elapsed → 3x Sosumi + break (silent stuck, treat as failure). Eliminates the false positive on legitimately slow gen runs (12-18min on heavy specs) and closes the gen-mode coverage gap that the elapsed-time-only `executing since` check missed. Falls back gracefully when docker is unavailable.

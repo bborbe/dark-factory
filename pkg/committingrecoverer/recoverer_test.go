@@ -7,9 +7,11 @@ package committingrecoverer_test
 import (
 	"context"
 	stderrors "errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -122,12 +124,59 @@ func initGitRepo(repoDir string) {
 	}
 }
 
+// resolveGitToplevel returns the absolute path of the git toplevel of cwd.
+// Read-only: runs `git rev-parse --show-toplevel` with no mutation of any repo.
+func resolveGitToplevel() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// assertNotInRealRepo returns an error if cwd's git toplevel equals realRepoRoot.
+// The error message names realRepoRoot so a developer reading the failure can
+// locate the missing sandbox chdir. Read-only — does not mutate any repo.
+//
+// Returning an error (instead of calling Ginkgo's Fail directly) keeps the
+// suite green for the negative-evidence spec: that spec wraps the call in
+// InterceptGomegaFailure and asserts the error is non-nil, instead of letting
+// the guard's failure cascade into a real spec failure.
+func assertNotInRealRepo(realRepoRoot string) error {
+	currentToplevel, err := resolveGitToplevel()
+	if err != nil {
+		// Cannot determine toplevel — likely not in a git repo at all. That's
+		// fine for specs that have chdir'd into a sandbox repo: the sandbox
+		// itself IS a git repo, so this branch is unreachable for well-behaved
+		// specs. If we reach it, fail loud.
+		return fmt.Errorf(
+			"committingrecoverer spec could not resolve git toplevel from cwd (%s); "+
+				"sandbox chdir may be missing — expected cwd inside a sandbox git repo, "+
+				"got cwd whose git toplevel is the real repository (%s); "+
+				"add the sandbox chdir before reaching the package-level dirty/commit helpers",
+			realRepoRoot,
+			realRepoRoot,
+		)
+	}
+	if currentToplevel == realRepoRoot {
+		return fmt.Errorf(
+			"committingrecoverer spec ran with cwd inside the real repository (%s); "+
+				"add the sandbox chdir before reaching the package-level dirty/commit helpers",
+			realRepoRoot,
+		)
+	}
+	return nil
+}
+
 var _ = Describe("Recoverer", func() {
 	var (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		tempDir      string
 		completedDir string
+		repoDir      string
+		realRepoRoot string
 		mgr          *stubPromptManager
 		rel          *stubReleaser
 		ac           *stubAutoCompleter
@@ -142,16 +191,44 @@ var _ = Describe("Recoverer", func() {
 		originalDir, err = os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 
+		// Resolve the real repo root BEFORE any chdir, so we can compare
+		// current cwd's git toplevel against it from the guard. This is
+		// read-only — runs `git rev-parse --show-toplevel` from the cwd at
+		// suite start (the package source dir, inside the real repo).
+		realRepoRoot, err = git.ResolveGitRoot(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
 		tempDir, err = os.MkdirTemp("", "committingrecoverer-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
 		completedDir = filepath.Join(tempDir, "completed")
 		Expect(os.MkdirAll(completedDir, 0750)).To(Succeed())
 
+		// Sandbox every spec: create a temp git repo under tempDir and chdir
+		// into it. This guarantees that any spec in this Describe block runs
+		// with cwd inside an isolated git repo, never the real one. The
+		// per-spec Recover specs that build their own repoDir will chdir
+		// again into that sub-repo, which is still under tempDir and still
+		// a sandbox.
+		repoDir = filepath.Join(tempDir, "repo")
+		Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
+		initGitRepo(repoDir)
+		Expect(os.Chdir(repoDir)).To(Succeed())
+
 		mgr = &stubPromptManager{}
 		rel = &stubReleaser{}
 		ac = &stubAutoCompleter{}
 		rec = committingrecoverer.NewRecoverer(mgr, rel, ac, completedDir, false)
+
+		// Suite-level regression guard: every spec in this Describe block
+		// reaches Recover() (directly or via RecoverAll). If cwd resolved
+		// to the real repo at this point, the sandbox chdir above was
+		// bypassed — fail loudly with a message naming the real-repo path
+		// so the missing chdir is easy to locate.
+		Expect(assertNotInRealRepo(realRepoRoot)).NotTo(
+			HaveOccurred(),
+			"sandbox chdir is missing — cwd must not be inside the real repository before reaching the package-level dirty/commit helpers",
+		)
 	})
 
 	AfterEach(func() {
@@ -339,6 +416,37 @@ var _ = Describe("Recoverer", func() {
 			Expect(ac.checkAndCompleteCalled).To(Equal(1))
 			Expect(mgr.moveToCompletedCalled).To(Equal(1))
 		})
+	})
+
+	// Negative-evidence spec: proves the suite-level guard fires with a
+	// message naming the real repo when a Recover()-reaching spec runs with
+	// cwd inside the real repository. This is the AC-5 evidence: a future
+	// regression that removes the sandbox chdir will be caught loudly.
+	// The test asserts the guard's error is non-nil (not a Gomega failure),
+	// so the suite stays green — it asserts the guard FIRES, not that the
+	// production code path mutates the real repo.
+	It("guard fails when cwd is the real repo", func() {
+		Expect(realRepoRoot).NotTo(BeEmpty(), "realRepoRoot must be resolved by BeforeEach")
+		// Temporarily chdir BACK into the real repo source dir, so cwd's
+		// git toplevel equals realRepoRoot and the guard's equality check
+		// matches.
+		Expect(os.Chdir(originalDir)).To(Succeed())
+		defer func() {
+			// Restore cwd to the sandbox so the next BeforeEach (or
+			// AfterEach) is unaffected. Use repoDir from the BeforeEach
+			// if available, else fall back to originalDir.
+			_ = os.Chdir(repoDir)
+		}()
+
+		// assertNotInRealRepo returns an error (instead of calling Ginkgo's
+		// Fail directly) so the negative-evidence test can assert on the
+		// error rather than failing the spec.
+		err := assertNotInRealRepo(realRepoRoot)
+		Expect(err).To(HaveOccurred(), "guard must fail when cwd is the real repo")
+		Expect(err.Error()).To(
+			ContainSubstring(realRepoRoot),
+			"guard failure message must name the real-repo cwd path",
+		)
 	})
 })
 

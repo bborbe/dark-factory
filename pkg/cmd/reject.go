@@ -82,11 +82,7 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 		)
 	}
 
-	if status == prompt.FailedPromptStatus {
-		pf.StampRejectedWithOriginal(reason, string(prompt.FailedPromptStatus))
-	} else {
-		pf.StampRejected(reason)
-	}
+	pf.StampRejectedWithOriginal(reason, string(status))
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt")
 	}

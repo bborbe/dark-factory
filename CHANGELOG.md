@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix(prompt): rename `Frontmatter.RejectedReason` YAML tag from `rejected_reason` to `rejectedReason` (camelCase) so `yq '.rejectedReason' prompts/rejected/<NNN>-*.md` returns the operator-supplied reason instead of `null` (spec 092 contract). Add read-compat on the legacy `rejected_reason:` key in the `load` function so the five existing `prompts/completed/*.md` files written before the migration continue to parse into the same typed field — writes always emit the new camelCase key, no on-disk migration. `pkg/cmd/reject.go` now always stamps `originalStatus` (the pre-stamp value) for both pre-execution and failed-path rejects, so a rejected draft carries `originalStatus: draft` (remediates spec 094 defects 1 & 2). Inverted the draft-reject and idea-reject test assertions in `pkg/cmd/reject_test.go` to assert the spec contract; added an explicit read-compat test that loads a legacy `rejected_reason:` fixture and verifies the typed field round-trips. Updated string-match assertions on prompt-file content to `rejectedReason:`; spec-file content (which uses its own `pkg/spec/spec.go` struct, unchanged per spec 094 constraint) still emits `rejected_reason:`.
+
 ## v0.178.2
 
 - fix(status): `Blocked:` line now matches the spec-092 contract exactly — `Blocked: NNN (reason=..., missing=MMM)` with a single space after the colon and bare (non-zero-padded) prompt numbers. Previously emitted `Blocked:  %03d` (double space, zero-padded), which broke the spec's anchored regex and any operator tooling parsing the documented format. Test assertions in `pkg/status/status_test.go` updated to the spec format.

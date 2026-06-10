@@ -260,7 +260,7 @@ type Frontmatter struct {
 	RetryCount         int      `yaml:"retryCount,omitempty"`
 	LastFailReason     string   `yaml:"lastFailReason,omitempty"`
 	Rejected           string   `yaml:"rejected,omitempty"`
-	RejectedReason     string   `yaml:"rejected_reason,omitempty"`
+	RejectedReason     string   `yaml:"rejectedReason,omitempty"`
 	Cancelled          string   `yaml:"cancelled,omitempty"`
 }
 
@@ -334,6 +334,18 @@ func load(
 		}
 		slog.Debug("file loaded", "path", path, "bodySize", len(content), "hasStatus", false)
 		return pf, nil
+	}
+
+	// Read-compat for legacy snake_case key (spec 094). Files written before
+	// the camelCase migration carry `rejected_reason:` — accept that on read
+	// and populate the same typed field. Writes always emit `rejectedReason`.
+	if fm.RejectedReason == "" {
+		var legacy struct {
+			RejectedReason string `yaml:"rejected_reason,omitempty"`
+		}
+		if _, parseErr := frontmatter.Parse(bytes.NewReader(content), &legacy, yamlV3Format); parseErr == nil {
+			fm.RejectedReason = legacy.RejectedReason
+		}
 	}
 
 	pf := &PromptFile{

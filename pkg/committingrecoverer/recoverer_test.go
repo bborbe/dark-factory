@@ -438,7 +438,9 @@ var _ = Describe("Recoverer", func() {
 	// production code path mutates the real repo.
 	It("guard fails when cwd is the real repo", func() {
 		if realRepoRoot == "" {
-			Skip("no resolvable real repo (hideGit YOLO container masks .git) — guard trivially satisfied, nothing to demonstrate")
+			Skip(
+				"no resolvable real repo (hideGit YOLO container masks .git) — guard trivially satisfied, nothing to demonstrate",
+			)
 		}
 		// Temporarily chdir BACK into the real repo source dir, so cwd's
 		// git toplevel equals realRepoRoot and the guard's equality check

@@ -162,7 +162,7 @@ var _ = Describe("SpecRejectCommand", func() {
 			promptContent, err := os.ReadFile(promptDest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(promptContent)).To(ContainSubstring("status: rejected"))
-			Expect(string(promptContent)).To(ContainSubstring("rejected_reason: cancelled"))
+			Expect(string(promptContent)).To(ContainSubstring("rejectedReason: cancelled"))
 		})
 	})
 

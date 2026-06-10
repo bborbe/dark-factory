@@ -90,7 +90,7 @@ var _ = Describe("RejectCommand", func() {
 			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: rejected"))
-			Expect(string(content)).To(ContainSubstring("rejected_reason: not needed"))
+			Expect(string(content)).To(ContainSubstring("rejectedReason: not needed"))
 			Expect(string(content)).To(ContainSubstring("rejected:"))
 		})
 	})
@@ -119,7 +119,7 @@ var _ = Describe("RejectCommand", func() {
 			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: rejected"))
-			Expect(string(content)).To(ContainSubstring("rejected_reason: changed direction"))
+			Expect(string(content)).To(ContainSubstring("rejectedReason: changed direction"))
 		})
 	})
 
@@ -224,8 +224,8 @@ var _ = Describe("RejectCommand", func() {
 		)
 	})
 
-	Describe("Pre-execution reject leaves originalStatus empty", func() {
-		It("rejects a draft prompt without writing originalStatus field", func() {
+	Describe("Pre-execution reject stamps originalStatus", func() {
+		It("rejects a draft prompt and writes originalStatus: draft", func() {
 			promptFile := filepath.Join(inboxDir, "004-draft-pre.md")
 			Expect(os.WriteFile(
 				promptFile,
@@ -242,7 +242,27 @@ var _ = Describe("RejectCommand", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
 			Expect(pf.Frontmatter.RejectedReason).To(Equal("noop"))
-			Expect(pf.Frontmatter.OriginalStatus).To(Equal(""))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal("draft"))
+		})
+	})
+
+	Describe("Read-compat for legacy rejected_reason key", func() {
+		It("loads a legacy rejected_reason key into the typed RejectedReason field", func() {
+			// Read-compat: existing files on disk (spec 094 AC "read-compat") carry
+			// `rejected_reason:` from before the camelCase migration. They must
+			// still parse into the same typed field that new writes use.
+			promptFile := filepath.Join(rejectedDir, "226-legacy-key.md")
+			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
+			Expect(os.WriteFile(
+				promptFile,
+				[]byte("---\nstatus: rejected\nrejected_reason: legacy text\n---\n# Legacy"),
+				0600,
+			)).To(Succeed())
+
+			pm := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime())
+			pf, err := pm.Load(ctx, promptFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(pf.Frontmatter.RejectedReason).To(Equal("legacy text"))
 		})
 	})
 
@@ -298,7 +318,7 @@ var _ = Describe("RejectCommand", func() {
 			Expect(os.WriteFile(
 				promptFile,
 				[]byte(
-					"---\nstatus: rejected\noriginalStatus: failed\nrejected_reason: x\n---\n# Done",
+					"---\nstatus: rejected\noriginalStatus: failed\nrejectedReason: x\n---\n# Done",
 				),
 				0600,
 			)).To(Succeed())
@@ -309,8 +329,8 @@ var _ = Describe("RejectCommand", func() {
 		})
 	})
 
-	Describe("Reject idea does not write originalStatus", func() {
-		It("rejects an idea prompt without writing originalStatus", func() {
+	Describe("Reject idea stamps originalStatus: idea", func() {
+		It("rejects an idea prompt and writes originalStatus: idea", func() {
 			promptFile := filepath.Join(inboxDir, "005-idea.md")
 			Expect(
 				os.WriteFile(promptFile, []byte("---\nstatus: idea\n---\n# Idea"), 0600),
@@ -324,7 +344,7 @@ var _ = Describe("RejectCommand", func() {
 			pf, err := pm.Load(ctx, dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Frontmatter.Status).To(Equal("rejected"))
-			Expect(pf.Frontmatter.OriginalStatus).To(Equal(""))
+			Expect(pf.Frontmatter.OriginalStatus).To(Equal("idea"))
 		})
 	})
 })

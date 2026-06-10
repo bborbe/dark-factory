@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-02T19:07:50Z"
 generating: "2026-06-02T19:18:51Z"
 prompted: "2026-06-02T19:46:12Z"
 verifying: "2026-06-02T21:56:34Z"
+completed: "2026-06-10T20:28:29Z"
 branch: dark-factory/daemon-blocked-queue-ux
 ---
 

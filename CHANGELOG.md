@@ -27,6 +27,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## v0.176.3
 
 - docs: consolidate the direct vs prompt vs spec authoring decision into a single canonical guide `docs/choosing-a-flow.md`. Demote the decision tables previously restated across `CLAUDE.md`, `docs/architecture-flow.md`, `docs/rules/spec-writing.md`, `docs/rules/prompt-writing.md`, `docs/claude-md-guide.md`, and `commands/read-guides.md` to short pointers at the canonical doc — eliminates the drift that previously had spec-writing.md saying "default: spec" while CLAUDE.md said "code = prompt by default." Adds concrete examples per row, a boundary-cases table (SKILL.md / bash scripts / READMEs with code / agent files), anti-patterns, and a clarifying note that "direct" (this guide) ≠ dark-factory's `workflow: direct` config (an isolation/landing concept covered in `workflows.md`). README Documentation table links the canonical doc first.
+
 ## v0.176.2
 
 - docs: add `docs/manual-mode.md` documenting the operator-paced 6-step slash-command chain (create-spec → audit-spec → generate-prompts-for-spec → audit-prompt → run-prompt → verify-spec). Covers when to pick manual mode vs the daemon, trade-offs table, worked example, and failure-recovery notes per step. Linked from README Documentation table. No code change.

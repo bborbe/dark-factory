@@ -106,14 +106,21 @@ while true; do
   # the container line is absent (daemon idle). `head -n1` hardens against
   # a future formatter emitting multiple Container: lines.
   CONTAINER=$(echo "$STATUS" | grep -E '^[[:space:]]*Container:' | head -n1 | perl -pe 's/.*Container:\s*([^[:space:]]+).*/$1/' || true)
+  # Defense in depth: only accept docker-legal container names so a future
+  # `dark-factory status` formatter change cannot smuggle regex metacharacters
+  # into the docker filter below.
+  if [[ ! "$CONTAINER" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+    CONTAINER=""
+  fi
   if [ -n "$CONTAINER" ] && command -v docker >/dev/null 2>&1; then
     # `docker ps` reports container age in a human-readable form ("14 minutes",
-    # "About a minute", "About an hour", "2 hours"). We parse the leading
-    # integer and unit; "About an hour" (docker's literal output for the
-    # 45-90min window) maps to 60 so the probe still fires there. Anything
-    # shorter ("seconds", "About a minute") rounds to 0 — no probe.
-    # Name filter is anchored (^/name$) — unanchored is substring match and
-    # can return another container's uptime.
+    # "About a minute", "About an hour", "2 hours", "3 days"). We parse the
+    # leading integer and unit; "About an hour" (docker's literal output for
+    # the 45-90min window) maps to 60 so the probe still fires there; any
+    # day/week/month/year unit is far beyond the 10min gate, so it maps to a
+    # flat 1440. Anything shorter ("seconds", "About a minute") rounds to 0 —
+    # no probe. Name filter is anchored (^/name$) — unanchored is substring
+    # match and can return another container's uptime.
     RUNNING_FOR=$(docker ps --filter "name=^/${CONTAINER}\$" --format '{{.RunningFor}}' 2>/dev/null || true)
     ELAPSED_MIN=0
     if [[ "$RUNNING_FOR" =~ ^([0-9]+)[[:space:]]minute ]]; then
@@ -122,16 +129,23 @@ while true; do
       ELAPSED_MIN=$(( BASH_REMATCH[1] * 60 ))
     elif [[ "$RUNNING_FOR" =~ ^About[[:space:]]an[[:space:]]hour ]]; then
       ELAPSED_MIN=60
+    elif [[ "$RUNNING_FOR" =~ (day|week|month|year) ]]; then
+      ELAPSED_MIN=1440
     fi
     if [ "$ELAPSED_MIN" -ge 10 ]; then
       # Count log lines in the last 3 minutes. Healthy containers emit
       # tool-use / tool-result JSON every few seconds → dozens of lines.
       # Stuck containers go silent → 0-4 lines.
-      # `{ ... || true; }` breaks the pipefail chain: a failing `docker logs`
-      # (container gone between ps and logs, daemon hung) must not kill the
-      # watcher, and a trailing `|| echo 0` would CONCATENATE with wc's
-      # already-emitted "0" into a non-integer "0\n0".
-      LOG_LINES=$({ docker logs --since=3m "$CONTAINER" 2>/dev/null || true; } | wc -l | tr -d ' ')
+      # A failing `docker logs` (container gone between ps and logs, daemon
+      # hung, permissions) must NOT be conflated with "container is silent" —
+      # that would escalate a docker problem to Sosumi+break. On failure we
+      # skip the probe for this cycle instead.
+      if DOCKER_LOG_OUT=$(docker logs --since=3m "$CONTAINER" 2>/dev/null); then
+        LOG_LINES=$(printf '%s' "$DOCKER_LOG_OUT" | grep -c . || true)
+      else
+        echo "WARN: docker logs failed for $CONTAINER — skipping liveness probe this cycle"
+        LOG_LINES=99
+      fi
       if [ "$LOG_LINES" -lt 5 ]; then
         if [ "$ELAPSED_MIN" -ge 15 ] && [ "$LOG_LINES" -eq 0 ]; then
           echo "ALERT: SILENT + STUCK — $CONTAINER quiet for >=3min at ${ELAPSED_MIN}m (0 log lines)"
@@ -140,6 +154,10 @@ while true; do
           afplay /System/Library/Sounds/Sosumi.aiff
           break
         fi
+        # Deliberate three-band behavior at >=15min: 0 lines = silent+stuck →
+        # break above; 1-4 lines = low-traffic, alert (Basso) but KEEP
+        # watching; 5+ lines = healthy, no alert. Do not merge the 0 and 1-4
+        # bands — a trickle of output means the container is alive.
         echo "ALERT: QUIET — $CONTAINER only $LOG_LINES log lines in last 3min at ${ELAPSED_MIN}m"
         if [ "$BASSO_FIRED" -eq 0 ]; then
           afplay /System/Library/Sounds/Basso.aiff

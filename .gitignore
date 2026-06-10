@@ -20,3 +20,4 @@
 coverage.html
 coverage.out
 /CLAUDE.md
+.daemon-session.log

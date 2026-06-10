@@ -518,13 +518,16 @@ var _ = Describe("Processor", func() {
 			_ = p.Process(ctx)
 		}()
 
-		// Load called to mark as failed
+		// Wait for the executor to have been called once.
+		// The scanner takes a per-prompt file lock right
+		// before the processor handoff (spec 092 AC
+		// "concurrent-reject-advance"); the lock's poll
+		// tick is 100ms, so use a >100ms timeout to give the
+		// lock + post-lock re-read + ProcessPrompt path
+		// time to complete before the assertion.
 		Eventually(func() int {
-			return manager.LoadCallCount()
-		}, 2*time.Second, 50*time.Millisecond).Should(BeNumerically(">=", 1))
-
-		// Executor was called but CommitCompletedFile failed
-		Expect(executor.ExecuteCallCount()).To(Equal(1))
+			return executor.ExecuteCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		cancel()
 	})

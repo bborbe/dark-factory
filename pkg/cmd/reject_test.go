@@ -42,6 +42,8 @@ var _ = Describe("RejectCommand", func() {
 			inProgressDir,
 			rejectedDir,
 			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
+			nil,
+			0,
 		)
 		ctx = context.Background()
 	})
@@ -247,10 +249,13 @@ var _ = Describe("RejectCommand", func() {
 	})
 
 	Describe("Read-compat for legacy rejected_reason key", func() {
-		It("loads a legacy rejected_reason key into the typed RejectedReason field", func() {
+		It("loads a legacy rejected_reason key, saves, and re-emits the new camelCase key", func() {
 			// Read-compat: existing files on disk (spec 094 AC "read-compat") carry
 			// `rejected_reason:` from before the camelCase migration. They must
-			// still parse into the same typed field that new writes use.
+			// still parse into the same typed field that new writes use. After
+			// Save, the file on disk must use `rejectedReason:` (camelCase) and
+			// must NOT contain the old `rejected_reason:` key — spec 094 AC
+			// "no file persisted under the old key" on the legacy read path.
 			promptFile := filepath.Join(rejectedDir, "226-legacy-key.md")
 			Expect(os.MkdirAll(rejectedDir, 0750)).To(Succeed())
 			Expect(os.WriteFile(
@@ -263,6 +268,13 @@ var _ = Describe("RejectCommand", func() {
 			pf, err := pm.Load(ctx, promptFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pf.Frontmatter.RejectedReason).To(Equal("legacy text"))
+
+			// Round-trip: save and verify the on-disk key migration.
+			Expect(pf.Save(ctx)).To(Succeed())
+			raw, err := os.ReadFile(promptFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(raw)).To(ContainSubstring("rejectedReason:"))
+			Expect(string(raw)).NotTo(ContainSubstring("rejected_reason:"))
 		})
 	})
 

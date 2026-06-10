@@ -105,7 +105,7 @@ func newTestProcessor(
 		maxPromptDuration,
 	)
 	ppForwarder := &lazyProcessorForwarder{}
-	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, queueDir)
+	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, queueDir, nil, 0)
 	proc := processor.NewProcessor(
 		exec,
 		mgr,
@@ -395,8 +395,17 @@ var _ = Describe("Processor", func() {
 		// Verify Load was called (processor uses Load/Save pattern now)
 		Expect(manager.LoadCallCount()).To(BeNumerically(">=", 1))
 
-		// Verify moved to completed
-		Expect(manager.MoveToCompletedCallCount()).To(Equal(1))
+		// Wait for the processor to complete the full
+		// execute→move-to-completed handoff. The scanner now
+		// takes a per-prompt file lock (spec 092 AC
+		// "concurrent-reject-advance") with a 100ms poll
+		// tick, so the entire lock→re-read→process→move path
+		// takes >100ms; wait for the terminal side-effect
+		// rather than asserting immediately after the execute
+		// happens.
+		Eventually(func() int {
+			return manager.MoveToCompletedCallCount()
+		}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
 
 		cancel()
 	})

@@ -536,7 +536,7 @@ container: dark-factory-nonexistent-container-xyz
 			out := formatter.Format(st)
 			Expect(
 				out,
-			).To(ContainSubstring("Blocked:  227 (reason=previous-prompt-not-completed, missing=226)\n"))
+			).To(ContainSubstring("Blocked: 227 (reason=previous-prompt-not-completed, missing=226)\n"))
 		})
 
 		It(
@@ -560,7 +560,7 @@ container: dark-factory-nonexistent-container-xyz
 
 				formatter := status.NewFormatter()
 				out := formatter.Format(st)
-				Expect(out).To(ContainSubstring("Blocked:  300 (reason=project-lock-timeout)\n"))
+				Expect(out).To(ContainSubstring("Blocked: 300 (reason=project-lock-timeout)\n"))
 				Expect(out).NotTo(ContainSubstring("missing="))
 			},
 		)
@@ -609,7 +609,7 @@ container: dark-factory-nonexistent-container-xyz
 			out := formatter.Format(st)
 			Expect(
 				out,
-			).To(ContainSubstring("Blocked:  227 (reason=previous-prompt-not-completed, missing=226)\n"))
+			).To(ContainSubstring("Blocked: 227 (reason=previous-prompt-not-completed, missing=226)\n"))
 
 			// Synthetic log line per spec 092 (mimicking scanner's logBlockedOnce).
 			logLine := "prompt blocked file=227 reason=previous-prompt-not-completed spec=058 missing=226"

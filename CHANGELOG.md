@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- fix(status): `Blocked:` line now matches the spec-092 contract exactly — `Blocked: NNN (reason=..., missing=MMM)` with a single space after the colon and bare (non-zero-padded) prompt numbers. Previously emitted `Blocked:  %03d` (double space, zero-padded), which broke the spec's anchored regex and any operator tooling parsing the documented format. Test assertions in `pkg/status/status_test.go` updated to the spec format.
+
 ## v0.178.1
 
 - fix(committingrecoverer): make Ginkgo suite hermetic against the real repo — every spec in `pkg/committingrecoverer/recoverer_test.go` now runs with cwd inside a sandbox temp git repo (via the shared `BeforeEach` chdir), and a suite-level guard (`assertNotInRealRepo`) fails loudly with a message naming the real-repo cwd if a spec ever reaches the package-level dirty/commit helpers without the sandbox chdir. Stops the recurring data-corruption bug where mid-`precommit` the suite committed the developer's uncommitted working tree onto a live PR branch with the message `Test prompt` (last reproduced on `2e57ae5` and `a779152`). Production behavior, `NewRecoverer` signature, and all callers in `pkg/factory` and the three processor test files are unchanged. Cross-package audit confirms no other `_test.go` reaches the same escape (`grep -rln 'git.HasDirtyFiles|git.CommitAll|git.CommitWithRetry' pkg/ --include='*_test.go'` returns only `pkg/git/git_test.go`).

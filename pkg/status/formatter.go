@@ -80,7 +80,7 @@ func (f *formatter) Format(st *Status) string {
 		if st.Blocked.Missing > 0 {
 			fmt.Fprintf(
 				&b,
-				"Blocked:  %03d (reason=%s, missing=%03d)\n",
+				"Blocked: %d (reason=%s, missing=%d)\n",
 				st.Blocked.Number,
 				st.Blocked.Reason,
 				st.Blocked.Missing,
@@ -88,7 +88,7 @@ func (f *formatter) Format(st *Status) string {
 		} else {
 			fmt.Fprintf(
 				&b,
-				"Blocked:  %03d (reason=%s)\n",
+				"Blocked: %d (reason=%s)\n",
 				st.Blocked.Number,
 				st.Blocked.Reason,
 			)

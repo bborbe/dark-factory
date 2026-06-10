@@ -8,6 +8,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+## Unreleased
+
+- feat(skills/watch): liveness-based stuck detection — at >=10min elapsed (gen or exec mode), inspect the active container via `docker logs --since=3m | wc -l`. <5 lines → Basso (likely stuck); 0 lines + >=15min elapsed → 3x Sosumi + break (silent stuck, treat as failure). Eliminates the false positive on legitimately slow gen runs (12-18min on heavy specs) and closes the gen-mode coverage gap that the elapsed-time-only `executing since` check missed. Falls back gracefully when docker is unavailable.
+
 ## v0.177.1
 
 - chore(deps): bump default claude-yolo container image from `v0.9.1` to `v0.10.1`. Updates `pkg.DefaultContainerImage` (the single source of truth) plus the v0.9.0/v0.9.1 references in `README.md`, `docs/configuration.md`, `docs/init-project.md`, and `docs/yolo-container-setup.md`. Historical version strings inside `specs/completed/` and `prompts/completed/` and the regex-fixture versions in `pkg/config/config_loader_test.go`, `pkg/globalconfig/globalconfig.go`, and `main_internal_test.go` are intentionally untouched — they document past behavior or pin specific parser inputs.

@@ -1,8 +1,10 @@
 ---
-status: prompted
+status: completed
 approved: "2026-06-10T09:36:24Z"
 generating: "2026-06-10T09:43:50Z"
 prompted: "2026-06-10T09:43:50Z"
+verifying: "2026-06-10T10:04:53Z"
+completed: "2026-06-10T10:06:32Z"
 branch: dark-factory/bug-committingrecoverer-tests-commit-real-repo
 ---
 

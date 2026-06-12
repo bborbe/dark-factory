@@ -3,6 +3,7 @@
 [![CI](https://github.com/bborbe/dark-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/bborbe/dark-factory/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/bborbe/dark-factory.svg)](https://pkg.go.dev/github.com/bborbe/dark-factory)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bborbe/dark-factory)](https://goreportcard.com/report/github.com/bborbe/dark-factory)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bborbe/dark-factory)
 
 Autonomous coding pipeline — drop prompts in, get commits out.
 

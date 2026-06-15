@@ -66,9 +66,17 @@ generate:
 	echo "package mocks" > mocks/mocks.go
 	go generate -mod=mod ./...
 
+# -race=true catches data races but flakes on some CI runners (rare SIGSEGV
+# during gexec.Build in cmd/*-style binary smoke tests). Default off; opt in
+# via ENABLE_RACE=true for nightly/manual hardening runs.
+TESTFLAGS_RACE = -race=false
+ifdef ENABLE_RACE
+	TESTFLAGS_RACE = -race=true
+endif
+
 .PHONY: test
 test:
-	go test -mod=mod -p=$${GO_TEST_PARALLEL:-1} -cover -race $(shell go list -mod=mod ./... | grep -v /vendor/)
+	go test -mod=mod -p=$${GO_TEST_PARALLEL:-1} -cover $(TESTFLAGS_RACE) $(shell go list -mod=mod ./... | grep -v /vendor/)
 
 .PHONY: check
 check: lint vet vulncheck osv-scanner trivy

@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	pkgprocessor "github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -93,6 +94,7 @@ var _ = Describe("Runner", func() {
 			false, // hideGit
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
+			nil,   // healthcheckGate: no gate in tests
 		)
 	}
 
@@ -268,18 +270,10 @@ var _ = Describe("Runner", func() {
 			errCh <- r.Run(runCtx)
 		}()
 
-		// Let it run briefly
-		time.Sleep(200 * time.Millisecond)
-
-		// Cancel and wait for clean exit
+		// Cancel and assert clean exit via Eventually — replaces flaky
+		// time.Sleep + select/time.After pattern.
 		runCancel()
-
-		select {
-		case err := <-errCh:
-			Expect(err).To(BeNil())
-		case <-time.After(2 * time.Second):
-			Fail("runner did not exit after context cancel")
-		}
+		Eventually(errCh, 2*time.Second).Should(Receive(BeNil()))
 	})
 
 	It("should return error when normalization fails", func() {
@@ -388,6 +382,7 @@ var _ = Describe("Runner", func() {
 			false, // hideGit
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
+			nil,   // healthcheckGate: no gate in tests
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -455,6 +450,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
+				nil,   // healthcheckGate: no gate in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -672,6 +668,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
+				nil,   // healthcheckGate: no gate in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -754,6 +751,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
+				nil,   // healthcheckGate: no gate in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -846,6 +844,7 @@ var _ = Describe("Runner", func() {
 					false, // hideGit
 					nil,   // preflightChecker: no preflight in tests
 					nil,   // logWriter: no file in tests
+					nil,   // healthcheckGate: no gate in tests
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -934,6 +933,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
+				nil,   // healthcheckGate: no gate in tests
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -996,6 +996,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
+				nil,   // healthcheckGate: no gate in tests
 			)
 		}
 
@@ -1308,6 +1309,7 @@ var _ = Describe("Runner", func() {
 				hideGit,
 				nil, // preflightChecker
 				nil, // logWriter
+				nil, // healthcheckGate
 			)
 		}
 
@@ -1579,6 +1581,7 @@ var _ = Describe("Runner", func() {
 				false, // hideGit
 				preflightChecker,
 				nil, // logWriter
+				nil, // healthcheckGate
 			)
 		}
 
@@ -1634,6 +1637,112 @@ var _ = Describe("Runner", func() {
 			err := r.Run(runCtx)
 			Expect(err).To(BeNil())
 			Expect(preflightChecker.CheckCallCount()).To(Equal(1))
+		})
+	})
+
+	Describe("startup healthcheck gate", func() {
+		newRunnerWithGate := func(inboxDir, inProgressDir, completedDir string, gate healthcheckgate.Gate) runner.Runner {
+			return runner.NewRunner(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil, // server
+				nil, // specWatcher
+				"",
+				containerChecker,
+				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				0,
+				nil,   // containerStopper
+				nil,   // startupLogger
+				false, // hideGit
+				nil,   // preflightChecker
+				nil,   // logWriter
+				gate,
+			)
+		}
+
+		BeforeEach(func() {
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+		})
+
+		It("returns non-nil error when gate.Check returns an error", func() {
+			fakeGate := &mocks.HealthcheckGate{}
+			fakeGate.CheckReturns(stderrors.New("healthcheck failed: docker not running"))
+
+			r := newRunnerWithGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				fakeGate,
+			)
+			err := r.Run(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("healthcheck startup gate"))
+			Expect(fakeGate.CheckCallCount()).To(Equal(1))
+		})
+
+		It("proceeds past gate when gate.Check returns nil", func() {
+			fakeGate := &mocks.HealthcheckGate{}
+			fakeGate.CheckReturns(nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := newRunnerWithGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				fakeGate,
+			)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+			Expect(fakeGate.CheckCallCount()).To(Equal(1))
+		})
+
+		It("nil gate is a no-op (proceeds past gate)", func() {
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			// Pass a nil healthcheckgate.Gate interface (not a typed nil pointer)
+			r := newRunnerWithGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				nil,
+			)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
 		})
 	})
 })

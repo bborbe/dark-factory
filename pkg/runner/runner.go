@@ -19,6 +19,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
@@ -64,6 +65,7 @@ func NewRunner(
 	hideGit bool,
 	preflightChecker preflight.Checker,
 	logWriter io.Writer,
+	healthcheckGate healthcheckgate.Gate,
 ) Runner {
 	return &runner{
 		inboxDir:              inboxDir,
@@ -91,6 +93,7 @@ func NewRunner(
 		hideGit:               hideGit,
 		preflightChecker:      preflightChecker,
 		logWriter:             logWriter,
+		healthcheckGate:       healthcheckGate,
 	}
 }
 
@@ -121,6 +124,7 @@ type runner struct {
 	hideGit               bool
 	preflightChecker      preflight.Checker
 	logWriter             io.Writer
+	healthcheckGate       healthcheckgate.Gate
 }
 
 // Run executes the main processing loop:
@@ -200,6 +204,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Startup healthcheck gate: verify the pipeline stack before the watcher loop begins.
+	if err := r.runStartupHealthcheck(ctx); err != nil {
+		return err
+	}
+
 	// Run watcher, processor, server, and optional specWatcher in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
@@ -214,6 +223,19 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	runners = append(runners, r.healthCheckLoop)
 	return run.CancelOnFirstError(ctx, runners...)
+}
+
+// runStartupHealthcheck runs the healthcheck startup gate before the watcher loop.
+// Returns nil when the gate is nil (not wired), disabled, skipped, a fresh cache
+// hit, or the probes pass. Returns a terminal error when the probes fail.
+func (r *runner) runStartupHealthcheck(ctx context.Context) error {
+	if r.healthcheckGate == nil {
+		return nil
+	}
+	if err := r.healthcheckGate.Check(ctx); err != nil {
+		return errors.Wrap(ctx, err, "healthcheck startup gate")
+	}
+	return nil
 }
 
 // runStartupPreflight verifies the baseline is green before the watcher loop begins.

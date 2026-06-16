@@ -372,6 +372,34 @@ preflightInterval: "8h"
 
 **Override:** Pass `--skip-preflight` to `run` or `daemon` to bypass preflight for a single invocation — see [CLI Flags](#cli-flags) below.
 
+### Healthcheck Startup Gate
+
+On `dark-factory daemon` start, run the same probe sequence as `dark-factory healthcheck`
+(Docker daemon, container image, container boot, Claude session, workspace mount, `gh` auth
+when `pr: true`, notification channels when configured) once before the prompt-watch loop
+begins. This re-validates the pipeline stack the daemon depends on, complementing the
+project-level `preflightCommand` (which only proves the project compiles in-container).
+
+The gate runs only in `daemon` mode — `run` (one-shot) is unaffected.
+
+```yaml
+healthcheckEnabled: true
+healthcheckInterval: "8h"
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `healthcheckEnabled` | `true` | Whether the daemon runs the healthcheck startup gate. Set `false` to disable the gate entirely — the daemon proceeds directly to the watch loop. |
+| `healthcheckInterval` | `8h` | How long a successful healthcheck result is cached. A daemon restart within the interval skips the probes (cache hit). Failures are never cached, so an operator fix (image rebuild, token rotation) is picked up on the next start. Accepts Go duration strings: `"30m"`, `"2h"`, `"8h"`. Invalid strings are rejected at daemon startup. |
+
+**Caching:** Successful results are cached on the host under `~/.dark-factory/healthcheck-cache/`, keyed by container image + project + interval, so different repos never collide. Only successes are cached; a corrupt or future-dated cache file is treated as a miss and the gate re-runs.
+
+**On failure:** the daemon exits non-zero with a category-naming cause (e.g. `healthcheck failed: docker daemon unreachable`), fires a notification, and does NOT cache the result — matching the preflight terminal-failure policy.
+
+**Source precedence:** the effective-config startup log reports `healthcheckEnabled`/`healthcheckInterval` together with `healthcheckEnabledSource`/`healthcheckIntervalSource` (`default`, `project`, or `arg`) so the active gate config is auditable.
+
+**Override:** pass `--skip-healthcheck` to `daemon` to bypass the gate for a single invocation — see [CLI Flags](#cli-flags) below.
+
 ### CLI Flags
 
 Override settings for a single run without editing config:
@@ -405,6 +433,23 @@ The flag is position-agnostic: `dark-factory --skip-preflight run` and `dark-fac
 **Safety note:** Prompts may run on a broken baseline when this flag is used. The startup log line provides an audit trail. Use only when the baseline is knowingly broken (e.g., transient CVE, upstream flake) and the prompt must execute urgently.
 
 The flag does not persist: the next invocation without the flag runs preflight as configured. It has no effect when `preflightCommand` is empty (already disabled).
+
+**`--skip-healthcheck`**
+
+```bash
+dark-factory daemon --skip-healthcheck
+```
+
+Bypasses the healthcheck startup gate for this invocation (daemon only — the flag is rejected on other commands). When set:
+
+- The probe sequence is not executed.
+- No healthcheck cache is read or written.
+- The daemon proceeds directly to the watch loop.
+- A startup log line records that the healthcheck was skipped.
+
+The flag is position-agnostic: `dark-factory --skip-healthcheck daemon` and `dark-factory daemon --skip-healthcheck` are equivalent.
+
+**Safety note:** the daemon may run prompts against a broken pipeline stack when this flag is used; a stack failure then surfaces mid-prompt instead of at startup. Use only as an explicit override. The flag does not persist; the next invocation runs the gate as configured.
 
 **`--model NAME`**
 

@@ -47,6 +47,7 @@ var _ = Describe("Factory", func() {
 				cfg,
 				"v0.0.1",
 				false,
+				false,
 				config.FieldSources{},
 				libtime.NewCurrentDateTime(),
 			)
@@ -511,7 +512,7 @@ var _ = Describe("Factory", func() {
 			c := buildPreflightConfig()
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err := factory.CreateRunner(ctx, c, "v0.0.1", false, config.FieldSources{}, libtime.NewCurrentDateTime()).
+			err := factory.CreateRunner(ctx, c, "v0.0.1", false, false, config.FieldSources{}, libtime.NewCurrentDateTime()).
 				Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})

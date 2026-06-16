@@ -41,6 +41,8 @@ type LayeredProjectOverrides struct {
 	AutoMerge           *bool     // non-nil when .dark-factory.yaml explicitly sets autoMerge
 	AutoApprovePrompts  *bool     // non-nil when .dark-factory.yaml explicitly sets autoApprovePrompts
 	AutoGeneratePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets autoGeneratePrompts
+	HealthcheckEnabled  *bool     // non-nil when .dark-factory.yaml explicitly sets healthcheckEnabled
+	HealthcheckInterval *string   // non-nil when .dark-factory.yaml explicitly sets healthcheckInterval
 }
 
 // LoadResult bundles the merged project config with information about which
@@ -125,6 +127,8 @@ type partialConfig struct {
 	HideGit                *bool                `yaml:"hideGit"`
 	PreflightCommand       *string              `yaml:"preflightCommand"`
 	PreflightInterval      *string              `yaml:"preflightInterval"`
+	HealthcheckEnabled     *bool                `yaml:"healthcheckEnabled"`
+	HealthcheckInterval    *string              `yaml:"healthcheckInterval"`
 	QueueInterval          *string              `yaml:"queueInterval"`
 	SweepInterval          *string              `yaml:"sweepInterval"`
 	IdleLogInterval        *string              `yaml:"idleLogInterval"`
@@ -184,6 +188,8 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		AutoMerge:           partial.AutoMerge,
 		AutoApprovePrompts:  partial.AutoApprovePrompts,
 		AutoGeneratePrompts: partial.AutoGeneratePrompts,
+		HealthcheckEnabled:  partial.HealthcheckEnabled,
+		HealthcheckInterval: partial.HealthcheckInterval,
 	}
 
 	// Detect removed config fields and return actionable errors.
@@ -389,6 +395,12 @@ func mergePartialTimings(cfg *Config, partial *partialConfig) {
 	}
 	if partial.PreflightInterval != nil {
 		cfg.PreflightInterval = *partial.PreflightInterval
+	}
+	if partial.HealthcheckEnabled != nil {
+		cfg.HealthcheckEnabled = partial.HealthcheckEnabled
+	}
+	if partial.HealthcheckInterval != nil {
+		cfg.HealthcheckInterval = *partial.HealthcheckInterval
 	}
 }
 

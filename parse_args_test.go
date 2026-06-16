@@ -9,18 +9,21 @@ import (
 )
 
 type parseArgsResult struct {
-	debug         bool
-	command       string
-	subcommand    string
-	args          []string
-	autoApprove   bool
-	skipPreflight bool
-	model         string
+	debug           bool
+	command         string
+	subcommand      string
+	args            []string
+	autoApprove     bool
+	skipPreflight   bool
+	model           string
+	skipHealthcheck bool
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove, skipPreflight, model := ParseArgs(input)
+	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+		input,
+	)
 	if debug != want.debug {
 		t.Errorf("debug: got %v, want %v", debug, want.debug)
 	}
@@ -47,6 +50,9 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if model != want.model {
 		t.Errorf("model: got %q, want %q", model, want.model)
+	}
+	if skipHealthcheck != want.skipHealthcheck {
+		t.Errorf("skipHealthcheck: got %v, want %v", skipHealthcheck, want.skipHealthcheck)
 	}
 }
 
@@ -350,5 +356,41 @@ func TestParseArgsModel(t *testing.T) {
 	assertParseArgs(t,
 		[]string{"run", "--model", "qwen3.6:35b-a3b"},
 		parseArgsResult{command: "run", args: []string{}, model: "qwen3.6:35b-a3b"},
+	)
+}
+
+func TestParseArgsSkipHealthcheck(t *testing.T) {
+	t.Parallel()
+	// flag after command
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-healthcheck"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: true},
+	)
+	// flag before command (position-agnostic)
+	assertParseArgs(t,
+		[]string{"--skip-healthcheck", "daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: true},
+	)
+	// without flag, skipHealthcheck defaults to false
+	assertParseArgs(t,
+		[]string{"daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: false},
+	)
+	// combined with other flags
+	assertParseArgs(
+		t,
+		[]string{"-debug", "daemon", "--skip-preflight", "--skip-healthcheck"},
+		parseArgsResult{
+			debug:           true,
+			command:         "daemon",
+			args:            []string{},
+			skipPreflight:   true,
+			skipHealthcheck: true,
+		},
+	)
+	// idempotent: flag passed twice
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-healthcheck", "--skip-healthcheck"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: true},
 	)
 }

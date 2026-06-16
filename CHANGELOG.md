@@ -10,6 +10,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: add `healthcheckEnabled` (*bool, default nil=true) and `healthcheckInterval` (string, default "8h") to Config, with validation, parsed getters, source detection in FieldSources, and four new keys in the effective-config startup log line
+- feat: add `pkg/healthcheckgate` package providing a `Gate` that runs the healthcheck probe sequence at daemon startup with success-only on-disk caching keyed by SHA256 of container image, project name, and interval; corrupt or future-dated cache treated as a miss; failure fires `healthcheck_failed` notification and returns a category-naming error
+- feat: wire `healthcheckgate.Gate` into `dark-factory daemon` startup; gate runs after preflight, before watcher loop; `healthcheckEnabled: false` in config disables gate entirely; add `--skip-healthcheck` CLI flag (position-agnostic) to bypass gate at invocation time
+- feat: document daemon healthcheck startup gate — `healthcheckEnabled`/`healthcheckInterval` config reference, `--skip-healthcheck` flag, cross-reference in running.md healthcheck section, terminal-failure policy in architecture-flow.md
+
 ## v0.180.2
 
 - docs(release): codify "release-gate scenarios test EXISTING features, not new ones" in `docs/releasing-dark-factory.md`. Any release introducing or substantively changing a user-facing subcommand now requires a new-feature live-smoke against ≥2 real targets before the gate is considered green. For spec-driven releases, `/dark-factory:verify-spec <id>` is the live-smoke and must not be skipped — `spec complete` without `verify-spec` is the failure mode that let `v0.179.0`/`v0.179.1` ship a non-functional `healthcheck`.

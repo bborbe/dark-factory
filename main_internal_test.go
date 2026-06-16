@@ -69,17 +69,29 @@ var _ = Describe("extractMaxContainers", func() {
 
 var _ = Describe("ParseArgs", func() {
 	type result struct {
-		debug         bool
-		command       string
-		subcommand    string
-		args          []string
-		autoApprove   bool
-		skipPreflight bool
-		model         string
+		debug           bool
+		command         string
+		subcommand      string
+		args            []string
+		autoApprove     bool
+		skipPreflight   bool
+		model           string
+		skipHealthcheck bool
 	}
 	parse := func(rawArgs []string) result {
-		debug, command, subcommand, args, autoApprove, skipPreflight, model := ParseArgs(rawArgs)
-		return result{debug, command, subcommand, args, autoApprove, skipPreflight, model}
+		debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+			rawArgs,
+		)
+		return result{
+			debug,
+			command,
+			subcommand,
+			args,
+			autoApprove,
+			skipPreflight,
+			model,
+			skipHealthcheck,
+		}
 	}
 
 	It("returns run command with --help in args (validation at dispatch)", func() {
@@ -181,6 +193,7 @@ var _ = Describe("runCommand --skip-preflight rejection", func() {
 				[]string{},
 				false,
 				true,
+				false,
 				config.FieldSources{},
 				dt,
 			)

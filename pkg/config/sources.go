@@ -18,4 +18,6 @@ type FieldSources struct {
 	AutoMerge           string
 	AutoApprovePrompts  string
 	AutoGeneratePrompts string
+	HealthcheckEnabled  string
+	HealthcheckInterval string
 }

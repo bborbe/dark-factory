@@ -121,6 +121,8 @@ type Config struct {
 	AutoRetryLimit         int                 `yaml:"autoRetryLimit"`
 	PreflightCommand       string              `yaml:"preflightCommand"`
 	PreflightInterval      string              `yaml:"preflightInterval"`
+	HealthcheckEnabled     *bool               `yaml:"healthcheckEnabled,omitempty"`
+	HealthcheckInterval    string              `yaml:"healthcheckInterval"`
 	QueueInterval          string              `yaml:"queueInterval"`
 	SweepInterval          string              `yaml:"sweepInterval"`
 	IdleLogInterval        string              `yaml:"idleLogInterval"`
@@ -147,28 +149,31 @@ func Defaults() Config {
 			RejectedDir:   "specs/rejected",
 			LogDir:        "specs/log",
 		},
-		ContainerImage:    pkg.DefaultContainerImage,
-		Model:             "claude-sonnet-4-6",
-		ValidationCommand: "make precommit",
-		TestCommand:       "make test",
-		DebounceMs:        500,
-		ServerPort:        0,
-		AutoMerge:         false,
-		AutoRelease:       false,
-		GitHub:            GitHubConfig{},
-		Provider:          ProviderGitHub,
-		Bitbucket:         BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
-		ClaudeDir:         "~/.claude-yolo",
-		GenerateCommand:   "/dark-factory:generate-prompts-for-spec",
-		PreflightCommand:  "make precommit",
-		PreflightInterval: "8h",
-		QueueInterval:     "5s",
-		SweepInterval:     "60s",
-		IdleLogInterval:   "1m",
+		ContainerImage:      pkg.DefaultContainerImage,
+		Model:               "claude-sonnet-4-6",
+		ValidationCommand:   "make precommit",
+		TestCommand:         "make test",
+		DebounceMs:          500,
+		ServerPort:          0,
+		AutoMerge:           false,
+		AutoRelease:         false,
+		GitHub:              GitHubConfig{},
+		Provider:            ProviderGitHub,
+		Bitbucket:           BitbucketConfig{TokenEnv: "BITBUCKET_TOKEN"},
+		ClaudeDir:           "~/.claude-yolo",
+		GenerateCommand:     "/dark-factory:generate-prompts-for-spec",
+		PreflightCommand:    "make precommit",
+		PreflightInterval:   "8h",
+		HealthcheckInterval: "8h",
+		QueueInterval:       "5s",
+		SweepInterval:       "60s",
+		IdleLogInterval:     "1m",
 	}
 }
 
 // Validate validates the config fields.
+//
+//nolint:funlen // composition root: registers all config field validators; splitting would obscure coverage
 func (c Config) Validate(ctx context.Context) error {
 	return validation.All{
 		validation.Name("workflow", c.Workflow),
@@ -245,6 +250,10 @@ func (c Config) Validate(ctx context.Context) error {
 			"preflightCommand",
 			validation.HasValidationFunc(c.validatePreflightCommand),
 		),
+		validation.Name(
+			"healthcheckInterval",
+			validation.HasValidationFunc(c.validateHealthcheckInterval),
+		),
 		validation.Name("queueInterval", validation.HasValidationFunc(c.validateQueueInterval)),
 		validation.Name("sweepInterval", validation.HasValidationFunc(c.validateSweepInterval)),
 		validation.Name("idleLogInterval", validation.HasValidationFunc(c.validateIdleLogInterval)),
@@ -269,6 +278,29 @@ func (c Config) ParsedPreflightInterval() time.Duration {
 		return 0
 	}
 	d, err := time.ParseDuration(c.PreflightInterval)
+	if err != nil {
+		return 0
+	}
+	return d
+}
+
+// HealthcheckEnabledValue reports whether the healthcheck startup gate is enabled.
+// nil HealthcheckEnabled means enabled (the default); only an explicit false disables it.
+func (c Config) HealthcheckEnabledValue() bool {
+	if c.HealthcheckEnabled == nil {
+		return true
+	}
+	return *c.HealthcheckEnabled
+}
+
+// ParsedHealthcheckInterval returns the parsed duration from HealthcheckInterval.
+// Returns 0 when HealthcheckInterval is empty (disables interval-based caching).
+// Safe to call at any time — returns 0 on error, never panics.
+func (c Config) ParsedHealthcheckInterval() time.Duration {
+	if c.HealthcheckInterval == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(c.HealthcheckInterval)
 	if err != nil {
 		return 0
 	}
@@ -381,6 +413,22 @@ func (c Config) validatePreflightInterval(ctx context.Context) error {
 			ctx,
 			"preflightInterval %q is not a valid duration: %v",
 			c.PreflightInterval,
+			err,
+		)
+	}
+	return nil
+}
+
+// validateHealthcheckInterval rejects unparseable duration strings for healthcheckInterval.
+func (c Config) validateHealthcheckInterval(ctx context.Context) error {
+	if c.HealthcheckInterval == "" {
+		return nil
+	}
+	if _, err := time.ParseDuration(c.HealthcheckInterval); err != nil {
+		return errors.Errorf(
+			ctx,
+			"healthcheckInterval %q is not a valid duration: %v",
+			c.HealthcheckInterval,
 			err,
 		)
 	}

@@ -155,6 +155,8 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.MaxPromptDuration).To(Equal("7h")) }),
 			Entry("preflightInterval", "preflightInterval", "3h",
 				func(cfg Config) { Expect(cfg.PreflightInterval).To(Equal("3h")) }),
+			Entry("healthcheckInterval", "healthcheckInterval", "3h",
+				func(cfg Config) { Expect(cfg.HealthcheckInterval).To(Equal("3h")) }),
 			Entry("queueInterval", "queueInterval", "10s",
 				func(cfg Config) { Expect(cfg.QueueInterval).To(Equal("10s")) }),
 			Entry("sweepInterval", "sweepInterval", "2m",
@@ -177,6 +179,11 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.VerificationGate).To(BeTrue()) }),
 			Entry("hideGit", "hideGit", "true",
 				func(cfg Config) { Expect(cfg.HideGit).To(BeTrue()) }),
+			Entry("healthcheckEnabled false", "healthcheckEnabled", "false",
+				func(cfg Config) {
+					Expect(cfg.HealthcheckEnabled).NotTo(BeNil())
+					Expect(*cfg.HealthcheckEnabled).To(BeFalse())
+				}),
 		)
 	})
 
@@ -214,6 +221,15 @@ var _ = Describe("Config/partialConfig parity", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("autoReview"))
 			Expect(err.Error()).To(ContainSubstring("branch protection"))
+		})
+
+		It("healthcheckEnabled false + healthcheckInterval 3h survive Load end-to-end", func() {
+			cfg, err := writeAndLoad("healthcheckEnabled: false\nhealthcheckInterval: \"3h\"\n")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.HealthcheckEnabled).NotTo(BeNil())
+			Expect(*cfg.HealthcheckEnabled).To(BeFalse())
+			Expect(cfg.HealthcheckEnabledValue()).To(BeFalse())
+			Expect(cfg.HealthcheckInterval).To(Equal("3h"))
 		})
 
 		// provider: bitbucket-server requires bitbucket.baseURL — test with paired field.

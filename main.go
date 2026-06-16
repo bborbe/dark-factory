@@ -608,6 +608,8 @@ func computeFieldSources(
 		AutoMerge:           "default",
 		AutoApprovePrompts:  "default",
 		AutoGeneratePrompts: "default",
+		HealthcheckEnabled:  "default",
+		HealthcheckInterval: "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -657,6 +659,12 @@ func computeFieldSources(
 	}
 	if proj.AutoMerge != nil {
 		s.AutoMerge = "project"
+	}
+	if proj.HealthcheckEnabled != nil {
+		s.HealthcheckEnabled = "project"
+	}
+	if proj.HealthcheckInterval != nil {
+		s.HealthcheckInterval = "project"
 	}
 	return s
 }

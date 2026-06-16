@@ -7,6 +7,7 @@ package config_test
 import (
 	"context"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -1149,6 +1150,89 @@ var _ = Describe("Config", func() {
 		It("returns ProjectName when Project is nil and ProjectName is empty", func() {
 			cfg := config.Config{}
 			Expect(cfg.ResolvedProjectOverride()).To(Equal(""))
+		})
+	})
+
+	Describe("HealthcheckEnabledValue", func() {
+		It("returns true when HealthcheckEnabled is nil (default)", func() {
+			cfg := config.Config{}
+			Expect(cfg.HealthcheckEnabledValue()).To(BeTrue())
+		})
+
+		It("returns true when HealthcheckEnabled is explicitly true", func() {
+			t := true
+			cfg := config.Config{HealthcheckEnabled: &t}
+			Expect(cfg.HealthcheckEnabledValue()).To(BeTrue())
+		})
+
+		It("returns false when HealthcheckEnabled is explicitly false", func() {
+			f := false
+			cfg := config.Config{HealthcheckEnabled: &f}
+			Expect(cfg.HealthcheckEnabledValue()).To(BeFalse())
+		})
+	})
+
+	Describe("ParsedHealthcheckInterval", func() {
+		It("returns 0 when HealthcheckInterval is empty", func() {
+			cfg := config.Config{}
+			Expect(cfg.ParsedHealthcheckInterval()).To(Equal(0 * time.Second))
+		})
+
+		It("returns 8h when HealthcheckInterval is '8h'", func() {
+			cfg := config.Config{HealthcheckInterval: "8h"}
+			Expect(cfg.ParsedHealthcheckInterval()).To(Equal(8 * time.Hour))
+		})
+
+		It("returns 0 when HealthcheckInterval is unparseable", func() {
+			cfg := config.Config{HealthcheckInterval: "garbage"}
+			Expect(cfg.ParsedHealthcheckInterval()).To(Equal(0 * time.Second))
+		})
+	})
+
+	Describe("Defaults healthcheck fields", func() {
+		It("sets HealthcheckInterval to 8h", func() {
+			cfg := config.Defaults()
+			Expect(cfg.HealthcheckInterval).To(Equal("8h"))
+		})
+
+		It("returns true from HealthcheckEnabledValue (nil default)", func() {
+			cfg := config.Defaults()
+			Expect(cfg.HealthcheckEnabledValue()).To(BeTrue())
+		})
+	})
+
+	Describe("validateHealthcheckInterval via Validate", func() {
+		validBase := config.Config{
+			Workflow: config.WorkflowDirect,
+			Prompts: config.PromptsConfig{
+				InboxDir:      "prompts",
+				InProgressDir: "prompts/in-progress",
+				CompletedDir:  "prompts/completed",
+				LogDir:        "prompts/log",
+			},
+			ContainerImage: "ghcr.io/bborbe/claude-code-yolo:latest",
+			Model:          "claude-sonnet-4-6",
+			DebounceMs:     500,
+		}
+
+		It("accepts a valid healthcheckInterval", func() {
+			cfg := validBase
+			cfg.HealthcheckInterval = "8h"
+			Expect(cfg.Validate(ctx)).To(Succeed())
+		})
+
+		It("accepts an empty healthcheckInterval", func() {
+			cfg := validBase
+			cfg.HealthcheckInterval = ""
+			Expect(cfg.Validate(ctx)).To(Succeed())
+		})
+
+		It("rejects an invalid healthcheckInterval", func() {
+			cfg := validBase
+			cfg.HealthcheckInterval = "nope"
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("healthcheckInterval"))
 		})
 	})
 

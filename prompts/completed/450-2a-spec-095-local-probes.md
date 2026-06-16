@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [095-healthcheck-cli]
+summary: Implemented `dark-factory healthcheck` subcommand with the four local probes (docker/image/boot/mount) wired through pkg/factory, pkg/cmd, and main.go; counterfeiter mocks generated, Ginkgo tests added (>=87% coverage), CHANGELOG updated, and `make precommit` passes.
+container: dark-factory-healthcheck-exec-450-2a-spec-095-local-probes
+dark-factory-version: v0.177.1
 created: "2026-06-16T13:00:10Z"
 queued: "2026-06-16T13:18:11Z"
+started: "2026-06-16T13:42:45Z"
+completed: "2026-06-16T13:58:10Z"
 branch: dark-factory/healthcheck-cli
 ---
 

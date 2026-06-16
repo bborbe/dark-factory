@@ -22,6 +22,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/cmd/healthcheck"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -1182,6 +1183,34 @@ func CreateDoctorCommand(
 	})
 
 	return cmd.NewDoctorCommand(checker, fixer)
+}
+
+// CreateHealthcheckCommand creates a HealthcheckCommand with the four local
+// probes (docker, image, boot, mount) wired in fixed order. The factory is
+// construction-only — instantiate concrete deps, pass them in, no branches.
+func CreateHealthcheckCommand(
+	ctx context.Context,
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) cmd.HealthcheckCommand {
+	subprocRunner := subproc.NewRunner()
+	containerChecker := executor.NewDockerContainerChecker(currentDateTimeGetter)
+	bootProbe := &runner.BootContainerProbe{
+		ContainerImage:   cfg.ContainerImage,
+		ProjectName:      cfg.ResolvedProjectOverride(),
+		ContainerChecker: containerChecker,
+		Subproc:          subprocRunner,
+		Clock:            currentDateTimeGetter,
+		ExtraMounts:      cfg.ExtraMounts,
+		ClaudeDir:        cfg.ResolvedClaudeDir(),
+	}
+	probes := cmd.Probes{
+		healthcheck.NewDockerProbe(subprocRunner),
+		healthcheck.NewImageProbe(cfg.ContainerImage, subprocRunner),
+		healthcheck.NewBootProbe(bootProbe),
+		healthcheck.NewMountProbe(cfg.ContainerImage, subprocRunner),
+	}
+	return cmd.NewHealthcheckCommand(probes)
 }
 
 // CreateListCommand creates a ListCommand.

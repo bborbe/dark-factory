@@ -10,6 +10,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs(release): codify "release-gate scenarios test EXISTING features, not new ones" in `docs/releasing-dark-factory.md`. Any release introducing or substantively changing a user-facing subcommand now requires a new-feature live-smoke against ≥2 real targets before the gate is considered green. For spec-driven releases, `/dark-factory:verify-spec <id>` is the live-smoke and must not be skipped — `spec complete` without `verify-spec` is the failure mode that let `v0.179.0`/`v0.179.1` ship a non-functional `healthcheck`.
+- docs(changelog): header note in `CHANGELOG.md` flags `v0.179.0` and `v0.179.1` as broken for the healthcheck command, with explicit redirect to `@latest`/`v0.180.0+`. Standard `go.mod retract` is unavailable because this project's `go-modtool` formatter strips retract blocks.
+
 ## v0.180.1
 
 - fix(healthcheck): raise the claude probe timeout from 10s to 30s. Cold-start `claude` inside the YOLO container involves auth load + an Anthropic-or-MiniMax round-trip, which routinely takes 5-25s on a fresh container on a laptop. The 10s deadline caused flaky verify-spec failures even on green stacks; runs that took 4-5s when warm timed out when cold. 30s gives realistic headroom while still catching genuinely stuck sessions. Warn-after raised from 2s to 5s to match.

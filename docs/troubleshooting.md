@@ -1,5 +1,7 @@
 # Troubleshooting
 
+When a prompt mysteriously fails or stalls, run `dark-factory healthcheck` first. The command probes Docker, the container image, the boot sequence, the Claude session, the workspace mount, and (when configured) `gh` and notifications. It exits 0 on a full pass and non-zero with a categorized table naming the failing probe. If `healthcheck` passes, the pipeline is green and the failure is in prompt content or the project tree itself — proceed to `dark-factory doctor` next. The `--no-claude` flag skips the only token-spending probe.
+
 ## Reading prompt-failure errors
 
 When a prompt fails, dark-factory records the error in the prompt file's `lastFailReason`

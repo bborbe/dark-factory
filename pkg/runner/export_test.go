@@ -92,3 +92,13 @@ func RunHealthCheckLoopForTest(
 		stopper,
 	)
 }
+
+// TruncateForTest exposes truncate for external test packages.
+func TruncateForTest(s string, n int) string {
+	return truncate(s, n)
+}
+
+// UniqueContainerNameForTest exposes BootContainerProbe.uniqueContainerName for external tests.
+func (b *BootContainerProbe) UniqueContainerNameForTest() (string, error) {
+	return b.uniqueContainerName()
+}

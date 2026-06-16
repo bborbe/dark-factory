@@ -143,6 +143,8 @@ func printCommandHelp(command string) {
 		printScenarioHelp()
 	case "doctor":
 		cmd.DoctorHelp()
+	case "healthcheck":
+		cmd.HealthcheckHelp()
 	}
 }
 
@@ -198,6 +200,9 @@ func runCommand(
 		}
 		return factory.CreateDoctorCommand(ctx, cfg, hours, currentDateTimeGetter).
 			Run(ctx, remaining)
+	case "healthcheck":
+		return factory.CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter).
+			Run(ctx, args)
 	case "run":
 		return runRunCommand(
 			ctx,
@@ -1033,6 +1038,7 @@ func printHelp() {
 			"  daemon [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...] Watch for queued prompts and execute them (long-running)\n"+
 			"  kill                   Stop the running daemon\n"+
 			"  doctor [--fix] [--yes] [--verifying-stale-hours=N]  Detect state anomalies (and optionally fix them)\n"+
+			"  healthcheck [--no-claude]        Probe the full pipeline-execution stack\n"+
 			"  status                 Show combined status of prompts and specs\n"+
 			"  list                   List all prompts and specs with their status\n"+
 			"  config                 Show effective configuration (defaults + .dark-factory.yaml)\n\n"+
@@ -1254,7 +1260,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, st
 		return debug, "help", "", []string{}, autoApprove, skipPreflight, model
 	case "--version", "-version", "-v":
 		return debug, "version", "", []string{}, autoApprove, skipPreflight, model
-	case "run", "daemon", "kill", "status", "list", "config", "doctor":
+	case "run", "daemon", "kill", "status", "list", "config", "doctor", "healthcheck":
 		return debug, command, "", rest, autoApprove, skipPreflight, model
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {

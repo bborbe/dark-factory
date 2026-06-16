@@ -6,6 +6,8 @@ status: active
 
 Validates that the claude-yolo container boots, Claude starts, edits files, and produces log output. Run before releasing a new dark-factory version that bumps the container image.
 
+For a faster automated check of the boot probe alone (without running a full prompt), use `dark-factory healthcheck` — it executes the same container-boot logic as this scenario in a few seconds and exits non-zero if boot regresses.
+
 Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 
 ## Setup

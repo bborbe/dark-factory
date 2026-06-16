@@ -22,6 +22,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/cmd/healthcheck"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -1182,6 +1183,61 @@ func CreateDoctorCommand(
 	})
 
 	return cmd.NewDoctorCommand(checker, fixer)
+}
+
+// CreateHealthcheckCommand creates a HealthcheckCommand with the seven
+// probes wired in fixed order: docker, image, boot, claude, mount, gh,
+// notifications. The gh probe is appended only when cfg.PR is true; the
+// notifications probe is appended only when at least one notification
+// channel is configured. The factory is construction-only — instantiate
+// concrete deps, pass them in, no branches.
+func CreateHealthcheckCommand(
+	ctx context.Context,
+	cfg config.Config,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) cmd.HealthcheckCommand {
+	subprocRunner := subproc.NewRunner()
+	claudeRunner := subproc.NewRunnerWithThresholds(
+		healthcheck.ClaudeWarnAfterForFactory(),
+		healthcheck.ClaudeTimeoutForFactory(),
+	)
+	ghRunner := subproc.NewRunnerWithThresholds(
+		healthcheck.GhWarnAfterForFactory(),
+		healthcheck.GhTimeoutForFactory(),
+	)
+	containerChecker := executor.NewDockerContainerChecker(currentDateTimeGetter)
+	bootProbe := &runner.BootContainerProbe{
+		ContainerImage:   cfg.ContainerImage,
+		ProjectName:      cfg.ResolvedProjectOverride(),
+		ContainerChecker: containerChecker,
+		Subproc:          subprocRunner,
+		ExtraMounts:      cfg.ExtraMounts,
+		ClaudeDir:        cfg.ResolvedClaudeDir(),
+	}
+	probes := cmd.Probes{
+		healthcheck.NewDockerProbe(subprocRunner),
+		healthcheck.NewImageProbe(cfg.ContainerImage, subprocRunner),
+		healthcheck.NewBootProbe(bootProbe),
+		healthcheck.NewClaudeProbe(
+			cfg.ContainerImage,
+			cfg.ResolvedProjectOverride(),
+			claudeRunner,
+		),
+		healthcheck.NewMountProbe(cfg.ContainerImage, subprocRunner),
+	}
+	if cfg.PR {
+		probes = append(probes, healthcheck.NewGhProbe(ghRunner))
+	}
+	if healthcheck.NotificationsConfigured(cfg) {
+		probes = append(
+			probes,
+			healthcheck.NewNotificationsProbe(
+				cfg,
+				&http.Client{Timeout: 5 * time.Second},
+			),
+		)
+	}
+	return cmd.NewHealthcheckCommand(probes)
 }
 
 // CreateListCommand creates a ListCommand.

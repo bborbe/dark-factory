@@ -261,6 +261,26 @@ After each successful prompt, spend 2 minutes:
 
 `dark-factory doctor` (without `--fix`) never writes to `specs/` or `prompts/`. Safe to run from CI, from a script, or from a Claude Code session — the worst case is a non-zero exit code.
 
+## Healthcheck
+
+`dark-factory healthcheck` is a fast, read-only diagnostic that probes the full pipeline-execution stack end-to-end and exits with a single categorical verdict. It runs seven probes in fixed order — `docker`, `image`, `boot`, `claude`, `mount`, `gh`, and `notifications` — and stops on the first failure (fail-fast). When all probes pass, the command exits 0; when any probe fails, it prints the failing probe category and a captured error snippet on stdout and exits non-zero. The output table mirrors `dark-factory doctor`'s table shape so the mental model stays one model.
+
+### Usage
+
+- `dark-factory healthcheck` — full seven-probe sequence; exit 0 on all pass, non-zero with a categorized table on any failure
+- `dark-factory healthcheck --no-claude` — skips the only token-spending probe (the `claude` probe runs a one-shot `claude -p` round-trip against the configured image); useful for cheap smoke runs or when `ANTHROPIC_API_KEY` is unset
+
+### Exit codes
+
+- `0` — all probes passed
+- non-zero — at least one probe failed; the row printed on stdout names the category and the captured error snippet. When `Ctrl-C` aborts the run, the exit code is a distinct value (separate from a probe failure) so scripts can tell user-cancellation apart from a broken subsystem.
+
+### When to run it
+
+When a prompt mysteriously fails or stalls, run `dark-factory healthcheck` first — it is the cheapest way to localize the failure to a specific subsystem (Docker daemon, container image, container boot, Claude session, workspace mount, GitHub CLI auth, or notification transport). If `healthcheck` passes, the pipeline is green and the failure is in prompt content or the project tree itself; proceed to `dark-factory doctor` for state-anomaly detection. If it fails, the categorized table points at the broken subsystem directly — no need to grep `docker logs` or hand-inspect `.dark-factory.yaml` first.
+
+For the larger troubleshooting flow and per-failure recipes, see [troubleshooting.md](troubleshooting.md).
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -273,6 +293,7 @@ After each successful prompt, spend 2 minutes:
 | YOLO stuck or slow | Simplify prompt, add more specificity |
 | Container running for hours | Check `docker logs` — may be in a retry loop. Stop container, fix prompt |
 | `go mod download` fails | Check `netrcFile` and `GOPRIVATE` in config |
+| Prompt fails or stalls without obvious cause | Run `dark-factory healthcheck` first; if it fails, follow the categorized table to the broken subsystem; if it passes, run `dark-factory doctor` for state-anomaly detection. |
 
 ## ID Formats
 
@@ -308,3 +329,4 @@ This means you can run `dark-factory spec list` from any subdirectory of a proje
 | `dark-factory spec complete <name>` | Mark verified spec as done |
 | `dark-factory spec mark-prompted <name>` | Transition a spec to `prompted` (used by the manual generation flow) |
 | `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` | Detect (and optionally fix) state anomalies in `specs/` and `prompts/` |
+| `dark-factory healthcheck [--no-claude]` | Run the seven-probe pipeline-execution stack check (docker, image, boot, claude, mount, gh, notifications); exit 0 on all-pass, non-zero with categorized table on first failure |

@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [095-healthcheck-cli]
+summary: Added `## Healthcheck` section + Troubleshooting + CLI Reference rows to docs/running.md, a 'first diagnostic step' intro paragraph to docs/troubleshooting.md, a cross-reference sentence to scenarios/003-smoke-test-container.md, and a feat(cli) bullet appended to the existing `## Unreleased` block in CHANGELOG.md. make precommit exits 0.
+container: dark-factory-healthcheck-exec-452-spec-095-docs
+dark-factory-version: v0.177.1
 created: "2026-06-16T13:00:10Z"
 queued: "2026-06-16T13:18:11Z"
+started: "2026-06-16T14:25:56Z"
+completed: "2026-06-16T14:30:02Z"
 branch: dark-factory/healthcheck-cli
 ---
 

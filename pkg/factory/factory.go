@@ -422,23 +422,8 @@ func CreateRunner(
 	// Healthcheck startup gate (daemon-only). Reuses the same probe sequence as the
 	// `dark-factory healthcheck` CLI. Disabled gates and --skip-healthcheck are handled
 	// inside the gate; the factory always constructs it (zero branching).
-	cacheKey := healthcheckgate.CacheKey(
-		cfg.ContainerImage,
-		projectName.String(),
-		cfg.ParsedHealthcheckInterval(),
-	)
-	home, _ := os.UserHomeDir()
-	cacheRoot := filepath.Join(home, ".dark-factory", "healthcheck-cache")
-	healthcheckGate := healthcheckgate.NewGate(
-		cfg.HealthcheckEnabledValue(),
-		skipHealthcheck,
-		cfg.ParsedHealthcheckInterval(),
-		CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter),
-		cacheKey,
-		healthcheckgate.NewFileCache(cacheRoot),
-		n,
-		projectName.String(),
-		currentDateTimeGetter,
+	healthcheckGate := CreateHealthcheckGate(
+		ctx, cfg, skipHealthcheck, projectName.String(), n, currentDateTimeGetter,
 	)
 
 	proc := CreateProcessor(
@@ -1221,6 +1206,50 @@ func CreateDoctorCommand(
 // notifications probe is appended only when at least one notification
 // channel is configured. The factory is construction-only — instantiate
 // concrete deps, pass them in, no branches.
+// CreateHealthcheckGate builds the daemon-startup healthcheck gate. The gate's
+// disabled/skip/cache logic lives in healthcheckgate.gate.Check; this factory only
+// constructs collaborators (the underlying HealthcheckCommand, the file cache, the
+// cache key, the notifier) and passes them in.
+//
+// os.UserHomeDir error: failure is logged, then the gate falls back to a CWD-relative
+// cache path. The cache is non-secret, non-critical, and write failures are tolerated
+// by design; surfacing the error here is enough — refusing to start the daemon over a
+// cache-dir resolution miss would be worse than the silent fallback.
+func CreateHealthcheckGate(
+	ctx context.Context,
+	cfg config.Config,
+	skipHealthcheck bool,
+	projectName string,
+	n notifier.Notifier,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) healthcheckgate.Gate {
+	cacheKey := healthcheckgate.CacheKey(
+		cfg.ContainerImage,
+		projectName,
+		cfg.ParsedHealthcheckInterval(),
+	)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		slog.Warn(
+			"healthcheck cache: os.UserHomeDir failed; cache root will be CWD-relative",
+			"error",
+			err,
+		)
+	}
+	cacheRoot := filepath.Join(home, ".dark-factory", "healthcheck-cache")
+	return healthcheckgate.NewGate(
+		cfg.HealthcheckEnabledValue(),
+		skipHealthcheck,
+		cfg.ParsedHealthcheckInterval(),
+		CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter),
+		cacheKey,
+		healthcheckgate.NewFileCache(cacheRoot),
+		n,
+		projectName,
+		currentDateTimeGetter,
+	)
+}
+
 func CreateHealthcheckCommand(
 	ctx context.Context,
 	cfg config.Config,

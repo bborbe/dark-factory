@@ -270,18 +270,10 @@ var _ = Describe("Runner", func() {
 			errCh <- r.Run(runCtx)
 		}()
 
-		// Let it run briefly
-		time.Sleep(200 * time.Millisecond)
-
-		// Cancel and wait for clean exit
+		// Cancel and assert clean exit via Eventually — replaces flaky
+		// time.Sleep + select/time.After pattern.
 		runCancel()
-
-		select {
-		case err := <-errCh:
-			Expect(err).To(BeNil())
-		case <-time.After(2 * time.Second):
-			Fail("runner did not exit after context cancel")
-		}
+		Eventually(errCh, 2*time.Second).Should(Receive(BeNil()))
 	})
 
 	It("should return error when normalization fails", func() {

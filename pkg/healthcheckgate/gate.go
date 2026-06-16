@@ -97,9 +97,12 @@ func (g *gate) Check(ctx context.Context) error {
 		return errors.Wrap(ctx, err, "healthcheck failed")
 	}
 
+	// Two separate Now() calls intentional: elapsed = end-start. Don't dedupe.
 	end := time.Time(g.currentDateTimeGetter.Now())
 	elapsed := end.Sub(now)
-	g.cache.Write(ctx, g.cacheKey, now)
+	// Cache the SUCCESS moment (end), not the start — keeps the cache validity window
+	// honest when the probe sequence itself takes meaningful wall time.
+	g.cache.Write(ctx, g.cacheKey, end)
 	slog.Info("healthcheck startup gate ok", "elapsed", elapsed)
 	return nil
 }

@@ -41,10 +41,11 @@ type fileCache struct {
 	root string
 }
 
-// cacheRecord is the JSON structure stored in the cache file.
+// cacheRecord is the JSON structure stored in the cache file. The presence of the
+// file IS the success record — Write is only called on success and the file is never
+// written on failure, so there is no need for a separate `success` field.
 type cacheRecord struct {
 	CheckedAt string `json:"checkedAt"`
-	Success   bool   `json:"success"`
 }
 
 // Fresh reports whether a cached success for `key` is fresher than `interval`.
@@ -65,19 +66,19 @@ func (f *fileCache) Fresh(
 		if os.IsNotExist(err) {
 			return false
 		}
-		slog.Warn("healthcheck cache unreadable, re-running", "path", path, "error", err)
+		slog.Warn("healthcheck cache read failed, re-running", "path", path, "error", err)
 		return false
 	}
 
 	var rec cacheRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
-		slog.Warn("healthcheck cache unreadable, re-running", "path", path, "error", err)
+		slog.Warn("healthcheck cache corrupt JSON, re-running", "path", path, "error", err)
 		return false
 	}
 
 	checkedAt, err := time.Parse(time.RFC3339Nano, rec.CheckedAt)
 	if err != nil {
-		slog.Warn("healthcheck cache unreadable, re-running", "path", path, "error", err)
+		slog.Warn("healthcheck cache timestamp unparseable, re-running", "path", path, "error", err)
 		return false
 	}
 
@@ -98,7 +99,6 @@ func (f *fileCache) Write(_ context.Context, key string, now time.Time) {
 
 	rec := cacheRecord{
 		CheckedAt: now.Format(time.RFC3339Nano),
-		Success:   true,
 	}
 	data, err := json.Marshal(rec)
 	if err != nil {

@@ -86,10 +86,8 @@ var _ = Describe("FileCache", func() {
 			Expect(err).NotTo(HaveOccurred())
 			var rec struct {
 				CheckedAt string `json:"checkedAt"`
-				Success   bool   `json:"success"`
 			}
 			Expect(json.Unmarshal(data, &rec)).To(Succeed())
-			Expect(rec.Success).To(BeTrue())
 			t, err := time.Parse(time.RFC3339Nano, rec.CheckedAt)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(t).To(BeTemporally("~", now, time.Second))

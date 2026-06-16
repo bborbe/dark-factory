@@ -338,9 +338,8 @@ func runDaemonCommand(
 	if skipPreflight {
 		slog.Info("preflight: baseline check disabled for this invocation (--skip-preflight flag)")
 	}
-	if skipHealthcheck {
-		slog.Info("healthcheck skipped via --skip-healthcheck")
-	}
+	// --skip-healthcheck is logged authoritatively by gate.Check; no pre-gate log needed
+	// (would emit a duplicate "healthcheck skipped via --skip-healthcheck" line).
 	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, skipHealthcheck, sources, currentDateTimeGetter).
 		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {

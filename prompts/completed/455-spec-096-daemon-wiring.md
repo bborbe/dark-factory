@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [096-healthcheck-on-daemon-startup]
+container: dark-factory-healthcheck-startup-exec-455-spec-096-daemon-wiring
+dark-factory-version: v0.180.2
 created: "2026-06-16T20:10:00Z"
 queued: "2026-06-16T20:22:17Z"
+started: "2026-06-16T20:45:12Z"
+completed: "2026-06-16T21:04:15Z"
 branch: dark-factory/healthcheck-on-daemon-startup
 ---
 

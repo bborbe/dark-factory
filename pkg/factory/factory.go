@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
+	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
@@ -329,6 +331,7 @@ func CreateRunner(
 	cfg config.Config,
 	ver string,
 	skipPreflight bool,
+	skipHealthcheck bool,
 	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.Runner {
@@ -416,6 +419,28 @@ func CreateRunner(
 		}
 	}
 
+	// Healthcheck startup gate (daemon-only). Reuses the same probe sequence as the
+	// `dark-factory healthcheck` CLI. Disabled gates and --skip-healthcheck are handled
+	// inside the gate; the factory always constructs it (zero branching).
+	cacheKey := healthcheckgate.CacheKey(
+		cfg.ContainerImage,
+		projectName.String(),
+		cfg.ParsedHealthcheckInterval(),
+	)
+	home, _ := os.UserHomeDir()
+	cacheRoot := filepath.Join(home, ".dark-factory", "healthcheck-cache")
+	healthcheckGate := healthcheckgate.NewGate(
+		cfg.HealthcheckEnabledValue(),
+		skipHealthcheck,
+		cfg.ParsedHealthcheckInterval(),
+		CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter),
+		cacheKey,
+		healthcheckgate.NewFileCache(cacheRoot),
+		n,
+		projectName.String(),
+		currentDateTimeGetter,
+	)
+
 	proc := CreateProcessor(
 		ctx,
 		inProgressDir,
@@ -498,6 +523,7 @@ func CreateRunner(
 		cfg.HideGit,
 		preflightChecker,
 		logWriter,
+		healthcheckGate,
 	)
 }
 

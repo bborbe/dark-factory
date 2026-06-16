@@ -59,6 +59,7 @@ func TestContainerLaunchReceivesMergedEnv(t *testing.T) {
 		cfg,
 		"v0.0.1",
 		true,
+		false,
 		config.FieldSources{},
 		libtime.NewCurrentDateTime(),
 	)

@@ -38,6 +38,7 @@ func NewGate(
 	skip bool,
 	interval time.Duration,
 	healthcheck HealthcheckCommand,
+	cacheKey string,
 	cache Cache,
 	n notifier.Notifier,
 	projectName string,
@@ -48,6 +49,7 @@ func NewGate(
 		skip:                  skip,
 		interval:              libtime.Duration(interval),
 		healthcheck:           healthcheck,
+		cacheKey:              cacheKey,
 		cache:                 cache,
 		notifier:              n,
 		projectName:           projectName,
@@ -61,6 +63,7 @@ type gate struct {
 	skip                  bool
 	interval              libtime.Duration
 	healthcheck           HealthcheckCommand
+	cacheKey              string
 	cache                 Cache
 	notifier              notifier.Notifier
 	projectName           string
@@ -79,7 +82,7 @@ func (g *gate) Check(ctx context.Context) error {
 	}
 
 	now := time.Time(g.currentDateTimeGetter.Now())
-	if g.cache.Fresh(ctx, g.projectName, time.Duration(g.interval), now) {
+	if g.cache.Fresh(ctx, g.cacheKey, time.Duration(g.interval), now) {
 		slog.Info("healthcheck cache hit, skipping")
 		return nil
 	}
@@ -96,7 +99,7 @@ func (g *gate) Check(ctx context.Context) error {
 
 	end := time.Time(g.currentDateTimeGetter.Now())
 	elapsed := end.Sub(now)
-	g.cache.Write(ctx, g.projectName, now)
+	g.cache.Write(ctx, g.cacheKey, now)
 	slog.Info("healthcheck startup gate ok", "elapsed", elapsed)
 	return nil
 }

@@ -47,7 +47,6 @@ type Probe interface {
 // cold daemon.
 const (
 	dockerWarnAfter = 3 * time.Second
-	dockerTimeout   = 10 * time.Second
 	mountTimeout    = 15 * time.Second
 
 	claudeWarnAfter = 2 * time.Second
@@ -101,12 +100,11 @@ func (d *dockerProbe) Run(ctx context.Context) error {
 		"version",
 	)
 	if err != nil {
+		slog.Error("healthcheck probe failed", "probe", d.Name(), "error", err)
 		if isDockerDaemonUnreachable(out) {
-			slog.Error("healthcheck probe failed", "probe", d.Name(), "error", err)
 			return errors.Wrapf(ctx, err, "docker daemon unreachable")
 		}
-		slog.Error("healthcheck probe failed", "probe", d.Name(), "error", err)
-		return errors.Wrapf(ctx, err, "docker daemon unreachable")
+		return errors.Wrapf(ctx, err, "docker version failed")
 	}
 	slog.Info("healthcheck probe passed", "probe", d.Name())
 	return nil
@@ -137,7 +135,7 @@ func (i *imageProbe) Name() string {
 func (i *imageProbe) Run(ctx context.Context) error {
 	_, err := i.runner.RunWithWarnAndTimeout(
 		ctx,
-		"docker image inspect "+i.containerImage,
+		"docker image inspect",
 		"docker",
 		"image",
 		"inspect",
@@ -462,13 +460,12 @@ func (n *notificationsProbe) Name() string {
 
 func (n *notificationsProbe) Run(ctx context.Context) error {
 	if n.channel.kind == "" {
-		slog.Debug("notifications probe: no channel configured, skipping")
-		return nil
+		return errors.Errorf(ctx, "notifications probe: no channel configured")
 	}
 
 	body, urlStr, err := n.buildPayload(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(ctx, err, "build notifications payload")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, strings.NewReader(body))

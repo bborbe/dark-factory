@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-06-16T12:51:33Z"
 generating: "2026-06-16T12:54:16Z"
 prompted: "2026-06-16T13:09:26Z"
+verifying: "2026-06-16T14:30:02Z"
 branch: dark-factory/healthcheck-cli
 ---
 

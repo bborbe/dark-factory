@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/bborbe/errors"
-	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
@@ -37,7 +36,6 @@ type BootContainerProbe struct {
 	ProjectName      string
 	ContainerChecker executor.ContainerChecker
 	Subproc          subproc.Runner
-	Clock            libtime.CurrentDateTimeGetter
 	ExtraMounts      []config.ExtraMount
 	ClaudeDir        string
 	// WorkspaceDir is read from os.Getwd() inside Run — no need to inject.
@@ -55,7 +53,7 @@ func (b *BootContainerProbe) Run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, "generate unique container name")
 	}
-	args, err := b.buildRunArgs(name)
+	args, err := b.buildRunArgs(ctx, name)
 	if err != nil {
 		return errors.Wrap(ctx, err, "build docker run args")
 	}
@@ -69,10 +67,10 @@ func (b *BootContainerProbe) Run(ctx context.Context) error {
 }
 
 // buildRunArgs assembles the `docker run --rm` arg list for the probe container.
-func (b *BootContainerProbe) buildRunArgs(name string) ([]string, error) {
+func (b *BootContainerProbe) buildRunArgs(ctx context.Context, name string) ([]string, error) {
 	workspaceDir, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, "get working directory")
 	}
 	args := []string{
 		"run", "--rm",
@@ -124,7 +122,7 @@ func (b *BootContainerProbe) startContainer(ctx context.Context, name string, ar
 			b.ContainerImage,
 			"container",
 			name,
-			"err",
+			"error",
 			err,
 		)
 		return errors.Wrap(ctx, err, "start probe container")
@@ -141,7 +139,7 @@ func (b *BootContainerProbe) waitForRunning(ctx context.Context, name string) er
 			b.ContainerImage,
 			"container",
 			name,
-			"err",
+			"error",
 			err,
 		)
 		return errors.Wrapf(ctx, err, "probe container %s did not start", name)
@@ -165,7 +163,7 @@ func (b *BootContainerProbe) verifyBoot(ctx context.Context, name string) error 
 			b.ContainerImage,
 			"container",
 			name,
-			"err",
+			"error",
 			err,
 		)
 		return errors.Errorf(

@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"testing"
 
 	"github.com/bborbe/errors"
 	. "github.com/onsi/ginkgo/v2"
@@ -20,11 +19,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
-
-func TestHealthcheck(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Healthcheck Suite")
-}
 
 var _ = Describe("DockerProbe", func() {
 	var (
@@ -282,7 +276,7 @@ var _ = Describe("NotificationsProbe", func() {
 		ctx = context.Background()
 	})
 
-	It("returns nil silently without HTTP call when no channel configured", func() {
+	It("returns error without HTTP call when no channel configured", func() {
 		var invoked bool
 		client := &http.Client{
 			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
@@ -293,7 +287,9 @@ var _ = Describe("NotificationsProbe", func() {
 		cfg := config.Config{} // zero Notifications block
 		p := healthcheck.NewNotificationsProbe(cfg, client)
 		Expect(p.Name()).To(Equal("notifications"))
-		Expect(p.Run(ctx)).To(Succeed())
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("no channel configured"))
 		Expect(invoked).To(BeFalse())
 	})
 

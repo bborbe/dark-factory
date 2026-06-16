@@ -1211,7 +1211,6 @@ func CreateHealthcheckCommand(
 		ProjectName:      cfg.ResolvedProjectOverride(),
 		ContainerChecker: containerChecker,
 		Subproc:          subprocRunner,
-		Clock:            currentDateTimeGetter,
 		ExtraMounts:      cfg.ExtraMounts,
 		ClaudeDir:        cfg.ResolvedClaudeDir(),
 	}

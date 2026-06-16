@@ -157,3 +157,25 @@ Rationale: prompt 1 establishes the shared helper so subsequent prompts cannot f
 ## Do-Nothing Option
 
 Operators continue to discover broken pipeline state 5-10 minutes into the first real prompt of an overnight 40-repo run. The cost is bounded but recurring: every claude-yolo image bump, every API-key rotation, every Telegram bot-token expiry creates a silent regression window. Scenario 003 covers most of this surface but requires the sandbox repo and manual setup, so it is not a viable on-demand probe. Acceptable in the short term; increasingly expensive as prompt volume and repo count grow.
+
+## Verification Result
+
+**Verified:** 2026-06-16T19:14:38Z (HEAD 127f588)
+**Binary:** /tmp/dark-factory-127f588 (built from HEAD)
+**Scenario:** Live walk of all 17 ACs against dark-factory's own `.dark-factory.yaml` (`pr: false`, no notifications); broken-image and DOCKER_HOST=tcp://127.0.0.1:1 stages forced for AC 3 and AC 5.
+**Evidence:**
+- AC 1: `healthcheck --help` exit 0, stdout contains `Usage: dark-factory healthcheck`
+- AC 2/4: green run exit 0 in 3.913s, stderr probes ordered docker→image→boot→claude→mount (gh/notifications config-gated off)
+- AC 3: `DOCKER_HOST=tcp://127.0.0.1:1` → exit 1, `grep -c 'probe=image'` = 0 (fail-fast confirmed)
+- AC 5: `containerImage: claude-yolo:does-not-exist` → exit 1, stdout `image\n  container image "claude-yolo:does-not-exist" not present locally`
+- AC 6: `--no-claude` rejected with `unknown flag: "--no-claude"`; `--help` contains 0 `--no-claude` references
+- AC 7/8: ginkgo suite `go test ./pkg/cmd/healthcheck/...` passes; claudeProbe failure path asserts `claude session probe failed` (probes_test.go:207, :218); orchestration block asserts `probe=gh` absent when `pr: false` (healthcheck_test.go:203-214)
+- AC 9: green run stderr has 0 `probe=notifications` lines (no notifications configured)
+- AC 10: `time` reports `real` = 3.913s (≪ 45s)
+- AC 11: `executor.BuildDockerRunArgs` referenced in probes.go (8 hits) and executor.go (line 511, 521, 537); scenario 003 cross-references `dark-factory healthcheck` (line 9)
+- AC 12/13: `git diff origin/master..HEAD` shows 0 bare `return err` and 0 `fmt.Errorf` in healthcheck dirs
+- AC 14: `make precommit` exit 0 (ready to commit)
+- AC 15: 7 healthcheck entries in CHANGELOG.md (lines 13, 14, 18, 31, 32, 33, 34)
+- AC 16: `docs/running.md` line 264 `## Healthcheck` heading + multiple `dark-factory healthcheck` references
+- AC 17: `docs/troubleshooting.md` line 3 mentions `dark-factory healthcheck` < next `## ` at line 5
+**Verdict:** PASS

@@ -8,10 +8,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## v0.180.0
+## Unreleased
 
 - fix(healthcheck): raise the claude probe timeout from 10s to 30s. Cold-start `claude` inside the YOLO container involves auth load + an Anthropic-or-MiniMax round-trip, which routinely takes 5-25s on a fresh container on a laptop. The 10s deadline caused flaky verify-spec failures even on green stacks; runs that took 4-5s when warm timed out when cold. 30s gives realistic headroom while still catching genuinely stuck sessions. Warn-after raised from 2s to 5s to match.
-- docs(healthcheck): drop stale `--no-claude` references from `docs/running.md` and `docs/troubleshooting.md` — the flag was removed in the previous Unreleased entry but the docs lagged the code. Spec 095 acceptance criteria updated to match the all-or-nothing contract: any unknown flag (including `--no-claude`) exits non-zero with "unknown flag" error; `--help` is the only accepted flag.
+- docs(healthcheck): drop stale `--no-claude` references from `docs/running.md` and `docs/troubleshooting.md` — the flag was removed in v0.180.0 but the docs lagged the code. Spec 095 acceptance criteria amended to match the all-or-nothing contract: any unknown flag (including `--no-claude`) exits non-zero with "unknown flag" error; `--help` is the only accepted flag.
+
+## v0.180.0
+
 - fix(healthcheck)!: rewrite `dark-factory healthcheck` to use the same docker-launch path as production prompt containers, and remove the `--no-claude` flag entirely. **Breaking:** `--no-claude` is no longer accepted — skipping the highest-failure-rate probe defeats the purpose of a healthcheck. The claude probe is required.
   - **New shared launch helper `executor.BuildDockerRunArgs(opts ContainerLaunchOpts)`** in `pkg/executor/launch.go` — single source of truth for `docker run --rm ...` argv assembly. Used by `dockerExecutor.buildDockerCommand` (production prompt containers) AND by the healthcheck boot/mount/claude probes. By construction, a regression in the production launch path now surfaces in the healthcheck immediately.
   - **`pkg/runner/probe.go` deleted.** The previous `runner.BootContainerProbe` was a duplicate launch implementation that had nothing to do with `pkg/runner/`'s actual purpose (the daemon's event loop) and which silently diverged from production wiring. Boot logic now lives in `pkg/cmd/healthcheck/probes.go` as a thin probe over the shared helper.

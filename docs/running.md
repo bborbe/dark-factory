@@ -330,4 +330,4 @@ This means you can run `dark-factory spec list` from any subdirectory of a proje
 | `dark-factory spec complete <name>` | Mark verified spec as done |
 | `dark-factory spec mark-prompted <name>` | Transition a spec to `prompted` (used by the manual generation flow) |
 | `dark-factory doctor [--fix] [--yes] [--verifying-stale-hours=N]` | Detect (and optionally fix) state anomalies in `specs/` and `prompts/` |
-| `dark-factory healthcheck [--no-claude]` | Run the seven-probe pipeline-execution stack check (docker, image, boot, claude, mount, gh, notifications); exit 0 on all-pass, non-zero with categorized table on first failure |
+| `dark-factory healthcheck` | Run the seven-probe pipeline-execution stack check (docker, image, boot, claude, mount, gh, notifications); exit 0 on all-pass, non-zero with categorized table on first failure. All-or-nothing — no flag skips probes. |

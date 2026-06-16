@@ -1,0 +1,22 @@
+autoGeneratePrompts: true
+autoRelease: false
+maxContainers: 8
+pr: false
+preflightCommand: "make precommit"
+preflightInterval: "8h"
+testCommand: "make test"
+validationPrompt: docs/dod.md
+workflow: direct
+env:
+  GOPATH: /home/node/go
+  GOCACHE: /home/node/.cache/go-build
+  GOLANGCI_LINT_CACHE: /home/node/.cache/golangci-lint
+  GO_TEST_PARALLEL: "4"
+  GOFLAGS: "-buildvcs=false"
+extraMounts:
+  - src: ${GOPATH}/pkg
+    dst: /home/node/go/pkg
+  - src: ${HOST_CACHE_DIR}/go-build
+    dst: /home/node/.cache/go-build
+  - src: ${HOST_CACHE_DIR}/golangci-lint
+    dst: /home/node/.cache/golangci-lint

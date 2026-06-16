@@ -268,7 +268,8 @@ After each successful prompt, spend 2 minutes:
 ### Usage
 
 - `dark-factory healthcheck` — full seven-probe sequence; exit 0 on all pass, non-zero with a categorized table on any failure
-- `dark-factory healthcheck --no-claude` — skips the only token-spending probe (the `claude` probe runs a one-shot `claude -p` round-trip against the configured image); useful for cheap smoke runs or when `ANTHROPIC_API_KEY` is unset
+
+Healthcheck is **all-or-nothing**. There is no `--no-claude` or `--probe=<name>` flag — skipping the highest-failure-rate probe would defeat the purpose. The only accepted flag is `--help` / `-h`.
 
 ### Exit codes
 

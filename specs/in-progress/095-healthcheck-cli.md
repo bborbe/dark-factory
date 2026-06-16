@@ -14,7 +14,7 @@ branch: dark-factory/healthcheck-cli
 
 - Add a new `dark-factory healthcheck` CLI subcommand that probes the entire pipeline-execution stack (Docker daemon, container image, container boot, Claude session, workspace mount, optional GitHub auth, optional notifications channel) on demand, before the operator queues real specs or prompts.
 - One-shot, fail-fast, ~10s wall-clock with the Claude probe (~2s without); exit code 0 = green; non-zero = categorized failure table written to stdout.
-- A `--no-claude` flag skips the only token-spending probe so the command can run cheaply or without an API key.
+- Healthcheck is all-or-nothing — there is NO flag to skip any probe. Skipping the highest-failure-rate component (the Claude session probe) would defeat the entire purpose of a pre-flight stack check.
 - Closes the diagnostic gap left by the runtime container-liveness check (spec 043) and the project-build preflight: those detect vanished containers and broken project builds respectively, neither catches a broken Claude session, a stale `gh` token, or an expired notifications token before the first prompt burns 5-10 minutes.
 - Container-boot logic is extracted into a shared helper so the new command and scenario 003 cannot drift.
 
@@ -33,23 +33,22 @@ After this work, the operator can run `dark-factory healthcheck` from any projec
 - Replacing or duplicating `dark-factory doctor` — `doctor` inspects host-side spec/prompt state anomalies; `healthcheck` exercises the runtime execution stack.
 - Replacing scenario 003 — the scenario remains the pre-release smoke test that publishes a real prompt and inspects log output. The new command shares the container-boot helper with the scenario; it does not subsume it.
 - Healthcheck of arbitrary user-defined criteria — the seven probes listed below are the entire surface. Do NOT add a `customProbes` config field or a plugin hook — invariant; if a future consumer demands a custom probe, that's a separate spec.
-- A `--probe=<name>` selector or any per-probe skip flag beyond `--no-claude` — invariant; `--no-claude` exists solely because the Claude probe costs tokens. No other probe has a comparable cost justification.
+- A `--probe=<name>` selector or any per-probe skip flag — invariant. Skipping any probe means the operator can't trust the verdict. If you need a faster smoke, fix the slow probe, don't skip it.
 - Auto-fix mode — `healthcheck` reports only; it does not mutate Docker state, pull images, or rewrite config.
 
 ## Acceptance Criteria
 
 - [ ] The binary built from this branch exposes a `healthcheck` subcommand — evidence: `dark-factory healthcheck --help` exits 0 and stdout contains the literal substring `Usage: dark-factory healthcheck`.
-- [ ] The `--no-claude` flag is documented in the help text — evidence: `dark-factory healthcheck --help` stdout contains the literal substring `--no-claude`.
 - [ ] All seven probes execute in the order Docker → image → boot → Claude → mount → gh → notifications when run on a green stack — evidence: running `dark-factory healthcheck` against a known-green sandbox writes one log line per probe to stderr at INFO level in that exact order (`grep -nE 'probe=(docker|image|boot|claude|mount|gh|notifications)' stderr.log` lists the seven probes in the listed order).
 - [ ] Fail-fast ordering is observed — evidence: with the Docker daemon stopped (or `DOCKER_HOST=tcp://127.0.0.1:1` to simulate unreachable), `dark-factory healthcheck` exits non-zero AND `grep -c 'probe=image' stderr.log` returns 0 (image probe never ran because docker probe failed first).
 - [ ] On all-green, the command exits 0 — evidence: `dark-factory healthcheck; echo $?` prints `0` against a sandbox with `pr: false` and no `notifications` config.
 - [ ] On any probe failure, the command exits non-zero with a categorized table on stdout — evidence: with `containerImage` in `.dark-factory.yaml` pointed at a non-existent tag (e.g. `claude-yolo:does-not-exist`), `dark-factory healthcheck` exits non-zero AND stdout contains a row with category `image` naming the missing tag (`grep -E '^image[[:space:]].*does-not-exist' stdout.log` returns ≥1 line).
-- [ ] `--no-claude` skips the Claude probe — evidence: with `ANTHROPIC_API_KEY` unset and `--no-claude` passed, `dark-factory healthcheck` exits 0 against an otherwise-green sandbox, AND `grep -c 'probe=claude' stderr.log` returns 0.
-- [ ] Without `--no-claude` and without a valid Claude session, the Claude probe fails — evidence: with `ANTHROPIC_API_KEY` set to a syntactically-valid-but-rejected token (e.g. `sk-invalid`), `dark-factory healthcheck` exits non-zero AND stdout shows a row with category `claude`.
+- [ ] Healthcheck is all-or-nothing — there is NO flag to skip the Claude probe. Skipping the highest-failure-rate component would defeat the purpose. Evidence: `dark-factory healthcheck --no-claude` exits non-zero with `error: unknown flag: "--no-claude"` AND `dark-factory healthcheck --help` stdout does NOT contain `--no-claude`.
+- [ ] Without a valid Claude session, the Claude probe fails — evidence: with `ANTHROPIC_API_KEY` set to a syntactically-valid-but-rejected token (e.g. `sk-invalid`), `dark-factory healthcheck` exits non-zero AND stdout shows a row with category `claude`.
 - [ ] The `gh` probe runs only when `pr: true` — evidence: with `pr: false` in `.dark-factory.yaml`, `grep -c 'probe=gh' stderr.log` returns 0; with `pr: true`, the same grep returns ≥1.
 - [ ] The notifications probe runs only when notifications are configured — evidence: with no `notifications` key in `.dark-factory.yaml`, `grep -c 'probe=notifications' stderr.log` returns 0; with a configured channel, the same grep returns ≥1.
-- [ ] Wall-clock budget on green (developer laptop, image already pulled, Docker daemon warm): full run ≤ 15 seconds, `--no-claude` run ≤ 5 seconds — evidence: `time dark-factory healthcheck` reports `real` < 15s; `time dark-factory healthcheck --no-claude` reports `real` < 5s. On CI / loaded hosts the budget relaxes to ≤ 30s full / ≤ 10s `--no-claude`.
-- [ ] Container-boot logic is shared between the new command and the scenario-003 documentation. Scenario 003 is bash-in-markdown (no Go file), so the "shared" contract is one-way: a single exported Go symbol (function or type) under `pkg/runner/` is imported by the `healthcheck` command package, AND scenario-003's markdown cross-references `dark-factory healthcheck` as the automated path to that same boot probe. Evidence: `grep -rE '<helper-symbol>' pkg/cmd/healthcheck*.go pkg/cmd/healthcheck/` returns ≥1 match (command imports the helper) AND `grep -n 'dark-factory healthcheck' scenarios/003-smoke-test-container.md` returns ≥1 line (markdown cross-references the command).
+- [ ] Wall-clock budget on green (developer laptop, image already pulled, Docker daemon warm): full run ≤ 45 seconds — evidence: `time dark-factory healthcheck` reports `real` < 45s. (The Claude probe alone can take 5-30s on cold-start depending on auth + upstream API latency; the budget accommodates worst-case cold-start while still catching genuinely stuck sessions.) On CI / loaded hosts the budget relaxes to ≤ 90s.
+- [ ] Container-launch logic is shared between the healthcheck probes and the production prompt-executor — `executor.BuildDockerRunArgs(opts ContainerLaunchOpts)` in `pkg/executor/launch.go` is called by `dockerExecutor.buildDockerCommand` (production prompts) AND by `bootProbe`, `mountProbe`, `claudeProbe`. Evidence: `grep -n 'executor.BuildDockerRunArgs' pkg/cmd/healthcheck/probes.go` returns ≥1 match AND `grep -n 'BuildDockerRunArgs' pkg/executor/executor.go` returns ≥1 match (via the `buildDockerCommand` method). Scenario 003 stays markdown-only and cross-references `dark-factory healthcheck` as the automated path: `grep -n 'dark-factory healthcheck' scenarios/003-smoke-test-container.md` returns ≥1 line.
 - [ ] No bare `return err` is introduced by the new code — evidence: `git diff origin/master..HEAD -- '*.go' | grep -nE '^\+\s*return err$'` returns 0 lines.
 - [ ] All errors use `errors.Wrapf` from `github.com/bborbe/errors` — evidence: `git diff origin/master..HEAD -- '*.go' | grep -nE '^\+.*fmt\.Errorf'` returns 0 lines in files under `pkg/cmd/healthcheck` or `pkg/runner/probe`.
 - [ ] `make precommit` is green on the branch — evidence: exit code 0.
@@ -67,8 +66,10 @@ Manual verification:
 
 ```
 # Green path
-dark-factory healthcheck                        # → exit 0, no failures table
-dark-factory healthcheck --no-claude            # → exit 0, no failures table, ≤5s
+dark-factory healthcheck                        # → exit 0, no failures table, ≤ 45s
+
+# Unknown flag — healthcheck is all-or-nothing
+dark-factory healthcheck --no-claude            # → exit non-zero, "unknown flag" error
 
 # Broken image
 sed -i.bak 's/^containerImage:.*/containerImage: claude-yolo:does-not-exist/' .dark-factory.yaml
@@ -77,7 +78,6 @@ mv .dark-factory.yaml.bak .dark-factory.yaml
 
 # Broken Claude session
 ANTHROPIC_API_KEY=sk-invalid dark-factory healthcheck   # → non-zero, table shows claude failure
-ANTHROPIC_API_KEY=sk-invalid dark-factory healthcheck --no-claude  # → exit 0
 ```
 
 ## Desired Behavior
@@ -88,7 +88,7 @@ ANTHROPIC_API_KEY=sk-invalid dark-factory healthcheck --no-claude  # → exit 0
    1. Docker daemon reachable (a `docker version`-equivalent query succeeds).
    2. The configured `containerImage` is present locally (no implicit pull — absence is a failure, not a remediation).
    3. A container started from `containerImage` boots cleanly: no `root/sudo privileges` error, no UID-remap regression, `/workspace` is writable from inside.
-   4. `claude -p "reply with exactly: OK"` invoked inside the container exits 0 and its stdout contains the literal string `OK`. Probe runs under a hard timeout (agent decides exact value at impl time; target ≤ 10s).
+   4. `claude -p "reply with exactly: OK"` invoked inside the container exits 0 and its stdout contains the literal string `OK`. Probe runs under a hard timeout of 30s (cold-start `claude` + Anthropic/MiniMax round-trip can take 15-25s on a fresh container).
    5. The host's `/workspace` mount target is writable from inside the container (a touch-and-remove probe in `/workspace`).
    6. (Only when `pr: true` in the resolved config) `gh auth status` exits 0.
    7. (Only when a notifications channel is configured) an HTTP POST to the configured channel returns a 2xx response. The POST body is a minimal "healthcheck" payload (exact wording agent decides at impl time); the channel receives a single message per healthcheck run.
@@ -97,7 +97,7 @@ ANTHROPIC_API_KEY=sk-invalid dark-factory healthcheck --no-claude  # → exit 0
 
 3. **Output is a categorized table on stdout, structured logs on stderr.** Each probe emits a structured log line on stderr at INFO level on success and ERROR level on failure (`log/slog`), including the probe name as a field (e.g. `probe=docker`). On exit, stdout carries a human-readable table whose first column is the probe category and whose row shape mirrors `dark-factory doctor`'s output. On all-pass, stdout shows `all probes passed` (or equivalent — agent decides exact wording at impl time).
 
-4. **`--no-claude` is the only probe-skip flag.** It skips probe step 4 (the Claude session probe). All other probes run unchanged. The flag is the only mechanism by which probe 4 can be skipped; there is no environment variable, config field, or auto-detect that suppresses it.
+4. **No probe-skip flag exists.** The only flag the command accepts is `--help`/`-h`. Any other arg is rejected with `unknown flag: "..."`. The claude probe in particular is non-optional; healthcheck is all-or-nothing.
 
 5. **Probes 6 and 7 are config-gated, not flag-gated.** The `gh` probe is skipped iff `pr: false` in the resolved `.dark-factory.yaml`. The notifications probe is skipped iff no notifications channel is configured. There are no `--no-gh` / `--no-notifications` flags.
 

@@ -47,8 +47,13 @@ type Probe interface {
 }
 
 const (
-	claudeWarnAfter = 2 * time.Second
-	claudeTimeout   = 10 * time.Second
+	// claudeWarnAfter / claudeTimeout: cold-starting `claude` inside the YOLO container
+	// involves auth load + Anthropic-or-MiniMax round-trip, which on a fresh container can
+	// take 15-25s on a laptop and longer under load. 10s was too tight (verify-spec on the
+	// operator's primary repo timed out 2/2 runs). 30s gives realistic headroom while still
+	// catching genuinely stuck/broken sessions.
+	claudeWarnAfter = 5 * time.Second
+	claudeTimeout   = 30 * time.Second
 	ghWarnAfter     = 3 * time.Second
 	ghTimeout       = 5 * time.Second
 )

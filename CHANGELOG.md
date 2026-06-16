@@ -8,7 +8,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
-## Unreleased
+## v0.180.0
 
 - fix(healthcheck)!: rewrite `dark-factory healthcheck` to use the same docker-launch path as production prompt containers, and remove the `--no-claude` flag entirely. **Breaking:** `--no-claude` is no longer accepted — skipping the highest-failure-rate probe defeats the purpose of a healthcheck. The claude probe is required.
   - **New shared launch helper `executor.BuildDockerRunArgs(opts ContainerLaunchOpts)`** in `pkg/executor/launch.go` — single source of truth for `docker run --rm ...` argv assembly. Used by `dockerExecutor.buildDockerCommand` (production prompt containers) AND by the healthcheck boot/mount/claude probes. By construction, a regression in the production launch path now surfaces in the healthcheck immediately.

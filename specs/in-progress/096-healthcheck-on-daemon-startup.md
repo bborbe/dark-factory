@@ -159,3 +159,23 @@ Rationale: prompt 1 lands the config surface and the effective-config log line s
 ## Do-Nothing Option
 
 Operators continue to manually run `dark-factory healthcheck` before queuing prompts and hope they remember to re-run it after each image bump, token rotation, or notification-config change. When they forget — the dominant case — the daemon picks up the next prompt, burns 5-10 minutes in container, and surfaces a failure the CLI exists to prevent. Cost: ongoing operator-trust erosion in the daemon, sustained drag of repeated failed-prompt cycles, and the embarrassing parent-task incident (v0.179.x shipping a CLI that the daemon never invokes) sitting unresolved. The CLI exists; not wiring it into the daemon is leaving the feature half-built.
+
+## Verification Result
+
+**Verified:** 2026-06-16T21:49:44Z (HEAD 4973c63)
+**Binary:** /tmp/dark-factory-4973c63 (`dark-factory dev`, built from HEAD; release v0.180.2 lacks the gate)
+**Scenario:** Cold/warm/disabled daemon runs against argument (Repo A) + kafka-topic-reader (Repo B); failure path via bogus containerImage; `--skip-healthcheck` in both flag positions
+**Evidence:**
+- AC1: `/tmp/run-A.log` line 9 "healthcheck startup gate starting" precedes line 23 "watcher started" (fsnotify-`Watch()` actual call)
+- AC2: `/tmp/run-A.log:21` `healthcheck startup gate ok elapsed=4.276788792s`; `/tmp/run-B.log:21` `elapsed=4.486717791s`
+- AC3: bogus image → exit 1; stderr `error: healthcheck startup gate: healthcheck failed: healthcheck probe "image" failed: container image "docker.io/bborbe/this-image-definitely-does-not-exist:bogus-9999" not present locally` (all three wrap layers present)
+- AC4: `/tmp/run-A2.log:9` `healthcheck cache hit, skipping`; gate-starting count=0
+- AC5: post-failure `ls ~/.dark-factory/healthcheck-cache/*.json` → no matches (failure never cached)
+- AC6: `healthcheckEnabled: false` in yaml → `/tmp/run-disabled.log:9` `healthcheck gate disabled`; effective-config `healthcheckEnabled=false healthcheckEnabledSource=project`
+- AC7/8: `--skip-healthcheck` (trailing AND leading) → `healthcheck skipped via --skip-healthcheck`; cache mtimes `1781646206 1781646324` unchanged across both runs
+- AC9: effective-config log line carries `healthcheckEnabled=true healthcheckEnabledSource=default healthcheckInterval=8h healthcheckIntervalSource=default` (single emission, all 4 keys count=1)
+- AC10: `git diff origin/master..HEAD -- pkg/preflight/` returns 0 lines; `pkg/runner/runner.go` preflight-grep returns 0 lines
+- AC11: `make precommit` → "ready to commit"
+- AC12-15: doc references at `CHANGELOG.md:13-18`, `docs/configuration.md:386-399`, `docs/running.md:285`, `docs/architecture-flow.md:97-103`
+- AC16: this verify-spec run covers 2 real repos × 3 paths (cold/warm/disabled) — meta-lesson lock satisfied
+**Verdict:** PASS

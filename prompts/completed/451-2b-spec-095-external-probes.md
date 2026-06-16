@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [095-healthcheck-cli]
+summary: Extended healthcheck to seven-probe sequence (claude/gh/notifications) with config-gating, factory wiring, full Ginkgo coverage, and CHANGELOG entry
+container: dark-factory-healthcheck-exec-451-2b-spec-095-external-probes
+dark-factory-version: v0.177.1
 created: "2026-06-16T13:00:10Z"
 queued: "2026-06-16T13:18:11Z"
+started: "2026-06-16T13:58:11Z"
+completed: "2026-06-16T14:25:54Z"
 branch: dark-factory/healthcheck-cli
 ---
 

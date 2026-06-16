@@ -6,6 +6,9 @@ package healthcheck_test
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/bborbe/errors"
@@ -14,6 +17,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd/healthcheck"
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
 
@@ -183,5 +187,254 @@ var _ = Describe("MountProbe", func() {
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("workspace mount not writable"))
+	})
+})
+
+var _ = Describe("ClaudeProbe", func() {
+	var (
+		ctx     context.Context
+		subproc *mocks.SubprocRunner
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		subproc = &mocks.SubprocRunner{}
+	})
+
+	It("returns nil when stdout contains the OK marker", func() {
+		subproc.RunWithWarnAndTimeoutReturns([]byte("OK\n"), nil)
+		p := healthcheck.NewClaudeProbe("alpine:latest", "myproject", subproc)
+		Expect(p.Name()).To(Equal("claude"))
+		Expect(p.Run(ctx)).To(Succeed())
+		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		Expect(name).To(Equal("docker"))
+		Expect(args).To(ContainElement("claude"))
+		Expect(args).To(ContainElement("-p"))
+		Expect(args).To(ContainElement("reply with exactly: OK"))
+	})
+
+	It("returns error when stdout does not contain OK", func() {
+		subproc.RunWithWarnAndTimeoutReturns([]byte("unexpected\n"), nil)
+		p := healthcheck.NewClaudeProbe("alpine:latest", "myproject", subproc)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
+	})
+
+	It("returns error on non-zero exit", func() {
+		subproc.RunWithWarnAndTimeoutReturns(
+			[]byte(""),
+			errors.Errorf(ctx, "exit 1"),
+		)
+		p := healthcheck.NewClaudeProbe("alpine:latest", "myproject", subproc)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
+	})
+})
+
+var _ = Describe("GhProbe", func() {
+	var (
+		ctx     context.Context
+		subproc *mocks.SubprocRunner
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		subproc = &mocks.SubprocRunner{}
+	})
+
+	It("returns nil when gh auth status succeeds", func() {
+		subproc.RunWithWarnAndTimeoutReturns([]byte(""), nil)
+		p := healthcheck.NewGhProbe(subproc)
+		Expect(p.Name()).To(Equal("gh"))
+		Expect(p.Run(ctx)).To(Succeed())
+		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		Expect(name).To(Equal("gh"))
+		Expect(args).To(ConsistOf("auth", "status"))
+	})
+
+	It("returns wrapped error on non-zero exit", func() {
+		subproc.RunWithWarnAndTimeoutReturns(
+			[]byte("You are not logged into any GitHub hosts"),
+			errors.Errorf(ctx, "exit 1"),
+		)
+		p := healthcheck.NewGhProbe(subproc)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("gh auth status failed"))
+	})
+})
+
+// roundTripFunc is a test double that lets each test inject its own RoundTrip behavior.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+var _ = Describe("NotificationsProbe", func() {
+	var (
+		ctx context.Context
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	It("returns nil silently without HTTP call when no channel configured", func() {
+		var invoked bool
+		client := &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				invoked = true
+				return nil, nil
+			}),
+		}
+		cfg := config.Config{} // zero Notifications block
+		p := healthcheck.NewNotificationsProbe(cfg, client)
+		Expect(p.Name()).To(Equal("notifications"))
+		Expect(p.Run(ctx)).To(Succeed())
+		Expect(invoked).To(BeFalse())
+	})
+
+	It("returns nil on 2xx response via injected RoundTripper", func() {
+		client := &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				Expect(r.Method).To(Equal(http.MethodPost))
+				Expect(r.Header.Get("Content-Type")).To(Equal("application/json"))
+				body, _ := io.ReadAll(r.Body)
+				Expect(string(body)).To(ContainSubstring("dark-factory healthcheck"))
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader("")),
+				}, nil
+			}),
+		}
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Discord: config.DiscordConfig{
+					WebhookEnv: "DUMMY_WEBHOOK_ENV",
+				},
+			},
+		}
+		// Pre-set the resolved env value (the constructor reads it).
+		GinkgoT().Setenv("DUMMY_WEBHOOK_ENV", "https://discord.example.com/webhook")
+		p := healthcheck.NewNotificationsProbe(cfg, client)
+		Expect(p.Run(ctx)).To(Succeed())
+	})
+
+	It("returns error with status and body snippet on non-2xx", func() {
+		client := &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusUnauthorized,
+					Body:       io.NopCloser(strings.NewReader("invalid token")),
+				}, nil
+			}),
+		}
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Discord: config.DiscordConfig{
+					WebhookEnv: "DUMMY_WEBHOOK_ENV_401",
+				},
+			},
+		}
+		GinkgoT().Setenv("DUMMY_WEBHOOK_ENV_401", "https://discord.example.com/webhook")
+		p := healthcheck.NewNotificationsProbe(cfg, client)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("status=401"))
+		Expect(err.Error()).To(ContainSubstring("invalid token"))
+	})
+
+	It("returns transport error when client.Do fails", func() {
+		client := &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				return nil, errors.Errorf(ctx, "connection refused")
+			}),
+		}
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Discord: config.DiscordConfig{
+					WebhookEnv: "DUMMY_WEBHOOK_ENV_TE",
+				},
+			},
+		}
+		GinkgoT().Setenv("DUMMY_WEBHOOK_ENV_TE", "https://discord.example.com/webhook")
+		p := healthcheck.NewNotificationsProbe(cfg, client)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("notifications POST transport error"))
+	})
+
+	It("POSTs the telegram payload and returns nil on 2xx", func() {
+		client := &http.Client{
+			Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+				Expect(r.Method).To(Equal(http.MethodPost))
+				Expect(r.Header.Get("Content-Type")).To(Equal("application/json"))
+				Expect(r.URL.Host).To(Equal("api.telegram.org"))
+				body, _ := io.ReadAll(r.Body)
+				Expect(string(body)).To(ContainSubstring(`"chat_id":"42"`))
+				Expect(string(body)).To(ContainSubstring("dark-factory healthcheck"))
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader("")),
+				}, nil
+			}),
+		}
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Telegram: config.TelegramConfig{
+					BotTokenEnv: "DUMMY_TELEGRAM_BOT",
+					ChatIDEnv:   "DUMMY_TELEGRAM_CHAT",
+				},
+			},
+		}
+		GinkgoT().Setenv("DUMMY_TELEGRAM_BOT", "test-token")
+		GinkgoT().Setenv("DUMMY_TELEGRAM_CHAT", "42")
+		p := healthcheck.NewNotificationsProbe(cfg, client)
+		Expect(p.Run(ctx)).To(Succeed())
+	})
+})
+
+var _ = Describe("NotificationsConfigured", func() {
+	It("returns false when nothing is configured", func() {
+		Expect(healthcheck.NotificationsConfigured(config.Config{})).To(BeFalse())
+	})
+
+	It("returns true when telegram env var is set and resolved", func() {
+		GinkgoT().Setenv("DUMMY_BOT_TOKEN_NOTIF", "resolved-token")
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Telegram: config.TelegramConfig{
+					BotTokenEnv: "DUMMY_BOT_TOKEN_NOTIF",
+				},
+			},
+		}
+		Expect(healthcheck.NotificationsConfigured(cfg)).To(BeTrue())
+	})
+
+	It("returns true when discord env var is set and resolved", func() {
+		GinkgoT().Setenv("DUMMY_DISCORD_NOTIF", "https://discord.example.com/wh")
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Discord: config.DiscordConfig{
+					WebhookEnv: "DUMMY_DISCORD_NOTIF",
+				},
+			},
+		}
+		Expect(healthcheck.NotificationsConfigured(cfg)).To(BeTrue())
+	})
+
+	It("returns false when telegram env var name is set but value is empty", func() {
+		GinkgoT().Setenv("DUMMY_BOT_TOKEN_EMPTY", "")
+		cfg := config.Config{
+			Notifications: config.NotificationsConfig{
+				Telegram: config.TelegramConfig{
+					BotTokenEnv: "DUMMY_BOT_TOKEN_EMPTY",
+				},
+			},
+		}
+		Expect(healthcheck.NotificationsConfigured(cfg)).To(BeFalse())
 	})
 })

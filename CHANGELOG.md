@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - feat: add `healthcheckEnabled` (*bool, default nil=true) and `healthcheckInterval` (string, default "8h") to Config, with validation, parsed getters, source detection in FieldSources, and four new keys in the effective-config startup log line
+- feat: add `pkg/healthcheckgate` package providing a `Gate` that runs the healthcheck probe sequence at daemon startup with success-only on-disk caching keyed by SHA256 of container image, project name, and interval; corrupt or future-dated cache treated as a miss; failure fires `healthcheck_failed` notification and returns a category-naming error
 
 ## v0.180.2
 

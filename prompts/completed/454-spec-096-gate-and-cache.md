@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [096-healthcheck-on-daemon-startup]
+summary: Created pkg/healthcheckgate package with Gate interface, FileCache implementation, CacheKey helper, three counterfeiter mocks, and full Ginkgo test suite at 84.2% coverage; make precommit exits 0
+container: dark-factory-healthcheck-startup-exec-454-spec-096-gate-and-cache
+dark-factory-version: v0.180.2
 created: "2026-06-16T20:10:00Z"
 queued: "2026-06-16T20:22:17Z"
+started: "2026-06-16T20:32:57Z"
+completed: "2026-06-16T20:45:10Z"
 branch: dark-factory/healthcheck-on-daemon-startup
 ---
 

@@ -19,11 +19,12 @@ import (
 //counterfeiter:generate -o ../../mocks/healthcheck-command.go --fake-name HealthcheckCommand . HealthcheckCommand
 
 // HealthcheckCommand executes the healthcheck subcommand. It runs the
-// configured probes (Docker, image, boot, Claude, mount, gh, notifications)
+// configured probes (Docker, image, boot, claude, mount, gh, notifications)
 // in fixed order and fails fast on the first error. The factory decides
 // which probes to include based on config (pr: true gates gh, presence of
-// any notification channel gates notifications); --no-claude trims the
-// Claude probe at run time.
+// any notification channel gates notifications); the claude probe is
+// non-optional — skipping the highest-failure-rate probe would defeat the
+// command's purpose.
 type HealthcheckCommand interface {
 	Run(ctx context.Context, args []string) error
 }
@@ -48,42 +49,18 @@ type healthcheckCommand struct {
 	probes Probes
 }
 
-// claudeProbeName is the probe category name trimmed when --no-claude is
-// supplied. Other probes have no flag override.
-const claudeProbeName = "claude"
-
-// Run executes the healthcheck command. Flags:
-//
-//	--no-claude   omit the Claude session probe from the iteration list
-//	--help, -h    intercepted by main.go before reaching Run
-//
-// Unknown flags are rejected. The remaining probes run in the order they
-// were passed to NewHealthcheckCommand and fail-fast: the first probe that
-// returns a non-nil error short-circuits the sequence and the failure
-// category is printed to stdout.
+// Run executes the healthcheck command. The only recognised flags are
+// --help/-h (intercepted by main.go before reaching Run); any other flag
+// is rejected. The probes run in the order they were passed to
+// NewHealthcheckCommand and fail-fast: the first probe that returns a
+// non-nil error short-circuits the sequence and the failure category is
+// printed to stdout.
 func (h *healthcheckCommand) Run(ctx context.Context, args []string) error {
-	skipClaude := false
 	for _, arg := range args {
-		switch arg {
-		case "--no-claude":
-			skipClaude = true
-		default:
-			return errors.Errorf(ctx, "unknown flag: %q", arg)
-		}
+		return errors.Errorf(ctx, "unknown flag: %q", arg)
 	}
 
-	probes := h.probes
-	if skipClaude {
-		probes = make(Probes, 0, len(h.probes))
-		for _, p := range h.probes {
-			if p.Name() == claudeProbeName {
-				continue
-			}
-			probes = append(probes, p)
-		}
-	}
-
-	for _, p := range probes {
+	for _, p := range h.probes {
 		slog.Info("healthcheck probe starting", "probe", p.Name())
 		if err := p.Run(ctx); err != nil {
 			slog.Error("healthcheck probe failed", "probe", p.Name(), "error", err)
@@ -102,8 +79,6 @@ func (h *healthcheckCommand) Run(ctx context.Context, args []string) error {
 func printFailureTable(category string, err error) {
 	fmt.Fprintf(os.Stdout, "%s\n", category)
 	detail := err.Error()
-	// Defang any leading "category: " prefix the wrapped error may include so
-	// the detail line stands alone.
 	detail = strings.TrimSpace(detail)
 	fmt.Fprintf(os.Stdout, "  %s\n", detail)
 }
@@ -112,10 +87,10 @@ func printFailureTable(category string, err error) {
 func HealthcheckHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory healthcheck [--no-claude]\n\n"+
+		"Usage: dark-factory healthcheck\n\n"+
 			"Probe the full pipeline-execution stack (Docker, image, boot, Claude, mount, gh, notifications) and exit 0 on full pass.\n\n"+
+			"The claude probe is non-optional — checking the highest-failure-rate component is the whole point of the command.\n\n"+
 			"Flags:\n"+
-			"  --no-claude   Skip the Claude session probe (the only token-spending probe)\n"+
 			"  --help, -h    Show this help\n",
 	)
 }

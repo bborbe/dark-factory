@@ -9,6 +9,11 @@
 // notification channels). The seven probes run in fixed order
 // (docker → image → boot → claude → mount → gh → notifications) and fail
 // fast on the first error.
+//
+// Boot / mount / claude all share executor.BuildDockerRunArgs so the probes
+// exercise the same launch path that production prompt containers and spec
+// generation containers use. A regression in that path is caught by the
+// healthcheck immediately, by construction.
 package healthcheck
 
 import (
@@ -20,14 +25,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/runner"
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -42,14 +46,7 @@ type Probe interface {
 	Run(ctx context.Context) error
 }
 
-// Thresholds for the local probes. They are deliberately longer than the
-// default subproc thresholds (3s/10s) because docker image inspect against a
-// large image and a container boot+exec cycle can take a few seconds on a
-// cold daemon.
 const (
-	dockerWarnAfter = 3 * time.Second
-	mountTimeout    = 15 * time.Second
-
 	claudeWarnAfter = 2 * time.Second
 	claudeTimeout   = 10 * time.Second
 	ghWarnAfter     = 3 * time.Second
@@ -63,7 +60,6 @@ const claudeProbePrompt = "reply with exactly: OK"
 
 // ClaudeWarnAfterForFactory returns the warn-after threshold the factory
 // should use when constructing a subproc.Runner for the Claude probe.
-// Exposed so the factory can pass the same value the probe expects.
 func ClaudeWarnAfterForFactory() time.Duration { return claudeWarnAfter }
 
 // ClaudeTimeoutForFactory returns the hard timeout the factory should use
@@ -77,6 +73,23 @@ func GhWarnAfterForFactory() time.Duration { return ghWarnAfter }
 // GhTimeoutForFactory returns the hard timeout the factory should use when
 // constructing a subproc.Runner for the gh probe.
 func GhTimeoutForFactory() time.Duration { return ghTimeout }
+
+// ProbeLaunchConfig is the per-invocation container-launch config that the
+// boot / mount / claude probes pass to executor.BuildDockerRunArgs. The
+// factory builds one instance and shares it across all three probes so they
+// hit the exact same launch path production uses.
+type ProbeLaunchConfig struct {
+	ContainerImage string
+	ProjectName    string
+	ProjectRoot    string
+	ClaudeDir      string
+	Home           string
+	Env            map[string]string
+	ExtraMounts    []config.ExtraMount
+	NetrcFile      string
+	GitconfigFile  string
+	HideGit        bool
+}
 
 // dockerProbe checks that the docker daemon is reachable.
 type dockerProbe struct {
@@ -94,12 +107,7 @@ func (d *dockerProbe) Name() string {
 }
 
 func (d *dockerProbe) Run(ctx context.Context) error {
-	out, err := d.runner.RunWithWarnAndTimeout(
-		ctx,
-		"docker version",
-		"docker",
-		"version",
-	)
+	out, err := d.runner.RunWithWarnAndTimeout(ctx, "docker version", "docker", "version")
 	if err != nil {
 		slog.Error("healthcheck probe failed", "probe", d.Name(), "error", err)
 		if isDockerDaemonUnreachable(out) {
@@ -153,28 +161,36 @@ func (i *imageProbe) Run(ctx context.Context) error {
 			"error",
 			err,
 		)
-		return errors.Errorf(
-			ctx,
-			"container image %q not present locally",
-			i.containerImage,
-		)
+		return errors.Errorf(ctx, "container image %q not present locally", i.containerImage)
 	}
 	slog.Info("healthcheck probe passed", "probe", i.Name(), "image", i.containerImage)
 	return nil
 }
 
-// bootProbe wraps a runner.BootContainerProbe to fit the Probe interface.
-// The BootContainerProbe uses a pointer receiver, so callers must pass a
-// non-nil pointer.
+// bootProbe runs a one-shot container via the same launch path production
+// prompt containers use and verifies /workspace is writable inside it. The
+// probe assembles a ContainerLaunchOpts from ProbeLaunchConfig + a
+// boot-specific entrypoint (`/bin/sh`) + boot-specific command and calls
+// executor.BuildDockerRunArgs to produce the argv.
 type bootProbe struct {
-	probe *runner.BootContainerProbe
+	launch ProbeLaunchConfig
+	runner subproc.Runner
 }
 
-// NewBootProbe returns a Probe that boots a throwaway container from the
-// configured image and verifies /workspace is writable inside it. The pointer
-// is required because runner.BootContainerProbe.Run has a pointer receiver.
-func NewBootProbe(p *runner.BootContainerProbe) Probe {
-	return &bootProbe{probe: p}
+// bootProbeCommand is the in-container shell command that verifies /workspace
+// is writable and prints the BOOT_OK marker on success.
+const bootProbeCommand = "mkdir -p /workspace/.dark-factory-healthcheck && " +
+	"touch /workspace/.dark-factory-healthcheck/probe && " +
+	"rm -rf /workspace/.dark-factory-healthcheck && " +
+	"echo BOOT_OK"
+
+// NewBootProbe returns a Probe that boots a throwaway container via the
+// shared executor.BuildDockerRunArgs launch path and verifies /workspace
+// is writable. The probe uses the same mounts, env, hideGit and extraMounts
+// wiring as a production prompt container — any regression in the launch
+// path surfaces here.
+func NewBootProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
+	return &bootProbe{launch: launch, runner: r}
 }
 
 func (b *bootProbe) Name() string {
@@ -182,33 +198,32 @@ func (b *bootProbe) Name() string {
 }
 
 func (b *bootProbe) Run(ctx context.Context) error {
-	if err := b.probe.Run(ctx); err != nil {
-		slog.Error("healthcheck probe failed", "probe", b.Name(), "error", err)
-		return errors.Wrapf(ctx, err, "container boot probe failed")
-	}
-	slog.Info("healthcheck probe passed", "probe", b.Name())
-	return nil
+	return runContainerProbe(ctx, runContainerProbeArgs{
+		launch:        b.launch,
+		runner:        b.runner,
+		category:      b.Name(),
+		op:            "docker run boot probe",
+		entrypoint:    "/bin/sh",
+		command:       []string{"-c", bootProbeCommand},
+		successMarker: "BOOT_OK",
+		failurePrefix: "container boot probe failed",
+	})
 }
 
-// claudeProbe runs a one-shot `docker run --rm <image> claude -p <prompt>` and
-// asserts the literal "OK" substring is present in stdout. The hard-coded
-// prompt guarantees no operator input reaches the Claude shell.
+// claudeProbe runs `claude -p <prompt>` inside a throwaway container via the
+// shared executor.BuildDockerRunArgs launch path and asserts the literal "OK"
+// substring is present in stdout. Same launch path as production — so if
+// production stops being able to start Claude, the probe notices.
 type claudeProbe struct {
-	containerImage string
-	projectName    string
-	runner         subproc.Runner
+	launch ProbeLaunchConfig
+	runner subproc.Runner
 }
 
-// NewClaudeProbe returns a Probe that boots a one-shot container, runs
-// `claude -p` against it, and asserts the literal "OK" substring is present
-// in stdout. A 10-second hard timeout caps the wall-clock impact even when
-// Claude is slow to respond.
-func NewClaudeProbe(containerImage string, projectName string, r subproc.Runner) Probe {
-	return &claudeProbe{
-		containerImage: containerImage,
-		projectName:    projectName,
-		runner:         r,
-	}
+// NewClaudeProbe returns a Probe that boots a one-shot container via the
+// shared launch path with `claude -p <prompt>` as the entrypoint+args.
+// Asserts the literal "OK" substring in stdout.
+func NewClaudeProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
+	return &claudeProbe{launch: launch, runner: r}
 }
 
 func (c *claudeProbe) Name() string {
@@ -216,63 +231,16 @@ func (c *claudeProbe) Name() string {
 }
 
 func (c *claudeProbe) Run(ctx context.Context) error {
-	name, err := uniqueContainerName(c.projectName, "claude")
-	if err != nil {
-		return errors.Wrap(ctx, err, "generate claude probe container name")
-	}
-	out, err := c.runner.RunWithWarnAndTimeout(
-		ctx,
-		"claude session probe",
-		"docker",
-		"run",
-		"--rm",
-		"--name", name,
-		"--entrypoint", "claude",
-		c.containerImage,
-		"-p", claudeProbePrompt,
-	)
-	if err != nil {
-		slog.Error(
-			"healthcheck probe failed",
-			"probe",
-			c.Name(),
-			"stdout",
-			truncate(string(out)),
-			"error",
-			err,
-		)
-		return errors.Errorf(
-			ctx,
-			"claude session probe failed: stdout=%q",
-			truncate(string(out)),
-		)
-	}
-	if !strings.Contains(string(out), "OK") {
-		slog.Error(
-			"healthcheck probe failed",
-			"probe",
-			c.Name(),
-			"stdout",
-			truncate(string(out)),
-		)
-		return errors.Errorf(
-			ctx,
-			"claude session probe failed: stdout=%q",
-			truncate(string(out)),
-		)
-	}
-	slog.Info("healthcheck probe passed", "probe", c.Name())
-	return nil
-}
-
-// mountProbe checks that /workspace is writable inside a throwaway container.
-// It runs `docker run --rm <image> sh -c '... echo MOUNT_OK'` and asserts the
-// expected marker in stdout.
-type mountProbe struct {
-	containerImage string
-	runner         subproc.Runner
-	timeout        time.Duration
-	warnAfter      time.Duration
+	return runContainerProbe(ctx, runContainerProbeArgs{
+		launch:        c.launch,
+		runner:        c.runner,
+		category:      c.Name(),
+		op:            "claude session probe",
+		entrypoint:    "claude",
+		command:       []string{"-p", claudeProbePrompt},
+		successMarker: "OK",
+		failurePrefix: "claude session probe failed",
+	})
 }
 
 // mountProbeCommand is the in-container shell command that verifies /workspace
@@ -283,16 +251,17 @@ const mountProbeCommand = "mkdir -p /workspace/.healthcheck-mount && " +
 	"rm -rf /workspace/.healthcheck-mount && " +
 	"echo MOUNT_OK"
 
-// NewMountProbe returns a Probe that boots a throwaway container and verifies
-// /workspace is writable inside it. The container image is the same one
-// passed to the boot probe.
-func NewMountProbe(containerImage string, r subproc.Runner) Probe {
-	return &mountProbe{
-		containerImage: containerImage,
-		runner:         r,
-		timeout:        mountTimeout,
-		warnAfter:      dockerWarnAfter,
-	}
+// mountProbe boots a throwaway container via the shared launch path and
+// verifies /workspace is writable from inside.
+type mountProbe struct {
+	launch ProbeLaunchConfig
+	runner subproc.Runner
+}
+
+// NewMountProbe returns a Probe that boots a throwaway container via the
+// shared launch path and verifies /workspace is writable inside it.
+func NewMountProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
+	return &mountProbe{launch: launch, runner: r}
 }
 
 func (m *mountProbe) Name() string {
@@ -300,55 +269,97 @@ func (m *mountProbe) Name() string {
 }
 
 func (m *mountProbe) Run(ctx context.Context) error {
-	workspaceDir, err := os.Getwd()
+	return runContainerProbe(ctx, runContainerProbeArgs{
+		launch:        m.launch,
+		runner:        m.runner,
+		category:      m.Name(),
+		op:            "docker run mount probe",
+		entrypoint:    "/bin/sh",
+		command:       []string{"-c", mountProbeCommand},
+		successMarker: "MOUNT_OK",
+		failurePrefix: "workspace mount not writable",
+	})
+}
+
+// runContainerProbeArgs is the input to runContainerProbe — all the fields the three
+// container probes (boot, mount, claude) need to launch one one-shot container, check
+// stdout for a success marker, and report success/failure with consistent logging.
+type runContainerProbeArgs struct {
+	launch        ProbeLaunchConfig
+	runner        subproc.Runner
+	category      string   // probe name ("boot", "mount", "claude")
+	op            string   // subproc op label
+	entrypoint    string   // container --entrypoint
+	command       []string // args appended after the image
+	successMarker string   // substring required in stdout for success
+	failurePrefix string   // error message prefix on failure
+}
+
+// runContainerProbe is the shared body of bootProbe.Run, mountProbe.Run, claudeProbe.Run.
+// It launches one container via the same executor.BuildDockerRunArgs path production uses,
+// asserts the success marker in stdout, and emits the standard slog success/failure lines.
+func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
+	name, err := uniqueContainerName(a.launch.ProjectName, a.category)
 	if err != nil {
-		return errors.Wrap(ctx, err, "mount probe: get working directory")
+		return errors.Wrap(ctx, err, "generate "+a.category+" probe container name")
 	}
-	out, err := m.runner.RunWithWarnAndTimeout(
+	opts := launchOpts(a.launch, name)
+	opts.Entrypoint = a.entrypoint
+	opts.Command = a.command
+	// #nosec G204 -- args are derived from the configured container image, not user input
+	out, err := a.runner.RunWithWarnAndTimeout(
 		ctx,
-		"docker run mount probe",
+		a.op,
 		"docker",
-		"run",
-		"--rm",
-		"--entrypoint", "/bin/sh",
-		"-v", workspaceDir+":/workspace",
-		m.containerImage,
-		"-c",
-		mountProbeCommand,
-	)
+		executor.BuildDockerRunArgs(opts)...)
 	if err != nil {
 		slog.Error(
 			"healthcheck probe failed",
-			"probe",
-			m.Name(),
-			"stdout",
-			truncate(string(out)),
-			"error",
-			err,
+			"probe", a.category,
+			"container", name,
+			"stdout", truncate(string(out)),
+			"error", err,
 		)
-		return errors.Wrapf(
-			ctx,
-			err,
-			"workspace mount not writable: stdout=%q",
-			truncate(string(out)),
-		)
+		return errors.Errorf(ctx, "%s: stdout=%q", a.failurePrefix, truncate(string(out)))
 	}
-	if !strings.Contains(string(out), "MOUNT_OK") {
+	if !strings.Contains(string(out), a.successMarker) {
 		slog.Error(
 			"healthcheck probe failed",
-			"probe",
-			m.Name(),
-			"stdout",
-			truncate(string(out)),
+			"probe", a.category,
+			"container", name,
+			"stdout", truncate(string(out)),
 		)
 		return errors.Errorf(
 			ctx,
-			"workspace mount not writable: stdout=%q",
+			"%s: missing %s marker in stdout=%q",
+			a.failurePrefix,
+			a.successMarker,
 			truncate(string(out)),
 		)
 	}
-	slog.Info("healthcheck probe passed", "probe", m.Name())
+	slog.Info("healthcheck probe passed", "probe", a.category, "container", name)
 	return nil
+}
+
+// launchOpts builds a base ContainerLaunchOpts from a ProbeLaunchConfig.
+// Callers add probe-specific Entrypoint + Command before passing to
+// executor.BuildDockerRunArgs. The probe-specific label
+// (`dark-factory.probe=<category>`) is derived from the container name suffix
+// pattern produced by uniqueContainerName.
+func launchOpts(p ProbeLaunchConfig, containerName string) executor.ContainerLaunchOpts {
+	return executor.ContainerLaunchOpts{
+		ContainerName:  containerName,
+		ContainerImage: p.ContainerImage,
+		ProjectName:    p.ProjectName,
+		ProjectRoot:    p.ProjectRoot,
+		ClaudeDir:      p.ClaudeDir,
+		Home:           p.Home,
+		Env:            p.Env,
+		ExtraMounts:    p.ExtraMounts,
+		NetrcFile:      p.NetrcFile,
+		GitconfigFile:  p.GitconfigFile,
+		HideGit:        p.HideGit,
+	}
 }
 
 // ghProbe runs `gh auth status` and reports success only when exit is 0.
@@ -370,29 +381,15 @@ func (g *ghProbe) Name() string {
 }
 
 func (g *ghProbe) Run(ctx context.Context) error {
-	out, err := g.runner.RunWithWarnAndTimeout(
-		ctx,
-		"gh auth status",
-		"gh",
-		"auth",
-		"status",
-	)
+	out, err := g.runner.RunWithWarnAndTimeout(ctx, "gh auth status", "gh", "auth", "status")
 	if err != nil {
 		slog.Error(
 			"healthcheck probe failed",
-			"probe",
-			g.Name(),
-			"stdout",
-			truncate(string(out)),
-			"error",
-			err,
+			"probe", g.Name(),
+			"stdout", truncate(string(out)),
+			"error", err,
 		)
-		return errors.Wrapf(
-			ctx,
-			err,
-			"gh auth status failed: stdout=%q",
-			truncate(string(out)),
-		)
+		return errors.Wrapf(ctx, err, "gh auth status failed: stdout=%q", truncate(string(out)))
 	}
 	slog.Info("healthcheck probe passed", "probe", g.Name())
 	return nil
@@ -416,11 +413,11 @@ type notificationsChannel struct {
 	chatID      string // telegram only
 }
 
-// NotificationsConfigured reports whether the operator has opted into at
-// least one notification channel. The Telegram channel is "configured" when
-// its env var name is set; "operational" requires the env var to be
-// non-empty. The probe handles both cases by no-oping when the URL is
-// empty.
+// NotificationsConfigured reports whether at least one notification channel
+// is fully configured (env var name present AND env var non-empty). Returns
+// true for Telegram when BotTokenEnv is set and resolves to a non-empty
+// token, and for Discord when WebhookEnv is set and resolves to a non-empty
+// webhook URL.
 func NotificationsConfigured(cfg config.Config) bool {
 	if cfg.Notifications.Telegram.BotTokenEnv != "" && cfg.ResolvedTelegramBotToken() != "" {
 		return true
@@ -434,12 +431,9 @@ func NotificationsConfigured(cfg config.Config) bool {
 // NewNotificationsProbe returns a Probe that POSTs a fixed minimal JSON
 // payload to the configured notification channel via the injected
 // *http.Client. The factory supplies the client (5-second timeout baked
-// in) — tests inject a test double via a fake RoundTripper.
-//
-// When neither channel is configured the constructor still returns a Probe
-// whose Run no-ops with a Debug log line. The orchestrator normally omits
-// this probe from the iteration list via NotificationsConfigured; the
-// in-probe no-op is a defensive safety net.
+// in). When no channel is configured the probe returns an error on Run
+// (the factory normally omits this probe entirely via NotificationsConfigured,
+// so reaching this state indicates a wiring mistake).
 func NewNotificationsProbe(cfg config.Config, client *http.Client) Probe {
 	p := &notificationsProbe{client: client}
 	if cfg.Notifications.Telegram.BotTokenEnv != "" && cfg.ResolvedTelegramBotToken() != "" {
@@ -484,12 +478,9 @@ func (n *notificationsProbe) Run(ctx context.Context) error {
 	if err != nil {
 		slog.Error(
 			"healthcheck probe failed",
-			"probe",
-			n.Name(),
-			"channel",
-			n.channel.kind,
-			"error",
-			err,
+			"probe", n.Name(),
+			"channel", n.channel.kind,
+			"error", err,
 		)
 		return errors.Wrap(ctx, err, "notifications POST transport error")
 	}
@@ -503,14 +494,10 @@ func (n *notificationsProbe) Run(ctx context.Context) error {
 		host := urlHost(urlStr)
 		slog.Error(
 			"healthcheck probe failed",
-			"probe",
-			n.Name(),
-			"channel",
-			n.channel.kind,
-			"host",
-			host,
-			"status",
-			resp.StatusCode,
+			"probe", n.Name(),
+			"channel", n.channel.kind,
+			"host", host,
+			"status", resp.StatusCode,
 		)
 		return errors.Errorf(
 			ctx,
@@ -523,14 +510,10 @@ func (n *notificationsProbe) Run(ctx context.Context) error {
 	host := urlHost(urlStr)
 	slog.Info(
 		"healthcheck probe passed",
-		"probe",
-		n.Name(),
-		"channel",
-		n.channel.kind,
-		"host",
-		host,
-		"status",
-		resp.StatusCode,
+		"probe", n.Name(),
+		"channel", n.channel.kind,
+		"host", host,
+		"status", resp.StatusCode,
 	)
 	return nil
 }

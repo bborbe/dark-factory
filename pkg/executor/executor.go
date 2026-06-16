@@ -12,8 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -480,99 +478,63 @@ func (e *dockerExecutor) buildDockerCommand(
 	promptBaseName string,
 	home string,
 ) *exec.Cmd {
-	// Build docker run command args
-	// Mount prompt as file to avoid shell escaping issues with -e flag
-	args := []string{
-		"run", "--rm",
-		"--name", containerName,
-		"--label", "dark-factory.project=" + e.projectName,
-		"--label", "dark-factory.prompt=" + promptBaseName,
-		"--cap-add=NET_ADMIN", "--cap-add=NET_RAW",
+	// Merge prompt-specific env (YOLO_PROMPT_FILE, ANTHROPIC_MODEL, YOLO_OUTPUT) with the
+	// executor's configured env (e.env). Prompt-specific keys win on collision because they
+	// reflect the in-container contract; e.env is operator preference.
+	env := map[string]string{
+		"YOLO_PROMPT_FILE": "/tmp/prompt.md",
+		"ANTHROPIC_MODEL":  e.model,
+		"YOLO_OUTPUT":      "json",
 	}
-	args = append(args,
-		"-e", "YOLO_PROMPT_FILE=/tmp/prompt.md",
-		"-e", "ANTHROPIC_MODEL="+e.model,
-		"-e", "YOLO_OUTPUT=json",
-	)
-	if len(e.env) > 0 {
-		keys := make([]string, 0, len(e.env))
-		for k := range e.env {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			args = append(args, "-e", k+"="+e.env[k])
+	for k, v := range e.env {
+		if _, locked := env[k]; !locked {
+			env[k] = v
 		}
 	}
-	args = append(args,
-		"-v", promptFilePath+":/tmp/prompt.md:ro",
-		"-v", projectRoot+":/workspace",
-		"-v", claudeConfigDir+":/home/node/.claude",
-	)
-	if e.netrcFile != "" {
-		resolved := e.netrcFile
-		if strings.HasPrefix(resolved, "~/") {
-			resolved = home + resolved[1:]
-		}
-		args = append(args, "-v", resolved+":/home/node/.netrc:ro")
+	opts := ContainerLaunchOpts{
+		ContainerName:  containerName,
+		ContainerImage: e.containerImage,
+		ProjectName:    e.projectName,
+		ProjectRoot:    projectRoot,
+		ClaudeDir:      claudeConfigDir,
+		Home:           home,
+		Env:            env,
+		ExtraMounts:    e.extraMounts,
+		NetrcFile:      e.netrcFile,
+		GitconfigFile:  e.gitconfigFile,
+		HideGit:        e.hideGit,
+		ExtraLabels: map[string]string{
+			"dark-factory.prompt": promptBaseName,
+		},
+		CapAdd: []string{"NET_ADMIN", "NET_RAW"},
 	}
-	if e.gitconfigFile != "" {
-		resolved := e.gitconfigFile
-		if strings.HasPrefix(resolved, "~/") {
-			resolved = home + resolved[1:]
-		}
-		args = append(args, "-v", resolved+":/home/node/.gitconfig-extra:ro")
-	}
-	for _, m := range e.extraMounts {
-		src := m.Src
-		src = resolveExtraMountSrc(src, os.Getenv, runtime.GOOS)
-		if strings.HasPrefix(src, "~/") {
-			src = home + src[1:]
-		} else if !filepath.IsAbs(src) {
-			src = filepath.Join(projectRoot, src)
-		}
-		if _, err := os.Stat(src); err != nil {
-			slog.Warn("extraMounts: src path does not exist, skipping", "src", src, "dst", m.Dst)
-			continue
-		}
-		mount := src + ":" + m.Dst
-		if m.IsReadonly() {
-			mount += ":ro"
-		}
-		args = append(args, "-v", mount)
-	}
-	args = append(args, e.buildHideGitArgs(projectRoot)...)
-	args = append(args, e.containerImage)
+	args := BuildDockerRunArgs(opts)
+	// Insert the prompt-file mount before the image positional. Find the image arg
+	// (it's the first non-flag arg in the tail) and insert -v before it. Simpler:
+	// rebuild with the mount inserted just after the env block.
+	args = insertPromptFileMount(args, promptFilePath, e.containerImage)
 	// #nosec G204 -- promptContent is user-provided by design
 	return exec.CommandContext(ctx, "docker", args...)
 }
 
-// buildHideGitArgs returns the Docker mount args needed to mask .git from the container.
-// When hideGit is false it returns nil (no args added). When true it inspects projectRoot/.git:
-//   - directory → tmpfs overlay hides host .git contents (anonymous volumes don't mask bind-mount subdirs)
-//   - file (worktree pointer) → /dev/null bind ("-v /dev/null:/workspace/.git")
-//   - missing → no args (nothing to hide)
-//   - stat error (non-ENOENT) → no args, logged at debug
-func (e *dockerExecutor) buildHideGitArgs(projectRoot string) []string {
-	if !e.hideGit {
-		return nil
-	}
-	gitPath := filepath.Join(projectRoot, ".git")
-	fi, statErr := os.Stat(gitPath)
-	if statErr != nil {
-		if !os.IsNotExist(statErr) {
-			slog.Debug("hideGit: stat .git failed, skipping mount mask", "error", statErr)
+// insertPromptFileMount adds `-v <promptFilePath>:/tmp/prompt.md:ro` just before the
+// containerImage positional. Kept as a small adapter so BuildDockerRunArgs stays free
+// of prompt-specific concepts.
+func insertPromptFileMount(args []string, promptFilePath, containerImage string) []string {
+	for i, a := range args {
+		if a == containerImage {
+			out := make([]string, 0, len(args)+2)
+			out = append(out, args[:i]...)
+			out = append(out, "-v", promptFilePath+":/tmp/prompt.md:ro")
+			out = append(out, args[i:]...)
+			return out
 		}
-		return nil
 	}
-	if fi.IsDir() {
-		// Normal repo or clone: use tmpfs to overlay the .git directory.
-		// Anonymous volumes (-v /workspace/.git) cannot mask subdirectories of bind mounts.
-		return []string{"--tmpfs", "/workspace/.git:rw,size=1k"}
-	}
-	// Worktree pointer file or submodule: bind /dev/null over the pointer file.
-	return []string{"-v", "/dev/null:/workspace/.git"}
+	return args
 }
+
+// (buildHideGitArgs moved to launch.go as buildHideGitArgsForRoot — used by both the
+// prompt executor path and the healthcheck probes via BuildDockerRunArgs.)
 
 // validateClaudeAuth checks that the Claude config directory contains a valid OAuth token.
 // The check is skipped when any of:

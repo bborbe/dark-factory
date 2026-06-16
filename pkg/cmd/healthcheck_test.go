@@ -138,12 +138,11 @@ var _ = Describe("HealthcheckCommand", func() {
 			Expect(out).To(ContainSubstring("does-not-exist"))
 		})
 
-		It("respects --no-claude by running the four local probes", func() {
-			hc, ps := buildProbes("docker", "image", "boot", "mount")
-			Expect(cmd.NewHealthcheckCommand(hc).Run(ctx, []string{"--no-claude"})).To(Succeed())
-			for _, p := range ps {
-				Expect(p.RunCallCount()).To(Equal(1))
-			}
+		It("rejects --no-claude as an unknown flag (claude probe is non-optional)", func() {
+			hc, _ := buildProbes("docker", "image", "boot", "mount")
+			err := cmd.NewHealthcheckCommand(hc).Run(ctx, []string{"--no-claude"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unknown flag"))
 		})
 
 		It("returns nil with no args and no probes", func() {
@@ -166,7 +165,7 @@ var _ = Describe("HealthcheckCommand", func() {
 			_, _ = io.Copy(&buf, r)
 			out := buf.String()
 			Expect(out).To(ContainSubstring("Usage: dark-factory healthcheck"))
-			Expect(out).To(ContainSubstring("--no-claude"))
+			Expect(out).To(ContainSubstring("--help"))
 		})
 	})
 
@@ -199,20 +198,6 @@ var _ = Describe("HealthcheckCommand", func() {
 				)
 				idx += at + 1
 			}
-		})
-
-		It("skips claude when --no-claude is passed", func() {
-			handler := &captureHandler{}
-			origLogger := slog.Default()
-			slog.SetDefault(slog.New(handler))
-			defer slog.SetDefault(origLogger)
-
-			hc, _ := buildProbes(sevenNames...)
-			err := cmd.NewHealthcheckCommand(hc).Run(ctx, []string{"--no-claude"})
-			Expect(err).NotTo(HaveOccurred())
-
-			text := handler.recordsText()
-			Expect(text).NotTo(ContainSubstring("probe=claude"))
 		})
 
 		It("skips gh when pr is false (factory pre-trims slice)", func() {

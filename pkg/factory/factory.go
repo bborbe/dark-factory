@@ -1206,23 +1206,37 @@ func CreateHealthcheckCommand(
 		healthcheck.GhTimeoutForFactory(),
 	)
 	projectName := project.Resolve(cfg.ResolvedProjectOverride()).String()
-	bootProbe := &runner.BootContainerProbe{
+	projectRoot, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	env := map[string]string{}
+	for k, v := range cfg.Env {
+		env[k] = v
+	}
+	if cfg.ContainerImage != "" {
+		// ANTHROPIC_MODEL is set by the production executor; mirror it here so
+		// the claude probe sees the same env as a real prompt container.
+		if cfg.Model != "" {
+			env["ANTHROPIC_MODEL"] = cfg.Model
+		}
+	}
+	launch := healthcheck.ProbeLaunchConfig{
 		ContainerImage: cfg.ContainerImage,
 		ProjectName:    projectName,
-		Subproc:        subprocRunner,
-		ExtraMounts:    cfg.ExtraMounts,
+		ProjectRoot:    projectRoot,
 		ClaudeDir:      cfg.ResolvedClaudeDir(),
+		Home:           home,
+		Env:            env,
+		ExtraMounts:    cfg.ExtraMounts,
+		NetrcFile:      cfg.NetrcFile,
+		GitconfigFile:  cfg.GitconfigFile,
+		HideGit:        cfg.HideGit,
 	}
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),
 		healthcheck.NewImageProbe(cfg.ContainerImage, subprocRunner),
-		healthcheck.NewBootProbe(bootProbe),
-		healthcheck.NewClaudeProbe(
-			cfg.ContainerImage,
-			projectName,
-			claudeRunner,
-		),
-		healthcheck.NewMountProbe(cfg.ContainerImage, subprocRunner),
+		healthcheck.NewBootProbe(launch, subprocRunner),
+		healthcheck.NewClaudeProbe(launch, claudeRunner),
+		healthcheck.NewMountProbe(launch, subprocRunner),
 	}
 	if cfg.PR {
 		probes = append(probes, healthcheck.NewGhProbe(ghRunner))
@@ -1230,10 +1244,7 @@ func CreateHealthcheckCommand(
 	if healthcheck.NotificationsConfigured(cfg) {
 		probes = append(
 			probes,
-			healthcheck.NewNotificationsProbe(
-				cfg,
-				&http.Client{Timeout: 5 * time.Second},
-			),
+			healthcheck.NewNotificationsProbe(cfg, &http.Client{Timeout: 5 * time.Second}),
 		)
 	}
 	return cmd.NewHealthcheckCommand(probes)

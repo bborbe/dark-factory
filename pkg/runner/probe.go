@@ -12,12 +12,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -32,12 +30,11 @@ const probeCommand = "mkdir -p /workspace/.dark-factory-healthcheck && " +
 // scenario 003 to detect the "UID remap to root" / mount-permission regression that breaks
 // prompt execution.
 type BootContainerProbe struct {
-	ContainerImage   string
-	ProjectName      string
-	ContainerChecker executor.ContainerChecker
-	Subproc          subproc.Runner
-	ExtraMounts      []config.ExtraMount
-	ClaudeDir        string
+	ContainerImage string
+	ProjectName    string
+	Subproc        subproc.Runner
+	ExtraMounts    []config.ExtraMount
+	ClaudeDir      string
 	// WorkspaceDir is read from os.Getwd() inside Run — no need to inject.
 }
 
@@ -57,13 +54,7 @@ func (b *BootContainerProbe) Run(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, "build docker run args")
 	}
-	if err := b.startContainer(ctx, name, args); err != nil {
-		return errors.Wrap(ctx, err, "start probe container in run")
-	}
-	if err := b.waitForRunning(ctx, name); err != nil {
-		return errors.Wrap(ctx, err, "wait for probe container")
-	}
-	return b.verifyBoot(ctx, name)
+	return b.runProbe(ctx, name, args)
 }
 
 // buildRunArgs assembles the `docker run --rm` arg list for the probe container.
@@ -76,6 +67,7 @@ func (b *BootContainerProbe) buildRunArgs(ctx context.Context, name string) ([]s
 		"run", "--rm",
 		"--name", name,
 		"--label", "dark-factory.project=" + b.ProjectName,
+		"--entrypoint", "/bin/sh",
 		"-v", workspaceDir + ":/workspace",
 		"-v", b.ClaudeDir + ":/home/node/.claude",
 	}
@@ -91,7 +83,7 @@ func (b *BootContainerProbe) buildRunArgs(ctx context.Context, name string) ([]s
 		}
 		args = append(args, "-v", mount)
 	}
-	args = append(args, b.ContainerImage)
+	args = append(args, b.ContainerImage, "-c", probeCommand)
 	return args, nil
 }
 
@@ -111,54 +103,18 @@ func resolveExtraMountPath(src, workspaceDir string) string {
 	return src
 }
 
-// startContainer runs `docker run --rm` for the probe. Returns nil on success, wrapped
-// error on failure.
-func (b *BootContainerProbe) startContainer(ctx context.Context, name string, args []string) error {
+// runProbe invokes `docker run --rm --entrypoint /bin/sh <image> -c <probeCommand>` in a
+// single subprocess call. The probe command runs inline inside the container — no separate
+// `docker exec` step is required and there is no need to wait for the container to be in
+// "running" state because the run is synchronous: the container starts, executes
+// probeCommand, prints BOOT_OK, and exits. Exit-non-zero or missing-BOOT_OK both fail the
+// probe.
+func (b *BootContainerProbe) runProbe(ctx context.Context, name string, args []string) error {
 	// #nosec G204 -- args are derived from the configured container image, not user input
-	if _, err := b.Subproc.RunWithWarnAndTimeout(ctx, "docker run", "docker", args...); err != nil {
-		slog.Error(
-			"container-boot probe failed to start",
-			"image",
-			b.ContainerImage,
-			"container",
-			name,
-			"error",
-			err,
-		)
-		return errors.Wrap(ctx, err, "start probe container")
-	}
-	return nil
-}
-
-// waitForRunning blocks until the probe container is running or 15s elapses.
-func (b *BootContainerProbe) waitForRunning(ctx context.Context, name string) error {
-	if err := b.ContainerChecker.WaitUntilRunning(ctx, name, 15*time.Second); err != nil {
-		slog.Error(
-			"container-boot probe did not start",
-			"image",
-			b.ContainerImage,
-			"container",
-			name,
-			"error",
-			err,
-		)
-		return errors.Wrapf(ctx, err, "probe container %s did not start", name)
-	}
-	return nil
-}
-
-// verifyBoot runs the in-container probe command and checks that stdout contains BOOT_OK.
-func (b *BootContainerProbe) verifyBoot(ctx context.Context, name string) error {
-	// #nosec G204 -- name is the locally-generated container name, not user input
-	out, err := b.Subproc.RunWithWarnAndTimeout(
-		ctx,
-		"docker exec probe",
-		"docker",
-		"exec", name, "sh", "-c", probeCommand,
-	)
+	out, err := b.Subproc.RunWithWarnAndTimeout(ctx, "docker run probe", "docker", args...)
 	if err != nil {
 		slog.Error(
-			"container-boot probe exec failed",
+			"container-boot probe docker run failed",
 			"image",
 			b.ContainerImage,
 			"container",

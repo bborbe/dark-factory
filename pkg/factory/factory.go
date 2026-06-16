@@ -1205,14 +1205,13 @@ func CreateHealthcheckCommand(
 		healthcheck.GhWarnAfterForFactory(),
 		healthcheck.GhTimeoutForFactory(),
 	)
-	containerChecker := executor.NewDockerContainerChecker(currentDateTimeGetter)
+	projectName := project.Resolve(cfg.ResolvedProjectOverride()).String()
 	bootProbe := &runner.BootContainerProbe{
-		ContainerImage:   cfg.ContainerImage,
-		ProjectName:      cfg.ResolvedProjectOverride(),
-		ContainerChecker: containerChecker,
-		Subproc:          subprocRunner,
-		ExtraMounts:      cfg.ExtraMounts,
-		ClaudeDir:        cfg.ResolvedClaudeDir(),
+		ContainerImage: cfg.ContainerImage,
+		ProjectName:    projectName,
+		Subproc:        subprocRunner,
+		ExtraMounts:    cfg.ExtraMounts,
+		ClaudeDir:      cfg.ResolvedClaudeDir(),
 	}
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),
@@ -1220,7 +1219,7 @@ func CreateHealthcheckCommand(
 		healthcheck.NewBootProbe(bootProbe),
 		healthcheck.NewClaudeProbe(
 			cfg.ContainerImage,
-			cfg.ResolvedProjectOverride(),
+			projectName,
 			claudeRunner,
 		),
 		healthcheck.NewMountProbe(cfg.ContainerImage, subprocRunner),

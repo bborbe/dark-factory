@@ -91,32 +91,15 @@ var _ = Describe("BootProbe", func() {
 	})
 
 	It("returns nil when wrapped BootContainerProbe.Run succeeds", func() {
-		// Wrap a probe whose Run method we control via a fake wrapper.
-		// The simplest approach: pass a BootContainerProbe with a mock subproc
-		// and a mock checker. We do not duplicate the integration — we just
-		// confirm the wrapper passes through success and failure.
-		checker := &mocks.ContainerChecker{}
 		subprocR := &mocks.SubprocRunner{}
-		// First call (docker run) returns nil output; second (docker exec) returns BOOT_OK
-		calls := 0
-		subprocR.RunWithWarnAndTimeoutStub = func(
-			_ context.Context, _ string, _ string, _ ...string,
-		) ([]byte, error) {
-			calls++
-			if calls == 1 {
-				return []byte(""), nil
-			}
-			return []byte("BOOT_OK\n"), nil
-		}
-		checker.WaitUntilRunningReturns(nil)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("BOOT_OK\n"), nil)
 
 		probe := &runner.BootContainerProbe{
-			ContainerImage:   "alpine:latest",
-			ProjectName:      "test-proj",
-			ContainerChecker: checker,
-			Subproc:          subprocR,
-			ExtraMounts:      nil,
-			ClaudeDir:        "/tmp",
+			ContainerImage: "alpine:latest",
+			ProjectName:    "test-proj",
+			Subproc:        subprocR,
+			ExtraMounts:    nil,
+			ClaudeDir:      "/tmp",
 		}
 		p := healthcheck.NewBootProbe(probe)
 		Expect(p.Name()).To(Equal("boot"))
@@ -124,21 +107,14 @@ var _ = Describe("BootProbe", func() {
 	})
 
 	It("wraps error from BootContainerProbe.Run", func() {
-		// Use a non-functional BootContainerProbe (no checker, no runner) and
-		// rely on its first internal call to fail. We just confirm the error
-		// path is wrapped.
 		subprocR := &mocks.SubprocRunner{}
-		checker := &mocks.ContainerChecker{}
-		probe := &runner.BootContainerProbe{
-			ContainerImage:   "alpine:latest",
-			ProjectName:      "test-proj",
-			ContainerChecker: checker,
-			Subproc:          subprocR,
-		}
-		// subproc returns success on docker run, then WaitUntilRunning fails
-		subprocR.RunWithWarnAndTimeoutReturns([]byte(""), nil)
-		checker.WaitUntilRunningReturns(errors.Errorf(ctx, "container did not start"))
+		subprocR.RunWithWarnAndTimeoutReturns(nil, errors.Errorf(ctx, "docker run failed"))
 
+		probe := &runner.BootContainerProbe{
+			ContainerImage: "alpine:latest",
+			ProjectName:    "test-proj",
+			Subproc:        subprocR,
+		}
 		p := healthcheck.NewBootProbe(probe)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())

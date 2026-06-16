@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -226,8 +227,8 @@ func (c *claudeProbe) Run(ctx context.Context) error {
 		"run",
 		"--rm",
 		"--name", name,
+		"--entrypoint", "claude",
 		c.containerImage,
-		"claude",
 		"-p", claudeProbePrompt,
 	)
 	if err != nil {
@@ -299,14 +300,19 @@ func (m *mountProbe) Name() string {
 }
 
 func (m *mountProbe) Run(ctx context.Context) error {
+	workspaceDir, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(ctx, err, "mount probe: get working directory")
+	}
 	out, err := m.runner.RunWithWarnAndTimeout(
 		ctx,
 		"docker run mount probe",
 		"docker",
 		"run",
 		"--rm",
+		"--entrypoint", "/bin/sh",
+		"-v", workspaceDir+":/workspace",
 		m.containerImage,
-		"sh",
 		"-c",
 		mountProbeCommand,
 	)

@@ -1,14 +1,13 @@
 ---
-status: failed
+status: completed
 spec: [092-fix-prompt-complete-autorelease]
 container: dark-factory-fix-autorelease-exec-441-fix-prompt-complete-autorelease
 dark-factory-version: v0.174.4
 created: "2026-06-03T00:00:00Z"
 queued: "2026-06-03T06:07:20Z"
 started: "2026-06-03T06:08:06Z"
-completed: "2026-06-03T06:21:02Z"
+completed: "2026-06-16T20:54:28Z"
 branch: dark-factory/fix-prompt-complete-autorelease
-lastFailReason: 'validate completion report: completion report status: failed'
 ---
 
 <summary>

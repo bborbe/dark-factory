@@ -8,6 +8,8 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 * MINOR version when you add functionality in a backwards-compatible manner, and
 * PATCH version when you make backwards-compatible bug fixes.
 
+> **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
+
 ## v0.180.1
 
 - fix(healthcheck): raise the claude probe timeout from 10s to 30s. Cold-start `claude` inside the YOLO container involves auth load + an Anthropic-or-MiniMax round-trip, which routinely takes 5-25s on a fresh container on a laptop. The 10s deadline caused flaky verify-spec failures even on green stacks; runs that took 4-5s when warm timed out when cold. 30s gives realistic headroom while still catching genuinely stuck sessions. Warn-after raised from 2s to 5s to match.

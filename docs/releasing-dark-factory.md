@@ -22,6 +22,12 @@ The gate exists because `make precommit` does NOT cover host↔container, host�
 
 **The rule: every release, walk every active scenario against a freshly built binary. Always. No exceptions.**
 
+**Scenarios test EXISTING features, not new ones.** A scenario can only exist for behaviour that was already designed when the scenario was written — by definition it cannot exercise a subcommand introduced in the same release. The 9 active scenarios cover the daemon/processor/git/PR-workflow surfaces that have been around long enough to have scenarios written for them. They will give a clean PASS on a release that ships a brand-new subcommand that segfaults on first invocation.
+
+**For any release that introduces or substantively changes a user-facing subcommand, add a new-feature live-smoke to the gate**: build the binary, run the new subcommand against at least two real targets (your own dark-factory checkout + one other live `.dark-factory.yaml` project), and observe the documented success behaviour. Capture the output. If you cannot make it pass, the release is not ready. This was the gap that let v0.179.0/v0.179.1 of `dark-factory healthcheck` ship a binary that didn't run — `make precommit` green, unit tests green, bot APPROVE, 7/7 scenarios green, but the new `healthcheck` subcommand had never been invoked. The healthcheck found its own four ship-blocking bugs the moment it was finally run. The fix: never let a new subcommand reach `make install` without ≥1 live invocation per real target.
+
+**For spec-driven releases (the common case), the new-feature live-smoke is `/dark-factory:verify-spec <id>` — never skip it.** When a spec auto-transitions to `verifying`, the gate is the system catching the operator. `dark-factory spec complete <id>` is the gate's signal-of-pass. Manually calling `spec complete` without running `verify-spec` bypasses the entire mechanism and is the failure mode that lost ~4h on the healthcheck rollout (spec 095 sat in `verifying` while the broken binary was tagged, released, and reinstalled).
+
 Why no exceptions:
 
 - Scenarios are the ONLY layer that exercises real Docker containers, real `git` against a real remote, real `gh` interactions, real worktree pointer-file mechanics, and the daemon's host↔container handoff. None of that is reachable from `make precommit`.

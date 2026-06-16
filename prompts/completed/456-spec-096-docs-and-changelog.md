@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [096-healthcheck-on-daemon-startup]
+summary: 'Documented the daemon healthcheck startup gate across configuration.md (Healthcheck Startup Gate section + --skip-healthcheck CLI flag), running.md (startup gate subsection cross-referencing the CLI probe sequence), architecture-flow.md (terminal-failure policy paragraph), and CHANGELOG.md (feat: docs entry under ## Unreleased).'
+container: dark-factory-healthcheck-startup-exec-456-spec-096-docs-and-changelog
+dark-factory-version: v0.180.2
 created: "2026-06-16T20:10:00Z"
 queued: "2026-06-16T20:22:17Z"
+started: "2026-06-16T21:04:17Z"
+completed: "2026-06-16T21:05:51Z"
 branch: dark-factory/healthcheck-on-daemon-startup
 ---
 

@@ -282,6 +282,16 @@ When a prompt mysteriously fails or stalls, run `dark-factory healthcheck` first
 
 For the larger troubleshooting flow and per-failure recipes, see [troubleshooting.md](troubleshooting.md).
 
+### Healthcheck startup gate (daemon)
+
+`dark-factory daemon` runs this same probe sequence once at startup, before the
+prompt-watch loop begins, as a startup gate. A successful result is cached for
+`healthcheckInterval` (default `8h`), so a restart within the window skips the probes.
+A failure is terminal: the daemon exits non-zero with the failing probe category. Disable
+the gate with `healthcheckEnabled: false`, or bypass it for one invocation with
+`--skip-healthcheck`. See [configuration.md](configuration.md#healthcheck-startup-gate)
+for details. The gate runs only in `daemon` mode; `run` (one-shot) is unaffected.
+
 ## Troubleshooting
 
 | Problem | Fix |

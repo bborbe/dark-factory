@@ -94,6 +94,14 @@ Dark-factory is the **sole writer** of the working tree while it runs. It cannot
 
 **Rule:** preflight failure is terminal. Daemon and one-shot `run` exit non-zero with a clear cause. No retry, no skip-and-continue. Human fixes the tree, then explicitly restarts dark-factory. This preserves the sole-writer invariant.
 
+The **healthcheck startup gate** (daemon-only) follows the same terminal policy: on
+`dark-factory daemon` start it runs the healthcheck probe sequence once before the watch
+loop. A gate failure exits the daemon non-zero with a category-naming cause (e.g.
+`healthcheck failed: docker daemon unreachable`) and fires a notification — no retry, no
+skip-and-continue. Successful results are cached for `healthcheckInterval`; failures are
+never cached, so an operator fix is re-checked on the next start. The gate is disabled with
+`healthcheckEnabled: false` and bypassed for one run with `--skip-healthcheck`.
+
 ## Prompt Assembly
 
 Dark-factory assembles the final prompt the agent receives by appending sections to the original prompt body. This happens on the host **before** the container starts.

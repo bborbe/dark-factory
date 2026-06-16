@@ -15,6 +15,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 - feat: add `healthcheckEnabled` (*bool, default nil=true) and `healthcheckInterval` (string, default "8h") to Config, with validation, parsed getters, source detection in FieldSources, and four new keys in the effective-config startup log line
 - feat: add `pkg/healthcheckgate` package providing a `Gate` that runs the healthcheck probe sequence at daemon startup with success-only on-disk caching keyed by SHA256 of container image, project name, and interval; corrupt or future-dated cache treated as a miss; failure fires `healthcheck_failed` notification and returns a category-naming error
 - feat: wire `healthcheckgate.Gate` into `dark-factory daemon` startup; gate runs after preflight, before watcher loop; `healthcheckEnabled: false` in config disables gate entirely; add `--skip-healthcheck` CLI flag (position-agnostic) to bypass gate at invocation time
+- feat: document daemon healthcheck startup gate — `healthcheckEnabled`/`healthcheckInterval` config reference, `--skip-healthcheck` flag, cross-reference in running.md healthcheck section, terminal-failure policy in architecture-flow.md
 
 ## v0.180.2
 

@@ -32,6 +32,8 @@ Set up the current project for dark-factory. Read `docs/init-project.md` and `do
    /.dark-factory.log
    /prompts/log
    /specs/log
+   /prompts/in-progress/*.lock
+   /specs/in-progress/*.lock
    ```
 
 6. **Add Dark Factory Workflow section to CLAUDE.md** — follow the template from `docs/claude-md-guide.md`. Include both the workflow section (for Claude Code) and development standards (for YOLO container).

@@ -96,7 +96,11 @@ Add:
 /.dark-factory.log
 /prompts/log
 /specs/log
+/prompts/in-progress/*.lock
+/specs/in-progress/*.lock
 ```
+
+The two `in-progress/*.lock` patterns ignore per-file lock markers (`<id>-<name>.md.lock`) that dark-factory creates while a prompt or spec is executing. They are runtime bookkeeping — the daemon removes them on completion, but a crashed/killed run can leave orphans, and they should never enter source control.
 
 ## Step 6: Add Dark Factory Section to CLAUDE.md
 
@@ -131,6 +135,8 @@ ls specs/in-progress/.keep
 grep dark-factory.lock .gitignore   # lock ignored
 grep dark-factory.log .gitignore    # daemon log ignored
 grep prompts/log .gitignore         # logs ignored
+grep 'prompts/in-progress/\*.lock' .gitignore   # per-prompt locks ignored
+grep 'specs/in-progress/\*.lock' .gitignore     # per-spec locks ignored
 grep "Dark Factory" CLAUDE.md       # workflow section exists
 ```
 

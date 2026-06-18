@@ -70,7 +70,7 @@ func (f *fixer) applyStatusDirMismatchPath(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied *AppliedFix, failed *FailedFix) {
-	fl := f.deps.FileLockFactory(path)
+	fl := f.deps.FileLockFactory(filepath.Dir(path))
 	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,

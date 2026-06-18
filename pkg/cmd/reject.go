@@ -31,13 +31,13 @@ type rejectCommand struct {
 	inProgressDir   string
 	rejectedDir     string
 	promptManager   PromptManager
-	fileLockFactory func(path string) lock.FileLock
+	fileLockFactory func(path string) lock.DirLock
 	lockTimeout     time.Duration
 }
 
 // NewRejectCommand creates a new RejectCommand.
 //
-// fileLockFactory may be nil — it defaults to lock.NewFileLock. The factory is
+// fileLockFactory may be nil — it defaults to lock.NewDirLock. The factory is
 // used to acquire a per-prompt lock before mutating the file, so a concurrent
 // daemon advance (spec 092 AC "concurrent-reject-advance") cannot interleave
 // a save/rename with our read. lockTimeout may be zero — it defaults to 5
@@ -48,11 +48,11 @@ func NewRejectCommand(
 	inProgressDir string,
 	rejectedDir string,
 	promptManager PromptManager,
-	fileLockFactory func(path string) lock.FileLock,
+	fileLockFactory func(path string) lock.DirLock,
 	lockTimeout time.Duration,
 ) RejectCommand {
 	if fileLockFactory == nil {
-		fileLockFactory = lock.NewFileLock
+		fileLockFactory = lock.NewDirLock
 	}
 	if lockTimeout == 0 {
 		lockTimeout = 5 * time.Second
@@ -103,12 +103,12 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 		}
 	}
 
-	// Acquire the per-prompt file lock BEFORE loading the file. The Load
+	// Acquire the status-directory lock BEFORE loading the file. The Load
 	// below is the post-lock re-read: it observes whatever the daemon (or
 	// another operator) wrote last, then we stamp + save + rename under
 	// the same lock so a concurrent advance cannot interleave its own
 	// save/rename on the same path (spec 092 AC "concurrent-reject-advance").
-	fl := r.fileLockFactory(path)
+	fl := r.fileLockFactory(filepath.Dir(path))
 	if err := fl.Acquire(ctx, r.lockTimeout); err != nil {
 		return errors.Wrap(ctx, err, "acquire reject lock")
 	}

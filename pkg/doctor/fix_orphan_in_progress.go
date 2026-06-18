@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -39,7 +40,7 @@ func (f *fixer) applyOrphanInProgressPath(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied *AppliedFix, skipped *SkippedFix, failed *FailedFix) {
-	fl := f.deps.FileLockFactory(path)
+	fl := f.deps.FileLockFactory(filepath.Dir(path))
 	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
 		return nil, nil, &FailedFix{
 			Category:    finding.Category,

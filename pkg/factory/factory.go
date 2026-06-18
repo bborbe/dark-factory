@@ -958,7 +958,7 @@ func CreateProcessor(
 		ppForwarder,
 		fh,
 		dirs.Queue,
-		lock.NewFileLock,
+		lock.NewDirLock,
 		0,
 	)
 	proc := processor.NewProcessor(
@@ -1194,7 +1194,7 @@ func CreateDoctorCommand(
 		Deps:            deps,
 		AutoCompleter:   autoCompleter,
 		Mover:           releaser,
-		FileLockFactory: lock.NewFileLock,
+		FileLockFactory: lock.NewDirLock,
 	})
 
 	return cmd.NewDoctorCommand(checker, fixer)
@@ -1526,7 +1526,7 @@ func CreateRejectCommand(
 		cfg.Prompts.InProgressDir,
 		cfg.Prompts.RejectedDir,
 		promptManager,
-		lock.NewFileLock,
+		lock.NewDirLock,
 		0,
 	)
 }

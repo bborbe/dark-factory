@@ -6,6 +6,7 @@ package doctor
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -47,7 +48,7 @@ func (f *fixer) applyOrphanPromptLinkPath(
 	finding Finding,
 	opts ApplyOptions,
 ) (applied *AppliedFix, failed *FailedFix) {
-	fl := f.deps.FileLockFactory(path)
+	fl := f.deps.FileLockFactory(filepath.Dir(path))
 	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
 		return nil, &FailedFix{
 			Category:    finding.Category,

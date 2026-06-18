@@ -68,9 +68,9 @@ var _ = Describe("Fixer", func() {
 		fakeSpecLister.SummaryReturns(&spec.Summary{}, nil)
 		fakeAutoCompleter := &mocks.AutoCompleter{}
 		fakeAutoCompleter.CheckAndCompleteReturns(nil)
-		fakeFileLock := &mocks.LockFileLock{}
-		fakeFileLock.AcquireReturns(nil)
-		fakeFileLock.ReleaseReturns(nil)
+		fakeDirLock := &mocks.LockDirLock{}
+		fakeDirLock.AcquireReturns(nil)
+		fakeDirLock.ReleaseReturns(nil)
 
 		pm := prompt.NewManager(
 			filepath.Join(promptsDir, "inbox"),
@@ -98,7 +98,7 @@ var _ = Describe("Fixer", func() {
 			},
 			AutoCompleter:   fakeAutoCompleter,
 			Mover:           fakeMover,
-			FileLockFactory: func(path string) lock.FileLock { return fakeFileLock },
+			FileLockFactory: func(path string) lock.DirLock { return fakeDirLock },
 		}
 	}
 
@@ -601,9 +601,9 @@ var _ = Describe("Fixer", func() {
 					[]byte("---\nstatus: idea\n---\n# Bar"), 0644)).To(Succeed())
 
 				deps := makeDeps()
-				fakeLock := &mocks.LockFileLock{}
+				fakeLock := &mocks.LockDirLock{}
 				fakeLock.AcquireReturns(errors.New(ctx, "lock acquire timeout after 5s"))
-				deps.FileLockFactory = func(path string) lock.FileLock { return fakeLock }
+				deps.FileLockFactory = func(path string) lock.DirLock { return fakeLock }
 				fixer := doctor.NewFixer(deps)
 
 				result, err := fixer.Apply(ctx, []doctor.Finding{

@@ -9,7 +9,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/lock"
 )
 
-type LockFileLock struct {
+type LockDirLock struct {
 	AcquireStub        func(context.Context, time.Duration) error
 	acquireMutex       sync.RWMutex
 	acquireArgsForCall []struct {
@@ -37,7 +37,7 @@ type LockFileLock struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LockFileLock) Acquire(arg1 context.Context, arg2 time.Duration) error {
+func (fake *LockDirLock) Acquire(arg1 context.Context, arg2 time.Duration) error {
 	fake.acquireMutex.Lock()
 	ret, specificReturn := fake.acquireReturnsOnCall[len(fake.acquireArgsForCall)]
 	fake.acquireArgsForCall = append(fake.acquireArgsForCall, struct {
@@ -57,26 +57,26 @@ func (fake *LockFileLock) Acquire(arg1 context.Context, arg2 time.Duration) erro
 	return fakeReturns.result1
 }
 
-func (fake *LockFileLock) AcquireCallCount() int {
+func (fake *LockDirLock) AcquireCallCount() int {
 	fake.acquireMutex.RLock()
 	defer fake.acquireMutex.RUnlock()
 	return len(fake.acquireArgsForCall)
 }
 
-func (fake *LockFileLock) AcquireCalls(stub func(context.Context, time.Duration) error) {
+func (fake *LockDirLock) AcquireCalls(stub func(context.Context, time.Duration) error) {
 	fake.acquireMutex.Lock()
 	defer fake.acquireMutex.Unlock()
 	fake.AcquireStub = stub
 }
 
-func (fake *LockFileLock) AcquireArgsForCall(i int) (context.Context, time.Duration) {
+func (fake *LockDirLock) AcquireArgsForCall(i int) (context.Context, time.Duration) {
 	fake.acquireMutex.RLock()
 	defer fake.acquireMutex.RUnlock()
 	argsForCall := fake.acquireArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *LockFileLock) AcquireReturns(result1 error) {
+func (fake *LockDirLock) AcquireReturns(result1 error) {
 	fake.acquireMutex.Lock()
 	defer fake.acquireMutex.Unlock()
 	fake.AcquireStub = nil
@@ -85,7 +85,7 @@ func (fake *LockFileLock) AcquireReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *LockFileLock) AcquireReturnsOnCall(i int, result1 error) {
+func (fake *LockDirLock) AcquireReturnsOnCall(i int, result1 error) {
 	fake.acquireMutex.Lock()
 	defer fake.acquireMutex.Unlock()
 	fake.AcquireStub = nil
@@ -99,7 +99,7 @@ func (fake *LockFileLock) AcquireReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *LockFileLock) Release(arg1 context.Context) error {
+func (fake *LockDirLock) Release(arg1 context.Context) error {
 	fake.releaseMutex.Lock()
 	ret, specificReturn := fake.releaseReturnsOnCall[len(fake.releaseArgsForCall)]
 	fake.releaseArgsForCall = append(fake.releaseArgsForCall, struct {
@@ -118,26 +118,26 @@ func (fake *LockFileLock) Release(arg1 context.Context) error {
 	return fakeReturns.result1
 }
 
-func (fake *LockFileLock) ReleaseCallCount() int {
+func (fake *LockDirLock) ReleaseCallCount() int {
 	fake.releaseMutex.RLock()
 	defer fake.releaseMutex.RUnlock()
 	return len(fake.releaseArgsForCall)
 }
 
-func (fake *LockFileLock) ReleaseCalls(stub func(context.Context) error) {
+func (fake *LockDirLock) ReleaseCalls(stub func(context.Context) error) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = stub
 }
 
-func (fake *LockFileLock) ReleaseArgsForCall(i int) context.Context {
+func (fake *LockDirLock) ReleaseArgsForCall(i int) context.Context {
 	fake.releaseMutex.RLock()
 	defer fake.releaseMutex.RUnlock()
 	argsForCall := fake.releaseArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *LockFileLock) ReleaseReturns(result1 error) {
+func (fake *LockDirLock) ReleaseReturns(result1 error) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = nil
@@ -146,7 +146,7 @@ func (fake *LockFileLock) ReleaseReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *LockFileLock) ReleaseReturnsOnCall(i int, result1 error) {
+func (fake *LockDirLock) ReleaseReturnsOnCall(i int, result1 error) {
 	fake.releaseMutex.Lock()
 	defer fake.releaseMutex.Unlock()
 	fake.ReleaseStub = nil
@@ -160,7 +160,7 @@ func (fake *LockFileLock) ReleaseReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *LockFileLock) Invocations() map[string][][]interface{} {
+func (fake *LockDirLock) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -170,7 +170,7 @@ func (fake *LockFileLock) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *LockFileLock) recordInvocation(key string, args []interface{}) {
+func (fake *LockDirLock) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -182,4 +182,4 @@ func (fake *LockFileLock) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ lock.FileLock = new(LockFileLock)
+var _ lock.DirLock = new(LockDirLock)

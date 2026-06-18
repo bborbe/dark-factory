@@ -65,7 +65,7 @@ type scanner struct {
 	promptProcessor PromptProcessor
 	failureHandler  failurehandler.Handler
 	queueDir        string
-	fileLockFactory func(path string) lock.FileLock
+	fileLockFactory func(path string) lock.DirLock
 	lockTimeout     time.Duration
 	// blockedMsgKeys tracks which (file|spec|reason|missing) tuples have
 	// already been logged in the current run. Replaces the single-slot
@@ -79,7 +79,7 @@ type scanner struct {
 
 // NewScanner creates a new Scanner.
 //
-// fileLockFactory may be nil — it defaults to lock.NewFileLock. The factory
+// fileLockFactory may be nil — it defaults to lock.NewDirLock. The factory
 // is used to acquire a per-prompt lock right before the daemon hands a
 // candidate to the processor, so a concurrent `prompt reject` (spec 092 AC
 // "concurrent-reject-advance") cannot interleave its own save/rename with
@@ -91,11 +91,11 @@ func NewScanner(
 	promptProcessor PromptProcessor,
 	failureHandler failurehandler.Handler,
 	queueDir string,
-	fileLockFactory func(path string) lock.FileLock,
+	fileLockFactory func(path string) lock.DirLock,
 	lockTimeout time.Duration,
 ) Scanner {
 	if fileLockFactory == nil {
-		fileLockFactory = lock.NewFileLock
+		fileLockFactory = lock.NewDirLock
 	}
 	if lockTimeout == 0 {
 		lockTimeout = 5 * time.Second
@@ -233,12 +233,12 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 		return !skipped, false, nil
 	}
 
-	// Acquire the per-prompt file lock right before handing the candidate
+	// Acquire the status-directory lock right before handing the candidate
 	// to the processor. This serializes the advance with a concurrent
 	// `prompt reject` on the same file (spec 092 AC "concurrent-reject-
 	// advance"): the loser of the race observes the winner's post-lock
 	// state via the re-read below and skips the now-stale candidate.
-	fl := s.fileLockFactory(pr.Path)
+	fl := s.fileLockFactory(filepath.Dir(pr.Path))
 	if err := fl.Acquire(ctx, s.lockTimeout); err != nil {
 		// Could not take the lock in time. Surface via the existing
 		// blocked-log path with the project-lock-timeout reason so the

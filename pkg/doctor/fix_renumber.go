@@ -43,15 +43,23 @@ func (f *fixer) fixDuplicateSpecNumbers(
 	}
 
 	// Acquire locks on every TargetPath BEFORE reindex (see helper for rationale).
-	preAcquiredLocks := make([]lock.FileLock, 0, len(finding.TargetPaths))
+	// `seen` deduplicates directory-scoped locks across the pre-reindex and post-reindex
+	// acquire passes — flock is per-fd, so a second acquire on the same directory in
+	// the same process would block until timeout (self-deadlock).
+	preAcquiredLocks := make([]lock.DirLock, 0, len(finding.TargetPaths))
+	seen := make(map[string]struct{})
 	defer func() {
 		for _, fl := range preAcquiredLocks {
 			if err := fl.Release(ctx); err != nil {
-				slog.Warn("doctor: file lock release failed (renumber cycle)", "error", err.Error())
+				slog.Warn(
+					"doctor: directory lock release failed (renumber cycle)",
+					"error",
+					err.Error(),
+				)
 			}
 		}
 	}()
-	if ff := f.acquireOldPathLocks(ctx, &preAcquiredLocks, finding, specDirs, opts.FileLockTimeout); ff != nil {
+	if ff := f.acquireOldPathLocks(ctx, &preAcquiredLocks, seen, finding, specDirs, opts.FileLockTimeout); ff != nil {
 		failed = append(failed, *ff)
 		return
 	}
@@ -72,7 +80,7 @@ func (f *fixer) fixDuplicateSpecNumbers(
 		return
 	}
 
-	if ff := f.acquireNewPathLocks(ctx, &preAcquiredLocks, finding, relevantRenames, opts.FileLockTimeout); ff != nil {
+	if ff := f.acquireNewPathLocks(ctx, &preAcquiredLocks, seen, finding, relevantRenames, opts.FileLockTimeout); ff != nil {
 		failed = append(failed, *ff)
 		return
 	}
@@ -100,14 +108,16 @@ func (f *fixer) fixDuplicateSpecNumbers(
 	return
 }
 
-// acquireOldPathLocks locks every TargetPath BEFORE reindex so a concurrent
-// writer cannot mutate the colliding file between reindex's move and our
-// subsequent load. Locks are held for the entire renumber cycle and released
-// when fixDuplicateSpecNumbers returns. Order: lex-sorted basenames to avoid
-// lock-ordering deadlock when two doctor instances race on overlapping findings.
+// acquireOldPathLocks locks the parent directory of every candidate TargetPath
+// BEFORE reindex so a concurrent writer cannot mutate the colliding file between
+// reindex's move and our subsequent load. Locks are held for the entire renumber
+// cycle and released when fixDuplicateSpecNumbers returns. `seen` deduplicates
+// by directory so the same dir is locked at most once (flock is per-fd; a second
+// acquire on the same dir in the same process self-deadlocks).
 func (f *fixer) acquireOldPathLocks(
 	ctx context.Context,
-	locks *[]lock.FileLock,
+	locks *[]lock.DirLock,
+	seen map[string]struct{},
 	finding Finding,
 	specDirs []string,
 	timeout time.Duration,
@@ -115,7 +125,11 @@ func (f *fixer) acquireOldPathLocks(
 	for _, t := range finding.TargetPaths {
 		for _, dir := range specDirs {
 			candidatePath := filepath.Join(dir, t)
-			fl := f.deps.FileLockFactory(candidatePath)
+			lockDir := filepath.Dir(candidatePath)
+			if _, ok := seen[lockDir]; ok {
+				continue
+			}
+			fl := f.deps.FileLockFactory(lockDir)
 			if err := fl.Acquire(ctx, timeout); err != nil {
 				return &FailedFix{
 					Category:    finding.Category,
@@ -124,23 +138,31 @@ func (f *fixer) acquireOldPathLocks(
 				}
 			}
 			*locks = append(*locks, fl)
+			seen[lockDir] = struct{}{}
 		}
 	}
 	return nil
 }
 
-// acquireNewPathLocks locks every NewPath now that reindex's picks are known.
-// The freed number slot is a fresh path with no pre-acquired lock; a concurrent
-// writer could claim it between reindex and our Save.
+// acquireNewPathLocks locks the parent directory of every NewPath now that
+// reindex's picks are known. The freed number slot is a fresh path with no
+// pre-acquired lock; a concurrent writer could claim it between reindex and
+// our Save. `seen` is shared with acquireOldPathLocks so a dir already locked
+// from the old-path pass is not re-locked here.
 func (f *fixer) acquireNewPathLocks(
 	ctx context.Context,
-	locks *[]lock.FileLock,
+	locks *[]lock.DirLock,
+	seen map[string]struct{},
 	finding Finding,
 	renames []reindex.Rename,
 	timeout time.Duration,
 ) *FailedFix {
 	for _, rn := range renames {
-		fl := f.deps.FileLockFactory(rn.NewPath)
+		lockDir := filepath.Dir(rn.NewPath)
+		if _, ok := seen[lockDir]; ok {
+			continue
+		}
+		fl := f.deps.FileLockFactory(lockDir)
 		if err := fl.Acquire(ctx, timeout); err != nil {
 			return &FailedFix{
 				Category:    finding.Category,
@@ -149,6 +171,7 @@ func (f *fixer) acquireNewPathLocks(
 			}
 		}
 		*locks = append(*locks, fl)
+		seen[lockDir] = struct{}{}
 	}
 	return nil
 }

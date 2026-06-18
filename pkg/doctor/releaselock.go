@@ -13,7 +13,7 @@ import (
 
 // releaseLock releases fl and logs a warning on failure. Intended for use in
 // defer statements where the caller cannot meaningfully propagate the error.
-func releaseLock(ctx context.Context, fl lock.FileLock, path string) {
+func releaseLock(ctx context.Context, fl lock.DirLock, path string) {
 	if err := fl.Release(ctx); err != nil {
 		slog.Warn("doctor: file lock release failed", "path", path, "error", err.Error())
 	}

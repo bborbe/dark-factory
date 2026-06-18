@@ -25,11 +25,11 @@ func (f *fixer) fixPromptedNotSwept(
 	specPath := finding.TargetPaths[0]
 	specID := strings.TrimSuffix(filepath.Base(specPath), ".md")
 
-	// Acquire per-file lock for consistency with the other fix_* functions
+	// Acquire status-directory lock for consistency with the other fix_* functions
 	// (fix_renumber, fix_status_dir_mismatch, fix_orphan_in_progress, fix_unlink).
 	// AutoCompleter may be internally safe, but a doctor --fix run that races
-	// against another writer on the same spec should serialize on the file lock.
-	fl := f.deps.FileLockFactory(specPath)
+	// against another writer on the same spec should serialize on the directory lock.
+	fl := f.deps.FileLockFactory(filepath.Dir(specPath))
 	if err := fl.Acquire(ctx, opts.FileLockTimeout); err != nil {
 		failed = append(failed, FailedFix{
 			Category:    finding.Category,

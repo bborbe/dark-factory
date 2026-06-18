@@ -419,11 +419,11 @@ var _ = Describe("Scanner", func() {
 				mgr.AllPreviousCompletedReturns(true)
 				mgr.AllPreviousInSpecCompletedReturns(true)
 
-				lockMock := &mocks.LockFileLock{}
+				lockMock := &mocks.LockDirLock{}
 				lockMock.AcquireReturns(stderrors.New("lock acquire timeout"))
 				s = queuescanner.NewScanner(
 					mgr, pp, failureHandler, queueDir,
-					func(string) lockpkg.FileLock { return lockMock },
+					func(string) lockpkg.DirLock { return lockMock },
 					10*time.Millisecond,
 				)
 
@@ -895,7 +895,7 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 		return
 	}
 	It("serializes reject and advance via project lock — no double-write", func() {
-		// Lock-primitive test: only the FileLock primitive is
+		// Lock-primitive test: only the DirLock primitive is
 		// exercised. The companion "serializes a real reject
 		// against a real scanner advance" test below wires up
 		// the real cmd.NewRejectCommand and a real
@@ -923,14 +923,14 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 		), 0600)).To(Succeed())
 
 		// Acquire the lock first
-		lockInstance := lockpkg.NewFileLock(promptPath)
+		lockInstance := lockpkg.NewDirLock(filepath.Dir(promptPath))
 		Expect(lockInstance.Acquire(ctx, 5*time.Second)).To(Succeed())
 		defer func() {
 			_ = lockInstance.Release(ctx)
 		}()
 
 		// Scanner cannot acquire the same lock within a short timeout
-		otherLock := lockpkg.NewFileLock(promptPath)
+		otherLock := lockpkg.NewDirLock(filepath.Dir(promptPath))
 		err = otherLock.Acquire(ctx, 200*time.Millisecond)
 		Expect(err).To(HaveOccurred(), "expected lock contention within 200ms")
 
@@ -949,11 +949,12 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 			// final on-disk state, no corruption, the loser observes the
 			// post-lock state. This test exercises the actual reject
 			// command + actual scanner against a real prompt fixture.
-			// Both contenders take the same lock.NewFileLock on the
-			// prompt path, so the assertion that fails if the production
-			// lock from step 3 is removed is: "exactly one final
-			// on-disk state" (a torn save/rename interleaving would
-			// leave the file in BOTH in-progress/ and rejected/).
+			// Both contenders take the same lock.NewDirLock on the
+			// prompt path (prompt 2 will update to filepath.Dir), so the
+			// assertion that fails if the production lock from step 3 is
+			// removed is: "exactly one final on-disk state" (a torn
+			// save/rename interleaving would leave the file in BOTH
+			// in-progress/ and rejected/).
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			dir, err := os.MkdirTemp("", "concurrent-reject-real-*")
@@ -1059,27 +1060,32 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 			// reject takes the lock, finishes, then the scanner
 			// takes it. 5s is safely above the reject's working
 			// time but well below the test's overall timeout.
+			// Override the factory to use filepath.Dir so both sides lock the
+			// directory — this exercises the new DirLock semantics that prompt 2
+			// will wire into the production call sites.
+			dirLockFactory := func(path string) lockpkg.DirLock {
+				return lockpkg.NewDirLock(filepath.Dir(path))
+			}
 			localScanner := queuescanner.NewScanner(
 				localMgr,
 				promptProcessor,
 				failureHandler,
 				inProgressDir,
-				nil,
+				dirLockFactory,
 				5*time.Second,
 			)
 
 			// Real reject command against the temp dirs, using the
 			// same NewRejectCommand constructor the production code
-			// uses. fileLockFactory=nil defaults to lock.NewFileLock
-			// inside NewRejectCommand — same primitive the scanner
-			// uses, so both contenders race on the same
-			// <promptPath>.lock file.
+			// uses. Override factory to filepath.Dir (prompt 2 does
+			// this to production defaults) so both sides contend on
+			// the same directory fd even after the file is renamed.
 			rejectCmd := cmd.NewRejectCommand(
 				inboxDir,
 				inProgressDir,
 				rejectedDir,
 				realMgr,
-				nil,
+				dirLockFactory,
 				5*time.Second,
 			)
 
@@ -1092,17 +1098,15 @@ var _ = Describe("ConcurrentRejectAndAdvance", func() {
 			slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
 			defer slog.SetDefault(originalLogger)
 
-			// Pre-acquire the per-prompt lock with a third-party
-			// FileLock so both contenders are forced to block on
-			// their own Acquire until we release it. Without this,
-			// the reject's FindPromptFileInDirs + Acquire is
-			// shorter than the scanner's HasPendingVerification
-			// + ListQueued + candidate-selection + Acquire path,
-			// so the reject wins the race before the scanner
-			// reaches its lock acquire — and the scanner's
-			// "lock acquired" line is never logged. The starter
-			// lock guarantees both sides log "lock acquired".
-			starterLock := lockpkg.NewFileLock(promptPath)
+			// Pre-acquire the directory lock so both contenders are forced to
+			// block on their own Acquire until we release it. Without this,
+			// the reject's FindPromptFileInDirs + Acquire is shorter than the
+			// scanner's HasPendingVerification + ListQueued + candidate-
+			// selection + Acquire path, so the reject wins the race before
+			// the scanner reaches its lock acquire — and the scanner's
+			// "lock acquired" line is never logged. The starter lock
+			// guarantees both sides log "lock acquired".
+			starterLock := lockpkg.NewDirLock(inProgressDir)
 			Expect(starterLock.Acquire(ctx, 5*time.Second)).To(Succeed())
 
 			// Sync barrier: both goroutines start together, then race.

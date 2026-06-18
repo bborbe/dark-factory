@@ -73,7 +73,7 @@ type FixerDeps struct {
 	Deps
 	AutoCompleter   spec.AutoCompleter
 	Mover           prompt.FileMover
-	FileLockFactory func(path string) lock.FileLock
+	FileLockFactory func(path string) lock.DirLock
 }
 
 //counterfeiter:generate -o ../../mocks/doctor-fixer.go --fake-name DoctorFixer . Fixer
@@ -86,7 +86,7 @@ type Fixer interface {
 // NewFixer creates a Fixer with the given dependencies.
 func NewFixer(deps FixerDeps) Fixer {
 	if deps.FileLockFactory == nil {
-		deps.FileLockFactory = lock.NewFileLock
+		deps.FileLockFactory = lock.NewDirLock
 	}
 	return &fixer{deps: deps}
 }

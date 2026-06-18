@@ -6,14 +6,18 @@ package cmd_test
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -58,6 +62,8 @@ var _ = Describe("SpecRejectCommand", func() {
 			promptsRejectedDir,
 			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			libtime.NewCurrentDateTime(),
+			nil,
+			0,
 		)
 		ctx = context.Background()
 	})
@@ -269,6 +275,46 @@ var _ = Describe("SpecRejectCommand", func() {
 			err := specRejectCmd.Run(ctx, []string{"--reason", "something"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("usage: dark-factory spec reject"))
+		})
+	})
+
+	Describe("Lock timeout", func() {
+		It("returns an error when the lock cannot be acquired", func() {
+			fakeLock := &mocks.LockDirLock{}
+			fakeLock.AcquireReturns(stderrors.New("boom"))
+			cmdWithLock := cmd.NewSpecRejectCommand(
+				specsInboxDir,
+				specsInProgressDir,
+				specsRejectedDir,
+				promptsInboxDir,
+				promptsInProgressDir,
+				promptsCompletedDir,
+				promptsRejectedDir,
+				prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
+				libtime.NewCurrentDateTime(),
+				func(string) lock.DirLock { return fakeLock },
+				100*time.Millisecond,
+			)
+			specFile := filepath.Join(specsInboxDir, "008-lock-test.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# Lock Test"), 0600),
+			).To(Succeed())
+			err := cmdWithLock.Run(ctx, []string{"008-lock-test.md", "--reason", "test"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("acquire spec reject lock"))
+		})
+
+		It("leaves no .lock sidecar files after successful reject", func() {
+			specFile := filepath.Join(specsInboxDir, "009-sidecar.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# Sidecar"), 0600),
+			).To(Succeed())
+
+			err := specRejectCmd.Run(ctx, []string{"009-sidecar.md", "--reason", "clean"})
+			Expect(err).NotTo(HaveOccurred())
+
+			matches, _ := filepath.Glob(filepath.Join(specsInboxDir, "*.lock"))
+			Expect(matches).To(BeEmpty())
 		})
 	})
 })

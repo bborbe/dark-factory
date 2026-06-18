@@ -6,14 +6,18 @@ package cmd_test
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/lock"
 )
 
 var _ = Describe("SpecApproveCommand", func() {
@@ -43,6 +47,8 @@ var _ = Describe("SpecApproveCommand", func() {
 			inProgressDir,
 			completedDir,
 			libtime.NewCurrentDateTime(),
+			nil,
+			0,
 		)
 		ctx = context.Background()
 	})
@@ -129,6 +135,8 @@ var _ = Describe("SpecApproveCommand", func() {
 				"/nonexistent/specs/in-progress",
 				"/nonexistent/specs/completed",
 				libtime.NewCurrentDateTime(),
+				nil,
+				0,
 			)
 			err := specApproveCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())
@@ -240,6 +248,39 @@ var _ = Describe("SpecApproveCommand", func() {
 			err = specApproveCmd.Run(ctx, []string{"030-bad-branch.md"})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid branch name"))
+		})
+
+		It("returns an error when the lock cannot be acquired", func() {
+			fakeLock := &mocks.LockDirLock{}
+			fakeLock.AcquireReturns(stderrors.New("boom"))
+			cmdWithLock := cmd.NewSpecApproveCommand(
+				specsDir,
+				inProgressDir,
+				completedDir,
+				libtime.NewCurrentDateTime(),
+				func(string) lock.DirLock { return fakeLock },
+				100*time.Millisecond,
+			)
+			specFile := filepath.Join(specsDir, "031-x.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# X"), 0600),
+			).To(Succeed())
+			err := cmdWithLock.Run(ctx, []string{"031-x.md"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("acquire spec approve lock"))
+		})
+
+		It("leaves no .lock sidecar files after successful approve", func() {
+			specFile := filepath.Join(specsDir, "032-sidecar-check.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: draft\n---\n# Sidecar Check"), 0600),
+			).To(Succeed())
+
+			err := specApproveCmd.Run(ctx, []string{"032-sidecar-check.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			matches, _ := filepath.Glob(filepath.Join(specsDir, "*.lock"))
+			Expect(matches).To(BeEmpty())
 		})
 	})
 })

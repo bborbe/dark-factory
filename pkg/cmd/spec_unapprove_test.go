@@ -6,14 +6,18 @@ package cmd_test
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -56,6 +60,8 @@ var _ = Describe("SpecUnapproveCommand", func() {
 			promptsInProgressDir,
 			prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
 			libtime.NewCurrentDateTime(),
+			nil,
+			0,
 		)
 		ctx = context.Background()
 	})
@@ -312,6 +318,41 @@ var _ = Describe("SpecUnapproveCommand", func() {
 			dest := filepath.Join(specsInboxDir, "named-spec.md")
 			_, statErr := os.Stat(dest)
 			Expect(statErr).NotTo(HaveOccurred())
+		})
+
+		It("returns an error when the lock cannot be acquired", func() {
+			fakeLock := &mocks.LockDirLock{}
+			fakeLock.AcquireReturns(stderrors.New("boom"))
+			cmdWithLock := cmd.NewSpecUnapproveCommand(
+				specsInboxDir,
+				specsInProgressDir,
+				promptsInboxDir,
+				promptsInProgressDir,
+				prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()),
+				libtime.NewCurrentDateTime(),
+				func(string) lock.DirLock { return fakeLock },
+				100*time.Millisecond,
+			)
+			specFile := filepath.Join(specsInProgressDir, "040-lock-test.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: approved\n---\n# Lock Test"), 0600),
+			).To(Succeed())
+			err := cmdWithLock.Run(ctx, []string{"040-lock-test.md"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("acquire spec unapprove lock"))
+		})
+
+		It("leaves no .lock sidecar files after successful unapprove", func() {
+			specFile := filepath.Join(specsInProgressDir, "050-sidecar.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: approved\n---\n# Sidecar"), 0600),
+			).To(Succeed())
+
+			err := specUnapproveCmd.Run(ctx, []string{"050-sidecar.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			matches, _ := filepath.Glob(filepath.Join(specsInProgressDir, "*.lock"))
+			Expect(matches).To(BeEmpty())
 		})
 	})
 })

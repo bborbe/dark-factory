@@ -1484,6 +1484,8 @@ func CreateSpecApproveCommand(
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
 		currentDateTimeGetter,
+		lock.NewDirLock,
+		0,
 	)
 }
 
@@ -1506,6 +1508,8 @@ func CreateSpecUnapproveCommand(
 		cfg.Prompts.InProgressDir,
 		promptManager,
 		currentDateTimeGetter,
+		lock.NewDirLock,
+		0,
 	)
 }
 
@@ -1553,6 +1557,8 @@ func CreateSpecRejectCommand(
 		cfg.Prompts.RejectedDir,
 		promptManager,
 		currentDateTimeGetter,
+		lock.NewDirLock,
+		0,
 	)
 }
 
@@ -1566,6 +1572,8 @@ func CreateSpecCompleteCommand(
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
 		currentDateTimeGetter,
+		lock.NewDirLock,
+		0,
 	)
 }
 
@@ -1579,6 +1587,8 @@ func CreateSpecMarkPromptedCommand(
 		cfg.Specs.InProgressDir,
 		cfg.Specs.CompletedDir,
 		currentDateTimeGetter,
+		lock.NewDirLock,
+		0,
 	)
 }
 

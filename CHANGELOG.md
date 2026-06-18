@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - refactor: replace `FileLock`/`NewFileLock` sidecar-file locking with `DirLock`/`NewDirLock` directory flock in `pkg/lock`; no `.lock` files created on disk, crash-release handled automatically by kernel
+- feat: add directory-scoped locking to `spec approve`, `spec reject`, `spec complete`, `spec unapprove`, and `spec mark-prompted` commands so concurrent CLI invocations on the same directory serialize; lock acquired before first file read and held across the move
 
 ## v0.181.0
 

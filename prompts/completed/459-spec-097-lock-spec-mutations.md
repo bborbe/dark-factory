@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [097-parent-dir-flock-locking]
+summary: 'Added directory-scoped locking to all five spec mutation commands (approve, reject, complete, unapprove, mark-prompted) following the reject.go pattern: each command gains dirLockFactory and lockTimeout constructor params, acquires a DirLock on filepath.Dir(path) before reading the spec, holds it across the full mutation, and defers release with a slog warning on failure; factory.go and all five test files updated; new lock-timeout and no-sidecar tests added per command; CHANGELOG updated.'
+container: dark-factory-exec-459-spec-097-lock-spec-mutations
+dark-factory-version: v0.181.0
 created: "2026-06-18T12:12:00Z"
 queued: "2026-06-18T12:10:24Z"
+started: "2026-06-18T13:29:01Z"
+completed: "2026-06-18T13:41:00Z"
 branch: dark-factory/parent-dir-flock-locking
 ---
 

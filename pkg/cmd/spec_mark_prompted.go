@@ -7,11 +7,14 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -28,6 +31,8 @@ type specMarkPromptedCommand struct {
 	inProgressDir         string
 	completedDir          string
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	dirLockFactory        func(dirPath string) lock.DirLock
+	lockTimeout           time.Duration
 }
 
 // NewSpecMarkPromptedCommand creates a new SpecMarkPromptedCommand.
@@ -36,12 +41,22 @@ func NewSpecMarkPromptedCommand(
 	inProgressDir string,
 	completedDir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	dirLockFactory func(dirPath string) lock.DirLock,
+	lockTimeout time.Duration,
 ) SpecMarkPromptedCommand {
+	if dirLockFactory == nil {
+		dirLockFactory = lock.NewDirLock
+	}
+	if lockTimeout == 0 {
+		lockTimeout = 5 * time.Second
+	}
 	return &specMarkPromptedCommand{
 		inboxDir:              inboxDir,
 		inProgressDir:         inProgressDir,
 		completedDir:          completedDir,
 		currentDateTimeGetter: currentDateTimeGetter,
+		dirLockFactory:        dirLockFactory,
+		lockTimeout:           lockTimeout,
 	}
 }
 
@@ -55,6 +70,22 @@ func (s *specMarkPromptedCommand) Run(ctx context.Context, args []string) error 
 	if err != nil {
 		return errors.Wrap(ctx, err, "find spec file")
 	}
+
+	fl := s.dirLockFactory(filepath.Dir(path))
+	if err := fl.Acquire(ctx, s.lockTimeout); err != nil {
+		return errors.Wrap(ctx, err, "acquire spec mark-prompted lock")
+	}
+	defer func() {
+		if relErr := fl.Release(ctx); relErr != nil {
+			slog.Warn(
+				"spec mark-prompted: lock release failed",
+				"dir",
+				filepath.Dir(path),
+				"error",
+				relErr.Error(),
+			)
+		}
+	}()
 
 	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
 	if err != nil {

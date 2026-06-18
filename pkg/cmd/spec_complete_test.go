@@ -6,14 +6,18 @@ package cmd_test
 
 import (
 	"context"
+	stderrors "errors"
 	"os"
 	"path/filepath"
+	"time"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cmd"
+	"github.com/bborbe/dark-factory/pkg/lock"
 )
 
 var _ = Describe("SpecCompleteCommand", func() {
@@ -46,6 +50,8 @@ var _ = Describe("SpecCompleteCommand", func() {
 			inProgressDir,
 			completedDir,
 			libtime.NewCurrentDateTime(),
+			nil,
+			0,
 		)
 		ctx = context.Background()
 	})
@@ -131,6 +137,8 @@ var _ = Describe("SpecCompleteCommand", func() {
 				"/nonexistent/in-progress",
 				"/nonexistent/completed",
 				libtime.NewCurrentDateTime(),
+				nil,
+				0,
 			)
 			err := specCompleteCmd.Run(ctx, []string{"001"})
 			Expect(err).To(HaveOccurred())
@@ -149,6 +157,39 @@ var _ = Describe("SpecCompleteCommand", func() {
 			content, err := os.ReadFile(dest)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(content)).To(ContainSubstring("status: completed"))
+		})
+
+		It("returns an error when the lock cannot be acquired", func() {
+			fakeLock := &mocks.LockDirLock{}
+			fakeLock.AcquireReturns(stderrors.New("boom"))
+			cmdWithLock := cmd.NewSpecCompleteCommand(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				libtime.NewCurrentDateTime(),
+				func(string) lock.DirLock { return fakeLock },
+				100*time.Millisecond,
+			)
+			specFile := filepath.Join(inProgressDir, "003-lock-test.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# Lock Test"), 0600),
+			).To(Succeed())
+			err := cmdWithLock.Run(ctx, []string{"003-lock-test.md"})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("acquire spec complete lock"))
+		})
+
+		It("leaves no .lock sidecar files after successful complete", func() {
+			specFile := filepath.Join(inProgressDir, "004-sidecar.md")
+			Expect(
+				os.WriteFile(specFile, []byte("---\nstatus: verifying\n---\n# Sidecar"), 0600),
+			).To(Succeed())
+
+			err := specCompleteCmd.Run(ctx, []string{"004-sidecar.md"})
+			Expect(err).NotTo(HaveOccurred())
+
+			matches, _ := filepath.Glob(filepath.Join(inProgressDir, "*.lock"))
+			Expect(matches).To(BeEmpty())
 		})
 	})
 })

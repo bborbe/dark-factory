@@ -7,13 +7,16 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
+	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -33,6 +36,8 @@ type specUnapproveCommand struct {
 	promptsInProgressDir  string
 	promptManager         PromptManager
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	dirLockFactory        func(dirPath string) lock.DirLock
+	lockTimeout           time.Duration
 }
 
 // NewSpecUnapproveCommand creates a new SpecUnapproveCommand.
@@ -43,7 +48,15 @@ func NewSpecUnapproveCommand(
 	promptsInProgressDir string,
 	promptManager PromptManager,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	dirLockFactory func(dirPath string) lock.DirLock,
+	lockTimeout time.Duration,
 ) SpecUnapproveCommand {
+	if dirLockFactory == nil {
+		dirLockFactory = lock.NewDirLock
+	}
+	if lockTimeout == 0 {
+		lockTimeout = 5 * time.Second
+	}
 	return &specUnapproveCommand{
 		inboxDir:              inboxDir,
 		inProgressDir:         inProgressDir,
@@ -51,6 +64,8 @@ func NewSpecUnapproveCommand(
 		promptsInProgressDir:  promptsInProgressDir,
 		promptManager:         promptManager,
 		currentDateTimeGetter: currentDateTimeGetter,
+		dirLockFactory:        dirLockFactory,
+		lockTimeout:           lockTimeout,
 	}
 }
 
@@ -65,6 +80,22 @@ func (s *specUnapproveCommand) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, "find spec file")
 	}
+
+	fl := s.dirLockFactory(filepath.Dir(path))
+	if err := fl.Acquire(ctx, s.lockTimeout); err != nil {
+		return errors.Wrap(ctx, err, "acquire spec unapprove lock")
+	}
+	defer func() {
+		if relErr := fl.Release(ctx); relErr != nil {
+			slog.Warn(
+				"spec unapprove: lock release failed",
+				"dir",
+				filepath.Dir(path),
+				"error",
+				relErr.Error(),
+			)
+		}
+	}()
 
 	sf, err := spec.Load(ctx, path, s.currentDateTimeGetter)
 	if err != nil {

@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-06-18T11:45:58Z"
 generating: "2026-06-18T11:48:44Z"
 prompted: "2026-06-18T12:00:19Z"
 verifying: "2026-06-18T13:56:28Z"
+completed: "2026-06-18T14:08:17Z"
 branch: dark-factory/parent-dir-flock-locking
 ---
 

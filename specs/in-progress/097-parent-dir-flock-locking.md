@@ -1,11 +1,12 @@
 ---
-status: prompted
+status: verifying
 tags:
     - dark-factory
     - spec
 approved: "2026-06-18T11:45:58Z"
 generating: "2026-06-18T11:48:44Z"
 prompted: "2026-06-18T12:00:19Z"
+verifying: "2026-06-18T13:56:28Z"
 branch: dark-factory/parent-dir-flock-locking
 ---
 
@@ -113,3 +114,18 @@ Rationale: prompt 1 lands the new primitive with tests so prompts 2-3 can run in
 ## Do-Nothing Option
 
 If we do nothing: `*.md.lock` files continue to accumulate, the rationale comment in `filelock.go` continues to need explaining to new readers, and spec mutations remain unlocked-by-protocol. Today's race exposure is low (daemon does not mutate specs, CLI throughput is human-paced), so the correctness risk is small in the short term. The cost of inaction is steady cosmetic litter + protocol asymmetry that will bite the day a future feature lets the daemon mutate specs. Acceptable to defer if higher-priority work demands the slot; not acceptable as a permanent answer.
+
+## Verification Result
+
+**Verified:** 2026-06-18T14:07:48Z (HEAD 5273d81)
+**Binary:** /tmp/dark-factory-5273d81 (built from HEAD)
+**Scenario:** Sandbox `prompt reject` race (same dir → serial via lock; different dirs → parallel) + doctor `--fix` legacy-lock cleanup + idempotency re-run.
+**Evidence:**
+- `make precommit` exit 0; `go test ./pkg/lock/...` 27/27 specs green, incl. TestParentDirLock_SerializesSameDir / _ParallelDifferentDirs / _CrashReleaseLeavesNoArtifact
+- Same-dir race: both procs logged `lock acquired file=001-race-target.md` at 16:06:18.806/.807; winner stamped `rejectedReason: race-B`, loser exited with post-lock "no such file or directory" — state matches single sequential reject, zero `.lock` files
+- Different-dir parallel: 0.290s vs sequential 0.381s, both exit 0, simultaneous lock-acquired timestamps (16:06:50.076)
+- `grep -rEn '"\.lock"|\+ *"\.lock"' pkg/lock/ pkg/cmd/ pkg/queuescanner/ pkg/doctor/ --include='*.go' --exclude='*_test.go'` → single match in `pkg/doctor/legacy_lock_file.go:43` (legacy-cleanup, AC-permitted)
+- `dark-factory doctor` detected 3 seeded `*.md.lock` files, `--fix --yes` removed all, re-run reported "no findings"
+- `find prompts specs -name '*.lock'` in repo root → empty
+- CHANGELOG.md `## Unreleased` carries 3 bullets (refactor + feat × 2), one citing `spec 097`
+**Verdict:** PASS

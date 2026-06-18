@@ -1,5 +1,5 @@
 ---
-status: approved
+status: completed
 spec: [097-parent-dir-flock-locking]
 created: "2026-06-18T12:11:00Z"
 queued: "2026-06-18T12:10:24Z"

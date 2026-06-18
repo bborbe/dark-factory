@@ -1,5 +1,5 @@
 ---
-status: failed
+status: completed
 spec: [097-parent-dir-flock-locking]
 container: dark-factory-exec-457-spec-097-dirlock-primitive
 dark-factory-version: v0.181.0

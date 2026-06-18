@@ -40,6 +40,10 @@ const CategoryStatusDirMismatch Category = "status-dir-mismatch"
 // CategoryParseError indicates a file's YAML frontmatter could not be parsed.
 const CategoryParseError Category = "parse-errors"
 
+// CategoryLegacyLockFile indicates a leftover *.lock sidecar from the abandoned
+// per-file locking scheme (spec 097). These empty files are removed by doctor --fix.
+const CategoryLegacyLockFile Category = "legacy-lock-file"
+
 //counterfeiter:generate -o ../../mocks/doctor-prompt-manager.go --fake-name DoctorPromptManager . PromptManager
 
 // PromptManager is the subset of prompt.Manager that the doctor package uses.
@@ -143,6 +147,12 @@ func (c *checker) Check(ctx context.Context) ([]Finding, error) {
 		return nil, errors.Wrap(ctx, err, "detect status-dir-mismatches")
 	}
 	all = append(all, statusMismatches...)
+
+	legacyLocks, err := c.detectLegacyLockFiles(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "detect legacy lock files")
+	}
+	all = append(all, legacyLocks...)
 
 	parseErrors, err := c.scanParseErrors(ctx)
 	if err != nil {

@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [097-parent-dir-flock-locking]
+summary: Added CategoryLegacyLockFile detector and fixer to pkg/doctor that scans for *.lock sidecar files from the abandoned per-file locking scheme and removes them on doctor --fix; added CHANGELOG entry referencing spec 097.
+container: dark-factory-exec-460-spec-097-cleanup-fixer-and-changelog
+dark-factory-version: v0.181.0
 created: "2026-06-18T12:13:00Z"
 queued: "2026-06-18T12:10:24Z"
+started: "2026-06-18T13:41:02Z"
+completed: "2026-06-18T13:45:54Z"
 branch: dark-factory/parent-dir-flock-locking
 ---
 

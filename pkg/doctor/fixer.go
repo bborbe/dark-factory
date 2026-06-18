@@ -176,6 +176,9 @@ func (f *fixer) applyFinding(
 	case CategoryStatusDirMismatch:
 		af, ff := f.fixStatusDirMismatch(ctx, finding, opts)
 		return af, nil, ff
+	case CategoryLegacyLockFile:
+		af, ff := f.fixLegacyLockFile(ctx, finding, opts)
+		return af, nil, ff
 	case CategoryParseError:
 		skipped = append(skipped, SkippedFix{
 			Category:    finding.Category,

@@ -127,4 +127,14 @@ var _ = Describe("Policy", func() {
 	It("CanonicalCaps contains exactly NET_ADMIN and NET_RAW in that order", func() {
 		Expect(launchpolicy.CanonicalCaps).To(Equal([]string{"NET_ADMIN", "NET_RAW"}))
 	})
+
+	It("ContainerImage returns the image passed to NewPolicy", func() {
+		p := testPolicy()
+		Expect(p.ContainerImage()).To(Equal("docker.io/bborbe/claude-yolo:v0.10.1"))
+	})
+
+	It("ProjectName returns the project name passed to NewPolicy", func() {
+		p := testPolicy()
+		Expect(p.ProjectName()).To(Equal("test-project"))
+	})
 })

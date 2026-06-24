@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [098-bug-unify-container-launch-policy]
+summary: Migrated executor's prompt-run path to consume launchpolicy.Policy via BuildOpts; removed inline CapAdd literal from executor.go; moved ContainerLaunchOpts struct to pkg/launchpolicy (type alias in pkg/executor for callers); added ClaudeDir/BaseEnv/ContainerImage/ProjectName accessors to Policy; wired Policy through both executor.NewDockerExecutor call sites in factory.go; updated export_test.go and executor_test.go to use new constructor signature.
+container: dark-factory-unify-container-launch-exec-462-spec-098-executor-migration
+dark-factory-version: v0.182.0
 created: "2026-06-24T19:30:00Z"
 queued: "2026-06-24T19:40:36Z"
+started: "2026-06-24T20:49:38Z"
+completed: "2026-06-24T21:11:43Z"
 ---
 
 <summary>

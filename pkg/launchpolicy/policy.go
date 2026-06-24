@@ -32,7 +32,6 @@ package launchpolicy
 
 import (
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/executor"
 )
 
 // CanonicalCaps is the Linux capability set every dark-factory container
@@ -177,18 +176,18 @@ type Extras struct {
 	ExtraLabels map[string]string
 }
 
-// BuildOpts returns an executor.ContainerLaunchOpts ready for
+// BuildOpts returns a ContainerLaunchOpts ready for
 // executor.BuildDockerRunArgs. The returned value carries the policy's
 // base launch shape plus the per-invocation extras.
 //
 // THIS IS THE ONLY production-code site that composes
-// executor.ContainerLaunchOpts{...} after spec 098 lands. The architectural
+// ContainerLaunchOpts{...} after spec 098 lands. The architectural
 // invariant
 //
 //	grep -rn "ContainerLaunchOpts{" pkg/ | grep -v _test.go | wc -l
 //
 // MUST return exactly 1 (this method).
-func (p Policy) BuildOpts(extras Extras) executor.ContainerLaunchOpts {
+func (p Policy) BuildOpts(extras Extras) ContainerLaunchOpts {
 	mergedEnv := make(map[string]string, len(p.baseEnv)+len(extras.EnvOverlay))
 	for k, v := range p.baseEnv {
 		mergedEnv[k] = v
@@ -196,7 +195,7 @@ func (p Policy) BuildOpts(extras Extras) executor.ContainerLaunchOpts {
 	for k, v := range extras.EnvOverlay {
 		mergedEnv[k] = v
 	}
-	return executor.ContainerLaunchOpts{
+	return ContainerLaunchOpts{
 		ContainerName:  extras.ContainerName,
 		ContainerImage: p.containerImage,
 		ProjectName:    p.projectName,
@@ -214,6 +213,21 @@ func (p Policy) BuildOpts(extras Extras) executor.ContainerLaunchOpts {
 		Command:        extras.Command,
 	}
 }
+
+// ContainerImage returns the image reference (consumed by callers needing it
+// outside BuildOpts, e.g. the executor's insertPromptFileMount).
+func (p Policy) ContainerImage() string { return p.containerImage }
+
+// ProjectName returns the value of the dark-factory.project label.
+func (p Policy) ProjectName() string { return p.projectName }
+
+// ClaudeDir returns the resolved claude config directory (host path).
+func (p Policy) ClaudeDir() string { return p.claudeDir }
+
+// BaseEnv returns a shallow copy of the base environment map. Callers that
+// only read the map may use the returned value directly; callers that mutate
+// it should copy first.
+func (p Policy) BaseEnv() map[string]string { return p.baseEnv }
 
 // WithCapAddForTest returns a copy of p with capAdd replaced by caps. Test-only
 // override; production callers cannot vary the cap set (spec 098 Non-goal).

@@ -37,6 +37,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
@@ -678,20 +679,27 @@ func CreateSpecGenerator(
 	slugMigrator slugmigrator.Migrator,
 	promptManager *prompt.Manager,
 ) generator.SpecGenerator {
+	projectRoot, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	specGenPolicy := launchpolicy.NewPolicy(
+		containerImage,
+		project.Resolve(cfg.ResolvedProjectOverride()).String(),
+		projectRoot,
+		cfg.ResolvedClaudeDir(),
+		home,
+		cfg.Env,
+		cfg.ExtraMounts,
+		cfg.NetrcFile,
+		cfg.GitconfigFile,
+		resolveSpecGeneratorHideGit(cfg),
+	)
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
-			containerImage,
-			project.Resolve(cfg.ResolvedProjectOverride()).String(),
+			specGenPolicy,
 			cfg.Model,
-			cfg.NetrcFile,
-			cfg.GitconfigFile,
-			cfg.Env,
-			cfg.ExtraMounts,
-			cfg.ResolvedClaudeDir(),
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(currentDateTimeGetter),
-			resolveSpecGeneratorHideGit(cfg),
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
@@ -917,19 +925,26 @@ func CreateProcessor(
 		promptDirPrefixes, releaser,
 	)
 	workflowExecutor := workflowExecutorProvider.Get(ctx, workflow)
-	exec := executor.NewDockerExecutor(
+	projectRoot, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	processorPolicy := launchpolicy.NewPolicy(
 		containerImage,
 		projectName.String(),
-		model,
-		netrcFile,
-		gitconfigFile,
+		projectRoot,
+		claudeDir,
+		home,
 		env,
 		extraMounts,
-		claudeDir,
+		netrcFile,
+		gitconfigFile,
+		workflow == config.WorkflowWorktree || hideGit,
+	)
+	exec := executor.NewDockerExecutor(
+		processorPolicy,
+		model,
 		maxPromptDuration,
 		currentDateTimeGetter,
 		formatter.NewFormatter(currentDateTimeGetter),
-		workflow == config.WorkflowWorktree || hideGit,
 	)
 	fh := failurehandler.NewHandler(
 		promptManager,

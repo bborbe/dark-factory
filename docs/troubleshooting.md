@@ -68,6 +68,30 @@ See the 'PR via Pre-Created Worktree' runbook for the canonical workflow.
 Auto-enabling `hideGit` when a worktree is detected was considered but rejected in favor of
 explicit configuration.
 
+## Healthcheck probe fails on OrbStack (`claude session probe failed: stdout=""`)
+
+**Symptom:** macOS + OrbStack; `dark-factory daemon` aborts at startup with:
+
+```
+healthcheck: claude session probe failed: stdout=""
+```
+
+**Root cause:** The healthcheck probe launched the `claude-yolo` container without the
+`NET_ADMIN` and `NET_RAW` Linux capabilities its entrypoint (`init-firewall.sh`) requires
+to set up iptables egress rules. On OrbStack the missing capabilities cause iptables to fail
+immediately with `Permission denied`, the container exits non-zero before producing output,
+and the probe reports empty stdout.
+
+**Status:** Fixed in the release containing spec 098. `pkg/launchpolicy` is now the single
+source of truth for the container launch shape, including the canonical capability set
+(`NET_ADMIN`, `NET_RAW`). Both the executor prompt-run path and the healthcheck probes derive
+their `ContainerLaunchOpts` from the same policy value, so capability set drift between the
+two call sites is structurally impossible.
+
+**Workaround (for older versions):** `dark-factory daemon --skip-healthcheck` starts the
+daemon and bypasses the gate, but the gate's protection is lost. Prefer upgrading to a
+version containing spec 098.
+
 ## Preflight baseline failure on daemon start
 
 When the daemon starts, it runs `preflightCommand` (typically `make precommit`) against the

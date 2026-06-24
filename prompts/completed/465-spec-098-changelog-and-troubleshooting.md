@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [098-bug-unify-container-launch-policy]
+summary: Added two CHANGELOG bullets and OrbStack troubleshooting section for spec 098; all hermetic-layer tests pass and make precommit exits 0.
+container: dark-factory-unify-container-launch-exec-465-spec-098-changelog-and-troubleshooting
+dark-factory-version: v0.182.0
 created: "2026-06-24T19:30:00Z"
 queued: "2026-06-24T19:40:37Z"
+started: "2026-06-24T21:30:07Z"
+completed: "2026-06-24T21:37:51Z"
 ---
 
 <summary>

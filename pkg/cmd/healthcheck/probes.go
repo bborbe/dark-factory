@@ -32,6 +32,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -78,23 +79,6 @@ func GhWarnAfterForFactory() time.Duration { return ghWarnAfter }
 // GhTimeoutForFactory returns the hard timeout the factory should use when
 // constructing a subproc.Runner for the gh probe.
 func GhTimeoutForFactory() time.Duration { return ghTimeout }
-
-// ProbeLaunchConfig is the per-invocation container-launch config that the
-// boot / mount / claude probes pass to executor.BuildDockerRunArgs. The
-// factory builds one instance and shares it across all three probes so they
-// hit the exact same launch path production uses.
-type ProbeLaunchConfig struct {
-	ContainerImage string
-	ProjectName    string
-	ProjectRoot    string
-	ClaudeDir      string
-	Home           string
-	Env            map[string]string
-	ExtraMounts    []config.ExtraMount
-	NetrcFile      string
-	GitconfigFile  string
-	HideGit        bool
-}
 
 // dockerProbe checks that the docker daemon is reachable.
 type dockerProbe struct {
@@ -173,12 +157,9 @@ func (i *imageProbe) Run(ctx context.Context) error {
 }
 
 // bootProbe runs a one-shot container via the same launch path production
-// prompt containers use and verifies /workspace is writable inside it. The
-// probe assembles a ContainerLaunchOpts from ProbeLaunchConfig + a
-// boot-specific entrypoint (`/bin/sh`) + boot-specific command and calls
-// executor.BuildDockerRunArgs to produce the argv.
+// prompt containers use and verifies /workspace is writable inside it.
 type bootProbe struct {
-	launch ProbeLaunchConfig
+	policy launchpolicy.Policy
 	runner subproc.Runner
 }
 
@@ -190,12 +171,12 @@ const bootProbeCommand = "mkdir -p /workspace/.dark-factory-healthcheck && " +
 	"echo BOOT_OK"
 
 // NewBootProbe returns a Probe that boots a throwaway container via the
-// shared executor.BuildDockerRunArgs launch path and verifies /workspace
-// is writable. The probe uses the same mounts, env, hideGit and extraMounts
-// wiring as a production prompt container — any regression in the launch
-// path surfaces here.
-func NewBootProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
-	return &bootProbe{launch: launch, runner: r}
+// shared launchpolicy.Policy launch path and verifies /workspace is writable.
+// The probe uses the SAME mounts, env, hideGit, extraMounts, AND capabilities
+// (launchpolicy.CanonicalCaps) as a production prompt container — by construction,
+// not by convention. Any regression in the launch shape surfaces here.
+func NewBootProbe(policy launchpolicy.Policy, r subproc.Runner) Probe {
+	return &bootProbe{policy: policy, runner: r}
 }
 
 func (b *bootProbe) Name() string {
@@ -204,7 +185,7 @@ func (b *bootProbe) Name() string {
 
 func (b *bootProbe) Run(ctx context.Context) error {
 	return runContainerProbe(ctx, runContainerProbeArgs{
-		launch:        b.launch,
+		policy:        b.policy,
 		runner:        b.runner,
 		category:      b.Name(),
 		op:            "docker run boot probe",
@@ -216,19 +197,19 @@ func (b *bootProbe) Run(ctx context.Context) error {
 }
 
 // claudeProbe runs `claude -p <prompt>` inside a throwaway container via the
-// shared executor.BuildDockerRunArgs launch path and asserts the literal "OK"
+// shared launchpolicy.Policy launch path and asserts the literal "OK"
 // substring is present in stdout. Same launch path as production — so if
 // production stops being able to start Claude, the probe notices.
 type claudeProbe struct {
-	launch ProbeLaunchConfig
+	policy launchpolicy.Policy
 	runner subproc.Runner
 }
 
 // NewClaudeProbe returns a Probe that boots a one-shot container via the
 // shared launch path with `claude -p <prompt>` as the entrypoint+args.
 // Asserts the literal "OK" substring in stdout.
-func NewClaudeProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
-	return &claudeProbe{launch: launch, runner: r}
+func NewClaudeProbe(policy launchpolicy.Policy, r subproc.Runner) Probe {
+	return &claudeProbe{policy: policy, runner: r}
 }
 
 func (c *claudeProbe) Name() string {
@@ -237,7 +218,7 @@ func (c *claudeProbe) Name() string {
 
 func (c *claudeProbe) Run(ctx context.Context) error {
 	return runContainerProbe(ctx, runContainerProbeArgs{
-		launch:        c.launch,
+		policy:        c.policy,
 		runner:        c.runner,
 		category:      c.Name(),
 		op:            "claude session probe",
@@ -259,14 +240,14 @@ const mountProbeCommand = "mkdir -p /workspace/.healthcheck-mount && " +
 // mountProbe boots a throwaway container via the shared launch path and
 // verifies /workspace is writable from inside.
 type mountProbe struct {
-	launch ProbeLaunchConfig
+	policy launchpolicy.Policy
 	runner subproc.Runner
 }
 
 // NewMountProbe returns a Probe that boots a throwaway container via the
 // shared launch path and verifies /workspace is writable inside it.
-func NewMountProbe(launch ProbeLaunchConfig, r subproc.Runner) Probe {
-	return &mountProbe{launch: launch, runner: r}
+func NewMountProbe(policy launchpolicy.Policy, r subproc.Runner) Probe {
+	return &mountProbe{policy: policy, runner: r}
 }
 
 func (m *mountProbe) Name() string {
@@ -275,7 +256,7 @@ func (m *mountProbe) Name() string {
 
 func (m *mountProbe) Run(ctx context.Context) error {
 	return runContainerProbe(ctx, runContainerProbeArgs{
-		launch:        m.launch,
+		policy:        m.policy,
 		runner:        m.runner,
 		category:      m.Name(),
 		op:            "docker run mount probe",
@@ -290,7 +271,7 @@ func (m *mountProbe) Run(ctx context.Context) error {
 // container probes (boot, mount, claude) need to launch one one-shot container, check
 // stdout for a success marker, and report success/failure with consistent logging.
 type runContainerProbeArgs struct {
-	launch        ProbeLaunchConfig
+	policy        launchpolicy.Policy
 	runner        subproc.Runner
 	category      string   // probe name ("boot", "mount", "claude")
 	op            string   // subproc op label
@@ -304,14 +285,16 @@ type runContainerProbeArgs struct {
 // It launches one container via the same executor.BuildDockerRunArgs path production uses,
 // asserts the success marker in stdout, and emits the standard slog success/failure lines.
 func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
-	name, err := uniqueContainerName(a.launch.ProjectName, a.category)
+	name, err := uniqueContainerName(a.policy.ProjectName(), a.category)
 	if err != nil {
 		return errors.Wrap(ctx, err, "generate "+a.category+" probe container name")
 	}
-	opts := launchOpts(a.launch, name)
-	opts.Entrypoint = a.entrypoint
-	opts.Command = a.command
-	// #nosec G204 -- args are derived from the configured container image, not user input
+	opts := a.policy.BuildOpts(launchpolicy.Extras{
+		ContainerName: name,
+		Entrypoint:    a.entrypoint,
+		Command:       a.command,
+	})
+	// #nosec G204 -- args are derived from the configured policy + a category-prefixed random container name, not user input
 	out, err := a.runner.RunWithWarnAndTimeout(
 		ctx,
 		a.op,
@@ -344,27 +327,6 @@ func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
 	}
 	slog.Info("healthcheck probe passed", "probe", a.category, "container", name)
 	return nil
-}
-
-// launchOpts builds a base ContainerLaunchOpts from a ProbeLaunchConfig.
-// Callers add probe-specific Entrypoint + Command before passing to
-// executor.BuildDockerRunArgs. The probe-specific label
-// (`dark-factory.probe=<category>`) is derived from the container name suffix
-// pattern produced by uniqueContainerName.
-func launchOpts(p ProbeLaunchConfig, containerName string) executor.ContainerLaunchOpts {
-	return executor.ContainerLaunchOpts{
-		ContainerName:  containerName,
-		ContainerImage: p.ContainerImage,
-		ProjectName:    p.ProjectName,
-		ProjectRoot:    p.ProjectRoot,
-		ClaudeDir:      p.ClaudeDir,
-		Home:           p.Home,
-		Env:            p.Env,
-		ExtraMounts:    p.ExtraMounts,
-		NetrcFile:      p.NetrcFile,
-		GitconfigFile:  p.GitconfigFile,
-		HideGit:        p.HideGit,
-	}
 }
 
 // ghProbe runs `gh auth status` and reports success only when exit is 0.

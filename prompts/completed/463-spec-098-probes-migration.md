@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [098-bug-unify-container-launch-policy]
+summary: Migrated boot/mount/claude healthcheck probes from ProbeLaunchConfig to launchpolicy.Policy; removed ProbeLaunchConfig struct and launchOpts helper; rewired factory to use launchpolicy.NewPolicy; added DescribeTable test asserting each probe's argv carries --cap-add=NET_ADMIN and --cap-add=NET_RAW.
+container: dark-factory-unify-container-launch-exec-463-spec-098-probes-migration
+dark-factory-version: v0.182.0
 created: "2026-06-24T19:30:00Z"
 queued: "2026-06-24T19:40:37Z"
+started: "2026-06-24T21:11:44Z"
+completed: "2026-06-24T21:19:05Z"
 ---
 
 <summary>

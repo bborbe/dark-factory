@@ -1293,24 +1293,24 @@ func CreateHealthcheckCommand(
 			env["ANTHROPIC_MODEL"] = cfg.Model
 		}
 	}
-	launch := healthcheck.ProbeLaunchConfig{
-		ContainerImage: cfg.ContainerImage,
-		ProjectName:    projectName,
-		ProjectRoot:    projectRoot,
-		ClaudeDir:      cfg.ResolvedClaudeDir(),
-		Home:           home,
-		Env:            env,
-		ExtraMounts:    cfg.ExtraMounts,
-		NetrcFile:      cfg.NetrcFile,
-		GitconfigFile:  cfg.GitconfigFile,
-		HideGit:        cfg.HideGit,
-	}
+	policy := launchpolicy.NewPolicy(
+		cfg.ContainerImage,
+		projectName,
+		projectRoot,
+		cfg.ResolvedClaudeDir(),
+		home,
+		env,
+		cfg.ExtraMounts,
+		cfg.NetrcFile,
+		cfg.GitconfigFile,
+		cfg.HideGit,
+	)
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),
 		healthcheck.NewImageProbe(cfg.ContainerImage, subprocRunner),
-		healthcheck.NewBootProbe(launch, subprocRunner),
-		healthcheck.NewClaudeProbe(launch, claudeRunner),
-		healthcheck.NewMountProbe(launch, subprocRunner),
+		healthcheck.NewBootProbe(policy, subprocRunner),
+		healthcheck.NewClaudeProbe(policy, claudeRunner),
+		healthcheck.NewMountProbe(policy, subprocRunner),
 	}
 	if cfg.PR {
 		probes = append(probes, healthcheck.NewGhProbe(ghRunner))

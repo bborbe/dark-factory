@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [098-bug-unify-container-launch-policy]
+summary: Added regression_lock_test.go in pkg/launchpolicy and BuildDockerCommandFromPolicyForTest in pkg/executor/export_test.go; regression lock test injects SYS_PTRACE via Policy.WithCapAddForTest and asserts propagation through executor.BuildDockerRunArgs and all three container probes' argv
+container: dark-factory-unify-container-launch-exec-464-spec-098-regression-lock-test
+dark-factory-version: v0.182.0
 created: "2026-06-24T19:30:00Z"
 queued: "2026-06-24T19:40:37Z"
+started: "2026-06-24T21:19:07Z"
+completed: "2026-06-24T21:30:05Z"
 ---
 
 <summary>

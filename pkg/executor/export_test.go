@@ -114,6 +114,38 @@ func BuildDockerCommandForTest(
 	)
 }
 
+// BuildDockerCommandFromPolicyForTest is the policy-injection test helper used
+// by the spec-098 regression-lock test. It accepts a Policy directly so a
+// test can construct a Policy with a synthetic capability set via
+// Policy.WithCapAddForTest and prove the cap propagates to the executor's
+// argv. Production callers MUST use NewDockerExecutor; this helper is for
+// tests only.
+func BuildDockerCommandFromPolicyForTest(
+	ctx context.Context,
+	policy launchpolicy.Policy,
+	model string,
+	containerName string,
+	promptFilePath string,
+	projectRoot string,
+	claudeConfigDir string,
+	promptBaseName string,
+	home string,
+) *exec.Cmd {
+	e := &dockerExecutor{
+		policy: policy,
+		model:  model,
+	}
+	return e.buildDockerCommand(
+		ctx,
+		containerName,
+		promptFilePath,
+		projectRoot,
+		claudeConfigDir,
+		promptBaseName,
+		home,
+	)
+}
+
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.
 func PrepareLogFileForTest(ctx context.Context, logFile string) (*os.File, error) {
 	return prepareLogFile(ctx, logFile)

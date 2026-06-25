@@ -104,29 +104,37 @@ func appendEnv(args []string, env map[string]string) []string {
 	return args
 }
 
+// buildClaudeDirMount returns the `-v` value for the claudeDir mount, or ""
+// if no mount should be emitted. Returns "" when ClaudeDir is empty or
+// contains ':' (which would produce ambiguous docker volume syntax). The
+// ':' case logs at ERROR so the agent's missing-credential failure is
+// traceable.
+//
+// TODO(ADR-0001 Phase 2): validate at config-load time so the operator sees
+// the error before daemon start, instead of relying on this silent-skip +
+// log line.
+func buildClaudeDirMount(opts ContainerLaunchOpts) string {
+	if opts.ClaudeDir == "" {
+		return ""
+	}
+	if strings.Contains(opts.ClaudeDir, ":") {
+		slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
+			"claudeDir", opts.ClaudeDir)
+		return ""
+	}
+	mount := opts.ClaudeDir + ":/home/node/.claude"
+	if opts.ClaudeDirReadOnly {
+		mount += ":ro"
+	}
+	return mount
+}
+
 func appendStandardMounts(args []string, opts ContainerLaunchOpts) []string {
 	if opts.ProjectRoot != "" {
 		args = append(args, "-v", opts.ProjectRoot+":/workspace")
 	}
-	if opts.ClaudeDir != "" {
-		// Host paths containing ':' would produce ambiguous docker volume
-		// syntax (docker uses ':' as src/dst/mode separator). Skip the mount
-		// with a loud ERROR rather than crashing the daemon — the agent's
-		// missing-credential failure will surface the underlying config bug.
-		//
-		// TODO(ADR-0001 Phase 2): validate at config-load time so the operator
-		// sees the error before daemon start, instead of relying on this
-		// silent-skip + log line.
-		if strings.Contains(opts.ClaudeDir, ":") {
-			slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
-				"claudeDir", opts.ClaudeDir)
-		} else {
-			mount := opts.ClaudeDir + ":/home/node/.claude"
-			if opts.ClaudeDirReadOnly {
-				mount += ":ro"
-			}
-			args = append(args, "-v", mount)
-		}
+	if mount := buildClaudeDirMount(opts); mount != "" {
+		args = append(args, "-v", mount)
 	}
 	if opts.NetrcFile != "" {
 		args = append(

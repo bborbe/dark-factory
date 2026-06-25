@@ -83,6 +83,14 @@ type Policy struct {
 	gitconfigFile  string
 	hideGit        bool
 	capAdd         []string
+
+	// Security hardening fields (ADR-0001 Phase 1). Defaults zero — production
+	// behavior unchanged. Operators opt in via factory using WithSecurity.
+	runAsUser         string
+	memoryLimit       string
+	cpuLimit          string
+	pidsLimit         int
+	claudeDirReadOnly bool
 }
 
 // NewPolicy returns a Policy capturing the launch-shape inputs from cfg + the
@@ -170,22 +178,50 @@ func (p Policy) BuildOpts(extras Extras) ContainerLaunchOpts {
 		mergedEnv[k] = v
 	}
 	return ContainerLaunchOpts{
-		ContainerName:  extras.ContainerName,
-		ContainerImage: p.containerImage,
-		ProjectName:    p.projectName,
-		ProjectRoot:    p.projectRoot,
-		ClaudeDir:      p.claudeDir,
-		Home:           p.home,
-		Env:            mergedEnv,
-		ExtraMounts:    p.extraMounts,
-		NetrcFile:      p.netrcFile,
-		GitconfigFile:  p.gitconfigFile,
-		HideGit:        p.hideGit,
-		ExtraLabels:    extras.ExtraLabels,
-		CapAdd:         p.capAdd,
-		Entrypoint:     extras.Entrypoint,
-		Command:        extras.Command,
+		ContainerName:     extras.ContainerName,
+		ContainerImage:    p.containerImage,
+		ProjectName:       p.projectName,
+		ProjectRoot:       p.projectRoot,
+		ClaudeDir:         p.claudeDir,
+		Home:              p.home,
+		Env:               mergedEnv,
+		ExtraMounts:       p.extraMounts,
+		NetrcFile:         p.netrcFile,
+		GitconfigFile:     p.gitconfigFile,
+		HideGit:           p.hideGit,
+		ExtraLabels:       extras.ExtraLabels,
+		CapAdd:            p.capAdd,
+		Entrypoint:        extras.Entrypoint,
+		Command:           extras.Command,
+		RunAsUser:         p.runAsUser,
+		MemoryLimit:       p.memoryLimit,
+		CPULimit:          p.cpuLimit,
+		PIDsLimit:         p.pidsLimit,
+		ClaudeDirReadOnly: p.claudeDirReadOnly,
 	}
+}
+
+// SecurityOpts groups the security hardening fields applied via WithSecurity.
+// Defaults (zero values) preserve current production behavior (root, rw
+// credentials, no resource limits). See ADR-0001 for the rollout plan.
+type SecurityOpts struct {
+	RunAsUser         string
+	MemoryLimit       string
+	CPULimit          string
+	PIDsLimit         int
+	ClaudeDirReadOnly bool
+}
+
+// WithSecurity returns a copy of p with the security fields replaced by opts.
+// Phase 2 (separate PR) will call this from the factory with non-zero defaults
+// after dev validation confirms ro claudeDir works for Claude SDK auth refresh.
+func (p Policy) WithSecurity(opts SecurityOpts) Policy {
+	p.runAsUser = opts.RunAsUser
+	p.memoryLimit = opts.MemoryLimit
+	p.cpuLimit = opts.CPULimit
+	p.pidsLimit = opts.PIDsLimit
+	p.claudeDirReadOnly = opts.ClaudeDirReadOnly
+	return p
 }
 
 // ContainerImage returns the image reference (consumed by callers needing it

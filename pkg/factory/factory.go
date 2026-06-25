@@ -845,7 +845,7 @@ func buildProcessorConfig(
 }
 
 // ProcessorConfig groups the config-derived inputs to CreateProcessor.
-// Previously these 24 fields were positional params of CreateProcessor,
+// Previously these 25 fields were positional params of CreateProcessor,
 // duplicated across CreateRunner and CreateOneShotRunner — silent drift
 // between the two call sites was a real bug class. Grouping them into a
 // struct makes the call sites identical and adding a new field a one-line

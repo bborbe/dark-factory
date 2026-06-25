@@ -216,7 +216,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		m := "claude-opus-4-7"
 		global.Model = &m
 		proj := config.LayeredProjectOverrides{}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
 	})
 
@@ -228,7 +228,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		global.Model = &gm
 		pm := "claude-sonnet-4-6"
 		proj := config.LayeredProjectOverrides{Model: &pm}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.Model).To(Equal("claude-sonnet-4-6"))
 	})
 
@@ -238,7 +238,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		t := true
 		global.HideGit = &t
 		proj := config.LayeredProjectOverrides{}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.HideGit).To(BeTrue())
 	})
 
@@ -250,7 +250,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		global.HideGit = &t
 		f := false
 		proj := config.LayeredProjectOverrides{HideGit: &f}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.HideGit).To(BeFalse())
 	})
 
@@ -260,7 +260,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		t := true
 		global.AutoApprovePrompts = &t
 		proj := config.LayeredProjectOverrides{}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.AutoApprovePrompts).To(BeTrue())
 	})
 
@@ -274,7 +274,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 			global.AutoApprovePrompts = &t
 			f := false
 			proj := config.LayeredProjectOverrides{AutoApprovePrompts: &f}
-			applyGlobalOverrides(&cfg, global, proj)
+			config.ApplyGlobalOverrides(&cfg, global, proj)
 			Expect(cfg.AutoApprovePrompts).To(BeFalse())
 		},
 	)
@@ -285,7 +285,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		t := true
 		global.AutoGeneratePrompts = &t
 		proj := config.LayeredProjectOverrides{}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.AutoGeneratePrompts).To(BeTrue())
 	})
 
@@ -296,7 +296,7 @@ var _ = Describe("applyGlobalOverrides", func() {
 		global.AutoGeneratePrompts = &t
 		f := false
 		proj := config.LayeredProjectOverrides{AutoGeneratePrompts: &f}
-		applyGlobalOverrides(&cfg, global, proj)
+		config.ApplyGlobalOverrides(&cfg, global, proj)
 		Expect(cfg.AutoGeneratePrompts).To(BeFalse())
 	})
 })
@@ -307,7 +307,9 @@ var _ = Describe("applyArgOverrides", func() {
 	It("applies model override", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		Expect(applyArgOverrides(ctx, &cfg, &sources, "daemon", "claude-opus-4-7")).To(Succeed())
+		Expect(
+			config.ApplyArgOverrides(ctx, &cfg, &sources, "daemon", "claude-opus-4-7"),
+		).To(Succeed())
 		Expect(cfg.Model).To(Equal("claude-opus-4-7"))
 		Expect(sources.Model).To(Equal("arg"))
 	})
@@ -315,7 +317,7 @@ var _ = Describe("applyArgOverrides", func() {
 	It("rejects --model on non-run/daemon command", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applyArgOverrides(ctx, &cfg, &sources, "config", "claude-opus-4-7")
+		err := config.ApplyArgOverrides(ctx, &cfg, &sources, "config", "claude-opus-4-7")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unknown flag: --model"))
 	})
@@ -323,7 +325,7 @@ var _ = Describe("applyArgOverrides", func() {
 	It("rejects invalid model value", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applyArgOverrides(ctx, &cfg, &sources, "run", "claude;bad")
+		err := config.ApplyArgOverrides(ctx, &cfg, &sources, "run", "claude;bad")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("does not match required pattern"))
 	})
@@ -333,39 +335,39 @@ var _ = Describe("validateModelArg", func() {
 	ctx := context.Background()
 
 	It("accepts a valid Anthropic model ID", func() {
-		Expect(validateModelArg(ctx, "claude-opus-4-7")).To(Succeed())
+		Expect(config.ValidateModelArg(ctx, "claude-opus-4-7")).To(Succeed())
 	})
 
 	It("accepts a model with colon and slash", func() {
-		Expect(validateModelArg(ctx, "qwen3.6:35b-a3b")).To(Succeed())
+		Expect(config.ValidateModelArg(ctx, "qwen3.6:35b-a3b")).To(Succeed())
 	})
 
 	It("accepts a namespaced local model", func() {
-		Expect(validateModelArg(ctx, "local/qwen3.6:35b-a3b")).To(Succeed())
+		Expect(config.ValidateModelArg(ctx, "local/qwen3.6:35b-a3b")).To(Succeed())
 	})
 
 	It("accepts a Docker image ref", func() {
-		Expect(validateModelArg(ctx, "docker.io/bborbe/claude-yolo:v0.6.1")).To(Succeed())
+		Expect(config.ValidateModelArg(ctx, "docker.io/bborbe/claude-yolo:v0.6.1")).To(Succeed())
 	})
 
 	It("rejects model with semicolon (shell metachar)", func() {
-		err := validateModelArg(ctx, "claude;rm -rf /")
+		err := config.ValidateModelArg(ctx, "claude;rm -rf /")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("does not match required pattern"))
 	})
 
 	It("rejects model with dollar sign", func() {
-		err := validateModelArg(ctx, "claude-$VERSION")
+		err := config.ValidateModelArg(ctx, "claude-$VERSION")
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("rejects model with spaces", func() {
-		err := validateModelArg(ctx, "claude opus")
+		err := config.ValidateModelArg(ctx, "claude opus")
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("rejects empty model", func() {
-		err := validateModelArg(ctx, "")
+		err := config.ValidateModelArg(ctx, "")
 		Expect(err).To(HaveOccurred())
 	})
 })
@@ -374,7 +376,7 @@ var _ = Describe("computeFieldSources", func() {
 	It("returns default for all fields when global and project both absent", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.Model).To(Equal("default"))
 		Expect(s.HideGit).To(Equal("default"))
 		Expect(s.AutoRelease).To(Equal("default"))
@@ -390,7 +392,7 @@ var _ = Describe("computeFieldSources", func() {
 			t := true
 			global.AutoGeneratePrompts = &t
 			proj := config.LayeredProjectOverrides{}
-			s := computeFieldSources(global, proj)
+			s := config.ComputeFieldSources(global, proj)
 			Expect(s.AutoGeneratePrompts).To(Equal("global"))
 		},
 	)
@@ -401,7 +403,7 @@ var _ = Describe("computeFieldSources", func() {
 		global.AutoGeneratePrompts = &t
 		f := false
 		proj := config.LayeredProjectOverrides{AutoGeneratePrompts: &f}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.AutoGeneratePrompts).To(Equal("project"))
 	})
 
@@ -410,7 +412,7 @@ var _ = Describe("computeFieldSources", func() {
 		proj := config.LayeredProjectOverrides{}
 		t := true
 		proj.AutoGeneratePrompts = &t
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.AutoGeneratePrompts).To(Equal("project"))
 	})
 
@@ -419,7 +421,7 @@ var _ = Describe("computeFieldSources", func() {
 		m := "claude-opus-4-7"
 		global.Model = &m
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.Model).To(Equal("global"))
 	})
 
@@ -429,7 +431,7 @@ var _ = Describe("computeFieldSources", func() {
 		global.Model = &gm
 		pm := "claude-haiku-4-5"
 		proj := config.LayeredProjectOverrides{Model: &pm}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.Model).To(Equal("project"))
 	})
 
@@ -437,7 +439,7 @@ var _ = Describe("computeFieldSources", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		f := false
 		proj := config.LayeredProjectOverrides{HideGit: &f}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.HideGit).To(Equal("project"))
 	})
 
@@ -445,21 +447,21 @@ var _ = Describe("computeFieldSources", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		n := 2
 		proj := config.LayeredProjectOverrides{MaxContainers: &n}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.MaxContainers).To(Equal("project"))
 	})
 
 	It("returns empty maxContainers when project did not set it", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.MaxContainers).To(BeEmpty())
 	})
 
 	It("returns default for workflow/pr/autoMerge when project did not set them", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.Workflow).To(Equal("default"))
 		Expect(s.PR).To(Equal("default"))
 		Expect(s.AutoMerge).To(Equal("default"))
@@ -469,7 +471,7 @@ var _ = Describe("computeFieldSources", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		w := config.WorkflowBranch
 		proj := config.LayeredProjectOverrides{Workflow: &w}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.Workflow).To(Equal("project"))
 	})
 
@@ -477,7 +479,7 @@ var _ = Describe("computeFieldSources", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		t := true
 		proj := config.LayeredProjectOverrides{PR: &t}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.PR).To(Equal("project"))
 	})
 
@@ -485,7 +487,7 @@ var _ = Describe("computeFieldSources", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		t := true
 		proj := config.LayeredProjectOverrides{AutoMerge: &t}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.AutoMerge).To(Equal("project"))
 	})
 
@@ -494,7 +496,7 @@ var _ = Describe("computeFieldSources", func() {
 		t := true
 		global.AutoApprovePrompts = &t
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.AutoApprovePrompts).To(Equal("global"))
 	})
 
@@ -506,7 +508,7 @@ var _ = Describe("computeFieldSources", func() {
 			global.AutoApprovePrompts = &gt
 			pf := false
 			proj := config.LayeredProjectOverrides{AutoApprovePrompts: &pf}
-			s := computeFieldSources(global, proj)
+			s := config.ComputeFieldSources(global, proj)
 			Expect(s.AutoApprovePrompts).To(Equal("project"))
 		},
 	)
@@ -514,7 +516,7 @@ var _ = Describe("computeFieldSources", func() {
 	It("returns default for autoApprovePrompts when neither global nor project set it", func() {
 		global := globalconfig.GlobalConfig{MaxContainers: 3}
 		proj := config.LayeredProjectOverrides{}
-		s := computeFieldSources(global, proj)
+		s := config.ComputeFieldSources(global, proj)
 		Expect(s.AutoApprovePrompts).To(Equal("default"))
 	})
 })
@@ -591,7 +593,9 @@ var _ = Describe("applySetOverrides", func() {
 	It("does nothing when overrides map is empty", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		Expect(applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{})).To(Succeed())
+		Expect(
+			config.ApplySetOverrides(ctx, &cfg, &sources, "run", map[string]string{}),
+		).To(Succeed())
 		Expect(sources.HideGit).To(BeEmpty())
 	})
 
@@ -599,7 +603,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "true"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"hideGit": "true"},
+			),
 		).To(Succeed())
 		Expect(cfg.HideGit).To(BeTrue())
 		Expect(sources.HideGit).To(Equal("arg"))
@@ -610,7 +620,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.HideGit = true
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "false"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"hideGit": "false"},
+			),
 		).To(Succeed())
 		Expect(cfg.HideGit).To(BeFalse())
 		Expect(sources.HideGit).To(Equal("arg"))
@@ -619,7 +635,13 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects hideGit=yes (strict bool)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"hideGit": "yes"})
+		err := config.ApplySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"hideGit": "yes"},
+		)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid bool"))
 		Expect(err.Error()).To(ContainSubstring("true or false"))
@@ -629,7 +651,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(
+			config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -646,7 +668,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.AutoGeneratePrompts = true
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(
+			config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -661,7 +683,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects autoGeneratePrompts=yes (strict bool)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -678,7 +700,7 @@ var _ = Describe("applySetOverrides", func() {
 		func() {
 			cfg := config.Defaults()
 			sources := config.FieldSources{}
-			err := applySetOverrides(
+			err := config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -695,7 +717,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.AutoRelease = true
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(
+			config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -711,7 +733,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(
+			config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -726,7 +748,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects dirtyFileThreshold=-1 (range check)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -740,7 +762,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects dirtyFileThreshold=abc (parse error)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -755,7 +777,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(
+			config.ApplySetOverrides(
 				ctx,
 				&cfg,
 				&sources,
@@ -770,7 +792,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects model with shell metachar", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -784,7 +806,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"maxContainers": "2"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"maxContainers": "2"},
+			),
 		).To(Succeed())
 		Expect(cfg.MaxContainers).To(Equal(2))
 		Expect(sources.MaxContainers).To(Equal("arg"))
@@ -793,7 +821,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects maxContainers=0 (range check)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -807,7 +835,13 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects unknown key and lists supported keys", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"unknownKey": "foo"})
+		err := config.ApplySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"unknownKey": "foo"},
+		)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unknown config key"))
 		Expect(err.Error()).To(ContainSubstring("hideGit"))
@@ -817,7 +851,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects --set on non-run/daemon command", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -832,7 +866,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"maxContainers": "5"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"maxContainers": "5"},
+			),
 		).To(Succeed())
 		Expect(cfg.MaxContainers).To(Equal(5))
 		// Simulate extractMaxContainers applying --max-containers 3 afterwards
@@ -844,7 +884,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "branch"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"workflow": "branch"},
+			),
 		).To(Succeed())
 		Expect(cfg.Workflow).To(Equal(config.WorkflowBranch))
 		Expect(sources.Workflow).To(Equal("arg"))
@@ -854,7 +900,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "clone"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"workflow": "clone"},
+			),
 		).To(Succeed())
 		Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
 		Expect(sources.Workflow).To(Equal("arg"))
@@ -863,7 +915,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects workflow=invalid with error listing valid values", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(
+		err := config.ApplySetOverrides(
 			ctx,
 			&cfg,
 			&sources,
@@ -881,7 +933,13 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects workflow=pr (legacy enum) with message pointing to clone+pr", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"workflow": "pr"})
+		err := config.ApplySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"workflow": "pr"},
+		)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("legacy workflow value"))
 		Expect(err.Error()).To(ContainSubstring("workflow=clone"))
@@ -893,7 +951,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.Workflow = config.WorkflowBranch // pr=true requires non-direct workflow
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
+			config.ApplySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
 		).To(Succeed())
 		Expect(cfg.PR).To(BeTrue())
 		Expect(sources.PR).To(Equal("arg"))
@@ -905,7 +963,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.Workflow = config.WorkflowBranch
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "false"}),
+			config.ApplySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "false"}),
 		).To(Succeed())
 		Expect(cfg.PR).To(BeFalse())
 		Expect(sources.PR).To(Equal("arg"))
@@ -914,7 +972,7 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects pr=yes (invalid bool)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "yes"})
+		err := config.ApplySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "yes"})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid bool"))
 		Expect(err.Error()).To(ContainSubstring("true or false"))
@@ -926,7 +984,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg.Workflow = config.WorkflowBranch
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "true"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"autoMerge": "true"},
+			),
 		).To(Succeed())
 		Expect(cfg.AutoMerge).To(BeTrue())
 		Expect(sources.AutoMerge).To(Equal("arg"))
@@ -935,7 +999,13 @@ var _ = Describe("applySetOverrides", func() {
 	It("rejects autoMerge=1 (invalid bool)", func() {
 		cfg := config.Defaults()
 		sources := config.FieldSources{}
-		err := applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "1"})
+		err := config.ApplySetOverrides(
+			ctx,
+			&cfg,
+			&sources,
+			"run",
+			map[string]string{"autoMerge": "1"},
+		)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("invalid bool"))
 	})
@@ -944,7 +1014,7 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults() // Workflow=direct (default)
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
+			config.ApplySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"pr": "true"}),
 		).To(Succeed()) // applySetOverrides itself succeeds — single-key validation only
 		// The cross-field validator fires on cfg.Validate (called by run() after applySetOverrides)
 		err := cfg.Validate(ctx)
@@ -956,7 +1026,13 @@ var _ = Describe("applySetOverrides", func() {
 		cfg := config.Defaults() // PR=false (default)
 		sources := config.FieldSources{}
 		Expect(
-			applySetOverrides(ctx, &cfg, &sources, "run", map[string]string{"autoMerge": "true"}),
+			config.ApplySetOverrides(
+				ctx,
+				&cfg,
+				&sources,
+				"run",
+				map[string]string{"autoMerge": "true"},
+			),
 		).To(Succeed())
 		err := cfg.Validate(ctx)
 		Expect(err).To(HaveOccurred())
@@ -968,8 +1044,8 @@ var _ = Describe("applySetOverrides", func() {
 		sources := config.FieldSources{}
 		// Simulate last-wins by applying two separate calls (map iteration order is undefined;
 		// use the parseSetFlags result directly for deterministic ordering in unit tests)
-		Expect(applyOneSetOverride(ctx, &cfg, &sources, "workflow", "branch")).To(Succeed())
-		Expect(applyOneSetOverride(ctx, &cfg, &sources, "workflow", "clone")).To(Succeed())
+		Expect(config.ApplyOneSetOverride(ctx, &cfg, &sources, "workflow", "branch")).To(Succeed())
+		Expect(config.ApplyOneSetOverride(ctx, &cfg, &sources, "workflow", "clone")).To(Succeed())
 		Expect(cfg.Workflow).To(Equal(config.WorkflowClone))
 		Expect(sources.Workflow).To(Equal("arg"))
 	})

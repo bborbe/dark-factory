@@ -663,11 +663,13 @@ func CreateOneShotRunner(
 	)
 }
 
-// resolveSpecGeneratorHideGit computes the effective hideGit value the
-// spec-generator's docker executor receives. Mirrors the expression at
-// line 891 (prompt-executor wiring) — both must agree so spec-generation
-// and prompt-execution containers see the same workspace shape.
-func resolveSpecGeneratorHideGit(cfg config.Config) bool {
+// resolveHideGit computes the effective hideGit value every dark-factory
+// container receives — spec-generator, prompt-executor, and healthcheck probes.
+// Worktree mode always masks .git (the worktree's .git is a pointer file the
+// container can't follow); explicit hideGit also masks it. All three call
+// sites must agree so the containers see the same workspace shape — the
+// architectural invariant of spec 098.
+func resolveHideGit(cfg config.Config) bool {
 	return cfg.Workflow == config.WorkflowWorktree || cfg.HideGit
 }
 
@@ -691,7 +693,7 @@ func CreateSpecGenerator(
 		cfg.ExtraMounts,
 		cfg.NetrcFile,
 		cfg.GitconfigFile,
-		resolveSpecGeneratorHideGit(cfg),
+		resolveHideGit(cfg),
 	)
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
@@ -1303,7 +1305,7 @@ func CreateHealthcheckCommand(
 		cfg.ExtraMounts,
 		cfg.NetrcFile,
 		cfg.GitconfigFile,
-		cfg.HideGit,
+		resolveHideGit(cfg),
 	)
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),

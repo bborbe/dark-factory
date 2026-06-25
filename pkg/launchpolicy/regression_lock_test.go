@@ -81,7 +81,7 @@ var _ = Describe("spec-098 regression lock: launch policy is the single source o
 
 	DescribeTable(
 		"propagates a synthetic cap through each container probe's argv",
-		func(probeName string, newProbe func(launchpolicy.Policy, subproc.Runner) healthcheck.Probe, successMarker string) {
+		func(newProbe func(launchpolicy.Policy, subproc.Runner) healthcheck.Probe, successMarker string) {
 			subprocR := &mocks.SubprocRunner{}
 			subprocR.RunWithWarnAndTimeoutReturns([]byte(successMarker+"\n"), nil)
 			p := newProbe(regressionPolicy(), subprocR)
@@ -93,8 +93,8 @@ var _ = Describe("spec-098 regression lock: launch policy is the single source o
 			Expect(args).NotTo(ContainElement("--cap-add=NET_ADMIN"))
 			Expect(args).NotTo(ContainElement("--cap-add=NET_RAW"))
 		},
-		Entry("boot probe", "boot", healthcheck.NewBootProbe, "BOOT_OK"),
-		Entry("mount probe", "mount", healthcheck.NewMountProbe, "MOUNT_OK"),
-		Entry("claude probe", "claude", healthcheck.NewClaudeProbe, "OK"),
+		Entry("boot probe", healthcheck.NewBootProbe, "BOOT_OK"),
+		Entry("mount probe", healthcheck.NewMountProbe, "MOUNT_OK"),
+		Entry("claude probe", healthcheck.NewClaudeProbe, "OK"),
 	)
 })

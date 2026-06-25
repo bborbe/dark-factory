@@ -103,15 +103,7 @@ func BuildDockerCommandForTest(
 		policy: policy,
 		model:  model,
 	}
-	return e.buildDockerCommand(
-		ctx,
-		containerName,
-		promptFilePath,
-		projectRoot,
-		claudeConfigDir,
-		promptBaseName,
-		home,
-	)
+	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
 }
 
 // BuildDockerCommandFromPolicyForTest is the policy-injection test helper used
@@ -126,24 +118,13 @@ func BuildDockerCommandFromPolicyForTest(
 	model string,
 	containerName string,
 	promptFilePath string,
-	projectRoot string,
-	claudeConfigDir string,
 	promptBaseName string,
-	home string,
 ) *exec.Cmd {
 	e := &dockerExecutor{
 		policy: policy,
 		model:  model,
 	}
-	return e.buildDockerCommand(
-		ctx,
-		containerName,
-		promptFilePath,
-		projectRoot,
-		claudeConfigDir,
-		promptBaseName,
-		home,
-	)
+	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
 }
 
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.

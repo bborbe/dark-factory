@@ -20,6 +20,6 @@ func TestLaunchpolicy(t *testing.T) {
 	format.TruncatedDiff = false
 	RegisterFailHandler(Fail)
 	suiteConfig, reporterConfig := GinkgoConfiguration()
-	suiteConfig.Timeout = 5 * time.Minute
+	suiteConfig.Timeout = 60 * time.Second
 	RunSpecs(t, "Launchpolicy Suite", suiteConfig, reporterConfig)
 }

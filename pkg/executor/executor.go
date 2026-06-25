@@ -40,6 +40,8 @@ type Executor interface {
 		containerName string,
 		maxPromptDuration time.Duration,
 	) error
+	// StopAndRemoveContainer stops and forcibly removes the named container.
+	// Best-effort: any errors are logged but not returned.
 	StopAndRemoveContainer(ctx context.Context, containerName string)
 }
 
@@ -89,10 +91,6 @@ func (e *dockerExecutor) Execute(
 	if err != nil {
 		return errors.Wrap(ctx, err, "get working directory")
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get home directory")
-	}
 	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare log file")
@@ -100,7 +98,7 @@ func (e *dockerExecutor) Execute(
 	defer logFileHandle.Close()
 	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
 	if err != nil {
-		return err // error already names the raw log path
+		return errors.Wrap(ctx, err, "prepare raw log file")
 	}
 	defer rawFileHandle.Close()
 	promptFilePath, cleanup, err := createPromptTempFile(ctx, promptContent)
@@ -114,10 +112,9 @@ func (e *dockerExecutor) Execute(
 	promptBaseName := extractPromptBaseName(containerName, e.policy.ProjectName())
 	claudeConfigDir := e.policy.ClaudeDir()
 	if err := validateClaudeAuth(ctx, claudeConfigDir, e.policy.BaseEnv()); err != nil {
-		return err
+		return errors.Wrap(ctx, err, "validate claude auth")
 	}
-	cmd := e.buildDockerCommand(
-		ctx, containerName, promptFilePath, projectRoot, claudeConfigDir, promptBaseName, home)
+	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
 	slog.Debug("docker command prepared",
 		"image", e.policy.ContainerImage(), "containerName", containerName,
 		"workspaceMount", projectRoot+":/workspace",
@@ -219,7 +216,7 @@ func (e *dockerExecutor) Reattach(
 	defer logFileHandle.Close()
 	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
 	if err != nil {
-		return err // error already names the raw log path
+		return errors.Wrap(ctx, err, "prepare raw log file")
 	}
 	defer rawFileHandle.Close()
 	// docker logs --follow replays all output from container start and blocks until exit
@@ -460,10 +457,7 @@ func (e *dockerExecutor) buildDockerCommand(
 	ctx context.Context,
 	containerName string,
 	promptFilePath string,
-	_ string, // projectRoot — sourced from policy; param retained for test-helper compatibility
-	_ string, // claudeConfigDir — sourced from policy
 	promptBaseName string,
-	_ string, // home — sourced from policy
 ) *exec.Cmd {
 	envOverlay := map[string]string{
 		"YOLO_PROMPT_FILE": "/tmp/prompt.md",

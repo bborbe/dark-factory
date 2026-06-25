@@ -23,29 +23,29 @@ import (
 
 var _ = Describe("DockerProbe", func() {
 	var (
-		ctx     context.Context
-		subproc *mocks.SubprocRunner
+		ctx      context.Context
+		subprocR *mocks.SubprocRunner
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		subproc = &mocks.SubprocRunner{}
+		subprocR = &mocks.SubprocRunner{}
 	})
 
 	It("returns nil when docker version succeeds", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte(""), nil)
-		p := healthcheck.NewDockerProbe(subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte(""), nil)
+		p := healthcheck.NewDockerProbe(subprocR)
 		Expect(p.Name()).To(Equal("docker"))
 		Expect(p.Run(ctx)).To(Succeed())
-		Expect(subproc.RunWithWarnAndTimeoutCallCount()).To(Equal(1))
+		Expect(subprocR.RunWithWarnAndTimeoutCallCount()).To(Equal(1))
 	})
 
 	It("wraps error with docker daemon unreachable on non-zero exit", func() {
-		subproc.RunWithWarnAndTimeoutReturns(
+		subprocR.RunWithWarnAndTimeoutReturns(
 			[]byte("Cannot connect to the Docker daemon at unix:///var/run/docker.sock"),
 			errors.Errorf(ctx, "exit 1"),
 		)
-		p := healthcheck.NewDockerProbe(subproc)
+		p := healthcheck.NewDockerProbe(subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("docker daemon unreachable"))
@@ -54,28 +54,28 @@ var _ = Describe("DockerProbe", func() {
 
 var _ = Describe("ImageProbe", func() {
 	var (
-		ctx     context.Context
-		subproc *mocks.SubprocRunner
+		ctx      context.Context
+		subprocR *mocks.SubprocRunner
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		subproc = &mocks.SubprocRunner{}
+		subprocR = &mocks.SubprocRunner{}
 	})
 
 	It("returns nil when image inspect succeeds", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte("sha256:abc"), nil)
-		p := healthcheck.NewImageProbe("alpine:latest", subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("sha256:abc"), nil)
+		p := healthcheck.NewImageProbe("alpine:latest", subprocR)
 		Expect(p.Name()).To(Equal("image"))
 		Expect(p.Run(ctx)).To(Succeed())
-		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		_, _, name, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
 		Expect(name).To(Equal("docker"))
 		Expect(args).To(ContainElement("alpine:latest"))
 	})
 
 	It("returns image-not-present error on non-zero exit", func() {
-		subproc.RunWithWarnAndTimeoutReturns(nil, errors.Errorf(ctx, "exit 1"))
-		p := healthcheck.NewImageProbe("missing:tag", subproc)
+		subprocR.RunWithWarnAndTimeoutReturns(nil, errors.Errorf(ctx, "exit 1"))
+		p := healthcheck.NewImageProbe("missing:tag", subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring(`"missing:tag" not present locally`))
@@ -126,13 +126,13 @@ var _ = Describe("BootProbe", func() {
 
 var _ = Describe("MountProbe", func() {
 	var (
-		ctx     context.Context
-		subproc *mocks.SubprocRunner
+		ctx      context.Context
+		subprocR *mocks.SubprocRunner
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		subproc = &mocks.SubprocRunner{}
+		subprocR = &mocks.SubprocRunner{}
 	})
 
 	testPolicy := func() launchpolicy.Policy {
@@ -151,26 +151,26 @@ var _ = Describe("MountProbe", func() {
 	}
 
 	It("returns nil when mount write succeeds", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte("MOUNT_OK\n"), nil)
-		p := healthcheck.NewMountProbe(testPolicy(), subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("MOUNT_OK\n"), nil)
+		p := healthcheck.NewMountProbe(testPolicy(), subprocR)
 		Expect(p.Name()).To(Equal("mount"))
 		Expect(p.Run(ctx)).To(Succeed())
-		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		_, _, name, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
 		Expect(name).To(Equal("docker"))
 		Expect(args).To(ContainElement("alpine:latest"))
 	})
 
 	It("returns mount-not-writable error when exit non-zero", func() {
-		subproc.RunWithWarnAndTimeoutReturns(nil, errors.Errorf(ctx, "exit 1"))
-		p := healthcheck.NewMountProbe(testPolicy(), subproc)
+		subprocR.RunWithWarnAndTimeoutReturns(nil, errors.Errorf(ctx, "exit 1"))
+		p := healthcheck.NewMountProbe(testPolicy(), subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("workspace mount not writable"))
 	})
 
 	It("returns mount-not-writable error when stdout missing MOUNT_OK", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte("partial"), nil)
-		p := healthcheck.NewMountProbe(testPolicy(), subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("partial"), nil)
+		p := healthcheck.NewMountProbe(testPolicy(), subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("workspace mount not writable"))
@@ -179,13 +179,13 @@ var _ = Describe("MountProbe", func() {
 
 var _ = Describe("ClaudeProbe", func() {
 	var (
-		ctx     context.Context
-		subproc *mocks.SubprocRunner
+		ctx      context.Context
+		subprocR *mocks.SubprocRunner
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		subproc = &mocks.SubprocRunner{}
+		subprocR = &mocks.SubprocRunner{}
 	})
 
 	testPolicy := func() launchpolicy.Policy {
@@ -204,11 +204,11 @@ var _ = Describe("ClaudeProbe", func() {
 	}
 
 	It("returns nil when stdout contains the OK marker", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte("OK\n"), nil)
-		p := healthcheck.NewClaudeProbe(testPolicy(), subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("OK\n"), nil)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		Expect(p.Name()).To(Equal("claude"))
 		Expect(p.Run(ctx)).To(Succeed())
-		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		_, _, name, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
 		Expect(name).To(Equal("docker"))
 		Expect(args).To(ContainElement("--entrypoint"))
 		Expect(args).To(ContainElement("claude"))
@@ -217,19 +217,19 @@ var _ = Describe("ClaudeProbe", func() {
 	})
 
 	It("returns error when stdout does not contain OK", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte("unexpected\n"), nil)
-		p := healthcheck.NewClaudeProbe(testPolicy(), subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("unexpected\n"), nil)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
 	})
 
 	It("returns error on non-zero exit", func() {
-		subproc.RunWithWarnAndTimeoutReturns(
+		subprocR.RunWithWarnAndTimeoutReturns(
 			[]byte(""),
 			errors.Errorf(ctx, "exit 1"),
 		)
-		p := healthcheck.NewClaudeProbe(testPolicy(), subproc)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
@@ -238,31 +238,31 @@ var _ = Describe("ClaudeProbe", func() {
 
 var _ = Describe("GhProbe", func() {
 	var (
-		ctx     context.Context
-		subproc *mocks.SubprocRunner
+		ctx      context.Context
+		subprocR *mocks.SubprocRunner
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		subproc = &mocks.SubprocRunner{}
+		subprocR = &mocks.SubprocRunner{}
 	})
 
 	It("returns nil when gh auth status succeeds", func() {
-		subproc.RunWithWarnAndTimeoutReturns([]byte(""), nil)
-		p := healthcheck.NewGhProbe(subproc)
+		subprocR.RunWithWarnAndTimeoutReturns([]byte(""), nil)
+		p := healthcheck.NewGhProbe(subprocR)
 		Expect(p.Name()).To(Equal("gh"))
 		Expect(p.Run(ctx)).To(Succeed())
-		_, _, name, args := subproc.RunWithWarnAndTimeoutArgsForCall(0)
+		_, _, name, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
 		Expect(name).To(Equal("gh"))
 		Expect(args).To(ConsistOf("auth", "status"))
 	})
 
 	It("returns wrapped error on non-zero exit", func() {
-		subproc.RunWithWarnAndTimeoutReturns(
+		subprocR.RunWithWarnAndTimeoutReturns(
 			[]byte("You are not logged into any GitHub hosts"),
 			errors.Errorf(ctx, "exit 1"),
 		)
-		p := healthcheck.NewGhProbe(subproc)
+		p := healthcheck.NewGhProbe(subprocR)
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("gh auth status failed"))

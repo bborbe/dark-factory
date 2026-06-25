@@ -100,9 +100,9 @@ func (d *dockerProbe) Run(ctx context.Context) error {
 	if err != nil {
 		slog.Error("healthcheck probe failed", "probe", d.Name(), "error", err)
 		if isDockerDaemonUnreachable(out) {
-			return errors.Wrapf(ctx, err, "docker daemon unreachable")
+			return errors.Wrap(ctx, err, "docker daemon unreachable")
 		}
-		return errors.Wrapf(ctx, err, "docker version failed")
+		return errors.Wrap(ctx, err, "docker version failed")
 	}
 	slog.Info("healthcheck probe passed", "probe", d.Name())
 	return nil

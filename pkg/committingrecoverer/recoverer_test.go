@@ -427,6 +427,45 @@ var _ = Describe("Recoverer", func() {
 			Expect(ac.checkAndCompleteCalled).To(Equal(1))
 			Expect(mgr.moveToCompletedCalled).To(Equal(1))
 		})
+
+		// Half-state regression: prompt file ended up in completedDir with
+		// status=committing because the prior run's MoveToCompleted succeeded
+		// but the work commit AND its rollback both failed. The recoverer
+		// must pick it up (FindCommitting scans both dirs), skip MoveToCompleted,
+		// and transition status to completed in place.
+		It("recovers half-state when prompt is already in completedDir", func() {
+			repoDir := filepath.Join(tempDir, "repo-halfstate")
+			Expect(os.MkdirAll(repoDir, 0750)).To(Succeed())
+			initGitRepo(repoDir)
+			Expect(os.Chdir(repoDir)).To(Succeed())
+
+			// Drop the file directly into completedDir (the half-state).
+			promptPath := filepath.Join(completedDir, "001-halfstate.md")
+			Expect(
+				os.WriteFile(
+					promptPath,
+					[]byte("---\nstatus: committing\n---\n# Half-state\n"),
+					0600,
+				),
+			).To(Succeed())
+
+			mgr.loadFunc = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return makePromptFile(path), nil
+			}
+
+			err := rec.Recover(ctx, promptPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// MoveToCompleted MUST NOT be called — file is already there.
+			Expect(mgr.moveToCompletedCalled).To(Equal(0))
+			// CommitCompletedFile IS called to commit the in-place status change.
+			Expect(rel.commitCompletedFileCalled).To(Equal(1))
+
+			// File now has status: completed (transitioned in place).
+			contents, err := os.ReadFile(promptPath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(contents)).To(ContainSubstring("status: completed"))
+		})
 	})
 
 	// Negative-evidence spec: proves the suite-level guard fires with a

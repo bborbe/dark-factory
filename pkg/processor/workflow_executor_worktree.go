@@ -153,7 +153,8 @@ func (e *worktreeWorkflowExecutor) Complete(
 	)
 }
 
-// ReconstructState checks if the worktree directory still exists for resume.
+// ReconstructState checks if the worktree directory still exists for resume,
+// and chdirs into it (mirroring Setup behavior).
 func (e *worktreeWorkflowExecutor) ReconstructState(
 	ctx context.Context,
 	baseName prompt.BaseName,
@@ -178,5 +179,11 @@ func (e *worktreeWorkflowExecutor) ReconstructState(
 		return false, errors.Wrap(ctx, err, "get working directory for resume")
 	}
 	e.originalDir = originalDir
+
+	// Chdir into the worktree (mirroring Setup behavior).
+	if err := os.Chdir(e.worktreePath); err != nil {
+		return false, errors.Wrap(ctx, err, "chdir to worktree during resume")
+	}
+
 	return true, nil
 }

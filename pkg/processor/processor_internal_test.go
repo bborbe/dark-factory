@@ -1037,6 +1037,11 @@ var _ = Describe("processor workflow routing", func() {
 			Expect(ok).To(BeTrue())
 			pf := newPromptFile("feature/resume-branch")
 
+			// Save current directory for cleanup
+			originalCwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalCwd) })
+
 			// Create the expected worktree directory
 			worktreePath := filepath.Join(os.TempDir(), "dark-factory", "test-project-001-resume")
 			Expect(os.MkdirAll(worktreePath, 0750)).To(Succeed())

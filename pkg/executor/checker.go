@@ -6,6 +6,7 @@ package executor
 
 import (
 	"context"
+	stderrors "errors"
 	"os/exec"
 	"strings"
 	"time"
@@ -15,6 +16,18 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
+
+// ErrDockerDaemonUnavailable signals that the Docker daemon could not be reached
+// (socket missing, daemon not running). Callers MUST NOT treat this as
+// "container not running" — the container's actual state is unknown.
+var ErrDockerDaemonUnavailable = stderrors.New("docker daemon unavailable")
+
+// isDockerDaemonUnavailable returns true when docker stderr indicates the
+// daemon socket is unreachable (host docker stopped, socket path missing).
+func isDockerDaemonUnavailable(stderr string) bool {
+	return strings.Contains(stderr, "Cannot connect to the Docker daemon") ||
+		strings.Contains(stderr, "Is the docker daemon running")
+}
 
 //counterfeiter:generate -o ../../mocks/container-checker.go --fake-name ContainerChecker . ContainerChecker
 
@@ -67,13 +80,19 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 
 // IsRunning returns true if the named container is currently running.
 // If the container does not exist, it returns false with no error.
+// If the Docker daemon is unreachable, it returns ErrDockerDaemonUnavailable —
+// the container's state is unknown and callers must NOT treat this as "absent".
 func (c *dockerContainerChecker) IsRunning(ctx context.Context, name string) (bool, error) {
 	// #nosec G204 -- containerName is generated internally from prompt filename, not user input
 	cmd := exec.CommandContext(ctx, "docker", "inspect", "--format", "{{.State.Running}}", name)
-	var out strings.Builder
+	var out, stderr strings.Builder
 	cmd.Stdout = &out
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		// Non-zero exit means container does not exist — treat as not running
+		if isDockerDaemonUnavailable(stderr.String()) {
+			return false, ErrDockerDaemonUnavailable
+		}
+		// Non-zero exit for any other reason means the container does not exist.
 		return false, nil
 	}
 	return strings.TrimSpace(out.String()) == "true", nil

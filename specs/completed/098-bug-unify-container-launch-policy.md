@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-24T18:54:23Z"
 generating: "2026-06-24T19:17:17Z"
 prompted: "2026-06-24T19:17:17Z"
 verifying: "2026-06-24T21:37:51Z"
+completed: "2026-06-25T08:17:21Z"
 branch: dark-factory/bug-unify-container-launch-policy
 ---
 

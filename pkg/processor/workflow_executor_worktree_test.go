@@ -319,3 +319,133 @@ var _ = Describe("worktreeWorkflowExecutor syncs prompt file to original repo", 
 // NOTE: integration-level "sync failure" injection deleted for the same
 // reason as in workflow_executor_clone_test.go — see the comment there.
 // Failure-path coverage lives in workflow_helpers_internal_test.go.
+
+var _ = Describe("worktreeWorkflowExecutor reconstructs state after daemon restart", func() {
+	It(
+		"ensures working directory is in worktree after ReconstructState (daemon-restart chdir invariant)",
+		func() {
+			ctx := context.Background()
+			_, originalDir := setupBareRemoteWithWorktree(GinkgoT())
+
+			// Save current directory for final cleanup
+			originalCwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { _ = os.Chdir(originalCwd) })
+
+			// Normalize originalDir path to handle macOS symlinks (/var vs /private/var)
+			originalDir, err = filepath.EvalSymlinks(originalDir)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Change to originalDir BEFORE Setup
+			Expect(os.Chdir(originalDir)).To(Succeed())
+
+			// Create prompt directories
+			promptsInProgress := filepath.Join(originalDir, "prompts", "in-progress")
+			promptsCompleted := filepath.Join(originalDir, "prompts", "completed")
+			Expect(os.MkdirAll(promptsInProgress, 0750)).To(Succeed())
+			Expect(os.MkdirAll(promptsCompleted, 0750)).To(Succeed())
+
+			promptPath := filepath.Join(promptsInProgress, "002-test.md")
+			completedPath := filepath.Join(promptsCompleted, "002-test.md")
+			codeFile := filepath.Join(originalDir, "code.go")
+
+			// Write prompt file and code file
+			writePromptFileWt(promptPath, "committing")
+			writeFileWt(codeFile, "package main\n")
+
+			// Commit the files
+			cmd := exec.CommandContext(ctx, "git", "add", ".")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+			cmd = exec.CommandContext(ctx, "git", "commit", "-m", "initial files")
+			cmd.Dir = originalDir
+			Expect(cmd.Run()).To(Succeed())
+
+			// Create dependencies
+			promptMgr := prompt.NewManager(
+				filepath.Join(originalDir, "prompts", "inbox"),
+				promptsInProgress,
+				promptsCompleted,
+				"",
+				&osFileMover{},
+				libtime.NewCurrentDateTime(),
+			)
+
+			rel := &realGitReleaser{workDir: originalDir}
+			deps := processor.WorkflowDeps{
+				PromptManager: promptMgr,
+				AutoCompleter: &stubAutoCompleter{},
+				Releaser:      rel,
+				Brancher:      &realBrancher{workDir: originalDir},
+				Worktreer:     &realWorktreer{originalDir: originalDir},
+				ProjectName:   "test-project",
+			}
+
+			pf := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: "committing"},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+
+			// First executor: Setup creates worktree and chdirs into it
+			executor1 := processor.NewWorktreeWorkflowExecutor(deps)
+			err = executor1.Setup(ctx, "002-test", pf)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Capture the worktree path from the current working directory
+			// (avoids symlink issues on macOS)
+			cwdAfterSetup, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Simulate daemon crash: switch back to original directory
+			// (this simulates what happens when the process dies and restarts)
+			Expect(os.Chdir(originalDir)).To(Succeed())
+
+			// Verify we're back in original directory (simulating daemon restart)
+			cwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			cwdNorm, errNorm := filepath.EvalSymlinks(cwd)
+			origNorm := originalDir // already normalized above
+			Expect(errNorm).NotTo(HaveOccurred())
+			Expect(cwdNorm).To(Equal(origNorm))
+
+			// Second executor: ReconstructState should restore us to the worktree
+			executor2 := processor.NewWorktreeWorkflowExecutor(deps)
+			resumed, err := executor2.ReconstructState(ctx, "002-test", pf)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resumed).To(BeTrue(), "ReconstructState must detect existing worktree")
+
+			// CRITICAL: Verify we're back in the worktree after ReconstructState
+			// This is the invariant being tested: commit must land in the worktree, not original dir
+			cwdAfterReconstruct, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cwdAfterReconstruct).To(Equal(cwdAfterSetup), "must be in same worktree path after ReconstructState")
+
+			// Continue processing: modify code and complete
+			writeFileWt(codeFile, "package main // modified\n")
+			err = executor2.Complete(ctx, ctx, pf, "test commit after restart", promptPath, completedPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify we're back in originalDir after Complete
+			cwd, err = os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			cwdNorm, errNorm = filepath.EvalSymlinks(cwd)
+			Expect(errNorm).NotTo(HaveOccurred())
+			Expect(cwdNorm).To(Equal(origNorm))
+
+			// Verify prompt was moved to completed in original repo
+			_, err = os.Stat(completedPath)
+			Expect(err).NotTo(HaveOccurred(), "completed file must exist in original after sync")
+
+			// Verify commit was created in the feature branch (not master)
+			// by checking the remote refs
+			cmd = exec.CommandContext(ctx, "git", "ls-remote", "--heads", originalDir, "dark-factory/002-test")
+			var stdout strings.Builder
+			cmd.Stdout = &stdout
+			err = cmd.Run()
+			Expect(err).NotTo(HaveOccurred(), "feature branch must exist in remote")
+			Expect(stdout.String()).NotTo(BeEmpty(), "feature branch must have commits")
+		},
+	)
+})

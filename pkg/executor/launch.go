@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
@@ -37,6 +38,7 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 		"--name", opts.ContainerName,
 		"--label", "dark-factory.project=" + opts.ProjectName,
 	}
+	args = appendSecurityLimits(args, opts)
 	args = appendExtraLabels(args, opts.ExtraLabels)
 	for _, c := range opts.CapAdd {
 		args = append(args, "--cap-add="+c)
@@ -50,6 +52,25 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 	}
 	args = append(args, opts.ContainerImage)
 	args = append(args, opts.Command...)
+	return args
+}
+
+// appendSecurityLimits emits --user, --memory, --cpus, --pids-limit when the
+// corresponding opts field is set (ADR-0001 Phase 1). Empty / zero values are
+// skipped so production defaults match pre-ADR behavior.
+func appendSecurityLimits(args []string, opts ContainerLaunchOpts) []string {
+	if opts.RunAsUser != "" {
+		args = append(args, "--user", opts.RunAsUser)
+	}
+	if opts.MemoryLimit != "" {
+		args = append(args, "--memory", opts.MemoryLimit)
+	}
+	if opts.CPULimit != "" {
+		args = append(args, "--cpus", opts.CPULimit)
+	}
+	if opts.PIDsLimit > 0 {
+		args = append(args, "--pids-limit", strconv.Itoa(opts.PIDsLimit))
+	}
 	return args
 }
 
@@ -83,12 +104,37 @@ func appendEnv(args []string, env map[string]string) []string {
 	return args
 }
 
+// buildClaudeDirMount returns the `-v` value for the claudeDir mount, or ""
+// if no mount should be emitted. Returns "" when ClaudeDir is empty or
+// contains ':' (which would produce ambiguous docker volume syntax). The
+// ':' case logs at ERROR so the agent's missing-credential failure is
+// traceable.
+//
+// TODO(ADR-0001 Phase 2): validate at config-load time so the operator sees
+// the error before daemon start, instead of relying on this silent-skip +
+// log line.
+func buildClaudeDirMount(opts ContainerLaunchOpts) string {
+	if opts.ClaudeDir == "" {
+		return ""
+	}
+	if strings.Contains(opts.ClaudeDir, ":") {
+		slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
+			"claudeDir", opts.ClaudeDir)
+		return ""
+	}
+	mount := opts.ClaudeDir + ":/home/node/.claude"
+	if opts.ClaudeDirReadOnly {
+		mount += ":ro"
+	}
+	return mount
+}
+
 func appendStandardMounts(args []string, opts ContainerLaunchOpts) []string {
 	if opts.ProjectRoot != "" {
 		args = append(args, "-v", opts.ProjectRoot+":/workspace")
 	}
-	if opts.ClaudeDir != "" {
-		args = append(args, "-v", opts.ClaudeDir+":/home/node/.claude")
+	if mount := buildClaudeDirMount(opts); mount != "" {
+		args = append(args, "-v", mount)
 	}
 	if opts.NetrcFile != "" {
 		args = append(

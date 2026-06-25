@@ -137,4 +137,74 @@ var _ = Describe("Policy", func() {
 		p := testPolicy()
 		Expect(p.ProjectName()).To(Equal("test-project"))
 	})
+
+	Describe("WithSecurity (ADR-0001 Phase 1)", func() {
+		It("returns a copy — the receiver Policy is unchanged", func() {
+			original := testPolicy()
+			modified := original.WithSecurity(launchpolicy.SecurityOpts{
+				RunAsUser: "1000:1000",
+			})
+			originalOpts := original.BuildOpts(launchpolicy.Extras{ContainerName: "x"})
+			modifiedOpts := modified.BuildOpts(launchpolicy.Extras{ContainerName: "x"})
+			Expect(originalOpts.RunAsUser).To(BeEmpty(), "receiver MUST NOT be mutated")
+			Expect(modifiedOpts.RunAsUser).To(Equal("1000:1000"))
+		})
+
+		It("zero-value SecurityOpts resets all security fields (replace semantics)", func() {
+			p := testPolicy().WithSecurity(launchpolicy.SecurityOpts{
+				RunAsUser:         "1000",
+				MemoryLimit:       "8g",
+				CPULimit:          "4",
+				PIDsLimit:         1024,
+				ClaudeDirReadOnly: true,
+			})
+			p = p.WithSecurity(launchpolicy.SecurityOpts{})
+			opts := p.BuildOpts(launchpolicy.Extras{ContainerName: "x"})
+			Expect(opts.RunAsUser).To(BeEmpty())
+			Expect(opts.MemoryLimit).To(BeEmpty())
+			Expect(opts.CPULimit).To(BeEmpty())
+			Expect(opts.PIDsLimit).To(Equal(0))
+			Expect(opts.ClaudeDirReadOnly).To(BeFalse())
+		})
+
+		It("non-zero values are threaded through BuildOpts", func() {
+			p := testPolicy().WithSecurity(launchpolicy.SecurityOpts{
+				RunAsUser:         "1000:1000",
+				MemoryLimit:       "8g",
+				CPULimit:          "4",
+				PIDsLimit:         1024,
+				ClaudeDirReadOnly: true,
+			})
+			opts := p.BuildOpts(launchpolicy.Extras{ContainerName: "x"})
+			Expect(opts.RunAsUser).To(Equal("1000:1000"))
+			Expect(opts.MemoryLimit).To(Equal("8g"))
+			Expect(opts.CPULimit).To(Equal("4"))
+			Expect(opts.PIDsLimit).To(Equal(1024))
+			Expect(opts.ClaudeDirReadOnly).To(BeTrue())
+		})
+
+		It("argv emits all security flags when WithSecurity is applied", func() {
+			p := testPolicy().WithSecurity(launchpolicy.SecurityOpts{
+				RunAsUser:   "1000:1000",
+				MemoryLimit: "8g",
+				CPULimit:    "4",
+				PIDsLimit:   1024,
+			})
+			opts := p.BuildOpts(launchpolicy.Extras{ContainerName: "x"})
+			args := executor.BuildDockerRunArgs(opts)
+			argv := append([]string(nil), args...)
+			containsPair := func(flag, value string) bool {
+				for i, a := range argv {
+					if a == flag && i+1 < len(argv) && argv[i+1] == value {
+						return true
+					}
+				}
+				return false
+			}
+			Expect(containsPair("--user", "1000:1000")).To(BeTrue())
+			Expect(containsPair("--memory", "8g")).To(BeTrue())
+			Expect(containsPair("--cpus", "4")).To(BeTrue())
+			Expect(containsPair("--pids-limit", "1024")).To(BeTrue())
+		})
+	})
 })

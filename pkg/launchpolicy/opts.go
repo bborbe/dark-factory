@@ -43,4 +43,23 @@ type ContainerLaunchOpts struct {
 	Entrypoint string
 	// Command is appended after the image (positional args to the container).
 	Command []string
+
+	// Security hardening fields (ADR-0001 Phase 1 — defaults preserve current behavior).
+
+	// RunAsUser, when non-empty, is passed as --user <value>. Empty means
+	// container runs as the image's default user (typically root).
+	RunAsUser string
+	// MemoryLimit, when non-empty, is passed as --memory <value> (e.g. "8g").
+	MemoryLimit string
+	// CPULimit, when non-empty, is passed as --cpus <value> (e.g. "4").
+	CPULimit string
+	// PIDsLimit, when > 0, is passed as --pids-limit <N>. Values <= 0 are
+	// treated as "unset" — zero is the field's zero value used as the
+	// "unset" sentinel; negative values are silently dropped (docker would
+	// reject them anyway and the sentinel semantics are simpler than
+	// returning an error from BuildDockerRunArgs).
+	PIDsLimit int
+	// ClaudeDirReadOnly, when true, mounts ClaudeDir with :ro suffix. Default
+	// false preserves rw mount needed for OAuth token refresh.
+	ClaudeDirReadOnly bool
 }

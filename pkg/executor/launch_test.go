@@ -61,6 +61,13 @@ var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", fun
 			args := executor.BuildDockerRunArgs(opts)
 			Expect(argvContains(args, "--user", "1000:1000")).To(BeTrue())
 		})
+
+		It("emits bare-UID RunAsUser (docker accepts UID without GID)", func() {
+			opts := baseOpts()
+			opts.RunAsUser = "1000"
+			args := executor.BuildDockerRunArgs(opts)
+			Expect(argvContains(args, "--user", "1000")).To(BeTrue())
+		})
 	})
 
 	Describe("resource limits", func() {
@@ -85,6 +92,13 @@ var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", fun
 		It("treats PIDsLimit == 0 as unset (no --pids-limit emitted)", func() {
 			opts := baseOpts()
 			opts.PIDsLimit = 0
+			args := executor.BuildDockerRunArgs(opts)
+			Expect(argvHasFlag(args, "--pids-limit")).To(BeFalse())
+		})
+
+		It("treats PIDsLimit < 0 as unset (negative values silently dropped per ADR doc)", func() {
+			opts := baseOpts()
+			opts.PIDsLimit = -1
 			args := executor.BuildDockerRunArgs(opts)
 			Expect(argvHasFlag(args, "--pids-limit")).To(BeFalse())
 		})
@@ -121,6 +135,19 @@ var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", fun
 				}
 			}
 			Expect(found).To(Equal("/host/.claude:/home/node/.claude:ro"))
+		})
+
+		It("emits no claudeDir mount when ClaudeDir is empty, even with ClaudeDirReadOnly=true", func() {
+			opts := baseOpts()
+			opts.ClaudeDir = ""
+			opts.ClaudeDirReadOnly = true
+			args := executor.BuildDockerRunArgs(opts)
+			for i, a := range args {
+				if a == "-v" && i+1 < len(args) &&
+					strings.Contains(args[i+1], ":/home/node/.claude") {
+					Fail("did not expect claudeDir mount when ClaudeDir is empty: " + args[i+1])
+				}
+			}
 		})
 	})
 })

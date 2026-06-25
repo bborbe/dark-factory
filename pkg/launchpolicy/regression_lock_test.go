@@ -97,4 +97,34 @@ var _ = Describe("spec-098 regression lock: launch policy is the single source o
 		Entry("mount probe", healthcheck.NewMountProbe, "MOUNT_OK"),
 		Entry("claude probe", healthcheck.NewClaudeProbe, "OK"),
 	)
+
+	// ADR-0001 Phase 1 regression lock: WithSecurity → BuildOpts → BuildDockerRunArgs
+	// must thread all five security fields through to the final argv. A future refactor
+	// that drops a field from BuildOpts, ContainerLaunchOpts, or appendSecurityLimits
+	// would break Phase 2 enforcement silently — this test catches it at unit-test time.
+	It("propagates security fields through Policy.WithSecurity to executor.BuildDockerRunArgs", func() {
+		p := regressionPolicy().WithSecurity(launchpolicy.SecurityOpts{
+			RunAsUser:         "1000:1000",
+			MemoryLimit:       "8g",
+			CPULimit:          "4",
+			PIDsLimit:         1024,
+			ClaudeDirReadOnly: true,
+		})
+		args := executor.BuildDockerRunArgs(p.BuildOpts(launchpolicy.Extras{ContainerName: "x"}))
+
+		containsPair := func(flag, value string) bool {
+			for i, a := range args {
+				if a == flag && i+1 < len(args) && args[i+1] == value {
+					return true
+				}
+			}
+			return false
+		}
+		Expect(containsPair("--user", "1000:1000")).To(BeTrue())
+		Expect(containsPair("--memory", "8g")).To(BeTrue())
+		Expect(containsPair("--cpus", "4")).To(BeTrue())
+		Expect(containsPair("--pids-limit", "1024")).To(BeTrue())
+		// claudeDirReadOnly is expressed as a `:ro` suffix on the claudeDir mount, not a flag.
+		Expect(args).To(ContainElement("/tmp/.claude:/home/node/.claude:ro"))
+	})
 })

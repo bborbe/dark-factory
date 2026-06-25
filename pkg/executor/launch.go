@@ -113,8 +113,10 @@ func appendStandardMounts(args []string, opts ContainerLaunchOpts) []string {
 		// syntax (docker uses ':' as src/dst/mode separator). Skip the mount
 		// with a loud ERROR rather than crashing the daemon — the agent's
 		// missing-credential failure will surface the underlying config bug.
-		// Phase 2 will validate at config-load time so operators see the
-		// error before daemon start.
+		//
+		// TODO(ADR-0001 Phase 2): validate at config-load time so the operator
+		// sees the error before daemon start, instead of relying on this
+		// silent-skip + log line.
 		if strings.Contains(opts.ClaudeDir, ":") {
 			slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
 				"claudeDir", opts.ClaudeDir)

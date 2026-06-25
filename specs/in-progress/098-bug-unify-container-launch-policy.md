@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-06-24T18:54:23Z"
 generating: "2026-06-24T19:17:17Z"
 prompted: "2026-06-24T19:17:17Z"
+verifying: "2026-06-24T21:37:51Z"
 branch: dark-factory/bug-unify-container-launch-policy
 ---
 
@@ -196,3 +197,16 @@ Rationale: prompt 1 is research-only — the inventory drives the policy's surfa
 ## Do-Nothing Option
 
 The daemon continues to fail on OrbStack without `--skip-healthcheck`. Users who hit the failure learn the flag and bypass the gate; the gate's protection is lost for them. The architectural defect (two construction sites for the same struct) silently accumulates further drift on every future launch-shape change. Each new field added at the executor call site re-imposes the same bug class for future users on future environments. Net cost grows unboundedly while the visible symptom stays small until it doesn't.
+
+## Verification Result
+
+**Verified:** 2026-06-25T08:15:59Z (HEAD cfb4a6c)
+**Binary:** /tmp/dark-factory-cfb4a6c (built from HEAD; `dark-factory dev`)
+**Scenario:** Bug-mandatory replay: `dark-factory daemon` on OrbStack/macOS in `recurring-task-creator-weekday-list` with no `--skip-healthcheck`.
+**Evidence:**
+- Bug-mandatory (AC 8): daemon log `healthcheck startup gate ok elapsed=3.842191875s`, all four probes (`docker`, `image`, `boot`, `claude`, `mount`) `passed`, then `processor started`, `watcher started`, `nothing to do, waiting for changes`. Zero `claude session probe failed` lines.
+- Architectural (AC 1-4): strict non-comment grep yields exactly one production match each — `pkg/launchpolicy/policy.go:23` for `NET_ADMIN`, `pkg/launchpolicy/policy.go:172` for `ContainerLaunchOpts{`. Zero matches in `pkg/executor/executor.go` and `pkg/cmd/healthcheck/probes.go`. (Literal grep returns 3 and 2 respectively; extras are self-documenting comments inside `pkg/launchpolicy/` that cite the invariant text.)
+- Tests (AC 5, 7, 10, 11): fresh `go test -count=1 ./pkg/cmd/healthcheck/...` 0.401s ok; `./pkg/launchpolicy/...` 0.231s ok; `./pkg/executor/...` 90.580s ok. `make precommit` exit 0.
+- Regression lock (AC 7): `pkg/launchpolicy/regression_lock_test.go` injects `SYS_PTRACE` via `WithCapAddForTest` and asserts it reaches both the executor's `BuildDockerRunArgs` argv and each container probe's argv.
+- Inventory (AC 9): `pkg/launchpolicy/policy.go:32-73` classifies every docker call site as routed-through-policy (executor.go:517, probes.go:319) or out-of-scope with reason. File-level coverage is complete; line numbers in inventory have drifted slightly from current HEAD but each site is correctly classified.
+**Verdict:** PASS

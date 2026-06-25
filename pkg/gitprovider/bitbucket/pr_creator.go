@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git
+package bitbucket
 
 import (
 	"context"
@@ -11,29 +11,31 @@ import (
 	"net/url"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/git"
 )
 
-// bitbucketPRCreator implements PRCreator for Bitbucket Server.
-type bitbucketPRCreator struct {
-	client          *bitbucketClient
+// prCreator implements git.PRCreator for Bitbucket Server.
+type prCreator struct {
+	client          *client
 	project         string
 	repo            string
 	defaultBranch   string
-	reviewerFetcher CollaboratorFetcher
+	reviewerFetcher git.CollaboratorFetcher
 }
 
-// NewBitbucketPRCreator creates a PRCreator backed by the Bitbucket Server REST API.
+// NewPRCreator creates a git.PRCreator backed by the Bitbucket Server REST API.
 // reviewerFetcher is called lazily at PR creation time to resolve the reviewer list.
-func NewBitbucketPRCreator(
+func NewPRCreator(
 	baseURL string,
 	token string,
 	project string,
 	repo string,
 	defaultBranch string,
-	reviewerFetcher CollaboratorFetcher,
-) PRCreator {
-	return &bitbucketPRCreator{
-		client:          newBitbucketClient(baseURL, token),
+	reviewerFetcher git.CollaboratorFetcher,
+) git.PRCreator {
+	return &prCreator{
+		client:          newClient(baseURL, token),
 		project:         project,
 		repo:            repo,
 		defaultBranch:   defaultBranch,
@@ -81,7 +83,7 @@ type bbPRResponse struct {
 }
 
 // Create creates a Bitbucket Server pull request and returns its URL.
-func (b *bitbucketPRCreator) Create(
+func (b *prCreator) Create(
 	ctx context.Context,
 	title string,
 	body string,
@@ -136,7 +138,7 @@ func (b *bitbucketPRCreator) Create(
 }
 
 // FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
-func (b *bitbucketPRCreator) FindOpenPR(ctx context.Context, branch string) (string, error) {
+func (b *prCreator) FindOpenPR(ctx context.Context, branch string) (string, error) {
 	branchRef := url.QueryEscape("refs/heads/" + branch)
 	path := fmt.Sprintf(
 		"/rest/api/1.0/projects/%s/repos/%s/pull-requests?state=OPEN&at=%s",

@@ -118,8 +118,11 @@ func buildClaudeDirMount(opts ContainerLaunchOpts) string {
 		return ""
 	}
 	if strings.Contains(opts.ClaudeDir, ":") {
-		slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
-			"claudeDir", opts.ClaudeDir)
+		slog.Error(
+			"launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
+			"claudeDir",
+			opts.ClaudeDir,
+		)
 		return ""
 	}
 	mount := opts.ClaudeDir + ":/home/node/.claude"

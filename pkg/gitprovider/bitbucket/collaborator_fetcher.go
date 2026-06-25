@@ -2,39 +2,41 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git
+package bitbucket
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+
+	"github.com/bborbe/dark-factory/pkg/git"
 )
 
-// bitbucketCollaboratorFetcher implements CollaboratorFetcher for Bitbucket Server.
+// collaboratorFetcher implements git.CollaboratorFetcher for Bitbucket Server.
 // It fetches default reviewers from the Bitbucket Server default-reviewers plugin.
-type bitbucketCollaboratorFetcher struct {
-	client             *bitbucketClient
+type collaboratorFetcher struct {
+	client             *client
 	project            string
 	repo               string
 	defaultBranch      string
-	currentUserFetcher BitbucketCurrentUserFetcher
+	currentUserFetcher CurrentUserFetcher
 	allowedReviewers   []string
 }
 
-// NewBitbucketCollaboratorFetcher creates a CollaboratorFetcher backed by the Bitbucket Server
+// NewCollaboratorFetcher creates a git.CollaboratorFetcher backed by the Bitbucket Server
 // default-reviewers plugin. currentUserFetcher is called lazily to exclude the current user from results.
 // If allowedReviewers is non-empty, it is returned directly without any HTTP calls.
-func NewBitbucketCollaboratorFetcher(
+func NewCollaboratorFetcher(
 	baseURL string,
 	token string,
 	project string,
 	repo string,
 	defaultBranch string,
-	currentUserFetcher BitbucketCurrentUserFetcher,
+	currentUserFetcher CurrentUserFetcher,
 	allowedReviewers []string,
-) CollaboratorFetcher {
-	return &bitbucketCollaboratorFetcher{
-		client:             newBitbucketClient(baseURL, token),
+) git.CollaboratorFetcher {
+	return &collaboratorFetcher{
+		client:             newClient(baseURL, token),
 		project:            project,
 		repo:               repo,
 		defaultBranch:      defaultBranch,
@@ -53,7 +55,7 @@ type bbDefaultReviewersResponse struct {
 // Fetch returns the list of default reviewers from the Bitbucket Server default-reviewers plugin.
 // If allowedReviewers was provided at construction time, those are returned directly.
 // Returns nil on error (best-effort, graceful degradation).
-func (b *bitbucketCollaboratorFetcher) Fetch(ctx context.Context) []string {
+func (b *collaboratorFetcher) Fetch(ctx context.Context) []string {
 	if len(b.allowedReviewers) > 0 {
 		return b.allowedReviewers
 	}

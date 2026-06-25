@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git
+package bitbucket
 
 import (
 	"bytes"
@@ -15,15 +15,15 @@ import (
 	"github.com/bborbe/errors"
 )
 
-// bitbucketClient is a minimal HTTP client for Bitbucket Server REST API.
-type bitbucketClient struct {
+// client is a minimal HTTP client for Bitbucket Server REST API.
+type client struct {
 	baseURL string
 	token   string // never logged
 }
 
-// newBitbucketClient creates a bitbucketClient.
-func newBitbucketClient(baseURL, token string) *bitbucketClient {
-	return &bitbucketClient{
+// newClient creates a client.
+func newClient(baseURL, token string) *client {
+	return &client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
 	}
@@ -31,7 +31,7 @@ func newBitbucketClient(baseURL, token string) *bitbucketClient {
 
 // do executes an authenticated HTTP request and decodes the JSON response into out (may be nil).
 // Returns an error for non-2xx status codes, with the token redacted from any error messages.
-func (c *bitbucketClient) do(
+func (c *client) do(
 	ctx context.Context,
 	method, path string,
 	body interface{},

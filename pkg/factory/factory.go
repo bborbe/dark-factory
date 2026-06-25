@@ -35,6 +35,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/generator"
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/gitprovider/bitbucket"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
@@ -258,21 +259,21 @@ func createBitbucketProviderDeps(
 	token := cfg.ResolvedBitbucketToken()
 	baseURL := cfg.Bitbucket.BaseURL
 
-	coords, err := git.ParseBitbucketRemoteFromGit(ctx, "origin")
+	coords, err := bitbucket.ParseRemoteFromGit(ctx, "origin")
 	if err != nil {
 		slog.Warn(
 			"bitbucket: failed to parse git remote URL; PR operations will fail",
 			"error",
 			err,
 		)
-		coords = &git.BitbucketRemoteCoords{Project: "", Repo: ""}
+		coords = &bitbucket.RemoteCoords{Project: "", Repo: ""}
 	}
 
 	// Create lazy fetchers — no HTTP calls at construction time
-	userFetcher := git.NewBitbucketCurrentUserFetcher(baseURL, token)
+	userFetcher := bitbucket.NewCurrentUserFetcher(baseURL, token)
 
 	// Build collaborator fetcher (default reviewers plugin) with current user excluded lazily
-	collaboratorFetcher := git.NewBitbucketCollaboratorFetcher(
+	collaboratorFetcher := bitbucket.NewCollaboratorFetcher(
 		baseURL,
 		token,
 		coords.Project,
@@ -283,10 +284,10 @@ func createBitbucketProviderDeps(
 	)
 
 	return providerDeps{
-		prCreator: git.NewBitbucketPRCreator(
+		prCreator: bitbucket.NewPRCreator(
 			baseURL, token, coords.Project, coords.Repo, cfg.DefaultBranch, collaboratorFetcher,
 		),
-		prMerger: git.NewBitbucketPRMerger(
+		prMerger: bitbucket.NewPRMerger(
 			baseURL,
 			token,
 			coords.Project,

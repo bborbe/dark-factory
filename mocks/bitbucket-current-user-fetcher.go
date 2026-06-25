@@ -5,10 +5,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/gitprovider/bitbucket"
 )
 
-type BitbucketCurrentUserFetcher struct {
+type CurrentUserFetcher struct {
 	FetchCurrentUserStub        func(context.Context) string
 	fetchCurrentUserMutex       sync.RWMutex
 	fetchCurrentUserArgsForCall []struct {
@@ -24,7 +24,7 @@ type BitbucketCurrentUserFetcher struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUser(arg1 context.Context) string {
+func (fake *CurrentUserFetcher) FetchCurrentUser(arg1 context.Context) string {
 	fake.fetchCurrentUserMutex.Lock()
 	ret, specificReturn := fake.fetchCurrentUserReturnsOnCall[len(fake.fetchCurrentUserArgsForCall)]
 	fake.fetchCurrentUserArgsForCall = append(fake.fetchCurrentUserArgsForCall, struct {
@@ -43,26 +43,26 @@ func (fake *BitbucketCurrentUserFetcher) FetchCurrentUser(arg1 context.Context) 
 	return fakeReturns.result1
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserCallCount() int {
+func (fake *CurrentUserFetcher) FetchCurrentUserCallCount() int {
 	fake.fetchCurrentUserMutex.RLock()
 	defer fake.fetchCurrentUserMutex.RUnlock()
 	return len(fake.fetchCurrentUserArgsForCall)
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserCalls(stub func(context.Context) string) {
+func (fake *CurrentUserFetcher) FetchCurrentUserCalls(stub func(context.Context) string) {
 	fake.fetchCurrentUserMutex.Lock()
 	defer fake.fetchCurrentUserMutex.Unlock()
 	fake.FetchCurrentUserStub = stub
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserArgsForCall(i int) context.Context {
+func (fake *CurrentUserFetcher) FetchCurrentUserArgsForCall(i int) context.Context {
 	fake.fetchCurrentUserMutex.RLock()
 	defer fake.fetchCurrentUserMutex.RUnlock()
 	argsForCall := fake.fetchCurrentUserArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserReturns(result1 string) {
+func (fake *CurrentUserFetcher) FetchCurrentUserReturns(result1 string) {
 	fake.fetchCurrentUserMutex.Lock()
 	defer fake.fetchCurrentUserMutex.Unlock()
 	fake.FetchCurrentUserStub = nil
@@ -71,7 +71,7 @@ func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserReturns(result1 string)
 	}{result1}
 }
 
-func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserReturnsOnCall(i int, result1 string) {
+func (fake *CurrentUserFetcher) FetchCurrentUserReturnsOnCall(i int, result1 string) {
 	fake.fetchCurrentUserMutex.Lock()
 	defer fake.fetchCurrentUserMutex.Unlock()
 	fake.FetchCurrentUserStub = nil
@@ -85,7 +85,7 @@ func (fake *BitbucketCurrentUserFetcher) FetchCurrentUserReturnsOnCall(i int, re
 	}{result1}
 }
 
-func (fake *BitbucketCurrentUserFetcher) Invocations() map[string][][]interface{} {
+func (fake *CurrentUserFetcher) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -95,7 +95,7 @@ func (fake *BitbucketCurrentUserFetcher) Invocations() map[string][][]interface{
 	return copiedInvocations
 }
 
-func (fake *BitbucketCurrentUserFetcher) recordInvocation(key string, args []interface{}) {
+func (fake *CurrentUserFetcher) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -107,4 +107,4 @@ func (fake *BitbucketCurrentUserFetcher) recordInvocation(key string, args []int
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ git.BitbucketCurrentUserFetcher = new(BitbucketCurrentUserFetcher)
+var _ bitbucket.CurrentUserFetcher = new(CurrentUserFetcher)

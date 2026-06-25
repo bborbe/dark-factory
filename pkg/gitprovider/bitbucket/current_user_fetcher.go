@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git
+package bitbucket
 
 import (
 	"context"
@@ -12,26 +12,26 @@ import (
 	"strings"
 )
 
-//counterfeiter:generate -o ../../mocks/bitbucket-current-user-fetcher.go --fake-name BitbucketCurrentUserFetcher . BitbucketCurrentUserFetcher
+//counterfeiter:generate -o ../../../mocks/bitbucket-current-user-fetcher.go --fake-name CurrentUserFetcher . CurrentUserFetcher
 
-// BitbucketCurrentUserFetcher fetches the current authenticated Bitbucket user.
-type BitbucketCurrentUserFetcher interface {
+// CurrentUserFetcher fetches the current authenticated Bitbucket user.
+type CurrentUserFetcher interface {
 	FetchCurrentUser(ctx context.Context) string
 }
 
-// NewBitbucketCurrentUserFetcher creates a BitbucketCurrentUserFetcher for the given base URL and token.
-func NewBitbucketCurrentUserFetcher(baseURL, token string) BitbucketCurrentUserFetcher {
-	return &bitbucketCurrentUserFetcher{baseURL: baseURL, token: token}
+// NewCurrentUserFetcher creates a CurrentUserFetcher for the given base URL and token.
+func NewCurrentUserFetcher(baseURL, token string) CurrentUserFetcher {
+	return &currentUserFetcher{baseURL: baseURL, token: token}
 }
 
-type bitbucketCurrentUserFetcher struct {
+type currentUserFetcher struct {
 	baseURL string
 	token   string
 }
 
 // FetchCurrentUser fetches the current Bitbucket Server username via the whoami endpoint.
 // Returns empty string on error (graceful degradation — reviewer exclusion will not apply).
-func (f *bitbucketCurrentUserFetcher) FetchCurrentUser(ctx context.Context) string {
+func (f *currentUserFetcher) FetchCurrentUser(ctx context.Context) string {
 	// #nosec G107 -- URL is constructed from config-provided baseURL, not user input
 	req, err := http.NewRequestWithContext(
 		ctx, "GET",

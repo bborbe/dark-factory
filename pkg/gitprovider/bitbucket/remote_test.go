@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git_test
+package bitbucket_test
 
 import (
 	"context"
@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/gitprovider/bitbucket"
 )
 
-var _ = Describe("ParseBitbucketRemoteURL", func() {
+var _ = Describe("ParseRemoteURL", func() {
 	var ctx context.Context
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -22,7 +22,7 @@ var _ = Describe("ParseBitbucketRemoteURL", func() {
 	DescribeTable(
 		"SSH format",
 		func(url, expectedProject, expectedRepo string) {
-			coords, err := git.ParseBitbucketRemoteURL(ctx, url)
+			coords, err := bitbucket.ParseRemoteURL(ctx, url)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(coords.Project).To(Equal(expectedProject))
 			Expect(coords.Repo).To(Equal(expectedRepo))
@@ -56,7 +56,7 @@ var _ = Describe("ParseBitbucketRemoteURL", func() {
 	DescribeTable(
 		"HTTPS format",
 		func(url, expectedProject, expectedRepo string) {
-			coords, err := git.ParseBitbucketRemoteURL(ctx, url)
+			coords, err := bitbucket.ParseRemoteURL(ctx, url)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(coords.Project).To(Equal(expectedProject))
 			Expect(coords.Repo).To(Equal(expectedRepo))
@@ -83,7 +83,7 @@ var _ = Describe("ParseBitbucketRemoteURL", func() {
 
 	DescribeTable("invalid formats return error",
 		func(url string) {
-			_, err := git.ParseBitbucketRemoteURL(ctx, url)
+			_, err := bitbucket.ParseRemoteURL(ctx, url)
 			Expect(err).To(HaveOccurred())
 		},
 		Entry("github SSH URL", "git@github.com:owner/repo.git"),

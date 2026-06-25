@@ -15,17 +15,20 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
+	"github.com/bborbe/dark-factory/pkg/executor"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
 )
 
 var _ = Describe("startupSequence", func() {
 	var (
-		ctx          context.Context
-		cancel       context.CancelFunc
-		tempDir      string
-		deps         runner.StartupDepsForTest
-		mgr          *mocks.RunnerPromptManager
-		slugMigrator *mocks.SpecSlugMigrator
+		ctx              context.Context
+		cancel           context.CancelFunc
+		tempDir          string
+		deps             runner.StartupDepsForTest
+		mgr              *mocks.RunnerPromptManager
+		containerChecker *mocks.ContainerChecker
+		slugMigrator     *mocks.SpecSlugMigrator
 	)
 
 	BeforeEach(func() {
@@ -41,7 +44,7 @@ var _ = Describe("startupSequence", func() {
 		mgr = &mocks.RunnerPromptManager{}
 		mgr.NormalizeFilenamesReturns(nil, nil)
 
-		containerChecker := &mocks.ContainerChecker{}
+		containerChecker = &mocks.ContainerChecker{}
 
 		slugMigrator = &mocks.SpecSlugMigrator{}
 		slugMigrator.MigrateDirsReturns(nil)
@@ -106,5 +109,46 @@ var _ = Describe("startupSequence", func() {
 		err := runner.RunStartupSequenceForTest(ctx, deps)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("migrate spec slugs"))
+	})
+
+	// Regression: transient docker daemon unavailability at startup must NOT
+	// silently reset executing prompts to approved (data risk — the container
+	// may still be alive and producing work).
+	It("refuses to reset executing prompt when docker daemon is unavailable", func() {
+		Expect(os.MkdirAll(deps.InProgressDir, 0750)).To(Succeed())
+
+		promptPath := filepath.Join(deps.InProgressDir, "001-stuck.md")
+		Expect(
+			os.WriteFile(
+				promptPath,
+				[]byte("---\nstatus: executing\ncontainer: proj-001-stuck\n---\ncontent"),
+				0600,
+			),
+		).To(Succeed())
+
+		pf := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{
+				Status:    string(prompt.ExecutingPromptStatus),
+				Container: "proj-001-stuck",
+			},
+			[]byte("content"),
+			libtime.NewCurrentDateTime(),
+		)
+		mgr.LoadReturns(pf, nil)
+
+		// Simulate docker daemon down — IsRunning returns the sentinel error.
+		containerChecker.IsRunningReturns(false, executor.ErrDockerDaemonUnavailable)
+
+		err := runner.RunStartupSequenceForTest(ctx, deps)
+		Expect(err).To(HaveOccurred())
+		Expect(stderrors.Is(err, executor.ErrDockerDaemonUnavailable)).
+			To(BeTrue(), "error chain must include ErrDockerDaemonUnavailable sentinel")
+
+		// Prompt file MUST still have executing status — refusing to reset
+		// is the whole point.
+		content, err := os.ReadFile(promptPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(content)).To(ContainSubstring("status: executing"))
 	})
 })

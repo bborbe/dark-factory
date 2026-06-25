@@ -262,9 +262,14 @@ func resumeOrResetExecutingEntry(
 	containerName := pf.Frontmatter.Container
 	running, err := checker.IsRunning(ctx, containerName)
 	if err != nil {
-		slog.Warn("failed to check container liveness, resetting prompt",
+		// Docker daemon unavailable (or any other liveness-probe error) means
+		// the container's state is UNKNOWN. Refusing to reset is the safe choice —
+		// resetting would lose the executing-state pointer to a possibly-still-alive
+		// container. Caller propagates this error so the daemon fail-fasts at startup
+		// rather than silently corrupting state.
+		slog.Error("container liveness check failed, refusing to reset prompt",
 			"file", name, "container", containerName, "error", err)
-		running = false
+		return errors.Wrapf(ctx, err, "check container liveness %s", containerName)
 	}
 	if running {
 		slog.Info(

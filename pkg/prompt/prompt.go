@@ -725,9 +725,12 @@ func (p PromptScanner) HasExecuting(ctx context.Context) bool {
 	return hasExecuting(ctx, p.inProgressDir, p.currentDateTimeGetter)
 }
 
-// FindCommitting returns paths of all prompt files in in-progress/ with status "committing".
+// FindCommitting returns paths of all prompt files with status "committing".
+// Scans BOTH in-progress/ and completed/ so the recoverer can pick up files
+// that landed in completed/ but whose rollback failed (half-state: file at
+// final location, status still "committing", work commit never happened).
 func (p PromptScanner) FindCommitting(ctx context.Context) ([]string, error) {
-	return findCommitting(ctx, p.inProgressDir, p.currentDateTimeGetter)
+	return findCommitting(ctx, p.currentDateTimeGetter, p.inProgressDir, p.completedDir)
 }
 
 // FindPromptStatusInProgress looks up a prompt by number in the in-progress directory and returns its status.
@@ -1219,34 +1222,35 @@ func resetFailed(
 	return nil
 }
 
-// FindCommitting returns the paths of all .md files in dir whose status is "committing".
+// FindCommitting returns the paths of all .md files in dirs whose status is "committing".
 // Files that cannot be read are skipped with a warning.
 func findCommitting(
 	ctx context.Context,
-	dir string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	dirs ...string,
 ) ([]string, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, errors.Wrap(ctx, err, "read directory")
-	}
-
 	var paths []string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-			continue
-		}
-		path := filepath.Join(dir, entry.Name())
-		fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			slog.Warn("skipping prompt in FindCommitting", "file", entry.Name(), "error", err)
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, errors.Wrap(ctx, err, "read directory")
 		}
-		if fm.Status == string(CommittingPromptStatus) {
-			paths = append(paths, path)
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
+			path := filepath.Join(dir, entry.Name())
+			fm, err := readFrontmatter(ctx, path, currentDateTimeGetter)
+			if err != nil {
+				slog.Warn("skipping prompt in FindCommitting", "file", entry.Name(), "error", err)
+				continue
+			}
+			if fm.Status == string(CommittingPromptStatus) {
+				paths = append(paths, path)
+			}
 		}
 	}
 	return paths, nil

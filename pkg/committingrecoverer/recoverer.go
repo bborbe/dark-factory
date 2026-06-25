@@ -86,6 +86,11 @@ func (r *recoverer) RecoverAll(ctx context.Context) {
 // Recover attempts to commit dirty work files and move a single prompt to completed.
 // If dirty work files exist, they are committed first (the container's code changes).
 // If no dirty files exist, the code was already committed — only the prompt move is needed.
+//
+// Half-state recovery: when promptPath is already inside r.completedDir, the prior
+// commit cycle moved the file but the work commit failed AND the rollback also
+// failed. The status is still "committing" but the file is at its final location.
+// Skip MoveToCompleted; transition status in place.
 func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 	gitCtx := context.WithoutCancel(ctx)
 	completedPath := filepath.Join(r.completedDir, filepath.Base(promptPath))
@@ -123,8 +128,20 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		}
 	}
 
-	if err := r.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
-		return errors.Wrap(ctx, err, "move to completed during recovery")
+	if filepath.Clean(filepath.Dir(promptPath)) == filepath.Clean(r.completedDir) {
+		pf.MarkCompleted()
+		if err := pf.Save(ctx); err != nil {
+			return errors.Wrap(ctx, err, "mark completed in place during half-state recovery")
+		}
+		slog.Info(
+			"half-state recovery: status transitioned in place",
+			"file",
+			filepath.Base(promptPath),
+		)
+	} else {
+		if err := r.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
+			return errors.Wrap(ctx, err, "move to completed during recovery")
+		}
 	}
 
 	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {

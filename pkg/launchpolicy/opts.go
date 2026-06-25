@@ -53,7 +53,11 @@ type ContainerLaunchOpts struct {
 	MemoryLimit string
 	// CPULimit, when non-empty, is passed as --cpus <value> (e.g. "4").
 	CPULimit string
-	// PIDsLimit, when > 0, is passed as --pids-limit <N>.
+	// PIDsLimit, when > 0, is passed as --pids-limit <N>. Values <= 0 are
+	// treated as "unset" — zero is the field's zero value used as the
+	// "unset" sentinel; negative values are silently dropped (docker would
+	// reject them anyway and the sentinel semantics are simpler than
+	// returning an error from BuildDockerRunArgs).
 	PIDsLimit int
 	// ClaudeDirReadOnly, when true, mounts ClaudeDir with :ro suffix. Default
 	// false preserves rw mount needed for OAuth token refresh.

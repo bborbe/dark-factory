@@ -109,6 +109,12 @@ func appendStandardMounts(args []string, opts ContainerLaunchOpts) []string {
 		args = append(args, "-v", opts.ProjectRoot+":/workspace")
 	}
 	if opts.ClaudeDir != "" {
+		// Host paths containing ':' would produce ambiguous docker volume
+		// syntax (docker uses ':' as src/dst/mode separator). Reject loudly
+		// rather than silently producing a broken mount string.
+		if strings.Contains(opts.ClaudeDir, ":") {
+			panic("launchpolicy: ClaudeDir contains ':', cannot build unambiguous docker volume mount: " + opts.ClaudeDir)
+		}
 		mount := opts.ClaudeDir + ":/home/node/.claude"
 		if opts.ClaudeDirReadOnly {
 			mount += ":ro"

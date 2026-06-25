@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-//counterfeiter:generate -o ../../mocks/bitbucket-current-user-fetcher.go --fake-name CurrentUserFetcher . CurrentUserFetcher
+//counterfeiter:generate -o ../../../mocks/bitbucket-current-user-fetcher.go --fake-name CurrentUserFetcher . CurrentUserFetcher
 
 // CurrentUserFetcher fetches the current authenticated Bitbucket user.
 type CurrentUserFetcher interface {

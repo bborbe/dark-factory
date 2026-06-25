@@ -73,56 +73,43 @@ var _ = Describe("Factory", func() {
 	Describe("CreateProcessor", func() {
 		It("should return a non-nil processor", func() {
 			wakeup := make(chan struct{}, 10)
+			pcfg := factory.ProcessorConfig{
+				InProgressDir:      cfg.Prompts.InProgressDir,
+				CompletedDir:       cfg.Prompts.CompletedDir,
+				LogDir:             cfg.Prompts.LogDir,
+				SpecsInboxDir:      "specs/inbox",
+				SpecsInProgressDir: "specs/in-progress",
+				SpecsCompletedDir:  "specs/completed",
+				SpecsRejectedDir:   "specs/rejected",
+				ContainerImage:     cfg.ContainerImage,
+				Model:              cfg.Model,
+				ClaudeDir:          cfg.ResolvedClaudeDir(),
+				NetrcFile:          cfg.NetrcFile,
+				GitconfigFile:      cfg.GitconfigFile,
+				Workflow:           cfg.Workflow,
+				PR:                 cfg.PR,
+				TestCommand:        "make precommit",
+			}
 			processor := factory.CreateProcessor(
 				context.Background(),
-				cfg.Prompts.InProgressDir,
-				cfg.Prompts.CompletedDir,
-				cfg.Prompts.LogDir,
+				pcfg,
 				project.Name("test-project"),
 				nil, // promptManager not needed for nil check
 				nil, // releaser not needed for nil check
 				nil, // versionGetter not needed for nil check
 				wakeup,
-				cfg.ContainerImage,
-				cfg.Model,
-				cfg.NetrcFile,
-				cfg.GitconfigFile,
-				cfg.Workflow,
-				cfg.PR,
 				git.NewBrancher(),
 				git.NewPRCreator(""),
 				git.NewPRMerger("", libtime.NewCurrentDateTime()),
-				false,
-				false,
-				"make precommit",
-				"",
-				"",
-				"specs/inbox",
-				"specs/in-progress",
-				"specs/completed",
-				"specs/rejected",
-				false,
-				nil,
-				nil,
 				libtime.NewCurrentDateTime(),
 				notifier.NewMultiNotifier(),
-				cfg.ResolvedClaudeDir(),
 				executor.NewDockerContainerCounter(subproc.NewRunner()),
-				0,
-				"",
-				nil,
-				nil,
-				0,
+				nil, // containerLock
+				nil, // containerChecker
 				processor.NewDirtyFileChecker("."),
 				processor.NewGitLockChecker("."),
-				0,
-				0,
-				false,
-				nil, // promptDirPrefixes — nil means no ignore filtering in tests
-				nil,
-				0,   // queueInterval: 0 → default 5s
-				0,   // sweepInterval: 0 → default 60s
-				nil, // onIdle: no-op
+				nil, // preflightChecker
+				nil, // onIdle
 			)
 			Expect(processor).NotTo(BeNil())
 		})

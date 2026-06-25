@@ -429,58 +429,23 @@ func CreateRunner(
 
 	proc := CreateProcessor(
 		ctx,
-		inProgressDir,
-		completedDir,
-		cfg.Prompts.LogDir,
+		buildProcessorConfig(cfg, globalCfg, inProgressDir, completedDir),
 		projectName,
 		promptManager,
 		releaser,
 		versionGetter,
 		wakeup,
-		cfg.ContainerImage,
-		cfg.Model,
-		cfg.NetrcFile,
-		cfg.GitconfigFile,
-		cfg.Workflow,
-		cfg.PR,
 		deps.brancher,
 		deps.prCreator,
 		deps.prMerger,
-		cfg.AutoMerge,
-		cfg.AutoRelease,
-		cfg.ValidationCommand,
-		cfg.ValidationPrompt,
-		cfg.TestCommand,
-		cfg.Specs.InboxDir,
-		cfg.Specs.InProgressDir,
-		cfg.Specs.CompletedDir,
-		cfg.Specs.RejectedDir,
-		cfg.VerificationGate,
-		cfg.Env,
-		cfg.ExtraMounts,
 		currentDateTimeGetter,
 		n,
-		cfg.ResolvedClaudeDir(),
 		createContainerCounter(),
-		EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
-		cfg.AdditionalInstructions,
 		cl,
 		containerChecker,
-		cfg.DirtyFileThreshold,
 		dirtyFileChecker,
 		gitLockChecker,
-		cfg.ParsedMaxPromptDuration(),
-		cfg.AutoRetryLimit,
-		cfg.HideGit,
-		[]string{
-			cfg.Prompts.InboxDir,
-			cfg.Prompts.InProgressDir,
-			cfg.Prompts.CompletedDir,
-			cfg.Prompts.LogDir,
-		},
 		preflightChecker,
-		cfg.ParsedQueueInterval(),
-		cfg.ParsedSweepInterval(),
 		buildIdleLogger(
 			cfg.ParsedIdleLogInterval(),
 			cfg.ParsedQueueInterval(),
@@ -590,58 +555,23 @@ func CreateOneShotRunner(
 		CreateLocker("."),
 		CreateProcessor(
 			ctx,
-			inProgressDir,
-			completedDir,
-			cfg.Prompts.LogDir,
+			buildProcessorConfig(cfg, globalCfg, inProgressDir, completedDir),
 			projectName,
 			promptManager,
 			releaser,
 			versionGetter,
 			make(chan struct{}, 10),
-			cfg.ContainerImage,
-			cfg.Model,
-			cfg.NetrcFile,
-			cfg.GitconfigFile,
-			cfg.Workflow,
-			cfg.PR,
 			deps.brancher,
 			deps.prCreator,
 			deps.prMerger,
-			cfg.AutoMerge,
-			cfg.AutoRelease,
-			cfg.ValidationCommand,
-			cfg.ValidationPrompt,
-			cfg.TestCommand,
-			cfg.Specs.InboxDir,
-			cfg.Specs.InProgressDir,
-			cfg.Specs.CompletedDir,
-			cfg.Specs.RejectedDir,
-			cfg.VerificationGate,
-			cfg.Env,
-			cfg.ExtraMounts,
 			currentDateTimeGetter,
 			n,
-			cfg.ResolvedClaudeDir(),
 			createContainerCounter(),
-			EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
-			cfg.AdditionalInstructions,
 			cl,
 			containerChecker,
-			cfg.DirtyFileThreshold,
 			osDirtyFileChecker,
 			osGitLockChecker,
-			cfg.ParsedMaxPromptDuration(),
-			cfg.AutoRetryLimit,
-			cfg.HideGit,
-			[]string{
-				cfg.Prompts.InboxDir,
-				cfg.Prompts.InProgressDir,
-				cfg.Prompts.CompletedDir,
-				cfg.Prompts.LogDir,
-			},
 			osPreflightChecker,
-			cfg.ParsedQueueInterval(),
-			cfg.ParsedSweepInterval(),
 			func(_ context.Context, cancel context.CancelFunc) {
 				slog.Info("queue idle, exiting one-shot mode")
 				cancel()
@@ -862,89 +792,171 @@ func CreateWorkflowExecutor(
 	})
 }
 
+// buildProcessorConfig assembles a ProcessorConfig from the dark-factory cfg,
+// the global config, and the resolved in-progress / completed dirs. Both
+// CreateRunner and CreateOneShotRunner call this helper so the two paths
+// stay positionally identical — silent drift was the bug class this refactor
+// closed.
+//
+//nolint:funlen // single struct literal naming every config-derived field
+func buildProcessorConfig(
+	cfg config.Config,
+	globalCfg globalconfig.GlobalConfig,
+	inProgressDir, completedDir string,
+) ProcessorConfig {
+	return ProcessorConfig{
+		InProgressDir:      inProgressDir,
+		CompletedDir:       completedDir,
+		LogDir:             cfg.Prompts.LogDir,
+		SpecsInboxDir:      cfg.Specs.InboxDir,
+		SpecsInProgressDir: cfg.Specs.InProgressDir,
+		SpecsCompletedDir:  cfg.Specs.CompletedDir,
+		SpecsRejectedDir:   cfg.Specs.RejectedDir,
+		PromptDirPrefixes: []string{
+			cfg.Prompts.InboxDir,
+			cfg.Prompts.InProgressDir,
+			cfg.Prompts.CompletedDir,
+			cfg.Prompts.LogDir,
+		},
+		ContainerImage:         cfg.ContainerImage,
+		Model:                  cfg.Model,
+		ClaudeDir:              cfg.ResolvedClaudeDir(),
+		Env:                    cfg.Env,
+		ExtraMounts:            cfg.ExtraMounts,
+		HideGit:                cfg.HideGit,
+		NetrcFile:              cfg.NetrcFile,
+		GitconfigFile:          cfg.GitconfigFile,
+		Workflow:               cfg.Workflow,
+		PR:                     cfg.PR,
+		AutoMerge:              cfg.AutoMerge,
+		AutoRelease:            cfg.AutoRelease,
+		VerificationGate:       cfg.VerificationGate,
+		ValidationCommand:      cfg.ValidationCommand,
+		ValidationPrompt:       cfg.ValidationPrompt,
+		TestCommand:            cfg.TestCommand,
+		AdditionalInstructions: cfg.AdditionalInstructions,
+		MaxContainers:          EffectiveMaxContainers(cfg.MaxContainers, globalCfg.MaxContainers),
+		MaxPromptDuration:      cfg.ParsedMaxPromptDuration(),
+		DirtyFileThreshold:     cfg.DirtyFileThreshold,
+		AutoRetryLimit:         cfg.AutoRetryLimit,
+		QueueInterval:          cfg.ParsedQueueInterval(),
+		SweepInterval:          cfg.ParsedSweepInterval(),
+	}
+}
+
+// ProcessorConfig groups the config-derived inputs to CreateProcessor.
+// Previously these 25 fields were positional params of CreateProcessor,
+// duplicated across CreateRunner and CreateOneShotRunner — silent drift
+// between the two call sites was a real bug class. Grouping them into a
+// struct makes the call sites identical and adding a new field a one-line
+// change. Infra deps (PromptManager, Releaser, Brancher, etc.) remain
+// separate args so wiring stays visible at the call site.
+type ProcessorConfig struct {
+	// Directories
+	InProgressDir      string
+	CompletedDir       string
+	LogDir             string
+	SpecsInboxDir      string
+	SpecsInProgressDir string
+	SpecsCompletedDir  string
+	SpecsRejectedDir   string
+	PromptDirPrefixes  []string
+
+	// Container
+	ContainerImage string
+	Model          string
+	ClaudeDir      string
+	Env            map[string]string
+	ExtraMounts    []config.ExtraMount
+	HideGit        bool
+
+	// Git / VCS
+	NetrcFile     string
+	GitconfigFile string
+
+	// Workflow
+	Workflow         config.Workflow
+	PR               bool
+	AutoMerge        bool
+	AutoRelease      bool
+	VerificationGate bool
+
+	// Validation
+	ValidationCommand      string
+	ValidationPrompt       string
+	TestCommand            string
+	AdditionalInstructions string
+
+	// Resource limits
+	MaxContainers      int
+	MaxPromptDuration  time.Duration
+	DirtyFileThreshold int
+	AutoRetryLimit     int
+
+	// Timing
+	QueueInterval time.Duration
+	SweepInterval time.Duration
+}
+
 // CreateProcessor creates a Processor that executes queued prompts.
 //
 //nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
 func CreateProcessor(
 	ctx context.Context,
-	inProgressDir string,
-	completedDir string,
-	logDir string,
+	cfg ProcessorConfig,
 	projectName project.Name,
 	promptManager *prompt.Manager,
 	releaser git.Releaser,
 	versionGetter version.Getter,
 	wakeup <-chan struct{},
-	containerImage string,
-	model string,
-	netrcFile string,
-	gitconfigFile string,
-	workflow config.Workflow,
-	pr bool,
 	brancher git.Brancher,
 	prCreator git.PRCreator,
 	prMerger git.PRMerger,
-	autoMerge bool,
-	autoRelease bool,
-	validationCommand string,
-	validationPrompt string,
-	testCommand string,
-	specsInboxDir, specsInProgressDir, specsCompletedDir, specsRejectedDir string,
-	verificationGate bool,
-	env map[string]string,
-	extraMounts []config.ExtraMount,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	n notifier.Notifier,
-	claudeDir string,
 	containerCounter executor.ContainerCounter,
-	maxContainers int,
-	additionalInstructions string,
 	containerLock containerlock.ContainerLock,
 	containerChecker executor.ContainerChecker,
-	dirtyFileThreshold int, dirtyFileChecker processor.DirtyFileChecker,
-	gitLockChecker processor.GitLockChecker, maxPromptDuration time.Duration, autoRetryLimit int,
-	hideGit bool,
-	promptDirPrefixes []string,
+	dirtyFileChecker processor.DirtyFileChecker,
+	gitLockChecker processor.GitLockChecker,
 	preflightChecker preflight.Checker,
-	queueInterval time.Duration,
-	sweepInterval time.Duration,
 	onIdle processor.NothingToDoCallback,
 ) processor.Processor {
 	dirs := processor.Dirs{
-		Queue:     inProgressDir,
-		Completed: completedDir,
-		Log:       logDir,
+		Queue:     cfg.InProgressDir,
+		Completed: cfg.CompletedDir,
+		Log:       cfg.LogDir,
 	}
 	autoCompleter := createAutoCompleter(
-		inProgressDir, completedDir,
-		specsInboxDir, specsInProgressDir, specsCompletedDir,
+		cfg.InProgressDir, cfg.CompletedDir,
+		cfg.SpecsInboxDir, cfg.SpecsInProgressDir, cfg.SpecsCompletedDir,
 		currentDateTimeGetter, projectName, n, promptManager,
 	)
 	workflowExecutorProvider := CreateWorkflowExecutor(
-		pr, brancher, prCreator, prMerger,
-		autoMerge, autoRelease,
+		cfg.PR, brancher, prCreator, prMerger,
+		cfg.AutoMerge, cfg.AutoRelease,
 		projectName, promptManager, releaser, autoCompleter,
-		promptDirPrefixes, releaser,
+		cfg.PromptDirPrefixes, releaser,
 	)
-	workflowExecutor := workflowExecutorProvider.Get(ctx, workflow)
+	workflowExecutor := workflowExecutorProvider.Get(ctx, cfg.Workflow)
 	projectRoot, _ := os.Getwd()
 	home, _ := os.UserHomeDir()
 	processorPolicy := launchpolicy.NewPolicy(
-		containerImage,
+		cfg.ContainerImage,
 		projectName.String(),
 		projectRoot,
-		claudeDir,
+		cfg.ClaudeDir,
 		home,
-		env,
-		extraMounts,
-		netrcFile,
-		gitconfigFile,
-		workflow == config.WorkflowWorktree || hideGit,
+		cfg.Env,
+		cfg.ExtraMounts,
+		cfg.NetrcFile,
+		cfg.GitconfigFile,
+		cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
 	)
 	exec := executor.NewDockerExecutor(
 		processorPolicy,
-		model,
-		maxPromptDuration,
+		cfg.Model,
+		cfg.MaxPromptDuration,
 		currentDateTimeGetter,
 		formatter.NewFormatter(currentDateTimeGetter),
 	)
@@ -953,7 +965,7 @@ func CreateProcessor(
 		n,
 		dirs.Completed,
 		projectName,
-		int(autoRetryLimit),
+		int(cfg.AutoRetryLimit),
 	)
 	resumer := promptresumer.NewResumer(
 		promptManager,
@@ -965,7 +977,7 @@ func CreateProcessor(
 		dirs.Completed,
 		dirs.Log,
 		projectName,
-		maxPromptDuration,
+		cfg.MaxPromptDuration,
 	)
 	// Two-phase wiring: scanner → proc.ProcessPrompt → scanner.
 	// The lazyPromptProcessor closes the loop inside factory where wiring belongs.
@@ -988,10 +1000,10 @@ func CreateProcessor(
 		specsweeper.NewSweeper(
 			spec.NewLister(
 				currentDateTimeGetter,
-				specsInboxDir,
-				specsInProgressDir,
-				specsCompletedDir,
-				specsRejectedDir,
+				cfg.SpecsInboxDir,
+				cfg.SpecsInProgressDir,
+				cfg.SpecsCompletedDir,
+				cfg.SpecsRejectedDir,
 			),
 			autoCompleter,
 		),
@@ -999,13 +1011,13 @@ func CreateProcessor(
 			preflightChecker,
 			gitLockChecker,
 			dirtyFileChecker,
-			dirtyFileThreshold,
+			cfg.DirtyFileThreshold,
 		),
 		containerslot.NewManager(
 			containerLock,
 			containerCounter,
 			containerChecker,
-			maxContainers,
+			cfg.MaxContainers,
 			10*time.Second,
 		),
 		cancellationwatcher.NewWatcher(exec, promptManager),
@@ -1014,27 +1026,27 @@ func CreateProcessor(
 		projectName,
 		fh,
 		resumer,
-		verificationGate,
+		cfg.VerificationGate,
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(
 			releaser,
-			additionalInstructions,
-			testCommand,
-			validationCommand,
-			validationPrompt,
+			cfg.AdditionalInstructions,
+			cfg.TestCommand,
+			cfg.ValidationCommand,
+			cfg.ValidationPrompt,
 			validationprompt.NewResolver(),
-			workflow == config.WorkflowWorktree || hideGit,
+			cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
 		),
 		committingrecoverer.NewRecoverer(
 			promptManager,
 			releaser,
 			autoCompleter,
 			dirs.Completed,
-			autoRelease,
+			cfg.AutoRelease,
 		),
 		scanner,
-		queueInterval,
-		sweepInterval,
+		cfg.QueueInterval,
+		cfg.SweepInterval,
 		onIdle,
 	)
 	ppForwarder.inner = proc

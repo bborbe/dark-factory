@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.183.0
 
 - feat: add `pkg/launchpolicy` package with `Policy` value type and `BuildOpts` method that centralises the shared container launch shape (image, project, mounts, base env, netrc/gitconfig, hide-git, canonical `NET_ADMIN`+`NET_RAW` caps) for both the executor prompt-run path and the healthcheck probes (spec 098 prompt 1)
 - refactor: migrate executor's prompt-run path to consume `launchpolicy.Policy` via `BuildOpts`; remove inline `CapAdd: []string{"NET_ADMIN", "NET_RAW"}` from `pkg/executor/executor.go`; move `ContainerLaunchOpts` struct to `pkg/launchpolicy` (type alias preserved in `pkg/executor` for callers); wire `Policy` through both `executor.NewDockerExecutor` call sites in factory (spec 098 prompt 2)

@@ -420,11 +420,20 @@ var _ = Describe("worktreeWorkflowExecutor reconstructs state after daemon resta
 			// This is the invariant being tested: commit must land in the worktree, not original dir
 			cwdAfterReconstruct, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(cwdAfterReconstruct).To(Equal(cwdAfterSetup), "must be in same worktree path after ReconstructState")
+			Expect(
+				cwdAfterReconstruct,
+			).To(Equal(cwdAfterSetup), "must be in same worktree path after ReconstructState")
 
 			// Continue processing: modify code and complete
 			writeFileWt(codeFile, "package main // modified\n")
-			err = executor2.Complete(ctx, ctx, pf, "test commit after restart", promptPath, completedPath)
+			err = executor2.Complete(
+				ctx,
+				ctx,
+				pf,
+				"test commit after restart",
+				promptPath,
+				completedPath,
+			)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify we're back in originalDir after Complete
@@ -440,7 +449,14 @@ var _ = Describe("worktreeWorkflowExecutor reconstructs state after daemon resta
 
 			// Verify commit was created in the feature branch (not master)
 			// by checking the remote refs
-			cmd = exec.CommandContext(ctx, "git", "ls-remote", "--heads", originalDir, "dark-factory/002-test")
+			cmd = exec.CommandContext(
+				ctx,
+				"git",
+				"ls-remote",
+				"--heads",
+				originalDir,
+				"dark-factory/002-test",
+			)
 			var stdout strings.Builder
 			cmd.Stdout = &stdout
 			err = cmd.Run()

@@ -137,17 +137,20 @@ var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", fun
 			Expect(found).To(Equal("/host/.claude:/home/node/.claude:ro"))
 		})
 
-		It("emits no claudeDir mount when ClaudeDir is empty, even with ClaudeDirReadOnly=true", func() {
-			opts := baseOpts()
-			opts.ClaudeDir = ""
-			opts.ClaudeDirReadOnly = true
-			args := executor.BuildDockerRunArgs(opts)
-			for i, a := range args {
-				if a == "-v" && i+1 < len(args) &&
-					strings.Contains(args[i+1], ":/home/node/.claude") {
-					Fail("did not expect claudeDir mount when ClaudeDir is empty: " + args[i+1])
+		It(
+			"emits no claudeDir mount when ClaudeDir is empty, even with ClaudeDirReadOnly=true",
+			func() {
+				opts := baseOpts()
+				opts.ClaudeDir = ""
+				opts.ClaudeDirReadOnly = true
+				args := executor.BuildDockerRunArgs(opts)
+				for i, a := range args {
+					if a == "-v" && i+1 < len(args) &&
+						strings.Contains(args[i+1], ":/home/node/.claude") {
+						Fail("did not expect claudeDir mount when ClaudeDir is empty: " + args[i+1])
+					}
 				}
-			}
-		})
+			},
+		)
 	})
 })

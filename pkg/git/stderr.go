@@ -13,12 +13,17 @@ import "strings"
 // they need the full output.
 const maxStderrBytes = 8192
 
-// truncateStderr returns s unchanged if len(s) <= maxStderrBytes.
+// TruncateStderr returns s unchanged if len(s) <= maxStderrBytes.
 // If s exceeds the limit, the first maxStderrBytes bytes are returned followed
-// by the literal string " (truncated)".
-func truncateStderr(s string) string {
+// by the literal string " (truncated)". Exported so sibling git-provider
+// packages (e.g. pkg/gitprovider/bitbucket) can use it without duplicating.
+func TruncateStderr(s string) string {
 	if len(s) <= maxStderrBytes {
 		return strings.TrimRight(s, "\n")
 	}
 	return strings.TrimRight(s[:maxStderrBytes], "\n") + " (truncated)"
 }
+
+// truncateStderr is the unexported alias preserved for backward-compat with
+// pkg/git internal callers; new callers should use TruncateStderr.
+func truncateStderr(s string) string { return TruncateStderr(s) }

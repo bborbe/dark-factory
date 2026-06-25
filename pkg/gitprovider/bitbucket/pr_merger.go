@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package git
+package bitbucket
 
 import (
 	"context"
@@ -14,11 +14,13 @@ import (
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
+
+	"github.com/bborbe/dark-factory/pkg/git"
 )
 
-// bitbucketPRMerger implements PRMerger for Bitbucket Server.
-type bitbucketPRMerger struct {
-	client                *bitbucketClient
+// prMerger implements git.PRMerger for Bitbucket Server.
+type prMerger struct {
+	client                *client
 	project               string
 	repo                  string
 	pollInterval          time.Duration
@@ -26,16 +28,16 @@ type bitbucketPRMerger struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
-// NewBitbucketPRMerger creates a PRMerger backed by the Bitbucket Server REST API.
-func NewBitbucketPRMerger(
+// NewPRMerger creates a git.PRMerger backed by the Bitbucket Server REST API.
+func NewPRMerger(
 	baseURL string,
 	token string,
 	project string,
 	repo string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) PRMerger {
-	return &bitbucketPRMerger{
-		client:                newBitbucketClient(baseURL, token),
+) git.PRMerger {
+	return &prMerger{
+		client:                newClient(baseURL, token),
 		project:               project,
 		repo:                  repo,
 		pollInterval:          30 * time.Second,
@@ -51,8 +53,8 @@ type bbPRDetail struct {
 }
 
 // WaitAndMerge polls until the PR is open then merges it.
-func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) error {
-	prID, err := parseBitbucketPRID(ctx, prURL)
+func (b *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
+	prID, err := parsePRID(ctx, prURL)
 	if err != nil {
 		return errors.Wrap(ctx, err, "extract PR ID from URL")
 	}
@@ -90,7 +92,7 @@ func (b *bitbucketPRMerger) WaitAndMerge(ctx context.Context, prURL string) erro
 	}
 }
 
-func (b *bitbucketPRMerger) fetchPR(ctx context.Context, prID int) (*bbPRDetail, error) {
+func (b *prMerger) fetchPR(ctx context.Context, prID int) (*bbPRDetail, error) {
 	var pr bbPRDetail
 	path := fmt.Sprintf("/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d",
 		b.project, b.repo, prID)
@@ -100,7 +102,7 @@ func (b *bitbucketPRMerger) fetchPR(ctx context.Context, prID int) (*bbPRDetail,
 	return &pr, nil
 }
 
-func (b *bitbucketPRMerger) mergePR(ctx context.Context, prID int, version int) error {
+func (b *prMerger) mergePR(ctx context.Context, prID int, version int) error {
 	path := fmt.Sprintf(
 		"/rest/api/1.0/projects/%s/repos/%s/pull-requests/%d/merge?version=%d",
 		b.project, b.repo, prID, version,
@@ -112,9 +114,9 @@ func (b *bitbucketPRMerger) mergePR(ctx context.Context, prID int, version int) 
 	return nil
 }
 
-// parseBitbucketPRID extracts the numeric PR ID from a Bitbucket PR URL.
+// parsePRID extracts the numeric PR ID from a Bitbucket PR URL.
 // Expected format: .../pull-requests/{id} or .../pull-requests/{id}/overview
-func parseBitbucketPRID(ctx context.Context, prURL string) (int, error) {
+func parsePRID(ctx context.Context, prURL string) (int, error) {
 	parts := strings.Split(strings.TrimRight(prURL, "/"), "/")
 	for i, part := range parts {
 		if part == "pull-requests" && i+1 < len(parts) {

@@ -110,16 +110,21 @@ func appendStandardMounts(args []string, opts ContainerLaunchOpts) []string {
 	}
 	if opts.ClaudeDir != "" {
 		// Host paths containing ':' would produce ambiguous docker volume
-		// syntax (docker uses ':' as src/dst/mode separator). Reject loudly
-		// rather than silently producing a broken mount string.
+		// syntax (docker uses ':' as src/dst/mode separator). Skip the mount
+		// with a loud ERROR rather than crashing the daemon — the agent's
+		// missing-credential failure will surface the underlying config bug.
+		// Phase 2 will validate at config-load time so operators see the
+		// error before daemon start.
 		if strings.Contains(opts.ClaudeDir, ":") {
-			panic("launchpolicy: ClaudeDir contains ':', cannot build unambiguous docker volume mount: " + opts.ClaudeDir)
+			slog.Error("launchpolicy: ClaudeDir contains ':', skipping mount to avoid ambiguous docker volume syntax",
+				"claudeDir", opts.ClaudeDir)
+		} else {
+			mount := opts.ClaudeDir + ":/home/node/.claude"
+			if opts.ClaudeDirReadOnly {
+				mount += ":ro"
+			}
+			args = append(args, "-v", mount)
 		}
-		mount := opts.ClaudeDir + ":/home/node/.claude"
-		if opts.ClaudeDirReadOnly {
-			mount += ":ro"
-		}
-		args = append(args, "-v", mount)
 	}
 	if opts.NetrcFile != "" {
 		args = append(

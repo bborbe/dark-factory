@@ -212,9 +212,17 @@ type SecurityOpts struct {
 	ClaudeDirReadOnly bool
 }
 
-// WithSecurity returns a copy of p with the security fields replaced by opts.
-// Phase 2 (separate PR) will call this from the factory with non-zero defaults
-// after dev validation confirms ro claudeDir works for Claude SDK auth refresh.
+// WithSecurity returns a copy of p with the security fields REPLACED by opts.
+// Policy is a value type and this method uses a value receiver: assignments
+// to p inside this body mutate a local copy, not the caller's Policy.
+// Mirrors WithCapAddForTest's immutable-builder pattern.
+//
+// Replace (not merge) semantics: a zero-value SecurityOpts{} explicitly
+// resets every security field on the returned policy.
+//
+// Phase 2 (separate PR) will call this from the factory with non-zero
+// defaults after dev validation confirms ro claudeDir works for Claude SDK
+// auth refresh.
 func (p Policy) WithSecurity(opts SecurityOpts) Policy {
 	p.runAsUser = opts.RunAsUser
 	p.memoryLimit = opts.MemoryLimit

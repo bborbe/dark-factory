@@ -50,6 +50,7 @@ var _ = Describe("PromptCompleteCommand", func() {
 			return realPM.Load(ctx, path)
 		}
 		releaser = &mocks.Releaser{}
+		releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 		brancher = &mocks.Brancher{}
 		brancher.CurrentBranchStub = func(ctx context.Context) (string, error) {
 			return "master", nil

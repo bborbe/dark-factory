@@ -273,6 +273,17 @@ func (s *stubReleaser) PushBranch(_ context.Context) error {
 	return nil
 }
 
+func (s *stubReleaser) DetermineBump(_ context.Context) git.VersionBump {
+	return git.PatchBump
+}
+
+func (s *stubReleaser) CommitWithRetry(
+	ctx context.Context,
+	fn func(context.Context) error,
+) error {
+	return fn(ctx)
+}
+
 var _ = Describe("handleDirectWorkflow", func() {
 	var (
 		ctx    context.Context
@@ -564,6 +575,17 @@ func (s *stubWorkflowReleaser) MoveFile(_ context.Context, _, _ string) error { 
 func (s *stubWorkflowReleaser) PushBranch(_ context.Context) error {
 	s.pushBranchCount++
 	return nil
+}
+
+func (s *stubWorkflowReleaser) DetermineBump(_ context.Context) git.VersionBump {
+	return git.PatchBump
+}
+
+func (s *stubWorkflowReleaser) CommitWithRetry(
+	ctx context.Context,
+	fn func(context.Context) error,
+) error {
+	return fn(ctx)
 }
 
 // stubWorkflowManager tracks MoveToCompleted and HasQueuedPromptsOnBranch.

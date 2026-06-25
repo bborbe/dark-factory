@@ -11,7 +11,6 @@ import (
 
 	"github.com/bborbe/errors"
 
-	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -74,7 +73,7 @@ func (e *directWorkflowExecutor) completeCommit(
 	slog.Info("moved to completed", "file", filepath.Base(promptPath))
 
 	// Commit all code changes with retry. If the commit fails, roll the prompt file back to in-progress/ first.
-	if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+	if err := e.deps.Releaser.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
 		return handleDirectWorkflow(retryCtx, ctx, e.deps, title, "")
 	}); err != nil {
 		if rollbackErr := e.deps.PromptManager.RollbackMoveToCompleted(ctx, completedPath, e.deps.FileMover); rollbackErr != nil {
@@ -94,7 +93,7 @@ func (e *directWorkflowExecutor) completeCommit(
 
 	// Push the branch when autoRelease is enabled.
 	if e.deps.AutoRelease {
-		if err := git.CommitWithRetry(gitCtx, git.DefaultCommitBackoff, func(retryCtx context.Context) error {
+		if err := e.deps.Releaser.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
 			return e.deps.Releaser.PushBranch(retryCtx)
 		}); err != nil {
 			return errors.Wrap(ctx, err, "push branch")

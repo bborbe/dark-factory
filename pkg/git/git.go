@@ -94,6 +94,13 @@ type Releaser interface {
 	HasChangelog(ctx context.Context) bool
 	MoveFile(ctx context.Context, oldPath string, newPath string) error
 	PushBranch(ctx context.Context) error
+	// DetermineBump inspects CHANGELOG.md in the current directory and returns
+	// the appropriate version bump. PatchBump if missing or no `- feat:` entry.
+	DetermineBump(ctx context.Context) VersionBump
+	// CommitWithRetry runs fn with the default retry backoff and lock-aware
+	// logging. Application-layer code uses this seam instead of the package-
+	// level git.CommitWithRetry so processor stays mockable.
+	CommitWithRetry(ctx context.Context, fn func(context.Context) error) error
 }
 
 // releaser implements Releaser.
@@ -123,6 +130,16 @@ func (r *releaser) CommitCompletedFile(ctx context.Context, path string) error {
 func (r *releaser) HasChangelog(ctx context.Context) bool {
 	_, err := os.Stat("CHANGELOG.md")
 	return err == nil
+}
+
+// DetermineBump inspects CHANGELOG.md in the current directory.
+func (r *releaser) DetermineBump(ctx context.Context) VersionBump {
+	return DetermineBumpFromChangelog(ctx, ".")
+}
+
+// CommitWithRetry runs fn with the default retry backoff.
+func (r *releaser) CommitWithRetry(ctx context.Context, fn func(context.Context) error) error {
+	return CommitWithRetry(ctx, DefaultCommitBackoff, fn)
 }
 
 // CommitOnly performs a simple commit without versioning, tagging, or pushing.

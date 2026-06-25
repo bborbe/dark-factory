@@ -406,6 +406,7 @@ var _ = Describe("Factory", func() {
 
 		It("enricher emits hideGit guidance fragment when hideGit=true", func() {
 			releaser := &mocks.Releaser{}
+			releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 			releaser.HasChangelogReturns(false)
 			resolverMock := &mocks.Resolver{}
 			resolverMock.ResolveReturns("", false, nil)
@@ -427,6 +428,7 @@ var _ = Describe("Factory", func() {
 
 		It("enricher does not emit hideGit guidance fragment when hideGit=false", func() {
 			releaser := &mocks.Releaser{}
+			releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 			releaser.HasChangelogReturns(false)
 			resolverMock := &mocks.Resolver{}
 			resolverMock.ResolveReturns("", false, nil)

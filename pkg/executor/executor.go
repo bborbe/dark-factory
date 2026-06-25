@@ -19,8 +19,8 @@ import (
 	"github.com/bborbe/run"
 	libtime "github.com/bborbe/time"
 
-	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/formatter"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -40,56 +40,41 @@ type Executor interface {
 		containerName string,
 		maxPromptDuration time.Duration,
 	) error
+	// StopAndRemoveContainer stops and forcibly removes the named container.
+	// Best-effort: any errors are logged but not returned.
 	StopAndRemoveContainer(ctx context.Context, containerName string)
 }
 
-// NewDockerExecutor creates a new Executor using Docker with the specified container image.
+// NewDockerExecutor creates a new Executor using Docker. The launch shape
+// (image, project, mounts, base env, netrc/gitconfig, hide-git, capabilities)
+// is sourced from the shared launchpolicy.Policy — see pkg/launchpolicy.
+// Prompt-specific concerns (model, max duration, formatter) remain on the
+// executor itself.
 func NewDockerExecutor(
-	containerImage string,
-	projectName string,
+	policy launchpolicy.Policy,
 	model string,
-	netrcFile string,
-	gitconfigFile string,
-	env map[string]string,
-	extraMounts []config.ExtraMount,
-	claudeDir string,
 	maxPromptDuration time.Duration,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	fmtr formatter.Formatter,
-	hideGit bool,
 ) Executor {
 	return &dockerExecutor{
-		containerImage:        containerImage,
-		projectName:           projectName,
+		policy:                policy,
 		model:                 model,
-		netrcFile:             netrcFile,
-		gitconfigFile:         gitconfigFile,
-		env:                   env,
-		extraMounts:           extraMounts,
-		claudeDir:             claudeDir,
 		commandRunner:         &defaultCommandRunner{},
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
 		formatter:             fmtr,
-		hideGit:               hideGit,
 	}
 }
 
 // dockerExecutor implements Executor using Docker.
 type dockerExecutor struct {
-	containerImage        string
-	projectName           string
+	policy                launchpolicy.Policy
 	model                 string
-	netrcFile             string
-	gitconfigFile         string
-	env                   map[string]string
-	extraMounts           []config.ExtraMount
-	claudeDir             string
 	commandRunner         commandRunner
 	maxPromptDuration     time.Duration // 0 = disabled
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	formatter             formatter.Formatter
-	hideGit               bool // mask /workspace/.git from the container
 }
 
 // Execute runs the claude-yolo Docker container with the given prompt content.
@@ -106,10 +91,6 @@ func (e *dockerExecutor) Execute(
 	if err != nil {
 		return errors.Wrap(ctx, err, "get working directory")
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return errors.Wrap(ctx, err, "get home directory")
-	}
 	logFileHandle, err := prepareLogFile(ctx, logFile)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare log file")
@@ -117,7 +98,7 @@ func (e *dockerExecutor) Execute(
 	defer logFileHandle.Close()
 	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
 	if err != nil {
-		return err // error already names the raw log path
+		return errors.Wrap(ctx, err, "prepare raw log file")
 	}
 	defer rawFileHandle.Close()
 	promptFilePath, cleanup, err := createPromptTempFile(ctx, promptContent)
@@ -128,15 +109,14 @@ func (e *dockerExecutor) Execute(
 	slog.Debug("prompt prepared for execution",
 		"contentSize", len(promptContent), "tempFile", promptFilePath)
 	e.removeContainerIfExists(ctx, containerName)
-	promptBaseName := extractPromptBaseName(containerName, e.projectName)
-	claudeConfigDir := e.claudeDir
-	if err := validateClaudeAuth(ctx, claudeConfigDir, e.env); err != nil {
-		return err
+	promptBaseName := extractPromptBaseName(containerName, e.policy.ProjectName())
+	claudeConfigDir := e.policy.ClaudeDir()
+	if err := validateClaudeAuth(ctx, claudeConfigDir, e.policy.BaseEnv()); err != nil {
+		return errors.Wrap(ctx, err, "validate claude auth")
 	}
-	cmd := e.buildDockerCommand(
-		ctx, containerName, promptFilePath, projectRoot, claudeConfigDir, promptBaseName, home)
+	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
 	slog.Debug("docker command prepared",
-		"image", e.containerImage, "containerName", containerName,
+		"image", e.policy.ContainerImage(), "containerName", containerName,
 		"workspaceMount", projectRoot+":/workspace",
 		"configMount", claudeConfigDir+":/home/node/.claude")
 	if runErr := e.runWithFormatterPipeline(
@@ -236,7 +216,7 @@ func (e *dockerExecutor) Reattach(
 	defer logFileHandle.Close()
 	rawFileHandle, err := prepareRawLogFile(ctx, rawLogPath(logFile))
 	if err != nil {
-		return err // error already names the raw log path
+		return errors.Wrap(ctx, err, "prepare raw log file")
 	}
 	defer rawFileHandle.Close()
 	// docker logs --follow replays all output from container start and blocks until exit
@@ -468,52 +448,33 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 	return promptFile.Name(), cleanup, nil
 }
 
-// buildDockerCommand builds the docker run command with all necessary arguments.
+// buildDockerCommand builds the docker run command for a prompt execution.
+// The launch shape is sourced from the executor's launchpolicy.Policy; only
+// the prompt-specific concerns (prompt-file mount, ANTHROPIC_MODEL,
+// YOLO_PROMPT_FILE, YOLO_OUTPUT, the dark-factory.prompt label) flow through
+// the Extras overlay.
 func (e *dockerExecutor) buildDockerCommand(
 	ctx context.Context,
 	containerName string,
 	promptFilePath string,
-	projectRoot string,
-	claudeConfigDir string,
 	promptBaseName string,
-	home string,
 ) *exec.Cmd {
-	// Merge prompt-specific env (YOLO_PROMPT_FILE, ANTHROPIC_MODEL, YOLO_OUTPUT) with the
-	// executor's configured env (e.env). Prompt-specific keys win on collision because they
-	// reflect the in-container contract; e.env is operator preference.
-	env := map[string]string{
+	envOverlay := map[string]string{
 		"YOLO_PROMPT_FILE": "/tmp/prompt.md",
 		"ANTHROPIC_MODEL":  e.model,
 		"YOLO_OUTPUT":      "json",
 	}
-	for k, v := range e.env {
-		if _, locked := env[k]; !locked {
-			env[k] = v
-		}
-	}
-	opts := ContainerLaunchOpts{
-		ContainerName:  containerName,
-		ContainerImage: e.containerImage,
-		ProjectName:    e.projectName,
-		ProjectRoot:    projectRoot,
-		ClaudeDir:      claudeConfigDir,
-		Home:           home,
-		Env:            env,
-		ExtraMounts:    e.extraMounts,
-		NetrcFile:      e.netrcFile,
-		GitconfigFile:  e.gitconfigFile,
-		HideGit:        e.hideGit,
+	extras := launchpolicy.Extras{
+		ContainerName: containerName,
+		EnvOverlay:    envOverlay,
 		ExtraLabels: map[string]string{
 			"dark-factory.prompt": promptBaseName,
 		},
-		CapAdd: []string{"NET_ADMIN", "NET_RAW"},
 	}
+	opts := e.policy.BuildOpts(extras)
 	args := BuildDockerRunArgs(opts)
-	// Insert the prompt-file mount before the image positional. Find the image arg
-	// (it's the first non-flag arg in the tail) and insert -v before it. Simpler:
-	// rebuild with the mount inserted just after the env block.
-	args = insertPromptFileMount(args, promptFilePath, e.containerImage)
-	// #nosec G204 -- promptContent is user-provided by design
+	args = insertPromptFileMount(args, promptFilePath, e.policy.ContainerImage())
+	// #nosec G204 -- args are derived from configured policy + sanitized container name, not user input
 	return exec.CommandContext(ctx, "docker", args...)
 }
 

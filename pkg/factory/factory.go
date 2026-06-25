@@ -37,6 +37,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflight"
@@ -662,11 +663,13 @@ func CreateOneShotRunner(
 	)
 }
 
-// resolveSpecGeneratorHideGit computes the effective hideGit value the
-// spec-generator's docker executor receives. Mirrors the expression at
-// line 891 (prompt-executor wiring) — both must agree so spec-generation
-// and prompt-execution containers see the same workspace shape.
-func resolveSpecGeneratorHideGit(cfg config.Config) bool {
+// resolveHideGit computes the effective hideGit value every dark-factory
+// container receives — spec-generator, prompt-executor, and healthcheck probes.
+// Worktree mode always masks .git (the worktree's .git is a pointer file the
+// container can't follow); explicit hideGit also masks it. All three call
+// sites must agree so the containers see the same workspace shape — the
+// architectural invariant of spec 098.
+func resolveHideGit(cfg config.Config) bool {
 	return cfg.Workflow == config.WorkflowWorktree || cfg.HideGit
 }
 
@@ -678,20 +681,27 @@ func CreateSpecGenerator(
 	slugMigrator slugmigrator.Migrator,
 	promptManager *prompt.Manager,
 ) generator.SpecGenerator {
+	projectRoot, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	specGenPolicy := launchpolicy.NewPolicy(
+		containerImage,
+		project.Resolve(cfg.ResolvedProjectOverride()).String(),
+		projectRoot,
+		cfg.ResolvedClaudeDir(),
+		home,
+		cfg.Env,
+		cfg.ExtraMounts,
+		cfg.NetrcFile,
+		cfg.GitconfigFile,
+		resolveHideGit(cfg),
+	)
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
-			containerImage,
-			project.Resolve(cfg.ResolvedProjectOverride()).String(),
+			specGenPolicy,
 			cfg.Model,
-			cfg.NetrcFile,
-			cfg.GitconfigFile,
-			cfg.Env,
-			cfg.ExtraMounts,
-			cfg.ResolvedClaudeDir(),
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(currentDateTimeGetter),
-			resolveSpecGeneratorHideGit(cfg),
 		),
 		executor.NewDockerContainerChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
@@ -917,19 +927,26 @@ func CreateProcessor(
 		promptDirPrefixes, releaser,
 	)
 	workflowExecutor := workflowExecutorProvider.Get(ctx, workflow)
-	exec := executor.NewDockerExecutor(
+	projectRoot, _ := os.Getwd()
+	home, _ := os.UserHomeDir()
+	processorPolicy := launchpolicy.NewPolicy(
 		containerImage,
 		projectName.String(),
-		model,
-		netrcFile,
-		gitconfigFile,
+		projectRoot,
+		claudeDir,
+		home,
 		env,
 		extraMounts,
-		claudeDir,
+		netrcFile,
+		gitconfigFile,
+		workflow == config.WorkflowWorktree || hideGit,
+	)
+	exec := executor.NewDockerExecutor(
+		processorPolicy,
+		model,
 		maxPromptDuration,
 		currentDateTimeGetter,
 		formatter.NewFormatter(currentDateTimeGetter),
-		workflow == config.WorkflowWorktree || hideGit,
 	)
 	fh := failurehandler.NewHandler(
 		promptManager,
@@ -1278,24 +1295,24 @@ func CreateHealthcheckCommand(
 			env["ANTHROPIC_MODEL"] = cfg.Model
 		}
 	}
-	launch := healthcheck.ProbeLaunchConfig{
-		ContainerImage: cfg.ContainerImage,
-		ProjectName:    projectName,
-		ProjectRoot:    projectRoot,
-		ClaudeDir:      cfg.ResolvedClaudeDir(),
-		Home:           home,
-		Env:            env,
-		ExtraMounts:    cfg.ExtraMounts,
-		NetrcFile:      cfg.NetrcFile,
-		GitconfigFile:  cfg.GitconfigFile,
-		HideGit:        cfg.HideGit,
-	}
+	policy := launchpolicy.NewPolicy(
+		cfg.ContainerImage,
+		projectName,
+		projectRoot,
+		cfg.ResolvedClaudeDir(),
+		home,
+		env,
+		cfg.ExtraMounts,
+		cfg.NetrcFile,
+		cfg.GitconfigFile,
+		resolveHideGit(cfg),
+	)
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),
 		healthcheck.NewImageProbe(cfg.ContainerImage, subprocRunner),
-		healthcheck.NewBootProbe(launch, subprocRunner),
-		healthcheck.NewClaudeProbe(launch, claudeRunner),
-		healthcheck.NewMountProbe(launch, subprocRunner),
+		healthcheck.NewBootProbe(policy, subprocRunner),
+		healthcheck.NewClaudeProbe(policy, claudeRunner),
+		healthcheck.NewMountProbe(policy, subprocRunner),
 	}
 	if cfg.PR {
 		probes = append(probes, healthcheck.NewGhProbe(ghRunner))

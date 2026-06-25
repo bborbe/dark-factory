@@ -14,6 +14,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/formatter"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 )
 
 // CommandRunnerForTest is an exported alias for the unexported commandRunner interface.
@@ -40,20 +41,31 @@ func NewDockerExecutorWithRunnerForTest(
 	fmtr formatter.Formatter,
 	hideGit bool,
 ) Executor {
+	// projectRoot defaults to "" in the test helper; tests that depend on it
+	// already pass their own ProjectRoot via the buildCmd helper, which calls
+	// BuildDockerCommandForTest with explicit projectRoot. Here we only
+	// construct the executor instance — the policy's projectRoot field is not
+	// dereferenced until Execute is called, which the runner-injection tests
+	// drive directly.
+	policy := launchpolicy.NewPolicy(
+		containerImage,
+		projectName,
+		"", // projectRoot — set per-call in tests via the executor's Execute path
+		claudeDir,
+		"", // home
+		env,
+		extraMounts,
+		netrcFile,
+		gitconfigFile,
+		hideGit,
+	)
 	return &dockerExecutor{
-		containerImage:        containerImage,
-		projectName:           projectName,
+		policy:                policy,
 		model:                 model,
-		netrcFile:             netrcFile,
-		gitconfigFile:         gitconfigFile,
-		env:                   env,
-		extraMounts:           extraMounts,
-		claudeDir:             claudeDir,
 		commandRunner:         runner,
 		maxPromptDuration:     maxPromptDuration,
 		currentDateTimeGetter: currentDateTimeGetter,
 		formatter:             fmtr,
-		hideGit:               hideGit,
 	}
 }
 
@@ -75,25 +87,44 @@ func BuildDockerCommandForTest(
 	home string,
 	hideGit bool,
 ) *exec.Cmd {
-	e := &dockerExecutor{
-		containerImage: containerImage,
-		projectName:    projectName,
-		model:          model,
-		netrcFile:      netrcFile,
-		gitconfigFile:  gitconfigFile,
-		env:            env,
-		extraMounts:    extraMounts,
-		hideGit:        hideGit,
-	}
-	return e.buildDockerCommand(
-		ctx,
-		containerName,
-		promptFilePath,
+	policy := launchpolicy.NewPolicy(
+		containerImage,
+		projectName,
 		projectRoot,
 		claudeConfigDir,
-		promptBaseName,
 		home,
+		env,
+		extraMounts,
+		netrcFile,
+		gitconfigFile,
+		hideGit,
 	)
+	e := &dockerExecutor{
+		policy: policy,
+		model:  model,
+	}
+	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+}
+
+// BuildDockerCommandFromPolicyForTest is the policy-injection test helper used
+// by the spec-098 regression-lock test. It accepts a Policy directly so a
+// test can construct a Policy with a synthetic capability set via
+// Policy.WithCapAddForTest and prove the cap propagates to the executor's
+// argv. Production callers MUST use NewDockerExecutor; this helper is for
+// tests only.
+func BuildDockerCommandFromPolicyForTest(
+	ctx context.Context,
+	policy launchpolicy.Policy,
+	model string,
+	containerName string,
+	promptFilePath string,
+	promptBaseName string,
+) *exec.Cmd {
+	e := &dockerExecutor{
+		policy: policy,
+		model:  model,
+	}
+	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
 }
 
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.

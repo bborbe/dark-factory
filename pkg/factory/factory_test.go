@@ -386,9 +386,9 @@ var _ = Describe("Factory", func() {
 
 	Describe("hideGit fragment wiring", func() {
 		DescribeTable(
-			"resolveSpecGeneratorHideGit",
+			"resolveHideGit",
 			func(cfg config.Config, want bool) {
-				Expect(factory.ResolveSpecGeneratorHideGitForTest(cfg)).To(Equal(want))
+				Expect(factory.ResolveHideGitForTest(cfg)).To(Equal(want))
 			},
 			Entry("default config -> false", config.Config{}, false),
 			Entry("HideGit=true -> true", config.Config{HideGit: true}, true),

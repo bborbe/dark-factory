@@ -23,6 +23,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/formatter"
+	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -36,19 +37,16 @@ var _ = Describe("DockerExecutor", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
+		policy := launchpolicy.NewPolicy(
+			config.Defaults().ContainerImage, "test-project", "",
+			config.Defaults().ResolvedClaudeDir(), "", nil, nil, "", "", false,
+		)
 		e = executor.NewDockerExecutor(
-			config.Defaults().ContainerImage,
-			"test-project",
+			policy,
 			config.Defaults().Model,
-			"",
-			"",
-			nil,
-			nil,
-			config.Defaults().ResolvedClaudeDir(),
 			0,
 			libtime.NewCurrentDateTime(),
 			formatter.NewFormatter(libtime.NewCurrentDateTime()),
-			false, // hideGit
 		)
 
 		var err error
@@ -165,21 +163,14 @@ More lines...`
 
 	Describe("NewDockerExecutor", func() {
 		It("creates a new DockerExecutor with specified container image", func() {
-			executor := executor.NewDockerExecutor(
-				"custom-image:latest",
-				"test-project",
-				"claude-sonnet-4-6",
-				"",
-				"",
-				nil,
-				nil,
-				config.Defaults().ResolvedClaudeDir(),
-				0,
-				libtime.NewCurrentDateTime(),
-				formatter.NewFormatter(libtime.NewCurrentDateTime()),
-				false, // hideGit
+			p := launchpolicy.NewPolicy(
+				"custom-image:latest", "test-project", "",
+				config.Defaults().ResolvedClaudeDir(), "", nil, nil, "", "", false,
 			)
-			Expect(executor).NotTo(BeNil())
+			exec := executor.NewDockerExecutor(p, "claude-sonnet-4-6", 0,
+				libtime.NewCurrentDateTime(), formatter.NewFormatter(libtime.NewCurrentDateTime()),
+			)
+			Expect(exec).NotTo(BeNil())
 		})
 	})
 })

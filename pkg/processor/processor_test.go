@@ -230,6 +230,7 @@ var _ = Describe("Processor", func() {
 		executor = &mocks.Executor{}
 		manager = &mocks.ProcessorPromptManager{}
 		releaser = &mocks.Releaser{}
+		releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 		versionGet = &mocks.VersionGetter{}
 		brancher = &mocks.Brancher{}
 		brancher.CommitsAheadReturns(1, nil)
@@ -891,6 +892,7 @@ var _ = Describe("Processor", func() {
 		executor.ExecuteReturns(nil)
 		releaser.CommitCompletedFileReturns(nil)
 		releaser.HasChangelogReturns(true)
+		releaser.DetermineBumpReturns(git.MinorBump)
 		releaser.GetNextVersionReturns("v0.2.0", nil)
 		releaser.CommitAndReleaseReturns(nil)
 

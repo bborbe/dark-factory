@@ -26,6 +26,7 @@ var _ = Describe("Enricher", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		releaser = &mocks.Releaser{}
+		releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 		releaser.HasChangelogReturns(false)
 		resolverMock = &mocks.Resolver{}
 		resolverMock.ResolveReturns("", false, nil)

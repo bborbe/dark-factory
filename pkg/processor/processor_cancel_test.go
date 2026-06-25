@@ -50,6 +50,7 @@ func newProcessorWithMockWatcher(
 	workflowExec *mocks.WorkflowExecutor,
 ) processorPromptProcesser {
 	enricherReleaser := &mocks.Releaser{}
+	enricherReleaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	enricherReleaser.HasChangelogReturns(false)
 
 	fh := failurehandler.NewHandler(mgr, notifier.NewMultiNotifier(), "", project.Name("test"), 0)

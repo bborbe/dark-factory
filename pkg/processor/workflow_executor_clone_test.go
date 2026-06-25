@@ -332,6 +332,17 @@ func (r *realGitReleaser) PushBranch(_ context.Context) error {
 	return runGit(r.workDir, "push", "-u", "origin", "HEAD")
 }
 
+func (r *realGitReleaser) DetermineBump(_ context.Context) git.VersionBump {
+	return git.PatchBump
+}
+
+func (r *realGitReleaser) CommitWithRetry(
+	ctx context.Context,
+	fn func(context.Context) error,
+) error {
+	return fn(ctx)
+}
+
 func (r *realGitReleaser) Push(_ context.Context, branch string) error {
 	if r.pushErr != nil {
 		return r.pushErr

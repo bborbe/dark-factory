@@ -55,6 +55,7 @@ var _ = Describe("Processor", func() {
 		executor = &mocks.Executor{}
 		manager = &mocks.ProcessorPromptManager{}
 		releaser = &mocks.Releaser{}
+		releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 		versionGet = &mocks.VersionGetter{}
 		brancher = &mocks.Brancher{}
 		brancher.CommitsAheadReturns(1, nil)

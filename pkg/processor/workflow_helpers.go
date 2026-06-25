@@ -13,7 +13,6 @@ import (
 
 	"github.com/bborbe/errors"
 
-	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -128,7 +127,7 @@ func handleDirectWorkflow(
 		slog.Info("committed changes (autoRelease disabled, skipping tag)")
 		return nil
 	}
-	bump := git.DetermineBumpFromChangelog(ctx, ".")
+	bump := deps.Releaser.DetermineBump(ctx)
 	nextVersion, err := deps.Releaser.GetNextVersion(gitCtx, bump)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get next version")

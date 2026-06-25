@@ -87,6 +87,17 @@ func (r *realGitReleaser) Push(_ context.Context, branch string) error {
 	return runGitDirect(r.workDir, "push", "origin", branch)
 }
 
+func (r *realGitReleaser) DetermineBump(_ context.Context) git.VersionBump {
+	return git.PatchBump
+}
+
+func (r *realGitReleaser) CommitWithRetry(
+	ctx context.Context,
+	fn func(context.Context) error,
+) error {
+	return fn(ctx)
+}
+
 func runGitDirect(dir string, args ...string) error {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir

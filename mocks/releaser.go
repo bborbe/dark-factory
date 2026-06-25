@@ -45,6 +45,29 @@ type Releaser struct {
 	commitOnlyReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CommitWithRetryStub        func(context.Context, func(context.Context) error) error
+	commitWithRetryMutex       sync.RWMutex
+	commitWithRetryArgsForCall []struct {
+		arg1 context.Context
+		arg2 func(context.Context) error
+	}
+	commitWithRetryReturns struct {
+		result1 error
+	}
+	commitWithRetryReturnsOnCall map[int]struct {
+		result1 error
+	}
+	DetermineBumpStub        func(context.Context) git.VersionBump
+	determineBumpMutex       sync.RWMutex
+	determineBumpArgsForCall []struct {
+		arg1 context.Context
+	}
+	determineBumpReturns struct {
+		result1 git.VersionBump
+	}
+	determineBumpReturnsOnCall map[int]struct {
+		result1 git.VersionBump
+	}
 	GetNextVersionStub        func(context.Context, git.VersionBump) (string, error)
 	getNextVersionMutex       sync.RWMutex
 	getNextVersionArgsForCall []struct {
@@ -281,6 +304,129 @@ func (fake *Releaser) CommitOnlyReturnsOnCall(i int, result1 error) {
 	}
 	fake.commitOnlyReturnsOnCall[i] = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) CommitWithRetry(arg1 context.Context, arg2 func(context.Context) error) error {
+	fake.commitWithRetryMutex.Lock()
+	ret, specificReturn := fake.commitWithRetryReturnsOnCall[len(fake.commitWithRetryArgsForCall)]
+	fake.commitWithRetryArgsForCall = append(fake.commitWithRetryArgsForCall, struct {
+		arg1 context.Context
+		arg2 func(context.Context) error
+	}{arg1, arg2})
+	stub := fake.CommitWithRetryStub
+	fakeReturns := fake.commitWithRetryReturns
+	fake.recordInvocation("CommitWithRetry", []interface{}{arg1, arg2})
+	fake.commitWithRetryMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) CommitWithRetryCallCount() int {
+	fake.commitWithRetryMutex.RLock()
+	defer fake.commitWithRetryMutex.RUnlock()
+	return len(fake.commitWithRetryArgsForCall)
+}
+
+func (fake *Releaser) CommitWithRetryCalls(stub func(context.Context, func(context.Context) error) error) {
+	fake.commitWithRetryMutex.Lock()
+	defer fake.commitWithRetryMutex.Unlock()
+	fake.CommitWithRetryStub = stub
+}
+
+func (fake *Releaser) CommitWithRetryArgsForCall(i int) (context.Context, func(context.Context) error) {
+	fake.commitWithRetryMutex.RLock()
+	defer fake.commitWithRetryMutex.RUnlock()
+	argsForCall := fake.commitWithRetryArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Releaser) CommitWithRetryReturns(result1 error) {
+	fake.commitWithRetryMutex.Lock()
+	defer fake.commitWithRetryMutex.Unlock()
+	fake.CommitWithRetryStub = nil
+	fake.commitWithRetryReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) CommitWithRetryReturnsOnCall(i int, result1 error) {
+	fake.commitWithRetryMutex.Lock()
+	defer fake.commitWithRetryMutex.Unlock()
+	fake.CommitWithRetryStub = nil
+	if fake.commitWithRetryReturnsOnCall == nil {
+		fake.commitWithRetryReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.commitWithRetryReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Releaser) DetermineBump(arg1 context.Context) git.VersionBump {
+	fake.determineBumpMutex.Lock()
+	ret, specificReturn := fake.determineBumpReturnsOnCall[len(fake.determineBumpArgsForCall)]
+	fake.determineBumpArgsForCall = append(fake.determineBumpArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.DetermineBumpStub
+	fakeReturns := fake.determineBumpReturns
+	fake.recordInvocation("DetermineBump", []interface{}{arg1})
+	fake.determineBumpMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Releaser) DetermineBumpCallCount() int {
+	fake.determineBumpMutex.RLock()
+	defer fake.determineBumpMutex.RUnlock()
+	return len(fake.determineBumpArgsForCall)
+}
+
+func (fake *Releaser) DetermineBumpCalls(stub func(context.Context) git.VersionBump) {
+	fake.determineBumpMutex.Lock()
+	defer fake.determineBumpMutex.Unlock()
+	fake.DetermineBumpStub = stub
+}
+
+func (fake *Releaser) DetermineBumpArgsForCall(i int) context.Context {
+	fake.determineBumpMutex.RLock()
+	defer fake.determineBumpMutex.RUnlock()
+	argsForCall := fake.determineBumpArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Releaser) DetermineBumpReturns(result1 git.VersionBump) {
+	fake.determineBumpMutex.Lock()
+	defer fake.determineBumpMutex.Unlock()
+	fake.DetermineBumpStub = nil
+	fake.determineBumpReturns = struct {
+		result1 git.VersionBump
+	}{result1}
+}
+
+func (fake *Releaser) DetermineBumpReturnsOnCall(i int, result1 git.VersionBump) {
+	fake.determineBumpMutex.Lock()
+	defer fake.determineBumpMutex.Unlock()
+	fake.DetermineBumpStub = nil
+	if fake.determineBumpReturnsOnCall == nil {
+		fake.determineBumpReturnsOnCall = make(map[int]struct {
+			result1 git.VersionBump
+		})
+	}
+	fake.determineBumpReturnsOnCall[i] = struct {
+		result1 git.VersionBump
 	}{result1}
 }
 

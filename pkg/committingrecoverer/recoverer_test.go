@@ -81,6 +81,17 @@ func (s *stubReleaser) PushBranch(_ context.Context) error {
 	return s.pushBranchErr
 }
 
+func (s *stubReleaser) DetermineBump(_ context.Context) git.VersionBump {
+	return git.PatchBump
+}
+
+func (s *stubReleaser) CommitWithRetry(
+	ctx context.Context,
+	fn func(context.Context) error,
+) error {
+	return fn(ctx)
+}
+
 type stubAutoCompleter struct {
 	checkAndCompleteErr    error
 	checkAndCompleteCalled int

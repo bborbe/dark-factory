@@ -1,8 +1,9 @@
 ---
-status: prompted
+status: verifying
 approved: "2026-06-26T07:19:46Z"
 generating: "2026-06-26T07:19:47Z"
 prompted: "2026-06-26T07:26:00Z"
+verifying: "2026-06-26T12:40:33Z"
 branch: dark-factory/centralize-subprocess-runner
 ---
 
@@ -107,3 +108,21 @@ Rationale: prompt 1 lands the gate first so subsequent migrations have a build-t
 ## Do-Nothing Option
 
 The current code keeps working — the four bad sites are all in low-traffic paths. The architecture review's concern is consistency and future drift, not a live incident. Cost of not doing this: every new spawn site is one more place where an author has to pick between five patterns and is likely to copy the worst nearby example. Project-name resolution remains a latent hang risk on a slow git remote. Dirty-file check remains a latent hang risk on a broken filesystem. Both have been observed once each in operator anecdote but not as outage-class events. Acceptable to defer for one quarter; not acceptable to defer indefinitely.
+
+## Verification Result
+
+**Verified:** 2026-06-26T12:40:33Z (HEAD f71ce1c)
+**Binary:** /tmp/dark-factory-f71ce1c (`dark-factory dev` built from HEAD)
+**Scenario:** Direct execution of spec `## Verification` commands plus AC-specific gate/test artifacts; no scenario file referenced.
+**Evidence:**
+- AC 1: `bash scripts/hotpath-execcheck.sh strict` exit=0 on clean tree; after injecting `exec.CommandContext(nil,"x")` into `pkg/git/git.go`, exit=1 with stderr `hotpath-execcheck: raw exec.Command(Context) found ... pkg/git/git.go:274:func tempRaw() { _ = exec.CommandContext(nil, "x") }`; reverted, exit=0.
+- AC 2-3: `grep -nE '^hotpath-execcheck:' Makefile` → `54:hotpath-execcheck:` (1 line); `grep -nE '^precommit:' Makefile` → `16:precommit: ... hotpath-execcheck ...`; `make hotpath-execcheck` exit=0; `make precommit` exit=0 (full chain incl. addlicense + check-changelog).
+- AC 4: `go test -v ./pkg/project/... -ginkgo.focus="CancelledCtx"` → `Ran 1 of 12 Specs ... SUCCESS! -- 1 Passed | 0 Failed`.
+- AC 5: `go test -v ./pkg/processor/... -ginkgo.focus="DirtyTimeout"` → `Ran 1 of 196 Specs ... SUCCESS! -- 1 Passed | 0 Failed`.
+- AC 6: production `pkg/git/*.go` (excluding `_test.go`) has zero `exec.Command(Context)?(` matches; `-ginkgo.focus="RunnerInjected"` → `Ran 7 of 227 Specs ... SUCCESS!`.
+- AC 7: `-ginkgo.focus="TruncateStderr"` → `Ran 1 of 227 Specs ... SUCCESS!`.
+- AC 8: `make precommit` (which invokes `make generate` + `make addlicense`) exit=0; post-run `git status --porcelain mocks/` empty.
+- AC 9: `bash scripts/hotpath-execcheck.sh strict` exit=0 despite raw `exec.CommandContext(` in `pkg/executor/checker.go:87`, `pkg/executor/stopper.go:32`, `pkg/executor/executor.go` (8 sites), and `pkg/executor/launch.go` — allow-list working.
+- AC 10: `-ginkgo.focus="ExitCodePropagated"` → `Ran 1 of 227 Specs ... SUCCESS!`.
+- External: PRs [#38](https://github.com/bborbe/dark-factory/pull/38) (prompts 1-4), [#40](https://github.com/bborbe/dark-factory/pull/40) (prompt 5 strict flip), [#41](https://github.com/bborbe/dark-factory/pull/41) (preflight stderr regression fix) all MERGED; `Linked Prompts: 5/5` from `dark-factory spec show 100`.
+**Verdict:** PASS

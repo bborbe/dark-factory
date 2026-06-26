@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: ["101"]
+summary: Migrated five prompt-state consumers (lifecycle, resumer, recoverer, queuescanner, cancellationwatcher) to use pkg/promptstate.InterpretRawTuple; added InterpretRawTuple/IsPreExecutionStatus/StatusFromRaw helpers; all inline prompt.PromptStatus tokens removed from consumer files; tests and coverage maintained.
+container: dark-factory-exec-477-spec-101-migrate-five-consumers
+dark-factory-version: v0.183.0
 created: "2026-06-26T08:01:00Z"
 queued: "2026-06-26T08:00:41Z"
+started: "2026-06-26T08:56:01Z"
+completed: "2026-06-26T09:06:48Z"
 ---
 
 <summary>

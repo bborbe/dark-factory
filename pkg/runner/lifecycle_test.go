@@ -151,4 +151,66 @@ var _ = Describe("startupSequence", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(content)).To(ContainSubstring("status: executing"))
 	})
+
+	It("leaves executing prompt as-is when container is still running", func() {
+		Expect(os.MkdirAll(deps.InProgressDir, 0750)).To(Succeed())
+
+		promptPath := filepath.Join(deps.InProgressDir, "001-running.md")
+		Expect(
+			os.WriteFile(
+				promptPath,
+				[]byte("---\nstatus: executing\ncontainer: proj-001-running\n---\ncontent"),
+				0600,
+			),
+		).To(Succeed())
+
+		pf := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{
+				Status:    string(prompt.ExecutingPromptStatus),
+				Container: "proj-001-running",
+			},
+			[]byte("content"),
+			libtime.NewCurrentDateTime(),
+		)
+		mgr.LoadReturns(pf, nil)
+		containerChecker.IsRunningReturns(true, nil)
+
+		Expect(runner.RunStartupSequenceForTest(ctx, deps)).To(Succeed())
+
+		content, err := os.ReadFile(promptPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(content)).To(ContainSubstring("status: executing"))
+	})
+
+	It("resets executing prompt to approved when container is gone", func() {
+		Expect(os.MkdirAll(deps.InProgressDir, 0750)).To(Succeed())
+
+		promptPath := filepath.Join(deps.InProgressDir, "001-gone.md")
+		Expect(
+			os.WriteFile(
+				promptPath,
+				[]byte("---\nstatus: executing\ncontainer: proj-001-gone\n---\ncontent"),
+				0600,
+			),
+		).To(Succeed())
+
+		pf := prompt.NewPromptFile(
+			promptPath,
+			prompt.Frontmatter{
+				Status:    string(prompt.ExecutingPromptStatus),
+				Container: "proj-001-gone",
+			},
+			[]byte("content"),
+			libtime.NewCurrentDateTime(),
+		)
+		mgr.LoadReturns(pf, nil)
+		containerChecker.IsRunningReturns(false, nil)
+
+		Expect(runner.RunStartupSequenceForTest(ctx, deps)).To(Succeed())
+
+		content, err := os.ReadFile(promptPath)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(content)).To(ContainSubstring("status: approved"))
+	})
 })

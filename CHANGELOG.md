@@ -12,6 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- refactor: migrate the five prompt-state consumers (runner lifecycle, promptresumer, committingrecoverer, queuescanner, cancellationwatcher) to pkg/promptstate.InterpretTuple; remove inline frontmatter-status interpretation (spec 101 prompt 2)
 - feat: add pkg/promptstate — single owner of prompt-state interpretation with State enum, IsValidTransition transition table, and pure InterpretTuple(location, status, container, dockerState) (spec 101 prompt 1)
 - feat: add `make hotpath-execcheck` lint gate (warn mode) that flags raw exec.Command(Context) calls in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 1)
 - fix: route all pkg/git and pkg/gitprovider/bitbucket subprocess spawns through pkg/subproc.Runner (warn-on-slow + bounded timeout); 8 KiB stderr truncation and *exec.ExitError exit-code propagation preserved; adds additive RunWithWarnAndTimeoutEnv for GH_TOKEN-carrying gh calls (spec 100 prompt 3)

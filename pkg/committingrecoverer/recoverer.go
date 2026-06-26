@@ -14,6 +14,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptstate"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
 
@@ -128,7 +129,17 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		}
 	}
 
+	location := promptstate.LocationInProgress
 	if filepath.Clean(filepath.Dir(promptPath)) == filepath.Clean(r.completedDir) {
+		location = promptstate.LocationCompleted
+	}
+	state := promptstate.InterpretRawTuple(
+		location,
+		pf.Frontmatter.Status,
+		pf.Frontmatter.Container,
+		promptstate.DockerStateUnavailable,
+	)
+	if state == promptstate.StateCompleted {
 		pf.MarkCompleted()
 		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "mark completed in place during half-state recovery")

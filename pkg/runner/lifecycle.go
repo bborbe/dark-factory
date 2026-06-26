@@ -16,7 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/notifier"
-	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptstate"
 	"github.com/bborbe/dark-factory/pkg/slugmigrator"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -256,9 +256,6 @@ func resumeOrResetExecutingEntry(
 	if err != nil || pf == nil {
 		return nil
 	}
-	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
-		return nil
-	}
 	containerName := pf.Frontmatter.Container
 	running, err := checker.IsRunning(ctx, containerName)
 	if err != nil {
@@ -271,7 +268,18 @@ func resumeOrResetExecutingEntry(
 			"file", name, "container", containerName, "error", err)
 		return errors.Wrapf(ctx, err, "check container liveness %s", containerName)
 	}
+	dockerState := promptstate.DockerStateStopped
 	if running {
+		dockerState = promptstate.DockerStateRunning
+	}
+	state := promptstate.InterpretRawTuple(
+		promptstate.LocationInProgress,
+		pf.Frontmatter.Status,
+		containerName,
+		dockerState,
+	)
+	switch state {
+	case promptstate.StateExecuting:
 		slog.Info(
 			"resuming prompt, container still running",
 			"file",
@@ -280,15 +288,18 @@ func resumeOrResetExecutingEntry(
 			containerName,
 		)
 		return nil
+	case promptstate.StateAborted:
+		slog.Info("resetting prompt, container not found", "file", name, "container", containerName)
+		if n != nil {
+			_ = n.Notify(ctx, notifier.Event{
+				ProjectName: projectName,
+				EventType:   "stuck_container",
+				PromptName:  name,
+			})
+		}
+		pf.MarkApproved()
+		return errors.Wrap(ctx, pf.Save(ctx), "reset executing prompt")
+	default:
+		return nil
 	}
-	slog.Info("resetting prompt, container not found", "file", name, "container", containerName)
-	if n != nil {
-		_ = n.Notify(ctx, notifier.Event{
-			ProjectName: projectName,
-			EventType:   "stuck_container",
-			PromptName:  name,
-		})
-	}
-	pf.MarkApproved()
-	return errors.Wrap(ctx, pf.Save(ctx), "reset executing prompt")
 }

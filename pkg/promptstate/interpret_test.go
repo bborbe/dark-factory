@@ -15,6 +15,39 @@ import (
 	promptstate "github.com/bborbe/dark-factory/pkg/promptstate"
 )
 
+// ---- Tests for the raw-string helpers (requirement 0) ----
+
+func TestInterpretRawTupleMatchesInterpretTuple(t *testing.T) {
+	got := promptstate.InterpretRawTuple(
+		promptstate.LocationInProgress,
+		string(prompt.ExecutingPromptStatus),
+		"c1",
+		promptstate.DockerStateRunning,
+	)
+	if got != promptstate.StateExecuting {
+		t.Fatalf("InterpretRawTuple: want StateExecuting, got %s", got)
+	}
+}
+
+func TestIsPreExecutionStatusApproved(t *testing.T) {
+	if !promptstate.IsPreExecutionStatus("approved") {
+		t.Fatal("want IsPreExecutionStatus(approved) == true")
+	}
+}
+
+func TestIsPreExecutionStatusExecuting(t *testing.T) {
+	if promptstate.IsPreExecutionStatus("executing") {
+		t.Fatal("want IsPreExecutionStatus(executing) == false")
+	}
+}
+
+func TestStatusFromRaw(t *testing.T) {
+	got := promptstate.StatusFromRaw("approved")
+	if got != prompt.ApprovedPromptStatus {
+		t.Fatalf("StatusFromRaw: want ApprovedPromptStatus, got %s", got)
+	}
+}
+
 // ---- Plain testing.T functions required by AC-11 (-run 'Recover|Resume|HalfState|Cancel') ----
 
 func TestResumeExecutingStaysExecuting(t *testing.T) {

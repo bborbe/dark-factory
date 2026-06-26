@@ -86,3 +86,28 @@ func InterpretTuple(
 		return StateUnknown
 	}
 }
+
+// InterpretRawTuple is InterpretTuple with the raw on-disk status string as input.
+// Consumers pass pf.Frontmatter.Status directly; the PromptStatus conversion lives
+// here so consumer files contain no prompt.PromptStatus token (spec AC-3 gate).
+func InterpretRawTuple(
+	location Location,
+	rawStatus string,
+	container string,
+	dockerState DockerState,
+) State {
+	return InterpretTuple(location, prompt.PromptStatus(rawStatus), container, dockerState)
+}
+
+// IsPreExecutionStatus reports whether the raw status is a pre-execution status
+// (idea/draft/approved). It preserves the queuescanner pre-lock gate semantics,
+// which are broader than the seven canonical InterpretTuple states.
+func IsPreExecutionStatus(rawStatus string) bool {
+	return prompt.PromptStatus(rawStatus).IsPreExecution()
+}
+
+// StatusFromRaw converts a raw on-disk status string to a prompt.PromptStatus,
+// keeping the conversion inside the allow-listed owner package.
+func StatusFromRaw(rawStatus string) prompt.PromptStatus {
+	return prompt.PromptStatus(rawStatus)
+}

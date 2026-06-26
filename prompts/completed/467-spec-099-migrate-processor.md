@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [099-correlation-ids-structured-logging]
+summary: 'Migrated pkg/processor to context-bound logger: bound per-prompt correlation attrs (prompt_id/spec_id/container/workflow_type) at ProcessPrompt entry, re-bind container on assignment, added workflow_step at key decision points, replaced all bare slog calls with log.From(ctx), normalized keys to snake_case, added bindPromptLogger helper with test, updated all NewProcessor call sites with workflowType param.'
+container: dark-factory-exec-467-spec-099-migrate-processor
+dark-factory-version: v0.183.0
 created: "2026-06-26T05:42:49Z"
 queued: "2026-06-26T06:13:15Z"
+started: "2026-06-26T06:18:20Z"
+completed: "2026-06-26T06:34:57Z"
 branch: dark-factory/correlation-ids-structured-logging
 ---
 

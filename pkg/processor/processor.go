@@ -18,10 +18,12 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
@@ -85,6 +87,8 @@ func NewProcessor(
 	projectName project.Name,
 	failureHandler failurehandler.Handler,
 	resumer promptresumer.Resumer,
+	// workflowType is the configured workflow (direct/branch/clone/worktree); used as the workflow_type log attr.
+	workflowType config.Workflow,
 	verificationGate bool,
 	completionReportValidator completionreport.Validator,
 	promptEnricher promptenricher.Enricher,
@@ -126,6 +130,7 @@ func NewProcessor(
 		dirs:                      dirs,
 		projectName:               projectName,
 		resumer:                   resumer,
+		workflowType:              workflowType,
 		verificationGate:          verificationGate,
 		queueInterval:             queueInterval,
 		sweepInterval:             sweepInterval,
@@ -154,6 +159,7 @@ type processor struct {
 	dirs                      Dirs
 	projectName               project.Name
 	resumer                   promptresumer.Resumer
+	workflowType              config.Workflow
 	verificationGate          bool
 	queueInterval             time.Duration
 	sweepInterval             time.Duration
@@ -171,7 +177,7 @@ func (p *processor) Process(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	slog.Info("processor started")
+	log.From(ctx).Info("processor started")
 
 	// Startup scans — do NOT fire onIdle here; that would cancel one-shot before work starts.
 	if _, err := p.specSweeper.Sweep(ctx); err != nil {
@@ -182,7 +188,9 @@ func (p *processor) Process(ctx context.Context) error {
 		if stderrors.Is(err, ErrPreflightFailed) {
 			return err
 		}
-		slog.Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
+		log.From(ctx).
+			Warn("prompt failed on startup scan; queue blocked until manual retry", "error", err)
+
 		// do NOT return — daemon continues running
 	}
 
@@ -202,7 +210,7 @@ func (p *processor) Process(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("processor shutting down")
+			log.From(ctx).Info("processor shutting down")
 			return nil
 
 		case <-p.wakeup:
@@ -234,7 +242,7 @@ func (p *processor) runReadyTick(ctx context.Context, cancel context.CancelFunc)
 		if stderrors.Is(err, ErrPreflightFailed) {
 			return err
 		}
-		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+		log.From(ctx).Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
 	if !(tickResult{completedPrompts: completed}).madeProgress() {
 		p.onIdle(ctx, cancel)
@@ -251,7 +259,7 @@ func (p *processor) runQueueTick(ctx context.Context, cancel context.CancelFunc)
 		if stderrors.Is(err, ErrPreflightFailed) {
 			return err
 		}
-		slog.Warn("prompt failed; queue blocked until manual retry", "error", err)
+		log.From(ctx).Warn("prompt failed; queue blocked until manual retry", "error", err)
 	}
 	if !(tickResult{completedPrompts: completed}).madeProgress() {
 		p.onIdle(ctx, cancel)
@@ -263,7 +271,7 @@ func (p *processor) runQueueTick(ctx context.Context, cancel context.CancelFunc)
 func (p *processor) runSweepTick(ctx context.Context) bool {
 	transitioned, err := p.specSweeper.Sweep(ctx)
 	if err != nil {
-		slog.Warn("periodic spec sweep failed", "error", err)
+		log.From(ctx).Warn("periodic spec sweep failed", "error", err)
 	}
 	return (tickResult{transitionedSpecs: transitioned}).madeProgress()
 }
@@ -307,7 +315,13 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 	}
 	content = p.promptEnricher.Enrich(ctx, content)
 
-	slog.Info("executing prompt", "title", title)
+	specID := ""
+	if specs := pf.Frontmatter.Specs; len(specs) > 0 {
+		specID = specs[0]
+	}
+	ctx = bindPromptLogger(ctx, baseName.String(), specID, "", p.workflowType.String())
+
+	log.From(ctx).Info("executing prompt", "title", title)
 
 	// Derive log file path before Setup, which may os.Chdir to clone/worktree dir.
 	logFile, err := filepath.Abs(filepath.Join(p.dirs.Log, string(baseName)+".log"))
@@ -330,6 +344,13 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
+	log.From(ctx).Info("container assigned",
+		"container_old", "",
+		"container", containerName.String(),
+		"workflow_step", "acquire_container",
+	)
+	ctx = log.NewContext(ctx, log.From(ctx).With("container", containerName.String()))
+
 	// Acquire container lock only for the check-and-start window, not during prep work above.
 	releaseLock, err := p.containerSlotManager.Acquire(ctx)
 	if err != nil {
@@ -349,17 +370,26 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return execErr
 	}
 
+	return p.completeAfterExecution(ctx, pf, logFile, pr.Path, title)
+}
+
+// completeAfterExecution runs the post-container phase: report validation, then workflow Complete.
+func (p *processor) completeAfterExecution(
+	ctx context.Context,
+	pf *prompt.PromptFile,
+	logFile, promptPath, title string,
+) error {
 	gitCtx := context.WithoutCancel(ctx)
-	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(pr.Path))
+	completedPath := filepath.Join(p.dirs.Completed, filepath.Base(promptPath))
 
 	// Verification gate: pause before git operations if enabled
 	if p.verificationGate {
-		return p.enterPendingVerification(ctx, pf, pr.Path)
+		return p.enterPendingVerification(ctx, pf, promptPath)
 	}
 
 	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
 	if err != nil {
-		p.failureHandler.NotifyFromReport(ctx, logFile, pr.Path)
+		p.failureHandler.NotifyFromReport(ctx, logFile, promptPath)
 		return errors.Wrap(ctx, err, "validate completion report")
 	}
 	if completionReport != nil && completionReport.Summary != "" {
@@ -369,7 +399,7 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 		}
 	}
 
-	return p.workflowExecutor.Complete(gitCtx, ctx, pf, title, pr.Path, completedPath)
+	return p.workflowExecutor.Complete(gitCtx, ctx, pf, title, promptPath, completedPath)
 }
 
 // runContainer starts the YOLO container with a cancellation watcher and returns whether
@@ -401,7 +431,7 @@ func (p *processor) runContainer(
 	execErr := p.executor.Execute(execCtx, content, logFile, containerName.String())
 
 	if cancelledByUser.Load() {
-		slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
+		log.From(ctx).Info("prompt cancelled", "workflow_step", "cancel")
 		return true, nil
 	}
 	if execErr != nil {
@@ -410,21 +440,24 @@ func (p *processor) runContainer(
 		// stopping the container, so this is the ground truth.
 		if pf, loadErr := p.promptManager.Load(ctx, promptPath); loadErr == nil &&
 			pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
-			slog.Info("prompt cancelled", "file", filepath.Base(promptPath))
+			log.From(ctx).Info("prompt cancelled", "workflow_step", "cancel")
 			return true, nil
 		}
 		if ctx.Err() != nil {
-			slog.Info("daemon shutting down, leaving container running")
+			log.From(ctx).Info("daemon shutting down, leaving container running")
 		} else {
-			slog.Info("docker container exited with error", "error", execErr)
+			log.From(ctx).Info("docker container exited with error",
+				"error", execErr,
+				"workflow_step", "run_claude",
+			)
 		}
 		return false, errors.Wrap(ctx, execErr, "execute prompt")
 	}
 	if ctx.Err() != nil {
-		slog.Info("daemon shutting down, leaving container running")
+		log.From(ctx).Info("daemon shutting down, leaving container running")
 		return false, errors.Wrap(ctx, ctx.Err(), "daemon shutdown during execution")
 	}
-	slog.Info("docker container exited", "exitCode", 0)
+	log.From(ctx).Info("docker container exited", "exit_code", 0, "workflow_step", "run_claude")
 	return false, nil
 }
 
@@ -440,16 +473,12 @@ func (p *processor) enterPendingVerification(
 	}
 	hint := pf.VerificationSection()
 	if hint != "" {
-		slog.Info(
+		log.From(ctx).Info(
 			"prompt pending verification — run the following checks, then: dark-factory prompt verify <file>",
-			"file",
-			filepath.Base(promptPath),
-			"verification",
-			hint,
+			"verification", hint,
 		)
 	} else {
-		slog.Info("prompt pending verification",
-			"file", filepath.Base(promptPath),
+		log.From(ctx).Info("prompt pending verification",
 			"hint", "run: dark-factory prompt verify <file> when ready",
 		)
 	}
@@ -464,12 +493,9 @@ func (p *processor) handleEmptyPrompt(
 ) error {
 	// If prompt is empty, move to completed and skip execution
 	if stderrors.Is(contentErr, prompt.ErrEmptyPrompt) {
-		slog.Debug(
+		log.From(ctx).Debug(
 			"skipping empty prompt",
-			"file",
-			filepath.Base(promptPath),
-			"reason",
-			"file may still be in progress",
+			"reason", "file may still be in progress",
 		)
 		// Move empty prompts to completed/ (but don't commit)
 		if err := p.promptManager.MoveToCompleted(ctx, promptPath); err != nil {
@@ -485,14 +511,25 @@ func (p *processor) handleEmptyPrompt(
 // already prevents the daemon from re-executing the prompt.
 func (p *processor) moveCancelledPrompt(ctx context.Context, promptPath string) {
 	if moveErr := p.promptManager.MoveToCancelled(ctx, promptPath); moveErr != nil {
-		slog.Warn(
+		log.From(ctx).Warn(
 			"failed to move cancelled prompt",
-			"file",
-			filepath.Base(promptPath),
-			"error",
-			moveErr,
+			"error", moveErr,
 		)
 	}
+}
+
+// bindPromptLogger returns ctx carrying a logger with the four correlation attrs
+// (spec 099). All downstream log.From(ctx) calls inherit these attrs.
+func bindPromptLogger(
+	ctx context.Context,
+	promptID, specID, container, workflowType string,
+) context.Context {
+	return log.NewContext(ctx, slog.Default().With(
+		"prompt_id", promptID,
+		"spec_id", specID,
+		"container", container,
+		"workflow_type", workflowType,
+	))
 }
 
 // computePromptMetadata derives the baseName and containerName from the prompt path and project name.

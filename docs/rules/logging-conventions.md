@@ -21,6 +21,9 @@ Introducing a new key requires editing **both** this document **and** the
 | `dir`           | Directory path relevant to the operation                     |
 | `branch`        | Git branch name                                              |
 | `workflow_step` | Named step within the processor lifecycle                    |
+| `container_old` | Previous container name, emitted only on the "container assigned" transition line |
+
+Correlation keys are fixed; informational keys are permitted but MUST be snake_case.
 
 ## Threading
 

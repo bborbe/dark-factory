@@ -693,6 +693,7 @@ var _ = Describe("Processor", func() {
 				project.Name("sweep-test"),
 				sweepFH,
 				sweepResumer,
+				config.WorkflowDirect,
 				false,
 				completionreport.NewValidator(),
 				promptenricher.NewEnricher(

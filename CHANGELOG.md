@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - feat: add pkg/log context-logger helpers (NewContext/From), docs/rules/logging-conventions.md convention doc, and `make hotpath-logcheck` target (warn mode) — foundation for per-prompt correlation-id structured logging (spec 099 prompt 1)
+- refactor: migrate pkg/processor to the context-bound logger; bind per-prompt correlation attrs (prompt_id/spec_id/container/workflow_type) at ProcessPrompt entry, re-bind container on assignment, add workflow_step at decision points (spec 099 prompt 2)
 
 ## v0.183.0
 

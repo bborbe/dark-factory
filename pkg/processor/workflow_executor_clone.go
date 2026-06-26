@@ -6,12 +6,12 @@ package processor
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/bborbe/errors"
 
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -64,12 +64,10 @@ func (e *cloneWorkflowExecutor) Setup(
 	if err := os.Chdir(e.clonePath); err != nil {
 		// Remove clone since we couldn't chdir into it
 		if removeErr := e.deps.Cloner.Remove(ctx, e.clonePath); removeErr != nil {
-			slog.Warn(
+			log.From(ctx).Warn(
 				"failed to remove clone after chdir error",
-				"path",
-				e.clonePath,
-				"error",
-				removeErr,
+				"dir", e.clonePath,
+				"error", removeErr,
 			)
 		}
 		return errors.Wrap(ctx, err, "chdir to clone")
@@ -85,12 +83,12 @@ func (e *cloneWorkflowExecutor) CleanupOnError(ctx context.Context) {
 	}
 	if e.originalDir != "" {
 		if err := os.Chdir(e.originalDir); err != nil {
-			slog.Warn("failed to chdir back to original directory on error", "error", err)
+			log.From(ctx).Warn("failed to chdir back to original directory on error", "error", err)
 		}
 	}
 	if e.clonePath != "" {
 		if err := e.deps.Cloner.Remove(ctx, e.clonePath); err != nil {
-			slog.Warn("failed to remove clone on error", "path", e.clonePath, "error", err)
+			log.From(ctx).Warn("failed to remove clone on error", "dir", e.clonePath, "error", err)
 		}
 	}
 }
@@ -107,7 +105,7 @@ func (e *cloneWorkflowExecutor) Complete(
 	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+	log.From(ctx).Info("moved to completed")
 
 	// Single combined commit: work changes + prompt move.
 	if err := e.deps.Releaser.CommitOnly(gitCtx, title); err != nil {
@@ -128,7 +126,7 @@ func (e *cloneWorkflowExecutor) Complete(
 
 	// no rollback needed: clone is discarded on cleanup; original prompt path untouched
 	if err := e.deps.Cloner.Remove(gitCtx, e.clonePath); err != nil {
-		slog.Warn("failed to remove clone", "path", e.clonePath, "error", err)
+		log.From(ctx).Warn("failed to remove clone", "dir", e.clonePath, "error", err)
 	}
 	e.cleanedUp = true
 
@@ -138,11 +136,10 @@ func (e *cloneWorkflowExecutor) Complete(
 		promptPath,
 		completedPath,
 	); syncErr != nil {
-		slog.WarnContext(ctx,
+		log.From(ctx).Warn(
 			"clone-sync-mismatch",
-			"promptPath", promptPath,
-			"completedPath", completedPath,
-			"remoteBranch", e.branchName,
+			"completed_path", completedPath,
+			"remote_branch", e.branchName,
 			"error", syncErr.Error(),
 			"hint", "remote has the rename; run `git pull` on the original repo to catch up",
 		)

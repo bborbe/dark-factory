@@ -133,6 +133,7 @@ func newTestProcessor(
 		project.Name(projectName),
 		fh,
 		resumer,
+		workflow,
 		verificationGate,
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(

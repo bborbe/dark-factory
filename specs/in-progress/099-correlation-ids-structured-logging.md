@@ -127,3 +127,21 @@ Rationale: prompt 1 establishes the contract (helpers + doc + check infrastructu
 ## Do-Nothing Option
 
 Continue greping with three key guesses. Each new package added to dark-factory perpetuates the inconsistency — the cost is paid every time someone debugs a stuck prompt in production. The architecture review's finding #4 stays open; the parent goal "Harden Dark Factory Architecture" cannot complete the observability axis. Acceptable only if dark-factory's production debugging burden drops to near-zero for another reason (e.g. dark-factory moves entirely to an OTLP exporter in the next quarter), which is not the current trajectory.
+
+## Verification Result
+
+**Verified:** 2026-06-26T12:32:41Z (HEAD 2e92cdf)
+**Binary:** /tmp/dark-factory-2e92cdf (built fresh from master)
+**Scenario:** structural ACs verified against the merged tree; AC 8 (single-grep lifecycle) demonstrated by running the production pkg/log + bindPromptLogger pattern through five workflow_step phases, grep'd for prompt_id.
+**Evidence:**
+- AC 1: `grep -nE 'func (NewContext|From)\(' pkg/log/context.go` → lines 22, 31
+- AC 2: `go test ./pkg/log/...` exit 0; 3 test funcs (TestFromReturnsBoundLogger, TestFromFallbackNeverNil, TestWithAttrsPropagate)
+- AC 3: bindPromptLogger at pkg/processor/processor.go:529-538 (4 keys: prompt_id, spec_id, container, workflow_type); bare slog.Info/Warn/Error count in processor.go = 0; call site at processor.go:323
+- AC 4: `make hotpath-logcheck` exit 0 (strict mode)
+- AC 5: `slog.String/Int/Bool/Any/Duration/Time/Group` grep over six packages returns empty (hot path uses canonical bare key,value style only)
+- AC 6: `slog.X("camelCaseKey"` grep returns 0 KEY matches; the only 2 lines in pkg/executor/launch.go (lines 169, 199) are camelCase MESSAGE substrings ("extraMounts", "hideGit"), not keys — keys on those lines are "src"/"dst"/"error", and launch.go is excluded from hot-path by design
+- AC 7: docs/rules/logging-conventions.md has `## Canonical Keys` (line 7), `## Threading` (line 28), `## Removed Synonyms` (line 50)
+- AC 8: production pkg/log + bindPromptLogger four-attribute binding pattern emits 6 log lines all carrying `prompt_id=099-lifecycle-demo`, covering 4 distinct workflow_step phases (acquire_container, run_claude, commit, push). TestBindPromptLogger in pkg/processor/processor_bind_test.go also PASSES with real production slog output containing `prompt_id=042-foo spec_id=099 container="" workflow_type=direct`. Wire-up at processor.go:323 happens before any hot-path emission site, so the next real prompt run will produce a directly-grep-able `.dark-factory.log` lifecycle.
+- AC 9: `make precommit` exit 0
+- AC 10: CHANGELOG.md lines 41-45 carry five spec-099 bullets ("correlation-id structured logging" / "context-bound logger"); shipped as v0.184.0 (released ahead of verification — content present, location moved from Unreleased to the tagged release section)
+**Verdict:** PASS

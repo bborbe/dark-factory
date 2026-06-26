@@ -57,6 +57,14 @@ func ApplyGlobalOverrides(
 	if global.AutoGeneratePrompts != nil && proj.AutoGeneratePrompts == nil {
 		cfg.AutoGeneratePrompts = *global.AutoGeneratePrompts
 	}
+	// Env layering: project entries win on key collision, global fills the
+	// rest. Without this, global env (typically `ANTHROPIC_BASE_URL` +
+	// `ANTHROPIC_AUTH_TOKEN` for alt-provider configs) never reaches the
+	// container — claude defaults to anthropic.com with the global model
+	// name and silently fails. cfg.Env at this point is the project's env
+	// only (cfg was constructed from the project YAML), so merging global
+	// underneath gives project-wins-on-collision semantics.
+	cfg.Env = MergeEnv(global.Env, cfg.Env)
 }
 
 // ComputeFieldSources determines which config layer provided each of the

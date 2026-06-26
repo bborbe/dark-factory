@@ -220,21 +220,24 @@ func (c *claudeProbe) Name() string {
 
 func (c *claudeProbe) Run(ctx context.Context) error {
 	return runContainerProbe(ctx, runContainerProbeArgs{
-		policy:     c.policy,
-		runner:     c.runner,
-		category:   c.Name(),
-		op:         "claude session probe",
-		entrypoint: "claude",
-		// --dangerously-skip-permissions mirrors what the image's
-		// /usr/local/bin/entrypoint.sh passes to claude in headless mode
-		// (production prompt containers). Without it, claude prompts for
-		// permission on a fresh provider (e.g. ANTHROPIC_BASE_URL pointing
-		// at minimax / a self-hosted vLLM). With no TTY attached, the
-		// permission prompt fails immediately and claude exits 1 with no
-		// stdout/stderr — the silent failure operators saw on alt-provider
-		// configs while the default-claude case worked off cached
-		// permission grants in ~/.claude.
-		command:       []string{"-p", claudeProbePrompt, "--dangerously-skip-permissions"},
+		policy:   c.policy,
+		runner:   c.runner,
+		category: c.Name(),
+		op:       "claude session probe",
+		// No --entrypoint override: use the image's /usr/local/bin/entrypoint.sh
+		// — the SAME entry path production prompt containers use. The script
+		// does setpriv (root → node user), proxy/firewall init, and calls
+		// claude with --dangerously-skip-permissions + --model "$ANTHROPIC_MODEL"
+		// + --output-format stream-json + --verbose. By passing the SAME
+		// YOLO_OUTPUT=json the executor uses (pkg/executor/executor.go), the
+		// probe exercises the exact same claude argv as production — any drift
+		// (model rejection, auth failure, image regression) surfaces here too.
+		// successMarker "OK" still matches because the model's reply text is
+		// included in the stream-json output verbatim.
+		envOverlay: map[string]string{
+			"YOLO_PROMPT": claudeProbePrompt,
+			"YOLO_OUTPUT": "json",
+		},
 		successMarker: "OK",
 		failurePrefix: "claude session probe failed",
 	})
@@ -284,12 +287,13 @@ func (m *mountProbe) Run(ctx context.Context) error {
 type runContainerProbeArgs struct {
 	policy        launchpolicy.Policy
 	runner        subproc.Runner
-	category      string   // probe name ("boot", "mount", "claude")
-	op            string   // subproc op label
-	entrypoint    string   // container --entrypoint
-	command       []string // args appended after the image
-	successMarker string   // substring required in stdout for success
-	failurePrefix string   // error message prefix on failure
+	category      string            // probe name ("boot", "mount", "claude")
+	op            string            // subproc op label
+	entrypoint    string            // container --entrypoint (empty → use image default)
+	command       []string          // args appended after the image
+	envOverlay    map[string]string // merged ON TOP of policy.baseEnv via Extras.EnvOverlay
+	successMarker string            // substring required in stdout for success
+	failurePrefix string            // error message prefix on failure
 }
 
 // runContainerProbe is the shared body of bootProbe.Run, mountProbe.Run, claudeProbe.Run.
@@ -304,6 +308,7 @@ func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
 		ContainerName: name,
 		Entrypoint:    a.entrypoint,
 		Command:       a.command,
+		EnvOverlay:    a.envOverlay,
 	})
 	// #nosec G204 -- args are derived from the configured policy + a category-prefixed random container name, not user input
 	out, err := a.runner.RunWithWarnAndTimeout(

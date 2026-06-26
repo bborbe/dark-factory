@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 )
 
 type Manager struct {
@@ -153,4 +153,4 @@ func (fake *Manager) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ containerslot.Manager = new(Manager)
+var _ executionslot.Manager = new(Manager)

@@ -19,7 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -81,7 +81,7 @@ func NewProcessor(
 	autoCompleter spec.AutoCompleter,
 	specSweeper specsweeper.Sweeper,
 	preflightConditions preflightconditions.Conditions,
-	containerSlotManager containerslot.Manager,
+	executionSlotManager executionslot.Manager,
 	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
@@ -125,7 +125,7 @@ func NewProcessor(
 		specSweeper:               specSweeper,
 		failureHandler:            failureHandler,
 		preflightConditions:       preflightConditions,
-		containerSlotManager:      containerSlotManager,
+		executionSlotManager:      executionSlotManager,
 		cancellationWatcher:       cancellationWatcher,
 		wakeup:                    wakeup,
 		dirs:                      dirs,
@@ -154,7 +154,7 @@ type processor struct {
 	specSweeper               specsweeper.Sweeper
 	failureHandler            failurehandler.Handler
 	preflightConditions       preflightconditions.Conditions
-	containerSlotManager      containerslot.Manager
+	executionSlotManager      executionslot.Manager
 	cancellationWatcher       cancellationwatcher.Watcher
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
@@ -353,14 +353,14 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 	ctx = log.NewContext(ctx, log.From(ctx).With("container", containerName.String()))
 
 	// Acquire container lock only for the check-and-start window, not during prep work above.
-	releaseLock, err := p.containerSlotManager.Acquire(ctx)
+	releaseLock, err := p.executionSlotManager.Acquire(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare container slot")
 	}
 	defer releaseLock()
 
 	// Release the container lock once the container has started (not after it exits).
-	p.containerSlotManager.ReleaseAfterStart(ctx, containerName.String(), releaseLock)
+	p.executionSlotManager.ReleaseAfterStart(ctx, containerName.String(), releaseLock)
 
 	cancelled, execErr := p.runContainer(ctx, content, logFile, containerName, pr.Path)
 	if cancelled {

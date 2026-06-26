@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package containerslot
+package executionslot
 
 import (
 	"context"
@@ -16,33 +16,33 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
 
-//counterfeiter:generate -o ../../mocks/container-slot-manager.go --fake-name Manager . Manager
+//counterfeiter:generate -o ../../mocks/execution-slot-manager.go --fake-name Manager . Manager
 
-// Manager coordinates the per-host container concurrency limit.
+// Manager coordinates the per-host execution-slot concurrency limit.
 type Manager interface {
 	// Acquire blocks until a slot is available, then returns with the lock held
 	// and an idempotent release function.
 	Acquire(ctx context.Context) (release func(), err error)
 
-	// ReleaseAfterStart releases the lock once the named container is running
+	// ReleaseAfterStart releases the lock once the named execution is running
 	// (or after a 30s timeout). Spawns a goroutine; safe to call after Acquire.
-	ReleaseAfterStart(ctx context.Context, containerName string, release func())
+	ReleaseAfterStart(ctx context.Context, executionID string, release func())
 }
 
-// NewManager creates a Manager that controls container slot concurrency.
+// NewManager creates a Manager that controls execution slot concurrency.
 // lock may be nil (no locking); checker may be nil (skips release-after-start).
 func NewManager(
 	lock containerlock.ContainerLock,
 	counter executor.ContainerCounter,
 	checker executor.ExecutionChecker,
-	maxContainers int,
+	maxExecutions int,
 	pollInterval time.Duration,
 ) Manager {
 	return &manager{
 		lock:          lock,
 		counter:       counter,
 		checker:       checker,
-		maxContainers: maxContainers,
+		maxExecutions: maxExecutions,
 		pollInterval:  pollInterval,
 	}
 }
@@ -51,11 +51,11 @@ type manager struct {
 	lock          containerlock.ContainerLock
 	counter       executor.ContainerCounter
 	checker       executor.ExecutionChecker
-	maxContainers int
+	maxExecutions int
 	pollInterval  time.Duration
 }
 
-// Acquire acquires a container slot, blocking until one is available.
+// Acquire acquires an execution slot, blocking until one is available.
 // On success, returns with the lock held and an idempotent release function.
 func (m *manager) Acquire(ctx context.Context) (func(), error) {
 	if m.lock == nil {
@@ -83,7 +83,7 @@ func (m *manager) Acquire(ctx context.Context) (func(), error) {
 
 		// No slot — release before sleeping so other daemons can proceed.
 		releaseLock()
-		slog.Info("waiting for container slot", "limit", m.maxContainers)
+		slog.Info("waiting for container slot", "limit", m.maxExecutions)
 		select {
 		case <-ctx.Done():
 			return func() {}, errors.Wrapf(ctx, ctx.Err(), "wait for container slot cancelled")
@@ -92,21 +92,21 @@ func (m *manager) Acquire(ctx context.Context) (func(), error) {
 	}
 }
 
-// ReleaseAfterStart spawns a goroutine that releases the lock once the named container is running.
-func (m *manager) ReleaseAfterStart(ctx context.Context, containerName string, release func()) {
+// ReleaseAfterStart spawns a goroutine that releases the lock once the named execution is running.
+func (m *manager) ReleaseAfterStart(ctx context.Context, executionID string, release func()) {
 	if m.checker == nil {
 		return
 	}
 	cc := m.checker
 	go func() {
 		defer release()
-		_ = cc.WaitUntilRunning(ctx, containerName, 30*time.Second)
+		_ = cc.WaitUntilRunning(ctx, executionID, 30*time.Second)
 	}()
 }
 
 // waitForSlot polls until a slot is available (no lock held).
 func (m *manager) waitForSlot(ctx context.Context) error {
-	if m.maxContainers <= 0 {
+	if m.maxExecutions <= 0 {
 		return nil
 	}
 	for {
@@ -115,13 +115,13 @@ func (m *manager) waitForSlot(ctx context.Context) error {
 			slog.Warn("failed to count running containers, proceeding anyway", "error", err)
 			return nil
 		}
-		if count < m.maxContainers {
+		if count < m.maxExecutions {
 			return nil
 		}
 		slog.Info(
 			"waiting for container slot",
 			"running", count,
-			"limit", m.maxContainers,
+			"limit", m.maxExecutions,
 		)
 		select {
 		case <-ctx.Done():
@@ -131,10 +131,10 @@ func (m *manager) waitForSlot(ctx context.Context) error {
 	}
 }
 
-// hasFreeSlot returns true when maxContainers is unlimited (<=0) or when
-// the current running count is below maxContainers.
+// hasFreeSlot returns true when maxExecutions is unlimited (<=0) or when
+// the current running count is below maxExecutions.
 func (m *manager) hasFreeSlot(ctx context.Context) bool {
-	if m.maxContainers <= 0 {
+	if m.maxExecutions <= 0 {
 		return true
 	}
 	count, err := m.counter.CountRunning(ctx)
@@ -142,5 +142,5 @@ func (m *manager) hasFreeSlot(ctx context.Context) bool {
 		slog.Warn("failed to count running containers, proceeding anyway", "error", err)
 		return true
 	}
-	return count < m.maxContainers
+	return count < m.maxExecutions
 }

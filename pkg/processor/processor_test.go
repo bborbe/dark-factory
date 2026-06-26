@@ -22,7 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -120,7 +120,7 @@ func newTestProcessor(
 			dirtyFileChecker,
 			dirtyFileThreshold,
 		),
-		containerslot.NewManager(
+		executionslot.NewManager(
 			containerLock,
 			containerCounter,
 			containerChecker,

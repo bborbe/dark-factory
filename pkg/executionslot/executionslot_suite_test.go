@@ -4,7 +4,7 @@
 
 //go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
 
-package containerslot_test
+package executionslot_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestContainerSlot(t *testing.T) {
+func TestExecutionSlot(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "ContainerSlot Suite")
+	RunSpecs(t, "ExecutionSlot Suite")
 }

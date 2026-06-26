@@ -20,7 +20,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
@@ -79,7 +79,7 @@ func newProcessorWithMockWatcher(
 		nil,
 		specsweeper.NewSweeper(nil, nil),
 		preflightconditions.NewConditions(nil, nil, nil, 0),
-		containerslot.NewManager(nil, nil, nil, 0, 0),
+		executionslot.NewManager(nil, nil, nil, 0, 0),
 		cancellationWatcher,
 		make(chan struct{}),
 		processor.Dirs{Log: logDir},

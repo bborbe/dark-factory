@@ -1,5 +1,5 @@
 ---
-status: verifying
+status: completed
 tags:
     - dark-factory
     - spec
@@ -7,6 +7,7 @@ approved: "2026-06-26T05:30:43Z"
 generating: "2026-06-26T05:39:50Z"
 prompted: "2026-06-26T06:00:36Z"
 verifying: "2026-06-26T07:12:50Z"
+completed: "2026-06-26T12:32:59Z"
 branch: dark-factory/correlation-ids-structured-logging
 ---
 

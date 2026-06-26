@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: strip reserved env keys (`ANTHROPIC_MODEL`, `YOLO_PROMPT_FILE`) from `global.Env` during `ApplyGlobalOverrides` merge. Follow-up to the env merge fix in v0.187.3 — operators commonly mirror `model:` into `env: ANTHROPIC_MODEL:` out of habit, and the merge would land that duplicate in `cfg.Env`, where `validateEnv` (called after layering by `cfg.Validate`) correctly rejects it as reserved. Healthcheck didn't re-validate post-merge so it kept working; `dark-factory daemon` / `run` failed startup with `env key "ANTHROPIC_MODEL" is reserved` on previously-valid global configs. The keys remain the factory's responsibility to set from `cfg.Model` / prompt path; stripping them at merge keeps user configs working without changing the validation contract.
+
 ## v0.187.3
 
 - fix: heal `dark-factory healthcheck` for alt-provider configs (minimax, self-hosted vLLM). Three compounded regressions, fixed together so the probe runs the SAME claude argv as production prompts:

@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 
 	"github.com/bborbe/errors"
@@ -233,6 +234,41 @@ var _ = Describe("ClaudeProbe", func() {
 		err := p.Run(ctx)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
+	})
+
+	It("surfaces wrapped runner error in error message on non-zero exit", func() {
+		// Regression: previously the runContainerProbe failure path dropped the
+		// runner err entirely and returned only stdout — operator saw
+		// `stdout=""` with no clue why. Now the underlying err must be in the
+		// returned string so the cause is visible without checking logs.
+		subprocR.RunWithWarnAndTimeoutReturns(
+			[]byte(""),
+			errors.Errorf(ctx, "claude session probe failed: exit 1"),
+		)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("err="))
+		Expect(err.Error()).To(ContainSubstring("exit 1"))
+	})
+
+	It("extracts stderr from a real *exec.ExitError chain wrapped via bborbe/errors", func() {
+		// End-to-end check that errors.As walks through subproc's
+		// errors.Wrapf wrapping to find *exec.ExitError.Stderr.
+		// Mirrors the actual production path: subproc.Runner.cmd.Output()
+		// returns *exec.ExitError when the subprocess exits non-zero,
+		// wraps it via errors.Wrapf, and the probe must still surface
+		// the captured stderr.
+		realCmd := exec.Command("sh", "-c", "echo MARKER-STDERR >&2; exit 7")
+		_, runErr := realCmd.Output() // captures stderr into *exec.ExitError.Stderr
+		Expect(runErr).To(HaveOccurred())
+		wrapped := errors.Wrap(ctx, runErr, "subprocess simulation")
+
+		subprocR.RunWithWarnAndTimeoutReturns([]byte(""), wrapped)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("MARKER-STDERR"))
 	})
 })
 

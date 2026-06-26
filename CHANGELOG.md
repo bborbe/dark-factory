@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.3
 
 - fix: heal `dark-factory healthcheck` for alt-provider configs (minimax, self-hosted vLLM). Three compounded regressions, fixed together so the probe runs the SAME claude argv as production prompts:
   - **`pkg/config.ApplyGlobalOverrides` now merges `global.Env` under `cfg.Env`** (project wins on key collision). The 2-day refactor that introduced layered config (PR #35) handled Model/HideGit/AutoRelease/... but forgot Env — so global `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` never reached the container, and claude tried Anthropic with the alt-provider model name → rejected silently → exit 1. This fix benefits `dark-factory run` / `daemon` too (same code path), not just healthcheck.

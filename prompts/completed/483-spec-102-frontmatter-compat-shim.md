@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [102-executor-backend-neutral-naming]
+summary: 'Changed Frontmatter.Container YAML tag to execution_id, added backward-compatible container: read alias via applyLegacyContainerKey helper, and added three named tests covering legacy read, new write, and semantic round-trip.'
+container: dark-factory-exec-483-spec-102-frontmatter-compat-shim
+dark-factory-version: v0.183.0
 created: "2026-06-26T09:00:02Z"
 queued: "2026-06-26T10:11:44Z"
+started: "2026-06-26T10:33:25Z"
+completed: "2026-06-26T10:41:03Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

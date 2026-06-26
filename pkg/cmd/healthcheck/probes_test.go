@@ -217,6 +217,19 @@ var _ = Describe("ClaudeProbe", func() {
 		Expect(args).To(ContainElement("reply with exactly: OK"))
 	})
 
+	It("passes --dangerously-skip-permissions to claude (mirrors image entrypoint.sh)", func() {
+		// Regression lock for the silent-claude failure on alt-provider configs
+		// (minimax, vLLM): without this flag claude prompts for permission on a
+		// fresh provider, no TTY → silent exit 1. Image's /usr/local/bin/
+		// entrypoint.sh passes the flag for production prompts; the probe must
+		// mirror it to keep the auth-probe in the same shape.
+		subprocR.RunWithWarnAndTimeoutReturns([]byte("OK\n"), nil)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		Expect(p.Run(ctx)).To(Succeed())
+		_, _, _, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
+		Expect(args).To(ContainElement("--dangerously-skip-permissions"))
+	})
+
 	It("returns error when stdout does not contain OK", func() {
 		subprocR.RunWithWarnAndTimeoutReturns([]byte("unexpected\n"), nil)
 		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)

@@ -220,12 +220,21 @@ func (c *claudeProbe) Name() string {
 
 func (c *claudeProbe) Run(ctx context.Context) error {
 	return runContainerProbe(ctx, runContainerProbeArgs{
-		policy:        c.policy,
-		runner:        c.runner,
-		category:      c.Name(),
-		op:            "claude session probe",
-		entrypoint:    "claude",
-		command:       []string{"-p", claudeProbePrompt},
+		policy:     c.policy,
+		runner:     c.runner,
+		category:   c.Name(),
+		op:         "claude session probe",
+		entrypoint: "claude",
+		// --dangerously-skip-permissions mirrors what the image's
+		// /usr/local/bin/entrypoint.sh passes to claude in headless mode
+		// (production prompt containers). Without it, claude prompts for
+		// permission on a fresh provider (e.g. ANTHROPIC_BASE_URL pointing
+		// at minimax / a self-hosted vLLM). With no TTY attached, the
+		// permission prompt fails immediately and claude exits 1 with no
+		// stdout/stderr — the silent failure operators saw on alt-provider
+		// configs while the default-claude case worked off cached
+		// permission grants in ~/.claude.
+		command:       []string{"-p", claudeProbePrompt, "--dangerously-skip-permissions"},
 		successMarker: "OK",
 		failurePrefix: "claude session probe failed",
 	})

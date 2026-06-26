@@ -5,9 +5,11 @@
 package committingrecoverer_test
 
 import (
+	"bytes"
 	"context"
 	stderrors "errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +21,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/git"
+	pkglog "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -512,6 +515,31 @@ var _ = Describe("Recoverer", func() {
 			ContainSubstring(realRepoRoot),
 			"guard failure message must name the real-repo cwd path",
 		)
+	})
+})
+
+var _ = Describe("Recoverer context-bound logger propagation", func() {
+	It("propagates bound logger attributes into RecoverAll log lines", func() {
+		var buf bytes.Buffer
+		h := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})
+		logger := slog.New(h).With("prompt_id", "test-042")
+		boundCtx := pkglog.NewContext(context.Background(), logger)
+
+		errMgr := &stubPromptManager{
+			findCommittingFunc: func(_ context.Context) ([]string, error) {
+				return nil, stderrors.New("scan failed")
+			},
+		}
+		rec := committingrecoverer.NewRecoverer(
+			errMgr,
+			&stubReleaser{},
+			&stubAutoCompleter{},
+			"/tmp",
+			false,
+		)
+		rec.RecoverAll(boundCtx)
+
+		Expect(buf.String()).To(ContainSubstring(`"prompt_id":"test-042"`))
 	})
 })
 

@@ -6,11 +6,10 @@ package processor
 
 import (
 	"context"
-	"log/slog"
-	"path/filepath"
 
 	"github.com/bborbe/errors"
 
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -51,8 +50,8 @@ func (e *directWorkflowExecutor) Complete(
 	}
 
 	if err := e.completeCommit(gitCtx, ctx, pf, title, promptPath, completedPath); err != nil {
-		slog.Error("git commit failed after all retries, will retry next cycle",
-			"file", filepath.Base(promptPath), "error", err)
+		log.From(ctx).
+			Error("git commit failed after all retries, will retry next cycle", "error", err)
 		return nil // do NOT crash the daemon
 	}
 	return nil
@@ -70,14 +69,14 @@ func (e *directWorkflowExecutor) completeCommit(
 	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+	log.From(ctx).Info("moved to completed")
 
 	// Commit all code changes with retry. If the commit fails, roll the prompt file back to in-progress/ first.
 	if err := e.deps.Releaser.CommitWithRetry(gitCtx, func(retryCtx context.Context) error {
 		return handleDirectWorkflow(retryCtx, ctx, e.deps, title, "")
 	}); err != nil {
 		if rollbackErr := e.deps.PromptManager.RollbackMoveToCompleted(ctx, completedPath, e.deps.FileMover); rollbackErr != nil {
-			slog.Error("rollback after commit failure failed", "error", rollbackErr)
+			log.From(ctx).Error("rollback after commit failure failed", "error", rollbackErr)
 		}
 		return errors.Wrap(ctx, err, "handle direct workflow (rolled back move)")
 	}
@@ -87,7 +86,7 @@ func (e *directWorkflowExecutor) completeCommit(
 	// prompt in the completed dir.
 	for _, specID := range pf.Specs() {
 		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
+			log.From(ctx).Warn("spec auto-complete failed", "spec", specID, "error", err)
 		}
 	}
 

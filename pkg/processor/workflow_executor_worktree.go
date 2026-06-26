@@ -6,12 +6,12 @@ package processor
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/bborbe/errors"
 
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -64,12 +64,10 @@ func (e *worktreeWorkflowExecutor) Setup(
 	if err := os.Chdir(e.worktreePath); err != nil {
 		// Remove worktree since we couldn't chdir into it
 		if removeErr := e.deps.Worktreer.Remove(ctx, e.worktreePath); removeErr != nil {
-			slog.Warn(
+			log.From(ctx).Warn(
 				"failed to remove worktree after chdir error",
-				"path",
-				e.worktreePath,
-				"error",
-				removeErr,
+				"dir", e.worktreePath,
+				"error", removeErr,
 			)
 		}
 		return errors.Wrap(ctx, err, "chdir to worktree")
@@ -85,12 +83,13 @@ func (e *worktreeWorkflowExecutor) CleanupOnError(ctx context.Context) {
 	}
 	if e.originalDir != "" {
 		if err := os.Chdir(e.originalDir); err != nil {
-			slog.Warn("failed to chdir back to original directory on error", "error", err)
+			log.From(ctx).Warn("failed to chdir back to original directory on error", "error", err)
 		}
 	}
 	if e.worktreePath != "" {
 		if err := e.deps.Worktreer.Remove(ctx, e.worktreePath); err != nil {
-			slog.Warn("failed to remove worktree on error", "path", e.worktreePath, "error", err)
+			log.From(ctx).
+				Warn("failed to remove worktree on error", "dir", e.worktreePath, "error", err)
 		}
 	}
 }
@@ -107,7 +106,7 @@ func (e *worktreeWorkflowExecutor) Complete(
 	if err := e.deps.PromptManager.MoveToCompleted(ctx, promptPath); err != nil {
 		return errors.Wrap(ctx, err, "move to completed")
 	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+	log.From(ctx).Info("moved to completed")
 
 	// Single combined commit: work changes + prompt move.
 	if err := e.deps.Releaser.CommitOnly(gitCtx, title); err != nil {
@@ -120,7 +119,7 @@ func (e *worktreeWorkflowExecutor) Complete(
 
 	// no rollback needed: worktree is discarded on cleanup; original prompt path untouched
 	if err := e.deps.Worktreer.Remove(gitCtx, e.worktreePath); err != nil {
-		slog.Warn("failed to remove worktree", "path", e.worktreePath, "error", err)
+		log.From(ctx).Warn("failed to remove worktree", "dir", e.worktreePath, "error", err)
 	}
 	e.cleanedUp = true
 
@@ -130,11 +129,10 @@ func (e *worktreeWorkflowExecutor) Complete(
 		promptPath,
 		completedPath,
 	); syncErr != nil {
-		slog.WarnContext(ctx,
+		log.From(ctx).Warn(
 			"clone-sync-mismatch",
-			"promptPath", promptPath,
-			"completedPath", completedPath,
-			"remoteBranch", e.branchName,
+			"completed_path", completedPath,
+			"remote_branch", e.branchName,
 			"error", syncErr.Error(),
 			"hint", "remote has the rename; run `git pull` on the original repo to catch up",
 		)

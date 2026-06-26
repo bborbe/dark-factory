@@ -10,6 +10,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: add pkg/log context-logger helpers (NewContext/From), docs/rules/logging-conventions.md convention doc, and `make hotpath-logcheck` target (warn mode) — foundation for per-prompt correlation-id structured logging (spec 099 prompt 1)
+- refactor: migrate pkg/processor to the context-bound logger; bind per-prompt correlation attrs (prompt_id/spec_id/container/workflow_type) at ProcessPrompt entry, re-bind container on assignment, add workflow_step at decision points (spec 099 prompt 2)
+- refactor: migrate pkg/executor, pkg/promptresumer, pkg/committingrecoverer to the context-bound logger (log.From(ctx)); normalize attr keys to snake_case; thread ctx into computeReattachDuration; pkg/executor/launch.go shared argv-builders excluded by design (spec 099 prompt 3)
+- refactor: migrate pkg/cancellationwatcher and pkg/queuescanner to the context-bound logger (log.From(ctx)); normalize attr keys to snake_case/canonical (prompt_id, spec_id) and add workflow_step=cancel on cancellation; all six hot-path packages now migrated (spec 099 prompt 4)
+- feat: enforce per-prompt correlation-id structured logging — `make hotpath-logcheck` now runs in strict mode and gates `make precommit`, rejecting bare package-level slog.Info/Warn/Error in the six hot-path packages; a single `grep prompt_id=<id> .dark-factory.log` reconstructs a prompt's full lifecycle (spec 099 prompt 5)
+
 ## v0.183.0
 
 - feat: add `pkg/launchpolicy` package with `Policy` value type and `BuildOpts` method that centralises the shared container launch shape (image, project, mounts, base env, netrc/gitconfig, hide-git, canonical `NET_ADMIN`+`NET_RAW` caps) for both the executor prompt-run path and the healthcheck probes (spec 098 prompt 1)

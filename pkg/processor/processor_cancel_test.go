@@ -19,6 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
+	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerslot"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/notifier"
@@ -85,6 +86,7 @@ func newProcessorWithMockWatcher(
 		project.Name("test"),
 		fh,
 		resumer,
+		config.WorkflowDirect,
 		false,
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(

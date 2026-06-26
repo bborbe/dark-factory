@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/report"
 )
 
@@ -106,8 +106,8 @@ func (e *dockerExecutor) Execute(
 		return errors.Wrap(ctx, err, "create prompt temp file")
 	}
 	defer cleanup()
-	slog.Debug("prompt prepared for execution",
-		"contentSize", len(promptContent), "tempFile", promptFilePath)
+	log.From(ctx).Debug("prompt prepared for execution",
+		"content_size", len(promptContent), "temp_file", promptFilePath)
 	e.removeContainerIfExists(ctx, containerName)
 	promptBaseName := extractPromptBaseName(containerName, e.policy.ProjectName())
 	claudeConfigDir := e.policy.ClaudeDir()
@@ -115,10 +115,10 @@ func (e *dockerExecutor) Execute(
 		return errors.Wrap(ctx, err, "validate claude auth")
 	}
 	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
-	slog.Debug("docker command prepared",
-		"image", e.policy.ContainerImage(), "containerName", containerName,
-		"workspaceMount", projectRoot+":/workspace",
-		"configMount", claudeConfigDir+":/home/node/.claude")
+	log.From(ctx).Debug("docker command prepared",
+		"image", e.policy.ContainerImage(), "container", containerName,
+		"workspace_mount", projectRoot+":/workspace",
+		"config_mount", claudeConfigDir+":/home/node/.claude")
 	if runErr := e.runWithFormatterPipeline(
 		ctx, cmd, rawFileHandle, logFileHandle,
 		e.buildRunFuncs(cmd, logFile, containerName), "formatter error",
@@ -149,7 +149,7 @@ func (e *dockerExecutor) runWithFormatterPipeline(
 	}()
 	runErr := run.CancelOnFirstFinish(ctx, wrapFirstFuncWithPipeClose(runFuncs, pw)...)
 	if fmtErr := <-fmtDone; fmtErr != nil {
-		slog.Warn(fmtErrMsg, "error", fmtErr)
+		log.From(ctx).Warn(fmtErrMsg, "error", fmtErr)
 	}
 	return runErr
 }
@@ -222,8 +222,8 @@ func (e *dockerExecutor) Reattach(
 	// docker logs --follow replays all output from container start and blocks until exit
 	// #nosec G204 -- containerName is generated internally from prompt filename
 	cmd := exec.CommandContext(ctx, "docker", "logs", "--follow", containerName)
-	slog.Info("reattaching to running container", "containerName", containerName,
-		"maxPromptDuration", maxPromptDuration)
+	log.From(ctx).Info("reattaching to running container", "container", containerName,
+		"max_prompt_duration", maxPromptDuration)
 	if runErr := e.runWithFormatterPipeline(
 		ctx, cmd, rawFileHandle, logFileHandle,
 		e.buildRunFuncsWithTimeout(cmd, logFile, containerName, maxPromptDuration),
@@ -271,19 +271,19 @@ func timeoutKiller(
 	if !waitUntilDeadline(ctx, currentDateTimeGetter, deadline, 30*time.Second) {
 		return nil // ctx cancelled — normal container exit
 	}
-	slog.Warn("container exceeded maxPromptDuration, stopping",
-		"containerName", containerName,
+	log.From(ctx).Warn("container exceeded maxPromptDuration, stopping",
+		"container", containerName,
 		"duration", duration)
 	// #nosec G204 -- containerName is generated internally from prompt filename
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
 	if err := runner.Run(ctx, stopCmd); err != nil {
-		slog.Warn("docker stop failed after timeout, attempting force kill",
-			"containerName", containerName, "error", err)
+		log.From(ctx).Warn("docker stop failed after timeout, attempting force kill",
+			"container", containerName, "error", err)
 		// #nosec G204 -- containerName is generated internally
 		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
 		if killErr := runner.Run(ctx, killCmd); killErr != nil {
-			slog.Error("docker kill also failed after timeout",
-				"containerName", containerName, "error", killErr)
+			log.From(ctx).Error("docker kill also failed after timeout",
+				"container", containerName, "error", killErr)
 		}
 	}
 	return errors.Errorf(ctx, "prompt timed out after %s", duration)
@@ -311,13 +311,14 @@ func watchForCompletionReport(
 			// #nosec G304 -- logFile is derived from prompt filename, not user input
 			content, err := os.ReadFile(logFile)
 			if err != nil {
-				slog.Debug("watchForCompletionReport: failed to read log file", "error", err)
+				log.From(ctx).
+					Debug("watchForCompletionReport: failed to read log file", "error", err)
 				continue
 			}
 			if strings.Contains(string(content), report.MarkerEnd) {
-				slog.Info(
+				log.From(ctx).Info(
 					"stopping stuck container: completion report found but container still running",
-					"containerName",
+					"container",
 					containerName,
 				)
 				if !waitUntilDeadline(
@@ -331,7 +332,7 @@ func watchForCompletionReport(
 				// #nosec G204 -- containerName is derived from prompt filename, not user input
 				stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
 				if err := runner.Run(ctx, stopCmd); err != nil {
-					slog.Debug("docker stop", "containerName", containerName, "error", err)
+					log.From(ctx).Debug("docker stop", "container", containerName, "error", err)
 				}
 				return nil
 			}
@@ -560,7 +561,7 @@ func (e *dockerExecutor) StopAndRemoveContainer(ctx context.Context, containerNa
 	// #nosec G204 -- containerName is generated internally
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", containerName)
 	if err := e.commandRunner.Run(ctx, stopCmd); err != nil {
-		slog.Debug("docker stop", "container", containerName, "error", err)
+		log.From(ctx).Debug("docker stop", "container", containerName, "error", err)
 	}
 	e.removeContainerIfExists(ctx, containerName)
 }
@@ -572,7 +573,7 @@ func (e *dockerExecutor) removeContainerIfExists(ctx context.Context, containerN
 	cmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
 	if err := e.commandRunner.Run(ctx, cmd); err != nil {
 		// Non-zero exit is expected when container doesn't exist
-		slog.Debug("docker rm -f", "containerName", containerName, "error", err)
+		log.From(ctx).Debug("docker rm -f", "container", containerName, "error", err)
 	}
 }
 

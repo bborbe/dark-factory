@@ -5,8 +5,10 @@
 package cancellationwatcher_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -246,4 +249,44 @@ var _ = Describe("Watcher", func() {
 		// loader should not have been called since no Write event occurred
 		Expect(mockLoader.LoadCallCount()).To(Equal(0))
 	})
+
+	It(
+		"propagates bound logger attrs (prompt_id, workflow_step=cancel) through the cancellation path",
+		func() {
+			// Capture slog output via SetDefault swap.
+			var logBuf bytes.Buffer
+			original := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&logBuf, nil)))
+			defer slog.SetDefault(original)
+
+			// Bind a per-prompt logger so the cancellation log line inherits prompt_id.
+			boundCtx, cancel := context.WithCancel(
+				log.NewContext(context.Background(), slog.Default().With("prompt_id", "test-042")),
+			)
+			defer cancel()
+
+			cancelledPF := prompt.NewPromptFile(
+				promptPath,
+				prompt.Frontmatter{Status: string(prompt.CancelledPromptStatus)},
+				[]byte("# Test\n"),
+				libtime.NewCurrentDateTime(),
+			)
+			mockLoader.LoadReturns(cancelledPF, nil)
+
+			ch := w.Watch(boundCtx, promptPath, "test-container")
+
+			// Give fsnotify time to set up the watch before writing.
+			time.Sleep(100 * time.Millisecond)
+			err := os.WriteFile(promptPath, []byte("---\nstatus: cancelled\n---\n\n# Test\n"), 0600)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(ch, 2*time.Second).Should(BeClosed())
+
+			logOutput := logBuf.String()
+			Expect(logOutput).To(ContainSubstring("prompt_id=test-042"),
+				"bound prompt_id attr must propagate through the context-bound logger")
+			Expect(logOutput).To(ContainSubstring("workflow_step=cancel"),
+				"workflow_step=cancel must be emitted on the cancellation decision log line")
+		},
+	)
 })

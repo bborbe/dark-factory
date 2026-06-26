@@ -6,12 +6,11 @@ package processor
 
 import (
 	"context"
-	"log/slog"
-	"path/filepath"
 	"strings"
 
 	"github.com/bborbe/errors"
 
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -90,7 +89,7 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 			return errors.Wrap(ctx, err, "create and switch to branch")
 		}
 	}
-	slog.Info("switched to branch for in-place execution", "branch", branch)
+	log.From(ctx).Info("switched to branch for in-place execution", "branch", branch)
 	return nil
 }
 
@@ -111,13 +110,13 @@ func (e *branchWorkflowExecutor) Complete(
 		e.restoreDefaultBranch(ctx)
 		return errors.Wrap(ctx, err, "move to completed")
 	}
-	slog.Info("moved to completed", "file", filepath.Base(promptPath))
+	log.From(ctx).Info("moved to completed")
 
 	// Create a combined commit (work changes + prompt move) on the feature branch.
 	// Roll back the move BEFORE restoring the default branch if the commit fails.
 	if err := handleDirectWorkflow(gitCtx, ctx, e.deps, title, featureBranch); err != nil {
 		if rollbackErr := e.deps.PromptManager.RollbackMoveToCompleted(ctx, completedPath, e.deps.FileMover); rollbackErr != nil {
-			slog.Error("rollback after commit failure failed", "error", rollbackErr)
+			log.From(ctx).Error("rollback after commit failure failed", "error", rollbackErr)
 		}
 		e.restoreDefaultBranch(ctx)
 		return errors.Wrap(ctx, err, "handle direct workflow on feature branch (rolled back move)")
@@ -128,7 +127,7 @@ func (e *branchWorkflowExecutor) Complete(
 	// prompt in the completed dir.
 	for _, specID := range pf.Specs() {
 		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
+			log.From(ctx).Warn("spec auto-complete failed", "spec", specID, "error", err)
 		}
 	}
 
@@ -169,15 +168,13 @@ func (e *branchWorkflowExecutor) restoreDefaultBranch(ctx context.Context) {
 		return
 	}
 	if err := e.deps.Brancher.Switch(ctx, e.inPlaceDefaultBranch); err != nil {
-		slog.Warn(
+		log.From(ctx).Warn(
 			"failed to restore default branch",
-			"branch",
-			e.inPlaceDefaultBranch,
-			"error",
-			err,
+			"branch", e.inPlaceDefaultBranch,
+			"error", err,
 		)
 	} else {
-		slog.Info("restored default branch", "branch", e.inPlaceDefaultBranch)
+		log.From(ctx).Info("restored default branch", "branch", e.inPlaceDefaultBranch)
 	}
 }
 
@@ -192,20 +189,20 @@ func (e *branchWorkflowExecutor) handleBranchCompletion(
 ) error {
 	hasMore, err := e.deps.PromptManager.HasQueuedPromptsOnBranch(ctx, featureBranch, promptPath)
 	if err != nil {
-		slog.Warn(
+		log.From(ctx).Warn(
 			"failed to check remaining prompts on branch",
-			"branch",
-			featureBranch,
-			"error",
-			err,
+			"branch", featureBranch,
+			"error", err,
 		)
 		return nil // non-fatal: skip merge, let next run re-check
 	}
 	if hasMore {
-		slog.Info("more prompts queued on branch — skipping merge", "branch", featureBranch)
+		log.From(ctx).
+			Info("more prompts queued on branch — skipping merge", "branch", featureBranch)
 		return nil
 	}
-	slog.Info("last prompt on branch — merging to default and releasing", "branch", featureBranch)
+	log.From(ctx).
+		Info("last prompt on branch — merging to default and releasing", "branch", featureBranch)
 	if err := e.deps.Brancher.MergeToDefault(gitCtx, featureBranch); err != nil {
 		return errors.Wrap(ctx, err, "merge feature branch to default")
 	}
@@ -238,19 +235,16 @@ func (e *branchWorkflowExecutor) handleBranchPRCompletion(
 			completedPath,
 		)
 		if err != nil {
-			slog.Warn(
+			log.From(ctx).Warn(
 				"failed to check remaining prompts on branch",
-				"branch",
-				featureBranch,
-				"error",
-				err,
+				"branch", featureBranch,
+				"error", err,
 			)
 		}
 		if hasMore {
-			slog.Info(
+			log.From(ctx).Info(
 				"more prompts queued on branch — deferring auto-merge",
-				"branch",
-				featureBranch,
+				"branch", featureBranch,
 			)
 			savePRURLToFrontmatter(gitCtx, e.deps, completedPath, prURL)
 			return nil

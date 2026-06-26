@@ -1027,6 +1027,7 @@ func CreateProcessor(
 		projectName,
 		fh,
 		resumer,
+		cfg.Workflow,
 		cfg.VerificationGate,
 		completionreport.NewValidator(),
 		promptenricher.NewEnricher(

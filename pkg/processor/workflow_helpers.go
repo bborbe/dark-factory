@@ -6,19 +6,19 @@ package processor
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
 // syncWithRemoteViaDeps fetches and merges from remote using deps.Brancher.
 func syncWithRemoteViaDeps(ctx context.Context, deps WorkflowDeps) error {
-	slog.Info("syncing with remote default branch")
+	log.From(ctx).Info("syncing with remote default branch")
 	fetchCtx, fetchCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer fetchCancel()
 	if err := deps.Brancher.Fetch(fetchCtx); err != nil {
@@ -61,15 +61,13 @@ func findOrCreatePR(
 ) (string, error) {
 	prURL, err := deps.PRCreator.FindOpenPR(gitCtx, branchName)
 	if err != nil {
-		slog.Warn("failed to check for existing PR", "branch", branchName, "error", err)
+		log.From(ctx).Warn("failed to check for existing PR", "branch", branchName, "error", err)
 	}
 	if prURL != "" {
-		slog.Info(
+		log.From(ctx).Info(
 			"open PR already exists for branch — skipping creation",
-			"branch",
-			branchName,
-			"url",
-			prURL,
+			"branch", branchName,
+			"url", prURL,
 		)
 		return prURL, nil
 	}
@@ -77,7 +75,7 @@ func findOrCreatePR(
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "create pull request")
 	}
-	slog.Info("created PR", "url", prURL)
+	log.From(ctx).Info("created PR", "url", prURL)
 	return prURL, nil
 }
 
@@ -90,11 +88,11 @@ func savePRURLToFrontmatter(
 ) {
 	if existingPF, err := deps.PromptManager.Load(gitCtx, completedPath); err == nil &&
 		existingPF != nil && existingPF.PRURL() != "" {
-		slog.Debug("pr-url already set, preserving existing value")
+		log.From(gitCtx).Debug("pr-url already set, preserving existing value")
 		return
 	}
 	if err := deps.PromptManager.SetPRURL(gitCtx, completedPath, prURL); err != nil {
-		slog.Warn("failed to save PR URL to frontmatter", "error", err)
+		log.From(gitCtx).Warn("failed to save PR URL to frontmatter", "error", err)
 	}
 }
 
@@ -110,21 +108,25 @@ func handleDirectWorkflow(
 		if err := deps.Releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit on feature branch")
 		}
-		slog.Info("committed changes on feature branch (no release)", "branch", featureBranch)
+		log.From(ctx).Info("committed changes on feature branch (no release)",
+			"branch", featureBranch,
+			"workflow_step", "commit",
+		)
 		return nil
 	}
 	if !deps.Releaser.HasChangelog(gitCtx) {
 		if err := deps.Releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit")
 		}
-		slog.Info("committed changes")
+		log.From(ctx).Info("committed changes", "workflow_step", "commit")
 		return nil
 	}
 	if !deps.AutoRelease {
 		if err := deps.Releaser.CommitOnly(gitCtx, title); err != nil {
 			return errors.Wrap(ctx, err, "commit without release")
 		}
-		slog.Info("committed changes (autoRelease disabled, skipping tag)")
+		log.From(ctx).
+			Info("committed changes (autoRelease disabled, skipping tag)", "workflow_step", "commit")
 		return nil
 	}
 	bump := deps.Releaser.DetermineBump(ctx)
@@ -135,7 +137,7 @@ func handleDirectWorkflow(
 	if err := deps.Releaser.CommitAndRelease(gitCtx, bump); err != nil {
 		return errors.Wrap(ctx, err, "commit and release")
 	}
-	slog.Info("committed and tagged", "version", nextVersion)
+	log.From(ctx).Info("committed and tagged", "version", nextVersion, "workflow_step", "commit")
 	return nil
 }
 
@@ -156,7 +158,8 @@ func PostMergeActions(
 	if err := deps.Brancher.Pull(gitCtx); err != nil {
 		return errors.Wrap(ctx, err, "pull default branch")
 	}
-	slog.Info("merged PR and updated default branch", "branch", defaultBranch)
+	log.From(ctx).
+		Info("merged PR and updated default branch", "branch", defaultBranch, "workflow_step", "push")
 	if deps.AutoRelease && deps.Releaser.HasChangelog(gitCtx) {
 		if err := handleDirectWorkflow(gitCtx, ctx, deps, title, ""); err != nil {
 			return errors.Wrap(ctx, err, "auto-release after merge")
@@ -178,10 +181,12 @@ func handleAutoMergeForClone(
 ) error {
 	hasMore, err := deps.PromptManager.HasQueuedPromptsOnBranch(ctx, branchName, promptPath)
 	if err != nil {
-		slog.Warn("failed to check remaining prompts on branch", "branch", branchName, "error", err)
+		log.From(ctx).
+			Warn("failed to check remaining prompts on branch", "branch", branchName, "error", err)
 	}
 	if hasMore {
-		slog.Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
+		log.From(ctx).
+			Info("more prompts queued on branch — deferring auto-merge", "branch", branchName)
 		savePRURLToFrontmatter(gitCtx, deps, completedPath, prURL)
 		return nil
 	}
@@ -212,7 +217,7 @@ func syncPromptFileToOriginalRepo(
 ) error {
 	// Already mirrored — idempotent no-op.
 	if _, err := os.Stat(completedPath); err == nil {
-		slog.DebugContext(ctx, "sync-already-at-completed", "path", completedPath)
+		log.From(ctx).Debug("sync-already-at-completed", "dir", completedPath)
 		return nil
 	}
 
@@ -260,7 +265,7 @@ func handleAfterIsolatedCommit(
 	if ahead == 0 {
 		// Unexpected: clone/worktree completed a commit but parent sees zero ahead.
 		// The prompt file move was already committed in the isolated environment.
-		slog.WarnContext(ctx, "after-isolated-commit-no-ahead-commits", "branch", branchName)
+		log.From(ctx).Warn("after-isolated-commit-no-ahead-commits", "branch", branchName)
 		return nil
 	}
 	if err := deps.Brancher.Push(gitCtx, branchName); err != nil {

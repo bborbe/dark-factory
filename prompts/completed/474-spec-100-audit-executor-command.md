@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [100-centralize-subprocess-runner]
+summary: Added GoDoc comment to commandRunner interface in pkg/executor/command.go documenting why it is deliberately not routed through pkg/subproc.Runner — it owns the docker SIGINT-then-SIGKILL escalation protocol; confirmed 0 exec.Command calls in command.go and correct allow-list state; CHANGELOG updated.
+container: dark-factory-exec-474-spec-100-audit-executor-command
+dark-factory-version: v0.183.0
 created: "2026-06-26T07:30:00Z"
 queued: "2026-06-26T07:57:18Z"
+started: "2026-06-26T08:39:53Z"
+completed: "2026-06-26T08:43:33Z"
 branch: dark-factory/centralize-subprocess-runner
 ---
 

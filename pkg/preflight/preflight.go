@@ -7,13 +7,13 @@ package preflight
 import (
 	"context"
 	"log/slog"
-	"os/exec"
 	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/preflight-checker.go --fake-name PreflightChecker . Checker
@@ -45,6 +45,7 @@ type checker struct {
 	cache                 *cacheEntry
 	runner                runnerFn
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	subprocRunner         subproc.Runner
 }
 
 // NewChecker creates a new preflight Checker.
@@ -54,6 +55,7 @@ type checker struct {
 // n is used to notify humans when the baseline is broken.
 // projectName is the project identifier used in notifications.
 // currentDateTimeGetter provides the current time for cache expiry checks.
+// runner is the subprocess runner used to execute the preflight command.
 func NewChecker(
 	command string,
 	interval libtime.Duration,
@@ -61,6 +63,7 @@ func NewChecker(
 	n notifier.Notifier,
 	projectName string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	runner subproc.Runner,
 ) Checker {
 	c := &checker{
 		command:               command,
@@ -69,6 +72,7 @@ func NewChecker(
 		notifier:              n,
 		projectName:           projectName,
 		currentDateTimeGetter: currentDateTimeGetter,
+		subprocRunner:         runner,
 	}
 	c.runner = c.runInContainer
 	return c
@@ -125,14 +129,18 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 // The name is retained for backwards compatibility; `make precommit`-style baseline
 // checks are safe to run on host — containerization is only needed to sandbox Claude
 // with --dangerously-skip-permissions, which preflight does not use.
-// Returns combined stdout+stderr output and nil on success, or output + error on failure.
+// Returns stdout output and nil on success, or empty string + error on failure.
 func (c *checker) runInContainer(ctx context.Context) (string, error) {
-	// #nosec G204 -- preflightCommand validated by Config.validatePreflightCommand to contain only safe characters
-	cmd := exec.CommandContext(ctx, "sh", "-c", c.command)
-	cmd.Dir = c.projectRoot
-	output, err := cmd.CombinedOutput()
+	out, err := c.subprocRunner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"preflight",
+		c.projectRoot,
+		"sh",
+		"-c",
+		c.command,
+	)
 	if err != nil {
-		return string(output), errors.Wrap(ctx, err, "preflight command exited non-zero")
+		return string(out), errors.Wrap(ctx, err, "preflight command exited non-zero")
 	}
-	return string(output), nil
+	return string(out), nil
 }

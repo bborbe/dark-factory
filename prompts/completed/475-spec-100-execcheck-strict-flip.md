@@ -1,14 +1,14 @@
 ---
-status: failed
+status: completed
 spec: [100-centralize-subprocess-runner]
+summary: Flipped hotpath-execcheck Makefile target from warn to strict, migrated pkg/preflight/preflight.go from raw exec.CommandContext to subproc.Runner (missed migration from prompts 2-4), fixed script false positive for comment-only lines in pkg/launchpolicy/policy.go, added concurrent safety test, and updated factory callers — make precommit exits 0 on the fully migrated tree.
 container: dark-factory-exec-475-spec-100-execcheck-strict-flip
 dark-factory-version: v0.183.0
 created: "2026-06-26T07:30:00Z"
 queued: "2026-06-26T07:57:18Z"
-started: "2026-06-26T08:43:35Z"
-completed: "2026-06-26T08:47:24Z"
+started: "2026-06-26T11:04:24Z"
+completed: "2026-06-26T11:16:04Z"
 branch: dark-factory/centralize-subprocess-runner
-lastFailReason: 'validate completion report: completion report status: failed'
 ---
 
 <summary>

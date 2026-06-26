@@ -52,7 +52,7 @@ hotpath-statemachine-check:
 
 .PHONY: hotpath-execcheck
 hotpath-execcheck:
-	@bash scripts/hotpath-execcheck.sh warn
+	@bash scripts/hotpath-execcheck.sh strict
 
 .PHONY: hotpath-execution-naming-check
 hotpath-execution-naming-check:

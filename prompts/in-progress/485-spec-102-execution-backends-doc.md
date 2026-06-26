@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [102-executor-backend-neutral-naming]
 created: "2026-06-26T09:00:04Z"
+queued: "2026-06-26T10:11:44Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

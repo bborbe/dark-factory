@@ -34,7 +34,7 @@ type StartupDeps struct {
 	SpecsCompletedDir     string
 	SpecsLogDir           string
 	PromptManager         PromptManager
-	ContainerChecker      executor.ContainerChecker
+	ExecutionChecker      executor.ExecutionChecker
 	Notifier              notifier.Notifier // may be nil (oneshot passes nil)
 	ProjectName           string            // may be empty (oneshot passes "")
 	SlugMigrator          slugmigrator.Migrator
@@ -72,7 +72,7 @@ func startupSequence(ctx context.Context, deps StartupDeps) error {
 		return errors.Wrap(ctx, err, "create directories")
 	}
 
-	if err := resumeOrResetExecuting(ctx, deps.InProgressDir, deps.PromptManager, deps.ContainerChecker, deps.Notifier, deps.ProjectName); err != nil {
+	if err := resumeOrResetExecuting(ctx, deps.InProgressDir, deps.PromptManager, deps.ExecutionChecker, deps.Notifier, deps.ProjectName); err != nil {
 		return errors.Wrap(ctx, err, "resume or reset executing prompts")
 	}
 
@@ -143,7 +143,7 @@ func resumeOrResetExecuting(
 	ctx context.Context,
 	inProgressDir string,
 	mgr PromptManager,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	n notifier.Notifier,
 	projectName string,
 ) error {
@@ -171,7 +171,7 @@ func resumeOrResetExecuting(
 func resumeOrResetGenerating(
 	ctx context.Context,
 	specsInProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
 ) error {
@@ -198,7 +198,7 @@ func resumeOrResetGeneratingEntry(
 	ctx context.Context,
 	specsInProgressDir string,
 	name string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
 ) error {
@@ -218,25 +218,25 @@ func resumeOrResetGeneratingEntry(
 	if err != nil {
 		return errors.Wrapf(ctx, err, "check container running %s", newName)
 	}
-	containerName := newName
+	executionID := newName
 	if !running {
 		legacyRunning, lerr := checker.IsRunning(ctx, legacyName)
 		if lerr != nil {
 			return errors.Wrapf(ctx, lerr, "check legacy container running %s", legacyName)
 		}
 		if legacyRunning {
-			containerName = legacyName
+			executionID = legacyName
 			running = true
 		}
 	}
 
 	if running {
 		slog.Info("spec generation container still running, leaving as generating",
-			"file", name, "container", containerName)
+			"file", name, "container", executionID)
 		return nil
 	}
 	slog.Warn("spec generation container not found, resetting spec to approved",
-		"file", name, "container", containerName)
+		"file", name, "container", executionID)
 	sf.SetStatus(string(spec.StatusApproved))
 	return errors.Wrap(ctx, sf.Save(ctx), "reset generating spec to approved")
 }
@@ -247,7 +247,7 @@ func resumeOrResetExecutingEntry(
 	inProgressDir string,
 	name string,
 	mgr PromptManager,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	n notifier.Notifier,
 	projectName string,
 ) error {
@@ -256,8 +256,8 @@ func resumeOrResetExecutingEntry(
 	if err != nil || pf == nil {
 		return nil
 	}
-	containerName := pf.Frontmatter.Container
-	running, err := checker.IsRunning(ctx, containerName)
+	executionID := pf.Frontmatter.Container
+	running, err := checker.IsRunning(ctx, executionID)
 	if err != nil {
 		// Docker daemon unavailable (or any other liveness-probe error) means
 		// the container's state is UNKNOWN. Refusing to reset is the safe choice —
@@ -265,8 +265,8 @@ func resumeOrResetExecutingEntry(
 		// container. Caller propagates this error so the daemon fail-fasts at startup
 		// rather than silently corrupting state.
 		slog.Error("container liveness check failed, refusing to reset prompt",
-			"file", name, "container", containerName, "error", err)
-		return errors.Wrapf(ctx, err, "check container liveness %s", containerName)
+			"file", name, "container", executionID, "error", err)
+		return errors.Wrapf(ctx, err, "check container liveness %s", executionID)
 	}
 	dockerState := promptstate.DockerStateStopped
 	if running {
@@ -275,7 +275,7 @@ func resumeOrResetExecutingEntry(
 	state := promptstate.InterpretRawTuple(
 		promptstate.LocationInProgress,
 		pf.Frontmatter.Status,
-		containerName,
+		executionID,
 		dockerState,
 	)
 	switch state {
@@ -285,11 +285,11 @@ func resumeOrResetExecutingEntry(
 			"file",
 			name,
 			"container",
-			containerName,
+			executionID,
 		)
 		return nil
 	case promptstate.StateAborted:
-		slog.Info("resetting prompt, container not found", "file", name, "container", containerName)
+		slog.Info("resetting prompt, container not found", "file", name, "container", executionID)
 		if n != nil {
 			_ = n.Notify(ctx, notifier.Event{
 				ProjectName: projectName,

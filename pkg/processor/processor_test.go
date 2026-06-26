@@ -81,7 +81,7 @@ func newTestProcessor(
 	verificationGate bool, n notifier.Notifier,
 	containerCounter executor.ContainerCounter, maxContainers int,
 	additionalInstructions string, containerLock containerlock.ContainerLock,
-	containerChecker executor.ContainerChecker, dirtyFileThreshold int,
+	containerChecker executor.ExecutionChecker, dirtyFileThreshold int,
 	dirtyFileChecker processor.DirtyFileChecker, gitLockChecker processor.GitLockChecker,
 	autoRetryLimit int, maxPromptDuration time.Duration, preflightChecker preflight.Checker,
 ) processor.Processor {

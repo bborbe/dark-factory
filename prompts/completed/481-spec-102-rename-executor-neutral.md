@@ -1,7 +1,13 @@
 ---
-status: draft
+status: completed
 spec: [102-executor-backend-neutral-naming]
+summary: Renamed ContainerChecker/ContainerStopper to ExecutionChecker/ExecutionStopper and executor interface params to executionID across all neutral-layer packages; regenerated counterfeiter mocks; removed stale container-checker.go and container-stopper.go mock files
+container: dark-factory-exec-481-spec-102-rename-executor-neutral
+dark-factory-version: v0.183.0
 created: "2026-06-26T09:00:00Z"
+queued: "2026-06-26T10:11:44Z"
+started: "2026-06-26T10:11:46Z"
+completed: "2026-06-26T10:26:30Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

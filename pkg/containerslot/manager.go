@@ -34,7 +34,7 @@ type Manager interface {
 func NewManager(
 	lock containerlock.ContainerLock,
 	counter executor.ContainerCounter,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	maxContainers int,
 	pollInterval time.Duration,
 ) Manager {
@@ -50,7 +50,7 @@ func NewManager(
 type manager struct {
 	lock          containerlock.ContainerLock
 	counter       executor.ContainerCounter
-	checker       executor.ContainerChecker
+	checker       executor.ExecutionChecker
 	maxContainers int
 	pollInterval  time.Duration
 }

@@ -26,7 +26,7 @@ var _ = Describe("OneShotRunner", func() {
 		manager          *mocks.RunnerPromptManager
 		locker           *mocks.Locker
 		processor        *mocks.Processor
-		containerChecker *mocks.ContainerChecker
+		containerChecker *mocks.ExecutionChecker
 		ctx              context.Context
 		cancel           context.CancelFunc
 	)
@@ -45,7 +45,7 @@ var _ = Describe("OneShotRunner", func() {
 		manager = &mocks.RunnerPromptManager{}
 		locker = &mocks.Locker{}
 		processor = &mocks.Processor{}
-		containerChecker = &mocks.ContainerChecker{}
+		containerChecker = &mocks.ExecutionChecker{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})

@@ -198,7 +198,7 @@ var _ = Describe("Manager", func() {
 		It("fires release after WaitUntilRunning unblocks", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, nil)
-			checker := &mocks.ContainerChecker{}
+			checker := &mocks.ExecutionChecker{}
 			waitCh := make(chan struct{})
 			checker.WaitUntilRunningCalls(func(_ context.Context, _ string, _ time.Duration) error {
 				<-waitCh

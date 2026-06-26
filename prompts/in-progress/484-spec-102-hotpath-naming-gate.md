@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [102-executor-backend-neutral-naming]
 created: "2026-06-26T09:00:03Z"
+queued: "2026-06-26T10:11:44Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 
@@ -75,10 +76,7 @@ hotpath-execution-naming-check:
 	@bash scripts/hotpath-execution-naming-check.sh strict
 ```
 
-2.2. Add `hotpath-execution-naming-check` to the `precommit:` prerequisite list (line 16), after `hotpath-execcheck`:
-```make
-precommit: ensure format generate test hotpath-logcheck hotpath-execcheck hotpath-execution-naming-check check addlicense check-changelog check-links
-```
+2.2. **Token-insert (not line-replace).** Read the current `precommit:` prerequisite list on line 16 — it currently contains `hotpath-statemachine-check` (from spec 101) AND `hotpath-execcheck` (from spec 100). Insert the new `hotpath-execution-naming-check` token immediately after `hotpath-execcheck`, preserving all existing tokens. DO NOT replace the whole line — that risks silently dropping `hotpath-statemachine-check` or any other gate that landed since this prompt was authored. Final result must include all four hotpath gates (`hotpath-logcheck`, `hotpath-statemachine-check`, `hotpath-execcheck`, `hotpath-execution-naming-check`) plus the original prerequisites. Verify with `grep -c hotpath- Makefile` → expect 4 in the precommit line.
 
 ## 3. Leak fixture (demonstrate the failure mode)
 

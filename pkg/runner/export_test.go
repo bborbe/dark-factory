@@ -26,12 +26,12 @@ func RunStartupSequenceForTest(ctx context.Context, deps StartupDeps) error {
 func CheckExecutingPromptsForTest(
 	ctx context.Context,
 	inProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	maxPromptDuration time.Duration,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	return checkExecutingPrompts(
@@ -51,7 +51,7 @@ func CheckExecutingPromptsForTest(
 func CheckGeneratingSpecsForTest(
 	ctx context.Context,
 	specsInProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
 ) error {
@@ -70,13 +70,13 @@ func RunHealthCheckLoopForTest(
 	interval time.Duration,
 	inProgressDir string,
 	specsInProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	maxPromptDuration time.Duration,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 ) error {
 	return runHealthCheckLoop(
 		ctx,

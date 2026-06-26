@@ -33,7 +33,7 @@ type SpecGenerator interface {
 type dockerSpecGenerator struct {
 	projectName            project.Name
 	executor               executor.Executor
-	containerChecker       executor.ContainerChecker
+	executionChecker       executor.ExecutionChecker
 	inboxDir               string
 	completedDir           string
 	specsDir               string
@@ -49,10 +49,10 @@ type dockerSpecGenerator struct {
 }
 
 // NewSpecGenerator creates a new SpecGenerator that runs the /generate-prompts-for-spec command.
-// containerChecker is used to detect whether a generation container is already running on restart.
+// executionChecker is used to detect whether a generation execution is already running on restart.
 func NewSpecGenerator(
 	executor executor.Executor,
-	containerChecker executor.ContainerChecker,
+	executionChecker executor.ExecutionChecker,
 	inboxDir string,
 	completedDir string,
 	specsDir string,
@@ -70,7 +70,7 @@ func NewSpecGenerator(
 	return &dockerSpecGenerator{
 		projectName:            projectName,
 		executor:               executor,
-		containerChecker:       containerChecker,
+		executionChecker:       executionChecker,
 		inboxDir:               inboxDir,
 		completedDir:           completedDir,
 		specsDir:               specsDir,
@@ -161,7 +161,7 @@ func (g *dockerSpecGenerator) isGenerationRunning(
 	containerName string,
 	logFile string,
 ) (bool, error) {
-	running, err := g.containerChecker.IsRunning(ctx, containerName)
+	running, err := g.executionChecker.IsRunning(ctx, containerName)
 	if err != nil {
 		slog.Warn("failed to check container liveness, starting fresh generation",
 			"container", containerName, "error", err)

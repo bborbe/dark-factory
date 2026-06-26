@@ -27,7 +27,7 @@ var _ = Describe("startupSequence", func() {
 		tempDir          string
 		deps             runner.StartupDepsForTest
 		mgr              *mocks.RunnerPromptManager
-		containerChecker *mocks.ContainerChecker
+		containerChecker *mocks.ExecutionChecker
 		slugMigrator     *mocks.SpecSlugMigrator
 	)
 
@@ -44,7 +44,7 @@ var _ = Describe("startupSequence", func() {
 		mgr = &mocks.RunnerPromptManager{}
 		mgr.NormalizeFilenamesReturns(nil, nil)
 
-		containerChecker = &mocks.ContainerChecker{}
+		containerChecker = &mocks.ExecutionChecker{}
 
 		slugMigrator = &mocks.SpecSlugMigrator{}
 		slugMigrator.MigrateDirsReturns(nil)
@@ -59,7 +59,7 @@ var _ = Describe("startupSequence", func() {
 			SpecsCompletedDir:     filepath.Join(specsBase, "completed"),
 			SpecsLogDir:           filepath.Join(specsBase, "logs"),
 			PromptManager:         mgr,
-			ContainerChecker:      containerChecker,
+			ExecutionChecker:      containerChecker,
 			SlugMigrator:          slugMigrator,
 			CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
 		}

@@ -118,7 +118,7 @@ func (r *resumer) ResumeAll(ctx context.Context) error {
 
 // resumePrompt resumes a single prompt that is in "executing" state.
 func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
-	pf, containerName, baseName, logFile, title, err := r.prepareResume(ctx, promptPath)
+	pf, executionID, baseName, logFile, title, err := r.prepareResume(ctx, promptPath)
 	if err != nil || pf == nil {
 		return err
 	}
@@ -142,15 +142,15 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 	log.From(ctx).Info(
 		"resuming executing prompt",
 		"prompt_id", filepath.Base(promptPath),
-		"container", containerName,
+		"container", executionID,
 	)
 
 	remainingDuration, elapsed, exceeded := r.computeReattachDuration(ctx, pf.Frontmatter.Started)
 	if exceeded {
-		return r.killTimedOutContainer(ctx, pf, containerName, elapsed)
+		return r.killTimedOutContainer(ctx, pf, executionID, elapsed)
 	}
 
-	if err := r.executor.Reattach(ctx, logFile, containerName, remainingDuration); err != nil {
+	if err := r.executor.Reattach(ctx, logFile, executionID, remainingDuration); err != nil {
 		return errors.Wrap(ctx, err, "reattach to container")
 	}
 
@@ -200,8 +200,8 @@ func (r *resumer) prepareResume(
 		return nil, "", "", "", "", nil // not executing — skip
 	}
 
-	containerName := pf.Frontmatter.Container
-	if containerName == "" {
+	executionID := pf.Frontmatter.Container
+	if executionID == "" {
 		log.From(ctx).
 			Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
 				"prompt_id", filepath.Base(promptPath))
@@ -221,7 +221,7 @@ func (r *resumer) prepareResume(
 	if title == "" {
 		title = baseName.String()
 	}
-	return pf, containerName, baseName, logFile, title, nil
+	return pf, executionID, baseName, logFile, title, nil
 }
 
 // killTimedOutContainer stops a container that has already exceeded its timeout on reattach,
@@ -229,14 +229,14 @@ func (r *resumer) prepareResume(
 func (r *resumer) killTimedOutContainer(
 	ctx context.Context,
 	pf *prompt.PromptFile,
-	containerName string,
+	executionID string,
 	elapsed time.Duration,
 ) error {
 	log.From(ctx).Warn("container exceeded maxPromptDuration, killing without reattach",
-		"container", containerName,
+		"container", executionID,
 		"started", pf.Frontmatter.Started,
 		"elapsed", elapsed)
-	r.executor.StopAndRemoveContainer(ctx, containerName)
+	r.executor.StopAndRemoveContainer(ctx, executionID)
 	pf.SetLastFailReason(fmt.Sprintf("prompt timed out after %s (detected on reattach)", elapsed))
 	pf.MarkFailed()
 	if saveErr := pf.Save(ctx); saveErr != nil {

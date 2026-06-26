@@ -395,7 +395,7 @@ func CreateRunner(
 		)
 	}
 
-	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
+	cl, executionChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -451,7 +451,7 @@ func CreateRunner(
 		n,
 		createContainerCounter(),
 		cl,
-		containerChecker,
+		executionChecker,
 		dirtyFileChecker,
 		gitLockChecker,
 		preflightChecker,
@@ -475,10 +475,10 @@ func CreateRunner(
 		cfg.Specs.InboxDir, cfg.Specs.InProgressDir, cfg.Specs.CompletedDir, cfg.Specs.LogDir,
 		promptManager, CreateLocker("."), watcher, proc, srv,
 		specWatcher, projectName,
-		containerChecker, n, migrator,
+		executionChecker, n, migrator,
 		currentDateTimeGetter,
 		cfg.ParsedMaxPromptDuration(),
-		executor.NewDockerContainerStopper(),
+		executor.NewDockerExecutionStopper(),
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 		cfg.HideGit,
 		preflightChecker,
@@ -525,7 +525,7 @@ func CreateOneShotRunner(
 	}
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
+	cl, executionChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
 	if clErr != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -584,7 +584,7 @@ func CreateOneShotRunner(
 			n,
 			createContainerCounter(),
 			cl,
-			containerChecker,
+			executionChecker,
 			osDirtyFileChecker,
 			osGitLockChecker,
 			osPreflightChecker,
@@ -602,7 +602,7 @@ func CreateOneShotRunner(
 			promptManager,
 		),
 		currentDateTimeGetter,
-		containerChecker,
+		executionChecker,
 		autoApprove,
 		migrator,
 		cfg.HideGit,
@@ -665,7 +665,7 @@ func CreateSpecGenerator(
 			currentDateTimeGetter,
 			formatter.NewFormatter(currentDateTimeGetter),
 		),
-		executor.NewDockerContainerChecker(currentDateTimeGetter),
+		executor.NewDockerExecutionChecker(currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,
@@ -760,12 +760,12 @@ func createStatusChecker(
 func createContainerDeps(
 	ctx context.Context,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) (containerlock.ContainerLock, executor.ContainerChecker, error) {
+) (containerlock.ContainerLock, executor.ExecutionChecker, error) {
 	cl, err := containerlock.NewContainerLock(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	return cl, executor.NewDockerContainerChecker(currentDateTimeGetter), nil
+	return cl, executor.NewDockerExecutionChecker(currentDateTimeGetter), nil
 }
 
 // createAutoCompleter creates a spec.AutoCompleter with the given parameters.
@@ -948,7 +948,7 @@ func CreateProcessor(
 	n notifier.Notifier,
 	containerCounter executor.ContainerCounter,
 	containerLock containerlock.ContainerLock,
-	containerChecker executor.ContainerChecker,
+	executionChecker executor.ExecutionChecker,
 	dirtyFileChecker processor.DirtyFileChecker,
 	gitLockChecker processor.GitLockChecker,
 	preflightChecker preflight.Checker,
@@ -1048,7 +1048,7 @@ func CreateProcessor(
 		containerslot.NewManager(
 			containerLock,
 			containerCounter,
-			containerChecker,
+			executionChecker,
 			cfg.MaxContainers,
 			10*time.Second,
 		),

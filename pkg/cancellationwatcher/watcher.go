@@ -21,12 +21,12 @@ import (
 // Watcher monitors a prompt file for cancellation and stops its container when triggered.
 type Watcher interface {
 	// Watch starts a goroutine that watches promptPath for status==cancelled.
-	// When detected, it stops/removes the container and closes the returned channel.
+	// When detected, it stops/removes the execution and closes the returned channel.
 	// The goroutine exits when ctx is cancelled or cancellation is detected.
 	//
-	// containerName is passed as a string to avoid an import cycle with pkg/processor.
+	// executionID is passed as a string to avoid an import cycle with pkg/processor.
 	// PromptLoader is a minimal local interface for the same reason.
-	Watch(ctx context.Context, promptPath string, containerName string) <-chan struct{}
+	Watch(ctx context.Context, promptPath string, executionID string) <-chan struct{}
 }
 
 // PromptLoader is the minimal subset of processor.PromptManager that this package needs.
@@ -51,17 +51,17 @@ func NewWatcher(exec executor.Executor, promptLoader PromptLoader) Watcher {
 func (w *watcher) Watch(
 	ctx context.Context,
 	promptPath string,
-	containerName string,
+	executionID string,
 ) <-chan struct{} {
 	ch := make(chan struct{})
-	go w.watch(ctx, promptPath, containerName, ch)
+	go w.watch(ctx, promptPath, executionID, ch)
 	return ch
 }
 
 func (w *watcher) watch(
 	ctx context.Context,
 	promptPath string,
-	containerName string,
+	executionID string,
 	ch chan<- struct{},
 ) {
 	fsWatcher, err := fsnotify.NewWatcher()
@@ -104,11 +104,11 @@ func (w *watcher) watch(
 				promptstate.DockerStateUnavailable,
 			) == promptstate.StateCancelled {
 				log.From(ctx).Info("prompt cancelled, stopping container",
-					"container", containerName,
+					"container", executionID,
 					"workflow_step", "cancel",
 				)
 				close(ch)
-				w.executor.StopAndRemoveContainer(ctx, containerName)
+				w.executor.StopAndRemoveContainer(ctx, executionID)
 				return
 			}
 		}

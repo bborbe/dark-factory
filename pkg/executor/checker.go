@@ -29,38 +29,38 @@ func isDockerDaemonUnavailable(stderr string) bool {
 		strings.Contains(stderr, "Is the docker daemon running")
 }
 
-//counterfeiter:generate -o ../../mocks/container-checker.go --fake-name ContainerChecker . ContainerChecker
+//counterfeiter:generate -o ../../mocks/execution-checker.go --fake-name ExecutionChecker . ExecutionChecker
 
-// ContainerChecker checks whether a Docker container is currently running.
-type ContainerChecker interface {
-	IsRunning(ctx context.Context, name string) (bool, error)
-	// WaitUntilRunning blocks until the named container is in the running state,
+// ExecutionChecker checks whether a unit of execution (identified by executionID) is currently running.
+type ExecutionChecker interface {
+	IsRunning(ctx context.Context, executionID string) (bool, error)
+	// WaitUntilRunning blocks until the named execution is in the running state,
 	// the timeout elapses, or ctx is cancelled.
-	WaitUntilRunning(ctx context.Context, name string, timeout time.Duration) error
+	WaitUntilRunning(ctx context.Context, executionID string, timeout time.Duration) error
 }
 
-// NewDockerContainerChecker creates a ContainerChecker backed by docker inspect.
-func NewDockerContainerChecker(
+// NewDockerExecutionChecker creates an ExecutionChecker backed by docker inspect.
+func NewDockerExecutionChecker(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) ContainerChecker {
+) ExecutionChecker {
 	return &dockerContainerChecker{currentDateTimeGetter: currentDateTimeGetter}
 }
 
-// dockerContainerChecker implements ContainerChecker using docker inspect.
+// dockerContainerChecker implements ExecutionChecker using docker inspect.
 type dockerContainerChecker struct {
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 }
 
-// WaitUntilRunning polls docker inspect every 2 seconds until the named container
+// WaitUntilRunning polls docker inspect every 2 seconds until the named execution
 // is running, the timeout expires, or ctx is cancelled.
 func (c *dockerContainerChecker) WaitUntilRunning(
 	ctx context.Context,
-	name string,
+	executionID string,
 	timeout time.Duration,
 ) error {
 	deadline := time.Time(c.currentDateTimeGetter.Now()).Add(timeout)
 	for {
-		running, err := c.IsRunning(ctx, name)
+		running, err := c.IsRunning(ctx, executionID)
 		if err != nil {
 			return errors.Wrap(ctx, err, "check container running")
 		}
@@ -68,7 +68,7 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 			return nil
 		}
 		if time.Time(c.currentDateTimeGetter.Now()).After(deadline) {
-			return errors.Errorf(ctx, "container %s did not start within %s", name, timeout)
+			return errors.Errorf(ctx, "container %s did not start within %s", executionID, timeout)
 		}
 		select {
 		case <-ctx.Done():
@@ -78,13 +78,20 @@ func (c *dockerContainerChecker) WaitUntilRunning(
 	}
 }
 
-// IsRunning returns true if the named container is currently running.
+// IsRunning returns true if the named execution is currently running.
 // If the container does not exist, it returns false with no error.
 // If the Docker daemon is unreachable, it returns ErrDockerDaemonUnavailable —
 // the container's state is unknown and callers must NOT treat this as "absent".
-func (c *dockerContainerChecker) IsRunning(ctx context.Context, name string) (bool, error) {
+func (c *dockerContainerChecker) IsRunning(ctx context.Context, executionID string) (bool, error) {
 	// #nosec G204 -- containerName is generated internally from prompt filename, not user input
-	cmd := exec.CommandContext(ctx, "docker", "inspect", "--format", "{{.State.Running}}", name)
+	cmd := exec.CommandContext(
+		ctx,
+		"docker",
+		"inspect",
+		"--format",
+		"{{.State.Running}}",
+		executionID,
+	)
 	var out, stderr strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &stderr

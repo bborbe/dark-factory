@@ -1,7 +1,8 @@
 ---
-status: draft
+status: approved
 spec: [102-executor-backend-neutral-naming]
 created: "2026-06-26T09:00:02Z"
+queued: "2026-06-26T10:11:44Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 
@@ -148,7 +149,7 @@ Run from `/workspace`:
 go test ./pkg/prompt/... -run 'TestLoadAcceptsLegacyContainerKey|TestSaveEmitsExecutionIDKey|TestLegacyContainerKeyRoundTripsUnchanged' -v
 grep -rn 'yaml:"container' pkg/prompt/prompt.go
 grep -rn '"\\ncontainer:"\|container:' pkg/prompt/*_test.go pkg/status/*_test.go
-go test -coverprofile=/tmp/cover.out -mod=vendor ./pkg/prompt/... && go tool cover -func=/tmp/cover.out | grep -E 'load|Save'
+go test -coverprofile=/tmp/cover.out ./pkg/prompt/... && go tool cover -func=/tmp/cover.out | grep -E 'load|Save'
 make precommit
 ```
 

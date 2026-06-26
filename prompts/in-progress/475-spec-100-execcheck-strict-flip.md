@@ -1,9 +1,14 @@
 ---
-status: approved
+status: failed
 spec: [100-centralize-subprocess-runner]
+container: dark-factory-exec-475-spec-100-execcheck-strict-flip
+dark-factory-version: v0.183.0
 created: "2026-06-26T07:30:00Z"
 queued: "2026-06-26T07:57:18Z"
+started: "2026-06-26T08:43:35Z"
+completed: "2026-06-26T08:47:24Z"
 branch: dark-factory/centralize-subprocess-runner
+lastFailReason: 'validate completion report: completion report status: failed'
 ---
 
 <summary>

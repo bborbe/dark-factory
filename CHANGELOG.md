@@ -10,10 +10,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: surface real cause when a healthcheck container probe fails non-zero — claude/boot/mount probe failure messages now include the underlying err and the captured stderr (via `*exec.ExitError.Stderr`) instead of just `stdout=""`, so operators see auth failures, missing-image errors, and crashed CLIs directly without grepping logs (the v0.187.1 tag predates PR #43's merge — code shipped to master at HEAD 9d8d228 but is NOT in the v0.187.1 tag despite a transient CHANGELOG entry suggesting otherwise; this release pulls the bullet down to where the code actually lives)
+
 ## v0.187.1
 
 - fix: allow square brackets in model identifier regex so provider variant suffixes like `claude-sonnet-4-5[1m]` and `deepseek-v4-flash[1m]` pass validation at BOTH the global (`globalconfig.ModelPattern`) and project (`pkg/config.modelPattern`) layers (regression surfaced by `dark-factory healthcheck` on minimax-backed configs; fix kept the duplicate-by-design pair in sync)
-- fix: surface real cause when a healthcheck container probe fails non-zero — claude/boot/mount probe failure messages now include the underlying err and the captured stderr (via *exec.ExitError.Stderr) instead of just `stdout=""`, so operators see auth failures, missing-image errors, and crashed CLIs directly without grepping logs
 
 ## v0.187.0
 

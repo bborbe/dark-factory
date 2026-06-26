@@ -7,7 +7,6 @@ package promptresumer
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/executor"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -127,9 +127,9 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 		return errors.Wrap(ctx, err, "reconstruct workflow state for resume")
 	}
 	if !canResume {
-		slog.Warn(
+		log.From(ctx).Warn(
 			"cannot resume prompt: isolation directory missing; resetting to approved",
-			"file", filepath.Base(promptPath),
+			"prompt_id", filepath.Base(promptPath),
 		)
 		pf.MarkApproved()
 		if err := pf.Save(ctx); err != nil {
@@ -138,13 +138,13 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 		return nil
 	}
 
-	slog.Info(
+	log.From(ctx).Info(
 		"resuming executing prompt",
-		"file", filepath.Base(promptPath),
+		"prompt_id", filepath.Base(promptPath),
 		"container", containerName,
 	)
 
-	remainingDuration, elapsed, exceeded := r.computeReattachDuration(pf.Frontmatter.Started)
+	remainingDuration, elapsed, exceeded := r.computeReattachDuration(ctx, pf.Frontmatter.Started)
 	if exceeded {
 		return r.killTimedOutContainer(ctx, pf, containerName, elapsed)
 	}
@@ -153,7 +153,7 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 		return errors.Wrap(ctx, err, "reattach to container")
 	}
 
-	slog.Info("reattached container exited", "file", filepath.Base(promptPath))
+	log.From(ctx).Info("reattached container exited", "prompt_id", filepath.Base(promptPath))
 
 	// Reload prompt file (state may have changed)
 	pf, err = r.promptManager.Load(ctx, promptPath)
@@ -195,8 +195,9 @@ func (r *resumer) prepareResume(
 
 	containerName := pf.Frontmatter.Container
 	if containerName == "" {
-		slog.Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
-			"file", filepath.Base(promptPath))
+		log.From(ctx).
+			Warn("cannot resume prompt: no container name in frontmatter; resetting to approved",
+				"prompt_id", filepath.Base(promptPath))
 		pf.MarkApproved()
 		if err := pf.Save(ctx); err != nil {
 			return nil, "", "", "", "", errors.Wrap(ctx, err, "save prompt after failed resume")
@@ -224,7 +225,7 @@ func (r *resumer) killTimedOutContainer(
 	containerName string,
 	elapsed time.Duration,
 ) error {
-	slog.Warn("container exceeded maxPromptDuration, killing without reattach",
+	log.From(ctx).Warn("container exceeded maxPromptDuration, killing without reattach",
 		"container", containerName,
 		"started", pf.Frontmatter.Started,
 		"elapsed", elapsed)
@@ -241,13 +242,16 @@ func (r *resumer) killTimedOutContainer(
 // Returns (remaining, elapsed, exceeded) where exceeded=true means the container has already
 // run past maxPromptDuration and should be killed without reattaching.
 // When maxPromptDuration is 0 or started is empty, remaining equals maxPromptDuration and exceeded is false.
-func (r *resumer) computeReattachDuration(started string) (time.Duration, time.Duration, bool) {
+func (r *resumer) computeReattachDuration(
+	ctx context.Context,
+	started string,
+) (time.Duration, time.Duration, bool) {
 	if r.maxPromptDuration == 0 || started == "" {
 		return r.maxPromptDuration, 0, false
 	}
 	t, err := time.Parse(time.RFC3339, started)
 	if err != nil {
-		slog.Warn(
+		log.From(ctx).Warn(
 			"cannot parse started timestamp, using full timeout",
 			"started", started,
 			"error", err,
@@ -259,9 +263,9 @@ func (r *resumer) computeReattachDuration(started string) (time.Duration, time.D
 	if remaining <= 0 {
 		return 0, elapsed, true
 	}
-	slog.Info("computed remaining timeout for reattach",
+	log.From(ctx).Info("computed remaining timeout for reattach",
 		"remaining", remaining,
 		"elapsed", elapsed,
-		"maxPromptDuration", r.maxPromptDuration)
+		"max_prompt_duration", r.maxPromptDuration)
 	return remaining, elapsed, false
 }

@@ -6,13 +6,13 @@ package committingrecoverer
 
 import (
 	"context"
-	"log/slog"
 	"path/filepath"
 	"strings"
 
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/git"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/spec"
 )
@@ -69,7 +69,7 @@ type recoverer struct {
 func (r *recoverer) RecoverAll(ctx context.Context) {
 	paths, err := r.promptManager.FindCommitting(ctx)
 	if err != nil {
-		slog.Warn("failed to scan for committing prompts", "error", err)
+		log.From(ctx).Warn("failed to scan for committing prompts", "error", err)
 		return
 	}
 	for _, promptPath := range paths {
@@ -77,8 +77,8 @@ func (r *recoverer) RecoverAll(ctx context.Context) {
 			return
 		}
 		if err := r.Recover(ctx, promptPath); err != nil {
-			slog.Error("git commit failed after all retries, will retry next cycle",
-				"file", filepath.Base(promptPath), "error", err)
+			log.From(ctx).Error("git commit failed after all retries, will retry next cycle",
+				"prompt_id", filepath.Base(promptPath), "error", err)
 		}
 	}
 }
@@ -115,16 +115,16 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		}); err != nil {
 			return errors.Wrap(ctx, err, "commit work files during recovery")
 		}
-		slog.Info(
+		log.From(ctx).Info(
 			"committed work files during committing recovery",
-			"file",
+			"prompt_id",
 			filepath.Base(promptPath),
 		)
 	}
 
 	for _, specID := range pf.Specs() {
 		if err := r.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
-			slog.Warn("spec auto-complete failed", "spec", specID, "error", err)
+			log.From(ctx).Warn("spec auto-complete failed", "spec_id", specID, "error", err)
 		}
 	}
 
@@ -133,9 +133,9 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		if err := pf.Save(ctx); err != nil {
 			return errors.Wrap(ctx, err, "mark completed in place during half-state recovery")
 		}
-		slog.Info(
+		log.From(ctx).Info(
 			"half-state recovery: status transitioned in place",
-			"file",
+			"prompt_id",
 			filepath.Base(promptPath),
 		)
 	} else {
@@ -158,6 +158,6 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 		}
 	}
 
-	slog.Info("git commit recovery succeeded", "file", filepath.Base(completedPath))
+	log.From(ctx).Info("git commit recovery succeeded", "prompt_id", filepath.Base(completedPath))
 	return nil
 }

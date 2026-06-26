@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [099-correlation-ids-structured-logging]
+summary: Migrated pkg/executor/executor.go, pkg/promptresumer/resumer.go, and pkg/committingrecoverer/recoverer.go to the context-bound logger (log.From(ctx)), normalized all attr keys to snake_case, threaded ctx into computeReattachDuration, added boundary test proving log propagation in committingrecoverer, and updated CHANGELOG.
+container: dark-factory-exec-468-spec-099-migrate-executor-resumer-recoverer
+dark-factory-version: v0.183.0
 created: "2026-06-26T05:42:49Z"
 queued: "2026-06-26T06:13:15Z"
+started: "2026-06-26T06:34:59Z"
+completed: "2026-06-26T06:49:50Z"
 branch: dark-factory/correlation-ids-structured-logging
 ---
 

@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.0
 
 - feat: enforce centralized subprocess spawning — `make hotpath-execcheck` now runs in strict mode and gates `make precommit`, failing the build if a raw exec.Command(Context) call appears in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 5)
 - fix: migrate `pkg/preflight` exec.CommandContext to pkg/subproc.Runner (missed migration from prompts 2-4)

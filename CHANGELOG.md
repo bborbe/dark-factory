@@ -12,6 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- fix: demote spec-102 `legacy_container_alias=true` log from INFO to DEBUG. On daemon startup the line fires once per prompt with legacy `container:` frontmatter, drowning useful INFO with N identical lines on every restart of long-lived projects (operator counted 8+ near-duplicate lines in `task-orchestrator-goals-view`). The alias path is transparent backward-compat; operators investigating compat issues can opt in via `-debug`. Conflicting-keys stays WARN.
 - fix: strip reserved env keys (`ANTHROPIC_MODEL`, `YOLO_PROMPT_FILE`) from `global.Env` during `ApplyGlobalOverrides` merge. Follow-up to the env merge fix in v0.187.3 — operators commonly mirror `model:` into `env: ANTHROPIC_MODEL:` out of habit, and the merge would land that duplicate in `cfg.Env`, where `validateEnv` (called after layering by `cfg.Validate`) correctly rejects it as reserved. Healthcheck didn't re-validate post-merge so it kept working; `dark-factory daemon` / `run` failed startup with `env key "ANTHROPIC_MODEL" is reserved` on previously-valid global configs. The keys remain the factory's responsibility to set from `cfg.Model` / prompt path; stripping them at merge keeps user configs working without changing the validation contract.
 
 ## v0.187.3

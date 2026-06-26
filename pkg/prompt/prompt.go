@@ -384,7 +384,13 @@ func applyLegacyContainerKey(
 	}
 	if fm.Container == "" {
 		fm.Container = legacy.Container
-		slog.InfoContext(ctx, "prompt_load legacy_container_alias=true", "file", path)
+		// DEBUG — fires once per legacy-frontmatter prompt on every daemon
+		// startup. For long-lived projects with N completed prompts this
+		// produces N identical lines on each load, drowning useful INFO.
+		// Operators investigating compat issues can opt-in via `-debug`;
+		// the alias path is transparent otherwise. Conflicting-keys stays
+		// WARN since it signals a real divergence the operator must fix.
+		slog.DebugContext(ctx, "prompt_load legacy_container_alias=true", "file", path)
 	} else {
 		slog.WarnContext(ctx, "prompt_load conflicting_keys", "execution_id", fm.Container, "container", legacy.Container, "file", path)
 	}

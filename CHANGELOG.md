@@ -12,6 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- refactor: route the processor cancelled-during-execution fallback through pkg/promptstate; pending_verification is now a first-class promptstate.State (spec 101 prompt 3)
 - refactor: migrate the five prompt-state consumers (runner lifecycle, promptresumer, committingrecoverer, queuescanner, cancellationwatcher) to pkg/promptstate.InterpretTuple; remove inline frontmatter-status interpretation (spec 101 prompt 2)
 - feat: add pkg/promptstate — single owner of prompt-state interpretation with State enum, IsValidTransition transition table, and pure InterpretTuple(location, status, container, dockerState) (spec 101 prompt 1)
 - feat: add `make hotpath-execcheck` lint gate (warn mode) that flags raw exec.Command(Context) calls in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 1)

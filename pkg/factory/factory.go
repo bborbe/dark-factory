@@ -1370,6 +1370,14 @@ func CreateHealthcheckCommand(
 			env["ANTHROPIC_MODEL"] = cfg.Model
 		}
 	}
+	// Healthcheck always forces hideGit=true. The probes mount /workspace
+	// only to verify it's writable (mount probe); none of them needs to read
+	// the project's .git dir, AND the image's entrypoint.sh runs
+	// `git config --global` which fails with exit 128 in a worktree (broken
+	// .git pointer file the container can't follow). Production prompt
+	// containers gate this via `--set hideGit=true` on `dark-factory run`;
+	// healthcheck has no equivalent operator surface, so hard-force it.
+	probeHideGit := true
 	policy := launchpolicy.NewPolicy(
 		cfg.ContainerImage,
 		projectName,
@@ -1380,7 +1388,7 @@ func CreateHealthcheckCommand(
 		cfg.ExtraMounts,
 		cfg.NetrcFile,
 		cfg.GitconfigFile,
-		resolveHideGit(cfg),
+		probeHideGit,
 	)
 	probes := cmd.Probes{
 		healthcheck.NewDockerProbe(subprocRunner),

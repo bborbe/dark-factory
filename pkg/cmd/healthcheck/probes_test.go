@@ -209,25 +209,39 @@ var _ = Describe("ClaudeProbe", func() {
 		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		Expect(p.Name()).To(Equal("claude"))
 		Expect(p.Run(ctx)).To(Succeed())
-		_, _, name, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
+		_, _, name, _ := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
 		Expect(name).To(Equal("docker"))
-		Expect(args).To(ContainElement("--entrypoint"))
-		Expect(args).To(ContainElement("claude"))
-		Expect(args).To(ContainElement("-p"))
-		Expect(args).To(ContainElement("reply with exactly: OK"))
 	})
 
-	It("passes --dangerously-skip-permissions to claude (mirrors image entrypoint.sh)", func() {
-		// Regression lock for the silent-claude failure on alt-provider configs
-		// (minimax, vLLM): without this flag claude prompts for permission on a
-		// fresh provider, no TTY → silent exit 1. Image's /usr/local/bin/
-		// entrypoint.sh passes the flag for production prompts; the probe must
-		// mirror it to keep the auth-probe in the same shape.
+	It("does NOT override --entrypoint (uses image entrypoint.sh = production path)", func() {
+		// Regression lock: the previous probe wiring (entrypoint=claude +
+		// command=[-p, prompt]) bypassed /usr/local/bin/entrypoint.sh, which
+		// (a) drops root → node via setpriv, (b) supplies
+		// --dangerously-skip-permissions for claude headless mode, and (c)
+		// runs proxy/firewall init. On alt-provider configs (minimax,
+		// self-hosted vLLM) this surfaced as silent exit 1.
 		subprocR.RunWithWarnAndTimeoutReturns([]byte("OK\n"), nil)
 		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		Expect(p.Run(ctx)).To(Succeed())
 		_, _, _, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
-		Expect(args).To(ContainElement("--dangerously-skip-permissions"))
+		Expect(args).NotTo(ContainElement("--entrypoint"))
+	})
+
+	It("passes YOLO_PROMPT + YOLO_OUTPUT=json (matches executor argv)", func() {
+		// Aligning probe to the executor's YOLO_OUTPUT=json path
+		// (pkg/executor/executor.go:466) means probe and prompt-runs hit the
+		// exact same claude argv via entrypoint.sh — any model rejection,
+		// auth failure, or image regression that breaks production breaks
+		// the probe too. successMarker "OK" still matches because the
+		// stream-json output contains the model's reply text verbatim.
+		subprocR.RunWithWarnAndTimeoutReturns(
+			[]byte(`{"type":"text","text":"OK"}`+"\n"), nil)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		Expect(p.Run(ctx)).To(Succeed())
+		_, _, _, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
+		argline := strings.Join(args, " ")
+		Expect(argline).To(ContainSubstring("YOLO_PROMPT=reply with exactly: OK"))
+		Expect(argline).To(ContainSubstring("YOLO_OUTPUT=json"))
 	})
 
 	It("returns error when stdout does not contain OK", func() {

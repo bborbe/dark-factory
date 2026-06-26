@@ -1020,6 +1020,27 @@ var _ = Describe("Config", func() {
 				Expect(cfg.Validate(ctx)).To(HaveOccurred())
 				Expect(cfg.Validate(ctx).Error()).To(ContainSubstring("model"))
 			})
+
+			It("accepts bracketed variant suffix (Anthropic 1M)", func() {
+				// Mirrors globalconfig allowlist — the project config layer
+				// must stay in sync so `.dark-factory.yaml: model:
+				// claude-sonnet-4-5[1m]` is accepted at both layers.
+				cfg := config.Defaults()
+				cfg.Model = "claude-sonnet-4-5[1m]"
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("accepts deepseek variant with brackets", func() {
+				cfg := config.Defaults()
+				cfg.Model = "deepseek-v4-flash[1m]"
+				Expect(cfg.Validate(ctx)).To(Succeed())
+			})
+
+			It("still rejects shell metachars when brackets are allowed", func() {
+				cfg := config.Defaults()
+				cfg.Model = "claude[1m];rm -rf /"
+				Expect(cfg.Validate(ctx)).To(HaveOccurred())
+			})
 		})
 
 		Describe("preflightCommand validation", func() {

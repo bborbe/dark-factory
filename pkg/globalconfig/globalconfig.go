@@ -21,12 +21,20 @@ const DefaultMaxContainers = 3
 
 // ModelPattern is the regex source string. Exported so callers can include
 // it in error messages.
-const ModelPattern = `^[a-zA-Z0-9._:/-]{1,256}$`
+//
+// Square brackets are allowed for provider-side variant suffixes
+// (e.g. `claude-sonnet-4-5[1m]` for the 1M context window variant,
+// `deepseek-v4-flash[1m]`). They are NOT shell metacharacters in the
+// docker-run context — model flows as a single argv element via
+// `exec.Command(name, args...)`, never through `sh -c`, so the shell
+// glob meaning never applies.
+const ModelPattern = `^[a-zA-Z0-9._:/[\]-]{1,256}$`
 
 // ModelRegex validates model identifiers at every config layer (global, project, CLI arg).
-// Permits Anthropic IDs (claude-opus-4-7), other-provider IDs (qwen3.6:35b-a3b),
-// namespaced paths (local/qwen3.6:35b-a3b), and Docker image refs (docker.io/bborbe/claude-yolo:v0.6.1).
-// Blocks shell metacharacters since model flows to container args.
+// Permits Anthropic IDs (claude-opus-4-7), variant suffixes (claude-sonnet-4-5[1m]),
+// other-provider IDs (qwen3.6:35b-a3b, deepseek-v4-flash[1m]), namespaced paths
+// (local/qwen3.6:35b-a3b), and Docker image refs (docker.io/bborbe/claude-yolo:v0.6.1).
+// Blocks true shell metacharacters (`;`, `&`, `|`, `$`, backticks, quotes, etc.).
 // EXPORTED so pkg/config and main.go reuse the SAME compiled regex — do not duplicate the pattern.
 var ModelRegex = regexp.MustCompile(ModelPattern)
 

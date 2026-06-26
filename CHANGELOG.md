@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.185.0
 
 - docs: add Prompt State Machine subsection to docs/architecture-flow.md — seven states, mermaid transition diagram, and recovery edges; documents the previously-undocumented pending_verification state (spec 101 prompt 5)
 - feat: add make hotpath-statemachine-check gate (scripts/hotpath-statemachine-check.sh) wired into precommit; blocks inline prompt-status comparisons in the migrated hot-path files (spec 101 prompt 4)

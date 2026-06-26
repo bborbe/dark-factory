@@ -30,3 +30,12 @@ func NewCheckerWithRunner(
 	c.runner = runner
 	return c
 }
+
+// RunInContainerForTest exposes the runInContainer method for the
+// stderr-capture regression test (scenario 010 caught a regression where
+// stderr was silently dropped after spec 100's subproc.Runner migration).
+func RunInContainerForTest(c Checker, ctx context.Context) (string, error) {
+	//nolint:forcetypeassert // test-only helper; NewChecker always returns *checker
+	cc := c.(*checker)
+	return cc.runInContainer(ctx)
+}

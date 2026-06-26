@@ -234,6 +234,22 @@ var _ = Describe("ClaudeProbe", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("claude session probe failed"))
 	})
+
+	It("surfaces wrapped runner error in error message on non-zero exit", func() {
+		// Regression: previously the runContainerProbe failure path dropped the
+		// runner err entirely and returned only stdout — operator saw
+		// `stdout=""` with no clue why. Now the underlying err must be in the
+		// returned string so the cause is visible without checking logs.
+		subprocR.RunWithWarnAndTimeoutReturns(
+			[]byte(""),
+			errors.Errorf(ctx, "claude session probe failed: exit 1"),
+		)
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		err := p.Run(ctx)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("err="))
+		Expect(err.Error()).To(ContainSubstring("exit 1"))
+	})
 })
 
 var _ = Describe("GhProbe", func() {

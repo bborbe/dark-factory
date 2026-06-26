@@ -21,10 +21,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	stderrors "errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -301,14 +303,23 @@ func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
 		"docker",
 		executor.BuildDockerRunArgs(opts)...)
 	if err != nil {
+		stderrSnippet := extractStderr(err)
 		slog.Error(
 			"healthcheck probe failed",
 			"probe", a.category,
 			"container", name,
 			"stdout", truncate(string(out)),
+			"stderr", stderrSnippet,
 			"error", err,
 		)
-		return errors.Errorf(ctx, "%s: stdout=%q", a.failurePrefix, truncate(string(out)))
+		return errors.Errorf(
+			ctx,
+			"%s: stdout=%q stderr=%q err=%v",
+			a.failurePrefix,
+			truncate(string(out)),
+			stderrSnippet,
+			err,
+		)
 	}
 	if !strings.Contains(string(out), a.successMarker) {
 		slog.Error(
@@ -545,4 +556,18 @@ func truncate(s string) string {
 		return s
 	}
 	return s[:n-3] + "..."
+}
+
+// extractStderr walks the error chain for a *exec.ExitError and returns a
+// truncated string view of its Stderr field. Empty string when no ExitError
+// is present (timeout, context cancel, runner-internal error) or when the
+// command captured no stderr. Operators see the actual subprocess failure
+// (auth error from claude, daemon refusal from docker) instead of "stdout=\"\""
+// when a container probe fails non-zero.
+func extractStderr(err error) string {
+	var exitErr *exec.ExitError
+	if stderrors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+		return truncate(string(exitErr.Stderr))
+	}
+	return ""
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/preflight"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 var _ = Describe("Checker", func() {
@@ -169,6 +170,7 @@ var _ = Describe("Checker", func() {
 				notifier,
 				"proj",
 				libtime.NewCurrentDateTime(),
+				subproc.NewRunner(),
 			)
 			Expect(ch).NotTo(BeNil())
 		})
@@ -181,6 +183,7 @@ var _ = Describe("Checker", func() {
 				notifier,
 				"proj",
 				libtime.NewCurrentDateTime(),
+				subproc.NewRunner(),
 			)
 			ok, err := ch.Check(ctx)
 			Expect(err).NotTo(HaveOccurred())

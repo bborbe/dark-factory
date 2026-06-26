@@ -425,6 +425,7 @@ func CreateRunner(
 				n,
 				projectName.String(),
 				currentDateTimeGetter,
+				subproc.NewRunner(),
 			)
 		}
 	}
@@ -554,6 +555,7 @@ func CreateOneShotRunner(
 				n,
 				projectName.String(),
 				currentDateTimeGetter,
+				subproc.NewRunner(),
 			)
 		}
 	}

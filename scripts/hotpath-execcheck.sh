@@ -45,8 +45,9 @@ while IFS= read -r f; do
         pkg/executor/launch.go) continue ;;
     esac
 
-    # Search for raw exec spawns
-    matches=$(grep -nE 'exec\.Command(Context)?\(' "$f")
+    # Search for raw exec spawns; skip comment-only lines (e.g. architecture docs that
+    # reference exec.Command as examples within // comments).
+    matches=$(grep -nE 'exec\.Command(Context)?\(' "$f" | grep -vE '^[0-9]+:[[:space:]]*//')
     if [ -n "$matches" ]; then
         while IFS= read -r line; do
             OFFENDERS="$OFFENDERS

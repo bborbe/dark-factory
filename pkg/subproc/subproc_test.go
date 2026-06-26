@@ -122,6 +122,27 @@ var _ = Describe("Runner", func() {
 		})
 	})
 
+	Describe("Concurrent", func() {
+		It("Concurrent — shared Runner handles 20 goroutines without data races", func() {
+			r := subproc.NewRunner()
+			const n = 20
+			errs := make([]error, n)
+			var wg sync.WaitGroup
+			wg.Add(n)
+			for i := 0; i < n; i++ {
+				i := i
+				go func() {
+					defer wg.Done()
+					_, errs[i] = r.RunWithWarnAndTimeout(ctx, "concurrent-true", "true")
+				}()
+			}
+			wg.Wait()
+			for _, err := range errs {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		})
+	})
+
 	Describe("RunWithWarnAndTimeoutEnv", func() {
 		It("Env — passes extra environment variables to the child process", func() {
 			r := subproc.NewRunner()

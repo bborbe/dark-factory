@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-26T07:28:27Z"
 generating: "2026-06-26T07:40:24Z"
 prompted: "2026-06-26T07:59:49Z"
 verifying: "2026-06-26T12:45:21Z"
+completed: "2026-06-26T12:59:10Z"
 branch: dark-factory/extract-unified-prompt-state-machine
 ---
 

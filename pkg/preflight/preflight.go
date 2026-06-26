@@ -7,6 +7,7 @@ package preflight
 import (
 	"context"
 	"log/slog"
+	"os/exec"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -129,7 +130,13 @@ func (c *checker) Check(ctx context.Context) (bool, error) {
 // The name is retained for backwards compatibility; `make precommit`-style baseline
 // checks are safe to run on host — containerization is only needed to sandbox Claude
 // with --dangerously-skip-permissions, which preflight does not use.
-// Returns stdout output and nil on success, or empty string + error on failure.
+//
+// Returns the combined stdout+stderr of the command. On failure, the returned
+// string contains the captured stderr (extracted from `*exec.ExitError.Stderr`)
+// so the FAILED log line surfaces *why* the preflight failed — without this,
+// operators see `output=""` and have to re-run the command manually to find
+// the diagnostic message. Regression caught by scenario 010 after spec 100's
+// subproc.Runner migration.
 func (c *checker) runInContainer(ctx context.Context) (string, error) {
 	out, err := c.subprocRunner.RunWithWarnAndTimeoutDir(
 		ctx,
@@ -140,6 +147,18 @@ func (c *checker) runInContainer(ctx context.Context) (string, error) {
 		c.command,
 	)
 	if err != nil {
+		// Unwrap to *exec.ExitError so we can recover the captured stderr that
+		// cmd.Output() stashed there. errors.As walks the wrapped chain.
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) && len(exitErr.Stderr) > 0 {
+			return string(
+					exitErr.Stderr,
+				), errors.Wrap(
+					ctx,
+					err,
+					"preflight command exited non-zero",
+				)
+		}
 		return string(out), errors.Wrap(ctx, err, "preflight command exited non-zero")
 	}
 	return string(out), nil

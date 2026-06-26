@@ -7,6 +7,7 @@ package preflight_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/bborbe/errors"
@@ -29,6 +30,50 @@ var _ = Describe("Checker", func() {
 		ctx = context.Background()
 		notifier = &mocks.Notifier{}
 		notifier.NotifyReturns(nil)
+	})
+
+	// Regression for scenario 010: spec 100's subproc.Runner migration broke
+	// stderr capture. Operators saw `output=""` in the FAILED log instead of
+	// the diagnostic stderr from the failing baseline script. The fix in
+	// runInContainer unwraps *exec.ExitError to recover the captured stderr.
+	Describe("runInContainer captures stderr on failure (scenario 010 regression)", func() {
+		It("returns the failing command's stderr in the output string", func() {
+			tmpDir, err := os.MkdirTemp("", "preflight-stderr-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tmpDir)
+
+			ch := preflight.NewChecker(
+				"echo STDERR_MARKER >&2; exit 1",
+				0,
+				tmpDir,
+				notifier,
+				"proj",
+				libtime.NewCurrentDateTime(),
+				subproc.NewRunner(),
+			)
+			out, runErr := preflight.RunInContainerForTest(ch, ctx)
+			Expect(runErr).To(HaveOccurred())
+			Expect(out).To(ContainSubstring("STDERR_MARKER"))
+		})
+
+		It("returns empty string when the command succeeds without output", func() {
+			tmpDir, err := os.MkdirTemp("", "preflight-stderr-test-*")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.RemoveAll(tmpDir)
+
+			ch := preflight.NewChecker(
+				"true",
+				0,
+				tmpDir,
+				notifier,
+				"proj",
+				libtime.NewCurrentDateTime(),
+				subproc.NewRunner(),
+			)
+			out, runErr := preflight.RunInContainerForTest(ch, ctx)
+			Expect(runErr).NotTo(HaveOccurred())
+			Expect(out).To(BeEmpty())
+		})
 	})
 
 	Describe("disabled (empty command)", func() {

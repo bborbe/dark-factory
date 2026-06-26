@@ -675,7 +675,8 @@ func (c Config) validateExtraMounts(ctx context.Context) error {
 
 // modelPattern is the regex for validating model identifiers at the project config layer.
 // Must stay in sync with globalconfig.ModelPattern — duplication is intentional (no cross-package import).
-const modelPattern = `^[a-zA-Z0-9._:/-]{1,256}$`
+// Square brackets allowed for provider variant suffixes (e.g. claude-sonnet-4-5[1m]).
+const modelPattern = `^[a-zA-Z0-9._:/[\]-]{1,256}$`
 
 var modelRegex = regexp.MustCompile(modelPattern)
 

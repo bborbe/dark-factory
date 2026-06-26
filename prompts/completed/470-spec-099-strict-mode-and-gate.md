@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [099-correlation-ids-structured-logging]
+summary: Flipped hotpath-logcheck to strict mode, wired it into make precommit, and added the final CHANGELOG entry for the correlation-id structured logging enforcement gate.
+container: dark-factory-exec-470-spec-099-strict-mode-and-gate
+dark-factory-version: v0.183.0
 created: "2026-06-26T05:42:49Z"
 queued: "2026-06-26T06:13:15Z"
+started: "2026-06-26T06:56:39Z"
+completed: "2026-06-26T06:59:08Z"
 branch: dark-factory/correlation-ids-structured-logging
 ---
 

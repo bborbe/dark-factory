@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [102-executor-backend-neutral-naming]
+summary: 'Created docs/execution-backends.md documenting the neutral-vs-container vocabulary split and the ≤3-file second-backend walk-through, and added CHANGELOG entry under ## Unreleased.'
+container: dark-factory-exec-485-spec-102-execution-backends-doc
+dark-factory-version: v0.183.0
 created: "2026-06-26T09:00:04Z"
 queued: "2026-06-26T10:11:44Z"
+started: "2026-06-26T10:48:28Z"
+completed: "2026-06-26T10:51:31Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

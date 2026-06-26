@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.3
 
 - fix: pass `--dangerously-skip-permissions` to the healthcheck claude probe — without it, claude prompts for permission on a fresh provider (no cached grant in `~/.claude`), no TTY → silent exit 1, surfacing as `stdout="" stderr=""`. Default-claude probes worked off the cached permission grant; alt-provider configs (minimax `ANTHROPIC_BASE_URL`, self-hosted vLLM) hit the gate. Mirrors what the image's `/usr/local/bin/entrypoint.sh` already passes for production prompts. Regression introduced by commit c237af6 (2026-06-16) which switched the probe to override `--entrypoint claude`, bypassing the entrypoint.sh that supplies the flag.
 

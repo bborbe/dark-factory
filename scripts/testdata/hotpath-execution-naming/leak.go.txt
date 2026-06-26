@@ -1,0 +1,4 @@
+// fixture: demonstrates a container-vocabulary leak the gate must catch.
+package runner
+
+func bad(containerName string) {}

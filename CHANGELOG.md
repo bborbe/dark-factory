@@ -14,6 +14,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - feat: Prompt frontmatter writes execution_id and reads legacy container key (backward compatible) (spec 102)
 - refactor: Rename pkg/containerslot to pkg/executionslot (slot is keyed by neutral executionID) (spec 102)
+- chore: Add hotpath-execution-naming-check precommit gate forbidding container vocabulary in neutral-layer packages (spec 102)
 
 ## v0.185.0
 

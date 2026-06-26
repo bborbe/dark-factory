@@ -105,12 +105,12 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 
 	promptContent := g.buildPromptContent(specPath)
 	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
-	containerName := string(
+	executionID := string(
 		prompt.ContainerName(string(g.projectName) + "-gen-" + specBasename).Sanitize(),
 	)
 	logFile := filepath.Join(g.logDir, "gen-"+specBasename+".log")
 
-	handled, err := g.isGenerationRunning(ctx, specPath, specBasename, containerName, logFile)
+	handled, err := g.isGenerationRunning(ctx, specPath, specBasename, executionID, logFile)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (g *dockerSpecGenerator) Generate(ctx context.Context, specPath string) err
 		specBasename,
 		promptContent,
 		logFile,
-		containerName,
+		executionID,
 	)
 	if err != nil {
 		if !prompted && ctx.Err() == nil {
@@ -158,17 +158,17 @@ func (g *dockerSpecGenerator) isGenerationRunning(
 	ctx context.Context,
 	specPath string,
 	specBasename string,
-	containerName string,
+	executionID string,
 	logFile string,
 ) (bool, error) {
-	running, err := g.executionChecker.IsRunning(ctx, containerName)
+	running, err := g.executionChecker.IsRunning(ctx, executionID)
 	if err != nil {
 		slog.Warn("failed to check container liveness, starting fresh generation",
-			"container", containerName, "error", err)
+			"container", executionID, "error", err)
 		return false, nil
 	}
 	if running {
-		if err := g.reattachAndFinalize(ctx, specPath, specBasename, containerName, logFile); err != nil {
+		if err := g.reattachAndFinalize(ctx, specPath, specBasename, executionID, logFile); err != nil {
 			return false, errors.Wrap(ctx, err, "reattach to spec generation container")
 		}
 		return true, nil
@@ -194,7 +194,7 @@ func (g *dockerSpecGenerator) executeAndFinalize(
 	specBasename string,
 	promptContent string,
 	logFile string,
-	containerName string,
+	executionID string,
 ) (bool, error) {
 	// Snapshot .md files in inboxDir before execution
 	beforeFiles, err := listMDFiles(g.inboxDir)
@@ -203,7 +203,7 @@ func (g *dockerSpecGenerator) executeAndFinalize(
 	}
 
 	// Execute via executor
-	if err := g.executor.Execute(ctx, promptContent, logFile, containerName); err != nil {
+	if err := g.executor.Execute(ctx, promptContent, logFile, executionID); err != nil {
 		return false, errors.Wrap(ctx, err, "execute spec generator")
 	}
 
@@ -448,14 +448,14 @@ func (g *dockerSpecGenerator) reattachAndFinalize(
 	ctx context.Context,
 	specPath string,
 	specBasename string,
-	containerName string,
+	executionID string,
 	logFile string,
 ) error {
-	slog.Info("reattaching to running spec generation container", "container", containerName)
-	if err := g.executor.Reattach(ctx, logFile, containerName, g.maxPromptDuration); err != nil {
+	slog.Info("reattaching to running spec generation container", "container", executionID)
+	if err := g.executor.Reattach(ctx, logFile, executionID, g.maxPromptDuration); err != nil {
 		return errors.Wrap(ctx, err, "reattach to spec generation container")
 	}
-	slog.Info("spec generation container exited via reattach", "container", containerName)
+	slog.Info("spec generation container exited via reattach", "container", executionID)
 
 	newFiles, err := g.listPromptsForSpec(ctx, g.inboxDir, specBasename)
 	if err != nil {

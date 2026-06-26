@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [102-executor-backend-neutral-naming]
+summary: Added hotpath-execution-naming-check.sh gate, wired into Makefile precommit, created leak fixture, and renamed containerName to executionID in pkg/generator and pkg/processor to make the gate pass on the migrated tree.
+container: dark-factory-exec-484-spec-102-hotpath-naming-gate
+dark-factory-version: v0.183.0
 created: "2026-06-26T09:00:03Z"
 queued: "2026-06-26T10:11:44Z"
+started: "2026-06-26T10:41:04Z"
+completed: "2026-06-26T10:48:26Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

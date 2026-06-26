@@ -12,6 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- docs: add Prompt State Machine subsection to docs/architecture-flow.md — seven states, mermaid transition diagram, and recovery edges; documents the previously-undocumented pending_verification state (spec 101 prompt 5)
 - feat: add make hotpath-statemachine-check gate (scripts/hotpath-statemachine-check.sh) wired into precommit; blocks inline prompt-status comparisons in the migrated hot-path files (spec 101 prompt 4)
 - refactor: route the processor cancelled-during-execution fallback through pkg/promptstate; pending_verification is now a first-class promptstate.State (spec 101 prompt 3)
 - refactor: migrate the five prompt-state consumers (runner lifecycle, promptresumer, committingrecoverer, queuescanner, cancellationwatcher) to pkg/promptstate.InterpretTuple; remove inline frontmatter-status interpretation (spec 101 prompt 2)

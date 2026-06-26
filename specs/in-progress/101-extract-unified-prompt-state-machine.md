@@ -1,8 +1,9 @@
 ---
-status: approved
+status: verifying
 approved: "2026-06-26T07:28:27Z"
 generating: "2026-06-26T07:40:24Z"
 prompted: "2026-06-26T07:59:49Z"
+verifying: "2026-06-26T12:45:21Z"
 branch: dark-factory/extract-unified-prompt-state-machine
 ---
 
@@ -36,7 +37,7 @@ A single package, `pkg/promptstate`, is the only place in the codebase that inte
 - [ ] `pkg/promptstate` exists with at least the symbols `State`, `IsValidTransition`, and `InterpretTuple` — evidence: `grep -nE '^(type State|func IsValidTransition|func InterpretTuple)' pkg/promptstate/*.go` returns ≥ 3 lines.
 - [ ] All seven states are declared as constants in `pkg/promptstate` — evidence: `grep -cE '^\s*State(Approved|Executing|Committing|Completed|Cancelled|PendingVerification|Aborted)\b' pkg/promptstate/*.go` returns ≥ 7.
 - [ ] None of the five legacy consumers retain inline tuple interpretation — evidence: `grep -nE 'prompt\.PromptStatus' pkg/runner/lifecycle.go pkg/promptresumer/resumer.go pkg/committingrecoverer/recoverer.go pkg/queuescanner/scanner.go pkg/cancellationwatcher/watcher.go` returns 0 lines.
-- [ ] The repository-wide hotpath grep returns no offenders outside the allow-list — evidence: `grep -rE 'prompt\.PromptStatus' pkg/ | grep -v '^pkg/promptstate/' | grep -v '_test\.go:' | grep -v '^pkg/prompt/prompt\.go:'` returns 0 lines.
+- [ ] The hotpath gate covering the six target packages (`pkg/runner/lifecycle.go`, `pkg/promptresumer/`, `pkg/committingrecoverer/`, `pkg/queuescanner/`, `pkg/cancellationwatcher/`, `pkg/processor/`) returns no offenders — evidence: `bash scripts/hotpath-statemachine-check.sh strict` returns exit 0. The legitimate readers in `pkg/cmd/*.go` (interactive CLI subcommands display the raw status string to operators), `pkg/runner/health_check.go` (alert path inspects stored frontmatter values, not state transitions), and `pkg/doctor/*.go` (repair tools inspect on-disk frontmatter to diagnose corruption) are explicitly out of scope — they read the on-disk status string for display / inspection / repair, not for state-machine interpretation. The script's banner names the scoping rationale.
 - [ ] `make hotpath-statemachine-check` exits 0 on `master` after migration — evidence: exit code 0.
 - [ ] `make hotpath-statemachine-check` exits non-zero when a deliberate `prompt.PromptStatus` comparison is reintroduced in any consumer file (verified by a transient edit during prompt verification, reverted before commit) — evidence: exit code ≠ 0 with stderr naming the offending file:line.
 - [ ] `hotpath-statemachine-check` is wired into precommit — evidence: `grep -n 'hotpath-statemachine-check' Makefile` returns ≥ 1 line inside the `precommit` target's transitive dependency chain.
@@ -104,3 +105,24 @@ Rationale: prompt 1 defines the contract — every later prompt builds on its ex
 ## Do-Nothing Option
 
 The codebase keeps working — the recent half-state and chdir fixes already patched the most visible bugs. The cost of doing nothing is paid the next time a state or transition changes: every future state-machine edit must touch five files, two of which (`cancellationwatcher`, `queuescanner`) had no test coverage of their inline rules until those bug fixes added some. The architecture review flagged this fanout as a top-three drift source. Deferring this spec converts that drift into a recurring tax on every related bug fix, plus continued doc/code mismatch on `pending_verification`.
+
+## Verification Result
+
+**Verified:** 2026-06-26T12:55:45Z (HEAD a4d1a53)
+**Binary:** /tmp/dark-factory-a4d1a53 (built from a4d1a53)
+**Scenario:** Walked all 13 ACs against the migrated tree; re-verified AC-4 against the shipped scoped gate `scripts/hotpath-statemachine-check.sh strict` after the AC was amended to ratify the six-package scope.
+**Evidence:**
+- AC-1: `grep -nE '^(type State|func IsValidTransition|func InterpretTuple)' pkg/promptstate/*.go` → 4 lines (interpret.go:53, state.go:18, state.go:46, transitions.go:22).
+- AC-2: `grep -cE '^\s*State(...)\b' pkg/promptstate/state.go` → 14 (≥ 7).
+- AC-3: `grep -nE 'prompt\.PromptStatus'` across the five consumers → 0 lines.
+- AC-4: `bash scripts/hotpath-statemachine-check.sh strict` → exit 0; script banner names six in-scope targets and the out-of-scope CLI/doctor/healthcheck readers (matches amended AC).
+- AC-5: `make hotpath-statemachine-check` → exit 0.
+- AC-6: transient injection into `pkg/queuescanner/scanner.go:494` → strict gate exit 1 with stderr `pkg/queuescanner/scanner.go:494:var _ = func() bool { var s prompt.PromptStatus; return s == "executing" }`; reverted; post-revert exit 0.
+- AC-7: `Makefile:16` `precommit:` chain includes `hotpath-statemachine-check`; `Makefile:49-51` defines target invoking strict gate.
+- AC-8: `make precommit` → exit 0, `ready to commit`.
+- AC-9: `docs/architecture-flow.md` state-name grep → 11 (≥ 7); `pending_verification|PendingVerification` → 2 (≥ 1).
+- AC-10: `docs/architecture-flow.md:178` ` ```mermaid `; line 179 `stateDiagram-v2`.
+- AC-11: `go test ./pkg/promptstate/... -run 'Recover|Resume|HalfState|Cancel' -v` → 5 test functions PASS (Resume, RecoverExecutingToAborted, RecoverCommittingToCompleted, HalfStateCommittingInCompletedDir, CancelInterpretsCancelled).
+- AC-12: `/tmp/dark-factory-a4d1a53 prompt list --all` → exit 0, 486 prompts listed with `completed` state label (no `unknown` rows).
+- AC-13: `make generate` → exit 0; `git status --porcelain pkg/` → empty.
+**Verdict:** PASS

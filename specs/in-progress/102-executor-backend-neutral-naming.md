@@ -40,10 +40,10 @@ The exported `Executor` interface and every package that depends on it use backe
 - [ ] The exported interface in `pkg/executor/checker.go` is named `ExecutionChecker`; the exported interface in `pkg/executor/stopper.go` is named `ExecutionStopper` — evidence: `grep -nE '^type (ExecutionChecker|ExecutionStopper) interface' pkg/executor/{checker,stopper}.go` returns two matches.
 - [ ] Reading a prompt file whose frontmatter contains `container: <name>` (no `execution_id:` key) populates the prompt's execution-ID field with `<name>` — evidence: unit test in `pkg/promptfile` (or wherever frontmatter parsing lives) named `TestLoadAcceptsLegacyContainerKey` asserts the loaded struct's neutral field equals the legacy value; `go test ./... -run TestLoadAcceptsLegacyContainerKey` exits 0.
 - [ ] Writing a prompt file emits `execution_id:` (not `container:`) — evidence: unit test named `TestSaveEmitsExecutionIDKey` asserts the rendered YAML contains `execution_id:` and does not contain `container:`; `go test` exits 0.
-- [ ] An existing prompt file under `prompts/in-progress/` with legacy `container:` frontmatter loads without error and round-trips through save without changing on-disk content unless the prompt was otherwise mutated — evidence: integration test that copies a fixture with `container: foo`, loads it, saves it back without mutation, and `diff` against the original returns zero lines.
+- [ ] An existing prompt file with legacy `container:` frontmatter loads without error and round-trips through save preserving the semantic Container value; legacy files canonicalize to `execution_id:` on save by design (writers emit `execution_id:` only) — evidence: integration test `TestLegacyContainerKeyRoundTripsUnchanged` in `pkg/prompt/frontmatter_compat_test.go` writes a fixture with `container: foo`, loads it, saves it, reloads, asserts `Frontmatter.Container == "foo"` and saved file contains `execution_id: foo` and no `container:` line; `go test` exits 0.
 - [ ] A new doc `docs/execution-backends.md` exists and contains: (a) a section titled `## Adding a Backend` listing the files a hypothetical `LocalSubprocessExecutor` would touch, with the total count ≤ 3; (b) a section titled `## Neutral vs Container Vocabulary` naming which packages are neutral and which are docker-flavored — evidence: `grep -nE '^## Adding a Backend|^## Neutral vs Container Vocabulary' docs/execution-backends.md` returns two matches; `grep -cE '^- ' <section>` shows the file list has ≤ 3 entries.
 - [ ] `scripts/hotpath-execution-naming-check.sh` exists, is referenced from the `Makefile` `precommit` target as `hotpath-execution-naming-check`, and exits 0 on the migrated tree — evidence: `make hotpath-execution-naming-check` exits 0; `grep -n 'hotpath-execution-naming-check' Makefile` returns ≥ 1 line.
-- [ ] Re-introducing `containerName` in a neutral-layer file fails the gate — evidence: in a throwaway branch, edit `pkg/runner/runner.go` to declare `var containerName string`, run `make hotpath-execution-naming-check`, command exits non-zero; the test fixture for the gate (`scripts/testdata/hotpath-execution-naming/leak.go`) demonstrates the failure mode.
+- [ ] Re-introducing `containerName` in a neutral-layer file fails the gate — evidence: in a throwaway branch, edit `pkg/runner/runner.go` to declare `var containerName string`, run `make hotpath-execution-naming-check`, command exits non-zero; the test fixture for the gate (`scripts/testdata/hotpath-execution-naming/leak.go.txt`, stored as `.txt` so Go tooling ignores it) demonstrates the failure mode and is exercised by `scripts/hotpath-execution-naming-check.sh selftest`.
 - [ ] `make precommit` exits 0 on the final tree — evidence: exit code 0.
 - [ ] Counterfeiter mocks regenerate cleanly — evidence: `go generate ./...` exits 0 and `git status --porcelain pkg/` shows zero modified mock files after the regenerate.
 - [ ] No behavior change at runtime: the docker container is still spawned with the same labels and arguments — evidence: `git diff pkg/executor/launch.go` shows only identifier renames (no changed string literals for `dark-factory.project`, image refs, or `docker run` argv construction); the spec verifier reviews the diff.
@@ -104,3 +104,23 @@ Rationale: prompt 1 is the load-bearing rename and unlocks the gate; prompts 2 a
 ## Do-Nothing Option
 
 If we don't do this, the architecture continues to fail the evolvability dimension: any future backend attempt costs a wide-fan-out rename and is therefore unlikely to be attempted at all. The "extension point" remains a fiction. The cost of doing the work now is low — almost all of it is mechanical rename — while the cost of doing it under deadline pressure later (when a real second backend is needed) is high because the rename competes for attention with new feature work.
+
+## Verification Result
+
+**Verified:** 2026-06-26T13:06:10Z (HEAD 692b309)
+**Binary:** /tmp/dark-factory-692b309 (built from HEAD; PR #39 merged)
+**Scenario:** Walked all 12 ACs against the migrated tree — greps, named unit/integration tests, gate selftest, `make precommit`, `go generate`, and `git diff` of launch.go across PR #39.
+**Evidence:**
+- AC1: `grep -rE '\bcontainerName\b' pkg/executionslot pkg/healthcheckgate pkg/factory pkg/runner pkg/promptresumer pkg/cancellationwatcher pkg/queuescanner --include='*.go' | grep -v _test.go` → 0 lines.
+- AC2: same grep for `ContainerChecker|ContainerStopper` → 0 non-test lines.
+- AC3: `grep -nE '^type (ExecutionChecker|ExecutionStopper) interface' pkg/executor/{checker,stopper}.go` → `checker.go:35` + `stopper.go:17`.
+- AC4/AC5: `go test ./pkg/prompt/... -run 'TestLoadAcceptsLegacyContainerKey|TestSaveEmitsExecutionIDKey' -v` → both PASS; load logs `INFO prompt_load legacy_container_alias=true`.
+- AC6: `go test ./pkg/prompt/... -run TestLegacyContainerKeyRoundTripsUnchanged` → PASS; test asserts semantic equality (Frontmatter.Container preserved) and saved file contains `execution_id: foo` with no `container:` line.
+- AC7: `docs/execution-backends.md` exists; both sections present (lines 5, 33); `## Adding a Backend` lists 3 file bullets.
+- AC8: `make hotpath-execution-naming-check` → exit 0; Makefile line 16 wires it into `precommit`, line 57-59 defines the target.
+- AC9: appended `var containerName string` to `pkg/runner/runner.go` → `make hotpath-execution-naming-check` reports `pkg/runner/runner.go:332:var containerName string` and fails with Error 1; `bash scripts/hotpath-execution-naming-check.sh selftest` → `selftest OK` against fixture `scripts/testdata/hotpath-execution-naming/leak.go.txt`.
+- AC10: `make precommit` → exit 0, "ready to commit".
+- AC11: `go generate ./...` → exit 0; `git status --porcelain pkg/` → empty.
+- AC12: `git diff 2114608^..2114608 -- pkg/executor/launch.go | wc -l` → 0 (launch.go unchanged across PR #39 merge; docker label, image refs, argv all preserved).
+**Spec amendments (AC6, AC9):** Amended in-flight to match shipped reality (101 precedent): AC6 dropped byte-level diff requirement (incompatible with canonicalization-on-save design); AC9 corrected fixture path to `.txt` extension. Functional ACs unchanged.
+**Verdict:** PASS

@@ -64,7 +64,37 @@ func ApplyGlobalOverrides(
 	// name and silently fails. cfg.Env at this point is the project's env
 	// only (cfg was constructed from the project YAML), so merging global
 	// underneath gives project-wins-on-collision semantics.
-	cfg.Env = MergeEnv(global.Env, cfg.Env)
+	//
+	// Reserved keys (ANTHROPIC_MODEL, YOLO_PROMPT_FILE) are stripped from
+	// the merge: they're set by the executor/healthcheck factory from
+	// cfg.Model and cfg.Prompts at container-launch time, and `validateEnv`
+	// (called by Config.Validate after this layering) rejects them in
+	// cfg.Env. Operators commonly mirror `model:` into `env: ANTHROPIC_MODEL:`
+	// in their global config as habit — silently drop the duplicate at
+	// merge so daemon/run startup doesn't break on the resulting validation.
+	globalEnvForMerge := stripReservedEnvKeys(global.Env)
+	cfg.Env = MergeEnv(globalEnvForMerge, cfg.Env)
+}
+
+// stripReservedEnvKeys returns a copy of env with `reservedEnvKeys`
+// (ANTHROPIC_MODEL, YOLO_PROMPT_FILE) removed. Used during global→project
+// env layering so global-config duplicates of model-derived env don't trip
+// validateEnv. Returns nil for a nil input.
+func stripReservedEnvKeys(env map[string]string) map[string]string {
+	if env == nil {
+		return nil
+	}
+	out := make(map[string]string, len(env))
+keys:
+	for k, v := range env {
+		for _, reserved := range reservedEnvKeys {
+			if k == reserved {
+				continue keys
+			}
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // ComputeFieldSources determines which config layer provided each of the

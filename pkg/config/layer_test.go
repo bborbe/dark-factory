@@ -62,6 +62,30 @@ var _ = Describe("ApplyGlobalOverrides Env merge", func() {
 		).To(HaveKeyWithValue("ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic"))
 	})
 
+	It("strips reserved keys (ANTHROPIC_MODEL) from global Env during merge", func() {
+		// Operators commonly mirror `model:` into `env: ANTHROPIC_MODEL:` in
+		// their global config out of habit. validateEnv rejects
+		// ANTHROPIC_MODEL in cfg.Env (it's set by factory from cfg.Model).
+		// Without stripping, the daemon's post-layer Validate trips on the
+		// merged-in duplicate. Stripping at merge time keeps user configs
+		// working without changing the validation contract.
+		cfg := config.Config{Env: map[string]string{}}
+		global := globalconfig.GlobalConfig{
+			Env: map[string]string{
+				"ANTHROPIC_BASE_URL":   "https://api.minimax.io/anthropic",
+				"ANTHROPIC_AUTH_TOKEN": "sk-x",
+				"ANTHROPIC_MODEL":      "MiniMax-M3-highspeed",
+				"YOLO_PROMPT_FILE":     "/tmp/should-be-stripped",
+			},
+		}
+		config.ApplyGlobalOverrides(&cfg, global, config.LayeredProjectOverrides{})
+
+		Expect(cfg.Env).To(HaveKeyWithValue("ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic"))
+		Expect(cfg.Env).To(HaveKeyWithValue("ANTHROPIC_AUTH_TOKEN", "sk-x"))
+		Expect(cfg.Env).NotTo(HaveKey("ANTHROPIC_MODEL"))
+		Expect(cfg.Env).NotTo(HaveKey("YOLO_PROMPT_FILE"))
+	})
+
 	It("leaves project Env intact when global Env is empty", func() {
 		cfg := config.Config{
 			Env: map[string]string{"PROJECT_ONLY": "p1"},

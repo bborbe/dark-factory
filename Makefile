@@ -42,6 +42,10 @@ check-changelog:
 check-versions:
 	@bash scripts/check-versions.sh
 
+.PHONY: hotpath-logcheck
+hotpath-logcheck:
+	@bash scripts/hotpath-logcheck.sh warn
+
 .PHONY: release-check
 release-check: precommit check-versions
 	@echo "ready to release"

@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.5
 
 - chore(deps): bump default claude-yolo container image from `v0.10.1` to `v0.11.0`. Brings in cyber-tools / LLM-host support added upstream in `bborbe/claude-yolo`. Updates `pkg.DefaultContainerImage` (the single source of truth) plus the v0.10.1 references in `README.md`, `docs/configuration.md`, `docs/init-project.md`, and `docs/yolo-container-setup.md`. Historical version strings inside `specs/completed/` and `prompts/completed/` and the version-pinned fixtures in `pkg/launchpolicy/policy_test.go` are intentionally untouched — they document past behavior or pin specific parser inputs.
 

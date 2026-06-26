@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [100-centralize-subprocess-runner]
+summary: Migrated pkg/project/name.go and pkg/processor/dirty.go to spawn through pkg/subproc.Runner, added context-aware Resolve signature with cancellation support, updated all 7 factory.go call sites, added CancelledCtx and DirtyTimeout tests, and updated CHANGELOG.
+container: dark-factory-exec-472-spec-100-migrate-project-processor
+dark-factory-version: v0.183.0
 created: "2026-06-26T07:30:00Z"
 queued: "2026-06-26T07:57:18Z"
+started: "2026-06-26T08:02:07Z"
+completed: "2026-06-26T08:12:58Z"
 branch: dark-factory/centralize-subprocess-runner
 ---
 

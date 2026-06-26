@@ -1,7 +1,8 @@
 ---
-status: generating
+status: prompted
 approved: "2026-06-26T07:28:27Z"
 generating: "2026-06-26T08:00:41Z"
+prompted: "2026-06-26T08:11:32Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

@@ -355,10 +355,18 @@ func CreateRunner(
 		currentDateTimeGetter,
 	)
 	versionGetter := version.NewGetter(ver)
-	projectName := project.Resolve(cfg.ResolvedProjectOverride())
+	projectName, projectNameErr := project.Resolve(
+		ctx,
+		subproc.NewRunner(),
+		cfg.ResolvedProjectOverride(),
+	)
+	if projectNameErr != nil {
+		return &errRunner{err: errors.Wrap(ctx, projectNameErr, "resolve project name")}
+	}
 	wakeup := make(chan struct{}, 10)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	specGen := CreateSpecGenerator(
+		ctx,
 		cfg,
 		cfg.ContainerImage,
 		currentDateTimeGetter,
@@ -507,7 +515,14 @@ func CreateOneShotRunner(
 		CreateTelegramNotifier(cfg.ResolvedTelegramBotToken(), cfg.ResolvedTelegramChatID()),
 		CreateDiscordNotifier(cfg.ResolvedDiscordWebhook()),
 	)
-	projectName := project.Resolve(cfg.ResolvedProjectOverride())
+	projectName, projectNameErr := project.Resolve(
+		ctx,
+		subproc.NewRunner(),
+		cfg.ResolvedProjectOverride(),
+	)
+	if projectNameErr != nil {
+		return &errOneShotRunner{err: errors.Wrap(ctx, projectNameErr, "resolve project name")}
+	}
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
 	cl, containerChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
@@ -579,6 +594,7 @@ func CreateOneShotRunner(
 			},
 		),
 		CreateSpecGenerator(
+			ctx,
 			cfg,
 			cfg.ContainerImage,
 			currentDateTimeGetter,
@@ -606,6 +622,7 @@ func resolveHideGit(cfg config.Config) bool {
 
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
 func CreateSpecGenerator(
+	ctx context.Context,
 	cfg config.Config,
 	containerImage string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
@@ -614,9 +631,23 @@ func CreateSpecGenerator(
 ) generator.SpecGenerator {
 	projectRoot, _ := os.Getwd()
 	home, _ := os.UserHomeDir()
+	specGenName, specGenNameErr := project.Resolve(
+		ctx,
+		subproc.NewRunner(),
+		cfg.ResolvedProjectOverride(),
+	)
+	if specGenNameErr != nil {
+		slog.WarnContext(
+			ctx,
+			"resolve project name for spec generator failed, using fallback",
+			"error",
+			specGenNameErr,
+		)
+		specGenName = project.Name("dark-factory")
+	}
 	specGenPolicy := launchpolicy.NewPolicy(
 		containerImage,
-		project.Resolve(cfg.ResolvedProjectOverride()).String(),
+		specGenName.String(),
 		projectRoot,
 		cfg.ResolvedClaudeDir(),
 		home,
@@ -647,7 +678,7 @@ func CreateSpecGenerator(
 		promptManager,
 		cfg.AutoApprovePrompts,
 		cfg.Prompts.InProgressDir,
-		project.Resolve(cfg.ResolvedProjectOverride()),
+		specGenName,
 	)
 }
 
@@ -1152,6 +1183,20 @@ func CreateStatusCommand(
 		currentDateTimeGetter,
 	)
 
+	statusProjectName, statusProjectNameErr := project.Resolve(
+		ctx,
+		subproc.NewRunner(),
+		cfg.ResolvedProjectOverride(),
+	)
+	if statusProjectNameErr != nil {
+		slog.WarnContext(
+			ctx,
+			"resolve project name for status command failed, using fallback",
+			"error",
+			statusProjectNameErr,
+		)
+		statusProjectName = project.Name("dark-factory")
+	}
 	statusChecker := createStatusChecker(
 		ctx,
 		cfg.Prompts.InProgressDir,
@@ -1162,7 +1207,7 @@ func CreateStatusCommand(
 		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
-		project.Resolve(cfg.ResolvedProjectOverride()),
+		statusProjectName,
 	)
 	formatter := status.NewFormatter()
 
@@ -1295,7 +1340,21 @@ func CreateHealthcheckCommand(
 		healthcheck.GhWarnAfterForFactory(),
 		healthcheck.GhTimeoutForFactory(),
 	)
-	projectName := project.Resolve(cfg.ResolvedProjectOverride()).String()
+	healthcheckProjectName, healthcheckProjectNameErr := project.Resolve(
+		ctx,
+		subprocRunner,
+		cfg.ResolvedProjectOverride(),
+	)
+	if healthcheckProjectNameErr != nil {
+		slog.WarnContext(
+			ctx,
+			"resolve project name for healthcheck failed, using fallback",
+			"error",
+			healthcheckProjectNameErr,
+		)
+		healthcheckProjectName = project.Name("dark-factory")
+	}
+	projectName := healthcheckProjectName.String()
 	projectRoot, _ := os.Getwd()
 	home, _ := os.UserHomeDir()
 	env := map[string]string{}
@@ -1637,6 +1696,20 @@ func CreateCombinedStatusCommand(
 		currentDateTimeGetter,
 	)
 
+	combinedProjectName, combinedProjectNameErr := project.Resolve(
+		ctx,
+		subproc.NewRunner(),
+		cfg.ResolvedProjectOverride(),
+	)
+	if combinedProjectNameErr != nil {
+		slog.WarnContext(
+			ctx,
+			"resolve project name for combined status command failed, using fallback",
+			"error",
+			combinedProjectNameErr,
+		)
+		combinedProjectName = project.Name("dark-factory")
+	}
 	statusChecker := createStatusChecker(
 		ctx,
 		cfg.Prompts.InProgressDir,
@@ -1647,7 +1720,7 @@ func CreateCombinedStatusCommand(
 		cfg.MaxContainers,
 		cfg.DirtyFileThreshold,
 		currentDateTimeGetter,
-		project.Resolve(cfg.ResolvedProjectOverride()),
+		combinedProjectName,
 	)
 	formatter := status.NewFormatter()
 	counter := prompt.NewCounter(

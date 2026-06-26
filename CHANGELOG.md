@@ -15,6 +15,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 - feat: add pkg/log context-logger helpers (NewContext/From), docs/rules/logging-conventions.md convention doc, and `make hotpath-logcheck` target (warn mode) — foundation for per-prompt correlation-id structured logging (spec 099 prompt 1)
 - refactor: migrate pkg/processor to the context-bound logger; bind per-prompt correlation attrs (prompt_id/spec_id/container/workflow_type) at ProcessPrompt entry, re-bind container on assignment, add workflow_step at decision points (spec 099 prompt 2)
 - refactor: migrate pkg/executor, pkg/promptresumer, pkg/committingrecoverer to the context-bound logger (log.From(ctx)); normalize attr keys to snake_case; thread ctx into computeReattachDuration; pkg/executor/launch.go shared argv-builders excluded by design (spec 099 prompt 3)
+- refactor: migrate pkg/cancellationwatcher and pkg/queuescanner to the context-bound logger (log.From(ctx)); normalize attr keys to snake_case/canonical (prompt_id, spec_id) and add workflow_step=cancel on cancellation; all six hot-path packages now migrated (spec 099 prompt 4)
 
 ## v0.183.0
 

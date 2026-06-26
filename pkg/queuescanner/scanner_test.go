@@ -666,7 +666,7 @@ var _ = Describe("Scanner", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(logBuf.String()).To(ContainSubstring("prompt blocked"))
-				Expect(logBuf.String()).To(ContainSubstring("spec=056"))
+				Expect(logBuf.String()).To(ContainSubstring("spec_id=056"))
 			})
 
 			It("treats a multi-spec prompt as malformed and surfaces via Blocked", func() {

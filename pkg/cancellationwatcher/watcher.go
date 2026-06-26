@@ -6,12 +6,12 @@ package cancellationwatcher
 
 import (
 	"context"
-	"log/slog"
 	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/bborbe/dark-factory/pkg/executor"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
 
@@ -65,13 +65,14 @@ func (w *watcher) watch(
 ) {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		slog.Warn("failed to create cancel watcher", "error", err)
+		log.From(ctx).Warn("failed to create cancel watcher", "error", err)
 		return
 	}
 	defer fsWatcher.Close()
 
 	if err := fsWatcher.Add(promptPath); err != nil {
-		slog.Warn("failed to watch prompt file", "path", promptPath, "error", err)
+		log.From(ctx).
+			Warn("failed to watch prompt file", "prompt_id", filepath.Base(promptPath), "error", err)
 		return
 	}
 
@@ -83,7 +84,7 @@ func (w *watcher) watch(
 			if !ok {
 				return
 			}
-			slog.Debug("cancel watcher error", "error", err)
+			log.From(ctx).Debug("cancel watcher error", "error", err)
 		case event, ok := <-fsWatcher.Events:
 			if !ok {
 				return
@@ -96,9 +97,9 @@ func (w *watcher) watch(
 				continue
 			}
 			if pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
-				slog.Info("prompt cancelled, stopping container",
-					"file", filepath.Base(promptPath),
+				log.From(ctx).Info("prompt cancelled, stopping container",
 					"container", containerName,
+					"workflow_step", "cancel",
 				)
 				close(ch)
 				w.executor.StopAndRemoveContainer(ctx, containerName)

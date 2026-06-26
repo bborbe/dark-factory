@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [099-correlation-ids-structured-logging]
+summary: Migrated pkg/cancellationwatcher and pkg/queuescanner to context-bound logger (log.From(ctx)); normalized all attr keys to snake_case/canonical (prompt_id, spec_id, queued_count, previous_status); added workflow_step=cancel on cancellation path; updated scanner test for spec_id key; added boundary test proving bound-logger propagation through cancellation watcher; make precommit exited 0.
+container: dark-factory-exec-469-spec-099-migrate-cancellationwatcher-queuescanner
+dark-factory-version: v0.183.0
 created: "2026-06-26T05:42:49Z"
 queued: "2026-06-26T06:13:15Z"
+started: "2026-06-26T06:49:52Z"
+completed: "2026-06-26T06:56:37Z"
 branch: dark-factory/correlation-ids-structured-logging
 ---
 

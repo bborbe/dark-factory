@@ -8,7 +8,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/lock"
+	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 )
@@ -121,7 +121,7 @@ func (s *scanner) ClearSkippedCache() {
 // Returns the count of prompts successfully processed and any fatal error.
 func (s *scanner) ScanAndProcess(ctx context.Context) (int, error) {
 	if s.HasPendingVerification(ctx) {
-		slog.Info("queue blocked: prompt pending verification")
+		log.From(ctx).Info("queue blocked: prompt pending verification")
 		return 0, nil
 	}
 
@@ -165,11 +165,11 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	}
 
 	if len(queued) == 0 {
-		slog.Debug("queue scan complete", "queuedCount", 0)
+		log.From(ctx).Debug("queue scan complete", "queued_count", 0)
 		return true, false, nil
 	}
 
-	slog.Debug("queue scan complete", "queuedCount", len(queued))
+	log.From(ctx).Debug("queue scan complete", "queued_count", len(queued))
 
 	// Determinism: ListQueued already returns entries sorted alphabetically by
 	// filename (pkg/prompt/prompt.go:1021). For prompts with a fixed-width
@@ -267,16 +267,16 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	s.clearBlockedKey(pr.Path)
 	defer func() {
 		if relErr := fl.Release(ctx); relErr != nil {
-			slog.Warn(
+			log.From(ctx).Warn(
 				"scanner: file lock release failed",
-				"path",
+				"prompt_id",
 				filepath.Base(pr.Path),
 				"error",
 				relErr.Error(),
 			)
 		}
 	}()
-	slog.Info("lock acquired", "file", filepath.Base(pr.Path))
+	log.From(ctx).Info("lock acquired", "prompt_id", filepath.Base(pr.Path))
 
 	// Post-lock re-read. The reject command takes the same lock, so if
 	// reject won the race its rename has completed by now and the file
@@ -286,18 +286,18 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	// process a stale candidate.
 	pf, err := s.promptManager.Load(ctx, pr.Path)
 	if err != nil {
-		slog.Info(
+		log.From(ctx).Info(
 			"scanner: candidate no longer at path after lock acquire; skipping",
-			"file",
+			"prompt_id",
 			filepath.Base(pr.Path),
 		)
 		return false, false, nil
 	}
 	status := prompt.PromptStatus(pf.Frontmatter.Status)
 	if !status.IsPreExecution() {
-		slog.Info(
+		log.From(ctx).Info(
 			"scanner: candidate no longer in pre-execution status after lock acquire; skipping",
-			"file",
+			"prompt_id",
 			filepath.Base(pr.Path),
 			"status",
 			pf.Frontmatter.Status,
@@ -311,7 +311,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	// idea/draft is an operator-rolled-back state worth honoring.
 	pr.Status = status
 
-	slog.Info("found queued prompt", "file", filepath.Base(pr.Path))
+	log.From(ctx).Info("found queued prompt", "prompt_id", filepath.Base(pr.Path))
 
 	if err := s.promptProcessor.ProcessPrompt(ctx, pr); err != nil {
 		if stderrors.Is(err, preflightconditions.ErrPreflightFailed) {
@@ -324,7 +324,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 		return false, false, nil // re-queued or permanently failed — keep scanning, NOT progress
 	}
 
-	slog.Info("watching for queued prompts", "dir", s.queueDir)
+	log.From(ctx).Info("watching for queued prompts", "dir", s.queueDir)
 	return false, true, nil
 }
 
@@ -369,9 +369,9 @@ func (s *scanner) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool {
 	if err == nil {
 		if lastSkipped, wasSkipped := s.skippedPrompts[pr.Path]; wasSkipped {
 			if fileInfo.ModTime().Equal(time.Time(lastSkipped)) {
-				slog.Debug(
+				log.From(ctx).Debug(
 					"skipping previously-failed prompt (unchanged)",
-					"file",
+					"prompt_id",
 					filepath.Base(pr.Path),
 				)
 				return true
@@ -381,7 +381,8 @@ func (s *scanner) shouldSkipPrompt(ctx context.Context, pr prompt.Prompt) bool {
 	}
 
 	if err := pr.ValidateForExecution(ctx); err != nil {
-		slog.Warn("skipping prompt", "file", filepath.Base(pr.Path), "reason", err.Error())
+		log.From(ctx).
+			Warn("skipping prompt", "prompt_id", filepath.Base(pr.Path), "reason", err.Error())
 		if fileInfo != nil {
 			s.skippedPrompts[pr.Path] = libtime.DateTime(fileInfo.ModTime())
 		}
@@ -406,12 +407,11 @@ func (s *scanner) logBlockedOnce(
 	if _, ok := s.blockedMsgKeys[key]; ok {
 		return
 	}
-	slog.InfoContext(
-		ctx,
+	log.From(ctx).Info(
 		"prompt blocked",
-		"file", filepath.Base(pr.Path),
+		"prompt_id", filepath.Base(pr.Path),
 		"reason", reason,
-		"spec", specID,
+		"spec_id", specID,
 		"missing", missing,
 	)
 	s.blockedMsgKeys[key] = struct{}{}
@@ -450,11 +450,11 @@ func (s *scanner) autoSetQueuedStatus(ctx context.Context, pr *prompt.Prompt) er
 	}
 	baseName := filepath.Base(pr.Path)
 	previousStatus := pr.Status
-	slog.Info(
+	log.From(ctx).Info(
 		"auto-setting status to approved",
-		"file",
+		"prompt_id",
 		baseName,
-		"previousStatus",
+		"previous_status",
 		previousStatus,
 	)
 	if err := s.promptManager.SetStatus(ctx, pr.Path, string(prompt.ApprovedPromptStatus)); err != nil {

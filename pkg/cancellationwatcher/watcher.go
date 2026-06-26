@@ -13,6 +13,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptstate"
 )
 
 //counterfeiter:generate -o ../../mocks/cancellation-watcher.go --fake-name CancellationWatcher . Watcher
@@ -96,7 +97,12 @@ func (w *watcher) watch(
 			if err != nil {
 				continue
 			}
-			if pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
+			if promptstate.InterpretRawTuple(
+				promptstate.LocationInProgress,
+				pf.Frontmatter.Status,
+				pf.Frontmatter.Container,
+				promptstate.DockerStateUnavailable,
+			) == promptstate.StateCancelled {
 				log.From(ctx).Info("prompt cancelled, stopping container",
 					"container", containerName,
 					"workflow_step", "cancel",

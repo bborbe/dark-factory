@@ -21,6 +21,7 @@ import (
 	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptstate"
 )
 
 //counterfeiter:generate -o ../../mocks/queue-scanner.go --fake-name QueueScanner . Scanner
@@ -293,8 +294,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 		)
 		return false, false, nil
 	}
-	status := prompt.PromptStatus(pf.Frontmatter.Status)
-	if !status.IsPreExecution() {
+	if !promptstate.IsPreExecutionStatus(pf.Frontmatter.Status) {
 		log.From(ctx).Info(
 			"scanner: candidate no longer in pre-execution status after lock acquire; skipping",
 			"prompt_id",
@@ -309,7 +309,7 @@ func (s *scanner) processSingleQueued(ctx context.Context) (bool, bool, error) {
 	// value. autoSetQueuedStatus has already promoted anything non-
 	// terminal to approved by this point, so a re-read that returns
 	// idea/draft is an operator-rolled-back state worth honoring.
-	pr.Status = status
+	pr.Status = promptstate.StatusFromRaw(pf.Frontmatter.Status)
 
 	log.From(ctx).Info("found queued prompt", "prompt_id", filepath.Base(pr.Path))
 
@@ -478,7 +478,12 @@ func (s *scanner) HasPendingVerification(ctx context.Context) bool {
 		if err != nil || pf == nil {
 			continue
 		}
-		if pf.Frontmatter.Status == string(prompt.PendingVerificationPromptStatus) {
+		if promptstate.InterpretRawTuple(
+			promptstate.LocationInProgress,
+			pf.Frontmatter.Status,
+			pf.Frontmatter.Container,
+			promptstate.DockerStateUnavailable,
+		) == promptstate.StatePendingVerification {
 			return true
 		}
 	}

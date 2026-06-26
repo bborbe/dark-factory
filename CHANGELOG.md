@@ -10,6 +10,18 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs: add Prompt State Machine subsection to docs/architecture-flow.md — seven states, mermaid transition diagram, and recovery edges; documents the previously-undocumented pending_verification state (spec 101 prompt 5)
+- feat: add make hotpath-statemachine-check gate (scripts/hotpath-statemachine-check.sh) wired into precommit; blocks inline prompt-status comparisons in the migrated hot-path files (spec 101 prompt 4)
+- refactor: route the processor cancelled-during-execution fallback through pkg/promptstate; pending_verification is now a first-class promptstate.State (spec 101 prompt 3)
+- refactor: migrate the five prompt-state consumers (runner lifecycle, promptresumer, committingrecoverer, queuescanner, cancellationwatcher) to pkg/promptstate.InterpretTuple; remove inline frontmatter-status interpretation (spec 101 prompt 2)
+- feat: add pkg/promptstate — single owner of prompt-state interpretation with State enum, IsValidTransition transition table, and pure InterpretTuple(location, status, container, dockerState) (spec 101 prompt 1)
+- feat: add `make hotpath-execcheck` lint gate (warn mode) that flags raw exec.Command(Context) calls in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 1)
+- fix: route all pkg/git and pkg/gitprovider/bitbucket subprocess spawns through pkg/subproc.Runner (warn-on-slow + bounded timeout); 8 KiB stderr truncation and *exec.ExitError exit-code propagation preserved; adds additive RunWithWarnAndTimeoutEnv for GH_TOKEN-carrying gh calls (spec 100 prompt 3)
+- fix: route project-name resolution and the processor dirty-file check through pkg/subproc.Runner so a slow git remote or stuck filesystem no longer hangs — both now honour context cancellation and a bounded timeout (spec 100 prompt 2)
+- docs: document why pkg/executor/command.go's commandRunner seam stays outside pkg/subproc.Runner — it owns the docker SIGINT-then-SIGKILL escalation protocol; docker *exec.Cmd construction remains in the allow-listed executor.go (spec 100 prompt 4)
+
 ## v0.184.0
 
 - feat: add pkg/log context-logger helpers (NewContext/From), docs/rules/logging-conventions.md convention doc, and `make hotpath-logcheck` target (warn mode) — foundation for per-prompt correlation-id structured logging (spec 099 prompt 1)

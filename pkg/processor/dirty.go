@@ -6,10 +6,11 @@ package processor
 
 import (
 	"context"
-	"os/exec"
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/dirty-file-checker.go --fake-name DirtyFileChecker . DirtyFileChecker
@@ -21,17 +22,27 @@ type DirtyFileChecker interface {
 
 // NewDirtyFileChecker creates a DirtyFileChecker that runs git status on the host.
 func NewDirtyFileChecker(repoDir string) DirtyFileChecker {
-	return &gitDirtyFileChecker{repoDir: repoDir}
+	return &gitDirtyFileChecker{repoDir: repoDir, runner: subproc.NewRunner()}
+}
+
+func newDirtyFileCheckerWithRunner(repoDir string, runner subproc.Runner) *gitDirtyFileChecker {
+	return &gitDirtyFileChecker{repoDir: repoDir, runner: runner}
 }
 
 type gitDirtyFileChecker struct {
 	repoDir string
+	runner  subproc.Runner
 }
 
 func (c *gitDirtyFileChecker) CountDirtyFiles(ctx context.Context) (int, error) {
-	cmd := exec.CommandContext(ctx, "git", "status", "--short")
-	cmd.Dir = c.repoDir
-	output, err := cmd.Output()
+	output, err := c.runner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git status --short",
+		c.repoDir,
+		"git",
+		"status",
+		"--short",
+	)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, "git status --short")
 	}

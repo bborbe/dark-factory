@@ -6,12 +6,12 @@ package git
 
 import (
 	"context"
-	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 var repoNameRegexp = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
@@ -38,7 +38,6 @@ type CollaboratorLister interface {
 }
 
 // NewCollaboratorFetcher creates a CollaboratorFetcher.
-// If useCollaborators is false or allowedReviewers is non-empty, collaborators are not fetched from GitHub.
 func NewCollaboratorFetcher(
 	repoNameFetcher RepoNameFetcher,
 	collaboratorLister CollaboratorLister,
@@ -82,17 +81,30 @@ func (f *collaboratorFetcher) Fetch(ctx context.Context) []string {
 
 // NewGHRepoNameFetcher creates a RepoNameFetcher that uses gh CLI.
 func NewGHRepoNameFetcher(ghToken string) RepoNameFetcher {
-	return &ghRepoNameFetcher{ghToken: ghToken}
+	return &ghRepoNameFetcher{ghToken: ghToken, runner: subproc.NewRunner()}
+}
+
+// newGHRepoNameFetcherWithRunner creates a RepoNameFetcher with an injected runner (for tests).
+func newGHRepoNameFetcherWithRunner(ghToken string, r subproc.Runner) RepoNameFetcher {
+	return &ghRepoNameFetcher{ghToken: ghToken, runner: r}
 }
 
 // ghRepoNameFetcher fetches repo name using gh CLI.
 type ghRepoNameFetcher struct {
 	ghToken string
+	runner  subproc.Runner
 }
 
 func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext( //nolint:gosec
+	var extraEnv []string
+	if f.ghToken != "" {
+		extraEnv = []string{"GH_TOKEN=" + f.ghToken}
+	}
+	out, err := f.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
+		"gh repo view --json nameWithOwner",
+		"",
+		extraEnv,
 		"gh",
 		"repo",
 		"view",
@@ -100,11 +112,7 @@ func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
 		"nameWithOwner",
 		"--jq",
 		".nameWithOwner",
-	) // #nosec G204 -- fixed args, no user input
-	if f.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+f.ghToken)
-	}
-	out, err := cmd.Output()
+	)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "gh repo view")
 	}
@@ -113,30 +121,39 @@ func (f *ghRepoNameFetcher) Fetch(ctx context.Context) (string, error) {
 
 // NewGHCollaboratorLister creates a CollaboratorLister that uses gh CLI.
 func NewGHCollaboratorLister(ghToken string) CollaboratorLister {
-	return &ghCollaboratorLister{ghToken: ghToken}
+	return &ghCollaboratorLister{ghToken: ghToken, runner: subproc.NewRunner()}
+}
+
+// newGHCollaboratorListerWithRunner creates a CollaboratorLister with an injected runner (for tests).
+func newGHCollaboratorListerWithRunner(ghToken string, r subproc.Runner) CollaboratorLister {
+	return &ghCollaboratorLister{ghToken: ghToken, runner: r}
 }
 
 // ghCollaboratorLister fetches collaborators using gh CLI.
 type ghCollaboratorLister struct {
 	ghToken string
+	runner  subproc.Runner
 }
 
 func (l *ghCollaboratorLister) List(ctx context.Context, repoName string) ([]string, error) {
 	if !repoNameRegexp.MatchString(repoName) {
 		return nil, errors.Errorf(ctx, "invalid repo name %q", repoName)
 	}
-	cmd := exec.CommandContext( //nolint:gosec
+	var extraEnv []string
+	if l.ghToken != "" {
+		extraEnv = []string{"GH_TOKEN=" + l.ghToken}
+	}
+	out, err := l.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
+		"gh api collaborators",
+		"",
+		extraEnv,
 		"gh",
 		"api",
 		"repos/"+repoName+"/collaborators",
 		"--jq",
 		".[].login",
-	) // #nosec G204 -- repoName validated above
-	if l.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+l.ghToken)
-	}
-	out, err := cmd.Output()
+	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "gh api collaborators")
 	}

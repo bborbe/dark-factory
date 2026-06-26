@@ -19,6 +19,7 @@ import (
 	log "github.com/bborbe/dark-factory/pkg/log"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
+	"github.com/bborbe/dark-factory/pkg/promptstate"
 )
 
 //counterfeiter:generate -o ../../mocks/prompt-resumer.go --fake-name Resumer . Resumer
@@ -189,7 +190,13 @@ func (r *resumer) prepareResume(
 	if err != nil {
 		return nil, "", "", "", "", errors.Wrap(ctx, err, "load prompt for resume")
 	}
-	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
+	state := promptstate.InterpretRawTuple(
+		promptstate.LocationInProgress,
+		pf.Frontmatter.Status,
+		pf.Frontmatter.Container,
+		promptstate.DockerStateUnavailable,
+	)
+	if state != promptstate.StateExecuting {
 		return nil, "", "", "", "", nil // not executing — skip
 	}
 

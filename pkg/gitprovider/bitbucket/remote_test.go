@@ -6,10 +6,12 @@ package bitbucket_test
 
 import (
 	"context"
+	stderrors "errors"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/gitprovider/bitbucket"
 )
 
@@ -92,4 +94,38 @@ var _ = Describe("ParseRemoteURL", func() {
 		Entry("plain host only", "ssh://bitbucket.example.com:7999"),
 		Entry("https without /scm/ segment", "https://bitbucket.example.com/bro/sentinel.git"),
 	)
+})
+
+var _ = Describe("ParseRemoteFromGit", func() {
+	var ctx context.Context
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	It("uses the injected runner to fetch the git remote URL", func() {
+		fakeRunner := &mocks.SubprocRunner{}
+		fakeRunner.RunWithWarnAndTimeoutReturns(
+			[]byte("ssh://bitbucket.example.com:7999/bro/sentinel.git\n"),
+			nil,
+		)
+		coords, err := bitbucket.ParseRemoteFromGit(ctx, fakeRunner, "origin")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(coords.Project).To(Equal("BRO"))
+		Expect(coords.Repo).To(Equal("sentinel"))
+		Expect(fakeRunner.RunWithWarnAndTimeoutCallCount()).To(Equal(1))
+	})
+
+	It("returns error when the runner fails", func() {
+		fakeRunner := &mocks.SubprocRunner{}
+		fakeRunner.RunWithWarnAndTimeoutReturns(nil, stderrors.New("git not found"))
+		_, err := bitbucket.ParseRemoteFromGit(ctx, fakeRunner, "origin")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("returns error when URL does not match Bitbucket Server format", func() {
+		fakeRunner := &mocks.SubprocRunner{}
+		fakeRunner.RunWithWarnAndTimeoutReturns([]byte("https://github.com/owner/repo.git\n"), nil)
+		_, err := bitbucket.ParseRemoteFromGit(ctx, fakeRunner, "origin")
+		Expect(err).To(HaveOccurred())
+	})
 })

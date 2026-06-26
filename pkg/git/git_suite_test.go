@@ -7,6 +7,7 @@ package git_test
 //go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,3 +24,6 @@ func TestSuite(t *testing.T) {
 	suiteConfig.Timeout = 60 * time.Second
 	RunSpecs(t, "Git Suite", suiteConfig, reporterConfig)
 }
+
+// errCommand returns a simple error for use in tests.
+func errCommand(msg string) error { return fmt.Errorf("%s", msg) } //nolint:goerr113

@@ -10,6 +10,7 @@ package subproc
 import (
 	"context"
 	"log/slog"
+	"os"
 	"os/exec"
 	"time"
 
@@ -49,6 +50,19 @@ type Runner interface {
 		name string,
 		args ...string,
 	) ([]byte, error)
+
+	// RunWithWarnAndTimeoutEnv is identical to RunWithWarnAndTimeoutDir but also
+	// appends extraEnv (each "KEY=VALUE") to the child's environment on top of
+	// os.Environ(). Pass dir="" to inherit the current working directory and
+	// extraEnv=nil for no extra env.
+	RunWithWarnAndTimeoutEnv(
+		ctx context.Context,
+		op string,
+		dir string,
+		extraEnv []string,
+		name string,
+		args ...string,
+	) ([]byte, error)
 }
 
 // NewRunner returns a Runner using the default 3s/10s thresholds.
@@ -73,7 +87,7 @@ func (r *runner) RunWithWarnAndTimeout(
 	name string,
 	args ...string,
 ) ([]byte, error) {
-	return r.runInternal(ctx, op, "", name, args...)
+	return r.runInternal(ctx, op, "", nil, name, args...)
 }
 
 // RunWithWarnAndTimeoutDir runs a subprocess with warn+timeout semantics in the given directory.
@@ -84,13 +98,27 @@ func (r *runner) RunWithWarnAndTimeoutDir(
 	name string,
 	args ...string,
 ) ([]byte, error) {
-	return r.runInternal(ctx, op, dir, name, args...)
+	return r.runInternal(ctx, op, dir, nil, name, args...)
+}
+
+// RunWithWarnAndTimeoutEnv runs a subprocess with warn+timeout semantics in the given directory
+// and with extra environment variables appended to os.Environ().
+func (r *runner) RunWithWarnAndTimeoutEnv(
+	ctx context.Context,
+	op string,
+	dir string,
+	extraEnv []string,
+	name string,
+	args ...string,
+) ([]byte, error) {
+	return r.runInternal(ctx, op, dir, extraEnv, name, args...)
 }
 
 func (r *runner) runInternal(
 	ctx context.Context,
 	op string,
 	dir string,
+	extraEnv []string,
 	name string,
 	args ...string,
 ) ([]byte, error) {
@@ -108,6 +136,9 @@ func (r *runner) runInternal(
 			cmd := exec.CommandContext(ctx, name, args...)
 			if dir != "" {
 				cmd.Dir = dir
+			}
+			if len(extraEnv) > 0 {
+				cmd.Env = append(os.Environ(), extraEnv...)
 			}
 			output, cmdErr = cmd.Output()
 			return nil // surface cmd error via cmdErr, not here, so both funcs exit cleanly

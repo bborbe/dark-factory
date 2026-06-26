@@ -155,6 +155,48 @@ created → approved → executing → committing → completed
                          └── partial (validationPrompt criteria unmet)
 ```
 
+### Prompt State Machine
+
+`pkg/promptstate` is the **single owner** of prompt-state interpretation. It reads four observable inputs — filesystem location, frontmatter status, container field, and Docker state — and returns the authoritative `State` via `InterpretTuple`. The boundary is enforced by `make hotpath-statemachine-check` (wired into precommit), which fails the build if a consumer re-derives state inline instead of calling `InterpretTuple`.
+
+**Seven canonical states:**
+
+| State | On-disk value | Meaning |
+|-------|--------------|---------|
+| `StateApproved` | `approved` | Queued, not yet executing. |
+| `StateExecuting` | `executing` | Running in a container, or being resumed into one. |
+| `StateCommitting` | `committing` | Container succeeded; git commit pending. |
+| `StateCompleted` | `completed` | Finished and located in the completed dir. |
+| `StateCancelled` | `cancelled` | Cancelled before or during execution (terminal). |
+| `StatePendingVerification` | `pending_verification` | Awaiting post-review verification. |
+| `StateAborted` | *(none — transient/interpreted)* | Frontmatter says `executing` but the container is gone; the daemon resolves by resetting to `approved`. No on-disk value. |
+
+`StateUnknown` (`unknown`) is the error-only sentinel returned for unrecognised status strings. The daemon logs `unknown_prompt_status` and surfaces the prompt as `unknown`; it never silently coerces.
+
+**Allowed transitions** (locked by `stateTransitions` in `pkg/promptstate/transitions.go`):
+
+```mermaid
+stateDiagram-v2
+    [*] --> approved
+    approved --> executing
+    approved --> cancelled
+    executing --> committing
+    executing --> cancelled
+    executing --> aborted: container gone
+    aborted --> approved: reset & re-queue
+    committing --> completed
+    pending_verification --> completed
+    completed --> [*]
+    cancelled --> [*]
+```
+
+**Recovery edges** (locked by regression tests in `pkg/promptstate`):
+
+1. **Resume stays executing** — `executing` + container running → `StateExecuting`. Docker-unavailable also stays `StateExecuting` (refuse to coerce; file truth wins).
+2. **Executing → aborted** — `executing` + container gone (stopped) → `StateAborted`; daemon resets to `StateApproved` and re-queues.
+3. **Committing → completed** — `committing` + file in `prompts/in-progress/` → `StateCommitting`, then follows the normal `Committing → Completed` transition on commit.
+4. **Half-state location wins** — `committing` + file already in `prompts/completed/` → `StateCompleted` directly (PR #30 half-state: file moved before status updated; location wins over the stale on-disk status).
+
 ### Spec Status
 
 ```

@@ -4,7 +4,11 @@
 
 package processor
 
-import "context"
+import (
+	"context"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
+)
 
 // SetupInPlaceBranchForTest exposes branchWorkflowExecutor.setupInPlaceBranch for external tests.
 // Placing this here (package processor) avoids an import cycle: the external test package
@@ -13,4 +17,9 @@ import "context"
 func SetupInPlaceBranchForTest(deps WorkflowDeps, ctx context.Context, branch string) error {
 	e := &branchWorkflowExecutor{deps: deps}
 	return e.setupInPlaceBranch(ctx, branch)
+}
+
+// NewDirtyFileCheckerWithRunner exposes newDirtyFileCheckerWithRunner for external tests.
+func NewDirtyFileCheckerWithRunner(repoDir string, runner subproc.Runner) DirtyFileChecker {
+	return newDirtyFileCheckerWithRunner(repoDir, runner)
 }

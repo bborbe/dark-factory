@@ -29,6 +29,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
+	promptstate "github.com/bborbe/dark-factory/pkg/promptstate"
 	"github.com/bborbe/dark-factory/pkg/queuescanner"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
@@ -439,7 +440,12 @@ func (p *processor) runContainer(
 		// returned. Re-read the prompt file — the CLI writes status=cancelled before
 		// stopping the container, so this is the ground truth.
 		if pf, loadErr := p.promptManager.Load(ctx, promptPath); loadErr == nil &&
-			pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) {
+			promptstate.InterpretRawTuple(
+				promptstate.LocationInProgress,
+				pf.Frontmatter.Status,
+				pf.Frontmatter.Container,
+				promptstate.DockerStateUnavailable,
+			) == promptstate.StateCancelled {
 			log.From(ctx).Info("prompt cancelled", "workflow_step", "cancel")
 			return true, nil
 		}

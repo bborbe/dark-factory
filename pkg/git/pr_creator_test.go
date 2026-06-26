@@ -6,12 +6,11 @@ package git_test
 
 import (
 	"context"
-	"fmt"
-	"os/exec"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/git"
 )
 
@@ -36,17 +35,20 @@ var _ = Describe("PRCreator", func() {
 
 	Describe("Create", func() {
 		It("returns error when command fails", func() {
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				return nil, fmt.Errorf("command failed")
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(nil, errCommand("command failed"))
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			_, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/test-branch")
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("returns PR URL on success", func() {
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				return []byte("https://github.com/owner/repo/pull/1\n"), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(
+				[]byte("https://github.com/owner/repo/pull/1\n"),
+				nil,
+			)
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			url, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(Equal("https://github.com/owner/repo/pull/1"))
@@ -67,75 +69,81 @@ var _ = Describe("PRCreator", func() {
 		})
 
 		It("allows title that does not start with a dash", func() {
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				return []byte("https://github.com/owner/repo/pull/1\n"), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(
+				[]byte("https://github.com/owner/repo/pull/1\n"),
+				nil,
+			)
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			_, err := p.Create(ctx, "Valid title", "body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("sets GH_TOKEN env when token provided", func() {
-			var capturedEnv []string
-			p := git.NewPRCreatorWithCommandOutput("my-token", func(cmd *exec.Cmd) ([]byte, error) {
-				capturedEnv = cmd.Env
-				return []byte("https://github.com/owner/repo/pull/1\n"), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(
+				[]byte("https://github.com/owner/repo/pull/1\n"),
+				nil,
+			)
+			p := git.NewPRCreatorWithRunner("my-token", fakeRunner)
 			_, err := p.Create(ctx, "Test PR", "body", "dark-factory/test-branch")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(capturedEnv).To(ContainElement("GH_TOKEN=my-token"))
+			_, _, _, extraEnv, _, _ := fakeRunner.RunWithWarnAndTimeoutEnvArgsForCall(0)
+			Expect(extraEnv).To(ContainElement("GH_TOKEN=my-token"))
 		})
 
 		It("passes --head branch to gh pr create", func() {
-			var capturedArgs []string
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				capturedArgs = cmd.Args
-				return []byte("https://github.com/owner/repo/pull/1\n"), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(
+				[]byte("https://github.com/owner/repo/pull/1\n"),
+				nil,
+			)
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			_, err := p.Create(ctx, "Test PR", "Test body", "dark-factory/my-branch")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(capturedArgs).To(ContainElements("--head", "dark-factory/my-branch"))
+			_, _, _, _, _, args := fakeRunner.RunWithWarnAndTimeoutEnvArgsForCall(0)
+			Expect(args).To(ContainElements("--head", "dark-factory/my-branch"))
 		})
 	})
 
 	Describe("FindOpenPR", func() {
 		It("returns empty string when no open PR exists", func() {
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				return []byte(""), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns([]byte(""), nil)
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			url, err := p.FindOpenPR(ctx, "feature/nonexistent-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(BeEmpty())
 		})
 
 		It("returns PR URL when open PR exists", func() {
-			p := git.NewPRCreatorWithCommandOutput("", func(cmd *exec.Cmd) ([]byte, error) {
-				return []byte("https://github.com/owner/repo/pull/42\n"), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(
+				[]byte("https://github.com/owner/repo/pull/42\n"),
+				nil,
+			)
+			p := git.NewPRCreatorWithRunner("", fakeRunner)
 			url, err := p.FindOpenPR(ctx, "feature/my-branch")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(url).To(Equal("https://github.com/owner/repo/pull/42"))
 		})
 
 		It("returns error when command fails", func() {
-			p := git.NewPRCreatorWithCommandOutput(
-				"test-token",
-				func(cmd *exec.Cmd) ([]byte, error) {
-					return nil, fmt.Errorf("gh auth required")
-				},
-			)
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns(nil, errCommand("gh auth required"))
+			p := git.NewPRCreatorWithRunner("test-token", fakeRunner)
 			_, err := p.FindOpenPR(ctx, "feature/test-branch")
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("sets GH_TOKEN env when token provided", func() {
-			var capturedEnv []string
-			p := git.NewPRCreatorWithCommandOutput("my-token", func(cmd *exec.Cmd) ([]byte, error) {
-				capturedEnv = cmd.Env
-				return []byte(""), nil
-			})
+			fakeRunner := &mocks.SubprocRunner{}
+			fakeRunner.RunWithWarnAndTimeoutEnvReturns([]byte(""), nil)
+			p := git.NewPRCreatorWithRunner("my-token", fakeRunner)
 			_, err := p.FindOpenPR(ctx, "feature/branch")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(capturedEnv).To(ContainElement("GH_TOKEN=my-token"))
+			_, _, _, extraEnv, _, _ := fakeRunner.RunWithWarnAndTimeoutEnvArgsForCall(0)
+			Expect(extraEnv).To(ContainElement("GH_TOKEN=my-token"))
 		})
 	})
 })

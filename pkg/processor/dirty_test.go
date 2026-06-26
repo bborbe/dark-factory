@@ -8,11 +8,15 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"time"
 
+	"github.com/bborbe/errors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/processor"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 var _ = Describe("gitDirtyFileChecker", func() {
@@ -81,5 +85,29 @@ var _ = Describe("gitDirtyFileChecker", func() {
 		count, err := checker.CountDirtyFiles(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(count).To(Equal(1))
+	})
+
+	Context("DirtyTimeout", func() {
+		It("returns a deadline-exceeded error when the runner times out", func() {
+			fake := &mocks.SubprocRunner{}
+			fake.RunWithWarnAndTimeoutDirStub = func(ctx context.Context, op, dir, name string, args ...string) ([]byte, error) {
+				select {
+				case <-ctx.Done():
+					return nil, context.DeadlineExceeded
+				case <-time.After(100 * time.Millisecond):
+					return nil, context.DeadlineExceeded
+				}
+			}
+
+			timeoutChecker := processor.NewDirtyFileCheckerWithRunner(".", fake)
+
+			start := time.Now()
+			_, err := timeoutChecker.CountDirtyFiles(context.Background())
+			elapsed := time.Since(start)
+
+			Expect(elapsed).To(BeNumerically("<", 2*subproc.DefaultTimeout))
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, context.DeadlineExceeded)).To(BeTrue())
+		})
 	})
 })

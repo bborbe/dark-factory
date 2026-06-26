@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-26T07:19:46Z"
 generating: "2026-06-26T07:19:47Z"
 prompted: "2026-06-26T07:26:00Z"
 verifying: "2026-06-26T12:40:33Z"
+completed: "2026-06-26T12:41:31Z"
 branch: dark-factory/centralize-subprocess-runner
 ---
 

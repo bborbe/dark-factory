@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: allow square brackets in model identifier regex so provider variant suffixes like `claude-sonnet-4-5[1m]` and `deepseek-v4-flash[1m]` pass `globalconfig.Validate` (regression surfaced by `dark-factory healthcheck` on minimax-backed configs)
+
 ## v0.187.0
 
 - feat: enforce centralized subprocess spawning — `make hotpath-execcheck` now runs in strict mode and gates `make precommit`, failing the build if a raw exec.Command(Context) call appears in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 5)

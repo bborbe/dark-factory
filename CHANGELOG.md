@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.1
 
 - fix: allow square brackets in model identifier regex so provider variant suffixes like `claude-sonnet-4-5[1m]` and `deepseek-v4-flash[1m]` pass validation at BOTH the global (`globalconfig.ModelPattern`) and project (`pkg/config.modelPattern`) layers (regression surfaced by `dark-factory healthcheck` on minimax-backed configs; fix kept the duplicate-by-design pair in sync)
 

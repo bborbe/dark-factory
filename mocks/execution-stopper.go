@@ -8,7 +8,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/executor"
 )
 
-type ContainerStopper struct {
+type ExecutionStopper struct {
 	StopContainerStub        func(context.Context, string) error
 	stopContainerMutex       sync.RWMutex
 	stopContainerArgsForCall []struct {
@@ -25,7 +25,7 @@ type ContainerStopper struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ContainerStopper) StopContainer(arg1 context.Context, arg2 string) error {
+func (fake *ExecutionStopper) StopContainer(arg1 context.Context, arg2 string) error {
 	fake.stopContainerMutex.Lock()
 	ret, specificReturn := fake.stopContainerReturnsOnCall[len(fake.stopContainerArgsForCall)]
 	fake.stopContainerArgsForCall = append(fake.stopContainerArgsForCall, struct {
@@ -45,26 +45,26 @@ func (fake *ContainerStopper) StopContainer(arg1 context.Context, arg2 string) e
 	return fakeReturns.result1
 }
 
-func (fake *ContainerStopper) StopContainerCallCount() int {
+func (fake *ExecutionStopper) StopContainerCallCount() int {
 	fake.stopContainerMutex.RLock()
 	defer fake.stopContainerMutex.RUnlock()
 	return len(fake.stopContainerArgsForCall)
 }
 
-func (fake *ContainerStopper) StopContainerCalls(stub func(context.Context, string) error) {
+func (fake *ExecutionStopper) StopContainerCalls(stub func(context.Context, string) error) {
 	fake.stopContainerMutex.Lock()
 	defer fake.stopContainerMutex.Unlock()
 	fake.StopContainerStub = stub
 }
 
-func (fake *ContainerStopper) StopContainerArgsForCall(i int) (context.Context, string) {
+func (fake *ExecutionStopper) StopContainerArgsForCall(i int) (context.Context, string) {
 	fake.stopContainerMutex.RLock()
 	defer fake.stopContainerMutex.RUnlock()
 	argsForCall := fake.stopContainerArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *ContainerStopper) StopContainerReturns(result1 error) {
+func (fake *ExecutionStopper) StopContainerReturns(result1 error) {
 	fake.stopContainerMutex.Lock()
 	defer fake.stopContainerMutex.Unlock()
 	fake.StopContainerStub = nil
@@ -73,7 +73,7 @@ func (fake *ContainerStopper) StopContainerReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerStopper) StopContainerReturnsOnCall(i int, result1 error) {
+func (fake *ExecutionStopper) StopContainerReturnsOnCall(i int, result1 error) {
 	fake.stopContainerMutex.Lock()
 	defer fake.stopContainerMutex.Unlock()
 	fake.StopContainerStub = nil
@@ -87,7 +87,7 @@ func (fake *ContainerStopper) StopContainerReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *ContainerStopper) Invocations() map[string][][]interface{} {
+func (fake *ExecutionStopper) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
@@ -97,7 +97,7 @@ func (fake *ContainerStopper) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *ContainerStopper) recordInvocation(key string, args []interface{}) {
+func (fake *ExecutionStopper) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -109,4 +109,4 @@ func (fake *ContainerStopper) recordInvocation(key string, args []interface{}) {
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ executor.ContainerStopper = new(ContainerStopper)
+var _ executor.ExecutionStopper = new(ExecutionStopper)

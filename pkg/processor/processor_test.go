@@ -22,7 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -81,7 +81,7 @@ func newTestProcessor(
 	verificationGate bool, n notifier.Notifier,
 	containerCounter executor.ContainerCounter, maxContainers int,
 	additionalInstructions string, containerLock containerlock.ContainerLock,
-	containerChecker executor.ContainerChecker, dirtyFileThreshold int,
+	containerChecker executor.ExecutionChecker, dirtyFileThreshold int,
 	dirtyFileChecker processor.DirtyFileChecker, gitLockChecker processor.GitLockChecker,
 	autoRetryLimit int, maxPromptDuration time.Duration, preflightChecker preflight.Checker,
 ) processor.Processor {
@@ -120,7 +120,7 @@ func newTestProcessor(
 			dirtyFileChecker,
 			dirtyFileThreshold,
 		),
-		containerslot.NewManager(
+		executionslot.NewManager(
 			containerLock,
 			containerCounter,
 			containerChecker,

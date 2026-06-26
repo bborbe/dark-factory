@@ -26,7 +26,7 @@ var _ = Describe("SpecGenerator", func() {
 	var (
 		ctx              context.Context
 		executor         *mocks.Executor
-		containerChecker *mocks.ContainerChecker
+		containerChecker *mocks.ExecutionChecker
 		promptMgr        *mocks.GeneratorPromptManager
 		inboxDir         string
 		completedDir     string
@@ -39,7 +39,7 @@ var _ = Describe("SpecGenerator", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		executor = &mocks.Executor{}
-		containerChecker = &mocks.ContainerChecker{}
+		containerChecker = &mocks.ExecutionChecker{}
 		containerChecker.IsRunningReturns(false, nil)
 
 		var err error

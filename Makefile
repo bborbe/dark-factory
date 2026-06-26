@@ -13,7 +13,7 @@ LDFLAGS := -X github.com/bborbe/dark-factory/pkg/version.Version=$(VERSION)
 default: precommit
 
 .PHONY: precommit
-precommit: ensure format generate test hotpath-logcheck hotpath-statemachine-check hotpath-execcheck check addlicense check-changelog check-links
+precommit: ensure format generate test hotpath-logcheck hotpath-statemachine-check hotpath-execcheck hotpath-execution-naming-check check addlicense check-changelog check-links
 	@echo "ready to commit"
 
 .PHONY: check-links
@@ -53,6 +53,10 @@ hotpath-statemachine-check:
 .PHONY: hotpath-execcheck
 hotpath-execcheck:
 	@bash scripts/hotpath-execcheck.sh warn
+
+.PHONY: hotpath-execution-naming-check
+hotpath-execution-naming-check:
+	@bash scripts/hotpath-execution-naming-check.sh strict
 
 .PHONY: release-check
 release-check: precommit check-versions

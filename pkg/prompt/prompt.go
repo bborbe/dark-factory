@@ -244,24 +244,25 @@ func (s *SpecList) UnmarshalYAML(value *yaml.Node) error {
 
 // Frontmatter represents the YAML frontmatter in a prompt file.
 type Frontmatter struct {
-	Status             string   `yaml:"status"`
-	OriginalStatus     string   `yaml:"originalStatus,omitempty"`
-	Specs              SpecList `yaml:"spec,omitempty,flow"`
-	Summary            string   `yaml:"summary,omitempty"`
-	Container          string   `yaml:"container,omitempty"`
-	DarkFactoryVersion string   `yaml:"dark-factory-version,omitempty"`
-	Created            string   `yaml:"created,omitempty"`
-	Queued             string   `yaml:"queued,omitempty"`
-	Started            string   `yaml:"started,omitempty"`
-	Completed          string   `yaml:"completed,omitempty"`
-	PRURL              string   `yaml:"pr-url,omitempty"`
-	Branch             string   `yaml:"branch,omitempty"`
-	Issue              string   `yaml:"issue,omitempty"`
-	RetryCount         int      `yaml:"retryCount,omitempty"`
-	LastFailReason     string   `yaml:"lastFailReason,omitempty"`
-	Rejected           string   `yaml:"rejected,omitempty"`
-	RejectedReason     string   `yaml:"rejectedReason,omitempty"`
-	Cancelled          string   `yaml:"cancelled,omitempty"`
+	Status         string   `yaml:"status"`
+	OriginalStatus string   `yaml:"originalStatus,omitempty"`
+	Specs          SpecList `yaml:"spec,omitempty,flow"`
+	Summary        string   `yaml:"summary,omitempty"`
+	// Container holds the execution identifier. Written as execution_id; container is accepted on read as a legacy alias (spec 102).
+	Container          string `yaml:"execution_id,omitempty"`
+	DarkFactoryVersion string `yaml:"dark-factory-version,omitempty"`
+	Created            string `yaml:"created,omitempty"`
+	Queued             string `yaml:"queued,omitempty"`
+	Started            string `yaml:"started,omitempty"`
+	Completed          string `yaml:"completed,omitempty"`
+	PRURL              string `yaml:"pr-url,omitempty"`
+	Branch             string `yaml:"branch,omitempty"`
+	Issue              string `yaml:"issue,omitempty"`
+	RetryCount         int    `yaml:"retryCount,omitempty"`
+	LastFailReason     string `yaml:"lastFailReason,omitempty"`
+	Rejected           string `yaml:"rejected,omitempty"`
+	RejectedReason     string `yaml:"rejectedReason,omitempty"`
+	Cancelled          string `yaml:"cancelled,omitempty"`
 }
 
 // HasSpec returns true if the given spec ID is in the Specs list.
@@ -348,6 +349,12 @@ func load(
 		}
 	}
 
+	// Read-compat for legacy `container:` key (spec 102). Files written before the
+	// execution-neutral migration carry `container:`; accept that on read and populate
+	// the same field. Writes always emit `execution_id:`. When both keys are present,
+	// `execution_id:` wins (it was already populated by the main parse above).
+	applyLegacyContainerKey(ctx, content, path, yamlV3Format, &fm)
+
 	pf := &PromptFile{
 		Path:                  path,
 		Frontmatter:           fm,
@@ -356,6 +363,31 @@ func load(
 	}
 	slog.Debug("file loaded", "path", path, "bodySize", len(body), "hasStatus", fm.Status != "")
 	return pf, nil
+}
+
+// applyLegacyContainerKey handles backward-compatible reading of the `container:` YAML key.
+// When execution_id is absent, it copies container into fm.Container and logs an info message.
+// When both are present, execution_id wins and a warning is logged about the conflict.
+func applyLegacyContainerKey(
+	ctx context.Context,
+	content []byte,
+	path string,
+	format *frontmatter.Format,
+	fm *Frontmatter,
+) {
+	var legacy struct {
+		Container string `yaml:"container,omitempty"`
+	}
+	if _, parseErr := frontmatter.Parse(bytes.NewReader(content), &legacy, format); parseErr != nil ||
+		legacy.Container == "" {
+		return
+	}
+	if fm.Container == "" {
+		fm.Container = legacy.Container
+		slog.InfoContext(ctx, "prompt_load legacy_container_alias=true", "file", path)
+	} else {
+		slog.WarnContext(ctx, "prompt_load conflicting_keys", "execution_id", fm.Container, "container", legacy.Container, "file", path)
+	}
 }
 
 // Save writes the prompt file back to disk: frontmatter + body.

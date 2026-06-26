@@ -30,13 +30,13 @@ func runHealthCheckLoop(
 	interval time.Duration,
 	inProgressDir string,
 	specsInProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	maxPromptDuration time.Duration,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 ) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -62,12 +62,12 @@ func runHealthCheckLoop(
 func checkExecutingPrompts(
 	ctx context.Context,
 	inProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	maxPromptDuration time.Duration,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
 	entries, err := os.ReadDir(inProgressDir)
@@ -102,12 +102,12 @@ func checkExecutingPrompt(
 	ctx context.Context,
 	inProgressDir string,
 	entry os.DirEntry,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	mgr PromptManager,
 	n notifier.Notifier,
 	projectName string,
 	maxPromptDuration time.Duration,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) {
 	path := filepath.Join(inProgressDir, entry.Name())
@@ -118,11 +118,11 @@ func checkExecutingPrompt(
 	if prompt.PromptStatus(pf.Frontmatter.Status) != prompt.ExecutingPromptStatus {
 		return
 	}
-	containerName := pf.Frontmatter.Container
-	running, err := checker.IsRunning(ctx, containerName)
+	executionID := pf.Frontmatter.Container
+	running, err := checker.IsRunning(ctx, executionID)
 	if err != nil {
 		slog.Warn("health check: failed to check prompt container, skipping",
-			"file", entry.Name(), "container", containerName, "error", err)
+			"file", entry.Name(), "container", executionID, "error", err)
 		return
 	}
 	if !running {
@@ -134,14 +134,14 @@ func checkExecutingPrompt(
 		"file",
 		entry.Name(),
 		"container",
-		containerName,
+		executionID,
 	)
 	if isTimedOut(ctx, pf, maxPromptDuration, currentDateTimeGetter) {
 		stopTimedOutPrompt(
 			ctx,
 			pf,
 			entry,
-			containerName,
+			executionID,
 			n,
 			projectName,
 			stopper,
@@ -174,22 +174,22 @@ func stopTimedOutPrompt(
 	ctx context.Context,
 	pf *prompt.PromptFile,
 	entry os.DirEntry,
-	containerName string,
+	executionID string,
 	n notifier.Notifier,
 	projectName string,
-	stopper executor.ContainerStopper,
+	stopper executor.ExecutionStopper,
 	maxPromptDuration time.Duration,
 ) {
 	slog.Warn("health check: prompt exceeded maxPromptDuration, stopping",
 		"file", entry.Name(),
-		"container", containerName,
+		"container", executionID,
 		"started", pf.Frontmatter.Started,
 		"maxPromptDuration", maxPromptDuration,
 	)
 	if stopper != nil {
-		if err := stopper.StopContainer(ctx, containerName); err != nil {
+		if err := stopper.StopContainer(ctx, executionID); err != nil {
 			slog.Warn("health check: failed to stop timed-out container",
-				"container", containerName, "error", err)
+				"container", executionID, "error", err)
 		}
 	}
 	pf.MarkFailed()
@@ -236,7 +236,7 @@ func resetGonePrompt(
 func checkGeneratingSpecs(
 	ctx context.Context,
 	specsInProgressDir string,
-	checker executor.ContainerChecker,
+	checker executor.ExecutionChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
 ) error {
@@ -260,11 +260,11 @@ func checkGeneratingSpecs(
 			continue
 		}
 		specBasename := strings.TrimSuffix(entry.Name(), ".md")
-		containerName := projectName + "-gen-" + specBasename
-		running, err := checker.IsRunning(ctx, containerName)
+		executionID := projectName + "-gen-" + specBasename
+		running, err := checker.IsRunning(ctx, executionID)
 		if err != nil {
 			slog.Warn("health check: failed to check spec container, skipping",
-				"file", entry.Name(), "container", containerName, "error", err)
+				"file", entry.Name(), "container", executionID, "error", err)
 			continue
 		}
 		if running {
@@ -273,12 +273,12 @@ func checkGeneratingSpecs(
 				"file",
 				entry.Name(),
 				"container",
-				containerName,
+				executionID,
 			)
 			continue
 		}
 		slog.Warn("health check: spec generation container gone, resetting to approved",
-			"file", entry.Name(), "container", containerName)
+			"file", entry.Name(), "container", executionID)
 		sf.SetStatus(string(spec.StatusApproved))
 		if err := sf.Save(ctx); err != nil {
 			slog.Warn("health check: failed to save reset spec",

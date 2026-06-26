@@ -28,21 +28,21 @@ import (
 
 // Executor executes a prompt.
 type Executor interface {
-	Execute(ctx context.Context, promptContent string, logFile string, containerName string) error
-	// Reattach connects to a running container's output stream and waits for it to exit.
+	Execute(ctx context.Context, promptContent string, logFile string, executionID string) error
+	// Reattach connects to a running execution's output stream and waits for it to exit.
 	// It does not create a new container. The log file is overwritten from the beginning
 	// of the container's output (docker logs replays all output from container start).
 	// maxPromptDuration is the remaining allowed run time; 0 disables the timeout.
-	// Returns nil when the container exits successfully.
+	// Returns nil when the execution exits successfully.
 	Reattach(
 		ctx context.Context,
 		logFile string,
-		containerName string,
+		executionID string,
 		maxPromptDuration time.Duration,
 	) error
-	// StopAndRemoveContainer stops and forcibly removes the named container.
+	// StopAndRemoveContainer stops and forcibly removes the named execution.
 	// Best-effort: any errors are logged but not returned.
-	StopAndRemoveContainer(ctx context.Context, containerName string)
+	StopAndRemoveContainer(ctx context.Context, executionID string)
 }
 
 // NewDockerExecutor creates a new Executor using Docker. The launch shape

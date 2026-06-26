@@ -33,7 +33,7 @@ var _ = Describe("Runner", func() {
 		watcher          *mocks.Watcher
 		processor        *mocks.Processor
 		server           *mocks.Server
-		containerChecker *mocks.ContainerChecker
+		containerChecker *mocks.ExecutionChecker
 		ctx              context.Context
 		cancel           context.CancelFunc
 	)
@@ -54,7 +54,7 @@ var _ = Describe("Runner", func() {
 		watcher = &mocks.Watcher{}
 		processor = &mocks.Processor{}
 		server = &mocks.Server{}
-		containerChecker = &mocks.ContainerChecker{}
+		containerChecker = &mocks.ExecutionChecker{}
 
 		ctx, cancel = context.WithCancel(context.Background())
 	})

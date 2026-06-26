@@ -55,12 +55,12 @@ func NewRunner(
 	server server.Server,
 	specWatcher specwatcher.SpecWatcher,
 	projectName project.Name,
-	containerChecker executor.ContainerChecker,
+	executionChecker executor.ExecutionChecker,
 	n notifier.Notifier,
 	slugMigrator slugmigrator.Migrator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	maxPromptDuration time.Duration,
-	containerStopper executor.ContainerStopper,
+	executionStopper executor.ExecutionStopper,
 	startupLogger func(),
 	hideGit bool,
 	preflightChecker preflight.Checker,
@@ -83,12 +83,12 @@ func NewRunner(
 		server:                server,
 		specWatcher:           specWatcher,
 		projectName:           projectName,
-		containerChecker:      containerChecker,
+		executionChecker:      executionChecker,
 		notifier:              n,
 		slugMigrator:          slugMigrator,
 		currentDateTimeGetter: currentDateTimeGetter,
 		maxPromptDuration:     maxPromptDuration,
-		containerStopper:      containerStopper,
+		executionStopper:      executionStopper,
 		startupLogger:         startupLogger,
 		hideGit:               hideGit,
 		preflightChecker:      preflightChecker,
@@ -114,12 +114,12 @@ type runner struct {
 	server                server.Server
 	specWatcher           specwatcher.SpecWatcher
 	projectName           project.Name
-	containerChecker      executor.ContainerChecker
+	executionChecker      executor.ExecutionChecker
 	notifier              notifier.Notifier
 	slugMigrator          slugmigrator.Migrator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
 	maxPromptDuration     time.Duration
-	containerStopper      executor.ContainerStopper
+	executionStopper      executor.ExecutionStopper
 	startupLogger         func()
 	hideGit               bool
 	preflightChecker      preflight.Checker
@@ -269,7 +269,7 @@ func (r *runner) startupDeps() StartupDeps {
 		SpecsCompletedDir:     r.specsCompletedDir,
 		SpecsLogDir:           r.specsLogDir,
 		PromptManager:         r.promptManager,
-		ContainerChecker:      r.containerChecker,
+		ExecutionChecker:      r.executionChecker,
 		Notifier:              r.notifier,
 		ProjectName:           r.projectName.String(),
 		SlugMigrator:          r.slugMigrator,
@@ -308,13 +308,13 @@ func (r *runner) healthCheckLoop(ctx context.Context) error {
 		30*time.Second,
 		r.inProgressDir,
 		r.specsInProgressDir,
-		r.containerChecker,
+		r.executionChecker,
 		r.promptManager,
 		r.notifier,
 		r.projectName.String(),
 		r.currentDateTimeGetter,
 		r.maxPromptDuration,
-		r.containerStopper,
+		r.executionStopper,
 	)
 }
 
@@ -323,7 +323,7 @@ func (r *runner) resumeOrResetGenerating(ctx context.Context) error {
 	return resumeOrResetGenerating(
 		ctx,
 		r.specsInProgressDir,
-		r.containerChecker,
+		r.executionChecker,
 		r.currentDateTimeGetter,
 		r.projectName.String(),
 	)

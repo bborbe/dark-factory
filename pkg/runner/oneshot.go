@@ -40,7 +40,7 @@ func NewOneShotRunner(
 	proc processor.Processor,
 	specGen generator.SpecGenerator,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-	containerChecker executor.ContainerChecker,
+	executionChecker executor.ExecutionChecker,
 	autoApprove bool,
 	slugMigrator slugmigrator.Migrator,
 	hideGit bool,
@@ -60,7 +60,7 @@ func NewOneShotRunner(
 		processor:             proc,
 		specGenerator:         specGen,
 		currentDateTimeGetter: currentDateTimeGetter,
-		containerChecker:      containerChecker,
+		executionChecker:      executionChecker,
 		autoApprove:           autoApprove,
 		slugMigrator:          slugMigrator,
 		hideGit:               hideGit,
@@ -83,7 +83,7 @@ type oneShotRunner struct {
 	processor             processor.Processor
 	specGenerator         generator.SpecGenerator
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
-	containerChecker      executor.ContainerChecker
+	executionChecker      executor.ExecutionChecker
 	autoApprove           bool
 	slugMigrator          slugmigrator.Migrator
 	hideGit               bool
@@ -145,7 +145,7 @@ func (r *oneShotRunner) startupDeps() StartupDeps {
 		SpecsCompletedDir:     r.specsCompletedDir,
 		SpecsLogDir:           r.specsLogDir,
 		PromptManager:         r.promptManager,
-		ContainerChecker:      r.containerChecker,
+		ExecutionChecker:      r.executionChecker,
 		Notifier:              nil, // oneshot has no notifier field
 		ProjectName:           "",  // oneshot has no projectName field
 		SlugMigrator:          r.slugMigrator,

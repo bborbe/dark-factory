@@ -21,7 +21,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/notifier"
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
@@ -682,7 +682,7 @@ var _ = Describe("Processor", func() {
 				realAutoCompleter,
 				specsweeper.NewSweeper(realLister, realAutoCompleter),
 				preflightconditions.NewConditions(nil, nil, nil, 0),
-				containerslot.NewManager(nil, nil, nil, 0, 10*time.Second),
+				executionslot.NewManager(nil, nil, nil, 0, 10*time.Second),
 				cancellationwatcher.NewWatcher(executor, manager),
 				wakeup,
 				processor.Dirs{

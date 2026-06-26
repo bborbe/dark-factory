@@ -19,7 +19,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -81,7 +81,7 @@ func NewProcessor(
 	autoCompleter spec.AutoCompleter,
 	specSweeper specsweeper.Sweeper,
 	preflightConditions preflightconditions.Conditions,
-	containerSlotManager containerslot.Manager,
+	executionSlotManager executionslot.Manager,
 	cancellationWatcher cancellationwatcher.Watcher,
 	wakeup <-chan struct{},
 	dirs Dirs,
@@ -125,7 +125,7 @@ func NewProcessor(
 		specSweeper:               specSweeper,
 		failureHandler:            failureHandler,
 		preflightConditions:       preflightConditions,
-		containerSlotManager:      containerSlotManager,
+		executionSlotManager:      executionSlotManager,
 		cancellationWatcher:       cancellationWatcher,
 		wakeup:                    wakeup,
 		dirs:                      dirs,
@@ -154,7 +154,7 @@ type processor struct {
 	specSweeper               specsweeper.Sweeper
 	failureHandler            failurehandler.Handler
 	preflightConditions       preflightconditions.Conditions
-	containerSlotManager      containerslot.Manager
+	executionSlotManager      executionslot.Manager
 	cancellationWatcher       cancellationwatcher.Watcher
 	wakeup                    <-chan struct{}
 	dirs                      Dirs
@@ -309,7 +309,7 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 		return p.handleEmptyPrompt(ctx, pr.Path, err)
 	}
 
-	baseName, containerName := computePromptMetadata(pr.Path, p.projectName)
+	baseName, executionID := computePromptMetadata(pr.Path, p.projectName)
 	title := pf.Title()
 	if title == "" {
 		title = strings.TrimSuffix(filepath.Base(pr.Path), ".md")
@@ -340,29 +340,29 @@ func (p *processor) ProcessPrompt(ctx context.Context, pr prompt.Prompt) error {
 	defer p.workflowExecutor.CleanupOnError(ctx)
 
 	// Persist container name and version AFTER sync succeeds (so resume can find the container).
-	pf.PrepareForExecution(containerName.String(), p.versionGetter.Get())
+	pf.PrepareForExecution(executionID.String(), p.versionGetter.Get())
 	if err := pf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save prompt metadata")
 	}
 
 	log.From(ctx).Info("container assigned",
 		"container_old", "",
-		"container", containerName.String(),
+		"container", executionID.String(),
 		"workflow_step", "acquire_container",
 	)
-	ctx = log.NewContext(ctx, log.From(ctx).With("container", containerName.String()))
+	ctx = log.NewContext(ctx, log.From(ctx).With("container", executionID.String()))
 
 	// Acquire container lock only for the check-and-start window, not during prep work above.
-	releaseLock, err := p.containerSlotManager.Acquire(ctx)
+	releaseLock, err := p.executionSlotManager.Acquire(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "prepare container slot")
 	}
 	defer releaseLock()
 
 	// Release the container lock once the container has started (not after it exits).
-	p.containerSlotManager.ReleaseAfterStart(ctx, containerName.String(), releaseLock)
+	p.executionSlotManager.ReleaseAfterStart(ctx, executionID.String(), releaseLock)
 
-	cancelled, execErr := p.runContainer(ctx, content, logFile, containerName, pr.Path)
+	cancelled, execErr := p.runContainer(ctx, content, logFile, executionID, pr.Path)
 	if cancelled {
 		p.moveCancelledPrompt(ctx, pr.Path)
 		return nil // proceed to next prompt
@@ -408,13 +408,13 @@ func (p *processor) completeAfterExecution(
 func (p *processor) runContainer(
 	ctx context.Context,
 	content, logFile string,
-	containerName prompt.ContainerName,
+	executionID prompt.ContainerName,
 	promptPath string,
 ) (cancelled bool, err error) {
 	execCtx, execCancel := context.WithCancel(ctx)
 	defer execCancel()
 
-	cancelledCh := p.cancellationWatcher.Watch(execCtx, promptPath, containerName.String())
+	cancelledCh := p.cancellationWatcher.Watch(execCtx, promptPath, executionID.String())
 
 	// Track whether cancellation closed before Execute returned.
 	// A bool written by the select goroutine and read after Execute blocks — no overlap.
@@ -429,7 +429,7 @@ func (p *processor) runContainer(
 		}
 	}()
 
-	execErr := p.executor.Execute(execCtx, content, logFile, containerName.String())
+	execErr := p.executor.Execute(execCtx, content, logFile, executionID.String())
 
 	if cancelledByUser.Load() {
 		log.From(ctx).Info("prompt cancelled", "workflow_step", "cancel")
@@ -538,7 +538,7 @@ func bindPromptLogger(
 	))
 }
 
-// computePromptMetadata derives the baseName and containerName from the prompt path and project name.
+// computePromptMetadata derives the baseName and executionID from the prompt path and project name.
 // It does NOT save to disk — call pf.PrepareForExecution + pf.Save separately after sync succeeds.
 func computePromptMetadata(
 	promptPath string,

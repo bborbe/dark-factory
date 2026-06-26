@@ -1,7 +1,13 @@
 ---
-status: draft
+status: completed
 spec: [102-executor-backend-neutral-naming]
+summary: Renamed pkg/containerslot to pkg/executionslot — updated package clauses, counterfeiter directive, ReleaseAfterStart parameter (containerName→executionID), maxContainers→maxExecutions, all import paths, call sites in processor and factory, regenerated mocks/execution-slot-manager.go, removed mocks/container-slot-manager.go, and updated CHANGELOG.
+container: dark-factory-exec-482-spec-102-rename-containerslot-package
+dark-factory-version: v0.183.0
 created: "2026-06-26T09:00:01Z"
+queued: "2026-06-26T10:11:44Z"
+started: "2026-06-26T10:26:32Z"
+completed: "2026-06-26T10:33:24Z"
 branch: dark-factory/executor-backend-neutral-naming
 ---
 

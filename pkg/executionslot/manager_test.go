@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package containerslot_test
+package executionslot_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/bborbe/dark-factory/mocks"
-	"github.com/bborbe/dark-factory/pkg/containerslot"
+	"github.com/bborbe/dark-factory/pkg/executionslot"
 )
 
 const pollInterval = 10 * time.Millisecond
@@ -38,7 +38,7 @@ var _ = Describe("Manager", func() {
 		It("returns immediately when maxContainers is 0", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, nil)
-			m := containerslot.NewManager(nil, counter, nil, 0, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 0, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -48,7 +48,7 @@ var _ = Describe("Manager", func() {
 		It("returns immediately when count is below limit", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(2, nil)
-			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -65,7 +65,7 @@ var _ = Describe("Manager", func() {
 				}
 				return 2, nil
 			})
-			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -75,7 +75,7 @@ var _ = Describe("Manager", func() {
 		It("returns ctx.Err() when context is cancelled while waiting", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(3, nil)
-			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 3, pollInterval)
 			go func() {
 				time.Sleep(50 * time.Millisecond)
 				cancel()
@@ -88,7 +88,7 @@ var _ = Describe("Manager", func() {
 		It("proceeds when counter returns error", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, stderrors.New("docker error"))
-			m := containerslot.NewManager(nil, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -100,7 +100,7 @@ var _ = Describe("Manager", func() {
 			lock := &mocks.ContainerLock{}
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(2, nil)
-			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -133,7 +133,7 @@ var _ = Describe("Manager", func() {
 			lock := &mocks.ContainerLock{}
 			lock.AcquireCalls(func(_ context.Context) error { appendEvent("A"); return nil })
 			lock.ReleaseCalls(func(_ context.Context) error { appendEvent("R"); return nil })
-			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lock.AcquireCallCount()).To(Equal(3))
@@ -147,7 +147,7 @@ var _ = Describe("Manager", func() {
 			lock := &mocks.ContainerLock{}
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(3, nil)
-			m := containerslot.NewManager(lock, counter, nil, 3, 50*time.Millisecond)
+			m := executionslot.NewManager(lock, counter, nil, 3, 50*time.Millisecond)
 			go func() {
 				time.Sleep(80 * time.Millisecond)
 				cancel()
@@ -163,7 +163,7 @@ var _ = Describe("Manager", func() {
 			lock.AcquireReturns(stderrors.New("flock denied"))
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, nil)
-			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(lock, counter, nil, 3, pollInterval)
 			_, err := m.Acquire(ctx)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("flock denied"))
@@ -174,7 +174,7 @@ var _ = Describe("Manager", func() {
 			lock := &mocks.ContainerLock{}
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, stderrors.New("docker ls failed"))
-			m := containerslot.NewManager(lock, counter, nil, 3, pollInterval)
+			m := executionslot.NewManager(lock, counter, nil, 3, pollInterval)
 			release, err := m.Acquire(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(release).NotTo(BeNil())
@@ -187,7 +187,7 @@ var _ = Describe("Manager", func() {
 		It("is a no-op when checker is nil", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, nil)
-			m := containerslot.NewManager(nil, counter, nil, 0, pollInterval)
+			m := executionslot.NewManager(nil, counter, nil, 0, pollInterval)
 			released := false
 			m.ReleaseAfterStart(ctx, "container-1", func() { released = true })
 			// No goroutine spawned — release is never called.
@@ -198,13 +198,13 @@ var _ = Describe("Manager", func() {
 		It("fires release after WaitUntilRunning unblocks", func() {
 			counter := &mocks.ContainerCounter{}
 			counter.CountRunningReturns(0, nil)
-			checker := &mocks.ContainerChecker{}
+			checker := &mocks.ExecutionChecker{}
 			waitCh := make(chan struct{})
 			checker.WaitUntilRunningCalls(func(_ context.Context, _ string, _ time.Duration) error {
 				<-waitCh
 				return nil
 			})
-			m := containerslot.NewManager(nil, counter, checker, 0, pollInterval)
+			m := executionslot.NewManager(nil, counter, checker, 0, pollInterval)
 
 			released := make(chan struct{})
 			m.ReleaseAfterStart(ctx, "container-1", func() { close(released) })

@@ -11,27 +11,27 @@ import (
 	"github.com/bborbe/errors"
 )
 
-//counterfeiter:generate -o ../../mocks/container-stopper.go --fake-name ContainerStopper . ContainerStopper
+//counterfeiter:generate -o ../../mocks/execution-stopper.go --fake-name ExecutionStopper . ExecutionStopper
 
-// ContainerStopper stops a running Docker container by name.
-type ContainerStopper interface {
-	StopContainer(ctx context.Context, name string) error
+// ExecutionStopper stops a running unit of execution by its executionID.
+type ExecutionStopper interface {
+	StopContainer(ctx context.Context, executionID string) error
 }
 
-// NewDockerContainerStopper creates a ContainerStopper backed by docker stop.
-func NewDockerContainerStopper() ContainerStopper {
+// NewDockerExecutionStopper creates an ExecutionStopper backed by docker stop.
+func NewDockerExecutionStopper() ExecutionStopper {
 	return &dockerContainerStopper{}
 }
 
-// dockerContainerStopper implements ContainerStopper using docker stop.
+// dockerContainerStopper implements ExecutionStopper using docker stop.
 type dockerContainerStopper struct{}
 
-// StopContainer sends SIGTERM to the named container and waits for it to exit.
-func (s *dockerContainerStopper) StopContainer(ctx context.Context, name string) error {
+// StopContainer sends SIGTERM to the named execution and waits for it to exit.
+func (s *dockerContainerStopper) StopContainer(ctx context.Context, executionID string) error {
 	// #nosec G204 -- name is generated internally from prompt filename, not user input
-	cmd := exec.CommandContext(ctx, "docker", "stop", name)
+	cmd := exec.CommandContext(ctx, "docker", "stop", executionID)
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "docker stop %s", name)
+		return errors.Wrapf(ctx, err, "docker stop %s", executionID)
 	}
 	return nil
 }

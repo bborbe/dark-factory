@@ -10,8 +10,16 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: Prompt frontmatter writes execution_id and reads legacy container key (backward compatible) (spec 102)
+- refactor: Rename pkg/containerslot to pkg/executionslot (slot is keyed by neutral executionID) (spec 102)
+- chore: Add hotpath-execution-naming-check precommit gate forbidding container vocabulary in neutral-layer packages (spec 102)
+- docs: Add docs/execution-backends.md documenting the neutral-vs-container vocabulary split and the ≤3-file second-backend walk (spec 102)
+
 ## v0.185.0
 
+- refactor: Rename ContainerChecker/ContainerStopper to ExecutionChecker/ExecutionStopper and executor params to executionID across neutral-layer packages (spec 102)
 - docs: add Prompt State Machine subsection to docs/architecture-flow.md — seven states, mermaid transition diagram, and recovery edges; documents the previously-undocumented pending_verification state (spec 101 prompt 5)
 - feat: add make hotpath-statemachine-check gate (scripts/hotpath-statemachine-check.sh) wired into precommit; blocks inline prompt-status comparisons in the migrated hot-path files (spec 101 prompt 4)
 - refactor: route the processor cancelled-during-execution fallback through pkg/promptstate; pending_verification is now a first-class promptstate.State (spec 101 prompt 3)

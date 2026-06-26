@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [100-centralize-subprocess-runner]
+container: dark-factory-exec-473-spec-100-migrate-git-gitprovider
+dark-factory-version: v0.183.0
 created: "2026-06-26T07:30:00Z"
 queued: "2026-06-26T07:57:18Z"
+started: "2026-06-26T08:12:59Z"
+completed: "2026-06-26T08:39:51Z"
 branch: dark-factory/centralize-subprocess-runner
 ---
 

@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - feat: add `make hotpath-execcheck` lint gate (warn mode) that flags raw exec.Command(Context) calls in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 1)
+- fix: route all pkg/git and pkg/gitprovider/bitbucket subprocess spawns through pkg/subproc.Runner (warn-on-slow + bounded timeout); 8 KiB stderr truncation and *exec.ExitError exit-code propagation preserved; adds additive RunWithWarnAndTimeoutEnv for GH_TOKEN-carrying gh calls (spec 100 prompt 3)
 - fix: route project-name resolution and the processor dirty-file check through pkg/subproc.Runner so a slow git remote or stuck filesystem no longer hangs — both now honour context cancellation and a bounded timeout (spec 100 prompt 2)
 
 ## v0.184.0

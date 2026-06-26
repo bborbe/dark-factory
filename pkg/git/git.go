@@ -9,13 +9,14 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 	"github.com/bborbe/run"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 // DefaultCommitBackoff defines the default retry backoff for git commit operations.
@@ -49,28 +50,13 @@ func CommitWithRetry(
 
 // HasDirtyFiles returns true if there are any uncommitted changes in the working tree.
 func HasDirtyFiles(ctx context.Context) (bool, error) {
-	var stderrBuf strings.Builder
-	// #nosec G204 -- fixed command with no user input
-	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	cmd.Stderr = &stderrBuf
-	output, err := cmd.Output()
-	if err != nil {
-		return false, errors.Wrapf(ctx, err, "git status: %s", truncateStderr(stderrBuf.String()))
-	}
-	return len(strings.TrimSpace(string(output))) > 0, nil
+	return NewHelpers().HasDirtyFiles(ctx)
 }
 
 // CommitAll stages all changes and commits with the given message.
 // Used during committing recovery to commit work files left from a prior run.
 func CommitAll(ctx context.Context, message string) error {
-	has, err := stageAllAndCheck(ctx)
-	if err != nil {
-		return err
-	}
-	if !has {
-		return nil // nothing to commit
-	}
-	return gitCommit(ctx, message)
+	return NewHelpers().CommitAll(ctx, message)
 }
 
 // VersionBump specifies the type of version bump to perform.
@@ -104,26 +90,33 @@ type Releaser interface {
 }
 
 // releaser implements Releaser.
-type releaser struct{}
+type releaser struct {
+	helpers *Helpers
+}
 
 // NewReleaser creates a new Releaser.
 func NewReleaser() Releaser {
-	return &releaser{}
+	return &releaser{helpers: NewHelpers()}
+}
+
+// newReleaserWithRunner creates a Releaser with an injected runner (for tests).
+func newReleaserWithRunner(r subproc.Runner) Releaser {
+	return &releaser{helpers: NewHelpersWithRunner(r)}
 }
 
 // GetNextVersion determines the next version based on the bump type.
 func (r *releaser) GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
-	return getNextVersion(ctx, bump)
+	return r.helpers.getNextVersion(ctx, bump)
 }
 
 // CommitAndRelease performs the full git workflow.
 func (r *releaser) CommitAndRelease(ctx context.Context, bump VersionBump) error {
-	return CommitAndRelease(ctx, bump)
+	return r.helpers.CommitAndRelease(ctx, bump)
 }
 
 // CommitCompletedFile commits a completed prompt file to git.
 func (r *releaser) CommitCompletedFile(ctx context.Context, path string) error {
-	return CommitCompletedFile(ctx, path)
+	return r.helpers.CommitCompletedFile(ctx, path)
 }
 
 // HasChangelog checks if CHANGELOG.md exists in the current directory.
@@ -143,158 +136,49 @@ func (r *releaser) CommitWithRetry(ctx context.Context, fn func(context.Context)
 }
 
 // CommitOnly performs a simple commit without versioning, tagging, or pushing.
-// This is used for projects without a CHANGELOG.md.
-// When the working tree has no staged changes, this returns nil without
-// invoking git commit. The downstream CommitsAhead guards in
-// handleAfterIsolatedCommit handle the no-commit case correctly.
 func (r *releaser) CommitOnly(ctx context.Context, message string) error {
-	has, err := stageAllAndCheck(ctx)
+	has, err := r.helpers.stageAllAndCheck(ctx)
 	if err != nil {
-		return err // already wrapped by stageAllAndCheck
+		return err
 	}
 	if !has {
 		slog.Info("no staged changes — skipping commit")
 		return nil
 	}
-	if err := gitCommit(ctx, message); err != nil {
+	if err := r.helpers.gitCommit(ctx, message); err != nil {
 		return errors.Wrap(ctx, err, "git commit")
 	}
 	return nil
 }
 
 // MoveFile moves a file using git mv to preserve history.
-// Falls back to os.Rename if git operations fail or not in a git repo.
 func (r *releaser) MoveFile(ctx context.Context, oldPath string, newPath string) error {
-	return MoveFile(ctx, oldPath, newPath)
+	return r.helpers.MoveFile(ctx, oldPath, newPath)
 }
 
 // PushBranch pushes the current branch's commits to the remote.
-// Idempotent: pushing with no new commits exits zero ("Everything up-to-date").
 func (r *releaser) PushBranch(ctx context.Context) error {
-	return gitPush(ctx)
+	return r.helpers.gitPush(ctx)
 }
 
-// CommitAndRelease performs the full git workflow:
-// 1. git add -A
-// 2. Read CHANGELOG.md and rename ## Unreleased to version
-// 3. Bump version (patch or minor)
-// 4. git commit
-// 5. git tag
-// 6. git push + push tag
-// When the working tree has no staged changes, returns nil without creating
-// a commit, tag, or push — a tag against an unchanged HEAD would be wrong.
+// CommitAndRelease performs the full git workflow (package-level wrapper for tests and scripts).
 func CommitAndRelease(ctx context.Context, bump VersionBump) error {
-	// Stage all changes and check if anything was staged.
-	has, err := stageAllAndCheck(ctx)
-	if err != nil {
-		return err // already wrapped by stageAllAndCheck
-	}
-	if !has {
-		slog.Info("no staged changes — skipping release")
-		return nil
-	}
-
-	// Get next version
-	nextVersion, err := getNextVersion(ctx, bump)
-	if err != nil {
-		return errors.Wrap(ctx, err, "get next version")
-	}
-
-	// Update CHANGELOG
-	if err := updateChangelog(ctx, nextVersion); err != nil {
-		return errors.Wrap(ctx, err, "update changelog")
-	}
-
-	// Stage CHANGELOG changes
-	if err := gitAddAll(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git add changelog")
-	}
-
-	// Commit
-	commitMsg := "release " + nextVersion
-	if err := gitCommit(ctx, commitMsg); err != nil {
-		return errors.Wrap(ctx, err, "git commit")
-	}
-
-	// Tag
-	if err := gitTag(ctx, nextVersion); err != nil {
-		return errors.Wrap(ctx, err, "git tag")
-	}
-
-	// Push
-	if err := gitPush(ctx); err != nil {
-		return errors.Wrap(ctx, err, "git push")
-	}
-
-	// Push tag
-	if err := gitPushTag(ctx, nextVersion); err != nil {
-		return errors.Wrap(ctx, err, "git push tag")
-	}
-
-	return nil
+	return NewHelpers().CommitAndRelease(ctx, bump)
 }
 
-// CommitCompletedFile stages and commits a completed prompt file.
-// This is called after MoveToCompleted() to ensure the moved file is committed.
-// Does nothing if the file is already staged or committed.
+// CommitCompletedFile stages and commits a completed prompt file (package-level wrapper).
 func CommitCompletedFile(ctx context.Context, path string) error {
-	// Stage only the specified file
-	var addCombined strings.Builder
-	// #nosec G204 -- path is from completed prompt file, controlled by application
-	cmd := exec.CommandContext(ctx, "git", "add", path)
-	cmd.Stdout = &addCombined
-	cmd.Stderr = &addCombined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "git add: %s", truncateStderr(addCombined.String()))
-	}
-	if s := addCombined.String(); s != "" {
-		slog.Debug("git output", "op", "add-completed-file", "output", s)
-	}
-
-	// Check if there's anything to commit
-	var statusStderrBuf strings.Builder
-	statusCmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	statusCmd.Stderr = &statusStderrBuf
-	output, err := statusCmd.Output()
-	if err != nil {
-		return errors.Wrapf(ctx, err, "git status: %s", truncateStderr(statusStderrBuf.String()))
-	}
-
-	// Nothing to commit
-	if len(strings.TrimSpace(string(output))) == 0 {
-		return nil
-	}
-
-	// Commit
-	var commitCombined strings.Builder
-	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", "move prompt to completed")
-	commitCmd.Stdout = &commitCombined
-	commitCmd.Stderr = &commitCombined
-	if err := commitCmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "git commit: %s", truncateStderr(commitCombined.String()))
-	}
-	if s := commitCombined.String(); s != "" {
-		slog.Debug("git output", "op", "commit-completed-file", "output", s)
-	}
-	return nil
+	return NewHelpers().CommitCompletedFile(ctx, path)
 }
 
-// MoveFile moves a file using git mv to preserve history.
-// Falls back to os.Rename if git operations fail or not in a git repo.
+// MoveFile moves a file using git mv (package-level wrapper).
 func MoveFile(ctx context.Context, oldPath string, newPath string) error {
-	var combined strings.Builder
-	// #nosec G204 -- paths are controlled by the application, not user input
-	cmd := exec.CommandContext(ctx, "git", "mv", oldPath, newPath)
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		if s := combined.String(); s != "" {
-			slog.Debug("git mv failed, falling back to os.Rename", "stderr", s)
-		}
-		// git mv failed (not a repo, file not tracked, etc.) — fallback to os.Rename
-		return fallbackRename(ctx, oldPath, newPath)
-	}
-	return nil
+	return NewHelpers().MoveFile(ctx, oldPath, newPath)
+}
+
+// GetNextVersion determines the next version (package-level wrapper).
+func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
+	return NewHelpers().getNextVersion(ctx, bump)
 }
 
 // fallbackRename performs os.Rename when git operations are not available.
@@ -303,126 +187,6 @@ func fallbackRename(ctx context.Context, oldPath string, newPath string) error {
 		return errors.Wrap(ctx, err, "rename file")
 	}
 	return nil
-}
-
-// gitAddAll stages all changes
-func gitAddAll(ctx context.Context) error {
-	var combined strings.Builder
-	cmd := exec.CommandContext(ctx, "git", "add", "-A")
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "git add all: %s", truncateStderr(combined.String()))
-	}
-	if s := combined.String(); s != "" {
-		slog.Debug("git output", "op", "add-all", "output", s)
-	}
-	return nil
-}
-
-// stageAllAndCheck stages all changes and reports whether anything was staged.
-// Returns (false, nil) when the working tree was already clean — caller should
-// treat as a graceful no-op (do NOT call git commit, which would exit 1).
-// Returns (true, nil) when at least one path is staged for commit.
-// A non-nil error means git itself failed.
-func stageAllAndCheck(ctx context.Context) (bool, error) {
-	if err := gitAddAll(ctx); err != nil {
-		return false, errors.Wrap(ctx, err, "git add")
-	}
-	var stderrBuf strings.Builder
-	// #nosec G204 -- fixed command with no user input
-	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
-	cmd.Stderr = &stderrBuf
-	output, err := cmd.Output()
-	if err != nil {
-		return false, errors.Wrapf(ctx, err, "git status: %s", truncateStderr(stderrBuf.String()))
-	}
-	return len(strings.TrimSpace(string(output))) > 0, nil
-}
-
-// GetNextVersion determines the next version based on the bump type.
-func GetNextVersion(ctx context.Context, bump VersionBump) (string, error) {
-	return getNextVersion(ctx, bump)
-}
-
-// getNextVersion determines the next version based on the bump type
-func getNextVersion(ctx context.Context, bump VersionBump) (string, error) {
-	var stderrBuf strings.Builder
-	// #nosec G204 -- arguments are static, not user input
-	cmd := exec.CommandContext(ctx, "git", "tag", "--list", "v*")
-	cmd.Stderr = &stderrBuf
-	out, err := cmd.Output()
-	if err != nil {
-		return "", errors.Wrapf(ctx, err, "list git tags: %s", truncateStderr(stderrBuf.String()))
-	}
-
-	// Collect and parse all valid semver tags
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	versions := make([]SemanticVersionNumber, 0, len(lines))
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		version, parseErr := ParseSemanticVersionNumber(ctx, line)
-		if parseErr != nil {
-			continue // Skip invalid semver tags
-		}
-		versions = append(versions, version)
-	}
-
-	// Find the maximum version among git tags (if any).
-	var maxTagVersion *SemanticVersionNumber
-	if len(versions) > 0 {
-		mv := versions[0]
-		for _, v := range versions[1:] {
-			if mv.Less(v) {
-				mv = v
-			}
-		}
-		maxTagVersion = &mv
-	}
-
-	// Read CHANGELOG.md unconditionally. latestVersionFromChangelog returns nil when
-	// the file is missing or contains no valid version headings; that is expected.
-	changelogVersion, _ := latestVersionFromChangelog(ctx)
-
-	// Compute base version: max(highest_tag, highest_changelog).
-	var base SemanticVersionNumber
-	switch {
-	case maxTagVersion == nil && changelogVersion == nil:
-		return "v0.1.0", nil
-	case maxTagVersion == nil:
-		base = *changelogVersion
-	case changelogVersion == nil:
-		base = *maxTagVersion
-	case maxTagVersion.Less(*changelogVersion):
-		// CHANGELOG has an orphan version above the highest git tag.
-		// Warn so the operator can see the divergence in .dark-factory.log,
-		// then reconcile by bumping from the changelog version.
-		slog.Warn(
-			"changelog has orphan version above highest tag; bumping from changelog to avoid semver regression",
-			"orphan_version",
-			changelogVersion.String(),
-			"highest_tag",
-			maxTagVersion.String(),
-		)
-		base = *changelogVersion
-	default:
-		base = *maxTagVersion
-	}
-
-	// Apply the appropriate bump.
-	var nextVersion SemanticVersionNumber
-	switch bump {
-	case MinorBump:
-		nextVersion = base.BumpMinor()
-	case PatchBump:
-		nextVersion = base.BumpPatch()
-	default:
-		nextVersion = base.BumpPatch()
-	}
-	return nextVersion.String(), nil
 }
 
 // latestVersionFromChangelog parses CHANGELOG.md in the current working directory
@@ -463,7 +227,6 @@ func latestVersionFromChangelog(ctx context.Context) (*SemanticVersionNumber, er
 }
 
 // updateChangelog renames ## Unreleased to version in CHANGELOG.md.
-// Returns an error if no ## Unreleased section is found — YOLO is expected to have written it.
 func updateChangelog(ctx context.Context, version string) error {
 	changelogPath := "CHANGELOG.md"
 
@@ -490,7 +253,7 @@ func updateChangelog(ctx context.Context, version string) error {
 	return nil
 }
 
-// processUnreleasedSection renames ## Unreleased to ## version, preserving all content
+// processUnreleasedSection renames ## Unreleased to ## version, preserving all content.
 func processUnreleasedSection(lines []string, version string) ([]string, bool) {
 	result := make([]string, 0, len(lines))
 	unreleasedFound := false
@@ -506,84 +269,4 @@ func processUnreleasedSection(lines []string, version string) ([]string, bool) {
 	}
 
 	return result, unreleasedFound
-}
-
-// gitCommit creates a commit with the given message
-func gitCommit(ctx context.Context, message string) error {
-	slog.Debug("creating commit", "message", message)
-
-	var combined strings.Builder
-	// #nosec G204 -- message is passed as argument to git commit, not executed
-	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "create commit: %s", truncateStderr(combined.String()))
-	}
-	if s := combined.String(); s != "" {
-		slog.Debug("git output", "op", "commit", "output", s)
-	}
-	return nil
-}
-
-// gitTag creates a tag
-func gitTag(ctx context.Context, tag string) error {
-	if _, err := ParseSemanticVersionNumber(ctx, tag); err != nil {
-		return errors.Wrap(ctx, err, "invalid tag format")
-	}
-
-	slog.Debug("creating tag", "tag", tag)
-
-	var combined strings.Builder
-	// #nosec G204 -- tag is validated as semantic version above
-	cmd := exec.CommandContext(ctx, "git", "tag", tag)
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "create tag: %s", truncateStderr(combined.String()))
-	}
-	if s := combined.String(); s != "" {
-		slog.Debug("git output", "op", "tag", "output", s)
-	}
-	return nil
-}
-
-// gitPush pushes commits to remote using subprocess
-func gitPush(ctx context.Context) error {
-	slog.Debug("pushing commits to remote")
-
-	var combined strings.Builder
-	cmd := exec.CommandContext(ctx, "git", "push")
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "push to remote: %s", truncateStderr(combined.String()))
-	}
-	if s := combined.String(); s != "" {
-		slog.Debug("git output", "op", "push", "output", s)
-	}
-	return nil
-}
-
-// gitPushTag pushes a tag to remote using subprocess
-func gitPushTag(ctx context.Context, tag string) error {
-	// Validate tag format to prevent command injection
-	if _, err := ParseSemanticVersionNumber(ctx, tag); err != nil {
-		return errors.Wrap(ctx, err, "invalid tag format")
-	}
-
-	slog.Debug("pushing tag to remote", "tag", tag)
-
-	var combined strings.Builder
-	// #nosec G204 -- tag is validated as semantic version above
-	cmd := exec.CommandContext(ctx, "git", "push", "origin", tag)
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(ctx, err, "push tag to remote: %s", truncateStderr(combined.String()))
-	}
-	if s := combined.String(); s != "" {
-		slog.Debug("git output", "op", "push-tag", "output", s)
-	}
-	return nil
 }

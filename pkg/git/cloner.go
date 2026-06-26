@@ -8,10 +8,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/cloner.go --fake-name Cloner . Cloner
@@ -24,11 +25,18 @@ type Cloner interface {
 
 // NewCloner creates a new Cloner.
 func NewCloner() Cloner {
-	return &cloner{}
+	return &cloner{runner: subproc.NewRunner()}
+}
+
+// newClonerWithRunner creates a Cloner with an injected runner (for tests).
+func newClonerWithRunner(r subproc.Runner) *cloner {
+	return &cloner{runner: r}
 }
 
 // cloner implements Cloner.
-type cloner struct{}
+type cloner struct {
+	runner subproc.Runner
+}
 
 // Clone creates a local clone of srcDir at destDir and checks out the branch.
 // If the branch already exists on the remote, it is tracked; otherwise a new branch is created.
@@ -61,40 +69,45 @@ func (c *cloner) removeStale(ctx context.Context, destDir string) error {
 
 // gitClone runs git clone srcDir destDir.
 func (c *cloner) gitClone(ctx context.Context, srcDir string, destDir string) error {
-	// #nosec G204 -- srcDir and destDir are derived from config and prompt filename
-	cmd := exec.CommandContext(ctx, "git", "clone", srcDir, destDir)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	_, err := c.runner.RunWithWarnAndTimeout(ctx, "git clone", "git", "clone", srcDir, destDir)
+	if err != nil {
 		return errors.Wrapf(
 			ctx,
 			err,
 			"clone repo (src=%s dest=%s): %s",
 			srcDir,
 			destDir,
-			stderr.String(),
+			stderrFromErr(err),
 		)
 	}
 	return nil
 }
 
 // setRealRemote updates the clone's origin to the real remote URL from srcDir.
-// This must happen before fetch so we fetch from the real remote, not the local path.
 func (c *cloner) setRealRemote(ctx context.Context, srcDir string, destDir string) error {
-	// #nosec G204 -- srcDir is controlled by the application
-	remoteCmd := exec.CommandContext(ctx, "git", "-C", srcDir, "remote", "get-url", "origin")
-	var remoteStderr strings.Builder
-	remoteCmd.Stderr = &remoteStderr
-	remoteOutput, err := remoteCmd.Output()
+	remoteOutput, err := c.runner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git remote get-url",
+		srcDir,
+		"git",
+		"remote",
+		"get-url",
+		"origin",
+	)
 	if err != nil {
-		return errors.Wrapf(ctx, err, "get remote url: %s", truncateStderr(remoteStderr.String()))
+		return errors.Wrapf(ctx, err, "get remote url: %s", stderrFromErr(err))
 	}
-	// #nosec G204 -- destDir and remoteURL are controlled by the application
-	setRemoteCmd := exec.CommandContext(
-		ctx, "git", "-C", destDir, "remote", "set-url", "origin",
+	_, err = c.runner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git remote set-url",
+		destDir,
+		"git",
+		"remote",
+		"set-url",
+		"origin",
 		strings.TrimSpace(string(remoteOutput)),
 	)
-	if err := setRemoteCmd.Run(); err != nil {
+	if err != nil {
 		return errors.Wrap(ctx, err, "set remote url")
 	}
 	return nil
@@ -103,24 +116,21 @@ func (c *cloner) setRealRemote(ctx context.Context, srcDir string, destDir strin
 // checkoutBranch fetches from origin and checks out branch, tracking it if it exists remotely.
 func (c *cloner) checkoutBranch(ctx context.Context, destDir string, branch string) error {
 	// Fetch from real remote to detect existing branches (best-effort)
-	// #nosec G204 -- destDir is controlled by the application
-	fetchCmd := exec.CommandContext(ctx, "git", "-C", destDir, "fetch", "origin")
-	if err := fetchCmd.Run(); err != nil {
+	if _, err := c.runner.RunWithWarnAndTimeoutDir(ctx, "git fetch origin", destDir, "git", "fetch", "origin"); err != nil {
 		slog.Warn("fetch from origin failed in clone, will create fresh branch", "error", err)
 	}
 
 	// Check if branch already exists on origin
-	// #nosec G204 -- destDir and branch are controlled by the application
-	verifyCmd := exec.CommandContext(
+	_, verifyErr := c.runner.RunWithWarnAndTimeoutDir(
 		ctx,
-		"git",
-		"-C",
+		"git rev-parse --verify",
 		destDir,
+		"git",
 		"rev-parse",
 		"--verify",
 		"origin/"+branch,
 	)
-	if verifyCmd.Run() == nil {
+	if verifyErr == nil {
 		return c.checkoutTrack(ctx, destDir, branch)
 	}
 	return c.checkoutNew(ctx, destDir, branch)
@@ -128,18 +138,23 @@ func (c *cloner) checkoutBranch(ctx context.Context, destDir string, branch stri
 
 // checkoutTrack checks out an existing remote branch and tracks it.
 func (c *cloner) checkoutTrack(ctx context.Context, destDir string, branch string) error {
-	// #nosec G204 -- destDir and branch are controlled by the application
-	cmd := exec.CommandContext(ctx, "git", "-C", destDir, "checkout", "--track", "origin/"+branch)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	_, err := c.runner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git checkout --track",
+		destDir,
+		"git",
+		"checkout",
+		"--track",
+		"origin/"+branch,
+	)
+	if err != nil {
 		return errors.Wrapf(
 			ctx,
 			err,
 			"track existing branch (dest=%s branch=%s): %s",
 			destDir,
 			branch,
-			stderr.String(),
+			stderrFromErr(err),
 		)
 	}
 	slog.Info("tracking existing remote branch", "branch", branch)
@@ -148,18 +163,23 @@ func (c *cloner) checkoutTrack(ctx context.Context, destDir string, branch strin
 
 // checkoutNew creates a new local branch.
 func (c *cloner) checkoutNew(ctx context.Context, destDir string, branch string) error {
-	// #nosec G204 -- destDir and branch are controlled by the application
-	cmd := exec.CommandContext(ctx, "git", "-C", destDir, "checkout", "-b", branch)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	_, err := c.runner.RunWithWarnAndTimeoutDir(
+		ctx,
+		"git checkout -b",
+		destDir,
+		"git",
+		"checkout",
+		"-b",
+		branch,
+	)
+	if err != nil {
 		return errors.Wrapf(
 			ctx,
 			err,
 			"create branch (dest=%s branch=%s): %s",
 			destDir,
 			branch,
-			stderr.String(),
+			stderrFromErr(err),
 		)
 	}
 	return nil

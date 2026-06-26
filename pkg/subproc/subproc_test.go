@@ -121,4 +121,50 @@ var _ = Describe("Runner", func() {
 			goleak.VerifyNone(GinkgoT(), ignoreOpts)
 		})
 	})
+
+	Describe("RunWithWarnAndTimeoutEnv", func() {
+		It("Env — passes extra environment variables to the child process", func() {
+			r := subproc.NewRunner()
+			out, err := r.RunWithWarnAndTimeoutEnv(
+				ctx,
+				"sh-env",
+				"",
+				[]string{"FOO=bar"},
+				"sh",
+				"-c",
+				"echo $FOO",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).To(Equal("bar\n"))
+		})
+
+		It("Env — nil extraEnv does not break execution", func() {
+			r := subproc.NewRunner()
+			out, err := r.RunWithWarnAndTimeoutEnv(
+				ctx,
+				"sh-nil-env",
+				"",
+				nil,
+				"sh",
+				"-c",
+				"echo ok",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(out)).To(Equal("ok\n"))
+		})
+
+		It("Env — returns error when command fails", func() {
+			r := subproc.NewRunner()
+			_, err := r.RunWithWarnAndTimeoutEnv(
+				ctx,
+				"sh-fail",
+				"",
+				[]string{"FOO=bar"},
+				"sh",
+				"-c",
+				"exit 1",
+			)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })

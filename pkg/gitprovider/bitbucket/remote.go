@@ -6,13 +6,13 @@ package bitbucket
 
 import (
 	"context"
-	"os/exec"
 	"regexp"
 	"strings"
 
 	"github.com/bborbe/errors"
 
 	"github.com/bborbe/dark-factory/pkg/git"
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 // RemoteCoords holds the project key and repo slug parsed from a Bitbucket Server remote URL.
@@ -63,19 +63,23 @@ func ParseRemoteURL(
 // Uses `git remote get-url <remoteName>` to fetch the URL.
 func ParseRemoteFromGit(
 	ctx context.Context,
+	runner subproc.Runner,
 	remoteName string,
 ) (*RemoteCoords, error) {
-	var stderrBuf strings.Builder
-	// #nosec G204 -- remoteName is a fixed string ("origin"), not user input
-	cmd := exec.CommandContext(ctx, "git", "remote", "get-url", remoteName)
-	cmd.Stderr = &stderrBuf
-	output, err := cmd.Output()
+	output, err := runner.RunWithWarnAndTimeout(
+		ctx,
+		"git remote get-url",
+		"git",
+		"remote",
+		"get-url",
+		remoteName,
+	)
 	if err != nil {
 		return nil, errors.Wrapf(
 			ctx,
 			err,
 			"get git remote url: %s",
-			git.TruncateStderr(stderrBuf.String()),
+			git.StderrFromError(err),
 		)
 	}
 	remoteURL := strings.TrimSpace(string(output))

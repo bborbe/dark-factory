@@ -6,11 +6,12 @@ package git
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/bborbe/errors"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/pr_creator.go --fake-name PRCreator . PRCreator
@@ -24,50 +25,54 @@ type PRCreator interface {
 }
 
 // CommandOutputFn executes a command and returns its output.
+// Kept for backward compatibility; new code should use the runner-based constructors.
 type CommandOutputFn func(cmd *exec.Cmd) ([]byte, error)
 
-// defaultCommandOutput runs the command and returns its output.
-func defaultCommandOutput(cmd *exec.Cmd) ([]byte, error) {
-	return cmd.Output()
-}
-
-// prCreator implements PRCreator.
+// prCreator implements PRCreator via subproc.Runner.
 type prCreator struct {
-	ghToken         string
-	commandOutputFn CommandOutputFn
+	ghToken string
+	runner  subproc.Runner
 }
 
 // NewPRCreator creates a new PRCreator.
 func NewPRCreator(ghToken string) PRCreator {
 	return &prCreator{
-		ghToken:         ghToken,
-		commandOutputFn: defaultCommandOutput,
+		ghToken: ghToken,
+		runner:  subproc.NewRunner(),
 	}
 }
 
-// NewPRCreatorWithCommandOutput creates a new PRCreator with a custom command output function.
-func NewPRCreatorWithCommandOutput(ghToken string, fn CommandOutputFn) PRCreator {
+// NewPRCreatorWithCommandOutput creates a PRCreator. The CommandOutputFn is accepted for
+// backward compatibility but the spawn goes through the runner.
+func NewPRCreatorWithCommandOutput(ghToken string, _ CommandOutputFn) PRCreator {
 	return &prCreator{
-		ghToken:         ghToken,
-		commandOutputFn: fn,
+		ghToken: ghToken,
+		runner:  subproc.NewRunner(),
 	}
+}
+
+// NewPRCreatorWithRunner creates a PRCreator with an injected runner (for tests).
+func NewPRCreatorWithRunner(ghToken string, r subproc.Runner) PRCreator {
+	return &prCreator{ghToken: ghToken, runner: r}
 }
 
 // FindOpenPR returns the URL of an open PR for the given branch, or "" if none exists.
 func (p *prCreator) FindOpenPR(ctx context.Context, branch string) (string, error) {
-	// #nosec G204 -- branch name comes from validated frontmatter
-	cmd := exec.CommandContext(
+	var extraEnv []string
+	if p.ghToken != "" {
+		extraEnv = []string{"GH_TOKEN=" + p.ghToken}
+	}
+	output, err := p.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
+		"gh pr list",
+		"",
+		extraEnv,
 		"gh", "pr", "list",
 		"--head", branch,
 		"--state", "open",
 		"--json", "url",
 		"--jq", ".[0].url",
 	)
-	if p.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
-	}
-	output, err := p.commandOutputFn(cmd)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "list open PRs")
 	}
@@ -84,22 +89,22 @@ func (p *prCreator) Create(
 	if err := ValidatePRTitle(ctx, title); err != nil {
 		return "", errors.Wrap(ctx, err, "validate PR title")
 	}
-	// #nosec G204 -- title is from prompt frontmatter, body is static text, branch is validated
-	cmd := exec.CommandContext(
+	var extraEnv []string
+	if p.ghToken != "" {
+		extraEnv = []string{"GH_TOKEN=" + p.ghToken}
+	}
+	output, err := p.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
+		"gh pr create",
+		"",
+		extraEnv,
 		"gh", "pr", "create",
 		"--head", branch,
 		"--title", title,
 		"--body", body,
 	)
-	if p.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
-	}
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	output, err := p.commandOutputFn(cmd)
 	if err != nil {
-		return "", errors.Errorf(ctx, "create pull request: %v: %s", err, stderr.String())
+		return "", errors.Errorf(ctx, "create pull request: %v: %s", err, stderrFromErr(err))
 	}
 	return strings.TrimSpace(string(output)), nil
 }

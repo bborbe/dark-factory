@@ -259,7 +259,7 @@ func createBitbucketProviderDeps(
 	token := cfg.ResolvedBitbucketToken()
 	baseURL := cfg.Bitbucket.BaseURL
 
-	coords, err := bitbucket.ParseRemoteFromGit(ctx, "origin")
+	coords, err := bitbucket.ParseRemoteFromGit(ctx, subproc.NewRunner(), "origin")
 	if err != nil {
 		slog.Warn(
 			"bitbucket: failed to parse git remote URL; PR operations will fail",

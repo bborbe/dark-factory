@@ -42,6 +42,24 @@ type SubprocRunner struct {
 		result1 []byte
 		result2 error
 	}
+	RunWithWarnAndTimeoutEnvStub        func(context.Context, string, string, []string, string, ...string) ([]byte, error)
+	runWithWarnAndTimeoutEnvMutex       sync.RWMutex
+	runWithWarnAndTimeoutEnvArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 []string
+		arg5 string
+		arg6 []string
+	}
+	runWithWarnAndTimeoutEnvReturns struct {
+		result1 []byte
+		result2 error
+	}
+	runWithWarnAndTimeoutEnvReturnsOnCall map[int]struct {
+		result1 []byte
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -176,6 +194,80 @@ func (fake *SubprocRunner) RunWithWarnAndTimeoutDirReturnsOnCall(i int, result1 
 		})
 	}
 	fake.runWithWarnAndTimeoutDirReturnsOnCall[i] = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnv(arg1 context.Context, arg2 string, arg3 string, arg4 []string, arg5 string, arg6 ...string) ([]byte, error) {
+	var arg4Copy []string
+	if arg4 != nil {
+		arg4Copy = make([]string, len(arg4))
+		copy(arg4Copy, arg4)
+	}
+	fake.runWithWarnAndTimeoutEnvMutex.Lock()
+	ret, specificReturn := fake.runWithWarnAndTimeoutEnvReturnsOnCall[len(fake.runWithWarnAndTimeoutEnvArgsForCall)]
+	fake.runWithWarnAndTimeoutEnvArgsForCall = append(fake.runWithWarnAndTimeoutEnvArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+		arg3 string
+		arg4 []string
+		arg5 string
+		arg6 []string
+	}{arg1, arg2, arg3, arg4Copy, arg5, arg6})
+	stub := fake.RunWithWarnAndTimeoutEnvStub
+	fakeReturns := fake.runWithWarnAndTimeoutEnvReturns
+	fake.recordInvocation("RunWithWarnAndTimeoutEnv", []interface{}{arg1, arg2, arg3, arg4Copy, arg5, arg6})
+	fake.runWithWarnAndTimeoutEnvMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6...)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnvCallCount() int {
+	fake.runWithWarnAndTimeoutEnvMutex.RLock()
+	defer fake.runWithWarnAndTimeoutEnvMutex.RUnlock()
+	return len(fake.runWithWarnAndTimeoutEnvArgsForCall)
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnvCalls(stub func(context.Context, string, string, []string, string, ...string) ([]byte, error)) {
+	fake.runWithWarnAndTimeoutEnvMutex.Lock()
+	defer fake.runWithWarnAndTimeoutEnvMutex.Unlock()
+	fake.RunWithWarnAndTimeoutEnvStub = stub
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnvArgsForCall(i int) (context.Context, string, string, []string, string, []string) {
+	fake.runWithWarnAndTimeoutEnvMutex.RLock()
+	defer fake.runWithWarnAndTimeoutEnvMutex.RUnlock()
+	argsForCall := fake.runWithWarnAndTimeoutEnvArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnvReturns(result1 []byte, result2 error) {
+	fake.runWithWarnAndTimeoutEnvMutex.Lock()
+	defer fake.runWithWarnAndTimeoutEnvMutex.Unlock()
+	fake.RunWithWarnAndTimeoutEnvStub = nil
+	fake.runWithWarnAndTimeoutEnvReturns = struct {
+		result1 []byte
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SubprocRunner) RunWithWarnAndTimeoutEnvReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.runWithWarnAndTimeoutEnvMutex.Lock()
+	defer fake.runWithWarnAndTimeoutEnvMutex.Unlock()
+	fake.RunWithWarnAndTimeoutEnvStub = nil
+	if fake.runWithWarnAndTimeoutEnvReturnsOnCall == nil {
+		fake.runWithWarnAndTimeoutEnvReturnsOnCall = make(map[int]struct {
+			result1 []byte
+			result2 error
+		})
+	}
+	fake.runWithWarnAndTimeoutEnvReturnsOnCall[i] = struct {
 		result1 []byte
 		result2 error
 	}{result1, result2}

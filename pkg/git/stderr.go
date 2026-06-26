@@ -4,7 +4,12 @@
 
 package git
 
-import "strings"
+import (
+	"os/exec"
+	"strings"
+
+	"github.com/bborbe/errors"
+)
 
 // maxStderrBytes is the maximum number of bytes captured from git stderr before
 // truncation. 8 KiB is enough to surface the actionable first lines of any git
@@ -27,3 +32,19 @@ func TruncateStderr(s string) string {
 // truncateStderr is the unexported alias preserved for backward-compat with
 // pkg/git internal callers; new callers should use TruncateStderr.
 func truncateStderr(s string) string { return TruncateStderr(s) }
+
+// stderrFromErr extracts and truncates the child stderr captured in a wrapped
+// *exec.ExitError (populated by cmd.Output() inside subproc.Runner). Returns ""
+// when err carries no *exec.ExitError.
+func stderrFromErr(err error) string {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return TruncateStderr(string(exitErr.Stderr))
+	}
+	return ""
+}
+
+// StderrFromError extracts and truncates the child stderr captured in a wrapped
+// *exec.ExitError. Exported so sibling packages (e.g. pkg/gitprovider/bitbucket)
+// can use it without duplicating the logic.
+func StderrFromError(err error) string { return stderrFromErr(err) }

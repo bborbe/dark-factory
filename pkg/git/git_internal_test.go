@@ -21,13 +21,12 @@ var _ = Describe("Internal git helpers", func() {
 
 			origDir, err := os.Getwd()
 			Expect(err).NotTo(HaveOccurred())
-			// Restore cwd first, then remove the temp dir (LIFO: remove runs second).
 			defer func() { _ = os.RemoveAll(nonGitDir) }()
 			defer func() { _ = os.Chdir(origDir) }()
 
 			Expect(os.Chdir(nonGitDir)).To(Succeed())
 
-			has, err := stageAllAndCheck(context.Background())
+			has, err := NewHelpers().stageAllAndCheck(context.Background())
 			Expect(err).To(HaveOccurred())
 			Expect(has).To(BeFalse())
 		})
@@ -163,13 +162,10 @@ var _ = Describe("Internal git helpers", func() {
 			result, found := processUnreleasedSection(lines, "v1.1.0")
 			Expect(found).To(BeTrue())
 			Expect(len(result)).To(Equal(len(lines)))
-			// Header (lines 0..9) must be byte-identical to input
 			for i := 0; i < 10; i++ {
 				Expect(result[i]).To(Equal(lines[i]), "header line %d drifted", i)
 			}
-			// The rename happened at the right place
 			Expect(result[10]).To(Equal("## v1.1.0"))
-			// The body that followed is untouched
 			Expect(result[13]).To(Equal("## v1.0.0"))
 		})
 	})
@@ -207,7 +203,7 @@ var _ = Describe("Internal git helpers", func() {
 			err = os.Chdir(tmpDir)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = gitCommit(ctx, "test commit")
+			err = NewHelpers().gitCommit(ctx, "test commit")
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -245,7 +241,7 @@ var _ = Describe("Internal git helpers", func() {
 			err = os.Chdir(tmpDir)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = gitAddAll(ctx)
+			err = NewHelpers().gitAddAll(ctx)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -253,7 +249,7 @@ var _ = Describe("Internal git helpers", func() {
 	Describe("gitTag", func() {
 		It("returns error for invalid tag format", func() {
 			ctx := context.Background()
-			err := gitTag(ctx, "not-a-semver")
+			err := NewHelpers().gitTag(ctx, "not-a-semver")
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -261,7 +257,7 @@ var _ = Describe("Internal git helpers", func() {
 	Describe("gitPushTag", func() {
 		It("returns error for invalid tag format", func() {
 			ctx := context.Background()
-			err := gitPushTag(ctx, "not-a-semver")
+			err := NewHelpers().gitPushTag(ctx, "not-a-semver")
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -296,11 +292,9 @@ var _ = Describe("Internal git helpers", func() {
 				err = MoveFile(ctx, oldPath, newPath)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Old file should not exist
 				_, err = os.Stat(oldPath)
 				Expect(os.IsNotExist(err)).To(BeTrue())
 
-				// New file should exist with same content
 				content, err := os.ReadFile(newPath)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(string(content)).To(Equal("test content"))

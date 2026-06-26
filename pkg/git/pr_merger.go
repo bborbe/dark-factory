@@ -8,12 +8,12 @@ import (
 	"context"
 	"encoding/json"
 	stderrors "errors"
-	"os"
-	"os/exec"
 	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
+
+	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
 //counterfeiter:generate -o ../../mocks/pr_merger.go --fake-name PRMerger . PRMerger
@@ -30,6 +30,22 @@ func NewPRMerger(ghToken string, currentDateTimeGetter libtime.CurrentDateTimeGe
 		pollInterval:          30 * time.Second,
 		mergeTimeout:          30 * time.Minute,
 		currentDateTimeGetter: currentDateTimeGetter,
+		runner:                subproc.NewRunner(),
+	}
+}
+
+// newPRMergerWithRunner creates a PRMerger with an injected runner (for tests).
+func newPRMergerWithRunner(
+	ghToken string,
+	cdt libtime.CurrentDateTimeGetter,
+	r subproc.Runner,
+) PRMerger {
+	return &prMerger{
+		ghToken:               ghToken,
+		pollInterval:          30 * time.Second,
+		mergeTimeout:          30 * time.Minute,
+		currentDateTimeGetter: cdt,
+		runner:                r,
 	}
 }
 
@@ -39,6 +55,7 @@ type prMerger struct {
 	pollInterval          time.Duration
 	mergeTimeout          time.Duration
 	currentDateTimeGetter libtime.CurrentDateTimeGetter
+	runner                subproc.Runner
 }
 
 // prStatus represents the JSON response from gh pr view.
@@ -46,21 +63,7 @@ type prStatus struct {
 	MergeStateStatus string `json:"mergeStateStatus"`
 }
 
-// decideMergeAction maps a mergeStateStatus value to an action:
-//
-//	(true, nil)  → merge the PR now
-//	(false, err) → fatal conflict, abort polling
-//	(false, nil) → keep polling (BLOCKED, BEHIND, UNKNOWN, UNSTABLE, HAS_HOOKS)
-//
-// GitHub mergeStateStatus reference:
-//
-//	CLEAN → all checks pass, no conflicts
-//	DIRTY → merge conflicts
-//	BLOCKED → branch protection blocking merge
-//	BEHIND → branch is behind base
-//	UNSTABLE → checks are failing
-//	HAS_HOOKS → pre-receive hooks pending
-//	UNKNOWN → state not yet computed
+// decideMergeAction maps a mergeStateStatus value to an action.
 func decideMergeAction(mergeStateStatus string) (shouldMerge bool, err error) {
 	switch mergeStateStatus {
 	case "CLEAN":
@@ -99,7 +102,6 @@ func (p *prMerger) WaitAndMerge(ctx context.Context, prURL string) error {
 			if shouldMerge {
 				return p.mergePR(ctx, prURL)
 			}
-			// BLOCKED, BEHIND, UNKNOWN, UNSTABLE, HAS_HOOKS → continue polling
 		}
 	}
 }
@@ -109,13 +111,17 @@ func (p *prMerger) checkPRStatus(ctx context.Context, prURL string) (*prStatus, 
 	if err := ValidatePRURL(ctx, prURL); err != nil {
 		return nil, errors.Wrap(ctx, err, "validate PR URL")
 	}
-	// #nosec G204 -- prURL validated by ValidatePRURL
-	cmd := exec.CommandContext(ctx, "gh", "pr", "view", prURL, "--json", "mergeStateStatus")
+	var extraEnv []string
 	if p.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
+		extraEnv = []string{"GH_TOKEN=" + p.ghToken}
 	}
-
-	output, err := cmd.Output()
+	output, err := p.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"gh pr view",
+		"",
+		extraEnv,
+		"gh", "pr", "view", prURL, "--json", "mergeStateStatus",
+	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "execute gh pr view")
 	}
@@ -133,15 +139,19 @@ func (p *prMerger) mergePR(ctx context.Context, prURL string) error {
 	if err := ValidatePRURL(ctx, prURL); err != nil {
 		return errors.Wrap(ctx, err, "validate PR URL")
 	}
-	// #nosec G204 -- prURL validated by ValidatePRURL
-	cmd := exec.CommandContext(ctx, "gh", "pr", "merge", prURL, "--merge", "--delete-branch")
+	var extraEnv []string
 	if p.ghToken != "" {
-		cmd.Env = append(os.Environ(), "GH_TOKEN="+p.ghToken)
+		extraEnv = []string{"GH_TOKEN=" + p.ghToken}
 	}
-
-	if err := cmd.Run(); err != nil {
+	_, err := p.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"gh pr merge",
+		"",
+		extraEnv,
+		"gh", "pr", "merge", prURL, "--merge", "--delete-branch",
+	)
+	if err != nil {
 		return errors.Wrap(ctx, err, "merge pull request")
 	}
-
 	return nil
 }

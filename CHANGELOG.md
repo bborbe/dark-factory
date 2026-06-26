@@ -12,7 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-- fix: allow square brackets in model identifier regex so provider variant suffixes like `claude-sonnet-4-5[1m]` and `deepseek-v4-flash[1m]` pass `globalconfig.Validate` (regression surfaced by `dark-factory healthcheck` on minimax-backed configs)
+- fix: allow square brackets in model identifier regex so provider variant suffixes like `claude-sonnet-4-5[1m]` and `deepseek-v4-flash[1m]` pass validation at BOTH the global (`globalconfig.ModelPattern`) and project (`pkg/config.modelPattern`) layers (regression surfaced by `dark-factory healthcheck` on minimax-backed configs; fix kept the duplicate-by-design pair in sync)
 
 ## v0.187.0
 

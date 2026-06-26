@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: add `make hotpath-execcheck` lint gate (warn mode) that flags raw exec.Command(Context) calls in pkg/ outside pkg/subproc and the docker allow-list (spec 100 prompt 1)
+
 ## v0.184.0
 
 - feat: add pkg/log context-logger helpers (NewContext/From), docs/rules/logging-conventions.md convention doc, and `make hotpath-logcheck` target (warn mode) — foundation for per-prompt correlation-id structured logging (spec 099 prompt 1)

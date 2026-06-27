@@ -22,6 +22,7 @@ import (
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/cancellationwatcher"
+	"github.com/bborbe/dark-factory/pkg/claudeargv"
 	"github.com/bborbe/dark-factory/pkg/cmd"
 	"github.com/bborbe/dark-factory/pkg/cmd/healthcheck"
 	"github.com/bborbe/dark-factory/pkg/committingrecoverer"
@@ -1383,7 +1384,7 @@ func CreateHealthcheckCommand(
 		// ANTHROPIC_MODEL is set by the production executor; mirror it here so
 		// the claude probe sees the same env as a real prompt container.
 		if cfg.Model != "" {
-			env["ANTHROPIC_MODEL"] = cfg.Model
+			env[claudeargv.EnvAnthropicModel] = cfg.Model
 		}
 	}
 	// Healthcheck always forces hideGit=true. The probes mount /workspace

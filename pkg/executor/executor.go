@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/run"
 	libtime "github.com/bborbe/time"
 
+	"github.com/bborbe/dark-factory/pkg/claudeargv"
 	"github.com/bborbe/dark-factory/pkg/formatter"
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	log "github.com/bborbe/dark-factory/pkg/log"
@@ -460,14 +461,13 @@ func (e *dockerExecutor) buildDockerCommand(
 	promptFilePath string,
 	promptBaseName string,
 ) *exec.Cmd {
-	envOverlay := map[string]string{
-		"YOLO_PROMPT_FILE": "/tmp/prompt.md",
-		"ANTHROPIC_MODEL":  e.model,
-		"YOLO_OUTPUT":      "json",
-	}
 	extras := launchpolicy.Extras{
 		ContainerName: containerName,
-		EnvOverlay:    envOverlay,
+		EnvOverlay: claudeargv.EnvOverlay(claudeargv.Options{
+			Model:      e.model,
+			Output:     claudeargv.OutputJSON,
+			PromptFile: "/tmp/prompt.md",
+		}),
 		ExtraLabels: map[string]string{
 			"dark-factory.prompt": promptBaseName,
 		},

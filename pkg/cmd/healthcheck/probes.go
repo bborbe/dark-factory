@@ -32,6 +32,7 @@ import (
 
 	"github.com/bborbe/errors"
 
+	"github.com/bborbe/dark-factory/pkg/claudeargv"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
@@ -234,10 +235,10 @@ func (c *claudeProbe) Run(ctx context.Context) error {
 		// (model rejection, auth failure, image regression) surfaces here too.
 		// successMarker "OK" still matches because the model's reply text is
 		// included in the stream-json output verbatim.
-		envOverlay: map[string]string{
-			"YOLO_PROMPT": claudeProbePrompt,
-			"YOLO_OUTPUT": "json",
-		},
+		envOverlay: claudeargv.EnvOverlay(claudeargv.Options{
+			Prompt: claudeProbePrompt,
+			Output: claudeargv.OutputJSON,
+		}),
 		successMarker: "OK",
 		failurePrefix: "claude session probe failed",
 	})

@@ -1193,6 +1193,39 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Describe("EffectiveHideGit", func() {
+		// Canonical home for the hideGit resolution formula. Promoted out
+		// of pkg/factory's `resolveHideGit` helper (2026-06-27) which was
+		// applied at 1 of 3 sites — the other 2 inlined the formula and
+		// silently drifted. See the `hotpath-hidegit-check` precommit gate
+		// for the no-inline-formula enforcement.
+
+		It("returns false on default config (direct workflow, HideGit unset)", func() {
+			cfg := config.Config{}
+			Expect(cfg.EffectiveHideGit()).To(BeFalse())
+		})
+
+		It("returns true when HideGit=true regardless of workflow", func() {
+			cfg := config.Config{HideGit: true}
+			Expect(cfg.EffectiveHideGit()).To(BeTrue())
+		})
+
+		It("returns true when Workflow=worktree regardless of HideGit", func() {
+			cfg := config.Config{Workflow: config.WorkflowWorktree}
+			Expect(cfg.EffectiveHideGit()).To(BeTrue())
+		})
+
+		It("returns true when both Workflow=worktree and HideGit=true", func() {
+			cfg := config.Config{Workflow: config.WorkflowWorktree, HideGit: true}
+			Expect(cfg.EffectiveHideGit()).To(BeTrue())
+		})
+
+		It("returns false when Workflow=direct and HideGit=false", func() {
+			cfg := config.Config{Workflow: config.WorkflowDirect, HideGit: false}
+			Expect(cfg.EffectiveHideGit()).To(BeFalse())
+		})
+	})
+
 	Describe("ParsedHealthcheckInterval", func() {
 		It("returns 0 when HealthcheckInterval is empty", func() {
 			cfg := config.Config{}

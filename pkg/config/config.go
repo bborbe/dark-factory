@@ -293,6 +293,23 @@ func (c Config) HealthcheckEnabledValue() bool {
 	return *c.HealthcheckEnabled
 }
 
+// EffectiveHideGit reports whether the container should hide the project's
+// `.git` directory. The container can't follow a worktree's `.git` pointer
+// file, so worktree workflows ALWAYS hide git; explicit HideGit also hides
+// it regardless of workflow.
+//
+// Use this method at every site that builds a launchpolicy.Policy or
+// passes a hideGit flag downstream — never inline
+// `cfg.Workflow == config.WorkflowWorktree || cfg.HideGit`. The
+// `scripts/hotpath-hidegit-check.sh` gate (run by `make precommit`)
+// rejects the inline formula in pkg/ to prevent the regression class
+// that caused the 2026-06-26 silent minimax healthcheck failure (helper
+// existed, was applied at 1 of 3 sites; the inline copies drifted
+// silently).
+func (c Config) EffectiveHideGit() bool {
+	return c.Workflow == WorkflowWorktree || c.HideGit
+}
+
 // ParsedHealthcheckInterval returns the parsed duration from HealthcheckInterval.
 // Returns 0 when HealthcheckInterval is empty (disables interval-based caching).
 // Safe to call at any time — returns 0 on error, never panics.

@@ -24,10 +24,6 @@ var BuildIdleLoggerForTest = func(
 	return buildIdleLogger(idleLogInterval, queueInterval, emit)
 }
 
-// ResolveHideGitForTest exposes the package-private helper for
-// black-box tests in factory_test.go.
-var ResolveHideGitForTest = resolveHideGit
-
 // ProviderDepsBackendForTest reports the backend ("github" or "bitbucket")
 // the createProviderDeps dispatcher chose for the given config. Used by
 // black-box tests in factory_test.go to assert the dispatch wiring without

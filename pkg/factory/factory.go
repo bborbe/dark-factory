@@ -628,16 +628,6 @@ func CreateOneShotRunner(
 	)
 }
 
-// resolveHideGit computes the effective hideGit value every dark-factory
-// container receives — spec-generator, prompt-executor, and healthcheck probes.
-// Worktree mode always masks .git (the worktree's .git is a pointer file the
-// container can't follow); explicit hideGit also masks it. All three call
-// sites must agree so the containers see the same workspace shape — the
-// architectural invariant of spec 098.
-func resolveHideGit(cfg config.Config) bool {
-	return cfg.Workflow == config.WorkflowWorktree || cfg.HideGit
-}
-
 // CreateSpecGenerator creates a SpecGenerator using the Docker executor.
 func CreateSpecGenerator(
 	ctx context.Context,
@@ -673,7 +663,7 @@ func CreateSpecGenerator(
 		cfg.ExtraMounts,
 		cfg.NetrcFile,
 		cfg.GitconfigFile,
-		resolveHideGit(cfg),
+		cfg.EffectiveHideGit(),
 	)
 	return generator.NewSpecGenerator(
 		executor.NewDockerExecutor(
@@ -948,6 +938,16 @@ type ProcessorConfig struct {
 	SweepInterval time.Duration
 }
 
+// EffectiveHideGit mirrors config.Config.EffectiveHideGit for the subset
+// of fields carried on ProcessorConfig (Workflow + HideGit). The factory
+// builds the ProcessorConfig from a config.Config, so the result must
+// agree — both are reduced to one canonical formula. The
+// `hotpath-hidegit-check` precommit gate rejects the inline expansion in
+// pkg/ to prevent drift.
+func (p ProcessorConfig) EffectiveHideGit() bool {
+	return p.Workflow == config.WorkflowWorktree || p.HideGit
+}
+
 // CreateProcessor creates a Processor that executes queued prompts.
 //
 //nolint:funlen // composition root: wires N subsystems; splitting into sub-helpers hides initialization order
@@ -1001,7 +1001,7 @@ func CreateProcessor(
 		cfg.ExtraMounts,
 		cfg.NetrcFile,
 		cfg.GitconfigFile,
-		cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
+		cfg.EffectiveHideGit(),
 	)
 	exec := executor.NewDockerExecutor(
 		processorPolicy,
@@ -1086,7 +1086,7 @@ func CreateProcessor(
 			cfg.ValidationCommand,
 			cfg.ValidationPrompt,
 			validationprompt.NewResolver(),
-			cfg.Workflow == config.WorkflowWorktree || cfg.HideGit,
+			cfg.EffectiveHideGit(),
 		),
 		committingrecoverer.NewRecoverer(
 			promptManager,

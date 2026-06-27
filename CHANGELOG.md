@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: wire `createProviderDeps` to actually dispatch on `cfg.Provider`. Previously the factory ignored the field entirely and always returned GitHub deps, so an operator setting `provider: bitbucket-server` got no startup error — failures surfaced only at the first PR-create attempt as an opaque gh-CLI failure against a non-GitHub remote. The Bitbucket implementation already existed (`createBitbucketProviderDeps`, exposed by `CreateBitbucketServerProviderDeps`); only the switch was missing. Adds regression-lock test `DescribeTable("createProviderDeps dispatches on cfg.Provider", ...)` covering `github` / `bitbucket-server` / empty-default cases. Surfaced by 2026-06-27 `/coding:audit-architecture` re-audit as the only finding where the system silently lied about its behavior to operators.
+
 ## v0.187.5
 
 - chore(deps): bump default claude-yolo container image from `v0.10.1` to `v0.11.0`. Brings in cyber-tools / LLM-host support added upstream in `bborbe/claude-yolo`. Updates `pkg.DefaultContainerImage` (the single source of truth) plus the v0.10.1 references in `README.md`, `docs/configuration.md`, `docs/init-project.md`, and `docs/yolo-container-setup.md`. Historical version strings inside `specs/completed/` and `prompts/completed/` and the version-pinned fixtures in `pkg/launchpolicy/policy_test.go` are intentionally untouched — they document past behavior or pin specific parser inputs.

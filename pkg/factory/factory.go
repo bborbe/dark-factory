@@ -225,13 +225,29 @@ type providerDeps struct {
 	brancher  git.Brancher
 }
 
-// createProviderDeps returns the git provider implementations for GitHub.
+// createProviderDeps returns the git provider implementations matching
+// `cfg.Provider`. Defaults to GitHub when the field is empty or any other
+// value — config validation (pkg/config) rejects unknown providers before
+// this dispatch runs, so the default is reached only by the GitHub case.
+//
+// Prior to 2026-06-27 this function ignored `cfg.Provider` and always
+// returned GitHub deps, even when the operator had set
+// `provider: bitbucket-server` + `bitbucket.baseURL`. The mismatch
+// surfaced only at the first PR-create attempt as an opaque gh-CLI
+// failure. The Bitbucket implementation already existed
+// (`createBitbucketProviderDeps`, fully tested via
+// `CreateBitbucketServerProviderDeps`) — only the dispatch was missing.
 func createProviderDeps(
-	_ context.Context,
+	ctx context.Context,
 	cfg config.Config,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) providerDeps {
-	return CreateGitHubProviderDeps(cfg, currentDateTimeGetter)
+	switch cfg.Provider {
+	case config.ProviderBitbucketServer:
+		return createBitbucketProviderDeps(ctx, cfg, currentDateTimeGetter)
+	default:
+		return CreateGitHubProviderDeps(cfg, currentDateTimeGetter)
+	}
 }
 
 // CreateGitHubProviderDeps returns GitHub gh-CLI-backed implementations.

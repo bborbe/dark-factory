@@ -391,6 +391,31 @@ var _ = Describe("Factory", func() {
 			),
 		)
 
+		DescribeTable(
+			"createProviderDeps dispatches on cfg.Provider",
+			// Regression lock for the 2026-06-27 audit finding: the
+			// function ignored cfg.Provider entirely and always returned
+			// GitHub deps, even when validation had accepted
+			// `provider: bitbucket-server`. Operators on a Bitbucket Server
+			// config saw no startup error — failures surfaced only at the
+			// first PR-create attempt as an opaque gh-CLI error.
+			func(provider config.Provider, want string) {
+				cfg := config.Defaults()
+				cfg.Provider = provider
+				cfg.Bitbucket.BaseURL = "https://bitbucket.example.com"
+				ctx := context.Background()
+				getter := libtime.NewCurrentDateTime()
+				Expect(factory.ProviderDepsBackendForTest(ctx, cfg, getter)).To(Equal(want))
+			},
+			Entry("github → github backend", config.ProviderGitHub, "github"),
+			Entry(
+				"bitbucket-server → bitbucket backend",
+				config.ProviderBitbucketServer,
+				"bitbucket",
+			),
+			Entry("empty provider → github (default)", config.Provider(""), "github"),
+		)
+
 		It("enricher emits hideGit guidance fragment when hideGit=true", func() {
 			releaser := &mocks.Releaser{}
 			releaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }

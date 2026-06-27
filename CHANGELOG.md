@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.187.9
 
 - refactor: centralize claude env keys (`ANTHROPIC_MODEL`, `YOLO_PROMPT`, `YOLO_PROMPT_FILE`, `YOLO_OUTPUT`) in new `pkg/claudeargv` package — single owner of the literals and the `EnvOverlay(Options)` constructor for the envOverlay map handed to `launchpolicy.Extras.EnvOverlay`. Previously these strings were duplicated across `pkg/executor` (prompt runs), `pkg/cmd/healthcheck` (claude probe), `pkg/factory` (healthcheck factory), and `pkg/config` (reserved-keys list); drift between sites was the root cause of the 2026-06-26 silent minimax healthcheck failure that started this Phase-2 cleanup. `scripts/hotpath-claudeargv-check.sh` precommit gate forbids raw string-literal references in pkg/ outside pkg/claudeargv. Minor behavior change: empty `e.model` no longer emits `ANTHROPIC_MODEL=` (claudeargv drops empty fields), letting entrypoint.sh use its sonnet fallback instead of shadowing it with an empty value. Final Phase-2 task of [[Harden Dark Factory Architecture]] from the 2026-06-27 architecture re-audit.
 

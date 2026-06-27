@@ -29,7 +29,7 @@ See [configuration.md](docs/configuration.md) and [release-process.md](docs/rele
 
 - **Go 1.26+** — to build dark-factory
 - **Docker** — to run claude-yolo containers
-- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.11.0`
+- **claude-yolo image** — `docker pull docker.io/bborbe/claude-yolo:v0.11.1`
 - **~/.claude-yolo/** — Claude Code config for the YOLO agent (see [YOLO Container Setup](docs/yolo-container-setup.md))
 
 ## Installation
@@ -146,7 +146,7 @@ pr: false                                            # create PRs (default: fals
 worktree: false                                      # clone repo for isolation (default: false)
 validationCommand: "make precommit"                  # shell command run after each prompt
 validationPrompt: docs/dod.md                        # AI-judged quality criteria (file or inline)
-containerImage: docker.io/bborbe/claude-yolo:v0.11.0  # YOLO Docker image
+containerImage: docker.io/bborbe/claude-yolo:v0.11.1  # YOLO Docker image
 model: claude-sonnet-4-6                             # Claude model
 claudeDir: ~/.claude-yolo                            # host claude config dir (default: ~/.claude-yolo)
 ```

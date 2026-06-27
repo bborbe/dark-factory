@@ -15,6 +15,17 @@ import (
 	"github.com/bborbe/dark-factory/pkg/config"
 )
 
+// PreflightWarnAfterForTest exposes the warn-after threshold the
+// preflight subproc runner is constructed with. Used by the regression
+// test that locks in "preflight does not inherit subproc.DefaultTimeout"
+// (the spec-100 regression that caused every non-trivial `make
+// precommit` to fail after 10s).
+var PreflightWarnAfterForTest = preflightWarnAfter
+
+// PreflightTimeoutForTest exposes the hard timeout the preflight
+// subproc runner is constructed with.
+var PreflightTimeoutForTest = preflightTimeout
+
 // BuildIdleLoggerForTest exposes buildIdleLogger for unit testing.
 var BuildIdleLoggerForTest = func(
 	idleLogInterval time.Duration,

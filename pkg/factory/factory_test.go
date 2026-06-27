@@ -169,6 +169,31 @@ var _ = Describe("Factory", func() {
 		})
 	})
 
+	Describe("preflight subproc thresholds", func() {
+		// Regression lock for the spec-100 (Centralize Subprocess Runner)
+		// fallout: before spec 100, preflight ran via raw exec.CommandContext
+		// with no internal timeout, and `make precommit` took as long as it
+		// needed (30–180s for bborbe Go repos). After spec 100, the call site
+		// switched to subprocRunner.RunWithWarnAndTimeoutDir which carries
+		// subproc.DefaultTimeout (10s). Every non-trivial preflight failed
+		// silently after that — operators worked around with
+		// preflightCommand: "true" until the regression was diagnosed.
+		// These tests pin the dedicated-runner thresholds so a future
+		// subproc.DefaultTimeout change can't silently re-tighten preflight.
+
+		It("warns after 30s (much later than the general default of 3s)", func() {
+			Expect(factory.PreflightWarnAfterForTest).To(Equal(30 * time.Second))
+		})
+
+		It("times out at 30 minutes (vs subproc.DefaultTimeout=10s)", func() {
+			Expect(factory.PreflightTimeoutForTest).To(Equal(30 * time.Minute))
+		})
+
+		It("preflight timeout is strictly longer than subproc.DefaultTimeout", func() {
+			Expect(factory.PreflightTimeoutForTest).To(BeNumerically(">", subproc.DefaultTimeout))
+		})
+	})
+
 	Describe("EffectiveMaxContainers", func() {
 		It("returns global when project is zero", func() {
 			Expect(factory.EffectiveMaxContainers(0, 3)).To(Equal(3))

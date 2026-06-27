@@ -80,7 +80,9 @@ var _ = Describe("ApplyGlobalOverrides Env merge", func() {
 		}
 		config.ApplyGlobalOverrides(&cfg, global, config.LayeredProjectOverrides{})
 
-		Expect(cfg.Env).To(HaveKeyWithValue("ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic"))
+		Expect(
+			cfg.Env,
+		).To(HaveKeyWithValue("ANTHROPIC_BASE_URL", "https://api.minimax.io/anthropic"))
 		Expect(cfg.Env).To(HaveKeyWithValue("ANTHROPIC_AUTH_TOKEN", "sk-x"))
 		Expect(cfg.Env).NotTo(HaveKey("ANTHROPIC_MODEL"))
 		Expect(cfg.Env).NotTo(HaveKey("YOLO_PROMPT_FILE"))

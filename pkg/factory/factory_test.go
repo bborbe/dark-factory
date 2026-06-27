@@ -373,9 +373,16 @@ var _ = Describe("Factory", func() {
 
 	Describe("hideGit fragment wiring", func() {
 		DescribeTable(
-			"resolveHideGit",
+			"Config.EffectiveHideGit",
+			// Phase-2 cleanup of [[Harden Dark Factory Architecture]]: the
+			// helper used to live in factory.go as `resolveHideGit` and was
+			// applied at 1 of 3 sites; the other 2 inlined the formula and
+			// silently drifted. Promoted to a Config method matching the
+			// established EffectiveMaxContainers / HealthcheckEnabledValue
+			// pattern. The `scripts/hotpath-hidegit-check.sh` precommit
+			// gate rejects the inline formula in pkg/.
 			func(cfg config.Config, want bool) {
-				Expect(factory.ResolveHideGitForTest(cfg)).To(Equal(want))
+				Expect(cfg.EffectiveHideGit()).To(Equal(want))
 			},
 			Entry("default config -> false", config.Config{}, false),
 			Entry("HideGit=true -> true", config.Config{HideGit: true}, true),

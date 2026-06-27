@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Commands for writing, auditing, and managing dark-factory specs, prompts, and scenarios",
-    "version": "0.187.9"
+    "version": "0.187.10"
   },
   "plugins": [
     {
       "name": "dark-factory",
       "description": "Commands for writing, auditing, and managing dark-factory specs, prompts, and scenarios",
       "source": "./",
-      "version": "0.187.9",
+      "version": "0.187.10",
       "strict": true
     }
   ]

@@ -7,7 +7,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/bborbe/errors"
@@ -67,28 +66,18 @@ func (a *approveCommand) approveByID(ctx context.Context, id string) error {
 
 // approveFromInbox moves a file from inbox to queue and sets status to approved.
 // Any numeric prefix is stripped so NormalizeFilenames assigns the correct number.
+// Delegates the core sequence to prompt.ApproveFromInbox so the cmd and
+// generator paths share one canonical implementation (Phase-2 cleanup of
+// [[Harden Dark Factory Architecture]], 2026-06-27).
 func (a *approveCommand) approveFromInbox(ctx context.Context, oldPath string) error {
-	filename := prompt.StripNumberPrefix(filepath.Base(oldPath))
-	newPath := filepath.Join(a.queueDir, filename)
-
-	if err := os.Rename(oldPath, newPath); err != nil {
-		return errors.Wrap(ctx, err, "move file to queue")
-	}
-
-	pf, err := a.promptManager.Load(ctx, newPath)
+	newPath, err := prompt.ApproveFromInbox(ctx, oldPath, a.queueDir, a.promptManager)
 	if err != nil {
-		return errors.Wrap(ctx, err, "load prompt")
+		return err
 	}
-	pf.MarkApproved()
-	if err := pf.Save(ctx); err != nil {
-		return errors.Wrap(ctx, err, "save prompt")
-	}
-
 	if _, err := a.promptManager.NormalizeFilenames(ctx, a.queueDir); err != nil {
 		return errors.Wrap(ctx, err, "normalize filenames")
 	}
-
-	fmt.Printf("approved: %s\n", filename)
+	fmt.Printf("approved: %s\n", filepath.Base(newPath))
 	return nil
 }
 

@@ -339,32 +339,25 @@ func (g *dockerSpecGenerator) autoApproveGeneratedPrompts(
 }
 
 // approvePromptFromInbox moves a prompt from inbox to the queue and marks it approved.
-// Replicates the core of approveFromInbox in pkg/cmd/approve.go without the fuzzy search.
+// Delegates the rename + load + mark + save sequence to prompt.ApproveFromInbox
+// (shared with pkg/cmd.approveFromInbox). The post-approve NormalizeFilenames
+// step stays here because the spec-generator path tolerates a normalize-only
+// failure (auto-approve is best-effort; partial state is acceptable) where the
+// CLI path returns the error. Phase-2 cleanup of [[Harden Dark Factory
+// Architecture]], 2026-06-27.
 func (g *dockerSpecGenerator) approvePromptFromInbox(
 	ctx context.Context,
 	inboxPath string,
 	promptBasename string,
 ) error {
-	stripped := prompt.StripNumberPrefix(promptBasename)
-	queuePath := filepath.Join(g.queueDir, stripped)
-
-	if err := os.Rename(inboxPath, queuePath); err != nil {
-		return errors.Wrapf(ctx, err, "move prompt %s from inbox to queue", promptBasename)
+	if _, err := prompt.ApproveFromInbox(
+		ctx, inboxPath, g.queueDir, g.promptManager,
+	); err != nil {
+		return errors.Wrapf(ctx, err, "approve prompt %s from inbox", promptBasename)
 	}
-
-	pf, err := g.promptManager.Load(ctx, queuePath)
-	if err != nil {
-		return errors.Wrapf(ctx, err, "load prompt after move: %s", stripped)
-	}
-	pf.MarkApproved()
-	if err := pf.Save(ctx); err != nil {
-		return errors.Wrapf(ctx, err, "save approved prompt: %s", stripped)
-	}
-
 	if _, err := g.promptManager.NormalizeFilenames(ctx, g.queueDir); err != nil {
 		slog.Warn("auto-approve: normalize filenames failed after approve", "error", err)
 	}
-
 	return nil
 }
 

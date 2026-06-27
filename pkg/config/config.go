@@ -17,6 +17,7 @@ import (
 	"github.com/bborbe/validation"
 
 	"github.com/bborbe/dark-factory/pkg"
+	"github.com/bborbe/dark-factory/pkg/claudeargv"
 )
 
 // GitHubConfig holds GitHub-specific configuration.
@@ -648,8 +649,11 @@ const envKeyPattern = `^[A-Z_][A-Z0-9_]*$`
 // envKeyRegexp validates environment variable key names.
 var envKeyRegexp = regexp.MustCompile(envKeyPattern)
 
-// reservedEnvKeys are env var names set internally by the executor and cannot be overridden.
-var reservedEnvKeys = []string{"YOLO_PROMPT_FILE", "ANTHROPIC_MODEL"}
+// reservedEnvKeys are env var names set internally by the executor /
+// factory and cannot be overridden by operator `env:` blocks. Sourced
+// from pkg/claudeargv (the single owner of these key strings) so
+// updating the reservation policy is one edit.
+var reservedEnvKeys = claudeargv.ReservedKeys()
 
 // validateEnv validates the env map keys and values.
 func (c Config) validateEnv(ctx context.Context) error {

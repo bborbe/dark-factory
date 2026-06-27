@@ -442,7 +442,7 @@ func CreateRunner(
 				n,
 				projectName.String(),
 				currentDateTimeGetter,
-				subproc.NewRunner(),
+				newPreflightSubprocRunner(),
 			)
 		}
 	}
@@ -572,7 +572,7 @@ func CreateOneShotRunner(
 				n,
 				projectName.String(),
 				currentDateTimeGetter,
-				subproc.NewRunner(),
+				newPreflightSubprocRunner(),
 			)
 		}
 	}
@@ -947,6 +947,28 @@ type ProcessorConfig struct {
 // pkg/ to prevent drift.
 func (p ProcessorConfig) EffectiveHideGit() bool {
 	return p.Workflow == config.WorkflowWorktree || p.HideGit
+}
+
+// Preflight subprocess thresholds. `make precommit` (the canonical
+// preflight command for bborbe Go repos) routinely takes 30–180s in a
+// cold cache — tests + lint + security scans. The general-purpose
+// subproc.Runner timeout of 10s is much too tight here and caused every
+// non-trivial preflight to fail post-spec-100 (Centralize Subprocess
+// Runner). Before spec 100, preflight ran via raw exec.CommandContext
+// with NO timeout (the daemon's parent ctx was the only bound). The
+// constants below restore practical equivalence: warn at 30s so slow
+// preflights are visible, hard-stop at 30m as a safety net for truly
+// stuck commands.
+const (
+	preflightWarnAfter = 30 * time.Second
+	preflightTimeout   = 30 * time.Minute
+)
+
+// newPreflightSubprocRunner returns a subproc.Runner sized for the
+// preflight call site. Centralized so the daemon and one-shot factories
+// stay in sync — bumping the timeout is one edit.
+func newPreflightSubprocRunner() subproc.Runner {
+	return subproc.NewRunnerWithThresholds(preflightWarnAfter, preflightTimeout)
 }
 
 // CreateProcessor creates a Processor that executes queued prompts.

@@ -1,8 +1,8 @@
 ---
 status: completed
-spec: ["101"]
+spec: [101-extract-unified-prompt-state-machine]
 summary: Created pkg/promptstate package with State enum (7 canonical values + StateUnknown sentinel), IsValidTransition transition table, and pure InterpretTuple function; all regression tests pass with 100% coverage.
-container: dark-factory-exec-476-spec-101-create-promptstate-package
+execution_id: dark-factory-exec-476-spec-101-create-promptstate-package
 dark-factory-version: v0.183.0
 created: "2026-06-26T08:00:00Z"
 queued: "2026-06-26T08:00:41Z"

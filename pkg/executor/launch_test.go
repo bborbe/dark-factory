@@ -40,6 +40,21 @@ func argvHasFlag(args []string, flag string) bool {
 	return false
 }
 
+var _ = Describe("BuildDockerRunArgs --add-host", func() {
+	baseOpts := func() launchpolicy.ContainerLaunchOpts {
+		return launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "busybox:latest",
+			ProjectName:    "test-project",
+		}
+	}
+
+	It("includes --add-host=host.docker.internal:host-gateway in the docker run argv", func() {
+		args := executor.BuildDockerRunArgs(baseOpts())
+		Expect(args).To(ContainElement("--add-host=host.docker.internal:host-gateway"))
+	})
+})
+
 var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", func() {
 	baseOpts := func() launchpolicy.ContainerLaunchOpts {
 		return launchpolicy.ContainerLaunchOpts{

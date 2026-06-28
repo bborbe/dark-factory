@@ -38,6 +38,12 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 		"--name", opts.ContainerName,
 		"--label", "dark-factory.project=" + opts.ProjectName,
 	}
+	// host.docker.internal lets containers reach the host machine.
+	// Docker Desktop / OrbStack / Rancher Desktop on macOS auto-provide
+	// this alias; raw Linux dockerd does not. --add-host is a no-op when
+	// the alias already exists (last-writer-wins with the same value)
+	// and a real fix on Linux, so emit it unconditionally.
+	args = append(args, "--add-host=host.docker.internal:host-gateway")
 	args = appendSecurityLimits(args, opts)
 	args = appendExtraLabels(args, opts.ExtraLabels)
 	for _, c := range opts.CapAdd {

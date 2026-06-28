@@ -1,8 +1,8 @@
 ---
 status: completed
-spec: ["101"]
+spec: [101-extract-unified-prompt-state-machine]
 summary: Created scripts/hotpath-statemachine-check.sh gating the six migrated hot-path targets for inline prompt.PromptStatus type-token usage, wired into Makefile precommit chain alongside hotpath-logcheck; AC-6 transient edit was verified (gate tripped on pkg/cancellationwatcher/watcher.go) and reverted before final commit.
-container: dark-factory-exec-479-spec-101-hotpath-statemachine-gate
+execution_id: dark-factory-exec-479-spec-101-hotpath-statemachine-gate
 dark-factory-version: v0.183.0
 created: "2026-06-26T08:03:00Z"
 queued: "2026-06-26T08:00:41Z"

@@ -10,11 +10,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- chore(deps): bump default claude-yolo container image from `v0.11.1` to `v0.12.0`. The new image honours `ANTHROPIC_BASE_URL`, so dark-factory containers can be routed through a local `claude-code-router` instance to serve non-Anthropic models (MiniMax, DeepSeek, GLM, …) without code changes. Updates `pkg.DefaultContainerImage` (the single source of truth); historical version strings inside `specs/completed/`, `prompts/completed/`, and the version-pinned fixtures in `pkg/launchpolicy/policy_test.go` are intentionally untouched. (Note: this bullet was originally misfiled under `## v0.188.0` due to a CHANGELOG conflict-resolution race during rebase — the v0.188.0 git tag does NOT contain the image bump. Moved to `## Unreleased` so the release-watcher cuts the next version with the code that actually exists in the tag.)
+- docs(configuration): add "Routing via claude-code-router" subsection under Global env with a MiniMax-M2.7 example config (`model: MiniMax-M2.7-highspeed` + `ANTHROPIC_BASE_URL: http://host.docker.internal:8788`) and notes on `host.docker.internal` resolution, model passthrough, and skipping `ANTHROPIC_API_KEY` when the router handles upstream auth.
+
 ## v0.188.0
 
 - feat(executor): always emit `--add-host=host.docker.internal:host-gateway` in container argv. Docker Desktop / OrbStack / Rancher Desktop on macOS auto-provide this alias; raw Linux dockerd does not. Unblocks Linux operators from routing dark-factory containers through a host-side service (e.g. `claude-code-router` per [claude-code-router/docs/dark-factory-integration.md](https://github.com/bborbe/claude-code-router/blob/master/docs/dark-factory-integration.md)). No-op on Docker runtimes that already provide the alias.
-- chore(deps): bump default claude-yolo container image from `v0.11.1` to `v0.12.0`. The new image honours `ANTHROPIC_BASE_URL`, so dark-factory containers can be routed through a local `claude-code-router` instance to serve non-Anthropic models (MiniMax, DeepSeek, GLM, …) without code changes. Updates `pkg.DefaultContainerImage` (the single source of truth); historical version strings inside `specs/completed/`, `prompts/completed/`, and the version-pinned fixtures in `pkg/launchpolicy/policy_test.go` are intentionally untouched.
-- docs(configuration): add "Routing via claude-code-router" subsection under Global env with a MiniMax-M2.7 example config (`model: MiniMax-M2.7-highspeed` + `ANTHROPIC_BASE_URL: http://host.docker.internal:8788`) and notes on `host.docker.internal` resolution, model passthrough, and skipping `ANTHROPIC_API_KEY` when the router handles upstream auth.
 
 ## v0.187.11
 

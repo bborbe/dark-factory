@@ -1,8 +1,8 @@
 ---
 status: completed
-spec: ["101"]
+spec: [101-extract-unified-prompt-state-machine]
 summary: Replaced the inline pf.Frontmatter.Status == string(prompt.CancelledPromptStatus) comparison in processor.go runContainer with promptstate.InterpretRawTuple, and added the promptstate import; StatePendingVerification was already first-class from prompt 1; all tests pass and make precommit exits 0.
-container: dark-factory-exec-478-spec-101-pending-verification-processor
+execution_id: dark-factory-exec-478-spec-101-pending-verification-processor
 dark-factory-version: v0.183.0
 created: "2026-06-26T08:02:00Z"
 queued: "2026-06-26T08:00:41Z"

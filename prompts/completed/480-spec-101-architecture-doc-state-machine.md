@@ -1,8 +1,8 @@
 ---
 status: completed
-spec: ["101"]
+spec: [101-extract-unified-prompt-state-machine]
 summary: Added Prompt State Machine subsection to docs/architecture-flow.md with seven canonical states, mermaid transition diagram matching transitions.go exactly, four recovery edges from interpret.go, and a CHANGELOG entry under Unreleased.
-container: dark-factory-exec-480-spec-101-architecture-doc-state-machine
+execution_id: dark-factory-exec-480-spec-101-architecture-doc-state-machine
 dark-factory-version: v0.183.0
 created: "2026-06-26T08:04:00Z"
 queued: "2026-06-26T08:00:41Z"

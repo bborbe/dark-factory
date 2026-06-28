@@ -279,6 +279,23 @@ env:
 
 **Effective config log**: the startup `effective config` log line reports `envFromGlobal`, `envProjectOverrides`, and `envProjectOnly` showing which keys came from which layer. Values are never logged.
 
+### Routing via claude-code-router
+
+`claude-yolo` v0.12.0+ honours `ANTHROPIC_BASE_URL`, so a local [claude-code-router](https://github.com/musistudio/claude-code-router) instance can serve non-Anthropic models (MiniMax, DeepSeek, GLM, etc.) to dark-factory containers without code changes.
+
+```yaml
+# ~/.dark-factory/config.yaml
+maxContainers: 5
+model: MiniMax-M2.7-highspeed
+env:
+  ANTHROPIC_BASE_URL: http://host.docker.internal:8788
+```
+
+- `model` is forwarded as-is to claude-yolo and must match a model the router exposes.
+- `host.docker.internal` resolves to the macOS/Windows host from inside the container; on Linux add `--add-host=host.docker.internal:host-gateway` to the docker runtime or use the host LAN IP.
+- The router runs on the host; start it before `dark-factory run`. The port (`8788` above) must match the router's listener.
+- No `ANTHROPIC_API_KEY` is needed when the router handles upstream auth; keep your real Anthropic key out of this file in that case.
+
 ## Per-Project Container Limit
 
 Override the global `maxContainers` limit for a specific project by adding `maxContainers` to `.dark-factory.yaml`:

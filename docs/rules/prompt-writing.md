@@ -370,6 +370,15 @@ GOOD: Add a validation command field to project config so projects can enforce r
 
 The "why" also constrains the agent: if it considers a shortcut that breaks the stated purpose, it has a reason to reject it.
 
+### Title comes from the first body H1
+
+The commit subject for a prompt is derived from the first markdown `# ` heading in
+the body (falling back to the filename when there is none). `#`-prefixed lines
+inside fenced code blocks (`` ``` ```` or `~~~`) are ignored, so a YAML or shell
+comment quoted in a code example will never become the commit subject. To control
+the commit subject explicitly, put a real `# Your Title` line at the very top of the
+body, above any fenced block.
+
 ### Anchor by name, not line number
 
 Line numbers go stale when prior prompts edit the same file:

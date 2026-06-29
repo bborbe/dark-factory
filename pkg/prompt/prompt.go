@@ -437,10 +437,25 @@ func (pf *PromptFile) Content() (string, error) {
 }
 
 // Title extracts the first # heading from the body.
+//
+// Lines inside fenced code blocks (``` or ~~~) are skipped: a `# ` line inside a
+// fence is literal text per CommonMark §4.5, not a markdown heading. A fence is
+// opened/closed by a line whose trimmed text starts with ``` or ~~~ (any optional
+// info string is ignored). An unterminated fence is treated as open through
+// end-of-body, so no `# ` line inside it is ever returned. When no `# ` heading
+// exists outside any fence, returns "" and the caller's filename fallback applies.
 func (pf *PromptFile) Title() string {
 	scanner := bufio.NewScanner(bytes.NewReader(pf.Body))
+	inFence := false
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "```") || strings.HasPrefix(line, "~~~") {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
 		if strings.HasPrefix(line, "# ") {
 			return strings.TrimPrefix(line, "# ")
 		}

@@ -192,3 +192,16 @@ Single prompt — the fix is a localised change to one function (`pkg/prompt/pro
 ## Do-Nothing Option
 
 If unfixed, every dark-factory prompt body that demonstrates a `#`-commented config (YAML / shell / Dockerfile / Python) risks a garbage commit subject on the production run. Frequency depends on whether the author noticed during pre-commit review; in the hue PR #7 case the bug surfaced only at `git log` after the daemon finished. Cost-per-incident is one amend + force-push + operator approval cycle (~5–10 min if attended, blocking if not). Probability rises with the diversity of config snippets in prompts. Recommended priority: fix in the next dark-factory release.
+
+## Verification Result
+
+**Verified:** 2026-06-30T06:37:56Z (HEAD 5118180)
+**Binary:** /tmp/dark-factory-5118180 (dark-factory dev, built from HEAD 5118180)
+**Scenario:** Ginkgo specs in pkg/prompt/prompt_title_fence_test.go exercise the real prompt.Title() (no mocks) on the verbatim production reproduction body and the AC1-AC5 boundary inputs.
+**Evidence:**
+- `go test ./pkg/prompt/... -ginkgo.focus='Title with fenced code blocks'` → `Ran 7 of 245 Specs ... SUCCESS! -- 7 Passed | 0 Failed`
+- AC6 (prompt_title_fence_test.go:81-102) loads the exact hue-PR-#7 reproduction body and asserts `pf.Title() == ""`
+- Fix shipped at pkg/prompt/prompt.go:447-464 (inFence toggle on ```/~~~ trimmed-line prefix); doc comment updated at 440-446
+- Consumer at processor.go:313-316 unchanged: filename fallback fires when Title() returns ""
+- PR #56 merged to bborbe/dark-factory@master (merge commit 5118180, fix commit 293e3d1)
+**Verdict:** PASS

@@ -1,9 +1,10 @@
 ---
-status: verifying
+status: completed
 approved: "2026-06-29T20:24:50Z"
 generating: "2026-06-29T20:27:59Z"
 prompted: "2026-06-29T20:33:01Z"
 verifying: "2026-06-29T21:18:59Z"
+completed: "2026-06-30T06:39:23Z"
 branch: dark-factory/bug-title-extraction-matches-hash-inside-code-fences
 ---
 

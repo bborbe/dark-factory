@@ -287,6 +287,63 @@ A broad class of bug: a prompt adds a precondition, gate, or behavior change to 
 - Before flagging an absolute path as a violation, check the mount set captured in step 2 of the workflow. If the path's prefix matches a mount target (`/docs`, `/workspace`, etc.), it is valid — do NOT flag.
 - Detect candidate paths by scanning for `/`, `~/`, or `$HOME/` prefixes, then classify each against the mount set.
 
+**hideGit + git commands (mount-boundary check) — CRITICAL:**
+
+When `.dark-factory.yaml` sets `hideGit: true` (or the daemon runs with `--set hideGit=true`), the container's `.git` is masked (Docker anonymous volume for `.git/` directories, `/dev/null` bind for worktree pointer files). Every `git` command inside the container fails with `fatal: not a git repository`. `workflow: worktree` masks `.git` UNCONDITIONALLY regardless of `hideGit`.
+
+**Why this is Critical:** the daemon's executor does NOT check `<verification>` command exit codes for failure — it treats a non-zero exit as "verification produced output but ran" rather than "verification failed." A `git` command that dies with `fatal: not a git repository` produces a false-positive "verification pass." The prompt ships, the code lands, the verification never actually ran.
+
+**Mechanical check (the auditor runs these via Bash):**
+
+1. Detect the target repo's `hideGit` setting:
+   ```bash
+   grep -E '^hideGit:\s*true' <project-root>/.dark-factory.yaml    # explicit
+   grep -E '^workflow:\s*worktree' <project-root>/.dark-factory.yaml # worktree always masks
+   ```
+   Also honor `--set hideGit=true` in daemon-invocation captures if visible.
+
+2. If `hideGit: true` OR `workflow: worktree`, grep the prompt's `<verification>` and `<requirements>` blocks for any bare `git ` command (trailing space avoids matching `github`, `git@`, `.git/`):
+   ```bash
+   grep -nE '^\s*git\s' <prompt-file>   # scope to <verification> + <requirements>
+   ```
+
+3. **Flag as Critical** any `git ` command inside `<verification>` when git is masked.
+
+4. **Flag as Recommendation** any `git ` command inside `<requirements>` when git is masked — the agent may work around at authoring time, but the verification safety net is gone.
+
+**Critical-issue wording:**
+
+> hideGit violation. Line `<N>`: `<git command>` will fail with `fatal: not a git repository` inside the container (`.git` is masked because `.dark-factory.yaml` sets `hideGit: true` / `workflow: worktree`). The daemon's executor does not check verification exit codes for failure, so this produces a **false-positive verification pass**.
+>
+> **Fix:** replace with a non-git equivalent that works in the container:
+> - `git status --porcelain` → not usable inside a masked-git container; use a filesystem check like `find . -newer <baseline> -not -path './vendor/*'`
+> - `git diff --name-only master` → move to the operator side (spec's Verification section) or use `find <expected-changed-files> -type f`
+> - `git log origin/master..HEAD --oneline` → move to the operator side; the container has no view of `origin/master`
+>
+> Alternative: mark the repo `hideGit: false` — but that exposes the host's `.git/config` (which may contain tokens) to the container. Not recommended unless you own the trust boundary.
+
+---
+
+**Operator-only commands in `<verification>` — CRITICAL:**
+
+The container has no cluster credentials, no Docker socket, no `dark-factory` CLI, no host tooling. Operator-only commands in a prompt's `<verification>` block have the same false-positive-pass failure mode as hideGit-violating git commands.
+
+**Mechanical check:** grep `<verification>` for any of these command families:
+
+```bash
+grep -nE '^\s*(docker |docker-compose |docker compose |podman |make build|make build-multiarch|make buca|dark-factory |kubectl|kubectlquant|kubectlprod|kubectldev|helm |kind |k3d |skaffold |scripts/.*\.sh|gh (pr|release|api))' <prompt-file>
+```
+
+**Flag as Critical** any match inside `<verification>`. **Flag as Recommendation** inside `<requirements>` (the agent may substitute).
+
+**Critical-issue wording:**
+
+> Operator-only command in `<verification>`. Line `<N>`: `<command>` requires host-side capabilities the container does not have (Docker socket / `dark-factory` CLI / cluster creds / host scripts). The daemon's executor does not check verification exit codes for failure, so this produces a **false-positive verification pass**.
+>
+> **Fix:** move operator-only verification to the spec's Verification ladder (rung 2/3, operator-driven). Keep the prompt's `<verification>` scoped to container-executable checks: `make precommit`, `make test`, `grep`, `find`, and other filesystem/build assertions that run inside the mounted repo.
+>
+> This is the same class of violation as the "operator-note-in-prompt" pattern in Container-autonomy above — both are the artifact-type-mismatch tell.
+
 **Cross-repo writes (mount-credential boundary):**
 
 Dark-factory mounts exactly ONE project repo into the container (typically at `/workspace`) and provides git credentials only for that repo's remote. The container has no SSH agent, no GitHub PAT, and the in-container HTTP proxy (`tinyproxy`) is read-only — read access (`git clone`, `git fetch`) works, but any write to a remote OTHER than the mounted project's own remote will silently fail. The agent typically reports `status: partial` with a "no credentials" blocker, the daemon marks the prompt failed, and Docker removes the container — **the local commit inside the container is then lost forever**.
@@ -393,6 +450,8 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] `<constraints>` present
 - [x/!] `<verification>` present with runnable command
 - [x/!] All paths repo-relative (no absolute or `~/` paths)
+- [x/!] No bare `git ` commands in `<verification>` when target repo has `hideGit: true` OR `workflow: worktree` (would produce false-positive verification pass because `.git` is masked and exit codes are not checked)
+- [x/!] No operator-only commands in `<verification>` (`docker`, `make build`, `make buca`, `dark-factory <cmd>`, `kubectl*`, `scripts/*.sh`, `gh pr|release|api`) — same false-positive-pass failure mode; belongs on spec's Verification ladder instead
 - [x/!] File in `prompts/` inbox (not `prompts/in-progress/`)
 - [x/!] Filename not prefixed with dark-factory global number (`NNN-`); single-digit ordering prefix `N-` for multi-prompt specs is allowed
 - [x/!] Filename reflects primary change (e.g. `fix-X` names the thing being fixed, not a secondary detail)

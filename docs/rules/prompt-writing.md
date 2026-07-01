@@ -112,6 +112,34 @@ Run `make precommit` -- must pass.
 </verification>
 ```
 
+## `<verification>` is container-only — never operator-side
+
+The prompt's `<verification>` block runs INSIDE the YOLO container. The container has: the mounted repo, `make`, language runtimes, filesystem tools (`find`, `grep`), and network read (via `tinyproxy`) for its own remote.
+
+The container does NOT have: a Docker socket, the `dark-factory` CLI, cluster credentials, `kubectl*` wrappers, host scripts that shell out to Docker or the network (`scripts/*.sh` in most bborbe projects), write access to any remote other than the project's own, and — if `.dark-factory.yaml` sets `hideGit: true` or `workflow: worktree` — a working `.git` directory.
+
+**Container-executable commands (safe in `<verification>`):**
+
+- `make precommit`, `make test`, `make check`, `make ensure`
+- `grep`, `find`, `ls`, `cat` — filesystem checks for expected side-effects
+- Language-specific test runners (`go test ./...`, `pytest`, `pnpm test`) that don't shell out to Docker
+- The change's own binary / CLI if it was built in `<requirements>`
+
+**Operator-executable commands (NEVER in `<verification>`):**
+
+- `docker` (no socket), `make build` / `make build-multiarch` / `make buca` (shell out to Docker)
+- `dark-factory <cmd>` (binary not in container PATH)
+- `kubectl*`, `kubectlquant*`, `kubectlprod*`, `kubectldev*` (no cluster creds)
+- `scripts/*.sh` when the script requires Docker or the network beyond `tinyproxy`
+- `gh pr create`, `gh release`, `gh api` (no PAT with write scope inside container)
+- `git ` (bare — trailing space avoids `github`/`git@`) when `hideGit: true` or `workflow: worktree` masks `.git` — the command dies with `fatal: not a git repository`
+
+**Why this matters — the false-positive-pass failure mode:** the daemon's executor does NOT check `<verification>` command exit codes for failure. A `git` command that dies with `fatal: not a git repository`, or a `docker` command that dies with `command not found`, still ships. The prompt lands, the code is committed, the verification never actually ran. This is the highest-signal reason to keep operator-only commands out of prompts.
+
+**If the check IS operator-only** (image build, dev cluster deploy, dark-factory healthcheck, admin gateway probe), move it to the spec's `# Verification` § "Operator-executable" rung — see `docs/rules/spec-writing.md` § "Verification: container-executable vs operator-executable". Never embed operator-only commands in the prompt's `<verification>` block or inside a labelled `NOTE FOR OPERATOR` sub-block in `<constraints>` — the auditor rejects both patterns as Critical.
+
+**If the container really can't verify anything meaningful for this change** — the change is likely spec-scale (its verification is E2E), and the flow decision should be revisited per `../choosing-a-flow.md`.
+
 ## Writing Rules
 
 ### Specificity over brevity — but pick the right *kind* of specificity

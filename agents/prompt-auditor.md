@@ -331,7 +331,7 @@ The container has no cluster credentials, no Docker socket, no `dark-factory` CL
 **Mechanical check:** grep `<verification>` for any of these command families:
 
 ```bash
-grep -nE '^\s*(docker |make build|make build-multiarch|make buca|dark-factory |kubectl|kubectlquant|kubectlprod|kubectldev|scripts/.*\.sh|gh (pr|release|api))' <prompt-file>
+grep -nE '^\s*(docker |docker-compose |docker compose |podman |make build|make build-multiarch|make buca|dark-factory |kubectl|kubectlquant|kubectlprod|kubectldev|helm |kind |k3d |skaffold |scripts/.*\.sh|gh (pr|release|api))' <prompt-file>
 ```
 
 **Flag as Critical** any match inside `<verification>`. **Flag as Recommendation** inside `<requirements>` (the agent may substitute).

@@ -673,13 +673,15 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			// Only YOLO_PROMPT_FILE and YOLO_OUTPUT are present as -e values
+			// YOLO_PROMPT_FILE and YOLO_OUTPUT are present as -e values
 			// when no model is configured. claudeargv.EnvOverlay drops empty
 			// fields (Model unset → no ANTHROPIC_MODEL emitted), letting
 			// the image's entrypoint.sh use its sonnet fallback. Before
 			// the 2026-06-27 centralization, the executor explicitly set
 			// `ANTHROPIC_MODEL=` (empty value) which would have shadowed
 			// the fallback — the new behavior is also more correct.
+			// DARK_FACTORY_MANAGED=true is always emitted by BuildDockerRunArgs
+			// to mark the container as daemon-managed (see launch.go).
 			var envValues []string
 			args := cmd.Args
 			for i, a := range args {
@@ -690,6 +692,7 @@ var _ = Describe("Internal helper functions", func() {
 			Expect(envValues).To(ConsistOf(
 				"YOLO_PROMPT_FILE=/tmp/prompt.md",
 				"YOLO_OUTPUT=json",
+				"DARK_FACTORY_MANAGED=true",
 			))
 		})
 

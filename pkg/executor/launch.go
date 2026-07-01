@@ -6,6 +6,7 @@ package executor
 
 import (
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -21,6 +22,14 @@ import (
 // (executor imports launchpolicy; launchpolicy must not import executor).
 // Callers continue using executor.ContainerLaunchOpts with no source change.
 type ContainerLaunchOpts = launchpolicy.ContainerLaunchOpts
+
+// EnvManagedMarker is the environment variable dark-factory sets on every
+// container it launches. Its presence signals to processes inside the container
+// that the dark-factory daemon manages this container's lifecycle — for example,
+// the generate-prompts-for-spec command skips its host-only `spec mark-prompted`
+// step because the host-side generator finalizes the spec after the container
+// exits (and the dark-factory CLI is not present inside the container).
+const EnvManagedMarker = "DARK_FACTORY_MANAGED"
 
 // BuildDockerRunArgs returns the argv for `docker run --rm` from opts.
 // First argv element is "run"; caller invokes via `exec.CommandContext(ctx, "docker", args...)`
@@ -49,7 +58,7 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 	for _, c := range opts.CapAdd {
 		args = append(args, "--cap-add="+c)
 	}
-	args = appendEnv(args, opts.Env)
+	args = appendEnv(args, withManagedMarker(opts.Env))
 	args = appendStandardMounts(args, opts)
 	args = appendExtraMounts(args, opts)
 	args = append(args, buildHideGitArgsForRoot(opts.HideGit, opts.ProjectRoot)...)
@@ -108,6 +117,18 @@ func appendEnv(args []string, env map[string]string) []string {
 		args = append(args, "-e", k+"="+env[k])
 	}
 	return args
+}
+
+// withManagedMarker returns a copy of env with the daemon-owned EnvManagedMarker
+// set to "true". The marker is written after copying so it takes precedence over
+// any inbound value for the same key. A new map is returned so the caller's map
+// is never mutated, and a non-nil map is always returned so the marker is emitted
+// even when opts.Env is nil.
+func withManagedMarker(env map[string]string) map[string]string {
+	merged := make(map[string]string, len(env)+1)
+	maps.Copy(merged, env)
+	merged[EnvManagedMarker] = "true"
+	return merged
 }
 
 // buildClaudeDirMount returns the `-v` value for the claudeDir mount, or ""

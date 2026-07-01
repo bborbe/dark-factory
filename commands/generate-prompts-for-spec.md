@@ -37,20 +37,28 @@ Return: the creator's summary, followed by the per-prompt audit reports verbatim
 
 This front-loads the audit so the human reviewer sees the findings alongside the prompts without running `/audit-prompt` manually.
 
-**Finally, transition the spec to `prompted`:** after the per-prompt audit pass completes (regardless of individual audit findings — finding-collection is non-blocking), invoke
+**Finally, transition the spec to `prompted` — but only in host mode.** This command runs in two modes, and the daemon stamps `DARK_FACTORY_MANAGED=true` on every container it launches:
+
+- **Mode 1 — daemon + container** (`DARK_FACTORY_MANAGED` set): **SKIP** the `mark-prompted` step. The host-side dark-factory generator finalizes the spec (`approved → prompted`) itself after this container exits, and the `dark-factory` CLI is not present inside the container — running it here would fail with exit 127.
+- **Mode 2 — host, no container** (`DARK_FACTORY_MANAGED` unset): **RUN** the `mark-prompted` step. No daemon takes over, so this command is the only thing that transitions the spec.
+
+So, after the per-prompt audit pass completes (regardless of individual audit findings — finding-collection is non-blocking), transition the spec only when NOT daemon-managed:
 
 ```bash
-dark-factory spec mark-prompted <spec-basename>
+if [ -z "$DARK_FACTORY_MANAGED" ]; then
+  dark-factory spec mark-prompted <spec-basename>
+fi
 ```
 
-where `<spec-basename>` is the input spec's filename without `.md`. This closes the lifecycle gap — without it, the spec sits at `status: approved` forever while its prompts move through the queue.
+where `<spec-basename>` is the input spec's filename without `.md`. This closes the lifecycle gap in host mode — without it, a host-run spec sits at `status: approved` forever while its prompts move through the queue. In daemon mode the generator closes the same gap host-side, so the step is intentionally skipped.
 
 **Skip conditions** (do NOT run `spec mark-prompted` when):
+- `DARK_FACTORY_MANAGED` is set — Mode 1, the host-side generator finalizes the spec (see above).
 - The prompt-creator agent reported failure.
 - The prompt-creator wrote zero new prompt files.
 
-In both skip cases, surface the creator's report unchanged and exit — leaving the spec at its current status so the operator can inspect and re-run. This matches the auto path's `handleNoNewFiles` behavior in `pkg/generator/generator.go` (no `prompted` transition when zero files were produced).
+In the failure / zero-file skip cases, surface the creator's report unchanged and exit — leaving the spec at its current status so the operator can inspect and re-run. This matches the auto path's `handleNoNewFiles` behavior in `pkg/generator/generator.go` (no `prompted` transition when zero files were produced).
 
-The `spec mark-prompted` call is idempotent: if the spec is already in `status: prompted` (e.g. a previous run already transitioned it, or the daemon's auto path ran first when `autoGeneratePrompts: true`), the subcommand exits 0 with stdout `already prompted: <basename>` and the manual command continues normally. No special handling needed for re-runs.
+The `spec mark-prompted` call is idempotent: if the spec is already in `status: prompted` (e.g. a previous host run already transitioned it), the subcommand exits 0 with stdout `already prompted: <basename>` and the command continues normally. No special handling needed for re-runs.
 
-**Race-window note:** the mark-prompted step is invoked unconditionally — there is no config check for `autoGeneratePrompts`. The idempotent CLI handles the "auto path already marked it" case cleanly. However, if the daemon is actively running the auto path for the SAME spec at the moment the operator triggers the manual command, both paths may race to write `status: prompted`. Last writer wins; no data corruption (single-file atomic `Save`). Operators should avoid running the manual command on a spec the daemon is currently processing.
+**Race-window note:** in Mode 1 the step is skipped entirely, so the daemon's generator is the sole writer of `status: prompted`. A residual race remains only if an operator runs this command on the host (Mode 2 → runs `mark-prompted`) while the daemon is concurrently finalizing the same spec. Last writer wins; no data corruption (single-file atomic `Save`). Operators should avoid running the manual command on a spec the daemon is currently processing.

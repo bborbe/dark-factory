@@ -89,6 +89,17 @@ Manual command (when auto is disabled):
 
 On success this command also transitions the spec from `approved` to `prompted` (via `dark-factory spec mark-prompted`), so the spec's lifecycle status matches the auto path.
 
+### The `DARK_FACTORY_MANAGED` marker
+
+`/dark-factory:generate-prompts-for-spec` is a single command that runs in two modes and must reach the same end state (`status: prompted`) in both without diverging. The daemon sets the environment variable `DARK_FACTORY_MANAGED=true` on **every container it launches** — it is the canonical signal that a process is running inside a dark-factory-managed container, as opposed to an operator's own host Claude Code session.
+
+The command reads the marker to decide whether to run its final `dark-factory spec mark-prompted` step:
+
+- **Marker set (Mode 1 — daemon + container):** the step is skipped. The `dark-factory` CLI is not present inside the container, and the host-side generator already transitions the spec once the container exits — running the CLI here would fail with exit 127.
+- **Marker unset (Mode 2 — operator on the host):** the step runs and transitions the spec — the manual path described above.
+
+The discriminator is always the daemon-owned marker — never CLI presence (which would silently break if the CLI were ever installed in the container) and never a second command variant (which would risk divergent behavior). Any shared agent markdown that needs to branch on "am I running inside a dark-factory-managed container?" should read `DARK_FACTORY_MANAGED`.
+
 Field reference and layering precedence: [configuration.md § Disable Auto Prompt Generation](configuration.md#disable-auto-prompt-generation).
 
 ## Monitoring

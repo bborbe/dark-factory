@@ -10,6 +10,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat(executor): stamp `DARK_FACTORY_MANAGED=true` on every daemon-launched container via `BuildDockerRunArgs`. It is the canonical signal that a process runs inside a dark-factory-managed container (named for responsibility, not location) and takes precedence over any inbound `opts.Env` value for the same key.
+- feat(generate-prompts-for-spec): guard the final `dark-factory spec mark-prompted` step on `DARK_FACTORY_MANAGED`. In daemon+container mode (marker set) the step is skipped — the host-side generator already finalizes the spec after the container exits and the CLI is absent there (previously failed with exit 127). In host mode (marker unset) the step runs and self-finalizes. One command, both modes, discriminated by the daemon-owned marker — not CLI presence, not a second command.
+- docs(running): document `DARK_FACTORY_MANAGED` as the canonical "inside a dark-factory-managed container" runtime signal that shared agent markdown can branch on.
+
 ## v0.189.0
 
 - feat(prompt-auditor): add two new Critical rules for the container-boundary false-positive-pass failure mode. (1) hideGit + git commands: when target repo has `hideGit: true` OR `workflow: worktree`, any bare `git ` command in `<verification>` is Critical (`.git` is masked, command dies with `fatal: not a git repository`; the daemon's executor does not check verification exit codes so this ships as a false-positive pass). (2) Operator-only commands in `<verification>`: `docker` / `make build` / `make buca` / `dark-factory <cmd>` / `kubectl*` / `scripts/*.sh` / `gh pr|release|api` — same failure mode; belongs on the spec's Verification ladder instead. DoD checklist extended with both.

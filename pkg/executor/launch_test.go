@@ -55,6 +55,36 @@ var _ = Describe("BuildDockerRunArgs --add-host", func() {
 	})
 })
 
+var _ = Describe("BuildDockerRunArgs DARK_FACTORY_MANAGED marker", func() {
+	baseOpts := func() launchpolicy.ContainerLaunchOpts {
+		return launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "claude-yolo:latest",
+			ProjectName:    "test-project",
+		}
+	}
+
+	It("emits -e DARK_FACTORY_MANAGED=true for every launched container", func() {
+		args := executor.BuildDockerRunArgs(baseOpts())
+		Expect(argvContains(args, "-e", "DARK_FACTORY_MANAGED=true")).To(BeTrue())
+	})
+
+	It("emits the marker even when opts.Env is nil (no opt-in field required)", func() {
+		opts := baseOpts()
+		opts.Env = nil
+		args := executor.BuildDockerRunArgs(opts)
+		Expect(argvContains(args, "-e", "DARK_FACTORY_MANAGED=true")).To(BeTrue())
+	})
+
+	It("marker takes precedence over an inbound opts.Env value for the same key", func() {
+		opts := baseOpts()
+		opts.Env = map[string]string{"DARK_FACTORY_MANAGED": "false"}
+		args := executor.BuildDockerRunArgs(opts)
+		Expect(argvContains(args, "-e", "DARK_FACTORY_MANAGED=true")).To(BeTrue())
+		Expect(argvContains(args, "-e", "DARK_FACTORY_MANAGED=false")).To(BeFalse())
+	})
+})
+
 var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", func() {
 	baseOpts := func() launchpolicy.ContainerLaunchOpts {
 		return launchpolicy.ContainerLaunchOpts{

@@ -320,6 +320,51 @@ The pyramid: broad base of unit tests, smaller layer of integration tests, narro
 
 **Example where a scenario is NOT justified:** a new config field whose handler is unit-tested and whose effect is unit-tested. The field reaches runtime via the same loader path 200 other fields use; reproducing that with a scenario adds no signal.
 
+## Verification: container-executable vs operator-executable
+
+A spec's `# Verification` section can contain BOTH commands the YOLO container can run at prompt time AND commands only the operator can run on the host. Do not mix them without labelling — the auditor and prompt-creator downstream both need to know which is which, or operator-only steps leak into prompts as `NOTE FOR OPERATOR` blocks (see `prompt-auditor` § "Operator-only commands in `<verification>`" for why that's Critical).
+
+**Split the verification into two named rungs:**
+
+```markdown
+# Verification
+
+## Container-executable (runs inside the YOLO container at prompt time)
+
+- `make precommit` — shellcheck / lint / typecheck clean
+- `make test` — unit + integration test suite passes
+- `grep -n 'expected string' <file>` — targeted assertion that the change landed
+- `find . -newer <baseline>` — filesystem check for expected side-effects
+
+## Operator-executable (runs on the host after PR merge, spec verification ladder)
+
+- `make build` — fresh image builds
+- `scripts/yolo-run.sh /tmp/smoke-repo "echo hello"` — image smoke test
+- `dark-factory healthcheck` — all seven probes pass
+- `kubectlquant -n dev get pod <name> -o jsonpath='{.status.phase}'` — dev cluster verification
+- `curl https://<stage>.quant.benjamin-borbe.de/admin/<svc>/<path>` — admin gateway probe
+```
+
+**Rules:**
+
+- **Container-executable** commands are runnable inside the dark-factory YOLO container: no Docker socket, no `dark-factory` CLI, no host tooling, no cluster creds, no git if `hideGit: true` or `workflow: worktree`. If in doubt: filesystem greps, make targets that don't shell out, and language-specific test runners are safe.
+- **Operator-executable** commands include anything that requires the host: `docker`, `make build`, `make buca`, `dark-factory <cmd>`, `kubectl*`, `scripts/*.sh` (when they shell out to Docker or the network), any `gh` write (`pr`, `release`, `api`), and any `git` command when `.dark-factory.yaml` sets `hideGit: true` or `workflow: worktree`.
+- Prompts inherit the **container-executable** rung as their `<verification>` block; the **operator-executable** rung runs on the operator's host as part of the PR-merge gate (see `dark-factory/docs/spec-verification.md` for the ladder).
+- If a spec has no operator-executable verification, omit the second rung — do NOT invent operator steps to fill it. Container-only is fine for pure code changes that ship a merged PR and nothing more.
+- If a spec has no container-executable verification, the change is likely wrong-scoped (a Route C direct edit or a spec whose entire verification is E2E cluster observation) — reconsider whether a spec is the right flow.
+
+**Anti-pattern (do not do this):**
+
+```markdown
+# Verification
+
+- `make precommit`
+- `make build` and `scripts/yolo-run.sh` for smoke  ← operator-only, mixed in
+- `dark-factory healthcheck` all 7 probes           ← operator-only, mixed in
+```
+
+This forces the prompt-creator to either drop the operator-only commands (silently — the operator loses the verification safety net) or dump them into a labelled `NOTE FOR OPERATOR` block inside the prompt (which the auditor now rejects as Critical). Split the rungs at spec-authoring time and the downstream artifacts stay clean.
+
 ## Audit and Approve
 
 Always audit before approving:

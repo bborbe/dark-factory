@@ -3,5 +3,6 @@
 // license that can be found in the LICENSE file.
 
 // Package globalconfig loads and validates the user-level dark-factory configuration
-// from ~/.dark-factory/config.yaml.
+// from ~/.config/dark-factory/config.yaml (XDG) with fallback to
+// ~/.dark-factory/config.yaml (legacy).
 package globalconfig

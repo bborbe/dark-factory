@@ -203,17 +203,6 @@ var _ = Describe("FileExists", func() {
 		Expect(exists).To(BeTrue())
 	})
 
-	It("returns true when the config file contains valid YAML", func() {
-		dir := filepath.Join(tmpDir, ".config", "dark-factory")
-		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
-		path := filepath.Join(dir, "config.yaml")
-		Expect(os.WriteFile(path, []byte("maxContainers: 5\n"), 0600)).To(Succeed())
-
-		exists, err := FileExists(ctx)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(exists).To(BeTrue())
-	})
-
 	It("returns true when file exists at XDG path", func() {
 		dir := filepath.Join(tmpDir, ".config", "dark-factory")
 		Expect(os.MkdirAll(dir, 0750)).To(Succeed())

@@ -7,7 +7,6 @@ package globalconfig
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -139,10 +138,10 @@ type fileLoader struct{}
 //
 // Returns an error only if the home directory lookup fails.
 // Stat failures on missing directories are swallowed (they trigger fallthrough, not error).
-func FindConfigDir(toolName string) (string, error) {
+func FindConfigDir(ctx context.Context, toolName string) (string, error) {
 	home, err := userHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("globalconfig: get home directory: %w", err)
+		return "", errors.Errorf(ctx, "globalconfig: get home directory: %w", err)
 	}
 
 	xdgPath := filepath.Join(home, ".config", toolName)
@@ -167,7 +166,7 @@ func FindConfigDir(toolName string) (string, error) {
 // - Any other stat error → (false, wrapped error)
 // - File present (any size) → (true, nil)
 func FileExists(ctx context.Context) (bool, error) {
-	dir, err := FindConfigDir("dark-factory")
+	dir, err := FindConfigDir(ctx, "dark-factory")
 	if err != nil {
 		return false, errors.Wrap(ctx, err, "globalconfig: find config directory")
 	}
@@ -187,7 +186,7 @@ func FileExists(ctx context.Context) (bool, error) {
 func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	cfg := defaults()
 
-	dir, err := FindConfigDir("dark-factory")
+	dir, err := FindConfigDir(ctx, "dark-factory")
 	if err != nil {
 		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: find config directory")
 	}

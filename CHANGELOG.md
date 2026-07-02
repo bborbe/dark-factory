@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.191.0
 
 - refactor(globalconfig): migrate global config discovery from `~/.dark-factory/config.yaml` to XDG-first (`~/.config/dark-factory/config.yaml`) with automatic fallback to the legacy path. Add `FindConfigDir("dark-factory")` function following the XDG Base Directory Specification. Existing `~/.dark-factory/config.yaml` files are transparently read as a fallback if no XDG path exists.
 - test(globalconfig): add test coverage for XDG-preferred, legacy-fallback, and default-XDG-when-neither-exists scenarios. Update existing tests to use XDG paths.

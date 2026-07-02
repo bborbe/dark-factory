@@ -22,8 +22,8 @@ func TestEnv(t *testing.T) {
 	setupHome := func(t *testing.T, configYAML string, perm os.FileMode) string {
 		t.Helper()
 		tmpHome := t.TempDir()
-		require.NoError(t, os.MkdirAll(filepath.Join(tmpHome, ".dark-factory"), 0700))
-		cfgPath := filepath.Join(tmpHome, ".dark-factory", "config.yaml")
+		require.NoError(t, os.MkdirAll(filepath.Join(tmpHome, ".config", "dark-factory"), 0700))
+		cfgPath := filepath.Join(tmpHome, ".config", "dark-factory", "config.yaml")
 		require.NoError(t, os.WriteFile(cfgPath, []byte(configYAML), perm))
 		t.Setenv("HOME", tmpHome)
 		return tmpHome
@@ -74,7 +74,11 @@ func TestEnv(t *testing.T) {
 		require.NotEmpty(t, cfg.Env, "config must still load")
 
 		output := buf.String()
-		require.Contains(t, output, filepath.Join(tmpHome, ".dark-factory", "config.yaml"))
+		require.Contains(
+			t,
+			output,
+			filepath.Join(tmpHome, ".config", "dark-factory", "config.yaml"),
+		)
 		require.Contains(t, output, "chmod 600")
 	})
 }

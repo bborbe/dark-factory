@@ -187,10 +187,10 @@ model: "claude-sonnet-4-6"
 
 ## Global Config
 
-Machine-wide user preferences live in `~/.dark-factory/config.yaml`. This file is optional — when absent, all defaults apply and no behavior changes.
+Machine-wide user preferences live in `~/.config/dark-factory/config.yaml` (XDG). If that file does not exist and `~/.dark-factory/config.yaml` (legacy) is present, the legacy file is read as a fallback. This file is optional — when absent, all defaults apply and no behavior changes.
 
 ```yaml
-# ~/.dark-factory/config.yaml
+# ~/.config/dark-factory/config.yaml  (XDG; ~/.dark-factory/config.yaml also read if XDG path absent)
 maxContainers: 5
 model: claude-opus-4-7
 hideGit: true
@@ -207,7 +207,7 @@ default  ←  global config  ←  project config  ←  CLI flag
 ```
 
 - **Default**: hardcoded in `config.Defaults()` (e.g. `model: claude-sonnet-4-6`)
-- **Global**: `~/.dark-factory/config.yaml` — applies to all projects on this machine
+- **Global**: `~/.config/dark-factory/config.yaml` (XDG; falls back to `~/.dark-factory/config.yaml` if absent) — applies to all projects on this machine
 - **Project**: `.dark-factory.yaml` in the repo root — overrides global for this project
 - **CLI flag**: `--model NAME`, `--max-containers N`, or `--set <key>=<value>` — overrides yaml for this invocation only
 
@@ -228,7 +228,7 @@ The following fields are currently eligible for global config:
 | `dirtyFileThreshold` | `0` (disabled) | Skip prompts when dirty file count exceeds this |
 | `env` | (none) | Environment variables injected into the YOLO container; key-level merge with project `env:` (project wins on collision) |
 
-All values in `~/.dark-factory/config.yaml` are optional. Set only the ones you want to override.
+All values in `~/.config/dark-factory/config.yaml` are optional (or `~/.dark-factory/config.yaml` if using the legacy path). Set only the ones you want to override.
 
 ### Validation
 
@@ -257,7 +257,7 @@ Possible values: `default`, `global`, `project`, `arg`.
 Set machine-wide environment variables that every project on this machine will receive:
 
 ```yaml
-# ~/.dark-factory/config.yaml
+# ~/.config/dark-factory/config.yaml  (XDG)
 env:
   ANTHROPIC_BASE_URL: https://my-provider.example.com/v1
   ANTHROPIC_API_KEY: sk-ant-your-key-here   # only safe here — this file is not committed
@@ -275,7 +275,7 @@ env:
 
 **Secrets**: literal secret values (API keys, tokens) are permitted in the global home file because it is never committed. Never put literal secrets in `.dark-factory.yaml` — that file is tracked by git and may be read by anyone with repo access.
 
-**Permission warning**: if `~/.dark-factory/config.yaml` has group or world read/write permissions, dark-factory logs a warning at startup and recommends `chmod 600 ~/.dark-factory/config.yaml`. Loading continues regardless.
+**Permission warning**: if `~/.config/dark-factory/config.yaml` has group or world read/write permissions, dark-factory logs a warning at startup and recommends `chmod 600 ~/.config/dark-factory/config.yaml`. Loading continues regardless.
 
 **Effective config log**: the startup `effective config` log line reports `envFromGlobal`, `envProjectOverrides`, and `envProjectOnly` showing which keys came from which layer. Values are never logged.
 
@@ -284,7 +284,7 @@ env:
 `claude-yolo` v0.12.0+ honours `ANTHROPIC_BASE_URL`, so a local [claude-code-router](https://github.com/musistudio/claude-code-router) instance can serve non-Anthropic models (MiniMax, DeepSeek, GLM, etc.) to dark-factory containers without code changes.
 
 ```yaml
-# ~/.dark-factory/config.yaml
+# ~/.config/dark-factory/config.yaml  (XDG)
 maxContainers: 5
 model: MiniMax-M2.7-highspeed
 env:
@@ -310,7 +310,7 @@ maxContainers: 1
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `maxContainers` | (global limit) | Override the system-wide container limit for this project. Missing or 0 falls back to the global limit from `~/.dark-factory/config.yaml` (default: 3). Must be ≥ 1 if set. |
+| `maxContainers` | (global limit) | Override the system-wide container limit for this project. Missing or 0 falls back to the global limit from `~/.config/dark-factory/config.yaml` (default: 3). Must be ≥ 1 if set. |
 
 Counting remains system-wide (all running dark-factory containers across all projects). Only the threshold is per-project. Two projects both set to 5 can together exceed any single limit — this is intentional.
 
@@ -555,7 +555,7 @@ dark-factory daemon --set autoGeneratePrompts=true
 dark-factory run --set autoGeneratePrompts=false
 ```
 
-**Layering precedence**: default (`false`) ← global (`~/.dark-factory/config.yaml`) ← project (`.dark-factory.yaml`) ← CLI (`--set`). Matches `hideGit`, `autoRelease`, and other user-pref fields.
+**Layering precedence**: default (`false`) ← global (`~/.config/dark-factory/config.yaml`, XDG-first) ← project (`.dark-factory.yaml`) ← CLI (`--set`). Matches `hideGit`, `autoRelease`, and other user-pref fields.
 
 **Note**: This only affects the automatic trigger. The `commands/generate-prompts-for-spec.md` command on the host always works regardless of this flag.
 
@@ -567,8 +567,8 @@ A project configured for `workflow: direct` (no clone, no auto-worktree) can sti
 
 ```bash
 # One-time global setup (per machine)
-mkdir -p ~/.dark-factory
-cat > ~/.dark-factory/config.yaml <<YAML
+mkdir -p ~/.config/dark-factory
+cat > ~/.config/dark-factory/config.yaml <<YAML
 hideGit: true
 autoRelease: false
 YAML
@@ -593,7 +593,7 @@ dark-factory run --model claude-opus-4-7    # use opus for one run
 ### Personal model preference across all projects
 
 ```yaml
-# ~/.dark-factory/config.yaml
+# ~/.config/dark-factory/config.yaml  (XDG)
 model: claude-opus-4-7
 ```
 

@@ -30,7 +30,7 @@ scenarios/helper/run-013-all.sh   # config layering + --set (specs 060/061/062)
 # additional helper/run-*.sh scripts ship as scenarios are ported
 ```
 
-The helper scripts build `/tmp/new-dark-factory`, set up an isolated sandbox, run every sub-scenario, and exit 0 only if all assertions pass. They never touch the operator's `~/.dark-factory/config.yaml` (HOME is overridden inside the sandbox).
+The helper scripts build `/tmp/new-dark-factory`, set up an isolated sandbox, run every sub-scenario, and exit 0 only if all assertions pass. They never touch the operator's `~/.config/dark-factory/config.yaml` (HOME is overridden inside the sandbox).
 
 **Markdown-only scenarios** (manual fallback):
 

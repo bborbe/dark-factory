@@ -141,7 +141,7 @@ type fileLoader struct{}
 func FindConfigDir(ctx context.Context, toolName string) (string, error) {
 	home, err := userHomeDir()
 	if err != nil {
-		return "", errors.Errorf(ctx, "globalconfig: get home directory: %w", err)
+		return "", errors.Wrap(ctx, err, "globalconfig: get home directory")
 	}
 
 	xdgPath := filepath.Join(home, ".config", toolName)
@@ -162,7 +162,7 @@ func FindConfigDir(ctx context.Context, toolName string) (string, error) {
 // Callers use this only to distinguish "global file present" from "using built-in defaults"
 // in diagnostic logs.
 // - Config file missing → (false, nil)
-// - Home dir lookup fails → (false, wrapped error)
+// - Config dir lookup fails → (false, wrapped error)
 // - Any other stat error → (false, wrapped error)
 // - File present (any size) → (true, nil)
 func FileExists(ctx context.Context) (bool, error) {

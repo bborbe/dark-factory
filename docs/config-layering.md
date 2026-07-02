@@ -13,7 +13,7 @@ default ← global ← project ← env ← arg
 | Layer | Source | Scope | Examples |
 |---|---|---|---|
 | 1. Default | hardcoded constants in `pkg/config.Defaults()` | All fields | `model: claude-sonnet-4-6`, `maxContainers: 3` |
-| 2. Global | `~/.dark-factory/config.yaml` | User-level prefs | `hideGit`, `autoRelease`, `model`, `maxContainers`, `dirtyFileThreshold` |
+| 2. Global | `~/.config/dark-factory/config.yaml` (XDG; falls back to `~/.dark-factory/config.yaml`) | User-level prefs | `hideGit`, `autoRelease`, `model`, `maxContainers`, `dirtyFileThreshold` |
 | 3. Project | `.dark-factory.yaml` in repo | Repo-shape | `workflow`, `validationCommand`, dirs |
 | 4. Env | `DF_<FIELD>` env vars (planned, not implemented) | Ad-hoc / CI overrides | `DF_HIDE_GIT=true` |
 | 5. Arg | CLI flags | Per-invocation | `--model NAME`, `--max-containers N`, `--skip-preflight`, `--auto-approve`, `--set key=value` |
@@ -24,7 +24,7 @@ default ← global ← project ← env ← arg
 
 User's machine-wide preference. Same value across most projects, but per-project override is fine.
 
-Currently supported in `~/.dark-factory/config.yaml`:
+Currently supported in `~/.config/dark-factory/config.yaml` (XDG-first with legacy fallback):
 
 - `model` — which Claude model to use
 - `hideGit` — display preference
@@ -32,7 +32,7 @@ Currently supported in `~/.dark-factory/config.yaml`:
 - `autoRelease` — "I always want auto-release"
 - `dirtyFileThreshold` — personal tolerance for repo mess
 - `env` — machine-wide environment variables injected into every YOLO container (key-level merge; project values override global values per key)
-  - **Secrets exception**: the global home file (`~/.dark-factory/config.yaml`) is not committed and may carry literal secret values in `env:`. The project file (`.dark-factory.yaml`) is repo-tracked and must never carry literal secrets — the existing validation rejects known secret patterns.
+  - **Secrets exception**: the global home file (`~/.config/dark-factory/config.yaml` or legacy `~/.dark-factory/config.yaml`) is not committed and may carry literal secret values in `env:`. The project file (`.dark-factory.yaml`) is repo-tracked and must never carry literal secrets — the existing validation rejects known secret patterns.
 
 Planned but not yet supported globally (project-only today):
 

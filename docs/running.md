@@ -43,7 +43,7 @@ When `dark-factory spec approve <name>` moves a spec to `status: approved`, prom
 | | Auto (default) | Manual |
 |---|----------------|--------|
 | **Trigger** | Daemon's spec watcher fires the generator container as soon as the spec hits `approved` | Operator invokes `/dark-factory:generate-prompts-for-spec <spec-path>` from a Claude Code session |
-| **Config** | `autoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.dark-factory/config.yaml`, or `--set autoGeneratePrompts=true` | `autoGeneratePrompts: false` (default) |
+| **Config** | `autoGeneratePrompts: true` in `.dark-factory.yaml`, `~/.config/dark-factory/config.yaml` (XDG) or `--set autoGeneratePrompts=true` | `autoGeneratePrompts: false` (default) |
 | **Daemon role** | Generator + auditor + approver + executor all in one continuous loop | Daemon only executes prompts after the operator queues them; the manual command transitions the spec to `status: prompted` on success — same lifecycle outcome as the auto path |
 | **Latency** | Seconds after `spec approve` | Whenever the operator runs the command |
 | **LLM cost timing** | Spent immediately on approve | Deferred until operator decides |

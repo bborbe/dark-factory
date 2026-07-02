@@ -7,6 +7,7 @@ package globalconfig
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -48,7 +49,8 @@ var envKeyRegexp = regexp.MustCompile(envKeyPattern)
 var userHomeDir = os.UserHomeDir
 
 // GlobalConfig holds the user-level dark-factory configuration.
-// It is loaded from ~/.dark-factory/config.yaml once at daemon startup.
+// It is loaded from ~/.config/dark-factory/config.yaml (XDG) with fallback to
+// ~/.dark-factory/config.yaml (legacy) once at daemon startup.
 // When the file does not exist or the field is omitted, defaults apply.
 type GlobalConfig struct {
 	MaxContainers       int               `yaml:"maxContainers"`
@@ -117,15 +119,47 @@ type Loader interface {
 	Load(ctx context.Context) (GlobalConfig, error)
 }
 
-// NewLoader creates a Loader that reads from ~/.dark-factory/config.yaml.
+// NewLoader creates a Loader that reads from the XDG-first global config path
+// (see FindConfigDir for the exact semantics).
 func NewLoader() Loader {
 	return &fileLoader{}
 }
 
-// fileLoader implements Loader by reading ~/.dark-factory/config.yaml.
+// fileLoader implements Loader by reading the XDG-first global config path.
+// See FindConfigDir for the path resolution logic.
 type fileLoader struct{}
 
-// FileExists reports whether the global config file (~/.dark-factory/config.yaml) exists.
+// FindConfigDir returns the absolute path to the configuration directory for the given
+// tool name, following the XDG Base Directory Specification with legacy fallback.
+//
+// Resolution order:
+//   - If ~/.config/<tool>/ exists (stat success) → returns ~/.config/<tool/>
+//   - If ~/.<tool>/ exists (stat success)  → returns ~/.<tool>/ (legacy path)
+//   - Neither exists                        → returns ~/.config/<tool>/ (XDG default; not created)
+//
+// Returns an error only if the home directory lookup fails.
+// Stat failures on missing directories are swallowed (they trigger fallthrough, not error).
+func FindConfigDir(toolName string) (string, error) {
+	home, err := userHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("globalconfig: get home directory: %w", err)
+	}
+
+	xdgPath := filepath.Join(home, ".config", toolName)
+	if _, err := os.Stat(xdgPath); err == nil {
+		return xdgPath, nil
+	}
+
+	legacyPath := filepath.Join(home, "."+toolName)
+	if _, err := os.Stat(legacyPath); err == nil {
+		return legacyPath, nil
+	}
+
+	// Neither exists — return XDG default path without creating it.
+	return xdgPath, nil
+}
+
+// FileExists reports whether the global config file exists.
 // Callers use this only to distinguish "global file present" from "using built-in defaults"
 // in diagnostic logs.
 // - Config file missing → (false, nil)
@@ -133,11 +167,11 @@ type fileLoader struct{}
 // - Any other stat error → (false, wrapped error)
 // - File present (any size) → (true, nil)
 func FileExists(ctx context.Context) (bool, error) {
-	home, err := userHomeDir()
+	dir, err := FindConfigDir("dark-factory")
 	if err != nil {
-		return false, errors.Wrap(ctx, err, "globalconfig: get home directory")
+		return false, errors.Wrap(ctx, err, "globalconfig: find config directory")
 	}
-	configPath := filepath.Join(home, ".dark-factory", "config.yaml")
+	configPath := filepath.Join(dir, "config.yaml")
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -147,17 +181,18 @@ func FileExists(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// Load reads ~/.dark-factory/config.yaml, merges with defaults, validates, and returns the config.
+// Load reads the global config file, merges with defaults, validates, and returns the config.
+// The path is resolved via FindConfigDir (XDG-first with legacy fallback).
 // If the file does not exist or is empty, defaults are returned without error.
 func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	cfg := defaults()
 
-	home, err := userHomeDir()
+	dir, err := FindConfigDir("dark-factory")
 	if err != nil {
-		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: get home directory")
+		return GlobalConfig{}, errors.Wrap(ctx, err, "globalconfig: find config directory")
 	}
 
-	configPath := filepath.Join(home, ".dark-factory", "config.yaml")
+	configPath := filepath.Join(dir, "config.yaml")
 
 	// Best-effort permission check — skip silently on stat failure.
 	if info, statErr := os.Stat(configPath); statErr == nil {

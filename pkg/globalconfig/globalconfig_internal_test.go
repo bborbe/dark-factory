@@ -38,6 +38,13 @@ var _ = Describe("fileLoader.Load", func() {
 	})
 
 	writeConfig := func(content string) {
+		dir := filepath.Join(tmpDir, ".config", "dark-factory")
+		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+		path := filepath.Join(dir, "config.yaml")
+		Expect(os.WriteFile(path, []byte(content), 0600)).To(Succeed())
+	}
+
+	writeLegacyConfig := func(content string) {
 		dir := filepath.Join(tmpDir, ".dark-factory")
 		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
 		path := filepath.Join(dir, "config.yaml")
@@ -120,6 +127,38 @@ var _ = Describe("fileLoader.Load", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(cfg.AutoApprovePrompts).To(BeNil())
 	})
+
+	It("prefers XDG path when it exists", func() {
+		// Write config at XDG path only
+		writeConfig("maxContainers: 7\n")
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.MaxContainers).To(Equal(7))
+	})
+
+	It("falls back to legacy path when XDG does not exist", func() {
+		// Write config at legacy path only
+		writeLegacyConfig("maxContainers: 9\n")
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.MaxContainers).To(Equal(9))
+	})
+
+	It("returns XDG path when neither exists (defaults)", func() {
+		// No config at either location — should return defaults without error
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.MaxContainers).To(Equal(DefaultMaxContainers))
+	})
+
+	It("prefers XDG when both XDG and legacy exist", func() {
+		// Write different values to each; XDG should win
+		writeConfig("maxContainers: 11\n")
+		writeLegacyConfig("maxContainers: 13\n")
+		cfg, err := NewLoader().Load(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cfg.MaxContainers).To(Equal(11))
+	})
 })
 
 var _ = Describe("FileExists", func() {
@@ -154,7 +193,7 @@ var _ = Describe("FileExists", func() {
 	})
 
 	It("returns true when the config file is a zero-byte file", func() {
-		dir := filepath.Join(tmpDir, ".dark-factory")
+		dir := filepath.Join(tmpDir, ".config", "dark-factory")
 		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
 		path := filepath.Join(dir, "config.yaml")
 		Expect(os.WriteFile(path, []byte{}, 0600)).To(Succeed())
@@ -165,6 +204,28 @@ var _ = Describe("FileExists", func() {
 	})
 
 	It("returns true when the config file contains valid YAML", func() {
+		dir := filepath.Join(tmpDir, ".config", "dark-factory")
+		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+		path := filepath.Join(dir, "config.yaml")
+		Expect(os.WriteFile(path, []byte("maxContainers: 5\n"), 0600)).To(Succeed())
+
+		exists, err := FileExists(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(exists).To(BeTrue())
+	})
+
+	It("returns true when file exists at XDG path", func() {
+		dir := filepath.Join(tmpDir, ".config", "dark-factory")
+		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+		path := filepath.Join(dir, "config.yaml")
+		Expect(os.WriteFile(path, []byte("maxContainers: 5\n"), 0600)).To(Succeed())
+
+		exists, err := FileExists(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(exists).To(BeTrue())
+	})
+
+	It("returns true when file exists at legacy path only", func() {
 		dir := filepath.Join(tmpDir, ".dark-factory")
 		Expect(os.MkdirAll(dir, 0750)).To(Succeed())
 		path := filepath.Join(dir, "config.yaml")
@@ -173,6 +234,13 @@ var _ = Describe("FileExists", func() {
 		exists, err := FileExists(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(exists).To(BeTrue())
+	})
+
+	It("returns false when file exists at neither XDG nor legacy path", func() {
+		// Neither .config/dark-factory nor .dark-factory exists
+		exists, err := FileExists(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(exists).To(BeFalse())
 	})
 
 	It("returns false and non-nil error when home dir lookup fails", func() {

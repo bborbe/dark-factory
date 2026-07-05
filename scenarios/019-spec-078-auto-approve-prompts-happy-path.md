@@ -134,3 +134,13 @@ rm -f /tmp/new-dark-factory
 | Audit passes but approve step is skipped | Generated prompt remains in `prompts/` inbox after the run |
 | Audit invocation uses a new mechanism instead of the existing `executor.Execute` path | Container with name `dark-factory-audit-*` not visible / executor instrumentation differs |
 | `autoApprovePromptsSource` not reported in effective-config log | Operators cannot tell which layer set the value |
+
+## Provider Dependency
+
+This scenario is **provider-agnostic**: it hardcodes no LLM provider and runs against whatever the operator's global config (`~/.config/dark-factory/config.yaml`) routes to.
+
+Verified passing:
+- **Anthropic claude** (default).
+- **MiniMax** model via a local base-URL proxy (`MiniMax-M2.7-highspeed` through `host.docker.internal:8788`) — verified end-to-end on `v0.191.0` (2026-07-05): audit → approve → `found queued prompt` → `NOTES.md` created → `spec awaiting verification`.
+
+History: on `v0.187.11` this failed on minimax — audit+approve succeeded but the executor never picked up the approved prompt. Root cause was the pre-`pkg/promptstate` queue-scan/pickup path, fixed by the spec-101 state-machine refactor (not provider-specific). The direct `https://api.minimax.io/anthropic` endpoint has not been re-tested end-to-end since the fix; the proxy-routed run above is the minimax evidence. See the Personal-vault Dark Factory Debug Guide, "Auto-approve succeeds but executor never picks up the prompt".

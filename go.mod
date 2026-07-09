@@ -1,16 +1,16 @@
 module github.com/bborbe/dark-factory
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/adrg/frontmatter v0.2.0
-	github.com/bborbe/collection v1.20.13
-	github.com/bborbe/errors v1.5.13
-	github.com/bborbe/http v1.26.13
-	github.com/bborbe/log v1.6.14
-	github.com/bborbe/run v1.9.28
-	github.com/bborbe/time v1.27.1
-	github.com/bborbe/validation v1.4.14
+	github.com/bborbe/collection v1.20.17
+	github.com/bborbe/errors v1.5.15
+	github.com/bborbe/http v1.26.16
+	github.com/bborbe/log v1.6.17
+	github.com/bborbe/run v1.9.30
+	github.com/bborbe/time v1.27.5
+	github.com/bborbe/validation v1.4.16
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/golang/glog v1.2.5
 	github.com/golangci/golangci-lint/v2 v2.12.2
@@ -26,7 +26,7 @@ require (
 	github.com/shoenig/go-modtool v0.7.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/goleak v1.3.0
-	golang.org/x/vuln v1.4.0
+	golang.org/x/vuln v1.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -91,10 +91,10 @@ require (
 	github.com/ayoubfaouzi/pkcs7 v0.2.3 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20260622120422-77b9b380c0a4 // indirect
-	github.com/bborbe/kv v1.21.2 // indirect
-	github.com/bborbe/math v1.3.11 // indirect
-	github.com/bborbe/parse v1.10.13 // indirect
-	github.com/bborbe/sentry v1.9.18 // indirect
+	github.com/bborbe/kv v1.21.4 // indirect
+	github.com/bborbe/math v1.3.12 // indirect
+	github.com/bborbe/parse v1.10.16 // indirect
+	github.com/bborbe/sentry v1.9.20 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bkielbasa/cyclop v1.2.3 // indirect
 	github.com/blizzy78/varnamelen v0.8.0 // indirect
@@ -402,10 +402,10 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260623180514-3eaace186e0a // indirect
+	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
-	golang.org/x/tools v0.46.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.286.0 // indirect
 	google.golang.org/genai v1.62.0 // indirect

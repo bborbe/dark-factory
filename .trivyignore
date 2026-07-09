@@ -7,3 +7,6 @@ CVE-2026-41568
 
 # go.etcd.io/bbolt v1.4.3 dep, no fix available
 CVE-2026-33817
+
+# golang.org/x/crypto/openpgp unmaintained (no fix will ship) — advisory deprecates the package
+GO-2026-5932

@@ -2,6 +2,18 @@
 
 How to start dark-factory, monitor execution, handle failures, and complete specs.
 
+## Before Starting a Session (pre-flight)
+
+The daemon (and `run`) execute **every** queued prompt in `prompts/in-progress/` — not just the spec you're about to work on. Stale prompts left over from a prior spec (e.g. one whose code shipped but was never swept to `completed`) get picked up and executed the moment the daemon starts. Under `workflow: direct` those commits land on **your current branch**, silently mixing unrelated work into your feature.
+
+Before `dark-factory daemon` or `dark-factory run`, verify the state is clean:
+
+1. `dark-factory status` — check **Specs** for any spec still in `prompted N/M` with `N<M`: that means M−N prompts are queued and **will run**. Check `prompts/in-progress/` for stranded prompt files.
+2. `dark-factory doctor` — catches *structural* anomalies (duplicate numbers, orphan links, `prompted-but-not-swept`, stale `verifying`). It does **not** catch *semantic* staleness: a spec whose code already shipped but whose bookkeeping was never reconciled looks structurally fine. The `prompted N/M` signal in step 1 is what catches that.
+3. Resolve anything stale first — `dark-factory spec sweep <id>` / `dark-factory prompt cancel <id>` — so only your intended spec's prompts are queued.
+
+**Worktree gotcha:** a feature worktree branched off master **inherits master's stranded prompts**. If master carries a stale `prompted` spec, every worktree does too — reconcile it on master, not per-branch.
+
 ## Starting the Daemon
 
 Run from the project root (where `.dark-factory.yaml` lives):

@@ -8,6 +8,7 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -49,7 +50,7 @@ func run(ctx context.Context) error {
 
 	switch command {
 	case "help":
-		printHelp()
+		printHelp(os.Stdout)
 		return nil
 	case "version":
 		fmt.Fprintf(os.Stdout, "dark-factory %s\n", version.Version)
@@ -761,9 +762,9 @@ func printConfig(ctx context.Context, cfg config.Config) error {
 	return enc.Encode(out)
 }
 
-func printHelp() {
+func printHelp(w io.Writer) {
 	fmt.Fprintf(
-		os.Stdout,
+		w,
 		"Usage: dark-factory [options] <command [subcommand]>\n\nCommands:\n"+
 			"  run [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...]    Process all queued prompts and exit\n"+
 			"  daemon [--max-containers N] [--skip-preflight] [--model NAME] [--set key=value ...] Watch for queued prompts and execute them (long-running)\n"+
@@ -794,6 +795,10 @@ func printHelp() {
 			"  scenario list          List scenarios\n"+
 			"  scenario show <id>     Show full contents of a scenario\n"+
 			"  scenario status        Show scenario status counts\n\n"+
+			"Configuration:\n"+
+			"  Global config:  ~/.config/dark-factory/config.yaml (XDG)\n"+
+			"                  ~/.dark-factory/config.yaml (legacy)\n"+
+			"  Per-project:    .dark-factory.yaml (current directory)\n\n"+
 			"Options:\n  -debug  Enable debug logging\n\n"+
 			"Flags:\n  --help, -h       Show this help\n  --version, -v    Show version\n",
 	)

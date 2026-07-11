@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 
 	libtime "github.com/bborbe/time"
@@ -1135,5 +1136,31 @@ var _ = Describe("validateDoctorArgs", func() {
 		err := validateDoctorArgs(ctx, []string{"some-positional"})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("unknown flag"))
+	})
+})
+
+var _ = Describe("printHelp", func() {
+	It("includes Configuration section with XDG global config path", func() {
+		var buf bytes.Buffer
+		printHelp(&buf)
+		Expect(buf.String()).To(ContainSubstring("~/.config/dark-factory/config.yaml"))
+	})
+
+	It("includes Configuration section with legacy global config path", func() {
+		var buf bytes.Buffer
+		printHelp(&buf)
+		Expect(buf.String()).To(ContainSubstring("~/.dark-factory/config.yaml"))
+	})
+
+	It("includes Configuration section with per-project config path", func() {
+		var buf bytes.Buffer
+		printHelp(&buf)
+		Expect(buf.String()).To(ContainSubstring(".dark-factory.yaml"))
+	})
+
+	It("contains the Configuration header", func() {
+		var buf bytes.Buffer
+		printHelp(&buf)
+		Expect(buf.String()).To(ContainSubstring("Configuration:"))
 	})
 })

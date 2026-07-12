@@ -10,6 +10,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: add layered config field backend (docker|local, default docker) resolvable via global/project/--set with backendSource reporting (spec 104 prompt 1)
+- feat: add localSubprocessExecutor (pkg/executor/local_subprocess.go) running claude as a local subprocess in cwd; fails closed when claude is absent from PATH, Reattach returns ErrReattachUnsupported, stop kills the child process group (spec 104 prompt 2)
+- feat: route execution and generation through the configured backend in pkg/factory (createExecutor/createExecutionChecker/createExecutionStopper); backend: local selects the in-process subprocess executor with a noop container counter, docker stays the default; local reattach recovers by re-queueing the prompt (spec 104 prompt 3)
+- feat: skip the docker healthcheck probes under backend: local so no docker daemon is required at runtime; document the local backend trust boundary and usage in docs/execution-backends.md (spec 104 prompt 4)
+
 ## v0.191.4
 
 - fix: bump `DefaultContainerImage` to `claude-yolo:v0.13.2`, which restores marketplace plugin slash commands in Claude Code 2.1.197 headless mode (auto-discover `--plugin-dir`). v0.13.1 broke dark-factory's spec→prompt generation and prompt auditing (`/dark-factory:generate-prompts-for-spec`, `/dark-factory:audit-prompt` reported `Unknown command`); prompt execution was unaffected.

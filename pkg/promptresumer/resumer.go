@@ -150,8 +150,24 @@ func (r *resumer) resumePrompt(ctx context.Context, promptPath string) error {
 		return r.killTimedOutContainer(ctx, pf, executionID, elapsed)
 	}
 
-	if err := r.executor.Reattach(ctx, logFile, executionID, remainingDuration); err != nil {
-		return errors.Wrap(ctx, err, "reattach to container")
+	if reattachErr := r.executor.Reattach(ctx, logFile, executionID, remainingDuration); reattachErr != nil {
+		// The local backend cannot reattach: a local subprocess dies with the
+		// dark-factory process, so there is nothing to reattach to. Recover by
+		// re-queueing the prompt for a fresh run (safe because execution commits
+		// per prompt) instead of failing the daemon — mirrors the !canResume
+		// re-queue branch above.
+		if errors.Is(reattachErr, executor.ErrReattachUnsupported) {
+			log.From(ctx).Info(
+				"local backend cannot reattach; re-queueing prompt for re-run",
+				"prompt_id", filepath.Base(promptPath),
+			)
+			pf.MarkApproved()
+			if err := pf.Save(ctx); err != nil {
+				return errors.Wrap(ctx, err, "save prompt after reattach-unsupported")
+			}
+			return nil
+		}
+		return errors.Wrap(ctx, reattachErr, "reattach to container")
 	}
 
 	log.From(ctx).Info("reattached container exited", "prompt_id", filepath.Base(promptPath))

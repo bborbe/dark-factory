@@ -20,4 +20,5 @@ type FieldSources struct {
 	AutoGeneratePrompts string
 	HealthcheckEnabled  string
 	HealthcheckInterval string
+	Backend             string
 }

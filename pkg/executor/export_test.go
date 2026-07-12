@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 
 	"github.com/bborbe/dark-factory/pkg/config"
@@ -205,4 +206,14 @@ func ValidateClaudeAuthForTest(ctx context.Context, configDir string, env map[st
 // ResolveExtraMountSrcForTest exposes resolveExtraMountSrc for external test packages.
 func ResolveExtraMountSrcForTest(src string, lookupEnv func(string) string, goos string) string {
 	return resolveExtraMountSrc(src, lookupEnv, goos)
+}
+
+// IsClaudeNotFound reports whether err wraps ErrClaudeNotFound.
+func IsClaudeNotFound(err error) bool {
+	return errors.Is(err, ErrClaudeNotFound)
+}
+
+// IsReattachUnsupported reports whether err wraps ErrReattachUnsupported.
+func IsReattachUnsupported(err error) bool {
+	return errors.Is(err, ErrReattachUnsupported)
 }

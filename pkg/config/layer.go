@@ -23,6 +23,7 @@ var SupportedSetKeys = []string{
 
 	"model",
 	"maxContainers",
+	"backend",
 
 	"workflow",
 	"pr",
@@ -56,6 +57,9 @@ func ApplyGlobalOverrides(
 	}
 	if global.AutoGeneratePrompts != nil && proj.AutoGeneratePrompts == nil {
 		cfg.AutoGeneratePrompts = *global.AutoGeneratePrompts
+	}
+	if global.Backend != nil && proj.Backend == nil {
+		cfg.Backend = Backend(*global.Backend)
 	}
 	// Env layering: project entries win on key collision, global fills the
 	// rest. Without this, global env (typically `ANTHROPIC_BASE_URL` +
@@ -120,6 +124,7 @@ func ComputeFieldSources(
 		AutoGeneratePrompts: "default",
 		HealthcheckEnabled:  "default",
 		HealthcheckInterval: "default",
+		Backend:             "default",
 	}
 	if global.Model != nil {
 		s.Model = "global"
@@ -139,6 +144,9 @@ func ComputeFieldSources(
 	if global.AutoGeneratePrompts != nil {
 		s.AutoGeneratePrompts = "global"
 	}
+	if global.Backend != nil {
+		s.Backend = "global"
+	}
 	if proj.Model != nil {
 		s.Model = "project"
 	}
@@ -156,6 +164,9 @@ func ComputeFieldSources(
 	}
 	if proj.AutoGeneratePrompts != nil {
 		s.AutoGeneratePrompts = "project"
+	}
+	if proj.Backend != nil {
+		s.Backend = "project"
 	}
 	if proj.MaxContainers != nil {
 		s.MaxContainers = "project"
@@ -299,6 +310,13 @@ func ApplyOneSetOverride(
 		}
 		cfg.MaxContainers = n
 		sources.MaxContainers = "arg"
+	case "backend":
+		b := Backend(value)
+		if err := b.Validate(ctx); err != nil {
+			return err
+		}
+		cfg.Backend = b
+		sources.Backend = "arg"
 	case "workflow", "pr", "autoMerge":
 		return applyDeliverySetOverride(ctx, cfg, sources, key, value)
 	default:

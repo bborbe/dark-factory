@@ -10,10 +10,12 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/project"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
@@ -331,6 +333,48 @@ var _ = Describe("Resumer", func() {
 			Expect(fakeExec.reattachCallCount).To(Equal(1))
 			Expect(fakeExec.reattachContainer).To(Equal("test-project-001-resume"))
 		})
+	})
+
+	Context("when the backend cannot reattach (local ErrReattachUnsupported)", func() {
+		BeforeEach(func() {
+			promptPath := filepath.Join(queueDir, "001-noreattach.md")
+			Expect(os.WriteFile(
+				promptPath,
+				[]byte(
+					"---\nstatus: executing\ncontainer: test-project-001-noreattach\n---\n# No reattach\n",
+				),
+				0600,
+			)).To(Succeed())
+			mgr.loadFunc = func(_ context.Context, path string) (*prompt.PromptFile, error) {
+				return newExecutingPromptFile(path, "test-project-001-noreattach"), nil
+			}
+		})
+
+		It("re-queues the prompt to approved and does not fail the daemon", func() {
+			// The local backend returns ErrReattachUnsupported: a subprocess dies
+			// with the process, so recovery is to re-run the prompt.
+			fakeExec.reattachErr = errors.Wrap(
+				ctx, executor.ErrReattachUnsupported, "local backend does not support reattach",
+			)
+			r := newResumer(0)
+			Expect(r.ResumeAll(ctx)).To(Succeed())
+			Expect(fakeExec.reattachCallCount).To(Equal(1))
+			content, err := os.ReadFile(filepath.Join(queueDir, "001-noreattach.md"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+
+		It(
+			"control: a non-sentinel reattach error still fails with 'reattach to container'",
+			func() {
+				fakeExec.reattachErr = errSentinel
+				r := newResumer(0)
+				err := r.ResumeAll(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("reattach to container"))
+				Expect(fakeExec.reattachCallCount).To(Equal(1))
+			},
+		)
 	})
 
 	Context("when container has exceeded maxPromptDuration on reattach", func() {

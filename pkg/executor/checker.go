@@ -112,6 +112,23 @@ type ContainerCounter interface {
 	CountRunning(ctx context.Context) (int, error)
 }
 
+// NewNoopContainerCounter creates a ContainerCounter that always reports zero
+// running containers without invoking docker. Used by the local backend, where
+// there are no containers to count and `docker ps` must never run (no docker
+// daemon is required when backend: local).
+func NewNoopContainerCounter() ContainerCounter {
+	return &noopContainerCounter{}
+}
+
+// noopContainerCounter implements ContainerCounter for the local backend.
+type noopContainerCounter struct{}
+
+// CountRunning always returns (0, nil) — the local backend spawns no containers,
+// so there is nothing to count and no docker daemon is contacted.
+func (c *noopContainerCounter) CountRunning(ctx context.Context) (int, error) {
+	return 0, nil
+}
+
 // NewDockerContainerCounter creates a ContainerCounter that uses docker ps with label filtering.
 func NewDockerContainerCounter(runner subproc.Runner) ContainerCounter {
 	return &dockerContainerCounter{runner: runner}

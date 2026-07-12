@@ -1,6 +1,8 @@
 ---
-status: approved
+status: completed
 spec: [104-local-execution-backend]
+summary: Wired the backend config into pkg/factory via createExecutor/createExecutionChecker/createExecutionStopper/createContainerCounter helpers — backend:local selects the in-process subprocess executor + noop container counter, docker stays default and byte-identical. Threaded cfg.Backend through createContainerDeps + ProcessorConfig; status-CLI counter left on docker (AC9 = daemon runtime only). Added the promptresumer ErrReattachUnsupported re-queue recovery (documented AC5 deviation) + factory/resumer/noop-counter tests. Implemented manually (agent run killed); make precommit green.
+completed: "2026-07-12T21:26:25Z"
 created: "2026-07-12T19:00:00Z"
 queued: "2026-07-12T19:08:22Z"
 ---

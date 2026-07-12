@@ -78,4 +78,25 @@ var _ = Describe("backend switch helpers", func() {
 			).NotTo(BeNil())
 		})
 	})
+
+	Describe("healthcheckEnabledForBackend", func() {
+		boolPtr := func(b bool) *bool { return &b }
+
+		It("backend: docker follows HealthcheckEnabledValue (nil = enabled)", func() {
+			Expect(
+				healthcheckEnabledForBackend(config.Config{Backend: config.BackendDocker}),
+			).To(BeTrue())
+		})
+		It("backend: docker with explicit false is disabled", func() {
+			cfg := config.Config{Backend: config.BackendDocker, HealthcheckEnabled: boolPtr(false)}
+			Expect(healthcheckEnabledForBackend(cfg)).To(BeFalse())
+		})
+		It("backend: local is always disabled, even when HealthcheckEnabled is true", func() {
+			cfg := config.Config{Backend: config.BackendLocal, HealthcheckEnabled: boolPtr(true)}
+			Expect(healthcheckEnabledForBackend(cfg)).To(BeFalse())
+		})
+		It("unset backend follows the configured value (nil = enabled)", func() {
+			Expect(healthcheckEnabledForBackend(config.Config{})).To(BeTrue())
+		})
+	})
 })

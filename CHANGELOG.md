@@ -15,6 +15,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 - feat: add layered config field backend (docker|local, default docker) resolvable via global/project/--set with backendSource reporting (spec 104 prompt 1)
 - feat: add localSubprocessExecutor (pkg/executor/local_subprocess.go) running claude as a local subprocess in cwd; fails closed when claude is absent from PATH, Reattach returns ErrReattachUnsupported, stop kills the child process group (spec 104 prompt 2)
 - feat: route execution and generation through the configured backend in pkg/factory (createExecutor/createExecutionChecker/createExecutionStopper); backend: local selects the in-process subprocess executor with a noop container counter, docker stays the default; local reattach recovers by re-queueing the prompt (spec 104 prompt 3)
+- feat: skip the docker healthcheck probes under backend: local so no docker daemon is required at runtime; document the local backend trust boundary and usage in docs/execution-backends.md (spec 104 prompt 4)
 
 ## v0.191.4
 

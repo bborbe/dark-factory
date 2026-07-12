@@ -1,6 +1,8 @@
 ---
-status: approved
+status: completed
 spec: [104-local-execution-backend]
+summary: Disabled the daemon-startup healthcheck gate under backend:local via a pure healthcheckEnabledForBackend(cfg) helper wired into CreateHealthcheckGate — no docker daemon required at runtime; docker path unchanged. Documented the local backend's trust boundary + usage in docs/execution-backends.md (de-hypotheticalized the Adding-a-Backend section) and added a table test. Implemented manually; make precommit green.
+completed: "2026-07-12T21:32:18Z"
 created: "2026-07-12T19:00:00Z"
 queued: "2026-07-12T19:08:22Z"
 ---

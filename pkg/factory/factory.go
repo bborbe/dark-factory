@@ -1412,7 +1412,7 @@ func CreateHealthcheckGate(
 	}
 	cacheRoot := filepath.Join(home, ".dark-factory", "healthcheck-cache")
 	return healthcheckgate.NewGate(
-		cfg.HealthcheckEnabledValue(),
+		healthcheckEnabledForBackend(cfg),
 		skipHealthcheck,
 		cfg.ParsedHealthcheckInterval(),
 		CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter),
@@ -1422,6 +1422,17 @@ func CreateHealthcheckGate(
 		projectName,
 		currentDateTimeGetter,
 	)
+}
+
+// healthcheckEnabledForBackend reports whether the daemon-startup healthcheck
+// gate should run. Under backend: local the docker probes are meaningless (no
+// docker daemon is required — spec 104), so the gate is always disabled;
+// otherwise it follows the configured value.
+func healthcheckEnabledForBackend(cfg config.Config) bool {
+	if cfg.Backend == config.BackendLocal {
+		return false
+	}
+	return cfg.HealthcheckEnabledValue()
 }
 
 func CreateHealthcheckCommand(

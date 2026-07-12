@@ -4,6 +4,7 @@ tags:
     - dark-factory
     - spec
 approved: "2026-07-12T18:29:05Z"
+generating: "2026-07-12T18:37:26Z"
 branch: dark-factory/local-execution-backend
 ---
 
@@ -88,12 +89,13 @@ The whole point of this feature is to **trade container isolation for in-process
 - [ ] With `backend` unset or `docker`, the docker container is spawned exactly as today (labels, image, argv unchanged) — no behavior change — evidence: a golden test on the built docker argv is byte-identical to pre-change.
 - [ ] With `backend: local`, prompt **execution** runs `claude` as a local subprocess in cwd — no `docker run` is invoked (evidence: a test/interception asserts the docker CLI is never called; the same prompt runs and produces the parsed result + log files).
 - [ ] With `backend: local`, prompt **generation** (spec→prompts) also runs in-process (no `docker run`).
-- [ ] Backend selection is the only factory change — no caller package (`pkg/runner`, `pkg/promptresumer`, `pkg/processor`, …) is modified; they compile against the unchanged neutral interfaces — evidence: `git diff --stat pkg/runner pkg/promptresumer pkg/processor` is empty and `go build ./...` exits 0.
+- [ ] Backend selection is the only factory change — `pkg/promptresumer` is the ONE allowed caller-package exception: it gains a single `errors.Is(err, ErrReattachUnsupported)` → re-queue branch (the restart-recovery path); every other caller (`pkg/runner`, `pkg/processor`, …) is untouched and compiles against the unchanged neutral interfaces — evidence: `git diff --stat pkg/runner pkg/processor` is empty; `pkg/promptresumer` shows ONLY the small sentinel-branch addition; `go build ./...` exits 0.
 - [ ] `backend: local` with `claude` absent from PATH fails closed with a clear error; never falls back to docker.
 - [ ] No docker daemon is required at runtime when `backend: local` (verified: run a prompt with docker unavailable).
 - [ ] The `hotpath-execution-naming-check` gate still passes (no container vocabulary leaked into neutral packages).
 - [ ] Unit tests cover the local executor — evidence: `TestLocalExecute` asserts a subprocess ran + result parsed with no docker call; `TestLocalMissingClaudeFailsClosed` asserts the error string contains `claude not found on PATH`; `TestLocalStopKillsProcessGroup` asserts SIGTERM→SIGKILL on the child; `TestReattachUnsupported` asserts `Reattach` returns `ErrReattachUnsupported`; all exit 0.
 - [ ] `make precommit` passes; `go generate ./...` leaves mocks clean — evidence: both exit 0 and `git status --porcelain pkg/` shows zero modified mocks.
+- [ ] promptresumer recovery is tested — a fake executor whose `Reattach` returns `executor.ErrReattachUnsupported` causes the prompt to be re-queued (`MarkApproved` observed) and `resumePrompt` returns nil (daemon not failed); a control case asserts a non-sentinel reattach error still returns the wrapped "reattach to container" error.
 
 ## Suggested Decomposition
 

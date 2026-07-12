@@ -1,8 +1,13 @@
 ---
-status: approved
-spec: ["104"]
+status: completed
+spec: [104-local-execution-backend]
+summary: Added layered Backend config field (docker|local, default docker) with global/project/--set precedence, validation, backendSource reporting, and tests
+execution_id: dark-factory-exec-490-spec-104-backend-config-field
+dark-factory-version: v0.191.4
 created: "2026-07-12T19:00:00Z"
 queued: "2026-07-12T19:08:22Z"
+started: "2026-07-12T19:20:11Z"
+completed: "2026-07-12T19:34:29Z"
 ---
 
 <summary>

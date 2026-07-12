@@ -377,6 +377,44 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Describe("Backend validation", func() {
+		validBase := func() config.Config {
+			return config.Config{
+				Workflow: config.WorkflowDirect,
+				Prompts: config.PromptsConfig{
+					InboxDir:      "prompts",
+					InProgressDir: "prompts/in-progress",
+					CompletedDir:  "prompts/completed",
+					LogDir:        "prompts/log",
+				},
+				ContainerImage: pkg.DefaultContainerImage,
+				Model:          "claude-sonnet-4-6",
+				DebounceMs:     500,
+				Backend:        config.BackendDocker,
+			}
+		}
+
+		It("succeeds when backend is docker (default)", func() {
+			cfg := validBase()
+			Expect(cfg.Backend).To(Equal(config.BackendDocker))
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("succeeds when backend is local", func() {
+			cfg := validBase()
+			cfg.Backend = config.BackendLocal
+			Expect(cfg.Validate(ctx)).NotTo(HaveOccurred())
+		})
+
+		It("fails when backend is bogus", func() {
+			cfg := validBase()
+			cfg.Backend = config.Backend("bogus")
+			err := cfg.Validate(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("backend"))
+		})
+	})
+
 	Describe("DirtyFileThreshold", func() {
 		validBase := func() config.Config {
 			return config.Config{

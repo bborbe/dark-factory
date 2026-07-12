@@ -169,6 +169,8 @@ func LogEffectiveConfig(
 		"healthcheckEnabledSource", sources.HealthcheckEnabled,
 		"healthcheckInterval", cfg.HealthcheckInterval,
 		"healthcheckIntervalSource", sources.HealthcheckInterval,
+		"backend", cfg.Backend,
+		"backendSource", sources.Backend,
 		"envFromGlobal", fromGlobal,
 		"envProjectOverrides", projectOverrides,
 		"envProjectOnly", projectOnly,

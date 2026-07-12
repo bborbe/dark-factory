@@ -179,6 +179,8 @@ var _ = Describe("Config/partialConfig parity", func() {
 				func(cfg Config) { Expect(cfg.VerificationGate).To(BeTrue()) }),
 			Entry("hideGit", "hideGit", "true",
 				func(cfg Config) { Expect(cfg.HideGit).To(BeTrue()) }),
+			Entry("backend", "backend", "local",
+				func(cfg Config) { Expect(cfg.Backend).To(Equal(BackendLocal)) }),
 			Entry("healthcheckEnabled false", "healthcheckEnabled", "false",
 				func(cfg Config) {
 					Expect(cfg.HealthcheckEnabled).NotTo(BeNil())

@@ -1,6 +1,6 @@
 ---
 status: approved
-spec: ["104"]
+spec: [104-local-execution-backend]
 created: "2026-07-12T19:00:00Z"
 queued: "2026-07-12T19:08:22Z"
 ---

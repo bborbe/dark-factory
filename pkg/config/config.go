@@ -127,6 +127,7 @@ type Config struct {
 	QueueInterval          string              `yaml:"queueInterval"`
 	SweepInterval          string              `yaml:"sweepInterval"`
 	IdleLogInterval        string              `yaml:"idleLogInterval"`
+	Backend                Backend             `yaml:"backend,omitempty"`
 }
 
 // Defaults returns a Config with all default values.
@@ -169,6 +170,7 @@ func Defaults() Config {
 		QueueInterval:       "5s",
 		SweepInterval:       "60s",
 		IdleLogInterval:     "1m",
+		Backend:             BackendDocker,
 	}
 }
 
@@ -258,6 +260,7 @@ func (c Config) Validate(ctx context.Context) error {
 		validation.Name("queueInterval", validation.HasValidationFunc(c.validateQueueInterval)),
 		validation.Name("sweepInterval", validation.HasValidationFunc(c.validateSweepInterval)),
 		validation.Name("idleLogInterval", validation.HasValidationFunc(c.validateIdleLogInterval)),
+		validation.Name("backend", c.Backend),
 	}.Validate(ctx)
 }
 

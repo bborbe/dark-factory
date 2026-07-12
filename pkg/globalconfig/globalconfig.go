@@ -59,6 +59,7 @@ type GlobalConfig struct {
 	Model               *string           `yaml:"model,omitempty"`
 	AutoApprovePrompts  *bool             `yaml:"autoApprovePrompts,omitempty"`
 	AutoGeneratePrompts *bool             `yaml:"autoGeneratePrompts,omitempty"`
+	Backend             *string           `yaml:"backend,omitempty"`
 	Env                 map[string]string `yaml:"env,omitempty"`
 }
 
@@ -88,6 +89,15 @@ func (g GlobalConfig) Validate(ctx context.Context) error {
 				"globalconfig: model %q does not match required pattern %s",
 				*g.Model,
 				ModelPattern,
+			)
+		}
+	}
+	if g.Backend != nil {
+		if *g.Backend != "docker" && *g.Backend != "local" {
+			return errors.Errorf(
+				ctx,
+				"globalconfig: backend %q invalid, valid values: docker, local",
+				*g.Backend,
 			)
 		}
 	}
@@ -226,6 +236,7 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 		Model               *string           `yaml:"model"`
 		AutoApprovePrompts  *bool             `yaml:"autoApprovePrompts"`
 		AutoGeneratePrompts *bool             `yaml:"autoGeneratePrompts"`
+		Backend             *string           `yaml:"backend"`
 		Env                 map[string]string `yaml:"env,omitempty"`
 	}
 	if err := yaml.Unmarshal(data, &partial); err != nil {
@@ -252,6 +263,9 @@ func (l *fileLoader) Load(ctx context.Context) (GlobalConfig, error) {
 	}
 	if partial.AutoGeneratePrompts != nil {
 		cfg.AutoGeneratePrompts = partial.AutoGeneratePrompts
+	}
+	if partial.Backend != nil {
+		cfg.Backend = partial.Backend
 	}
 	if partial.Env != nil {
 		cfg.Env = partial.Env

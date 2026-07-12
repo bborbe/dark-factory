@@ -43,6 +43,7 @@ type LayeredProjectOverrides struct {
 	AutoGeneratePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets autoGeneratePrompts
 	HealthcheckEnabled  *bool     // non-nil when .dark-factory.yaml explicitly sets healthcheckEnabled
 	HealthcheckInterval *string   // non-nil when .dark-factory.yaml explicitly sets healthcheckInterval
+	Backend             *Backend  // non-nil when .dark-factory.yaml explicitly sets backend
 }
 
 // LoadResult bundles the merged project config with information about which
@@ -122,6 +123,7 @@ type partialConfig struct {
 	DirtyFileThreshold     *int                 `yaml:"dirtyFileThreshold,omitempty"`
 	AutoApprovePrompts     *bool                `yaml:"autoApprovePrompts"`
 	AutoGeneratePrompts    *bool                `yaml:"autoGeneratePrompts"`
+	Backend                *Backend             `yaml:"backend"`
 	MaxPromptDuration      *string              `yaml:"maxPromptDuration"`
 	AutoRetryLimit         *int                 `yaml:"autoRetryLimit"`
 	HideGit                *bool                `yaml:"hideGit"`
@@ -190,6 +192,7 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		AutoGeneratePrompts: partial.AutoGeneratePrompts,
 		HealthcheckEnabled:  partial.HealthcheckEnabled,
 		HealthcheckInterval: partial.HealthcheckInterval,
+		Backend:             partial.Backend,
 	}
 
 	// Detect removed config fields and return actionable errors.
@@ -422,6 +425,9 @@ func mergePartialProviders(cfg *Config, partial *partialConfig) {
 
 // mergePartialLimits merges resource limit and duration settings.
 func mergePartialLimits(cfg *Config, partial *partialConfig) {
+	if partial.Backend != nil {
+		cfg.Backend = *partial.Backend
+	}
 	if partial.MaxContainers != nil {
 		cfg.MaxContainers = *partial.MaxContainers
 	}

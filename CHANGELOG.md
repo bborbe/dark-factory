@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - feat: add layered config field backend (docker|local, default docker) resolvable via global/project/--set with backendSource reporting (spec 104 prompt 1)
+- feat: add localSubprocessExecutor (pkg/executor/local_subprocess.go) running claude as a local subprocess in cwd; fails closed when claude is absent from PATH, Reattach returns ErrReattachUnsupported, stop kills the child process group (spec 104 prompt 2)
 
 ## v0.191.4
 

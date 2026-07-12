@@ -43,6 +43,7 @@ while IFS= read -r f; do
         pkg/executor/stopper.go) continue ;;
         pkg/executor/executor.go) continue ;;
         pkg/executor/launch.go) continue ;;
+        pkg/executor/local_subprocess.go) continue ;;
     esac
 
     # Search for raw exec spawns; skip comment-only lines (e.g. architecture docs that

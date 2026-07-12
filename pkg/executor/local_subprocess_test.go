@@ -401,4 +401,12 @@ var _ = Describe("LocalSubprocessExecutor", func() {
 			})
 		})
 	})
+
+	Describe("NoopContainerCounter", func() {
+		It("CountRunning returns (0, nil) without invoking docker", func() {
+			n, err := executor.NewNoopContainerCounter().CountRunning(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(n).To(Equal(0))
+		})
+	})
 })

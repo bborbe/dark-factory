@@ -1,8 +1,13 @@
 ---
-status: approved
+status: completed
 spec: [104-local-execution-backend]
+summary: Added localSubprocessExecutor (pkg/executor/local_subprocess.go) running claude as a local subprocess in cwd — fail-closed on missing claude (ErrClaudeNotFound), ErrReattachUnsupported on Reattach, process-group SIGTERM→SIGKILL on stop; local ExecutionChecker/Stopper no-ops; unit tests. Completed manually after the MiniMax run was killed mid-DoD-loop; fixed a PATH test-pollution bug and a double-Wait race in stopProcessGroup.
+execution_id: dark-factory-exec-491-spec-104-local-subprocess-executor
+dark-factory-version: v0.191.4
 created: "2026-07-12T19:00:00Z"
 queued: "2026-07-12T19:08:22Z"
+started: "2026-07-12T19:50:11Z"
+completed: "2026-07-12T21:11:40Z"
 ---
 
 <summary>

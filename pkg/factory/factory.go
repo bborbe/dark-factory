@@ -414,7 +414,7 @@ func CreateRunner(
 		)
 	}
 
-	cl, executionChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
+	cl, executionChecker, clErr := createContainerDeps(ctx, cfg.Backend, currentDateTimeGetter)
 	if clErr != nil {
 		return &errRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -469,7 +469,7 @@ func CreateRunner(
 		deps.prMerger,
 		currentDateTimeGetter,
 		n,
-		createContainerCounter(),
+		createContainerCounter(cfg.Backend),
 		cl,
 		executionChecker,
 		dirtyFileChecker,
@@ -498,7 +498,7 @@ func CreateRunner(
 		executionChecker, n, migrator,
 		currentDateTimeGetter,
 		cfg.ParsedMaxPromptDuration(),
-		executor.NewDockerExecutionStopper(),
+		createExecutionStopper(cfg.Backend),
 		createStartupLogger(ctx, cfg, globalCfg, sources, projectEnv),
 		cfg.HideGit,
 		preflightChecker,
@@ -545,7 +545,7 @@ func CreateOneShotRunner(
 	}
 	deps := createProviderDeps(ctx, cfg, currentDateTimeGetter)
 	migrator := createSpecSlugMigrator(cfg, currentDateTimeGetter)
-	cl, executionChecker, clErr := createContainerDeps(ctx, currentDateTimeGetter)
+	cl, executionChecker, clErr := createContainerDeps(ctx, cfg.Backend, currentDateTimeGetter)
 	if clErr != nil {
 		return &errOneShotRunner{err: errors.Wrap(ctx, clErr, "containerlock")}
 	}
@@ -603,7 +603,7 @@ func CreateOneShotRunner(
 			deps.prMerger,
 			currentDateTimeGetter,
 			n,
-			createContainerCounter(),
+			createContainerCounter(cfg.Backend),
 			cl,
 			executionChecker,
 			osDirtyFileChecker,
@@ -669,14 +669,15 @@ func CreateSpecGenerator(
 		cfg.EffectiveHideGit(),
 	)
 	return generator.NewSpecGenerator(
-		executor.NewDockerExecutor(
+		createExecutor(
+			cfg.Backend,
 			specGenPolicy,
 			cfg.Model,
 			cfg.ParsedMaxPromptDuration(),
 			currentDateTimeGetter,
 			formatter.NewFormatter(currentDateTimeGetter),
 		),
-		executor.NewDockerExecutionChecker(currentDateTimeGetter),
+		createExecutionChecker(cfg.Backend, currentDateTimeGetter),
 		cfg.Prompts.InboxDir,
 		cfg.Prompts.CompletedDir,
 		cfg.Specs.InboxDir,
@@ -727,8 +728,54 @@ func CreateWatcher(
 	)
 }
 
-// createContainerCounter returns a ContainerCounter backed by docker ps.
-func createContainerCounter() executor.ContainerCounter {
+// createExecutor returns the executor for the configured backend. Docker is the
+// default; backend: local returns the in-process subprocess executor, which needs
+// no launch policy (no image / mounts / hide-git).
+func createExecutor(
+	backend config.Backend,
+	policy launchpolicy.Policy,
+	model string,
+	maxPromptDuration time.Duration,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	fmtr formatter.Formatter,
+) executor.Executor {
+	if backend == config.BackendLocal {
+		return executor.NewLocalSubprocessExecutor(
+			model,
+			maxPromptDuration,
+			currentDateTimeGetter,
+			fmtr,
+		)
+	}
+	return executor.NewDockerExecutor(policy, model, maxPromptDuration, currentDateTimeGetter, fmtr)
+}
+
+// createExecutionChecker returns the liveness checker for the configured backend.
+func createExecutionChecker(
+	backend config.Backend,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+) executor.ExecutionChecker {
+	if backend == config.BackendLocal {
+		return executor.NewLocalSubprocessExecutionChecker(currentDateTimeGetter)
+	}
+	return executor.NewDockerExecutionChecker(currentDateTimeGetter)
+}
+
+// createExecutionStopper returns the stopper for the configured backend.
+func createExecutionStopper(backend config.Backend) executor.ExecutionStopper {
+	if backend == config.BackendLocal {
+		return executor.NewLocalSubprocessExecutionStopper()
+	}
+	return executor.NewDockerExecutionStopper()
+}
+
+// createContainerCounter returns a ContainerCounter for the configured backend.
+// backend: local uses a noop counter (no docker ps) since it spawns no containers;
+// docker is backed by docker ps.
+func createContainerCounter(backend config.Backend) executor.ContainerCounter {
+	if backend == config.BackendLocal {
+		return executor.NewNoopContainerCounter()
+	}
 	return executor.NewDockerContainerCounter(subproc.NewRunner())
 }
 
@@ -759,7 +806,11 @@ func createStatusChecker(
 		lock.FilePath("."),
 		serverPort,
 		promptManager,
-		createContainerCounter(),
+		// backend: docker regardless of cfg — createStatusChecker backs the
+		// `dark-factory status` CLI display, not the daemon execution runtime, and
+		// has no cfg in scope. Under backend: local, `dark-factory status` may still
+		// attempt `docker ps` (out of scope for AC 9, which covers the daemon runtime).
+		createContainerCounter(config.BackendDocker),
 		EffectiveMaxContainers(projectMax, globalCfg.MaxContainers),
 		dirtyFileThreshold,
 		currentDateTimeGetter,
@@ -770,13 +821,14 @@ func createStatusChecker(
 // createContainerDeps creates the container lock and checker used for the count-and-start window.
 func createContainerDeps(
 	ctx context.Context,
+	backend config.Backend,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) (containerlock.ContainerLock, executor.ExecutionChecker, error) {
 	cl, err := containerlock.NewContainerLock(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	return cl, executor.NewDockerExecutionChecker(currentDateTimeGetter), nil
+	return cl, createExecutionChecker(backend, currentDateTimeGetter), nil
 }
 
 // createAutoCompleter creates a spec.AutoCompleter with the given parameters.
@@ -861,6 +913,7 @@ func buildProcessorConfig(
 			cfg.Prompts.CompletedDir,
 			cfg.Prompts.LogDir,
 		},
+		Backend:                cfg.Backend,
 		ContainerImage:         cfg.ContainerImage,
 		Model:                  cfg.Model,
 		ClaudeDir:              cfg.ResolvedClaudeDir(),
@@ -906,6 +959,7 @@ type ProcessorConfig struct {
 	PromptDirPrefixes  []string
 
 	// Container
+	Backend        config.Backend
 	ContainerImage string
 	Model          string
 	ClaudeDir      string
@@ -1028,7 +1082,8 @@ func CreateProcessor(
 		cfg.GitconfigFile,
 		cfg.EffectiveHideGit(),
 	)
-	exec := executor.NewDockerExecutor(
+	exec := createExecutor(
+		cfg.Backend,
 		processorPolicy,
 		cfg.Model,
 		cfg.MaxPromptDuration,

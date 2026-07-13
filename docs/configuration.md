@@ -176,14 +176,16 @@ A channel is active if its env var resolves to a non-empty value. No env var = n
 ## Container
 
 ```yaml
+backend: docker    # docker (default) | local
 containerImage: "docker.io/bborbe/claude-yolo:v0.11.1"
 model: "claude-sonnet-4-6"
 ```
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `containerImage` | `docker.io/bborbe/claude-yolo:v0.11.1` | Docker image for YOLO execution |
-| `model` | `claude-sonnet-4-6` | Claude model used inside the container |
+| `backend` | `docker` | Execution backend. `docker` runs each LLM step in a claude-yolo container; `local` runs `claude` as an in-process subprocess in cwd — no docker daemon required, for already-isolated single-tenant pods only (`containerImage` is ignored). See [execution-backends.md](execution-backends.md#the-local-backend-backend-local). |
+| `containerImage` | `docker.io/bborbe/claude-yolo:v0.11.1` | Docker image for YOLO execution (`backend: docker` only) |
+| `model` | `claude-sonnet-4-6` | Claude model used by the agent |
 
 ## Global Config
 

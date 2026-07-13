@@ -46,6 +46,18 @@ No caller package changes — `pkg/runner`, `pkg/promptresumer`, `pkg/processor`
 
 `backend: local` runs `claude` (and each prompt's Definition-of-Done commands) as a **local subprocess in the current working directory** — no `docker run`, no bind mounts, no nested container. It is selected with the `backend` config field (default `docker`) via global config, project `.dark-factory.yaml`, or `--set backend=local`.
 
+Enable it in `.dark-factory.yaml`:
+
+```yaml
+backend: local    # docker (default) | local
+```
+
+…or per-run without editing config (same precedence as `hideGit` / `maxContainers`: default ← global ← project ← `--set`):
+
+```bash
+dark-factory run --set backend=local
+```
+
 **Trust boundary.** The local backend runs `claude` with the **full credentials and filesystem of the dark-factory process** — there is no container sandbox around the agent. This is acceptable **only** because the intended caller — an already-isolated, single-tenant, ephemeral pod such as the `github-dark-factory-agent` Job — **is** the isolation boundary. The pod is the container; dark-factory does not add a second one.
 
 **MUST NOT.** Never enable `backend: local` on a shared, multi-tenant, or developer host: it exposes that host's credentials and filesystem to whatever the prompt content instructs `claude` to do. The feature defaults to `docker`, never auto-enables, and does **not** auto-detect "am I inside a container" — the operator makes an explicit, documented choice.

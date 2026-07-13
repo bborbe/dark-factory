@@ -25,6 +25,13 @@ import (
 // runHealthCheckLoop runs periodic container health checks every interval.
 // It checks prompts in executing state and specs in generating state.
 // Returns nil when ctx is cancelled (clean shutdown).
+// skipContainerReconcile is true under backend: local, where the "container gone
+// → reset to approved" reconciliation must be a no-op: a local subprocess runs
+// synchronously in-process and dies with the daemon (no orphan container to
+// reconcile), and localSubprocessExecutionChecker.IsRunning always returns false,
+// so reconciling would wrongly reset in-flight in-process generation/execution
+// mid-run. Restart recovery is instead handled by the resumer's
+// ErrReattachUnsupported re-queue path (spec 104).
 func runHealthCheckLoop(
 	ctx context.Context,
 	interval time.Duration,
@@ -37,6 +44,7 @@ func runHealthCheckLoop(
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	maxPromptDuration time.Duration,
 	stopper executor.ExecutionStopper,
+	skipContainerReconcile bool,
 ) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -46,10 +54,10 @@ func runHealthCheckLoop(
 			return nil
 		case <-ticker.C:
 			slog.Debug("running container health check")
-			if err := checkExecutingPrompts(ctx, inProgressDir, checker, mgr, n, projectName, maxPromptDuration, stopper, currentDateTimeGetter); err != nil {
+			if err := checkExecutingPrompts(ctx, inProgressDir, checker, mgr, n, projectName, maxPromptDuration, stopper, currentDateTimeGetter, skipContainerReconcile); err != nil {
 				slog.Warn("health check for executing prompts failed", "error", err)
 			}
-			if err := checkGeneratingSpecs(ctx, specsInProgressDir, checker, currentDateTimeGetter, projectName); err != nil {
+			if err := checkGeneratingSpecs(ctx, specsInProgressDir, checker, currentDateTimeGetter, projectName, skipContainerReconcile); err != nil {
 				slog.Warn("health check for generating specs failed", "error", err)
 			}
 		}
@@ -69,7 +77,15 @@ func checkExecutingPrompts(
 	maxPromptDuration time.Duration,
 	stopper executor.ExecutionStopper,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	skipContainerReconcile bool,
 ) error {
+	// backend: local — no orphan containers to reconcile; a local subprocess dies
+	// with the daemon and IsRunning always returns false, so reconciling would
+	// wrongly reset in-flight in-process execution mid-run. Restart recovery is
+	// handled by the resumer's ErrReattachUnsupported re-queue path (spec 104).
+	if skipContainerReconcile {
+		return nil
+	}
 	entries, err := os.ReadDir(inProgressDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -239,7 +255,16 @@ func checkGeneratingSpecs(
 	checker executor.ExecutionChecker,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 	projectName string,
+	skipContainerReconcile bool,
 ) error {
+	// backend: local — no orphan generation containers to reconcile; the generation
+	// subprocess dies with the daemon and IsRunning always returns false, so
+	// reconciling would wrongly reset in-flight in-process spec generation mid-run.
+	// Restart recovery is handled by the resumer's ErrReattachUnsupported re-queue
+	// path (spec 104).
+	if skipContainerReconcile {
+		return nil
+	}
 	entries, err := os.ReadDir(specsInProgressDir)
 	if err != nil {
 		if os.IsNotExist(err) {

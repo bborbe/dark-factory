@@ -44,6 +44,35 @@ func CheckExecutingPromptsForTest(
 		maxPromptDuration,
 		stopper,
 		currentDateTimeGetter,
+		false,
+	)
+}
+
+// CheckExecutingPromptsSkipForTest exposes checkExecutingPrompts with an explicit
+// skipContainerReconcile flag for external test packages (backend: local path).
+func CheckExecutingPromptsSkipForTest(
+	ctx context.Context,
+	inProgressDir string,
+	checker executor.ExecutionChecker,
+	mgr PromptManager,
+	n notifier.Notifier,
+	projectName string,
+	maxPromptDuration time.Duration,
+	stopper executor.ExecutionStopper,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	skipContainerReconcile bool,
+) error {
+	return checkExecutingPrompts(
+		ctx,
+		inProgressDir,
+		checker,
+		mgr,
+		n,
+		projectName,
+		maxPromptDuration,
+		stopper,
+		currentDateTimeGetter,
+		skipContainerReconcile,
 	)
 }
 
@@ -61,6 +90,27 @@ func CheckGeneratingSpecsForTest(
 		checker,
 		currentDateTimeGetter,
 		projectName,
+		false,
+	)
+}
+
+// CheckGeneratingSpecsSkipForTest exposes checkGeneratingSpecs with an explicit
+// skipContainerReconcile flag for external test packages (backend: local path).
+func CheckGeneratingSpecsSkipForTest(
+	ctx context.Context,
+	specsInProgressDir string,
+	checker executor.ExecutionChecker,
+	currentDateTimeGetter libtime.CurrentDateTimeGetter,
+	projectName string,
+	skipContainerReconcile bool,
+) error {
+	return checkGeneratingSpecs(
+		ctx,
+		specsInProgressDir,
+		checker,
+		currentDateTimeGetter,
+		projectName,
+		skipContainerReconcile,
 	)
 }
 
@@ -90,5 +140,6 @@ func RunHealthCheckLoopForTest(
 		currentDateTimeGetter,
 		maxPromptDuration,
 		stopper,
+		false,
 	)
 }

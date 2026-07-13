@@ -95,6 +95,7 @@ var _ = Describe("Runner", func() {
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 			nil,   // healthcheckGate: no gate in tests
+			false, // skipContainerReconcile
 		)
 	}
 
@@ -383,6 +384,7 @@ var _ = Describe("Runner", func() {
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 			nil,   // healthcheckGate: no gate in tests
+			false, // skipContainerReconcile
 		)
 
 		runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -451,6 +453,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				false, // skipContainerReconcile
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -669,6 +672,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				false, // skipContainerReconcile
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -752,6 +756,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				false, // skipContainerReconcile
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -845,6 +850,7 @@ var _ = Describe("Runner", func() {
 					nil,   // preflightChecker: no preflight in tests
 					nil,   // logWriter: no file in tests
 					nil,   // healthcheckGate: no gate in tests
+					false, // skipContainerReconcile
 				)
 
 				runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -934,6 +940,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				false, // skipContainerReconcile
 			)
 
 			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
@@ -997,6 +1004,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				false, // skipContainerReconcile
 			)
 		}
 
@@ -1307,9 +1315,10 @@ var _ = Describe("Runner", func() {
 				nil, // containerStopper
 				nil, // startupLogger
 				hideGit,
-				nil, // preflightChecker
-				nil, // logWriter
-				nil, // healthcheckGate
+				nil,   // preflightChecker
+				nil,   // logWriter
+				nil,   // healthcheckGate
+				false, // skipContainerReconcile
 			)
 		}
 
@@ -1580,8 +1589,9 @@ var _ = Describe("Runner", func() {
 				nil,   // startupLogger
 				false, // hideGit
 				preflightChecker,
-				nil, // logWriter
-				nil, // healthcheckGate
+				nil,   // logWriter
+				nil,   // healthcheckGate
+				false, // skipContainerReconcile
 			)
 		}
 
@@ -1669,6 +1679,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker
 				nil,   // logWriter
 				gate,
+				false, // skipContainerReconcile
 			)
 		}
 

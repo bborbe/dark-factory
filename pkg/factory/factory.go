@@ -504,6 +504,7 @@ func CreateRunner(
 		preflightChecker,
 		logWriter,
 		healthcheckGate,
+		cfg.Backend == config.BackendLocal,
 	)
 }
 

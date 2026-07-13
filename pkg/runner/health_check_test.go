@@ -674,6 +674,111 @@ var _ = Describe("CheckGeneratingSpecs", func() {
 	})
 })
 
+var _ = Describe("skipContainerReconcile (backend: local)", func() {
+	var (
+		tempDir            string
+		inProgressDir      string
+		specsInProgressDir string
+		checker            *mocks.ExecutionChecker
+		mgr                *mocks.RunnerPromptManager
+		n                  *mocks.Notifier
+		ctx                context.Context
+		cancel             context.CancelFunc
+		currentDateTime    libtime.CurrentDateTimeGetter
+	)
+
+	BeforeEach(func() {
+		var err error
+		tempDir, err = os.MkdirTemp("", "health-check-skip-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		inProgressDir = filepath.Join(tempDir, "in-progress")
+		specsInProgressDir = filepath.Join(tempDir, "specs-in-progress")
+		Expect(os.MkdirAll(inProgressDir, 0750)).To(Succeed())
+		Expect(os.MkdirAll(specsInProgressDir, 0750)).To(Succeed())
+
+		checker = &mocks.ExecutionChecker{}
+		mgr = &mocks.RunnerPromptManager{}
+		n = &mocks.Notifier{}
+		currentDateTime = libtime.NewCurrentDateTime()
+
+		ctx, cancel = context.WithCancel(context.Background())
+	})
+
+	AfterEach(func() {
+		cancel()
+		_ = os.RemoveAll(tempDir)
+	})
+
+	Context("executing prompt whose IsRunning returns false", func() {
+		var path string
+
+		BeforeEach(func() {
+			path = writePromptFile(inProgressDir, "001-inflight.md", "executing", "local-inproc")
+			pf := prompt.NewPromptFile(
+				path,
+				prompt.Frontmatter{Status: "executing", Container: "local-inproc"},
+				nil,
+				currentDateTime,
+			)
+			mgr.LoadReturns(pf, nil)
+			checker.IsRunningReturns(false, nil)
+		})
+
+		It("is NOT reset when skip=true (backend: local — no IsRunning call)", func() {
+			err := runner.CheckExecutingPromptsSkipForTest(
+				ctx, inProgressDir, checker, mgr, n, "proj", 0, nil, currentDateTime, true,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			// No reconciliation at all: IsRunning never called, nothing notified.
+			Expect(checker.IsRunningCallCount()).To(Equal(0))
+			Expect(n.NotifyCallCount()).To(Equal(0))
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: executing"))
+		})
+
+		It("IS reset when skip=false (backend: docker — existing behavior)", func() {
+			err := runner.CheckExecutingPromptsSkipForTest(
+				ctx, inProgressDir, checker, mgr, n, "proj", 0, nil, currentDateTime, false,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(checker.IsRunningCallCount()).To(Equal(1))
+			Expect(n.NotifyCallCount()).To(Equal(1))
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+	})
+
+	Context("generating spec whose IsRunning returns false", func() {
+		var path string
+
+		BeforeEach(func() {
+			path = writeSpecFile(specsInProgressDir, "001-genspec.md", "generating")
+			checker.IsRunningReturns(false, nil)
+		})
+
+		It("is NOT reset when skip=true (backend: local — no IsRunning call)", func() {
+			err := runner.CheckGeneratingSpecsSkipForTest(
+				ctx, specsInProgressDir, checker, currentDateTime, "proj", true,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(checker.IsRunningCallCount()).To(Equal(0))
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: generating"))
+		})
+
+		It("IS reset when skip=false (backend: docker — existing behavior)", func() {
+			err := runner.CheckGeneratingSpecsSkipForTest(
+				ctx, specsInProgressDir, checker, currentDateTime, "proj", false,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(checker.IsRunningCallCount()).To(Equal(1))
+			content, _ := os.ReadFile(path)
+			Expect(string(content)).To(ContainSubstring("status: approved"))
+		})
+	})
+})
+
 var _ = Describe("RunHealthCheckLoop", func() {
 	var (
 		tempDir         string

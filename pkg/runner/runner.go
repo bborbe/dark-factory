@@ -66,34 +66,36 @@ func NewRunner(
 	preflightChecker preflight.Checker,
 	logWriter io.Writer,
 	healthcheckGate healthcheckgate.Gate,
+	skipContainerReconcile bool,
 ) Runner {
 	return &runner{
-		inboxDir:              inboxDir,
-		inProgressDir:         inProgressDir,
-		completedDir:          completedDir,
-		logDir:                logDir,
-		specsInboxDir:         specsInboxDir,
-		specsInProgressDir:    specsInProgressDir,
-		specsCompletedDir:     specsCompletedDir,
-		specsLogDir:           specsLogDir,
-		promptManager:         promptManager,
-		locker:                locker,
-		watcher:               watcher,
-		processor:             processor,
-		server:                server,
-		specWatcher:           specWatcher,
-		projectName:           projectName,
-		executionChecker:      executionChecker,
-		notifier:              n,
-		slugMigrator:          slugMigrator,
-		currentDateTimeGetter: currentDateTimeGetter,
-		maxPromptDuration:     maxPromptDuration,
-		executionStopper:      executionStopper,
-		startupLogger:         startupLogger,
-		hideGit:               hideGit,
-		preflightChecker:      preflightChecker,
-		logWriter:             logWriter,
-		healthcheckGate:       healthcheckGate,
+		inboxDir:               inboxDir,
+		inProgressDir:          inProgressDir,
+		completedDir:           completedDir,
+		logDir:                 logDir,
+		specsInboxDir:          specsInboxDir,
+		specsInProgressDir:     specsInProgressDir,
+		specsCompletedDir:      specsCompletedDir,
+		specsLogDir:            specsLogDir,
+		promptManager:          promptManager,
+		locker:                 locker,
+		watcher:                watcher,
+		processor:              processor,
+		server:                 server,
+		specWatcher:            specWatcher,
+		projectName:            projectName,
+		executionChecker:       executionChecker,
+		notifier:               n,
+		slugMigrator:           slugMigrator,
+		currentDateTimeGetter:  currentDateTimeGetter,
+		maxPromptDuration:      maxPromptDuration,
+		executionStopper:       executionStopper,
+		startupLogger:          startupLogger,
+		hideGit:                hideGit,
+		preflightChecker:       preflightChecker,
+		logWriter:              logWriter,
+		healthcheckGate:        healthcheckGate,
+		skipContainerReconcile: skipContainerReconcile,
 	}
 }
 
@@ -125,6 +127,12 @@ type runner struct {
 	preflightChecker      preflight.Checker
 	logWriter             io.Writer
 	healthcheckGate       healthcheckgate.Gate
+	// skipContainerReconcile disables the health-check "container gone → reset to
+	// approved" reconciliation under backend: local (spec 104 follow-up), where the
+	// local subprocess dies with the daemon and there is no orphan container to
+	// reconcile; restart recovery is handled by the resumer's ErrReattachUnsupported
+	// re-queue path instead.
+	skipContainerReconcile bool
 }
 
 // Run executes the main processing loop:
@@ -315,6 +323,7 @@ func (r *runner) healthCheckLoop(ctx context.Context) error {
 		r.currentDateTimeGetter,
 		r.maxPromptDuration,
 		r.executionStopper,
+		r.skipContainerReconcile,
 	)
 }
 

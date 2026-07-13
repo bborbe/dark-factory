@@ -25,6 +25,7 @@ specs:
   inProgressDir: specs/in-progress
   completedDir: specs/completed
   logDir: specs/log
+backend: docker              # docker (default) | local — run claude in-process instead of docker (agent pods only; see docs/execution-backends.md)
 containerImage: docker.io/bborbe/claude-yolo:v0.5.4
 model: claude-sonnet-4-6
 maxContainers: 0

@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs: document the `backend: docker|local` config field in the config reference — add it to docs/configuration.md (Container section), example/.dark-factory.yaml, and a copy-pasteable enable snippet in docs/execution-backends.md (the field shipped in v0.192.0 but was missing from the config docs)
+
 ## v0.192.0
 
 - feat: add layered config field backend (docker|local, default docker) resolvable via global/project/--set with backendSource reporting (spec 104 prompt 1)

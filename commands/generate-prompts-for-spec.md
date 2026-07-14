@@ -10,14 +10,14 @@ Invoke the `prompt-creator` agent to generate prompts from the approved spec.
 
 **Context to pass to the agent:**
 
-- Spec file path: `/workspace/$ARGUMENTS` (the repo root is mounted at `/workspace`).
-- Output directory: `/workspace/prompts/` (inbox — not `prompts/in-progress/`, dark-factory moves files on approve).
+- Spec file path: `$ARGUMENTS` — a path **relative to the repo root, which is the current working directory**. Do NOT prefix it with `/workspace`: that absolute path is the repo mount only under the **docker** backend; under **backend:local** the repo is the checked-out worktree (the cwd) and `/workspace` is an empty, unrelated dir. Relative paths resolve to the repo root in both backends.
+- Output directory: `prompts/` (inbox — relative to the repo root/cwd; not `prompts/in-progress/`, dark-factory moves files on approve).
 - Mode: **non-interactive** (daemon-triggered). The agent MUST NOT call `AskUserQuestion`. Any ambiguity that would otherwise prompt the user must be resolved from the spec content alone — if the spec is genuinely under-specified, the agent should still produce the best-effort decomposition and surface the open questions as comments inside the generated prompts (so the human reviewer catches them at audit time).
-- The agent has full access to `/workspace/` for reading source files to verify signatures, look up library APIs, and discover existing patterns. It MUST do so before writing requirements — see the agent's own rules.
+- The agent has full access to the repo (the current working directory) for reading source files to verify signatures, look up library APIs, and discover existing patterns. It MUST do so before writing requirements — see the agent's own rules.
 
 **Expected output:** the agent decides how many prompts to produce based on the spec (see the agent's `<workflow>` step 7-10 and `Sizing Guide`). Typical: 1 for a config change, 2-3 for a single feature, 4-6 for a major feature. Multi-prompt outputs use `1-`, `2-`, `3-` filename prefixes for execution order. Do NOT post-process or merge the agent's output.
 
-Pass `/workspace/$ARGUMENTS` to the prompt-creator agent and wait for its completion.
+Pass `$ARGUMENTS` (the repo-root-relative spec path) to the prompt-creator agent and wait for its completion.
 
 **Then run a single audit pass:** for each prompt file the creator wrote, invoke the `prompt-auditor` agent on that path. Collect each audit report. Do NOT retry, rewrite, or merge prompts based on findings — the human reviewer owns that decision.
 

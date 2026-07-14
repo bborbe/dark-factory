@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix(generate-prompts-for-spec): use repo-root-relative paths instead of hardcoded `/workspace`. The command told the prompt-creator agent that the repo root is `/workspace` — true only under the **docker** backend (which mounts the repo there). Under **backend:local** the repo is the checked-out worktree (the cwd) and `/workspace` is an empty unrelated dir, so generation wrote the prompt to `/workspace/prompts/` with `/workspace` paths, invisible to the daemon watching the worktree → the daemon idled and the spec never advanced. Paths are now cwd-relative (`$ARGUMENTS`, `prompts/`), which resolve to the repo root in both backends (docker cwd is `/workspace` via the mount; backend:local cwd is the worktree).
+
 ## v0.192.3
 
 - fix: skip the daemon health-check container-gone reconciliation under backend: local — localSubprocessExecutionChecker.IsRunning is always false, so the health-check was resetting in-flight in-process spec-generation/prompt-execution mid-run; restart recovery is already handled by the resumer's ErrReattachUnsupported re-queue (spec 104 follow-up)

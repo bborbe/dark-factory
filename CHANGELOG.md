@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.192.6
 
 - fix(security): bump `google.golang.org/grpc` v1.81.1 → v1.82.1 (GHSA-hrxh-6v49-42gf, CVSS 8.8) — clears the OSV-Scanner precommit gate.
 - fix(guide-path-resolution): stop spec-creator/prompt-creator escalating to a filesystem-wide `find`. The agents referenced authoring rules as bare `docs/rules/*.md` paths, which resolve to nothing on the HOST (cwd = the target project's worktree, not the dark-factory repo) → the agent fell back to `find / -name spec-writing.md`, an unbounded whole-disk scan that stalled silently for ~12 min. Both agents now carry an explicit dual-context path (host `~/.claude/plugins/marketplaces/dark-factory/docs/rules/`, container `/home/node/.claude/…`) plus a "never run a filesystem-wide find/bfs" guard. Also made `read-guides.md` glob `docs/**/*.md` recursively so `docs/rules/*.md` is actually read.

@@ -7,11 +7,11 @@ Read all dark-factory documentation to build full context. Use this before writi
 
 ## Step 1: Read dark-factory docs
 
-Glob `~/.claude/plugins/marketplaces/dark-factory/docs/*.md` and Read every file returned. These cover spec/prompt structure, lifecycle, running, scenarios, CLAUDE.md guidance, init, YOLO setup, configuration, DoD, and architecture.
+Glob `~/.claude/plugins/marketplaces/dark-factory/docs/**/*.md` (recursive — `**` reaches `docs/rules/*.md` where the authoring rules live) and Read every file returned. These cover spec/prompt structure, lifecycle, running, scenarios, CLAUDE.md guidance, init, YOLO setup, configuration, DoD, and architecture.
 
 ## Step 2: Read project docs
 
-Glob `docs/*.md` from the current working directory. If results returned, Read each. If empty, skip (project has no domain docs yet).
+Glob `docs/**/*.md` from the current working directory (recursive — matches nested project docs too). If results returned, Read each. If empty, skip (project has no domain docs yet).
 
 These contain project-specific domain knowledge (Kafka schemas, task formats, controller design) that specs/prompts should reference instead of inlining.
 

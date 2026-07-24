@@ -11,11 +11,12 @@ The headline reason to use prompts/specs: **safe unattended execution** in a YOL
 2. **Read the relevant guide before starting** — every time, not from memory:
    - Choosing direct vs prompt vs spec → read [docs/choosing-a-flow.md](docs/choosing-a-flow.md)
    - Architecture & flow → read [docs/architecture-flow.md](docs/architecture-flow.md)
-   - Writing a spec → read [docs/spec-writing.md](docs/spec-writing.md)
-   - Writing prompts → read [docs/prompt-writing.md](docs/prompt-writing.md)
+   - Writing a spec → read [docs/rules/spec-writing.md](docs/rules/spec-writing.md)
+   - Writing prompts → read [docs/rules/prompt-writing.md](docs/rules/prompt-writing.md)
    - Configuration → read [docs/configuration.md](docs/configuration.md)
    - Running prompts → read [docs/running.md](docs/running.md)
-   - Running scenarios → read [docs/scenario-writing.md](docs/scenario-writing.md)
+   - Writing scenarios → read [docs/rules/scenario-writing.md](docs/rules/scenario-writing.md)
+   - Running scenarios → read [docs/rules/scenario-execution.md](docs/rules/scenario-execution.md)
 
 3. **Follow the guide step by step.** Do not skip audit steps.
 

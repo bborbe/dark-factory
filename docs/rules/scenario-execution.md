@@ -135,11 +135,15 @@ If you abort scenario 002 mid-walk and don't clean the GH PR, the NEXT walk of 0
 | Helper batch | 013 (42 sub-scenarios) | ≈30 s | Run-and-glance; report line is enough |
 | Pure CLI | 011 | < 1 min | Light babysit; assertions are mechanical |
 | Single YOLO + CLI | 010, 012 | 1–2 min | Watch container start; otherwise hands-off |
-| LLM-driving | 001, 003, 006, 019 | 25 s – 2.5 min each | Watch the prompt log scroll; intervene only on hang |
+| LLM-driving (execute only) | 001, 003, 006 | 25 s – 2.5 min each | Watch the prompt log scroll; intervene only on hang |
+| LLM-driving (generate + audit) | 019 | **up to ~8 min** | See the 019 note below — do NOT size a wait loop off the older "≈2.5 min" figure |
 | GitHub-touching | 002 | 1–2 min + manual GH cleanup | Watch + remember to clean up the PR after |
 | Worktree gates | 021, 022 | 30 s – 1 min | Light babysit |
+| backend:local | 024 | < 1 min | No container spawns at all — that IS the assertion |
 
-Total full gate: ~30 min wall, ~$0.60 LLM cost. Plan accordingly — do not start the gate when you have 10 min before another commitment.
+Total full gate: ~45–60 min wall, ~$1 LLM cost (measured 2026-07-24 on claude-yolo v0.14.0). Plan accordingly — do not start the gate when you have 10 min before another commitment.
+
+**019 runs far longer than the rest.** Its generate+audit phase alone was observed at ~6 min. If your wait loop expires just as `auto-approve: approved generated prompt` is logged, the daemon dies with the prompt queued-but-unexecuted — which looks exactly like the historical "executor never picked up the prompt" bug. It is not. Re-run `dark-factory run` in the same sandbox and the queued prompt completes normally.
 
 Babysitting is not optional for LLM-driving scenarios: a stuck Claude run will sit at full token cost until you notice and `Ctrl-C` it. If you cannot babysit, do not start.
 
@@ -156,6 +160,8 @@ Babysitting is not optional for LLM-driving scenarios: a stuck Claude run will s
 | Backgrounded daemon (e.g. scenario 022's `--set hideGit=true` check) leaves zombie process | `wait $PID` hangs in next command | Use `kill $PID 2>/dev/null; wait $PID 2>/dev/null` after the `sleep` |
 | Scenario assertion looks for original prompt filename, but `dark-factory prompt approve` renumbered it | `ls prompts/in-progress/<original-slug>.md` fails | `find prompts/in-progress -name '*<slug>*'` or `grep -l <slug> prompts/in-progress/*.md` |
 | Chained `&& echo OK || echo FAIL` skips middle commands when one early link fails | Later checks silently absent from output | Use one Bash invocation per assertion when capturing pass/fail per-check |
+| Sandbox vanishes the instant Setup returns | `fatal: Unable to read current working directory: No such file or directory`, then every assertion fails at once | Was a `trap ... EXIT` registered *inside* `setup_sandbox_copy` — in **zsh** an in-function trap is function-local and fires on function return, not shell exit. Fixed 2026-07-24 by registering the trap once at source time. If you see this on an older checkout, update `lib.sh` or set the sandbox up by hand |
+| Assertion greps for wording the binary no longer emits | Scenario reports FAIL while the behavior is provably correct | Read the actual output before believing a FAIL. Fix the scenario, not the binary (see "expected noise" above — same principle). Two were found this way on 2026-07-24: 013-G (`invalid` vs `does not match required pattern`) and 011 (unquoted-timestamp regex vs YAML-quoted `rejected: "…"`) |
 
 ## Per-scenario quick reference
 
@@ -171,9 +177,10 @@ Compact map. Each row is "what does this scenario actually exercise + watch-for"
 | 011 | reject-spec cascade (pure CLI) | `scenario_setup` | `dark-factory spec reject` cascades to linked prompts | sandbox EXIT trap |
 | 012 | `--skip-preflight` flag | `setup_sandbox_copy` | preflight skipped, first prompt runs immediately | sandbox EXIT trap |
 | 013 | config layering (default<global<project<arg) | `run-013-all.sh` | "Result: 42 passed, 0 failed" | helper handles |
-| 019 | spec-078 auto-approve happy path | `setup_sandbox_copy` | spec auto-approves when prompt completes; ≈2.5 min | sandbox EXIT trap |
+| 019 | spec-078 auto-approve happy path | `setup_sandbox_copy` | generate → audit → auto-approve → execute; **up to ~8 min**, most of it before the first container edit | sandbox EXIT trap |
 | 021 | spec-084 daemon worktree gate | `setup_sandbox_copy` | worktree workflow refuses unsafe configs at daemon start | sandbox EXIT trap |
 | 022 | spec-084 run worktree gate | `setup_sandbox_copy` | same gate enforced on `dark-factory run` (one-shot) | sandbox EXIT trap |
+| 024 | spec-104 backend:local fails closed | manual | `claude` removed from PATH → `claude not found on PATH`, and **zero** docker containers spawned | sandbox EXIT trap |
 
 ## When the gate is the wrong tool
 

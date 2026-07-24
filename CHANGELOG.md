@@ -10,6 +10,13 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix(scenarios): `helper/lib.sh` registered its sandbox-cleanup `trap ... EXIT` **inside** `scenario_setup` / `setup_sandbox_copy`. In zsh an in-function trap is function-local and fires when the function *returns*, so `$WORK_DIR` was deleted the instant setup finished — every helper-based scenario then died with `fatal: Unable to read current working directory` before running a single assertion, which reads like a dark-factory bug but is purely a harness artifact. The trap now registers once at source time (top level), which is global in both bash and zsh. Verified: sandbox survives during the run and is still cleaned up on shell exit, in both shells; scenario 001 passes end-to-end through the helper again.
+- fix(scenarios): 013 sub-scenario G asserted `grep -i "invalid"`, but the model validator's (correct) rejection message reads `--model value "…" does not match required pattern …` and never contains "invalid" — the assertion false-failed on working input validation. Now matches the real wording.
+- fix(scenarios): 011 asserted the reject timestamp with `^rejected: 2[0-9]{3}-`, but the field is written YAML-quoted (`rejected: "2026-07-24T21:02:28Z"`), so the regex false-failed on all rejected specs and prompts. Regex now tolerates the optional quote.
+- docs(scenarios): 019 claimed 60–120 s runtime; the generate+audit phase alone was observed at ~6 min (claude-yolo v0.14.0). Budget raised to ~8 min with a note that killing the daemon just as `auto-approve: approved generated prompt` lands leaves the prompt queued-but-unexecuted — indistinguishable from the historical "executor never picked up the prompt" bug, but fixed by simply re-running `dark-factory run` in the same sandbox.
+
 ## v0.192.7
 
 - chore(deps): bump default YOLO container image `docker.io/bborbe/claude-yolo` `v0.13.2` → `v0.14.0` (Claude Code `2.1.197` → `2.1.219`). Smoke-tested via `dark-factory healthcheck` (all probes pass, incl. headless `claude`) against the new image.

@@ -50,7 +50,9 @@ scenario_setup() {
   # Isolate global config: override HOME so ~/.dark-factory points into the sandbox.
   export HOME="$WORK_DIR/home"
   mkdir -p "$HOME/.dark-factory"
-  trap 'rm -rf "$WORK_DIR"' EXIT
+  # NOTE: no `trap ... EXIT` here — see the source-time trap at the bottom of this
+  # file. In zsh, a trap set inside a function is function-local and fires when the
+  # FUNCTION returns, which deleted $WORK_DIR out from under the running scenario.
   cd "$WORK_DIR" || exit 1
   git init -q .
   printf '%s' "$yaml" > .dark-factory.yaml
@@ -80,7 +82,8 @@ setup_sandbox_copy() {
     return 1
   fi
   WORK_DIR=$(mktemp -d)
-  trap 'rm -rf "$WORK_DIR"' EXIT
+  # NOTE: no `trap ... EXIT` here — see the source-time trap at the bottom of this
+  # file (zsh makes in-function traps function-local; it fired on return).
   cp -r "$sandbox_src" "$WORK_DIR/$subdir"
   cd "$WORK_DIR/$subdir" || exit 1
   printf '%s' "$yaml" > .dark-factory.yaml
@@ -185,3 +188,19 @@ scenario_done() {
   echo "Result: $PASS_COUNT passed, $FAIL_COUNT failed"
   [ "$FAIL_COUNT" -eq 0 ]
 }
+
+# --- sandbox cleanup trap (registered at SOURCE time, on purpose) --------------
+#
+# This must be registered here at top level, NOT inside scenario_setup /
+# setup_sandbox_copy. In zsh, `trap ... EXIT` set inside a function is
+# function-local: it runs when the FUNCTION returns, not when the shell exits.
+# That deleted $WORK_DIR the instant setup returned, so the very next command in
+# the scenario died with:
+#
+#     fatal: Unable to read current working directory: No such file or directory
+#
+# ...which reads like a dark-factory bug but is purely a harness artifact.
+# Sourcing this file happens at the caller's top level, so the trap below is
+# global in both bash and zsh. $WORK_DIR is resolved at trap time, so it cleans
+# up whichever sandbox the setup functions created (or nothing, if unset).
+trap 'rm -rf "${WORK_DIR:-}"' EXIT

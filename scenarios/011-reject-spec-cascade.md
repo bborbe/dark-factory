@@ -87,7 +87,7 @@ cat specs/rejected/099-throwaway-feature.md | head -10
 - [ ] `specs/in-progress/` does NOT contain `099-throwaway-feature.md`
 - [ ] `specs/rejected/099-throwaway-feature.md` exists (numeric prefix preserved)
 - [ ] Spec frontmatter has `status: rejected`
-- [ ] Spec frontmatter has `rejected:` matching regex `^rejected: 2[0-9]{3}-[01][0-9]-[0-3][0-9]T`
+- [ ] Spec frontmatter has `rejected:` matching regex `^rejected: "?2[0-9]{3}-[01][0-9]-[0-3][0-9]T` (the timestamp is written YAML-quoted, e.g. `rejected: "2026-07-24T21:02:28Z"` — the optional `"?` is required or the match false-negatives)
 - [ ] Spec frontmatter has `rejected_reason: scenario regression test`
 
 ### Linked prompts cascaded
@@ -99,7 +99,7 @@ ls prompts/in-progress/ prompts/rejected/
 
 - [ ] `prompts/in-progress/` does NOT contain either throwaway prompt
 - [ ] `prompts/rejected/` contains both `990-throwaway-feature-a.md` and `991-throwaway-feature-b.md`
-- [ ] Each rejected prompt's frontmatter has `status: rejected`, `rejected:` (RFC3339), and `rejectedReason: scenario regression test`
+- [ ] Each rejected prompt's frontmatter has `status: rejected`, `rejected:` (RFC3339, YAML-quoted — match `^rejected: "?2[0-9]{3}-`), and `rejectedReason: scenario regression test`
 
 ### List commands hide rejected by default; --all shows them
 

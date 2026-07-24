@@ -8,7 +8,7 @@ Validates that with `autoApprovePrompts: true`, the daemon audits each prompt pr
 
 Test repo: copy of `~/Documents/workspaces/dark-factory-sandbox`
 
-Note: this scenario performs real LLM calls (1 generate + 1 audit per generated prompt). Expect 60–120 s total runtime.
+Note: this scenario performs real LLM calls (1 generate + 1 audit per generated prompt). Budget **up to ~8 minutes** — the generate+audit phase alone has been observed at ~6 min (2026-07-24, claude-yolo v0.14.0), well past the 60–120 s this scenario originally claimed. Size any wait loop accordingly: killing the daemon at the moment `auto-approve: approved generated prompt` lands leaves the prompt queued-but-unexecuted, which looks like the historical "executor never picked up the prompt" bug but is just a premature kill. If that happens, re-run `dark-factory run` in the same sandbox to finish the queued prompt.
 
 ## Setup
 

@@ -173,10 +173,13 @@ timeout 5s /tmp/new-dark-factory run --model 'claude;rm -rf /' > run-g.log 2>&1 
 ### Expected G
 
 - [ ] Command exited non-zero
-- [ ] `run-g.log` contains `invalid characters` or similar validation error
+- [ ] `run-g.log` shows the model value was rejected by the validation pattern
 
 ```bash
-grep -i "invalid" run-g.log
+# The validator reports the offending value and the allowed pattern, e.g.
+#   error: --model value "claude;rm -rf /" does not match required pattern ^[a-zA-Z0-9._:/[\]-]{1,256}$
+# Match on that wording (NOT the literal word "invalid", which the message does not use).
+grep -E "does not match required pattern|--model value" run-g.log
 ```
 
 ## Scenario H: no global config file → defaults apply (no behavior change)

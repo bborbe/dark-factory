@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.192.8
 
 - fix(scenarios): `helper/lib.sh` registered its sandbox-cleanup `trap ... EXIT` **inside** `scenario_setup` / `setup_sandbox_copy`. In zsh an in-function trap is function-local and fires when the function *returns*, so `$WORK_DIR` was deleted the instant setup finished — every helper-based scenario then died with `fatal: Unable to read current working directory` before running a single assertion, which reads like a dark-factory bug but is purely a harness artifact. The trap now registers once at source time (top level), which is global in both bash and zsh. Verified: sandbox survives during the run and is still cleaned up on shell exit, in both shells; scenario 001 passes end-to-end through the helper again.
 - fix(scenarios): 013 sub-scenario G asserted `grep -i "invalid"`, but the model validator's (correct) rejection message reads `--model value "…" does not match required pattern …` and never contains "invalid" — the assertion false-failed on working input validation. Now matches the real wording.

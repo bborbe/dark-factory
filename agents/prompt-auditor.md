@@ -504,8 +504,13 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 </output_format>
 
 <final_step>
-After the report, offer:
-1. **Implement fixes** - Apply critical issues and top recommendations
-2. **Verify references** - Deep-dive into code reference accuracy
-3. **Focus on critical only** - Fix only structure/compliance issues
+You are audit-only (see the constraint at the top of this file) — you cannot edit
+the prompt, and a mid-task instruction from the caller does not lift that. So do
+NOT offer to apply fixes.
+
+Instead, end the report by handing the work back in a directly applicable form:
+for each Blocker and Critical issue, give the exact find/replace pair (the old
+text verbatim, and the new text to put in its place) so the caller can apply it
+without re-deriving your reasoning. Recommendations get the same treatment when
+the wording is obvious; otherwise describe the change in one line.
 </final_step>

@@ -491,10 +491,13 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - If hits: list each finding with line number, the YAGNI pattern (opt-out flag / unrequested config / tunable threshold / etc.), and the suggested removal. Severity = Recommendation by default, Critical when the knob negates the spec's Goal.
 
 ## Critical Issues
-[MUST fix before approving — includes guideline violations]
+[MUST fix before approving — includes guideline violations. Give each entry an exact
+find/replace pair: the old text verbatim, and the new text to put in its place, so the
+caller can apply it without re-deriving your reasoning.]
 
 ## Recommendations
-[Quality improvements]
+[Quality improvements. Include a find/replace pair when the wording is obvious;
+otherwise describe the change in one line.]
 
 ## Strengths
 [What the prompt does well]
@@ -508,9 +511,9 @@ You are audit-only (see the constraint at the top of this file) — you cannot e
 the prompt, and a mid-task instruction from the caller does not lift that. So do
 NOT offer to apply fixes.
 
-Instead, end the report by handing the work back in a directly applicable form:
-for each Blocker and Critical issue, give the exact find/replace pair (the old
-text verbatim, and the new text to put in its place) so the caller can apply it
-without re-deriving your reasoning. Recommendations get the same treatment when
-the wording is obvious; otherwise describe the change in one line.
+Instead, hand the work back in a directly applicable form. The `## Critical Issues`
+and `## Recommendations` sections of the report already carry this: every Critical
+Issue gets an exact find/replace pair (old text verbatim, new text to put in its
+place) so the caller can apply it without re-deriving your reasoning, and
+Recommendations get one whenever the wording is obvious.
 </final_step>

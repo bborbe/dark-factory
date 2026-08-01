@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: `prompt-auditor` no longer offers to apply fixes it cannot apply. The agent is constrained audit-only ("NEVER modify files"), but its `<final_step>` told it to offer "Implement fixes" — so every audit ended by proposing an action that, when accepted, the agent had to refuse. It now hands back exact find/replace pairs for each Blocker/Critical issue so the caller can apply them directly.
+
 ## v0.192.9
 
 - fix(docs): repair three dead links in `CLAUDE.md` left by the `docs/rules/` reorg (f6f9dde) — `spec-writing.md`, `prompt-writing.md`, and `scenario-writing.md` all moved under `docs/rules/`, and that commit updated every other referrer but missed the entry point agents read first. Every "read the relevant guide before starting" link in the mandatory-reading list 404'd. Also adds a separate link to `docs/rules/scenario-execution.md`: writing and running scenarios are different docs and only the authoring one was linked. A repo-wide relative-link sweep now reports zero broken markdown links.

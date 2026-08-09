@@ -10,6 +10,11 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: complete the `tools.env` migration — delete `tools.go` and pin every CLI-tool invocation to its `tools.env` version. `tools.env` and `include tools.env` were already in place, but `tools.go` was never removed, so 4 Makefile targets and all 48 `//go:generate` counterfeiter directives still resolved tool versions from `go.mod` via `go run -mod=mod`. Those are now `go run pkg@$(VERSION)` (Makefile) and `@v6.12.2` (directives), per `go-tools-versioning-guide.md` § Migration Steps.
+- fix: dropping `tools.go` removes its dependency pollution from `go.mod` (61 lines, zero pollution per the guide's verification grep). This also removes `github.com/go-git/go-git/v5`, which was only ever pulled in by the tool imports and was carrying GHSA-hc8v-wwc9-vgxm (CVSS 7.1) and GHSA-qgq7-7hm3-q39j (CVSS 6.3) — `make precommit`'s OSV scan was failing on master because of it.
+
 ## v0.192.10
 
 - fix: `prompt-auditor` no longer offers to apply fixes it cannot apply. The agent is constrained audit-only ("NEVER modify files"), but its `<final_step>` told it to offer "Implement fixes" — so every audit ended by proposing an action that, when accepted, the agent had to refuse. It now hands back exact find/replace pairs for each Blocker/Critical issue so the caller can apply them directly.

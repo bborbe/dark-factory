@@ -30,15 +30,20 @@ release:
   github:
     owner: bborbe
     name: dark-factory
-  # This workflow is triggered by `release: published`, so the GitHub Release
-  # already exists by the time goreleaser runs. `append` adds artifacts to it
-  # instead of trying to create a second one.
-  #
-  # This is the key difference from Seibert-Data/teamvault-cli, whose workflow is
-  # tag-triggered and lets goreleaser create the Release itself. Do NOT copy that
-  # shape here: every merge auto-tags, and publishing a cask per tag would defeat
-  # the human scenario gate. See docs/releasing-dark-factory.md.
-  mode: append
+
+  # `mode` governs the release NOTES only — it has nothing to do with artifacts.
+  # This workflow is triggered by `release: published`, so the Release already
+  # exists with notes taken from CHANGELOG.md by the promotion step. Keep them:
+  # `append` stacked goreleaser's generated commit list underneath on EVERY run,
+  # so three attempts at v0.193.0 left three copies in the body.
+  mode: keep-existing
+
+  # Retry safety. Assets are uploaded before the cask step, so a run that fails
+  # at the cask leaves them behind, and the next attempt dies with
+  # `422 Validation Failed [Code:already_exists]` — requiring the assets to be
+  # deleted by hand before any retry can work. This makes goreleaser delete and
+  # re-upload on 422 instead. THIS is the artifact-level setting; `mode` is not.
+  replace_existing_artifacts: true
 
 homebrew_casks:
   - name: dark-factory

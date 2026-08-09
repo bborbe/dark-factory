@@ -78,10 +78,10 @@ ensure:
 
 .PHONY: format
 format:
-	find . -type f -name 'go.mod' -not -path './vendor/*' -exec go run -mod=mod github.com/shoenig/go-modtool -w fmt "{}" \;
+	find . -type f -name 'go.mod' -not -path './vendor/*' -exec go run github.com/shoenig/go-modtool@$(GO_MODTOOL_VERSION) -w fmt "{}" \;
 	find . -type f -name '*.go' -not -path './vendor/*' -exec gofmt -w "{}" +
-	go run -mod=mod github.com/incu6us/goimports-reviser/v3 -project-name github.com/bborbe/dark-factory -format -excludes vendor ./...
-	find . -type d -name vendor -prune -o -type f -name '*.go' -print0 | xargs -0 -P 8 -n 50 go run -mod=mod github.com/segmentio/golines --max-len=100 -w
+	go run github.com/incu6us/goimports-reviser/v3@$(GOIMPORTS_REVISER_VERSION) -project-name github.com/bborbe/dark-factory -format -excludes vendor ./...
+	find . -type d -name vendor -prune -o -type f -name '*.go' -print0 | xargs -0 -P 8 -n 50 go run github.com/segmentio/golines@$(GOLINES_VERSION) --max-len=100 -w
 
 .PHONY: generate
 generate:
@@ -142,10 +142,10 @@ vulncheck:
 osv-scanner:
 	@if [ -f .osv-scanner.toml ]; then \
 		echo "Using .osv-scanner.toml"; \
-		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.1 --config .osv-scanner.toml --recursive .; \
+		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION) --config .osv-scanner.toml --recursive .; \
 	else \
 		echo "No config found, running default scan"; \
-		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.1 --recursive .; \
+		go run github.com/google/osv-scanner/v2/cmd/osv-scanner@$(OSV_SCANNER_VERSION) --recursive .; \
 	fi
 
 # gosec removed — embedded in golangci-lint (see .golangci.yml).
@@ -167,7 +167,7 @@ trivy:
 
 .PHONY: addlicense
 addlicense:
-	go run -mod=mod github.com/google/addlicense -c "Benjamin Borbe" -y $$(date +'%Y') -l bsd $$(find . -name "*.go" -not -path './vendor/*')
+	go run github.com/google/addlicense@$(ADDLICENSE_VERSION) -c "Benjamin Borbe" -y $$(date +'%Y') -l bsd $$(find . -name "*.go" -not -path './vendor/*')
 
 .PHONY: install
 install:

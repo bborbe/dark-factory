@@ -50,6 +50,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/queuescanner"
+	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/runner"
 	"github.com/bborbe/dark-factory/pkg/scenario"
 	"github.com/bborbe/dark-factory/pkg/server"
@@ -1092,11 +1093,7 @@ func CreateProcessor(
 		formatter.NewFormatter(currentDateTimeGetter),
 	)
 	fh := failurehandler.NewHandler(
-		promptManager,
-		n,
-		dirs.Completed,
-		projectName,
-		int(cfg.AutoRetryLimit),
+		promptManager, n, dirs.Completed, projectName, int(cfg.AutoRetryLimit), report.NewParser(),
 	)
 	resumer := promptresumer.NewResumer(
 		promptManager,

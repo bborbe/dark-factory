@@ -4,7 +4,7 @@
 
 package specsweeper
 
-//go:generate go run -mod=mod github.com/maxbrunsfeld/counterfeiter/v6 -generate
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6@v6.12.2 -generate
 
 import (
 	"context"
@@ -51,14 +51,30 @@ func (s *sweeper) Sweep(ctx context.Context) (int, error) {
 
 	count := 0
 	for _, sf := range specs {
+		// Sweep runs on every daemon tick and CheckAndComplete does I/O per spec, so a
+		// cancelled context must abort the loop rather than run it to completion —
+		// otherwise shutdown blocks until the whole spec set has been walked.
+		select {
+		case <-ctx.Done():
+			return count, ctx.Err()
+		default:
+		}
+
 		if sf.Frontmatter.Status != string(spec.StatusPrompted) {
 			continue
 		}
-		slog.Info("startup: checking prompted spec", "spec", sf.Name)
+		// Debug, not Info: this runs per prompted spec on every tick, so at Info it
+		// floods the daemon log with a line per spec per sweep. The Info line below
+		// reports the outcome once per sweep instead.
+		slog.Debug("checking prompted spec", "spec", sf.Name)
 		if err := s.autoCompleter.CheckAndComplete(ctx, sf.Name); err != nil {
 			return count, errors.Wrap(ctx, err, "check and complete spec")
 		}
 		count++
+	}
+
+	if count > 0 {
+		slog.Info("swept prompted specs to verifying", "transitioned", count)
 	}
 
 	return count, nil

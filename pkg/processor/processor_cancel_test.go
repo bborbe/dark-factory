@@ -30,6 +30,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/queuescanner"
+	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/validationprompt"
 )
@@ -54,7 +55,14 @@ func newProcessorWithMockWatcher(
 	enricherReleaser.CommitWithRetryStub = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	enricherReleaser.HasChangelogReturns(false)
 
-	fh := failurehandler.NewHandler(mgr, notifier.NewMultiNotifier(), "", project.Name("test"), 0)
+	fh := failurehandler.NewHandler(
+		mgr,
+		notifier.NewMultiNotifier(),
+		"",
+		project.Name("test"),
+		0,
+		report.NewParser(),
+	)
 	resumer := promptresumer.NewResumer(
 		mgr,
 		exec,

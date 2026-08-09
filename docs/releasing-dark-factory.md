@@ -181,7 +181,15 @@ After a successful auto-release, both `git status` (clean) and `git rev-list @{u
 
 `autoRelease` creates a `vX.Y.Z` git tag after every approved prompt. Tags are sufficient for `go install github.com/bborbe/dark-factory@vX.Y.Z`, `git describe`, and any tag-aware consumer.
 
-A **GitHub Release** is a separate, deliberate act — distinct from the tag. It adds release notes, an entry on the repo's Releases tab, an RSS/atom feed for subscribers, and optional binary assets. Create one **only after**:
+A **GitHub Release** is a separate, deliberate act — distinct from the tag. It adds release notes, an entry on the repo's Releases tab, an RSS/atom feed for subscribers, and optional binary assets.
+
+**Publishing a Release also ships the Homebrew cask.** `.github/workflows/release.yml` triggers on `release: published` and runs goreleaser, which builds darwin/linux archives, attaches them to this Release (`release.mode: append`), and pushes the cask to [`bborbe/homebrew-tap`](https://github.com/bborbe/homebrew-tap). So publishing here is what makes `brew install bborbe/tap/dark-factory` serve the new version.
+
+**A tag alone never reaches brew.** This is deliberate: `autoRelease` tags every approved prompt, and publishing a cask per tag would bypass the scenario gate entirely. The gate below is the only thing standing between a merge and a Homebrew user — which is why it is walked in full, not sampled.
+
+The corollary of "skip the Release for internal refactors" (below) is that brew users stay on the last promoted version until you promote again. That is the intended trade: `go install @latest` is the fast track, brew is the verified one.
+
+Create a Release **only after**:
 
 1. All `scenarios/` pass against the current source tree.
 2. Plugin JSONs are aligned (if `commands/`, `agents/`, `docs/`, or `skills/` changed since the last plugin release).
@@ -200,6 +208,25 @@ gh release create "$TAG" \
 ```
 
 Verify on github.com → Releases tab. The Release object can be edited (notes, draft state) without retagging.
+
+Then confirm the cask actually shipped — publishing the Release only *starts* the workflow:
+
+```bash
+# 1. The release workflow ran and succeeded
+gh run list --workflow=release.yml --limit 1
+
+# 2. goreleaser attached archives to THIS release (not a duplicate one)
+gh release view "$TAG" --json assets --jq '.assets[].name'
+
+# 3. The cask landed in the tap at the new version
+gh api repos/bborbe/homebrew-tap/contents/Casks/dark-factory.rb --jq '.content' \
+  | base64 -d | grep -E '^\s*version'
+
+# 4. End-to-end: brew actually serves it
+brew update && brew install bborbe/tap/dark-factory && dark-factory --version
+```
+
+If step 1 shows no run, the Release was created as a **draft** — drafts do not fire `release: published`. Publish it (`gh release edit "$TAG" --draft=false`) and the workflow will trigger.
 
 ## Plugin release (manual)
 

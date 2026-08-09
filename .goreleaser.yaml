@@ -1,0 +1,59 @@
+version: 2
+
+project_name: dark-factory
+
+builds:
+  - id: dark-factory
+    binary: dark-factory
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/bborbe/dark-factory/pkg/version.Version={{ .Tag }}
+
+archives:
+  - id: dark-factory
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: bborbe
+    name: dark-factory
+  # This workflow is triggered by `release: published`, so the GitHub Release
+  # already exists by the time goreleaser runs. `append` adds artifacts to it
+  # instead of trying to create a second one.
+  #
+  # This is the key difference from Seibert-Data/teamvault-cli, whose workflow is
+  # tag-triggered and lets goreleaser create the Release itself. Do NOT copy that
+  # shape here: every merge auto-tags, and publishing a cask per tag would defeat
+  # the human scenario gate. See docs/releasing-dark-factory.md.
+  mode: append
+
+homebrew_casks:
+  - name: dark-factory
+    description: "Spec-driven autonomous code generation pipeline"
+    homepage: "https://github.com/bborbe/dark-factory"
+    repository:
+      owner: bborbe
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: goreleaser-bot
+      email: goreleaser@benjamin-borbe.de
+    # The binary is unsigned; strip the download quarantine so it runs without a
+    # Gatekeeper "unidentified developer" prompt on first use.
+    hooks:
+      post:
+        install: |
+          system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/dark-factory"]

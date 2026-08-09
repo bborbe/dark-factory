@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.193.0
 
 - feat: publish a Homebrew cask to `bborbe/homebrew-tap` so the CLI installs with `brew install bborbe/tap/dark-factory`. Adds `.goreleaser.yaml` and `.github/workflows/release.yml`, triggered on `release: published` rather than tag push — `autoRelease` tags every approved prompt, so a tag-triggered build would ship a cask per merge and bypass the scenario gate. Publishing a GitHub Release (the existing manual milestone step) is now also the promotion to brew; a tag alone does not reach it. `docs/releasing-dark-factory.md` documents the promotion step and its post-publish verification.
 

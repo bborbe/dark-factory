@@ -204,8 +204,15 @@ TAG=$(git describe --tags --abbrev=0)
 gh release create "$TAG" \
   --target master \
   --title "$TAG" \
-  --notes "$(awk "/^## $TAG/,/^## v/" CHANGELOG.md | head -n -1)"
+  --notes "$(awk -v tag="## $TAG" '$0 == tag {f=1; next} /^## v/ {f=0} f' CHANGELOG.md)"
 ```
+
+Do not "simplify" that `awk` into a range like `awk "/^## $TAG/,/^## v/"`. A range
+evaluates its END pattern on the same record where the START matched, and the
+`## vX.Y.Z` heading matches `^## v` itself — so the range opens and closes on that
+one line, and the old `| head -n -1` then stripped it, yielding **empty notes**.
+That is why releases before v0.193.0 carry no hand-written notes. The flag form
+above skips the heading and stops at the next one.
 
 Verify on github.com → Releases tab. The Release object can be edited (notes, draft state) without retagging.
 

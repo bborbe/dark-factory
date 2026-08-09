@@ -10,6 +10,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: release workflow is now retry-safe. Assets upload before the cask step, so a run failing at the cask left them behind and every retry died with `422 Validation Failed [Code:already_exists]`, requiring manual asset deletion. `release.replace_existing_artifacts: true` makes goreleaser delete and re-upload on 422 instead. Hit for real on v0.193.0.
+- fix: `release.mode` changed `append` → `keep-existing`. `mode` governs release NOTES, not artifacts — with `append`, every run stacked goreleaser's generated commit list onto the body, so three attempts at v0.193.0 left three copies of it. The promotion step already writes notes from CHANGELOG.md; those are now preserved.
+- fix: the `gh release create` notes command in `docs/releasing-dark-factory.md` produced **empty** notes. `awk "/^## $TAG/,/^## v/"` is a range whose END pattern is evaluated on the same record the START matched, and `## vX.Y.Z` matches `^## v` itself — so it emitted only the heading, which `| head -n -1` then stripped. Replaced with a flag-based form and documented the pitfall inline.
+
 ## v0.193.0
 
 - feat: publish a Homebrew cask to `bborbe/homebrew-tap` so the CLI installs with `brew install bborbe/tap/dark-factory`. Adds `.goreleaser.yaml` and `.github/workflows/release.yml`, triggered on `release: published` rather than tag push — `autoRelease` tags every approved prompt, so a tag-triggered build would ship a cask per merge and bypass the scenario gate. Publishing a GitHub Release (the existing manual milestone step) is now also the promotion to brew; a tag alone does not reach it. `docs/releasing-dark-factory.md` documents the promotion step and its post-publish verification.

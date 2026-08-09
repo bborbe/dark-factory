@@ -17,6 +17,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 - fix: `specsweeper.Sweep` logs per-spec at `Debug` instead of `Info`, with a single `Info` line reporting the transitioned count once per sweep. At `Info` it emitted a line per prompted spec per tick, flooding the daemon log.
 - refactor: `failurehandler` takes an injected `report.Parser` instead of calling the package-level `report.ParseFromLog` in a method body (`go-composition/no-package-function-calls-in-business-logic`).
 - fix: dropping `tools.go` removes its dependency pollution from `go.mod` (61 lines, zero pollution per the guide's verification grep). This also removes `github.com/go-git/go-git/v5`, which was only ever pulled in by the tool imports and was carrying GHSA-hc8v-wwc9-vgxm (CVSS 7.1) and GHSA-qgq7-7hm3-q39j (CVSS 6.3) — `make precommit`'s OSV scan was failing on master because of it.
+- feat: publish a Homebrew cask to `bborbe/homebrew-tap` so the CLI installs with `brew install bborbe/tap/dark-factory`. Adds `.goreleaser.yaml` and `.github/workflows/release.yml`, triggered on `release: published` rather than tag push — `autoRelease` tags every approved prompt, so a tag-triggered build would ship a cask per merge and bypass the scenario gate. Publishing a GitHub Release (the existing manual milestone step) is now also the promotion to brew; a tag alone does not reach it. `docs/releasing-dark-factory.md` documents the promotion step and its post-publish verification.
 
 ## v0.192.10
 

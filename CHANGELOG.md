@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.192.11
 
 - fix: complete the `tools.env` migration — delete `tools.go` and pin every CLI-tool invocation to its `tools.env` version. `tools.env` and `include tools.env` were already in place, but `tools.go` was never removed, so 4 Makefile targets and all 48 `//go:generate` counterfeiter directives still resolved tool versions from `go.mod` via `go run -mod=mod`. Those are now `go run pkg@$(VERSION)` (Makefile) and `@v6.12.2` (directives), per `go-tools-versioning-guide.md` § Migration Steps.
 - fix: `specsweeper.Sweep` now checks `ctx.Done()` between iterations. It runs on every daemon tick and does I/O per spec, so a cancelled context previously let the loop run to completion — blocking shutdown until the whole spec set had been walked.

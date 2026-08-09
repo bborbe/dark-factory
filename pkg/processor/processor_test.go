@@ -89,20 +89,14 @@ func newTestProcessor(
 		workflow, pr, autoMerge, autoRelease,
 		projectName, mgr, rel, autoCompleter, brancher, prCreator, cloner, worktreer, prMerger,
 	)
-	fh := failurehandler.NewHandler(mgr, n, completedDir, project.Name(projectName), autoRetryLimit)
+	fh := failurehandler.NewHandler(
+		mgr, n, completedDir, project.Name(projectName), autoRetryLimit, report.NewParser(),
+	)
 	// Build a real resumer using a no-op workflow adapter so existing tests
 	// that don't exercise ResumeExecuting are not affected.
 	resumer := promptresumer.NewResumer(
-		mgr,
-		exec,
-		&noOpWorkflowExecutorAdapter{},
-		completionreport.NewValidator(),
-		fh,
-		queueDir,
-		completedDir,
-		logDir,
-		project.Name(projectName),
-		maxPromptDuration,
+		mgr, exec, &noOpWorkflowExecutorAdapter{}, completionreport.NewValidator(), fh,
+		queueDir, completedDir, logDir, project.Name(projectName), maxPromptDuration,
 	)
 	ppForwarder := &lazyProcessorForwarder{}
 	scanner := queuescanner.NewScanner(mgr, ppForwarder, fh, queueDir, nil, 0)

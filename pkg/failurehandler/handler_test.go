@@ -76,7 +76,14 @@ var _ = Describe("Handler", func() {
 	Describe("Handle", func() {
 		Context("when ctx is already cancelled", func() {
 			BeforeEach(func() {
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 0)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					0,
+					report.NewParser(),
+				)
 			})
 
 			It("returns a wrapped error and does not touch the prompt", func() {
@@ -98,7 +105,14 @@ var _ = Describe("Handler", func() {
 					0600,
 				)
 				Expect(err).NotTo(HaveOccurred())
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 0)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					0,
+					report.NewParser(),
+				)
 			})
 
 			It("returns a stop error", func() {
@@ -110,7 +124,14 @@ var _ = Describe("Handler", func() {
 
 		Context("with autoRetryLimit > 0 and retries available", func() {
 			BeforeEach(func() {
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 3)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					3,
+					report.NewParser(),
+				)
 				pf := makePromptFile(0)
 				promptMgr.LoadReturns(pf, nil)
 			})
@@ -133,7 +154,14 @@ var _ = Describe("Handler", func() {
 
 		Context("with autoRetryLimit == 0 (disabled)", func() {
 			BeforeEach(func() {
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 0)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					0,
+					report.NewParser(),
+				)
 				pf := makePromptFile(0)
 				promptMgr.LoadReturns(pf, nil)
 				n.NotifyReturns(nil)
@@ -158,7 +186,14 @@ var _ = Describe("Handler", func() {
 
 		Context("when retries are exhausted", func() {
 			BeforeEach(func() {
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 2)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					2,
+					report.NewParser(),
+				)
 				// retryCount already at limit
 				pf := makePromptFile(2)
 				promptMgr.LoadReturns(pf, nil)
@@ -180,7 +215,14 @@ var _ = Describe("Handler", func() {
 
 		Context("when Load fails", func() {
 			BeforeEach(func() {
-				h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 0)
+				h = failurehandler.NewHandler(
+					promptMgr,
+					n,
+					completedDir,
+					"test-project",
+					0,
+					report.NewParser(),
+				)
 				promptMgr.LoadReturns(nil, stderrors.New("load error"))
 			})
 
@@ -195,7 +237,14 @@ var _ = Describe("Handler", func() {
 
 	Describe("NotifyFromReport", func() {
 		BeforeEach(func() {
-			h = failurehandler.NewHandler(promptMgr, n, completedDir, "test-project", 0)
+			h = failurehandler.NewHandler(
+				promptMgr,
+				n,
+				completedDir,
+				"test-project",
+				0,
+				report.NewParser(),
+			)
 		})
 
 		Context("when log file does not exist", func() {
@@ -252,6 +301,7 @@ var _ = Describe("Handler", func() {
 				completedDir,
 				"proj",
 				0,
+				report.NewParser(),
 			)
 			Expect(h2).NotTo(BeNil())
 		})

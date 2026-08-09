@@ -31,6 +31,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
 	"github.com/bborbe/dark-factory/pkg/promptresumer"
 	"github.com/bborbe/dark-factory/pkg/queuescanner"
+	"github.com/bborbe/dark-factory/pkg/report"
 	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/specsweeper"
 	"github.com/bborbe/dark-factory/pkg/validationprompt"
@@ -651,6 +652,7 @@ var _ = Describe("Processor", func() {
 				sweepCompletedDir,
 				project.Name("sweep-test"),
 				0,
+				report.NewParser(),
 			)
 			sweepResumer := promptresumer.NewResumer(
 				manager,

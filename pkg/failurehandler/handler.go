@@ -48,6 +48,7 @@ func NewHandler(
 	completedDir string,
 	projectName project.Name,
 	autoRetryLimit int,
+	reportParser report.Parser,
 ) Handler {
 	return &handler{
 		promptManager:  promptManager,
@@ -55,6 +56,7 @@ func NewHandler(
 		completedDir:   completedDir,
 		projectName:    projectName,
 		autoRetryLimit: autoRetryLimit,
+		reportParser:   reportParser,
 	}
 }
 
@@ -64,6 +66,7 @@ type handler struct {
 	completedDir   string
 	projectName    project.Name
 	autoRetryLimit int
+	reportParser   report.Parser
 }
 
 // Handle is called when processPrompt returns an error.
@@ -159,7 +162,7 @@ func (h *handler) notifyFailed(ctx context.Context, path string) {
 // NotifyFromReport checks the completion report in logFile and fires a partial notification
 // if the report status is "partial".
 func (h *handler) NotifyFromReport(ctx context.Context, logFile string, promptPath string) {
-	completionReport, err := report.ParseFromLog(ctx, logFile)
+	completionReport, err := h.reportParser.ParseFromLog(ctx, logFile)
 	if err != nil || completionReport == nil {
 		return
 	}

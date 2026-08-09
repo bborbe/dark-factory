@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.193.1
 
 - fix: release workflow is now retry-safe. Assets upload before the cask step, so a run failing at the cask left them behind and every retry died with `422 Validation Failed [Code:already_exists]`, requiring manual asset deletion. `release.replace_existing_artifacts: true` makes goreleaser delete and re-upload on 422 instead. Hit for real on v0.193.0.
 - fix: `release.mode` changed `append` → `keep-existing`. `mode` governs release NOTES, not artifacts — with `append`, every run stacked goreleaser's generated commit list onto the body, so three attempts at v0.193.0 left three copies of it. The promotion step already writes notes from CHANGELOG.md; those are now preserved.

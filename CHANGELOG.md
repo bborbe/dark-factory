@@ -10,6 +10,14 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: stop launching audit subprocesses in autoApproveGeneratedPrompts once the context is cancelled
+- fix: honour context cancellation in the daemon's inbox created-timestamp scan
+- refactor: replace the last glog call sites in pkg/prompt with slog, matching the rest of the codebase
+- refactor: parseReasonFlag returns bborbe/errors instead of fmt.Errorf, so callers propagate rather than flatten
+- test: add a regression spec proving mid-batch cancellation stops further audit containers
+
 ## v0.193.1
 
 - fix: release workflow is now retry-safe. Assets upload before the cask step, so a run failing at the cask left them behind and every retry died with `422 Validation Failed [Code:already_exists]`, requiring manual asset deletion. `release.replace_existing_artifacts: true` makes goreleaser delete and re-upload on 422 instead. Hit for real on v0.193.0.

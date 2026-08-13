@@ -672,6 +672,46 @@ var _ = Describe("SpecGenerator", func() {
 			})
 		})
 
+		Context("context cancelled mid-batch: remaining audits are not launched", func() {
+			// Regression: each audit iteration launches a subprocess via the
+			// executor. Before the guard, cancelling mid-batch still spawned a
+			// container for every remaining prompt.
+			It("stops launching audit subprocesses after cancellation", func() {
+				cancelCtx, cancel := context.WithCancel(ctx)
+				defer cancel()
+
+				callCount := 0
+				executor.ExecuteStub = func(_ context.Context, promptContent, logFile, containerName string) error {
+					callCount++
+					if callCount == 1 {
+						// generate call writes three prompts into the inbox
+						for _, name := range []string{
+							"140-cancel-a.md",
+							"141-cancel-b.md",
+							"142-cancel-c.md",
+						} {
+							if err := os.WriteFile(
+								filepath.Join(inboxDir, name),
+								[]byte("---\nstatus: draft\n---\n# Generated"),
+								0600,
+							); err != nil {
+								return err
+							}
+						}
+						return nil
+					}
+					// first audit call: cancel before the loop reaches prompt two
+					cancel()
+					return nil
+				}
+
+				Expect(sgAutoApprove.Generate(cancelCtx, specPath)).To(Succeed())
+
+				// 1 generate + exactly 1 audit. Without the guard this is 1 + 3.
+				Expect(executor.ExecuteCallCount()).To(Equal(2))
+			})
+		})
+
 		Context("autoApprovePrompts is true and audit passes: prompt is approved", func() {
 			It("calls executor twice and moves prompt to queueDir", func() {
 				generatedPath := filepath.Join(inboxDir, "131-audit-passes.md")

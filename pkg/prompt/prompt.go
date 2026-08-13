@@ -24,7 +24,6 @@ import (
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
 	"github.com/bborbe/validation"
-	"github.com/golang/glog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bborbe/dark-factory/pkg/specnum"
@@ -1786,9 +1785,9 @@ func findPredecessorInSpec(
 			// filesystem failure shows up at V(1) for the operator to diagnose
 			// while the queue-advance guard fails open (caller's existing
 			// completed/ check still gates the actual advance).
-			glog.V(1).Infof(
-				"findPredecessorInSpec: ReadDir failed for dir=%s spec=%s n=%d: %v",
-				dir, specID, n, err,
+			slog.Debug(
+				"findPredecessorInSpec: readDir failed",
+				"dir", dir, "spec", specID, "n", n, "error", err,
 			)
 			continue
 		}
@@ -1807,9 +1806,9 @@ func findPredecessorInSpec(
 				// prompt file's frontmatter doesn't sink the daemon — the
 				// candidate is skipped from the per-spec set, but the
 				// operator gets a V(1) signal if it persists.
-				glog.V(1).Infof(
-					"findPredecessorInSpec: readFrontmatter failed for path=%s spec=%s: %v",
-					path, specID, err,
+				slog.Debug(
+					"findPredecessorInSpec: readFrontmatter failed",
+					"path", path, "spec", specID, "error", err,
 				)
 				continue
 			}
@@ -1838,9 +1837,9 @@ func findPredecessorInSpec(
 func isNumberInCompletedDir(completedDir string, num int) bool {
 	entries, err := os.ReadDir(completedDir)
 	if err != nil {
-		glog.V(1).Infof(
-			"isNumberInCompletedDir: ReadDir failed for dir=%s num=%d: %v",
-			completedDir, num, err,
+		slog.Debug(
+			"isNumberInCompletedDir: readDir failed",
+			"dir", completedDir, "num", num, "error", err,
 		)
 		return false
 	}

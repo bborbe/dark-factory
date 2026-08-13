@@ -69,9 +69,9 @@ func NewRejectCommand(
 
 // Run executes the prompt reject command.
 func (r *rejectCommand) Run(ctx context.Context, args []string) error {
-	reason, remaining, err := parseReasonFlag(args)
+	reason, remaining, err := parseReasonFlag(ctx, args)
 	if err != nil {
-		return errors.Errorf(ctx, "%v", err)
+		return err
 	}
 	if len(remaining) == 0 {
 		return errors.Errorf(ctx, "usage: dark-factory prompt reject <file> --reason <text>")
@@ -164,13 +164,13 @@ func (r *rejectCommand) rejectByID(ctx context.Context, id, reason string) error
 // parseReasonFlag extracts --reason <text> from args.
 // Returns the reason string, remaining args (without --reason and its value), and an error if
 // --reason is missing or has no value.
-func parseReasonFlag(args []string) (string, []string, error) {
+func parseReasonFlag(ctx context.Context, args []string) (string, []string, error) {
 	var reason string
 	var remaining []string
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--reason" {
 			if i+1 >= len(args) {
-				return "", nil, fmt.Errorf("--reason requires a value")
+				return "", nil, errors.New(ctx, "--reason requires a value")
 			}
 			reason = args[i+1]
 			i++ // skip the value
@@ -179,7 +179,7 @@ func parseReasonFlag(args []string) (string, []string, error) {
 		remaining = append(remaining, args[i])
 	}
 	if reason == "" {
-		return "", nil, fmt.Errorf("--reason is required")
+		return "", nil, errors.New(ctx, "--reason is required")
 	}
 	return reason, remaining, nil
 }

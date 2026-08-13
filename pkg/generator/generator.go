@@ -291,7 +291,19 @@ func (g *dockerSpecGenerator) autoApproveGeneratedPrompts(
 	if !g.autoApprovePrompts {
 		return
 	}
-	for _, promptPath := range newFiles {
+	for i, promptPath := range newFiles {
+		// Each iteration launches an audit subprocess via the YOLO executor.
+		// Stop launching new containers once the caller has cancelled; this
+		// matches the existing "stop processing remaining prompts" behaviour
+		// on audit failure documented above.
+		if ctx.Err() != nil {
+			slog.Info(
+				"auto-approve: cancelled, skipping remaining prompts",
+				"spec", specBasename,
+				"remaining", len(newFiles)-i,
+			)
+			return
+		}
 		promptBasename := filepath.Base(promptPath)
 
 		if _, statErr := os.Stat(promptPath); os.IsNotExist(statErr) {

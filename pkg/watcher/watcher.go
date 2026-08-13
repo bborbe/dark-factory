@@ -177,6 +177,12 @@ func (w *watcher) stampCreatedTimestamps(ctx context.Context) {
 		return
 	}
 	for _, entry := range entries {
+		// The daemon calls this every scan cycle over a user-grown inbox.
+		// Stamping is idempotent per entry, so abandoning the rest on
+		// shutdown is safe -- the next cycle picks up whatever was missed.
+		if ctx.Err() != nil {
+			return
+		}
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}

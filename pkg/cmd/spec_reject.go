@@ -80,9 +80,9 @@ func NewSpecRejectCommand(
 
 // Run executes the spec reject command.
 func (s *specRejectCommand) Run(ctx context.Context, args []string) error {
-	reason, remaining, err := parseReasonFlag(args)
+	reason, remaining, err := parseReasonFlag(ctx, args)
 	if err != nil {
-		return errors.Errorf(ctx, "%v", err)
+		return err
 	}
 	if len(remaining) == 0 {
 		return errors.Errorf(ctx, "usage: dark-factory spec reject <name> --reason <text>")

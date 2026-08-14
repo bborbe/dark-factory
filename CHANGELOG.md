@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- chore(deps): bump default YOLO container image `docker.io/bborbe/claude-yolo` `v0.14.1` → `v0.15.0` (Claude Code `2.1.219` → `2.1.233`). Smoke-tested via `dark-factory healthcheck` (all probes pass, incl. headless `claude`) against the new image.
+
 ## v0.193.3
 
 - chore: bump `DefaultContainerImage` to `docker.io/bborbe/claude-yolo:v0.14.1` (Go 1.26.6 inside the YOLO container). Closes the dark-factory ↔ claude-yolo toolchain gap for the 1.26.6 fleet sweep — without it, `go generate` inside the container emits mocks with a 1.26.5 header that conflict with bumped `go.mod` files.

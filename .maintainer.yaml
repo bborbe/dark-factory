@@ -15,3 +15,9 @@ release:
   autoRelease: true
 prReviewer:
   autoApprove: true
+# goUpdate.autoUpdate: when true, github-update-go-watcher may file a Go-version
+# update task for this repo. Second of two gates — the repo must ALSO be in the
+# watcher REPO_ALLOWLIST — so this key alone never widens scope. Absent file,
+# absent section, and absent key all read as false (opt-in, not opt-out).
+goUpdate:
+  autoUpdate: true

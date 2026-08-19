@@ -13,6 +13,7 @@ Dark-factory is **not a self-fulfilling tool**. It earns its place only when cer
 | Markdown, docs, README, YAML, config, small script | **Direct** — edit by hand, no dark-factory, no YOLO container |
 | Code change that does NOT need its own business-why document | **Prompt** — write a prompt, audit, approve, daemon executes |
 | Feature where the business-why deserves its own durable document | **Spec → prompts** — spec first, daemon auto-generates prompts, audit each, approve, daemon executes |
+| Frontend-only UI change (static HTML/CSS/JS) whose real verification is browser E2E | **Direct** — edit by hand + host-side browser test (e.g. Playwright) |
 
 ## How to decide (two questions, in order)
 
@@ -20,6 +21,8 @@ Dark-factory is **not a self-fulfilling tool**. It earns its place only when cer
 2. **Does the change carry a business-level "why" that deserves a permanent in-repo document?** If no → **prompt**. If yes → **spec**.
 
 That's the whole decision. Two questions, three outcomes.
+
+**Frontend carve-out.** A frontend-only UI-interaction change (vanilla JS/HTML/CSS, no build step) whose real verification is browser E2E cannot be verified inside the YOLO container — it has no browser and no access to the host dev server, so the container's only contribution would be an unattended `make precommit` that never proves the interactive behavior. When the actual proof must run on the host anyway (e.g. Playwright against the dev server), route it **direct** with a host-side browser test rather than a prompt/spec; dark-factory still governs anything whose verification is container-executable.
 
 ## Why the headline reason matters
 
@@ -41,6 +44,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 - A markdown doc anywhere (`docs/*.md`, `specs/ideas/*.md`)
 - A GoDoc comment-only change
 - A standalone operator bash script in `bin/` or `scripts/` (~50 LOC, no test harness)
+- A frontend-only UI-interaction change verified by a host-side browser E2E (Playwright) — the browser test is the actual proof and cannot run in the YOLO container
 - A typo fix in any file
 
 ### Prompt (technical change, no business-why doc warranted)

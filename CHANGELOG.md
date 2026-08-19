@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs: `choosing-a-flow.md` now routes **frontend-only UI changes whose real verification is browser E2E** (Playwright against the host dev server) to the **direct** flow. The YOLO container has no browser and no access to the host dev server, so dark-factory's unattended-execution value disappears — the container's only contribution would be an unattended `make precommit` that never proves the interactive behavior. The host-side browser test is the actual proof; dark-factory still governs anything whose verification is container-executable. Applies to any project that opts in (see the per-repo `CLAUDE.md` carve-out in vault-ui).
+
 ## v0.194.0
 
 - feat(audit-prompt): `/dark-factory:audit-prompt` now checks the project's declared pre-approve gate (a `CLAUDE.md` "Release Checklist" or "before `dark-factory prompt approve`" instruction) and reports it as satisfied / not yet walked / none declared alongside the audit verdict. A clean audit verdict is not approval readiness; on `autoRelease: true` projects approval ships with no second checkpoint, so the gate is the last catch for an unvalidated build.

@@ -385,7 +385,7 @@ func (p *processor) completeAfterExecution(
 
 	// Verification gate: pause before git operations if enabled
 	if p.verificationGate {
-		return p.enterPendingVerification(ctx, pf, promptPath)
+		return p.enterPendingVerification(ctx, pf)
 	}
 
 	completionReport, err := p.completionReportValidator.Validate(ctx, logFile)
@@ -471,7 +471,6 @@ func (p *processor) runContainer(
 func (p *processor) enterPendingVerification(
 	ctx context.Context,
 	pf *prompt.PromptFile,
-	promptPath string,
 ) error {
 	pf.MarkPendingVerification()
 	if err := pf.Save(ctx); err != nil {

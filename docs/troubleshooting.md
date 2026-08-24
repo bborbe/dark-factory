@@ -92,6 +92,52 @@ two call sites is structurally impossible.
 daemon and bypasses the gate, but the gate's protection is lost. Prefer upgrading to a
 version containing spec 098.
 
+## Healthcheck probe hangs 30s then times out (`context deadline exceeded`)
+
+**Symptom:** `dark-factory daemon` aborts at startup. Unlike the OrbStack case above, stderr is
+empty *and* the probe takes the full timeout:
+
+```
+WARN  subprocess slow      op="claude session probe" threshold=5s
+WARN  subprocess skipped   op="claude session probe" timeout=30s
+ERROR healthcheck probe failed  probe=claude  error="context deadline exceeded"
+error: healthcheck startup gate: healthcheck failed
+```
+
+The `docker`, `image` and `boot` probes all pass in milliseconds — only `claude` hangs.
+
+**Root cause:** the configured `model` in `~/.config/dark-factory/config.yaml` is one the
+configured `ANTHROPIC_BASE_URL` endpoint cannot serve. The container starts fine, `claude`
+runs, and the request simply never returns. Switching the `model` value resolved it
+(BRO-19717, 2026-08-19: `deepseek-v4-flash-max[1m]` hung, `MiniMax-M2.7-highspeed` passed in 6s).
+
+**Distinguishing it from the OrbStack cause:** capability failures exit non-zero *fast* with
+empty stdout; a model mismatch burns the full 30s timeout. Time-to-failure is the tell.
+
+**Diagnose with the built-in probe, not the logs.** Run `dark-factory healthcheck` in the
+project root — it names the failing probe and prints its stderr directly. Reasoning from
+daemon logs plus manual `curl` against the endpoint sent the BRO-19717 investigation down two
+wrong paths (container-limit starvation, then a proxy concurrency cap) before the healthcheck
+showed the real error in one command. A `429` from a hand-rolled `curl` may reflect your own
+editor session's usage rather than anything dark-factory is doing.
+
+## Launching daemons that outlive the launching shell
+
+`nohup dark-factory daemon &` started from inside a wrapper process (a CI step, an agent's
+backgrounded shell) dies when that wrapper is terminated — the daemon is still a child.
+Symptom: daemons confirmed alive seconds after launch, all gone minutes later, specs left
+stranded in `status: generating`.
+
+`setsid` is unavailable on macOS. Use a subshell with `exec` plus `disown`:
+
+```bash
+( cd "$project" && exec nohup dark-factory daemon </dev/null >/tmp/df.log 2>&1 ) &
+disown
+```
+
+Verify by lock ownership rather than process count — `kill -0 $(cat .dark-factory.lock)`
+per project root. A `pgrep` count includes orphans that no longer hold a lock.
+
 ## Preflight baseline failure on daemon start
 
 When the daemon starts, it runs `preflightCommand` (typically `make precommit`) against the

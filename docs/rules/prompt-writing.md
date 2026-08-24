@@ -99,6 +99,7 @@ Read `pkg/config/config.go` — find the `Config` struct and `Validate` method.
 2. Include exact file paths (repo-relative, not absolute)
 3. Include function/type names as anchors (not line numbers)
 4. Show old → new code patterns where helpful
+5. End with a self-check: before finishing, re-run `<verification>` and confirm it passes; walk each acceptance criterion against the change
 </requirements>
 
 <constraints>
@@ -398,6 +399,10 @@ GOOD: Add a validation command field to project config so projects can enforce r
 
 The "why" also constrains the agent: if it considers a shortcut that breaks the stated purpose, it has a reason to reject it.
 
+### End with a self-check
+
+The final instruction should make the agent prove the change before declaring done — a cheap verification layer that catches agents that skip `<verification>`. Pattern: *"Before you finish, re-run `<verification>` and confirm it passes; walk each acceptance criterion against the change."* The `<verification>` block states the command; the self-check states that the agent must actually run it and verify the result before finishing.
+
 ### Title comes from the first body H1
 
 The commit subject for a prompt is derived from the first markdown `# ` heading in
@@ -419,6 +424,12 @@ GOOD: "In ProcessQueue, after the autoSetQueuedStatus call, wrap the error"
 ### Copy constraints from spec
 
 The agent has no memory between prompts. Every prompt must repeat the relevant constraints from the spec.
+
+### Hard blockers vs soft guidance
+
+Negative instructions ("do NOT do X") are correct for **hard never-conditions** — actions the agent must never take regardless of context (e.g. `Do NOT commit — dark-factory handles git`). Keep those explicit and unambiguous; positive rewording risks ambiguity about the boundary.
+
+For **soft behavioral guidance**, prefer stating what to do instead: "do not return markdown" conflicts with the ask, while "write it as smooth flowing text paragraphs" leaves no ambiguity. Reserve "do not" for true blockers.
 
 ### One concern per prompt
 

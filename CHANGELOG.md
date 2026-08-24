@@ -14,6 +14,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - chore: bump `DefaultContainerImage` to `docker.io/bborbe/claude-yolo:v0.15.1` (Go 1.27.0 inside the YOLO container). Closes the dark-factory ↔ claude-yolo toolchain gap for the 1.27.0 fleet sweep — without it, `go generate` inside the container emits mocks with a 1.26.6 header that conflict with bumped `go.mod` files.
 - chore: bump go directive from 1.26.6 to 1.27.0
+- docs: document the claude-code-router path in `docs/configuration.md` (`Routing via claude-code-router`) and `docs/yolo-container-setup.md` — the merged container env must carry `ANTHROPIC_AUTH_TOKEN` set to the router's `allowedApiKeys` registry key, which satisfies `validateClaudeAuth` (the `BASE_URL && AUTH_TOKEN` branch, no Claude OAuth needed) and which the router replaces outbound with the provider's real token; `ANTHROPIC_API_KEY` is only for the direct-upstream fallback and remote non-loopback callers
 
 ## v0.194.0
 

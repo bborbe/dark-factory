@@ -291,12 +291,14 @@ maxContainers: 5
 model: MiniMax-M2.7-highspeed
 env:
   ANTHROPIC_BASE_URL: http://host.docker.internal:8788
+  ANTHROPIC_AUTH_TOKEN: <router-registry-key>   # the router's allowedApiKeys key (see below)
 ```
 
 - `model` is forwarded as-is to claude-yolo and must match a model the router exposes.
 - `host.docker.internal` resolves to the macOS/Windows host from inside the container; on Linux add `--add-host=host.docker.internal:host-gateway` to the docker runtime or use the host LAN IP.
 - The router runs on the host; start it before `dark-factory run`. The port (`8788` above) must match the router's listener.
-- No `ANTHROPIC_API_KEY` is needed when the router handles upstream auth; keep your real Anthropic key out of this file in that case.
+- **`ANTHROPIC_AUTH_TOKEN` is required on the router path.** Set it to the router's `allowedApiKeys` registry key (from `~/.claude-code-router/config.yaml`). It satisfies `validateClaudeAuth`: dark-factory skips the Claude OAuth check when the merged container env carries both `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` — without it, generation fails with `Claude OAuth token missing or expired in ~/.claude-yolo` even though no Claude OAuth is involved. The router replaces it outbound with the provider's real token, or passes it through for an Anthropic-subscription provider.
+- **No `ANTHROPIC_API_KEY` on the router path.** It is only needed for the direct-upstream fallback (pointing `ANTHROPIC_BASE_URL` at a provider directly) and for remote non-loopback callers. Keep your real Anthropic/provider key out of this file. Container traffic via `host.docker.internal` arrives at the host loopback on macOS Docker Desktop, so the router's inbound key gate does not apply there.
 
 ## Per-Project Container Limit
 

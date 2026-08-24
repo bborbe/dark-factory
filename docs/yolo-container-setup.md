@@ -45,7 +45,7 @@ cd ~/.claude-yolo
 CLAUDE_CONFIG_DIR=~/.claude-yolo claude login
 ```
 
-This creates `.credentials.json` (or `.claude.json` on older versions). Dark-factory validates the OAuth token before starting a container.
+This creates `.credentials.json` (or `.claude.json` on older versions). Dark-factory validates the OAuth token before starting a container — unless the merged container env carries `ANTHROPIC_BASE_URL` **and** `ANTHROPIC_AUTH_TOKEN` (the claude-code-router path, see [configuration.md](configuration.md)), in which case the OAuth check is skipped entirely and no OAuth credentials are required.
 
 **2. `settings.json`** — skip the dangerous-mode confirmation dialog:
 

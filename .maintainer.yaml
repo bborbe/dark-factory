@@ -19,5 +19,7 @@ prReviewer:
 # update task for this repo. Second of two gates — the repo must ALSO be in the
 # watcher REPO_ALLOWLIST — so this key alone never widens scope. Absent file,
 # absent section, and absent key all read as false (opt-in, not opt-out).
+autoMerge:
+  trivial: true
 goUpdate:
   autoUpdate: true

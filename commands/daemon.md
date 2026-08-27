@@ -20,5 +20,23 @@ Start dark-factory daemon in background for the current project.
    - `dark-factory prompt list` — list all prompts
    - `docker logs --tail 30 <container-name>` — check container output
    - `kill $(cat .dark-factory.lock)` — stop the daemon
+5. If arming a `Monitor` watch on the daemon log, filter on the strings the daemon
+   actually emits. These are the lifecycle messages:
+
+   ```
+   found queued prompt · executing prompt · container assigned
+   completion report · moved to completed
+   prompt blocked · docker container exited
+   preflight: baseline check passed · preflight: running baseline check
+   ```
+
+   ```
+   tail -f <log> | grep -E --line-buffered 'executing prompt|completion report|moved to completed|prompt blocked|docker container exited|level=ERROR'
+   ```
+
+   Guessing at plausible-sounding patterns (`prompt completed`, `prompt started`,
+   `prompt failed`) matches **none** of them, and the resulting monitor stays silent
+   through a successful run *and* a crash — indistinguishable from "still working".
+   Cover the failure strings, not just the happy path.
 
 Never use `pkill -f dark-factory` — it kills ALL instances across all projects.

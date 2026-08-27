@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## v0.196.0
+
+- docs: `/dark-factory:daemon` now lists the daemon's actual log lifecycle messages and a ready-made `Monitor` filter — guessed patterns (`prompt completed`, `prompt started`) match none of them, leaving a watch silent through both success and crash
+
 ## v0.195.0
 
 - feat: opt into `autoMerge.trivial` for mechanically-trivial update PRs

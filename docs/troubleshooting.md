@@ -68,6 +68,46 @@ See the 'PR via Pre-Created Worktree' runbook for the canonical workflow.
 Auto-enabling `hideGit` when a worktree is detected was considered but rejected in favor of
 explicit configuration.
 
+## Prompt stays queued: `Blocked: N (reason=previous-prompt-not-completed, missing=M)`
+
+Prompts execute in number order, and the gate is **presence in `prompts/completed/`** — not
+absence from `prompts/in-progress/`. `FindMissingCompleted` returns every number below N that
+is not in `completed/`, so any such number blocks N.
+
+This makes the obvious remedies ineffective. Moving the blocker somewhere else does not
+satisfy the gate:
+
+- `dark-factory prompt cancel M` refuses outright: `cannot cancel prompt with status "failed"
+  (only approved or executing prompts can be cancelled)`.
+- `dark-factory prompt reject M` succeeds, but moves the file to `rejected/` — still not
+  `completed/`, so N stays blocked. The daemon also caches the blocked state from its startup
+  scan, so `status` keeps naming the same missing number until it is restarted.
+
+Two remedies actually clear it:
+
+- `dark-factory prompt requeue M` and let M run to completion, or
+- renumber the blocked prompt into a free slot below the blocker (`mv` inside
+  `prompts/in-progress/`), provided every number below that slot IS in `completed/`. Verify
+  first: list `prompts/completed/`, extract the numbers, and confirm there are no gaps under
+  the target slot.
+
+## Daemon runs spec generation instead of your queued prompt
+
+With `autoGeneratePrompts: true` (the project default), generating prompts for an approved
+spec can take precedence over a prompt that is already approved and queued. `dark-factory
+status` shows `Current: generating spec <id>` while `Queue: 1` sits unchanged, potentially for
+many minutes, and the queued prompt never starts.
+
+For a focused run, disable generation for that invocation:
+
+```
+dark-factory daemon --set autoGeneratePrompts=false
+```
+
+Generation is then skipped with `spec approved — auto-generation disabled, run
+/dark-factory:generate-prompts-for-spec <spec-path> manually`, and the daemon picks up the
+queued prompt instead.
+
 ## Healthcheck probe fails on OrbStack (`claude session probe failed: stdout=""`)
 
 **Symptom:** macOS + OrbStack; `dark-factory daemon` aborts at startup with:

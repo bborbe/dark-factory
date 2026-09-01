@@ -10,6 +10,9 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+- docs(troubleshooting): document two queue behaviours that cost real debugging time. (1) `Blocked: N (reason=previous-prompt-not-completed, missing=M)` — the gate is presence in `prompts/completed/`, not absence from `in-progress/`, so `prompt cancel` (refuses on a `failed` prompt) and `prompt reject` (moves to `rejected/`, still not `completed/`) both leave the prompt blocked; the working remedies are `prompt requeue` or renumbering into a free slot below the blocker. (2) With `autoGeneratePrompts: true`, spec generation can take precedence over an already-queued prompt — `status` shows `Current: generating spec <id>` while `Queue: 1` sits unchanged; use `--set autoGeneratePrompts=false` for a focused run.
+
 ## v0.196.0
 
 - docs: `/dark-factory:daemon` now lists the daemon's actual log lifecycle messages and a ready-made `Monitor` filter — guessed patterns (`prompt completed`, `prompt started`) match none of them, leaving a watch silent through both success and crash

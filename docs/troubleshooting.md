@@ -80,8 +80,12 @@ satisfy the gate:
 - `dark-factory prompt cancel M` refuses outright: `cannot cancel prompt with status "failed"
   (only approved or executing prompts can be cancelled)`.
 - `dark-factory prompt reject M` succeeds, but moves the file to `rejected/` — still not
-  `completed/`, so N stays blocked. The daemon also caches the blocked state from its startup
-  scan, so `status` keeps naming the same missing number until it is restarted.
+  `completed/`, so N stays blocked.
+
+`status` keeps naming the same missing number after either attempt. That is not a stale cache:
+`FindMissingCompleted` is re-evaluated on every scan, and the blocker persists simply because
+it is still unresolved. (`blockedMsgKeys` in the queue scanner dedupes the *log message* within
+a run, not the blocked state.) Restarting the daemon therefore changes nothing on its own.
 
 Two remedies actually clear it:
 
@@ -93,10 +97,15 @@ Two remedies actually clear it:
 
 ## Daemon runs spec generation instead of your queued prompt
 
-With `autoGeneratePrompts: true` (the project default), generating prompts for an approved
-spec can take precedence over a prompt that is already approved and queued. `dark-factory
-status` shows `Current: generating spec <id>` while `Queue: 1` sits unchanged, potentially for
-many minutes, and the queued prompt never starts.
+`autoGeneratePrompts` is opt-in — the Go zero value is `false`, so this only applies to
+projects that set `autoGeneratePrompts: true` in their own `.dark-factory.yaml`. Check yours
+before assuming; `dark-factory status` reports the source as `autoGeneratePromptsSource=project`
+when the project config is what turned it on.
+
+Where it IS enabled, generating prompts for an approved spec can take precedence over a prompt
+that is already approved and queued. `dark-factory status` shows `Current: generating spec
+<id>` while `Queue: 1` sits unchanged, potentially for many minutes, and the queued prompt
+never starts.
 
 For a focused run, disable generation for that invocation:
 

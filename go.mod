@@ -1,6 +1,6 @@
 module github.com/bborbe/dark-factory
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/adrg/frontmatter v0.2.0

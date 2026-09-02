@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- chore: bump Go toolchain to 1.27.1 and claude-yolo pin to v0.15.3 (go-version-update cycle 2026-09-02). Closes the dark-factory ↔ claude-yolo mismatch window; the v0.15.3 image carries Go 1.27.1 (amd64 + arm64) and the git HTTP/1.1 build fix.
+
 ## v0.195.1
 - docs(troubleshooting): document two queue behaviours that cost real debugging time. (1) `Blocked: N (reason=previous-prompt-not-completed, missing=M)` — the gate is presence in `prompts/completed/`, not absence from `in-progress/`, so `prompt cancel` (refuses on a `failed` prompt) and `prompt reject` (moves to `rejected/`, still not `completed/`) both leave the prompt blocked; the working remedies are `prompt requeue` or renumbering into a free slot below the blocker. (2) `autoGeneratePrompts` is opt-in (Go zero value `false`); where a project enables it, spec generation can take precedence over an already-queued prompt — `status` shows `Current: generating spec <id>` while `Queue: 1` sits unchanged; use `--set autoGeneratePrompts=false` for a focused run.
 

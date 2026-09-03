@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs: prompt-writing guide now covers the two exit-code traps in `<verification>` blocks — `grep -c` exits 1 on a zero count (use `! grep -q` for absence assertions), and a piped command reports only its last stage (use `set -o pipefail`).
+
 ## v0.195.2
 
 - chore: bump Go toolchain to 1.27.1 and claude-yolo pin to v0.15.3 (go-version-update cycle 2026-09-02). Closes the dark-factory ↔ claude-yolo mismatch window; the v0.15.3 image carries Go 1.27.1 (amd64 + arm64) and the git HTTP/1.1 build fix.

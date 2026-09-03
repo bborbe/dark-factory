@@ -141,6 +141,15 @@ The container does NOT have: a Docker socket, the `dark-factory` CLI, cluster cr
 
 **If the container really can't verify anything meaningful for this change** — the change is likely spec-scale (its verification is E2E), and the flow decision should be revisited per `../choosing-a-flow.md`.
 
+### Exit codes lie in two directions
+
+The paragraph above covers commands that fail for an *environmental* reason. The mirror-image trap is a command that runs exactly as intended and still reports the wrong status:
+
+- **`grep -c` exits 1 when the count is 0.** `grep -c X file` prints `0` and exits `1` — so an absence assertion written as "`grep -c X file` — must print `0`" fails the step it was meant to pass. Write absence as `! grep -q X file`. Keep `grep -c` only where the expected count is non-zero (e.g. "must print `2`").
+- **A pipeline reports only its last stage.** `make precommit 2>&1 | tee /tmp/precommit.log` returns `tee`'s status, so a failing `make` passes. Prefix with `set -o pipefail` whenever the left-hand command is the thing under test.
+
+Both traps are invisible on a green run and only surface when the assertion should have fired, which is the one moment the verification exists for.
+
 ## Writing Rules
 
 ### Specificity over brevity — but pick the right *kind* of specificity

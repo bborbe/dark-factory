@@ -49,6 +49,13 @@ const CategoryLegacyLockFile Category = "legacy-lock-file"
 // below it (reason=previous-prompt-not-completed).
 const CategoryMissingCompletedPrompt Category = "missing-completed-prompt"
 
+// CategoryGeneratingWithoutPrompt indicates a spec parked in generating status
+// with no prompt referencing it. generating is transient and nothing times it
+// out, so a generation that died leaves the spec stuck here silently — no
+// other detector covers it, and status-dir-mismatch explicitly permits
+// generating in specs/in-progress/.
+const CategoryGeneratingWithoutPrompt Category = "generating-without-prompt"
+
 //counterfeiter:generate -o ../../mocks/doctor-prompt-manager.go --fake-name DoctorPromptManager . PromptManager
 
 // PromptManager is the subset of prompt.Manager that the doctor package uses.
@@ -156,6 +163,12 @@ func (c *checker) Check(ctx context.Context) ([]Finding, error) {
 		return nil, errors.Wrap(ctx, err, "detect missing completed prompts")
 	}
 	all = append(all, missingCompleted...)
+
+	generatingWithoutPrompt, err := c.detectGeneratingWithoutPrompt(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "detect generating specs without prompts")
+	}
+	all = append(all, generatingWithoutPrompt...)
 
 	parseErrors, err := c.scanParseErrors(ctx)
 	if err != nil {

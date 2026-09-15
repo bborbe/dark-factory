@@ -175,6 +175,15 @@ func (f *fixer) applyFinding(
 				"run `dark-factory prompt requeue <n>` or renumber the blocking prompt manually",
 		})
 		return
+	case CategoryGeneratingWithoutPrompt:
+		skipped = append(skipped, SkippedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail: "generating-without-prompt is not auto-fixable; " +
+				"re-run generation (`dark-factory spec unapprove <id>` then `approve`) " +
+				"or record existing prompts with `dark-factory spec mark-prompted <id>`",
+		})
+		return
 	case CategoryOrphanPromptLink:
 		af, ff := f.fixOrphanPromptLink(ctx, finding, opts)
 		return af, nil, ff

@@ -1632,6 +1632,17 @@ func extractNumberFromFilename(filename string) int {
 	return num
 }
 
+// NumberFromFilename extracts the numeric prefix from a prompt filename
+// (three digits followed by a dash, e.g. "186-stuck.md" -> 186).
+// Returns -1 when the filename carries no such prefix.
+//
+// Exported so pkg/doctor can apply the same definition of "prompt number"
+// that AllPreviousCompleted and FindMissingCompleted use. A second regex
+// elsewhere would be a second definition, free to drift.
+func NumberFromFilename(filename string) int {
+	return extractNumberFromFilename(filename)
+}
+
 // AllPreviousCompleted checks if all prompts with numbers less than n are in completed directory.
 func allPreviousCompleted(_ context.Context, completedDir string, n int) bool {
 	if n <= 1 {

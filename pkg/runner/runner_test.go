@@ -18,6 +18,7 @@ import (
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/pipelinegate"
 	pkgprocessor "github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/runner"
@@ -95,6 +96,7 @@ var _ = Describe("Runner", func() {
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 			nil,   // healthcheckGate: no gate in tests
+			nil,   // pipelineGate: no gate in tests
 			false, // skipContainerReconcile
 		)
 	}
@@ -384,6 +386,7 @@ var _ = Describe("Runner", func() {
 			nil,   // preflightChecker: no preflight in tests
 			nil,   // logWriter: no file in tests
 			nil,   // healthcheckGate: no gate in tests
+			nil,   // pipelineGate: no gate in tests
 			false, // skipContainerReconcile
 		)
 
@@ -453,6 +456,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 
@@ -672,6 +676,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 
@@ -756,6 +761,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 
@@ -850,6 +856,7 @@ var _ = Describe("Runner", func() {
 					nil,   // preflightChecker: no preflight in tests
 					nil,   // logWriter: no file in tests
 					nil,   // healthcheckGate: no gate in tests
+					nil,   // pipelineGate: no gate in tests
 					false, // skipContainerReconcile
 				)
 
@@ -940,6 +947,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 
@@ -1004,6 +1012,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker: no preflight in tests
 				nil,   // logWriter: no file in tests
 				nil,   // healthcheckGate: no gate in tests
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 		}
@@ -1318,6 +1327,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker
 				nil,   // logWriter
 				nil,   // healthcheckGate
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 		}
@@ -1591,6 +1601,7 @@ var _ = Describe("Runner", func() {
 				preflightChecker,
 				nil,   // logWriter
 				nil,   // healthcheckGate
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 		}
@@ -1679,6 +1690,7 @@ var _ = Describe("Runner", func() {
 				nil,   // preflightChecker
 				nil,   // logWriter
 				gate,
+				nil,   // pipelineGate: no gate in tests
 				false, // skipContainerReconcile
 			)
 		}
@@ -1744,6 +1756,118 @@ var _ = Describe("Runner", func() {
 
 			// Pass a nil healthcheckgate.Gate interface (not a typed nil pointer)
 			r := newRunnerWithGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				nil,
+			)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe("startup pipeline gate", func() {
+		newRunnerWithPipelineGate := func(inboxDir, inProgressDir, completedDir string, gate pipelinegate.Gate) runner.Runner {
+			return runner.NewRunner(
+				inboxDir,
+				inProgressDir,
+				completedDir,
+				filepath.Join(promptsDir, "logs"),
+				filepath.Join(specsDir, "inbox"),
+				filepath.Join(specsDir, "in-progress"),
+				filepath.Join(specsDir, "completed"),
+				filepath.Join(specsDir, "logs"),
+				manager,
+				locker,
+				watcher,
+				processor,
+				nil, // server
+				nil, // specWatcher
+				"",
+				containerChecker,
+				notifier.NewMultiNotifier(),
+				&mocks.SpecSlugMigrator{},
+				libtime.NewCurrentDateTime(),
+				0,
+				nil,   // containerStopper
+				nil,   // startupLogger
+				false, // hideGit
+				nil,   // preflightChecker
+				nil,   // logWriter
+				nil,   // healthcheckGate
+				gate,
+				false, // skipContainerReconcile
+			)
+		}
+
+		BeforeEach(func() {
+			locker.AcquireReturns(nil)
+			locker.ReleaseReturns(nil)
+			manager.NormalizeFilenamesReturns(nil, nil)
+		})
+
+		It("returns non-nil error when gate.Check returns an error", func() {
+			fakeGate := &mocks.PipelineGate{}
+			fakeGate.CheckReturns(
+				stderrors.New(
+					"pipeline not clean: 1 finding(s): missing-completed-prompt: prompt number 186 is missing",
+				),
+			)
+
+			r := newRunnerWithPipelineGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				fakeGate,
+			)
+			err := r.Run(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("pipeline startup gate"))
+			Expect(fakeGate.CheckCallCount()).To(Equal(1))
+		})
+
+		It("proceeds past gate when gate.Check returns nil", func() {
+			fakeGate := &mocks.PipelineGate{}
+			fakeGate.CheckReturns(nil)
+
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			r := newRunnerWithPipelineGate(
+				promptsDir,
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				fakeGate,
+			)
+			runCtx, runCancel := context.WithTimeout(ctx, 500*time.Millisecond)
+			defer runCancel()
+
+			err := r.Run(runCtx)
+			Expect(err).To(BeNil())
+			Expect(fakeGate.CheckCallCount()).To(Equal(1))
+		})
+
+		It("nil gate is a no-op (proceeds past gate)", func() {
+			watcher.WatchStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			processor.ProcessStub = func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+
+			// Pass a nil pipelinegate.Gate interface (not a typed nil pointer)
+			r := newRunnerWithPipelineGate(
 				promptsDir,
 				promptsDir,
 				filepath.Join(promptsDir, "completed"),

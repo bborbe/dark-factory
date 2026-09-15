@@ -167,6 +167,14 @@ func (f *fixer) applyFinding(
 			Detail:      "verifying-stale is informational; run `/dark-factory:verify-spec <id>` manually",
 		})
 		return
+	case CategoryMissingCompletedPrompt:
+		skipped = append(skipped, SkippedFix{
+			Category:    finding.Category,
+			TargetPaths: finding.TargetPaths,
+			Detail: "missing-completed-prompt is not auto-fixable; " +
+				"run `dark-factory prompt requeue <n>` or renumber the blocking prompt manually",
+		})
+		return
 	case CategoryOrphanPromptLink:
 		af, ff := f.fixOrphanPromptLink(ctx, finding, opts)
 		return af, nil, ff

@@ -12,12 +12,12 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+- feat: add a `missing-completed-prompt` detector to `dark-factory doctor` — reports prompt numbers below the highest number present in `prompts/` with no file in `prompts/completed/`, the gap that silently blocks every spec-less prompt below it; `checker.Check` no longer hard-errors `not a dark-factory project` on a tree with no pipeline dirs so it can serve as a clean/dirty oracle (spec 105 prompt 1)
+- feat: add the daemon-startup pipeline gate (`pkg/pipelinegate`) — refuses to start when `dark-factory doctor` reports findings and names the offending prompt numbers, reusing the doctor checker instead of re-deriving state; ships disabled (`pipelinegate.DefaultEnabled = false`) and uncached by design (spec 105 prompt 2)
 - fix(scenarios): seed the scenario sandbox's bare remote from the copy's `HEAD` in `setup_sandbox_copy` — `cp -r` carried the source fixture's `refs/remotes/origin/master` into the copy while the freshly-initialised bare remote was empty, so nothing could ever reconcile that ref and any scenario running `git merge origin/master` merged whatever the source checkout happened to have cached; harmless only while the source sat exactly on its remote, and scenarios 001/003/006/019 all failed on the resulting phantom `CHANGELOG.md` conflict once the fixture drifted 4 ahead / 5 behind — identically on a release binary predating the feature under test, which is what identified the failures as environmental
 
 ## v0.195.5
 
-- feat: add a `missing-completed-prompt` detector to `dark-factory doctor` — reports prompt numbers below the highest number present in `prompts/` with no file in `prompts/completed/`, the gap that silently blocks every spec-less prompt below it; `checker.Check` no longer hard-errors `not a dark-factory project` on a tree with no pipeline dirs so it can serve as a clean/dirty oracle (spec 105 prompt 1)
-- feat: add the daemon-startup pipeline gate (`pkg/pipelinegate`) — refuses to start when `dark-factory doctor` reports findings and names the offending prompt numbers, reusing the doctor checker instead of re-deriving state; ships disabled (`pipelinegate.DefaultEnabled = false`) and uncached by design (spec 105 prompt 2)
 - docs(troubleshooting): document that the previous-prompt-completed guard is spec-conditional — spec-carrying prompts use the per-spec guard while spec-less prompts use the global one, so a gap in `prompts/completed/` blocks only the latter; record that the failure is silent until a spec-less prompt is next run, and that a gap does not imply unfinished work (bookkeeping drift from a failed completion report is a common cause, and reconciliation, not a re-run, is then the fix)
 
 ## v0.195.4

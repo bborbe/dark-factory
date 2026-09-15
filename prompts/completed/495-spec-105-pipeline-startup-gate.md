@@ -1,8 +1,12 @@
 ---
-status: approved
+status: completed
 spec: [105-refuse-startup-on-unfinished-pipeline]
+execution_id: dark-factory-pipelinegate-exec-495-spec-105-pipeline-startup-gate
+dark-factory-version: v0.193.0
 created: "2026-09-15T07:47:56Z"
 queued: "2026-09-15T07:54:23Z"
+started: "2026-09-15T08:01:04Z"
+completed: "2026-09-15T08:13:15Z"
 ---
 
 <summary>

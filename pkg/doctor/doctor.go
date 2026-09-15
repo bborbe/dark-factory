@@ -6,7 +6,6 @@ package doctor
 
 import (
 	"context"
-	"os"
 	"sort"
 
 	"github.com/bborbe/errors"
@@ -43,6 +42,12 @@ const CategoryParseError Category = "parse-errors"
 // CategoryLegacyLockFile indicates a leftover *.lock sidecar from the abandoned
 // per-file locking scheme (spec 097). These empty files are removed by doctor --fix.
 const CategoryLegacyLockFile Category = "legacy-lock-file"
+
+// CategoryMissingCompletedPrompt indicates a prompt number below the highest
+// number present anywhere in prompts/ that has no file in prompts/completed/.
+// This is the gap that makes the execution guard refuse every spec-less prompt
+// below it (reason=previous-prompt-not-completed).
+const CategoryMissingCompletedPrompt Category = "missing-completed-prompt"
 
 //counterfeiter:generate -o ../../mocks/doctor-prompt-manager.go --fake-name DoctorPromptManager . PromptManager
 
@@ -98,18 +103,9 @@ type checker struct {
 	deps Deps
 }
 
-// Check runs all six detectors and returns the concatenated findings.
+// Check runs all nine detectors and returns the concatenated findings.
 // Parse-error findings are appended last.
 func (c *checker) Check(ctx context.Context) ([]Finding, error) {
-	// Verify the project is initialized.
-	if _, err := os.Stat(c.deps.SpecsInProgressDir); os.IsNotExist(err) {
-		return nil, errors.Errorf(
-			ctx,
-			"not a dark-factory project: missing %s",
-			c.deps.SpecsInProgressDir,
-		)
-	}
-
 	all := []Finding{}
 
 	duplicates, err := c.detectDuplicateSpecNumbers(ctx)
@@ -153,6 +149,12 @@ func (c *checker) Check(ctx context.Context) ([]Finding, error) {
 		return nil, errors.Wrap(ctx, err, "detect legacy lock files")
 	}
 	all = append(all, legacyLocks...)
+
+	missingCompleted, err := c.detectMissingCompletedPrompt(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "detect missing completed prompts")
+	}
+	all = append(all, missingCompleted...)
 
 	parseErrors, err := c.scanParseErrors(ctx)
 	if err != nil {

@@ -89,20 +89,25 @@ var _ = Describe("Check", func() {
 		Expect(findings).To(BeEmpty())
 	})
 
-	It("returns an error when specs/in-progress/ does not exist", func() {
-		// Don't create specs/in-progress/ — it won't exist.
+	It("returns no findings and no error when no pipeline directories exist", func() {
+		// A bare directory with a .dark-factory.yaml but no pipeline tree.
+		// Check is a clean/dirty oracle: it must not hard-error here.
+		bare := filepath.Join(tempDir, "bare")
+		Expect(os.MkdirAll(bare, 0750)).To(Succeed())
+
 		deps := doctor.Deps{
-			SpecsInboxDir:        filepath.Join(specsDir, "inbox"),
-			SpecsInProgressDir:   filepath.Join(tempDir, "does-not-exist"),
-			SpecsCompletedDir:    filepath.Join(specsDir, "completed"),
-			SpecsRejectedDir:     filepath.Join(specsDir, "rejected"),
-			PromptsInboxDir:      filepath.Join(promptsDir, "inbox"),
-			PromptsInProgressDir: filepath.Join(promptsDir, "in-progress"),
-			PromptsCompletedDir:  filepath.Join(promptsDir, "completed"),
-			PromptsCancelledDir:  filepath.Join(promptsDir, "cancelled"),
+			SpecsInboxDir:        filepath.Join(bare, "specs", "inbox"),
+			SpecsInProgressDir:   filepath.Join(bare, "specs", "in-progress"),
+			SpecsCompletedDir:    filepath.Join(bare, "specs", "completed"),
+			SpecsRejectedDir:     filepath.Join(bare, "specs", "rejected"),
+			PromptsInboxDir:      filepath.Join(bare, "prompts", "inbox"),
+			PromptsInProgressDir: filepath.Join(bare, "prompts", "in-progress"),
+			PromptsCompletedDir:  filepath.Join(bare, "prompts", "completed"),
+			PromptsCancelledDir:  filepath.Join(bare, "prompts", "cancelled"),
 			SpecLister: spec.NewLister(
 				libtime.NewCurrentDateTime(),
-				filepath.Join(specsDir, "inbox"),
+				filepath.Join(bare, "specs", "in-progress"),
+				filepath.Join(bare, "specs", "completed"),
 			),
 			PromptManager:         pm,
 			CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
@@ -110,9 +115,8 @@ var _ = Describe("Check", func() {
 		}
 
 		checker := doctor.NewChecker(deps)
-		_, err := checker.Check(ctx)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("not a dark-factory project"))
-		Expect(err.Error()).To(ContainSubstring("missing"))
+		findings, err := checker.Check(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(findings).To(BeEmpty())
 	})
 })

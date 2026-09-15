@@ -363,6 +363,43 @@ func TestParseArgsModel(t *testing.T) {
 	)
 }
 
+func TestParseArgsSkipPipelineGate(t *testing.T) {
+	t.Parallel()
+	// flag after command
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-pipeline-gate"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: true},
+	)
+	// flag before command (position-agnostic)
+	assertParseArgs(t,
+		[]string{"--skip-pipeline-gate", "daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: true},
+	)
+	// without flag, skipPipelineGate defaults to false
+	assertParseArgs(t,
+		[]string{"daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: false},
+	)
+	// the two skip flags are independent — neither sets the other
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-healthcheck"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: true},
+	)
+	// all three together
+	assertParseArgs(
+		t,
+		[]string{"-debug", "daemon", "--skip-preflight", "--skip-healthcheck", "--skip-pipeline-gate"},
+		parseArgsResult{
+			debug:            true,
+			command:          "daemon",
+			args:             []string{},
+			skipPreflight:    true,
+			skipHealthcheck:  true,
+			skipPipelineGate: true,
+		},
+	)
+}
+
 func TestParseArgsSkipHealthcheck(t *testing.T) {
 	t.Parallel()
 	// flag after command

@@ -52,6 +52,7 @@ var _ = Describe("MissingCompletedPrompt", func() {
 		os.MkdirAll(filepath.Join(promptsDir, "in-progress"), 0750)
 		os.MkdirAll(filepath.Join(promptsDir, "completed"), 0750)
 		os.MkdirAll(filepath.Join(promptsDir, "cancelled"), 0750)
+		os.MkdirAll(filepath.Join(promptsDir, "rejected"), 0750)
 	})
 
 	AfterEach(func() {
@@ -68,6 +69,7 @@ var _ = Describe("MissingCompletedPrompt", func() {
 			PromptsInProgressDir: filepath.Join(promptsDir, "in-progress"),
 			PromptsCompletedDir:  filepath.Join(promptsDir, "completed"),
 			PromptsCancelledDir:  filepath.Join(promptsDir, "cancelled"),
+			PromptsRejectedDir:   filepath.Join(promptsDir, "rejected"),
 			SpecLister: spec.NewLister(
 				libtime.NewCurrentDateTime(),
 				filepath.Join(specsDir, "in-progress"),
@@ -117,6 +119,34 @@ var _ = Describe("MissingCompletedPrompt", func() {
 		Expect(missing[1].Detail).To(ContainSubstring("187"))
 		Expect(missing[0].FixCommand).To(Equal("dark-factory prompt requeue 186"))
 		Expect(missing[1].FixCommand).To(Equal("dark-factory prompt requeue 187"))
+	})
+
+	// A gap whose only file sits in prompts/rejected/. Without scanning that dir
+	// the finding claimed "no file for prompt number 186" while the file was on
+	// disk, and pointed at `prompt requeue`, which is wired to in-progress only.
+	It("reports a rejected-only gap without claiming the file is absent", func() {
+		completedDir := filepath.Join(promptsDir, "completed")
+		rejectedDir := filepath.Join(promptsDir, "rejected")
+		createPromptFile(completedDir, "185-blocked.md", "completed", "")
+		createPromptFile(completedDir, "188-later.md", "completed", "")
+		createPromptFile(rejectedDir, "186-nope.md", "rejected", "")
+		createPromptFile(rejectedDir, "187-nope.md", "rejected", "")
+
+		findings, err := checkerFor().Check(ctx)
+		Expect(err).NotTo(HaveOccurred())
+
+		var missing []doctor.Finding
+		for _, f := range findings {
+			if f.Category == doctor.CategoryMissingCompletedPrompt {
+				missing = append(missing, f)
+			}
+		}
+		Expect(missing).To(HaveLen(2))
+		// The file exists, so the never-created wording must NOT appear.
+		Expect(missing[0].FixCommand).NotTo(ContainSubstring("no file for prompt number"))
+		Expect(missing[0].FixCommand).To(ContainSubstring("rejected"))
+		Expect(missing[0].FixCommand).To(ContainSubstring("186"))
+		Expect(missing[0].TargetPaths).To(ContainElement(filepath.Join(rejectedDir, "186-nope.md")))
 	})
 
 	// AC3: a number absent from BOTH trees — the never-created gap.

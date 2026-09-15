@@ -88,6 +88,7 @@ type Deps struct {
 	PromptsInProgressDir  string
 	PromptsCompletedDir   string
 	PromptsCancelledDir   string
+	PromptsRejectedDir    string
 	SpecLister            spec.Lister
 	PromptManager         PromptManager
 	CurrentDateTimeGetter libtime.CurrentDateTimeGetter

@@ -56,6 +56,7 @@ func createDoctorDeps(
 		PromptsInProgressDir:  cfg.Prompts.InProgressDir,
 		PromptsCompletedDir:   cfg.Prompts.CompletedDir,
 		PromptsCancelledDir:   cfg.Prompts.CancelledDir,
+		PromptsRejectedDir:    cfg.Prompts.RejectedDir,
 		SpecLister:            specLister,
 		PromptManager:         promptManager,
 		CurrentDateTimeGetter: currentDateTimeGetter,

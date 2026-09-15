@@ -117,8 +117,15 @@ var _ = Describe("MissingCompletedPrompt", func() {
 		Expect(missing).To(HaveLen(2))
 		Expect(missing[0].Detail).To(ContainSubstring("186"))
 		Expect(missing[1].Detail).To(ContainSubstring("187"))
-		Expect(missing[0].FixCommand).To(Equal("dark-factory prompt requeue 186"))
-		Expect(missing[1].FixCommand).To(Equal("dark-factory prompt requeue 187"))
+		// The remedy must NOT lead with requeue: a gap is a bookkeeping fact, not
+		// proof the work is unfinished. vault-cli's 186/187 had both shipped
+		// (c70d170, 79a6949) while sitting outside completed/, so a confident
+		// "requeue" would have re-executed work already in the tree.
+		Expect(missing[0].FixCommand).To(ContainSubstring("already shipped"))
+		Expect(missing[0].FixCommand).To(ContainSubstring("186"))
+		Expect(missing[0].FixCommand).NotTo(HavePrefix("dark-factory prompt requeue"))
+		Expect(missing[1].FixCommand).To(ContainSubstring("already shipped"))
+		Expect(missing[1].FixCommand).To(ContainSubstring("187"))
 	})
 
 	// A gap whose only file sits in prompts/rejected/. Without scanning that dir

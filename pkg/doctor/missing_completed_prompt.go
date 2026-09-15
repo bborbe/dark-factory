@@ -103,27 +103,34 @@ func (c *checker) detectMissingCompletedPrompt(ctx context.Context) ([]Finding, 
 
 // missingCompletedFixCommand picks the remedy that fits the gap's shape.
 //
-// Three shapes, three remedies. A number whose file sits in a requeueable dir is
-// requeued. A number whose only file is in prompts/rejected/ cannot be requeued —
-// `prompt requeue` is wired to the in-progress dir alone — so the operator is
-// pointed at the rejected file and told to move it back first. A number with no
-// file anywhere cannot be requeued either and needs the blocking prompt renumbered.
+// A gap is a bookkeeping fact, NOT a claim that the work is unfinished, and the
+// remedy must not assume it is. Observed on bborbe/vault-cli: prompts 186 and 187
+// sat outside completed/ with status failed/approved, yet both had shipped —
+// c70d170 and 79a6949 carry the code, and the repair commit was named "reconcile
+// prompts 186/187 to shipped reality". Leading with `prompt requeue` there would
+// have told an operator to re-execute work already in the tree, at the moment
+// they are blocked and looking for the fastest way out.
 //
-// The rejected case matters because rejected/ is a populated, terminal directory:
-// without it, a rejected prompt produced the "no file" message while the file was
-// plainly on disk, and sent the operator to a command that would fail.
+// So every branch tells the reader to establish whether the work shipped first,
+// and offers reconcile-or-requeue rather than a single confident command. The
+// rejected branch exists because prompts/rejected/ is terminal and not
+// requeueable — `prompt requeue` reads the in-progress dir alone.
 func (c *checker) missingCompletedFixCommand(n int, paths []string) string {
+	num := strconv.Itoa(n)
 	if len(paths) == 0 {
-		return "no file for prompt number " + strconv.Itoa(n) +
-			"; renumber the blocking prompt into a free slot below it, then re-run dark-factory doctor"
+		return "no file for prompt number " + num +
+			"; if its work shipped, this number is a permanent gap — renumber the blocking prompt " +
+			"into a free slot below it, then re-run dark-factory doctor"
 	}
 	if rejected := c.rejectedPaths(paths); len(rejected) > 0 && len(rejected) == len(paths) {
-		return "prompt number " + strconv.Itoa(n) + " is rejected (" + rejected[0] +
-			"); move it back to " + c.deps.PromptsInProgressDir +
-			" and run dark-factory prompt requeue " + strconv.Itoa(n) +
-			", or renumber the blocking prompt"
+		return "prompt number " + num + " is rejected (" + rejected[0] +
+			"); check whether its work already shipped — if so move the file to " +
+			c.deps.PromptsCompletedDir + ", otherwise move it back to " +
+			c.deps.PromptsInProgressDir + " and run dark-factory prompt requeue " + num
 	}
-	return "dark-factory prompt requeue " + strconv.Itoa(n)
+	return "check whether prompt " + num + " already shipped (git log for its changes) — " +
+		"if so move its file to " + c.deps.PromptsCompletedDir +
+		" to record that; only run dark-factory prompt requeue " + num + " if it genuinely never ran"
 }
 
 // rejectedPaths returns the subset of paths that live under the rejected dir.

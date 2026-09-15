@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs(troubleshooting): document that the previous-prompt-completed guard is spec-conditional — spec-carrying prompts use the per-spec guard while spec-less prompts use the global one, so a gap in `prompts/completed/` blocks only the latter; record that the failure is silent until a spec-less prompt is next run, and that a gap does not imply unfinished work (bookkeeping drift from a failed completion report is a common cause, and reconciliation, not a re-run, is then the fix)
+
 ## v0.195.4
 
 - chore(deps): bump default YOLO container image `docker.io/bborbe/claude-yolo` `v0.15.3` → `v0.16.0` (Claude Code `2.1.233` → `2.1.270`). Smoke-tested via `dark-factory healthcheck` (all probes pass, incl. headless `claude`) against the new image.

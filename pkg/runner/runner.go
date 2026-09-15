@@ -22,6 +22,7 @@ import (
 	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
+	"github.com/bborbe/dark-factory/pkg/pipelinegate"
 	"github.com/bborbe/dark-factory/pkg/preflight"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
@@ -66,6 +67,7 @@ func NewRunner(
 	preflightChecker preflight.Checker,
 	logWriter io.Writer,
 	healthcheckGate healthcheckgate.Gate,
+	pipelineGate pipelinegate.Gate,
 	skipContainerReconcile bool,
 ) Runner {
 	return &runner{
@@ -95,6 +97,7 @@ func NewRunner(
 		preflightChecker:       preflightChecker,
 		logWriter:              logWriter,
 		healthcheckGate:        healthcheckGate,
+		pipelineGate:           pipelineGate,
 		skipContainerReconcile: skipContainerReconcile,
 	}
 }
@@ -127,6 +130,7 @@ type runner struct {
 	preflightChecker      preflight.Checker
 	logWriter             io.Writer
 	healthcheckGate       healthcheckgate.Gate
+	pipelineGate          pipelinegate.Gate
 	// skipContainerReconcile disables the health-check "container gone → reset to
 	// approved" reconciliation under backend: local (spec 104 follow-up), where the
 	// local subprocess dies with the daemon and there is no orphan container to
@@ -217,6 +221,11 @@ func (r *runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Startup pipeline gate: refuse to start when the pipeline is not clean.
+	if err := r.runStartupPipelineGate(ctx); err != nil {
+		return err
+	}
+
 	// Run watcher, processor, server, and optional specWatcher in parallel
 	// If any fails, context cancels the others automatically
 	runners := []run.Func{
@@ -242,6 +251,20 @@ func (r *runner) runStartupHealthcheck(ctx context.Context) error {
 	}
 	if err := r.healthcheckGate.Check(ctx); err != nil {
 		return errors.Wrap(ctx, err, "healthcheck startup gate")
+	}
+	return nil
+}
+
+// runStartupPipelineGate refuses daemon startup when `dark-factory doctor`
+// reports findings. Returns nil when the gate is nil (not wired), disabled,
+// skipped, or the pipeline is clean. Returns a findings-naming error when the
+// pipeline is dirty — terminal, like the preflight and healthcheck gates.
+func (r *runner) runStartupPipelineGate(ctx context.Context) error {
+	if r.pipelineGate == nil {
+		return nil
+	}
+	if err := r.pipelineGate.Check(ctx); err != nil {
+		return errors.Wrap(ctx, err, "pipeline startup gate")
 	}
 	return nil
 }

@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - feat: add a `missing-completed-prompt` detector to `dark-factory doctor` — reports prompt numbers below the highest number present in `prompts/` with no file in `prompts/completed/`, the gap that silently blocks every spec-less prompt below it; `checker.Check` no longer hard-errors `not a dark-factory project` on a tree with no pipeline dirs so it can serve as a clean/dirty oracle (spec 105 prompt 1)
+- feat: add the daemon-startup pipeline gate (`pkg/pipelinegate`) — refuses to start when `dark-factory doctor` reports findings and names the offending prompt numbers, reusing the doctor checker instead of re-deriving state; ships disabled (`pipelinegate.DefaultEnabled = false`) and uncached by design (spec 105 prompt 2)
 
 ## v0.195.4
 

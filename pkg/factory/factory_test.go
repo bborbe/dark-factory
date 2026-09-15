@@ -21,6 +21,7 @@ import (
 
 	"github.com/bborbe/dark-factory/mocks"
 	"github.com/bborbe/dark-factory/pkg/config"
+	"github.com/bborbe/dark-factory/pkg/doctor"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/factory"
 	"github.com/bborbe/dark-factory/pkg/git"
@@ -29,7 +30,9 @@ import (
 	"github.com/bborbe/dark-factory/pkg/preflightconditions"
 	"github.com/bborbe/dark-factory/pkg/processor"
 	"github.com/bborbe/dark-factory/pkg/project"
+	"github.com/bborbe/dark-factory/pkg/prompt"
 	"github.com/bborbe/dark-factory/pkg/promptenricher"
+	"github.com/bborbe/dark-factory/pkg/spec"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
@@ -585,5 +588,92 @@ var _ = Describe("Factory", func() {
 				Expect(err).NotTo(HaveOccurred())
 			},
 		)
+	})
+
+	Describe("CreatePipelineGate", func() {
+		It("should return a non-nil gate", func() {
+			gate := factory.CreatePipelineGate(cfg, libtime.NewCurrentDateTime())
+			Expect(gate).NotTo(BeNil())
+		})
+
+		Context("with a dirty pipeline fixture", func() {
+			var gatedCfg config.Config
+
+			BeforeEach(func() {
+				tempDir := GinkgoT().TempDir()
+
+				gatedCfg = config.Defaults()
+				gatedCfg.Prompts.InboxDir = filepath.Join(tempDir, "prompts")
+				gatedCfg.Prompts.InProgressDir = filepath.Join(tempDir, "prompts/in-progress")
+				gatedCfg.Prompts.CompletedDir = filepath.Join(tempDir, "prompts/completed")
+				gatedCfg.Prompts.CancelledDir = filepath.Join(tempDir, "prompts/cancelled")
+				gatedCfg.Specs.InboxDir = filepath.Join(tempDir, "specs")
+				gatedCfg.Specs.InProgressDir = filepath.Join(tempDir, "specs/in-progress")
+				gatedCfg.Specs.CompletedDir = filepath.Join(tempDir, "specs/completed")
+				gatedCfg.Specs.RejectedDir = filepath.Join(tempDir, "specs/rejected")
+
+				// Same shape as pkg/doctor's createPromptFile helper (not importable
+				// from factory_test — it lives in an internal test package).
+				writePrompt := func(dir, filename, status string) {
+					Expect(os.MkdirAll(dir, 0750)).To(Succeed())
+					content := "---\nstatus: " + status + "\nspec: \n---\n# Prompt"
+					Expect(os.WriteFile(
+						filepath.Join(dir, filename),
+						[]byte(content),
+						0600,
+					)).To(Succeed())
+				}
+				writePrompt(gatedCfg.Prompts.CompletedDir, "185-blocked.md", "completed")
+				writePrompt(gatedCfg.Prompts.CompletedDir, "188-later.md", "completed")
+				writePrompt(gatedCfg.Prompts.InProgressDir, "186-stuck.md", "failed")
+			})
+
+			It("does not refuse startup — the gate ships unarmed", func() {
+				// Flipping pipelinegate.DefaultEnabled makes this assertion fail on
+				// purpose, so the arming change is reviewed.
+				err := factory.CreatePipelineGate(gatedCfg, libtime.NewCurrentDateTime()).
+					Check(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It(
+				"fixture is known dirty: doctor reports a missing-completed finding naming 186",
+				func() {
+					checker := doctor.NewChecker(doctor.Deps{
+						SpecsInboxDir:        gatedCfg.Specs.InboxDir,
+						SpecsInProgressDir:   gatedCfg.Specs.InProgressDir,
+						SpecsCompletedDir:    gatedCfg.Specs.CompletedDir,
+						SpecsRejectedDir:     gatedCfg.Specs.RejectedDir,
+						PromptsInboxDir:      gatedCfg.Prompts.InboxDir,
+						PromptsInProgressDir: gatedCfg.Prompts.InProgressDir,
+						PromptsCompletedDir:  gatedCfg.Prompts.CompletedDir,
+						PromptsCancelledDir:  gatedCfg.Prompts.CancelledDir,
+						SpecLister: spec.NewLister(
+							libtime.NewCurrentDateTime(),
+							gatedCfg.Specs.InboxDir,
+							gatedCfg.Specs.InProgressDir,
+							gatedCfg.Specs.CompletedDir,
+							gatedCfg.Specs.RejectedDir,
+						),
+						PromptManager: prompt.NewManager(
+							gatedCfg.Prompts.InboxDir,
+							gatedCfg.Prompts.InProgressDir,
+							gatedCfg.Prompts.CompletedDir,
+							gatedCfg.Prompts.CancelledDir,
+							git.NewReleaser(),
+							libtime.NewCurrentDateTime(),
+						),
+						CurrentDateTimeGetter: libtime.NewCurrentDateTime(),
+					})
+
+					findings, err := checker.Check(context.Background())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(findings).To(ContainElement(And(
+						HaveField("Category", doctor.CategoryMissingCompletedPrompt),
+						HaveField("Detail", ContainSubstring("186")),
+					)))
+				},
+			)
+		})
 	})
 })

@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -29,7 +28,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/completionreport"
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/containerlock"
-	"github.com/bborbe/dark-factory/pkg/doctor"
 	"github.com/bborbe/dark-factory/pkg/executionslot"
 	"github.com/bborbe/dark-factory/pkg/executor"
 	"github.com/bborbe/dark-factory/pkg/failurehandler"
@@ -38,7 +36,6 @@ import (
 	"github.com/bborbe/dark-factory/pkg/git"
 	"github.com/bborbe/dark-factory/pkg/gitprovider/bitbucket"
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
-	"github.com/bborbe/dark-factory/pkg/healthcheckgate"
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/lock"
 	"github.com/bborbe/dark-factory/pkg/notifier"
@@ -457,6 +454,10 @@ func CreateRunner(
 		ctx, cfg, skipHealthcheck, projectName.String(), n, currentDateTimeGetter,
 	)
 
+	// Pipeline startup gate (daemon-only). Reuses the same doctor checker as
+	// `dark-factory doctor`. Ships disabled; enabled/skip are handled inside the gate.
+	pipelineGate := CreatePipelineGate(cfg, currentDateTimeGetter)
+
 	proc := CreateProcessor(
 		ctx,
 		buildProcessorConfig(cfg, globalCfg, inProgressDir, completedDir),
@@ -505,6 +506,7 @@ func CreateRunner(
 		preflightChecker,
 		logWriter,
 		healthcheckGate,
+		pipelineGate,
 		cfg.Backend == config.BackendLocal,
 	)
 }
@@ -1310,129 +1312,12 @@ func CreateStatusCommand(
 	return cmd.NewStatusCommand(statusChecker, formatter)
 }
 
-// CreateDoctorCommand creates a DoctorCommand with all required dependencies.
-func CreateDoctorCommand(
-	ctx context.Context,
-	cfg config.Config,
-	verifyingStaleHours int,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) cmd.DoctorCommand {
-	promptManager, releaser := createPromptManager(
-		cfg.Prompts.InboxDir,
-		cfg.Prompts.InProgressDir,
-		cfg.Prompts.CompletedDir,
-		cfg.Prompts.CancelledDir,
-		currentDateTimeGetter,
-	)
-
-	specLister := spec.NewLister(
-		currentDateTimeGetter,
-		cfg.Specs.InboxDir,
-		cfg.Specs.InProgressDir,
-		cfg.Specs.CompletedDir,
-		cfg.Specs.RejectedDir,
-	)
-
-	autoCompleter := spec.NewAutoCompleter(
-		cfg.Prompts.InProgressDir,
-		cfg.Prompts.CompletedDir,
-		cfg.Specs.InboxDir,
-		cfg.Specs.InProgressDir,
-		cfg.Specs.CompletedDir,
-		currentDateTimeGetter,
-		cfg.ProjectName,
-		notifier.NewMultiNotifier(),
-		promptManager,
-	)
-
-	deps := doctor.Deps{
-		SpecsInboxDir:         cfg.Specs.InboxDir,
-		SpecsInProgressDir:    cfg.Specs.InProgressDir,
-		SpecsCompletedDir:     cfg.Specs.CompletedDir,
-		SpecsRejectedDir:      cfg.Specs.RejectedDir,
-		PromptsInboxDir:       cfg.Prompts.InboxDir,
-		PromptsInProgressDir:  cfg.Prompts.InProgressDir,
-		PromptsCompletedDir:   cfg.Prompts.CompletedDir,
-		PromptsCancelledDir:   cfg.Prompts.CancelledDir,
-		SpecLister:            specLister,
-		PromptManager:         promptManager,
-		CurrentDateTimeGetter: currentDateTimeGetter,
-		VerifyingStaleHours:   verifyingStaleHours,
-	}
-
-	checker := doctor.NewChecker(deps)
-
-	fixer := doctor.NewFixer(doctor.FixerDeps{
-		Deps:            deps,
-		AutoCompleter:   autoCompleter,
-		Mover:           releaser,
-		FileLockFactory: lock.NewDirLock,
-	})
-
-	return cmd.NewDoctorCommand(checker, fixer)
-}
-
 // CreateHealthcheckCommand creates a HealthcheckCommand with the seven
 // probes wired in fixed order: docker, image, boot, claude, mount, gh,
 // notifications. The gh probe is appended only when cfg.PR is true; the
 // notifications probe is appended only when at least one notification
 // channel is configured. The factory is construction-only — instantiate
 // concrete deps, pass them in, no branches.
-// CreateHealthcheckGate builds the daemon-startup healthcheck gate. The gate's
-// disabled/skip/cache logic lives in healthcheckgate.gate.Check; this factory only
-// constructs collaborators (the underlying HealthcheckCommand, the file cache, the
-// cache key, the notifier) and passes them in.
-//
-// os.UserHomeDir error: failure is logged, then the gate falls back to a CWD-relative
-// cache path. The cache is non-secret, non-critical, and write failures are tolerated
-// by design; surfacing the error here is enough — refusing to start the daemon over a
-// cache-dir resolution miss would be worse than the silent fallback.
-func CreateHealthcheckGate(
-	ctx context.Context,
-	cfg config.Config,
-	skipHealthcheck bool,
-	projectName string,
-	n notifier.Notifier,
-	currentDateTimeGetter libtime.CurrentDateTimeGetter,
-) healthcheckgate.Gate {
-	cacheKey := healthcheckgate.CacheKey(
-		cfg.ContainerImage,
-		projectName,
-		cfg.ParsedHealthcheckInterval(),
-	)
-	home, err := os.UserHomeDir()
-	if err != nil {
-		slog.Warn(
-			"healthcheck cache: os.UserHomeDir failed; cache root will be CWD-relative",
-			"error",
-			err,
-		)
-	}
-	cacheRoot := filepath.Join(home, ".dark-factory", "healthcheck-cache")
-	return healthcheckgate.NewGate(
-		healthcheckEnabledForBackend(cfg),
-		skipHealthcheck,
-		cfg.ParsedHealthcheckInterval(),
-		CreateHealthcheckCommand(ctx, cfg, currentDateTimeGetter),
-		cacheKey,
-		healthcheckgate.NewFileCache(cacheRoot),
-		n,
-		projectName,
-		currentDateTimeGetter,
-	)
-}
-
-// healthcheckEnabledForBackend reports whether the daemon-startup healthcheck
-// gate should run. Under backend: local the docker probes are meaningless (no
-// docker daemon is required — spec 104), so the gate is always disabled;
-// otherwise it follows the configured value.
-func healthcheckEnabledForBackend(cfg config.Config) bool {
-	if cfg.Backend == config.BackendLocal {
-		return false
-	}
-	return cfg.HealthcheckEnabledValue()
-}
-
 func CreateHealthcheckCommand(
 	ctx context.Context,
 	cfg config.Config,

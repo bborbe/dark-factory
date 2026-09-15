@@ -44,19 +44,19 @@ var _ = Describe("GeneratingWithoutPrompt", func() {
 			fakeMover,
 			libtime.NewCurrentDateTime(),
 		)
-		os.MkdirAll(filepath.Join(specsDir, "inbox"), 0750)
-		os.MkdirAll(filepath.Join(specsDir, "in-progress"), 0750)
-		os.MkdirAll(filepath.Join(specsDir, "completed"), 0750)
-		os.MkdirAll(filepath.Join(specsDir, "rejected"), 0750)
-		os.MkdirAll(filepath.Join(promptsDir, "inbox"), 0750)
-		os.MkdirAll(filepath.Join(promptsDir, "in-progress"), 0750)
-		os.MkdirAll(filepath.Join(promptsDir, "completed"), 0750)
-		os.MkdirAll(filepath.Join(promptsDir, "cancelled"), 0750)
-		os.MkdirAll(filepath.Join(promptsDir, "rejected"), 0750)
+		Expect(os.MkdirAll(filepath.Join(specsDir, "inbox"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(specsDir, "in-progress"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(specsDir, "completed"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(specsDir, "rejected"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(promptsDir, "inbox"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(promptsDir, "in-progress"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(promptsDir, "completed"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(promptsDir, "cancelled"), 0750)).To(Succeed())
+		Expect(os.MkdirAll(filepath.Join(promptsDir, "rejected"), 0750)).To(Succeed())
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(tempDir)
+		Expect(os.RemoveAll(tempDir)).To(Succeed())
 	})
 
 	checkerFor := func() doctor.Checker {
@@ -171,5 +171,20 @@ var _ = Describe("GeneratingWithoutPrompt", func() {
 	// every startup.
 	It("reports nothing on a tree with no specs", func() {
 		Expect(generatingFindings()).To(BeEmpty())
+	})
+
+	// The scan walks every spec and every prompt, so a cancelled context must
+	// stop it rather than run the directories out. Asserting the error also
+	// pins that cancellation surfaces instead of being swallowed into an empty
+	// finding list, which would read to a caller as "pipeline clean".
+	It("stops and returns the error when the context is cancelled", func() {
+		createSpecFile(filepath.Join(specsDir, "in-progress"), "048-orphan.md", "generating")
+		cancelledCtx, cancel := context.WithCancel(ctx)
+		cancel()
+
+		findings, err := checkerFor().Check(cancelledCtx)
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(context.Canceled))
+		Expect(findings).To(BeEmpty())
 	})
 })

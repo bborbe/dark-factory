@@ -48,6 +48,11 @@ func (c *checker) detectGeneratingWithoutPrompt(ctx context.Context) ([]Finding,
 
 	var findings []Finding
 	for _, path := range specPaths {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		sf, err := spec.Load(ctx, path, c.deps.CurrentDateTimeGetter)
 		if err != nil {
 			continue
@@ -55,7 +60,11 @@ func (c *checker) detectGeneratingWithoutPrompt(ctx context.Context) ([]Finding,
 		if sf.Frontmatter.Status != string(spec.StatusGenerating) {
 			continue
 		}
-		if c.promptReferencesSpec(ctx, sf.Name, promptPaths) {
+		referenced, err := c.promptReferencesSpec(ctx, sf.Name, promptPaths)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, "check prompt references")
+		}
+		if referenced {
 			continue
 		}
 		findings = append(findings, Finding{
@@ -76,19 +85,29 @@ func (c *checker) promptReferencesSpec(
 	ctx context.Context,
 	specName string,
 	promptPaths []string,
-) bool {
+) (bool, error) {
 	for _, path := range promptPaths {
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		default:
+		}
 		pf, err := c.deps.PromptManager.Load(ctx, path)
 		if err != nil {
 			continue
 		}
 		for _, specRef := range pf.Frontmatter.Specs {
+			select {
+			case <-ctx.Done():
+				return false, ctx.Err()
+			default:
+			}
 			if c.specExists(specRef, []string{specName + ".md"}) {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
 }
 
 // generatingWithoutPromptFixCommand names both real exits without guessing

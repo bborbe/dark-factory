@@ -89,6 +89,22 @@ setup_sandbox_copy() {
   printf '%s' "$yaml" > .dark-factory.yaml
   git init --bare "$WORK_DIR/remote.git" >/dev/null 2>&1
   git remote set-url origin "$WORK_DIR/remote.git"
+  # Seed the bare remote from the copy's HEAD, then refresh the tracking ref.
+  #
+  # `cp -r` brings the SOURCE repo's refs/remotes/origin/master along, and the
+  # fresh bare remote is empty — so nothing can ever reconcile that ref. Any
+  # scenario running `git merge origin/master` then merges whatever the source
+  # checkout happened to have cached, which is only harmless while the source
+  # sits exactly on its remote. When it drifts, the merge conflicts and every
+  # such scenario fails for a reason that has nothing to do with the code under
+  # test. Observed 2026-09-15: the sandbox fixture was 4 ahead / 5 behind, and
+  # scenarios 001/003/006/019 all failed on the same phantom conflict —
+  # identically on a release binary that predates the feature being tested.
+  #
+  # Seeding makes origin/master == HEAD, which is what a real checkout looks
+  # like, and keeps it true regardless of how the source fixture drifts.
+  git push -q "$WORK_DIR/remote.git" "HEAD:refs/heads/master"
+  git fetch -q origin
   echo "→ sandbox: $WORK_DIR/$subdir"
   echo "→ remote:  $WORK_DIR/remote.git"
 }

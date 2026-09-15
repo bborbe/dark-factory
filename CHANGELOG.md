@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- feat: add a `generating-without-prompt` detector to `dark-factory doctor` — reports specs parked in `specs/in-progress/` with `status: generating` and no prompt referencing them anywhere; `generating` is transient and nothing times it out, so a generation that dies (container OOM-killed, host rebooted, prompts approved out from under a running generator) leaves the spec stuck forever with nothing on disk, and no existing detector covers it — `verifying-stale` keys on `verifying`, `prompted-but-not-swept` on `prompted`, and `status-dir-mismatch` explicitly permits `generating` in that directory. A spec that *does* have prompts is deliberately not reported even while still marked `generating`: that is bookkeeping drift with the work visible on disk, not a failed generation
+
 ## v0.196.1
 
 - fix(scenarios): seed the bare remote in the eight scenarios that inline their own sandbox setup (003, 006, 010, 011, 012, 013, 019, 020) rather than calling `setup_sandbox_copy` — the `v0.196.0` fix corrected the helper only, which covers scenario 001 alone, so the phantom `git merge origin/master` conflict remained live everywhere else; 024 already seeded its remote and is unchanged, and its `git push -q origin master` is the precedent the other eight now match

@@ -27,6 +27,12 @@ import (
 // 186/187 shape), a number whose only file is in rejected/ (terminal, and not
 // requeueable), and a number whose file exists nowhere at all (the never-created
 // gap, which no directory listing can reveal).
+//
+// Scope: like every doctor detector this reads the WORKING TREE and takes no git
+// ref, so a finding describes the tree it ran in — not origin/master. A stale
+// checkout yields stale findings, and callers reasoning about master must check
+// out master first. A 2026-09-15 fleet sweep found 72 of 89 checkouts behind
+// origin/master, so this is the common case rather than the edge case.
 func (c *checker) detectMissingCompletedPrompt(ctx context.Context) ([]Finding, error) {
 	allPaths, err := scanDirsForPrompts(ctx, []string{
 		c.deps.PromptsInboxDir,

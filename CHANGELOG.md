@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix(scenarios): seed the bare remote in the eight scenarios that inline their own sandbox setup (003, 006, 010, 011, 012, 013, 019, 020) rather than calling `setup_sandbox_copy` — the `v0.196.0` fix corrected the helper only, which covers scenario 001 alone, so the phantom `git merge origin/master` conflict remained live everywhere else; 024 already seeded its remote and is unchanged, and its `git push -q origin master` is the precedent the other eight now match
+
 ## v0.196.0
 
 - feat: add a `missing-completed-prompt` detector to `dark-factory doctor` — reports prompt numbers below the highest number present in `prompts/` with no file in `prompts/completed/`, the gap that silently blocks every spec-less prompt below it; `checker.Check` no longer hard-errors `not a dark-factory project` on a tree with no pipeline dirs so it can serve as a clean/dirty oracle (spec 105 prompt 1)

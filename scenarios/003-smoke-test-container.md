@@ -21,6 +21,11 @@ printf 'pr: false\nworktree: false\nmaxContainers: 999\n' > .dark-factory.yaml
 # Redirect push to local bare repo (avoid polluting real remote)
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"
+# Seed the bare remote from HEAD; without this origin/master stays the SOURCE
+# repo's stale cached ref (cp -r brings it along) and `git merge origin/master`
+# merges a diverged ref. Mirrors setup_sandbox_copy in scenarios/helper/lib.sh.
+git push -q "$WORK_DIR/remote.git" HEAD:refs/heads/master
+git fetch -q origin
 ```
 
 - [ ] Repo has `.dark-factory.yaml` with `pr: false`, `worktree: false`

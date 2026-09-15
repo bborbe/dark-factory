@@ -22,6 +22,11 @@ maxContainers: 999
 YAML
 git init --bare "$WORK_DIR/remote.git"
 git remote set-url origin "$WORK_DIR/remote.git"
+# Seed the bare remote from HEAD; without this origin/master stays the SOURCE
+# repo's stale cached ref (cp -r brings it along) and `git merge origin/master`
+# merges a diverged ref. Mirrors setup_sandbox_copy in scenarios/helper/lib.sh.
+git push -q "$WORK_DIR/remote.git" HEAD:refs/heads/master
+git fetch -q origin
 
 # Place spec directly in in-progress (skip approve flow — we want a deterministic state)
 mkdir -p specs/in-progress prompts/in-progress

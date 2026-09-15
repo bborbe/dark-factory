@@ -24,6 +24,11 @@ maxContainers: 999
 YAML
 git init --bare "$WORK_DIR/remote.git" >/dev/null 2>&1
 git remote set-url origin "$WORK_DIR/remote.git"
+# Seed the bare remote from HEAD; without this origin/master stays the SOURCE
+# repo's stale cached ref (cp -r brings it along) and `git merge origin/master`
+# merges a diverged ref. Mirrors setup_sandbox_copy in scenarios/helper/lib.sh.
+git push -q "$WORK_DIR/remote.git" HEAD:refs/heads/master
+git fetch -q origin
 
 # Pre-place a spec at prompted state with one linked prompt approved+ready.
 # Skip the daemon's spec-generation step (which requires an LLM call) — the

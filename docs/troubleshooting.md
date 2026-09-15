@@ -74,6 +74,30 @@ Prompts execute in number order, and the gate is **presence in `prompts/complete
 absence from `prompts/in-progress/`. `FindMissingCompleted` returns every number below N that
 is not in `completed/`, so any such number blocks N.
 
+**Which guard applies depends on the `spec:` field** (`pkg/queuescanner/scanner.go`, the
+`specID == ""` branch):
+
+- **With a `spec:` field** → `AllPreviousInSpecCompleted`. Only earlier prompts *of the same
+  spec* must be complete, so an unrelated spec advances independently.
+- **Without a `spec:` field** → `AllPreviousCompleted`, the legacy global guard. *Every* number
+  below N must be in `completed/`.
+
+So a gap does not stall the queue evenly: spec-carrying prompts keep running while **every
+spec-less prompt is blocked**. That asymmetry is what makes a gap easy to misjudge as harmless —
+the pipeline still visibly works.
+
+**The failure is silent, and the two moments are far apart.** Nothing errors when the gap is
+created; it surfaces only when a spec-less prompt is next run. In between there is no warning,
+no degraded status, no log line. On `bborbe/vault-cli`, prompts 186 and 187 were left in
+`in-progress/` on 2026-08-21 while their work shipped in the same commit — and every spec-less
+prompt in that repo stayed blocked for **25 days**, until the gap was reconciled on 2026-09-15.
+
+**A gap does not imply unfinished work.** Both of those prompts were complete; 186 was marked
+`failed` only because its *completion report* failed validation after its edits had already
+landed. When the work is present on master, the fix is to reconcile the bookkeeping — set the
+prompts to a terminal status citing the shipping commit and move them to `completed/` — not to
+re-run them, which re-applies edits that already exist. Check before requeueing.
+
 This makes the obvious remedies ineffective. Moving the blocker somewhere else does not
 satisfy the gate:
 

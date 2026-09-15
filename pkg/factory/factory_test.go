@@ -51,6 +51,7 @@ var _ = Describe("Factory", func() {
 				"v0.0.1",
 				false,
 				false,
+				false,
 				config.FieldSources{},
 				libtime.NewCurrentDateTime(),
 			)
@@ -561,7 +562,7 @@ var _ = Describe("Factory", func() {
 			c := buildPreflightConfig()
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err := factory.CreateRunner(ctx, c, "v0.0.1", false, false, config.FieldSources{}, libtime.NewCurrentDateTime()).
+			err := factory.CreateRunner(ctx, c, "v0.0.1", false, false, false, config.FieldSources{}, libtime.NewCurrentDateTime()).
 				Run(ctx)
 			Expect(stderrors.Is(err, preflightconditions.ErrPreflightFailed)).To(BeTrue())
 		})
@@ -592,7 +593,7 @@ var _ = Describe("Factory", func() {
 
 	Describe("CreatePipelineGate", func() {
 		It("should return a non-nil gate", func() {
-			gate := factory.CreatePipelineGate(cfg, libtime.NewCurrentDateTime())
+			gate := factory.CreatePipelineGate(cfg, false, libtime.NewCurrentDateTime())
 			Expect(gate).NotTo(BeNil())
 		})
 
@@ -629,9 +630,31 @@ var _ = Describe("Factory", func() {
 			})
 
 			It("does not refuse startup — the gate ships unarmed", func() {
-				// Flipping pipelinegate.DefaultEnabled makes this assertion fail on
-				// purpose, so the arming change is reviewed.
-				err := factory.CreatePipelineGate(gatedCfg, libtime.NewCurrentDateTime()).
+				// gatedCfg leaves pipelineGate unset, so this asserts the DEFAULT,
+				// not the constant it used to read.
+				err := factory.CreatePipelineGate(gatedCfg, false, libtime.NewCurrentDateTime()).
+					Check(context.Background())
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("refuses startup when pipelineGate is armed in config", func() {
+				armed := gatedCfg
+				enabled := true
+				armed.PipelineGate = &enabled
+
+				err := factory.CreatePipelineGate(armed, false, libtime.NewCurrentDateTime()).
+					Check(context.Background())
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("does not refuse when armed but skipped via the flag", func() {
+				// The counterweight: without this, a gate that ignored skip
+				// entirely would still pass the armed test above.
+				armed := gatedCfg
+				enabled := true
+				armed.PipelineGate = &enabled
+
+				err := factory.CreatePipelineGate(armed, true, libtime.NewCurrentDateTime()).
 					Check(context.Background())
 				Expect(err).NotTo(HaveOccurred())
 			})

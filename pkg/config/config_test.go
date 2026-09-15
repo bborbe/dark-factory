@@ -1193,6 +1193,29 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Describe("PipelineGateEnabledValue", func() {
+		// The default is the OPPOSITE of HealthcheckEnabledValue directly above.
+		// Asserting it here, next to that block, is the point: the field names
+		// are symmetric and the defaults are not.
+		It("returns FALSE when PipelineGate is nil (default) — unlike healthcheck", func() {
+			cfg := config.Config{}
+			Expect(cfg.PipelineGateEnabledValue()).To(BeFalse())
+			Expect(cfg.HealthcheckEnabledValue()).To(BeTrue())
+		})
+
+		It("returns true only when PipelineGate is explicitly true", func() {
+			t := true
+			cfg := config.Config{PipelineGate: &t}
+			Expect(cfg.PipelineGateEnabledValue()).To(BeTrue())
+		})
+
+		It("returns false when PipelineGate is explicitly false", func() {
+			f := false
+			cfg := config.Config{PipelineGate: &f}
+			Expect(cfg.PipelineGateEnabledValue()).To(BeFalse())
+		})
+	})
+
 	Describe("EffectiveHideGit", func() {
 		// Canonical home for the hideGit resolution formula. Promoted out
 		// of pkg/factory's `resolveHideGit` helper (2026-06-27) which was

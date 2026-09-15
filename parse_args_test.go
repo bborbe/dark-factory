@@ -9,19 +9,20 @@ import (
 )
 
 type parseArgsResult struct {
-	debug           bool
-	command         string
-	subcommand      string
-	args            []string
-	autoApprove     bool
-	skipPreflight   bool
-	model           string
-	skipHealthcheck bool
+	debug            bool
+	command          string
+	subcommand       string
+	args             []string
+	autoApprove      bool
+	skipPreflight    bool
+	model            string
+	skipHealthcheck  bool
+	skipPipelineGate bool
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate := ParseArgs(
 		input,
 	)
 	if debug != want.debug {
@@ -53,6 +54,9 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if skipHealthcheck != want.skipHealthcheck {
 		t.Errorf("skipHealthcheck: got %v, want %v", skipHealthcheck, want.skipHealthcheck)
+	}
+	if skipPipelineGate != want.skipPipelineGate {
+		t.Errorf("skipPipelineGate: got %v, want %v", skipPipelineGate, want.skipPipelineGate)
 	}
 }
 

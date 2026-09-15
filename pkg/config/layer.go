@@ -106,8 +106,6 @@ keys:
 // Rules: global wins over default; project wins over global.
 // "arg" source is not set here — it is set via ApplyArgOverrides /
 // ApplySetOverrides when CLI flags override.
-//
-//nolint:funlen // table of 1-line assignments by source layer
 func ComputeFieldSources(
 	global globalconfig.GlobalConfig,
 	proj LayeredProjectOverrides,
@@ -123,9 +121,20 @@ func ComputeFieldSources(
 		AutoApprovePrompts:  "default",
 		AutoGeneratePrompts: "default",
 		HealthcheckEnabled:  "default",
+		PipelineGate:        "default",
 		HealthcheckInterval: "default",
 		Backend:             "default",
 	}
+	applyGlobalSources(&s, global)
+	applyProjectSources(&s, proj)
+	return s
+}
+
+// applyGlobalSources marks every field the global config sets, overriding the
+// "default" layer. Split from ComputeFieldSources along the layering seam the
+// doc comment above describes — global beats default, project beats global —
+// so each layer's rules stay readable as one list.
+func applyGlobalSources(s *FieldSources, global globalconfig.GlobalConfig) {
 	if global.Model != nil {
 		s.Model = "global"
 	}
@@ -147,6 +156,11 @@ func ComputeFieldSources(
 	if global.Backend != nil {
 		s.Backend = "global"
 	}
+}
+
+// applyProjectSources marks every field the project config sets. Runs after
+// applyGlobalSources so project wins, per the layering rule.
+func applyProjectSources(s *FieldSources, proj LayeredProjectOverrides) {
 	if proj.Model != nil {
 		s.Model = "project"
 	}
@@ -183,10 +197,12 @@ func ComputeFieldSources(
 	if proj.HealthcheckEnabled != nil {
 		s.HealthcheckEnabled = "project"
 	}
+	if proj.PipelineGate != nil {
+		s.PipelineGate = "project"
+	}
 	if proj.HealthcheckInterval != nil {
 		s.HealthcheckInterval = "project"
 	}
-	return s
 }
 
 // ApplyArgOverrides validates command-gate rules and applies --model CLI flag

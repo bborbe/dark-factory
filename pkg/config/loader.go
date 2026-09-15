@@ -42,6 +42,7 @@ type LayeredProjectOverrides struct {
 	AutoApprovePrompts  *bool     // non-nil when .dark-factory.yaml explicitly sets autoApprovePrompts
 	AutoGeneratePrompts *bool     // non-nil when .dark-factory.yaml explicitly sets autoGeneratePrompts
 	HealthcheckEnabled  *bool     // non-nil when .dark-factory.yaml explicitly sets healthcheckEnabled
+	PipelineGate        *bool     // non-nil when .dark-factory.yaml explicitly sets pipelineGate
 	HealthcheckInterval *string   // non-nil when .dark-factory.yaml explicitly sets healthcheckInterval
 	Backend             *Backend  // non-nil when .dark-factory.yaml explicitly sets backend
 }
@@ -130,6 +131,7 @@ type partialConfig struct {
 	PreflightCommand       *string              `yaml:"preflightCommand"`
 	PreflightInterval      *string              `yaml:"preflightInterval"`
 	HealthcheckEnabled     *bool                `yaml:"healthcheckEnabled"`
+	PipelineGate           *bool                `yaml:"pipelineGate"`
 	HealthcheckInterval    *string              `yaml:"healthcheckInterval"`
 	QueueInterval          *string              `yaml:"queueInterval"`
 	SweepInterval          *string              `yaml:"sweepInterval"`
@@ -191,6 +193,7 @@ func (l *fileLoader) loadWithOverrides(ctx context.Context) (LoadResult, error) 
 		AutoApprovePrompts:  partial.AutoApprovePrompts,
 		AutoGeneratePrompts: partial.AutoGeneratePrompts,
 		HealthcheckEnabled:  partial.HealthcheckEnabled,
+		PipelineGate:        partial.PipelineGate,
 		HealthcheckInterval: partial.HealthcheckInterval,
 		Backend:             partial.Backend,
 	}
@@ -401,6 +404,9 @@ func mergePartialTimings(cfg *Config, partial *partialConfig) {
 	}
 	if partial.HealthcheckEnabled != nil {
 		cfg.HealthcheckEnabled = partial.HealthcheckEnabled
+	}
+	if partial.PipelineGate != nil {
+		cfg.PipelineGate = partial.PipelineGate
 	}
 	if partial.HealthcheckInterval != nil {
 		cfg.HealthcheckInterval = *partial.HealthcheckInterval

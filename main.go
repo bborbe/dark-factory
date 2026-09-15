@@ -44,7 +44,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate := ParseArgs(
 		filteredArgs,
 	)
 
@@ -115,6 +115,7 @@ func run(ctx context.Context) error {
 		autoApprove,
 		skipPreflight,
 		skipHealthcheck,
+		skipPipelineGate,
 		sources,
 		currentDateTimeGetter,
 	)
@@ -132,7 +133,7 @@ func initLogging(debug bool) {
 func validateSkipFlags(
 	ctx context.Context,
 	command string,
-	skipPreflight, skipHealthcheck bool,
+	skipPreflight, skipHealthcheck, skipPipelineGate bool,
 ) error {
 	if skipPreflight {
 		switch command {
@@ -148,6 +149,14 @@ func validateSkipFlags(
 			// valid
 		default:
 			return errors.Errorf(ctx, "unknown flag: --skip-healthcheck")
+		}
+	}
+	if skipPipelineGate {
+		switch command {
+		case "daemon":
+			// valid
+		default:
+			return errors.Errorf(ctx, "unknown flag: --skip-pipeline-gate")
 		}
 	}
 	return nil
@@ -188,10 +197,11 @@ func runCommand(
 	autoApprove bool,
 	skipPreflight bool,
 	skipHealthcheck bool,
+	skipPipelineGate bool,
 	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
-	if err := validateSkipFlags(ctx, command, skipPreflight, skipHealthcheck); err != nil {
+	if err := validateSkipFlags(ctx, command, skipPreflight, skipHealthcheck, skipPipelineGate); err != nil {
 		return err
 	}
 	switch command {
@@ -248,6 +258,7 @@ func runCommand(
 			args,
 			skipPreflight,
 			skipHealthcheck,
+			skipPipelineGate,
 			sources,
 			currentDateTimeGetter,
 		)
@@ -318,6 +329,7 @@ func runDaemonCommand(
 	args []string,
 	skipPreflight bool,
 	skipHealthcheck bool,
+	skipPipelineGate bool,
 	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) error {
@@ -341,7 +353,7 @@ func runDaemonCommand(
 	}
 	// --skip-healthcheck is logged authoritatively by gate.Check; no pre-gate log needed
 	// (would emit a duplicate "healthcheck skipped via --skip-healthcheck" line).
-	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, skipHealthcheck, sources, currentDateTimeGetter).
+	runErr := factory.CreateRunner(ctx, cfg, version.Version, skipPreflight, skipHealthcheck, skipPipelineGate, sources, currentDateTimeGetter).
 		Run(ctx)
 	if stderrors.Is(runErr, preflightconditions.ErrPreflightFailed) {
 		slog.Error(
@@ -830,13 +842,14 @@ func printRunHelp() {
 func printDaemonHelp() {
 	fmt.Fprintf(
 		os.Stdout,
-		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight] [--skip-healthcheck] [--model NAME] [--set key=value ...]\n\n"+
+		"Usage: dark-factory daemon [--max-containers N] [--skip-preflight] [--skip-healthcheck] [--skip-pipeline-gate] [--model NAME] [--set key=value ...]\n\n"+
 			"Watch for queued prompts and execute them (long-running).\n\n"+
 			"Flags:\n"+
 			"  --max-containers N      Override the container limit for this run\n"+
 			"  --skip-preflight        Skip preflight baseline check for this invocation.\n"+
 			"                          Prompts may run on a broken baseline — use with caution.\n"+
 			"  --skip-healthcheck      Skip the healthcheck startup gate for this invocation (daemon only).\n"+
+			"  --skip-pipeline-gate    Skip the pipeline startup gate for this invocation (daemon only).\n"+
 			"  --model NAME            Override model for this invocation (overrides yaml)\n"+
 			"  --set key=value         Override a config field for this invocation; may repeat\n"+
 			"                          Supported keys: hideGit, autoRelease, dirtyFileThreshold, model, maxContainers, workflow, pr, autoMerge, autoGeneratePrompts\n"+
@@ -950,11 +963,12 @@ func printScenarioHelp() {
 // Unknown command → command="unknown", args[0]=the unrecognized command
 // Two-level: "prompt list" → command="prompt", subcommand="list"
 // Top-level: "status", "list", "run", "daemon" → command=<cmd>, subcommand=""
-func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, string, bool) {
+func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, string, bool, bool) {
 	debug := false
 	autoApprove := false
 	skipPreflight := false
 	skipHealthcheck := false
+	skipPipelineGate := false
 	model := ""
 	filtered := make([]string, 0, len(rawArgs))
 	for _, arg := range rawArgs {
@@ -967,6 +981,8 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, st
 			skipPreflight = true
 		case "--skip-healthcheck":
 			skipHealthcheck = true
+		case "--skip-pipeline-gate":
+			skipPipelineGate = true
 		default:
 			filtered = append(filtered, arg)
 		}
@@ -990,7 +1006,7 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, st
 	filtered = modelFiltered
 
 	if len(filtered) == 0 {
-		return debug, "help", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 	}
 
 	command := filtered[0]
@@ -998,17 +1014,17 @@ func ParseArgs(rawArgs []string) (bool, string, string, []string, bool, bool, st
 
 	switch command {
 	case "help", "--help", "-help", "-h":
-		return debug, "help", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck
+		return debug, "help", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 	case "--version", "-version", "-v":
-		return debug, "version", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck
+		return debug, "version", "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 	case "run", "daemon", "kill", "status", "list", "config", "doctor", "healthcheck":
-		return debug, command, "", rest, autoApprove, skipPreflight, model, skipHealthcheck
+		return debug, command, "", rest, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 	case "prompt", "spec", "scenario":
 		if len(rest) == 0 {
-			return debug, command, "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck
+			return debug, command, "", []string{}, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 		}
-		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight, model, skipHealthcheck
+		return debug, command, rest[0], rest[1:], autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 	}
 
-	return debug, "unknown", "", filtered, autoApprove, skipPreflight, model, skipHealthcheck
+	return debug, "unknown", "", filtered, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate
 }

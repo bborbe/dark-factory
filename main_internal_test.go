@@ -70,17 +70,18 @@ var _ = Describe("extractMaxContainers", func() {
 
 var _ = Describe("ParseArgs", func() {
 	type result struct {
-		debug           bool
-		command         string
-		subcommand      string
-		args            []string
-		autoApprove     bool
-		skipPreflight   bool
-		model           string
-		skipHealthcheck bool
+		debug            bool
+		command          string
+		subcommand       string
+		args             []string
+		autoApprove      bool
+		skipPreflight    bool
+		model            string
+		skipHealthcheck  bool
+		skipPipelineGate bool
 	}
 	parse := func(rawArgs []string) result {
-		debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+		debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate := ParseArgs(
 			rawArgs,
 		)
 		return result{
@@ -92,6 +93,7 @@ var _ = Describe("ParseArgs", func() {
 			skipPreflight,
 			model,
 			skipHealthcheck,
+			skipPipelineGate,
 		}
 	}
 
@@ -194,6 +196,7 @@ var _ = Describe("runCommand --skip-preflight rejection", func() {
 				[]string{},
 				false,
 				true,
+				false,
 				false,
 				config.FieldSources{},
 				dt,

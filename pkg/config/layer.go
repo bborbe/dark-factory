@@ -14,8 +14,16 @@ import (
 	"github.com/bborbe/dark-factory/pkg/globalconfig"
 )
 
-// SupportedSetKeys is the authoritative list of yaml-backed user-pref keys
-// accepted by --set. Adding a new yaml field requires a new entry here.
+// SupportedSetKeys is the authoritative list of keys accepted by --set.
+//
+// It is deliberately NOT every yaml key. Startup gates (healthcheckEnabled,
+// pipelineGate) are project-file-only: arming or disarming a gate should be a
+// reviewable commit, not a throwaway CLI flag. The sanctioned one-off bypasses
+// are --skip-healthcheck and --skip-pipeline-gate, which skip a gate for a
+// single invocation without changing what the repo declares.
+//
+// So adding a yaml field does not automatically require an entry here — add
+// one only when the field is meant to be overridable per invocation.
 var SupportedSetKeys = []string{
 	"hideGit",
 	"autoRelease",

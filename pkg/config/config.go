@@ -123,6 +123,7 @@ type Config struct {
 	PreflightCommand       string              `yaml:"preflightCommand"`
 	PreflightInterval      string              `yaml:"preflightInterval"`
 	HealthcheckEnabled     *bool               `yaml:"healthcheckEnabled,omitempty"`
+	PipelineGate           *bool               `yaml:"pipelineGate,omitempty"`
 	HealthcheckInterval    string              `yaml:"healthcheckInterval"`
 	QueueInterval          string              `yaml:"queueInterval"`
 	SweepInterval          string              `yaml:"sweepInterval"`
@@ -295,6 +296,27 @@ func (c Config) HealthcheckEnabledValue() bool {
 		return true
 	}
 	return *c.HealthcheckEnabled
+}
+
+// PipelineGateEnabledValue reports whether the daemon-startup pipeline gate is
+// enabled.
+//
+// The default is the OPPOSITE of HealthcheckEnabledValue above, deliberately:
+// nil means DISABLED, and only an explicit true arms the gate. Read them
+// together before changing either — the symmetry of the field names hides the
+// asymmetry of the defaults.
+//
+// The reason is blast radius. A healthcheck that fails stops one daemon whose
+// container is genuinely broken. This gate refuses startup on pre-existing
+// pipeline state that no new work introduced, so defaulting it on would stop
+// every daemon in every repo carrying a leftover — measured at the time as
+// 2 of 81 repos under the category filter, but the mechanism is fleet-wide and
+// arming must stay a deliberate, per-repo act.
+func (c Config) PipelineGateEnabledValue() bool {
+	if c.PipelineGate == nil {
+		return false
+	}
+	return *c.PipelineGate
 }
 
 // EffectiveHideGit reports whether the container should hide the project's

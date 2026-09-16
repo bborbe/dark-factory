@@ -156,13 +156,20 @@ func CreateHealthcheckGate(
 // verifyingStaleHours is passed as 0: pkg/doctor's detectVerifyingStale treats a
 // non-positive value as its default (24h), and `--verifying-stale-hours` is a
 // doctor-only CLI flag that does not apply to the daemon gate.
+// Arming is per-repo via the `pipelineGate:` config key and bypassable for a
+// single run via --skip-pipeline-gate. Both previously did not exist: enabled
+// was wired to the pipelinegate.DefaultEnabled compile-time constant and skip
+// was a literal false, which made arming a global, release-gated flip with no
+// runtime escape hatch — the reverse of how the sibling merge gate arms, one
+// repo at a time via rulesets.
 func CreatePipelineGate(
 	cfg config.Config,
+	skipPipelineGate bool,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) pipelinegate.Gate {
 	return pipelinegate.NewGate(
-		pipelinegate.DefaultEnabled,
-		false, // skip: no CLI flag in this spec — arming is an operational decision owned outside it
+		cfg.PipelineGateEnabledValue(),
+		skipPipelineGate,
 		doctor.NewChecker(createDoctorDeps(cfg, 0, currentDateTimeGetter)),
 	)
 }

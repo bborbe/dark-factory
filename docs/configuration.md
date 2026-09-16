@@ -421,6 +421,26 @@ healthcheckInterval: "8h"
 
 **Override:** pass `--skip-healthcheck` to `daemon` to bypass the gate for a single invocation — see [CLI Flags](#cli-flags) below.
 
+### Pipeline startup gate
+
+Refuses daemon startup when `dark-factory doctor` reports findings, naming the offending prompt numbers. It runs only in `daemon` mode, and only *after* the preflight baseline check — a repo with a broken baseline exits at preflight and never reaches this gate.
+
+```yaml
+pipelineGate: true
+```
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `pipelineGate` | `false` | Whether the daemon refuses to start on an unfinished pipeline. **Off by default**, unlike `healthcheckEnabled` above. |
+
+**Why the default is inverted.** A failing healthcheck stops one daemon whose container is genuinely broken. This gate refuses startup on pre-existing pipeline state that no new work introduced — so defaulting it on would stop every daemon in every repo carrying a leftover, an outage for a condition that was already there. Arm it per repo, once that repo is clean.
+
+**Uncached by design:** a pipeline scan is a cheap filesystem read, and a cached pass would hide a leftover that landed mid-session. Contrast `healthcheckInterval`, which caches successes.
+
+**On failure:** the daemon exits non-zero naming the category and the offending numbers (e.g. `missing-completed-prompt … prompt number 186`), so the operator sees *which* leftover blocks the run rather than a prompt silently never executing.
+
+**Override:** pass `--skip-pipeline-gate` to `daemon` to bypass the gate for a single invocation.
+
 ### CLI Flags
 
 Override settings for a single run without editing config:

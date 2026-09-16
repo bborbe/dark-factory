@@ -19,6 +19,7 @@ type FieldSources struct {
 	AutoApprovePrompts  string
 	AutoGeneratePrompts string
 	HealthcheckEnabled  string
+	PipelineGate        string
 	HealthcheckInterval string
 	Backend             string
 }

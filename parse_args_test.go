@@ -9,19 +9,20 @@ import (
 )
 
 type parseArgsResult struct {
-	debug           bool
-	command         string
-	subcommand      string
-	args            []string
-	autoApprove     bool
-	skipPreflight   bool
-	model           string
-	skipHealthcheck bool
+	debug            bool
+	command          string
+	subcommand       string
+	args             []string
+	autoApprove      bool
+	skipPreflight    bool
+	model            string
+	skipHealthcheck  bool
+	skipPipelineGate bool
 }
 
 func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	t.Helper()
-	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck := ParseArgs(
+	debug, command, subcommand, args, autoApprove, skipPreflight, model, skipHealthcheck, skipPipelineGate := ParseArgs(
 		input,
 	)
 	if debug != want.debug {
@@ -53,6 +54,9 @@ func assertParseArgs(t *testing.T, input []string, want parseArgsResult) {
 	}
 	if skipHealthcheck != want.skipHealthcheck {
 		t.Errorf("skipHealthcheck: got %v, want %v", skipHealthcheck, want.skipHealthcheck)
+	}
+	if skipPipelineGate != want.skipPipelineGate {
+		t.Errorf("skipPipelineGate: got %v, want %v", skipPipelineGate, want.skipPipelineGate)
 	}
 }
 
@@ -356,6 +360,43 @@ func TestParseArgsModel(t *testing.T) {
 	assertParseArgs(t,
 		[]string{"run", "--model", "qwen3.6:35b-a3b"},
 		parseArgsResult{command: "run", args: []string{}, model: "qwen3.6:35b-a3b"},
+	)
+}
+
+func TestParseArgsSkipPipelineGate(t *testing.T) {
+	t.Parallel()
+	// flag after command
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-pipeline-gate"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: true},
+	)
+	// flag before command (position-agnostic)
+	assertParseArgs(t,
+		[]string{"--skip-pipeline-gate", "daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: true},
+	)
+	// without flag, skipPipelineGate defaults to false
+	assertParseArgs(t,
+		[]string{"daemon"},
+		parseArgsResult{command: "daemon", args: []string{}, skipPipelineGate: false},
+	)
+	// the two skip flags are independent — neither sets the other
+	assertParseArgs(t,
+		[]string{"daemon", "--skip-healthcheck"},
+		parseArgsResult{command: "daemon", args: []string{}, skipHealthcheck: true},
+	)
+	// all three together
+	assertParseArgs(
+		t,
+		[]string{"-debug", "daemon", "--skip-preflight", "--skip-healthcheck", "--skip-pipeline-gate"},
+		parseArgsResult{
+			debug:            true,
+			command:          "daemon",
+			args:             []string{},
+			skipPreflight:    true,
+			skipHealthcheck:  true,
+			skipPipelineGate: true,
+		},
 	)
 }
 

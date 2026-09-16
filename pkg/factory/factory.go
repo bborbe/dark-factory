@@ -351,6 +351,7 @@ func CreateRunner(
 	ver string,
 	skipPreflight bool,
 	skipHealthcheck bool,
+	skipPipelineGate bool,
 	sources config.FieldSources,
 	currentDateTimeGetter libtime.CurrentDateTimeGetter,
 ) runner.Runner {
@@ -456,7 +457,7 @@ func CreateRunner(
 
 	// Pipeline startup gate (daemon-only). Reuses the same doctor checker as
 	// `dark-factory doctor`. Ships disabled; enabled/skip are handled inside the gate.
-	pipelineGate := CreatePipelineGate(cfg, currentDateTimeGetter)
+	pipelineGate := CreatePipelineGate(cfg, skipPipelineGate, currentDateTimeGetter)
 
 	proc := CreateProcessor(
 		ctx,

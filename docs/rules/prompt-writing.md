@@ -109,7 +109,7 @@ Read `pkg/config/config.go` — find the `Config` struct and `Validate` method.
 </constraints>
 
 <verification>
-Run `make precommit` -- must pass.
+Run `ROOTDIR=/workspace make precommit` -- must pass.
 </verification>
 ```
 
@@ -121,7 +121,7 @@ The container does NOT have: a Docker socket, the `dark-factory` CLI, cluster cr
 
 **Container-executable commands (safe in `<verification>`):**
 
-- `make precommit`, `make test`, `make check`, `make ensure`
+- `ROOTDIR=/workspace make precommit`, `ROOTDIR=/workspace make test`, `ROOTDIR=/workspace make check`, `ROOTDIR=/workspace make ensure`
 - `grep`, `find`, `ls`, `cat` — filesystem checks for expected side-effects
 - Language-specific test runners (`go test ./...`, `pytest`, `pnpm test`) that don't shell out to Docker
 - The change's own binary / CLI if it was built in `<requirements>`
@@ -134,6 +134,8 @@ The container does NOT have: a Docker socket, the `dark-factory` CLI, cluster cr
 - `scripts/*.sh` when the script requires Docker or the network beyond `tinyproxy`
 - `gh pr create`, `gh release`, `gh api` (no PAT with write scope inside container)
 - `git ` (bare — trailing space avoids `github`/`git@`) when `hideGit: true` or `workflow: worktree` masks `.git` — the command dies with `fatal: not a git repository`
+
+**A masked `.git` (`hideGit: true` or `workflow: worktree`) also empties `ROOTDIR` — pass `ROOTDIR=/workspace` on every `make` call:** masking `.git` breaks `make` too. `Makefile.variables` sets `ROOTDIR ?= $(shell git rev-parse --show-toplevel)`, so with no `.git` `ROOTDIR` is empty; `Makefile.env`'s `include $(ROOTDIR)/default.env` then resolves to `include /default.env`, and every `make` target dies before it runs. Observed: a prompt's `<verification>` ran bare `make precommit`, the run died with `error: git safety check failed: worktree CWD detected … cannot run from a worktree unless hideGit=true`, and fixing only the `hideGit` flag would have left the build broken on `ROOTDIR` — three prompt-audit rounds missed it and the run failed.
 
 **Why this matters — the false-positive-pass failure mode:** the daemon's executor does NOT check `<verification>` command exit codes for failure. A `git` command that dies with `fatal: not a git repository`, or a `docker` command that dies with `command not found`, still ships. The prompt lands, the code is committed, the verification never actually ran. This is the highest-signal reason to keep operator-only commands out of prompts.
 

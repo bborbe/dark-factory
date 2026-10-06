@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- docs: Remove the dark-factory approval gate from this repo's `docs/claude-md-guide.md`. It contradicted the global `execution-phase-no-reask` carve-out and would have stopped every spec and prompt approval.
+
 ## v0.198.2
 
 - docs(prompt-writing): require `ROOTDIR=/workspace` on every `make` call in `<verification>` — a masked `.git` (`hideGit: true` or `workflow: worktree`) leaves `ROOTDIR` empty, so `Makefile.env`'s `include $(ROOTDIR)/default.env` resolves to `include /default.env` and every target dies before it runs. The trigger is the masked `.git`, not `hideGit` alone; the template's `<verification>` example and the container-executable whitelist now carry the prefix, so the guide no longer prescribes the bare `make` it warns against.

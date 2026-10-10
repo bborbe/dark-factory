@@ -14,6 +14,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - fix: bump `osv-scanner` to v2.6.0 and `golang.org/x/net` to v0.60.0 so the Linux vulnerability gates stop failing. v2.3.1 pins `golang.org/x/tools` v0.38.0, whose SSA builder aborts with `unexpected expr: *ast.KeyValueExpr` on the promoted-field composite-literal key Go 1.27 permits in the Linux stdlib, so a repo on the old pin passes locally on darwin and fails only in Linux CI. `x/net` v0.58.0 carries `GO-2026-6603/6610/6611/6612/6617`, which fail both `vulncheck` and `trivy`.
 
+## v0.198.4
+
+- docs: correct two false claims about preflight in `docs/architecture-flow.md` and `docs/configuration.md` — it runs on the **host**, not inside a container, and a successful result is cached for `preflightInterval` by elapsed time, not keyed on the commit SHA. `pkg/preflight` reads no SHA, and the failure path logs only the command, its captured output and the error.
+
 ## v0.198.3
 
 - fix(deps): repair the `precommit` gate, which could not pass on a host running Go 1.27.2. `govulncheck` reports five `golang.org/x/net` advisories against v0.58.0 — GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617, all fixed in v0.60.0 — and Go 1.27.1 additionally carries stdlib `net/http` advisories that only 1.27.2 clears, so the gate failed on either toolchain. The language floor stays `go 1.27.1` while `toolchain go1.27.2` makes 1.27.2 the default everywhere, `golang.org/x/net` moves to v0.60.0, and `golangci-lint` moves to v2.14.0, which ships a newer `golang.org/x/tools` and reads Go 1.27.2 export data. Nothing is ignored and no gate is dropped.

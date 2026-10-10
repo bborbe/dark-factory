@@ -389,7 +389,7 @@ preflightInterval: "8h"
 
 **Caching:** Preflight runs at most once per `preflightInterval` after a successful check. Sequential prompts within the interval reuse the cached result without re-running the command.
 
-**On failure:** The daemon logs the command, its captured output, and the commit SHA that was checked. A notification is sent. The prompt remains queued.
+**On failure:** The daemon logs the command, its captured output, and the error. A notification is sent. The prompt remains queued.
 
 **Override:** Pass `--skip-preflight` to `run` or `daemon` to bypass preflight for a single invocation — see [CLI Flags](#cli-flags) below.
 

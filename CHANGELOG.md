@@ -13,7 +13,6 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - fix: bump `osv-scanner` to v2.6.0 so the Linux vulnerability gates stop failing. v2.3.1 pins `golang.org/x/tools` v0.38.0, whose SSA builder aborts with `unexpected expr: *ast.KeyValueExpr` on the promoted-field composite-literal key Go 1.27 permits in the Linux stdlib, so a repo on the old pin passes locally on darwin and fails only in Linux CI. Where `golang.org/x/net` is older than v0.60.0 it is raised to v0.60.0, clearing `GO-2026-6603/6610/6611/6612/6617`, which fail both `vulncheck` and `trivy`.
-
 ## v0.198.5
 
 - chore: commit `golines`'s output for `parse_args_test.go`, so `make precommit` stops leaving the tree dirty. The committed file did not match what the repo's own pinned formatter (`golines --max-len=100`) produces, so every `make format` — and therefore every `make precommit`, whose `precommit` target includes it — rewrote the file and left an uncommitted diff behind. Formatting only; no behaviour change.

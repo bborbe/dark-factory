@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.6
 
 - fix: bump `osv-scanner` to v2.6.0 so the Linux vulnerability gates stop failing. v2.3.1 pins `golang.org/x/tools` v0.38.0, whose SSA builder aborts with `unexpected expr: *ast.KeyValueExpr` on the promoted-field composite-literal key Go 1.27 permits in the Linux stdlib, so a repo on the old pin passes locally on darwin and fails only in Linux CI. Where `golang.org/x/net` is older than v0.60.0 it is raised to v0.60.0, clearing `GO-2026-6603/6610/6611/6612/6617`, which fail both `vulncheck` and `trivy`.
 ## v0.198.5

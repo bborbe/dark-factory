@@ -252,11 +252,19 @@ var _ = Describe("Processor", func() {
 				// MoveToCompleted must NOT be called
 				Expect(manager.MoveToCompletedCallCount()).To(Equal(0))
 
-				// Status must be failed — gate does not apply to failed executions
-				pf, loadErr := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
-					Load(ctx, promptPath)
-				Expect(loadErr).NotTo(HaveOccurred())
-				Expect(pf.Frontmatter.Status).To(Equal(string(prompt.FailedPromptStatus)))
+				// Status must be failed — gate does not apply to failed executions.
+				// Use Eventually to avoid a race: the failure handler writes the
+				// status asynchronously after Execute returns in the processor
+				// goroutine, so a bare Load here can read the pre-write value.
+				// Same guard as the pending_verification spec above.
+				Eventually(func() string {
+					pf, loadErr := prompt.NewManager("", "", "", "", nil, libtime.NewCurrentDateTime()).
+						Load(ctx, promptPath)
+					if loadErr != nil {
+						return ""
+					}
+					return pf.Frontmatter.Status
+				}, 2*time.Second, 50*time.Millisecond).Should(Equal(string(prompt.FailedPromptStatus)))
 
 				cancel()
 				<-errCh

@@ -384,12 +384,12 @@ preflightInterval: "8h"
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `preflightCommand` | `make precommit` | Shell command run inside the container before each prompt. Empty string disables preflight entirely. |
+| `preflightCommand` | `make precommit` | Shell command run on the host (not in a container) before each prompt. Empty string disables preflight entirely. |
 | `preflightInterval` | `8h` | How long a successful preflight result is cached. After the daemon runs preflight once and it passes, prompts within the interval reuse that result — git commits between prompts do NOT invalidate the cache. Re-runs happen when the interval elapses, when the daemon restarts, or after a failed preflight (failures are never cached, so an operator fix is picked up on the next prompt). Accepts Go duration strings: `"30m"`, `"2h"`, `"8h"`. Invalid strings are rejected at daemon startup. |
 
 **Caching:** Preflight runs at most once per `preflightInterval` after a successful check. Sequential prompts within the interval reuse the cached result without re-running the command.
 
-**On failure:** The daemon logs the command, its captured output, and the commit SHA that was checked. A notification is sent. The prompt remains queued.
+**On failure:** The daemon logs the command, its captured output, and the error. A notification is sent. The prompt remains queued.
 
 **Override:** Pass `--skip-preflight` to `run` or `daemon` to bypass preflight for a single invocation — see [CLI Flags](#cli-flags) below.
 
@@ -399,7 +399,7 @@ On `dark-factory daemon` start, run the same probe sequence as `dark-factory hea
 (Docker daemon, container image, container boot, Claude session, workspace mount, `gh` auth
 when `pr: true`, notification channels when configured) once before the prompt-watch loop
 begins. This re-validates the pipeline stack the daemon depends on, complementing the
-project-level `preflightCommand` (which only proves the project compiles in-container).
+project-level `preflightCommand` (which only proves the project compiles on the host).
 
 The gate runs only in `daemon` mode — `run` (one-shot) is unaffected.
 

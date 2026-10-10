@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.3
 
 - fix(deps): repair the `precommit` gate, which could not pass on a host running Go 1.27.2. `govulncheck` reports five `golang.org/x/net` advisories against v0.58.0 — GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612 and GO-2026-6617, all fixed in v0.60.0 — and Go 1.27.1 additionally carries stdlib `net/http` advisories that only 1.27.2 clears, so the gate failed on either toolchain. The language floor stays `go 1.27.1` while `toolchain go1.27.2` makes 1.27.2 the default everywhere, `golang.org/x/net` moves to v0.60.0, and `golangci-lint` moves to v2.14.0, which ships a newer `golang.org/x/tools` and reads Go 1.27.2 export data. Nothing is ignored and no gate is dropped.
 

@@ -388,7 +388,13 @@ func TestParseArgsSkipPipelineGate(t *testing.T) {
 	// all three together
 	assertParseArgs(
 		t,
-		[]string{"-debug", "daemon", "--skip-preflight", "--skip-healthcheck", "--skip-pipeline-gate"},
+		[]string{
+			"-debug",
+			"daemon",
+			"--skip-preflight",
+			"--skip-healthcheck",
+			"--skip-pipeline-gate",
+		},
 		parseArgsResult{
 			debug:            true,
 			command:          "daemon",

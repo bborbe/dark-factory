@@ -14,6 +14,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - chore(deps): bump the default YOLO container image `docker.io/bborbe/claude-yolo` `v0.16.1` → `v0.16.3`, which moves the Go toolchain *inside the image* from `1.27.1` to `1.27.2`. The in-image Go is the half of the fleet's Go bump that containers actually see, so this is what makes dark-factory-started containers build on 1.27.2 rather than 1.27.1. Verified against the published multiarch manifest (`amd64` + `arm64`) and by `docker run --entrypoint /bin/bash docker.io/bborbe/claude-yolo:v0.16.3 -c 'go version'` reporting `go1.27.2`. ⚠️ The `go.mod` language floor is deliberately **not** bumped here: `v0.198.3` set `go 1.27.1` with `toolchain go1.27.2` as the default everywhere, and the container's Go version is a separate axis from this module's.
 
+## v0.198.6
+
+- fix: bump `osv-scanner` to v2.6.0 so the Linux vulnerability gates stop failing. v2.3.1 pins `golang.org/x/tools` v0.38.0, whose SSA builder aborts with `unexpected expr: *ast.KeyValueExpr` on the promoted-field composite-literal key Go 1.27 permits in the Linux stdlib, so a repo on the old pin passes locally on darwin and fails only in Linux CI. Where `golang.org/x/net` is older than v0.60.0 it is raised to v0.60.0, clearing `GO-2026-6603/6610/6611/6612/6617`, which fail both `vulncheck` and `trivy`.
+
 ## v0.198.5
 
 - chore: commit `golines`'s output for `parse_args_test.go`, so `make precommit` stops leaving the tree dirty. The committed file did not match what the repo's own pinned formatter (`golines --max-len=100`) produces, so every `make format` — and therefore every `make precommit`, whose `precommit` target includes it — rewrote the file and left an uncommitted diff behind. Formatting only; no behaviour change.

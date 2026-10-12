@@ -2,7 +2,6 @@ module github.com/bborbe/dark-factory
 
 go 1.27.1
 
-
 toolchain go1.27.2
 
 require (
@@ -61,6 +60,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-exclude (
-	cloud.google.com/go v0.26.0
-)
+exclude cloud.google.com/go v0.26.0

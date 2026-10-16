@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.8
 
 - docs(rules): **`prompted` means the spec's prompt generation FINISHED, not that it produced every decomposition row** — `spec-writing.md` § Suggested Decomposition now requires verifying the prompt count after generation. Generation is one batch per spec (sibling prompts share an identical `created` timestamp), and a batch that under-produces still writes `status: prompted`, which the lifecycle defines as *all* prompts auto-generated. ⚠️ A missing row is not a retry state: `dark-factory spec --help` offers no generate verb, so recovery means unapproving and regenerating everything. Observed 2026-10-16: a three-row decomposition produced one prompt, the spec read `prompted`, and the missing two had to be authored by hand.
 

@@ -131,6 +131,7 @@ Rationale: prompt 1 establishes the publishing contract; prompts 2 and 3 can run
 - One row per prompt — typically 3-6 total.
 - Each row maps to specific DB / AC numbers so coverage is auditable.
 - "Depends on" makes ordering explicit. The daemon executes prompts in filename order (`1-`, `2-`, …) — your decomposition determines that order.
+- ⚠️ **Verify the prompt count after generation — `prompted` means the generator FINISHED, not that it produced every row.** Generation is one batch per spec (sibling prompts within a spec share an identical `created` timestamp), and a batch that under-produces still writes `status: prompted` — which this file's lifecycle defines as *all* prompts auto-generated. `ls prompts/` must list one file per decomposition row before you approve any of them. A missing row is **not** a retry state: the batch runs once, and there is no generate verb to re-run it (`dark-factory spec --help` offers only `unapprove` / `approve` / `mark-prompted` / `complete` / `reject`), so recovery means unapproving and regenerating everything. Observed 2026-10-16: a three-row decomposition produced one prompt, the spec read `prompted`, and the missing two had to be authored by hand.
 - A spec without a Suggested Decomposition section is acceptable for single-layer single-behavior specs; the prompt-creator may produce a single prompt or split as it sees fit.
 - The auditor flags multi-layer specs missing this section as Should-Fix.
 

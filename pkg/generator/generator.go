@@ -224,7 +224,12 @@ func (g *dockerSpecGenerator) executeAndFinalize(
 		return false, g.handleNoNewFiles(ctx, specBasename)
 	}
 
-	return true, g.finalizePrompted(ctx, specPath, newFiles)
+	// Report the error with prompted=false so Generate resets the spec to approved: a
+	// finalize failure must not leave the spec stamped `generating`.
+	if err := g.finalizePrompted(ctx, specPath, newFiles); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // handleNoNewFiles returns nil if completed prompts already exist for this spec, or an error otherwise.
@@ -265,6 +270,22 @@ func (g *dockerSpecGenerator) finalizePrompted(
 		}
 	}
 
+	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
+	linked, err := g.linkPromptsToSpec(ctx, newFiles, specBasename)
+	if err != nil {
+		return errors.Wrap(ctx, err, "link generated prompts to spec")
+	}
+	if !linked {
+		// Marking the spec prompted here would strand it: the sweeper advances a spec only
+		// when prompts carrying the link are complete, so a spec with none sits at prompted
+		// forever while the caller waits for a transition that can never come.
+		return errors.Errorf(
+			ctx,
+			"generation produced no prompt linked to spec %q — refusing to mark it prompted",
+			specBasename,
+		)
+	}
+
 	sf.SetStatus(string(spec.StatusPrompted))
 	if err := sf.Save(ctx); err != nil {
 		return errors.Wrap(ctx, err, "save spec file")
@@ -272,10 +293,71 @@ func (g *dockerSpecGenerator) finalizePrompted(
 
 	// Auto-approve generated prompts if configured. Runs AFTER spec is "prompted" so audit
 	// failure leaves the spec visible to the user in "prompted" state. No-op when disabled.
-	specBasename := strings.TrimSuffix(filepath.Base(specPath), ".md")
 	g.autoApproveGeneratedPrompts(ctx, specBasename, newFiles)
 
 	return nil
+}
+
+// linkPromptsToSpec makes every new prompt file carry the spec link and reports whether at
+// least one of them ended up linked to specID.
+//
+// An empty `spec:` list is unambiguous — the file was produced by this generation for this
+// spec — so the link is backfilled and the omission logged at ERROR: the prompt-creator is
+// required to write it, which makes a repair a contract violation rather than a routine
+// path. A non-empty list that omits specID is left untouched and only warned about, because
+// newFiles is a whole-inbox diff and may hold a concurrent generation's prompt.
+func (g *dockerSpecGenerator) linkPromptsToSpec(
+	ctx context.Context,
+	paths []string,
+	specID string,
+) (bool, error) {
+	linked := false
+	readable := 0
+	for _, path := range paths {
+		pf, err := g.promptManager.Load(ctx, path)
+		if err != nil || pf == nil {
+			// The file left the inbox between the diff and here (a concurrent approve, or
+			// the slug migrator removing it). Nothing is left in the inbox to strand, so
+			// skip it instead of failing the whole generation.
+			slog.Warn(
+				"cannot read generated prompt — skipping spec-link check",
+				"file",
+				path,
+				"error",
+				err,
+			)
+			continue
+		}
+		readable++
+		if pf.Frontmatter.HasSpec(specID) {
+			linked = true
+			continue
+		}
+		if len(pf.Frontmatter.Specs) > 0 {
+			slog.Warn(
+				"generated prompt links a different spec — leaving it untouched",
+				"file",
+				path,
+				"spec",
+				specID,
+				"linked",
+				[]string(pf.Frontmatter.Specs),
+			)
+			continue
+		}
+		pf.Frontmatter.Specs = prompt.SpecList{specID}
+		if err := pf.Save(ctx); err != nil {
+			return false, errors.Wrapf(ctx, err, "backfill spec link in %s", path)
+		}
+		slog.Error("generated prompt has no spec link — backfilled", "file", path, "spec", specID)
+		linked = true
+	}
+	if readable == 0 {
+		// Every new file disappeared before it could be read. A concurrent actor already
+		// took them, so there is no prompt here to strand the spec.
+		return true, nil
+	}
+	return linked, nil
 }
 
 // autoApproveGeneratedPrompts audits and approves each newly generated prompt.

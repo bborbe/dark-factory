@@ -52,7 +52,7 @@ status: draft
 ---
 ```
 
-When linking to a spec:
+Required for every prompt derived from a spec — the field is not optional there:
 
 ```yaml
 ---
@@ -61,6 +61,8 @@ status: draft
 created: "2026-03-11T10:00:00Z"
 ---
 ```
+
+A spec is linked to its prompts **only** through this field: dark-factory advances the spec to `verifying` when the prompts carrying that link are complete, so a prompt without it leaves the spec stuck at `prompted` forever. Omit `spec` only for a prompt that has no spec at all.
 
 - `spec` must be a YAML array of strings — single or multiple entries
 - **Canonical form is the full slug** (e.g. `["030-foo-bar-baz"]`), not the bare number. Daemon-generated prompts use this form, and `pkg/slugmigrator` rewrites bare numbers to full slugs after each generation cycle so all prompts converge on the canonical form

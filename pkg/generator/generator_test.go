@@ -127,6 +127,68 @@ var _ = Describe("SpecGenerator", func() {
 			})
 		})
 
+		Context("generated prompt carries no spec link: backfilled", func() {
+			BeforeEach(func() {
+				executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+					return os.WriteFile(
+						filepath.Join(inboxDir, "106-generated-prompt.md"),
+						[]byte("---\nstatus: draft\n---\n# Generated"),
+						0600,
+					)
+				}
+			})
+
+			It("writes the spec link into the prompt file", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				content, err := os.ReadFile(filepath.Join(inboxDir, "106-generated-prompt.md"))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(string(content)).To(ContainSubstring("020-auto-prompt-generation"))
+			})
+
+			It("still marks the spec prompted", func() {
+				Expect(sg.Generate(ctx, specPath)).To(Succeed())
+
+				sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusPrompted)))
+			})
+		})
+
+		Context(
+			"generated prompt links a different spec: left untouched, spec not prompted",
+			func() {
+				BeforeEach(func() {
+					executor.ExecuteStub = func(ctx context.Context, promptContent, logFile, containerName string) error {
+						return os.WriteFile(
+							filepath.Join(inboxDir, "106-foreign-prompt.md"),
+							[]byte(
+								"---\nspec: [\"099-other-spec\"]\nstatus: draft\n---\n# Foreign",
+							),
+							0600,
+						)
+					}
+				})
+
+				It("returns an error and leaves the spec approved", func() {
+					Expect(sg.Generate(ctx, specPath)).To(HaveOccurred())
+
+					sf, err := spec.Load(ctx, specPath, libtime.NewCurrentDateTime())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(sf.Frontmatter.Status).To(Equal(string(spec.StatusApproved)))
+				})
+
+				It("does not rewrite the foreign prompt's link", func() {
+					_ = sg.Generate(ctx, specPath)
+
+					content, err := os.ReadFile(filepath.Join(inboxDir, "106-foreign-prompt.md"))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(content)).To(ContainSubstring("099-other-spec"))
+					Expect(string(content)).NotTo(ContainSubstring("020-auto-prompt-generation"))
+				})
+			},
+		)
+
 		Context("no files produced: executor succeeds but inbox unchanged", func() {
 			BeforeEach(func() {
 				executor.ExecuteStub = nil

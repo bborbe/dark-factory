@@ -314,6 +314,14 @@ func (g *dockerSpecGenerator) linkPromptsToSpec(
 	linked := false
 	readable := 0
 	for _, path := range paths {
+		// Each iteration does file I/O, so a cancelled context aborts the loop instead of
+		// walking it to completion — the same rule pkg/specsweeper applies per spec.
+		select {
+		case <-ctx.Done():
+			return false, errors.Wrap(ctx, ctx.Err(), "link prompts to spec")
+		default:
+		}
+
 		pf, err := g.promptManager.Load(ctx, path)
 		if err != nil || pf == nil {
 			// The file left the inbox between the diff and here (a concurrent approve, or

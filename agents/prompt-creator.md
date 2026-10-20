@@ -7,7 +7,6 @@ tools:
   - Glob
   - Bash
   - AskUserQuestion
-model: opus
 effort: high
 color: blue
 ---

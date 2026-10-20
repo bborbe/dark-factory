@@ -6,7 +6,6 @@ tools:
   - Bash
   - Glob
   - AskUserQuestion
-model: opus
 effort: high
 ---
 

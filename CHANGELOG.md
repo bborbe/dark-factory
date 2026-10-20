@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.10
 
 - fix: **the six `agents/*.md` no longer pin `model: opus`**, so a subagent inherits the session model instead of requesting an Anthropic model name the fleet router cannot serve. ⚠️ On a claude-code-router fleet with no `aliases:` block, `claude-opus-4-8` matches neither provider glob (`MiniMax-*`, `deepseek-*`) and falls to `router.default_provider: minimax`, whose default model requires adaptive thinking — so every `prompt-creator` / `prompt-auditor` dispatch died with `API Error: 400 invalid params, model "MiniMax-M3.1-Flash" requires adaptive thinking; thinking.type="disabled" … is not allowed`. The model then hand-authored the prompt, which skips the `spec:` link, leaving the spec stranded at `prompted` and the lifecycle run holding its slot to the deadline. Observed 2026-10-20 on the nuke dev cluster (`github-dark-factory-agent` Job, `cfa6018d-20261020194353-z5cn5`). Inheriting is correct in both environments: the operator's host reaches models through the same router, so `opus` never resolved to real Opus there either.
 

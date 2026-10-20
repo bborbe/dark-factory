@@ -3,7 +3,7 @@ description: Audit dark-factory spec file against preflight checklist and qualit
 argument-hint: <spec-file-path>
 ---
 
-Invoke the spec-auditor agent to audit the dark-factory spec at $ARGUMENTS.
+Invoke the `spec-auditor` **agent** through the Task tool (`subagent_type: spec-auditor`) to audit the dark-factory spec at $ARGUMENTS. It is an agent, not a skill: a Skill-tool call for it fails with `Unknown skill: dark-factory:spec-auditor`.
 
 1. Parse spec path from $ARGUMENTS
    - If no path prefix, prepend `specs/`

@@ -1,10 +1,10 @@
 ---
 description: Create dark-factory prompt files from a spec or task description
 argument-hint: <spec-file-or-task-description>
-allowed-tools: [Read, Write, Glob, Bash, AskUserQuestion]
+allowed-tools: [Task, Read, Write, Glob, Bash, AskUserQuestion]
 ---
 
-Invoke the prompt-creator agent to create dark-factory prompts.
+Invoke the `prompt-creator` **agent** through the Task tool (`subagent_type: prompt-creator`). It is an agent, not a skill: a Skill-tool call for it fails with `Unknown skill: dark-factory:prompt-creator`. `Task` is in `allowed-tools` for exactly this reason — if it is ever removed, the agent becomes unreachable from this command and the model falls back to hand-authoring.
 
 If $ARGUMENTS points to a spec file (contains `.md` or starts with `specs/`):
 - Agent reads the spec and decomposes into 2-6 prompts

@@ -5,7 +5,6 @@ tools:
   - Read
   - Bash
   - Glob
-model: opus
 effort: high
 ---
 

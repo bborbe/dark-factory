@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.9
 
 - fix: **a generated prompt that omits the `spec:` link can no longer strand its spec at `prompted`.** `finalizePrompted` now enforces the link: a new prompt with an empty `spec:` list is backfilled with the spec's basename and logged at ERROR naming the file (`generated prompt has no spec link — backfilled`); a prompt linking a *different* spec is left untouched with a WARN, since the inbox diff can hold a concurrent generation's file; and a batch in which no prompt links the spec makes `Generate` fail so the spec resets to `approved` instead of being marked `prompted`. The contract is explicit too — `agents/prompt-creator.md` and `docs/rules/prompt-writing.md` now state that every spec-derived prompt MUST carry the link rather than presenting it as optional. Observed 2026-10-20 on the nuke-dev cluster route: the `prompt-creator` agent omitted the optional link, `CheckAndComplete` found no linked prompt and no-oped silently, the spec sat at `prompted` forever, and the agent's drain wait burned to its lifecycle deadline.
 

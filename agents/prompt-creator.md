@@ -20,6 +20,7 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 - NEVER number prompt filenames — dark-factory assigns numbers on approve
 - NEVER place prompts in `prompts/in-progress/` — inbox only (`prompts/`)
 - NEVER add frontmatter fields beyond spec/status/created
+- **Every spec-derived prompt MUST carry `spec: ["<spec-basename>"]`** — the full slug, not a bare number. Omitting it is not a style choice: dark-factory links a spec to its prompts solely through this field, so a prompt without it leaves the spec stuck at `prompted` and the run never hands off. When you are decomposing an approved spec, there is no case in which the field may be left out.
 - Always copy constraints from spec into each prompt
 - Specificity over brevity — longer prompts are almost always better
 - Anchor by method/function names, not line numbers (line numbers go stale)
@@ -92,7 +93,9 @@ If any answer is "no", do NOT write the file. Revise.
 </workflow>
 
 <prompt_structure>
-## Frontmatter (when linking to a spec)
+## Frontmatter (REQUIRED for every spec-derived prompt)
+
+Every prompt you generate from an approved spec MUST carry the `spec:` link. It is the only thing that ties a prompt back to its spec: dark-factory advances a spec to `verifying` only when the prompts carrying that link are complete, so a prompt without it leaves the spec stuck at `prompted` forever and the run never hands off. Omit the field only for a prompt that has no spec at all.
 
 ```yaml
 ---
@@ -103,6 +106,7 @@ created: "<UTC timestamp ISO8601>"
 ```
 
 - `spec` MUST be YAML array: `spec: ["020"]` not `spec: "020"`
+- Use the spec file's basename (`spec: ["020-auto-prompt-generation"]`), not the bare number
 
 ## Required XML Sections
 

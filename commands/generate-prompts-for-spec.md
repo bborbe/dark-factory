@@ -4,7 +4,7 @@ argument-hint: "<spec-file>"
 allowed-tools: Task
 ---
 
-Invoke the `prompt-creator` agent to generate prompts from the approved spec.
+Invoke the `prompt-creator` **agent** through the Task tool (`subagent_type: prompt-creator`) to generate prompts from the approved spec. It is an agent, not a skill: a Skill-tool call for it fails with `Unknown skill: dark-factory:prompt-creator`. Likewise invoke the `prompt-auditor` **agent** with `subagent_type: prompt-auditor` — never the Skill tool for either.
 
 **When to reach for this command** (vs. letting the daemon auto-generate): you have `autoGeneratePrompts: false` (the default) and want to trigger generation for a specific approved spec, or you want to re-generate prompts for a spec whose first attempt was rejected. See [docs/running.md § Two ways to generate prompts](../docs/running.md#two-ways-to-generate-prompts-from-an-approved-spec) for the auto-vs-manual tradeoffs.
 

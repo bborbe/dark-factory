@@ -3,7 +3,7 @@ description: Audit dark-factory prompt file against Prompt Definition of Done
 argument-hint: <prompt-file-path>
 ---
 
-Invoke the prompt-auditor agent to audit the dark-factory prompt at $ARGUMENTS.
+Invoke the `prompt-auditor` **agent** through the Task tool (`subagent_type: prompt-auditor`) to audit the dark-factory prompt at $ARGUMENTS. It is an agent, not a skill: a Skill-tool call for it fails with `Unknown skill: dark-factory:prompt-auditor`.
 
 1. Parse prompt path from $ARGUMENTS
    - If no path prefix, prepend `prompts/`

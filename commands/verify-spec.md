@@ -3,7 +3,7 @@ description: Walk a dark-factory spec through real end-to-end verification, then
 argument-hint: <spec-id-or-path>
 ---
 
-Invoke the spec-verifier agent to verify the dark-factory spec at $ARGUMENTS.
+Invoke the `spec-verifier` **agent** through the Task tool (`subagent_type: spec-verifier`) to verify the dark-factory spec at $ARGUMENTS. It is an agent, not a skill: a Skill-tool call for it fails with `Unknown skill: dark-factory:spec-verifier`.
 
 1. Parse spec path from $ARGUMENTS
    - If a number, find `specs/in-progress/0*<n>-*.md`

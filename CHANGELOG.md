@@ -13,6 +13,8 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - chore: pin `DefaultContainerImage` to `claude-yolo:v0.16.4`, the image carrying Go 1.27.3. Closes the dark-factory ↔ claude-yolo mismatch window for the Go 1.27.3 cycle.
+- chore: bump the `go` directive and `toolchain` to 1.27.3. Required, not cosmetic: the image pin alone cannot go green, because CI resolves Go from `go.mod` and `govulncheck` flags `GO-2026-6809` (`stdlib@v1.27.2 -> v1.27.3`) until the directive moves. Caught by this PR's first CI run.
+- Smoke-tested per `scenarios/003-smoke-test-container.md`: `dark-factory healthcheck` passes every probe — `docker`, `image` (`docker.io/bborbe/claude-yolo:v0.16.4`), `boot`, `claude` (headless, non-optional), `mount` — and reports `all probes passed`.
 
 ## v0.198.10
 

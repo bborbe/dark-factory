@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- chore: pin `DefaultContainerImage` to `claude-yolo:v0.16.4`, the image carrying Go 1.27.3. Closes the dark-factory ↔ claude-yolo mismatch window for the Go 1.27.3 cycle.
+
 ## v0.198.10
 
 - fix: **the agent-invoking commands now name the Task tool, and `create-prompt` / `create-spec` allow it.** Both carried `allowed-tools` without `Task`, so the agent each one tells the model to invoke was unreachable *from that command* and the model reached for the Skill tool instead — `Unknown skill: dark-factory:prompt-creator` — then hand-authored the file. Observed 2026-10-20 on the nuke dev cluster: a run logged `[skill] /dark-factory:create-prompt`, `Unknown skill: dark-factory:prompt-auditor`, and a hand-written prompt carrying no `spec:` link. `create-prompt` and `create-spec` now list `Task`, and all seven agent-invoking commands (`create-prompt`, `create-spec`, `audit-prompt`, `audit-spec`, `audit-scenario`, `verify-spec`, `generate-prompts-for-spec`) state the exact `subagent_type` and that no `dark-factory:<agent>` *skill* exists.

@@ -1,7 +1,7 @@
 {
   "name": "dark-factory",
   "description": "Commands for writing, auditing, and managing dark-factory specs, prompts, and scenarios",
-  "version": "0.198.12",
+  "version": "0.198.13",
   "author": {
     "name": "Benjamin Borbe"
   },

@@ -14,6 +14,7 @@ Dark-factory is **not a self-fulfilling tool**. It earns its place only when cer
 | Code change that does NOT need its own business-why document | **Prompt** — write a prompt, audit, approve, daemon executes |
 | Feature where the business-why deserves its own durable document | **Spec → prompts** — spec first, daemon auto-generates prompts, audit each, approve, daemon executes |
 | Frontend-only UI change (static HTML/CSS/JS) whose real verification is browser E2E | **Direct** — edit by hand + host-side browser test (e.g. Playwright) |
+| Dependency bump (`go.mod` / `go.sum`) needing no code edits — patch, minor or major, including a multi-module fan-out of the same bump | **Direct** — run `make test` / `make precommit` yourself |
 
 ## How to decide (two questions, in order)
 
@@ -32,6 +33,24 @@ Once you have unattended execution, the other benefits follow: documentation (co
 
 **If the change is not worth unattended execution — because it's faster to just edit it yourself than to write a prompt, audit it, approve it, wait for the container — pick direct.** That covers most markdown, doc, and small-script work.
 
+## When dark-factory is overkill
+
+The test is one question: **is this change worth unattended execution?** A prompt costs you a prompt, an audit, an approval, and a wait for the container. If editing the file yourself is faster than that, the ceremony is the expensive part — pick direct.
+
+Overkill cases — all of these are **Direct**:
+
+- **Markdown, docs, READMEs, YAML, configs** — no tests run, no business-why, no unattended-execution payoff. Even a README carrying fenced code examples, since the code is illustrative.
+- **A `CLAUDE.md`, an agent definition, or a `~/.claude/skills/` skill** — no test harness, and iterating is faster by hand.
+- **A dependency version bump that needs no code edits** (`go.mod` / `go.sum`) — patch, minor or major, single- or multi-module. Run `make test` / `make precommit` yourself; the container would run the same command and add nothing.
+- **A frontend-only UI change whose proof is a browser E2E** — the container has no browser, so its only contribution is an unattended precommit that never proves the interaction.
+- **A `git mv`-only rename, a typo fix, a GoDoc comment-only change** — pure text, no test value.
+- **A one-file edit you can finish in a single turn** — the pipeline's fixed cost exceeds the work.
+- **A change you have to watch anyway** — if you are going to sit and read the output, you have not bought unattended execution.
+
+**Manual mode is the middle path**, not a fourth flow: [manual-mode.md](manual-mode.md)'s slash-command chain runs the same prompt through the same YOLO container, but operator-paced — no daemon, no `go install`. Use it for a single prompt when you want the loop closed before stepping away; the daemon's batch overhead buys nothing on one item.
+
+**What is never overkill:** production code whose correctness the container's `make precommit` actually establishes, work you can genuinely walk away from, and anything a future reader will want to find by grepping `specs/` for "why does this exist".
+
 ## Concrete examples
 
 ### Direct (edit by hand)
@@ -46,6 +65,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 - A standalone operator bash script in `bin/` or `scripts/` (~50 LOC, no test harness)
 - A frontend-only UI-interaction change verified by a host-side browser E2E (Playwright) — the browser test is the actual proof and cannot run in the YOLO container
 - A typo fix in any file
+- A dependency version bump (`go.mod` / `go.sum`) needing no code edits — including a multi-module fan-out of the same bump across a repo's modules — with `make test` / `make precommit` run by hand
 
 ### Prompt (technical change, no business-why doc warranted)
 
@@ -55,7 +75,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 - Bump a dependency that requires accompanying code edits
 - Rename a type across a package + update call sites
 - Add a new Kafka topic consumer that mirrors an existing pattern — no new business behavior
-- Mechanical fan-out (e.g., apply the same change to 20 files) — the prompt IS the change record
+- Mechanical fan-out of a **code** change (e.g., apply the same change to 20 files) — the prompt IS the change record. A dependency-version fan-out that needs no code edits is **Direct**, not this row
 
 ### Spec (business-why deserves its own doc)
 
@@ -77,7 +97,7 @@ Once you have unattended execution, the other benefits follow: documentation (co
 | A test-only PR adding regression coverage for an existing bug | **Spec (kind: bug)** preferred; **Prompt** acceptable if the bug already has a closed spec | If a fix is going through a `kind: bug` spec, the reproduction lives there per [bug-workflow.md](bug-workflow.md). A standalone regression test for a bug that already shipped a fix is a smaller surface — a prompt is fine. |
 | Adding a counterfeiter `//go:generate` annotation + regenerating mocks | **Prompt** | Mechanical, but it's code and runs through tests |
 | Adding a `## Unreleased` CHANGELOG entry alongside a code change | Part of the **prompt/spec** for the code change | Not its own flow |
-| Updating `go.mod` dependency version | **Direct** if the bump is patch-only and `make test` was run by hand; **Prompt** if the bump requires code edits |
+| Updating `go.mod` dependency version | **Direct** for any bump — patch, minor or major, single- or multi-module — that needs **no code edits**, with `make test` / `make precommit` run by hand; **Prompt** only when the bump requires accompanying code edits |
 | Renaming a Go file (`git mv` only, no content change) | **Direct** | Pure file-system move; no test value from going through dark-factory |
 | Generating prompts from an approved spec | **No flow** — the daemon does it automatically |
 

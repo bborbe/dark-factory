@@ -5,8 +5,8 @@ github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAw
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/adrg/frontmatter v0.2.0 h1:/DgnNe82o03riBd1S+ZDjd43wAmC6W35q67NHeLkPd4=
 github.com/adrg/frontmatter v0.2.0/go.mod h1:93rQCj3z3ZlwyxxpQioRKC1wDLto4aXHrbqIsnH9wmE=
-github.com/bborbe/collection v1.21.3 h1:fAnKKYLGsBca/NNTuHtSgYIVad3Yw52Q9Krr/xCRO2k=
-github.com/bborbe/collection v1.21.3/go.mod h1:7N1XFVM4H41Ou6VaknELQHyEtfD5wly0lGz8LkqzJdU=
+github.com/bborbe/collection v1.21.4 h1:eyxNnsdbsxojlT9eDlGGclrW/vg8v+43/t0LVCUSZ8A=
+github.com/bborbe/collection v1.21.4/go.mod h1:k+qS5lxi4qQ/wpw8LiSBr08RiybIDc5/mbzs9yKDq0w=
 github.com/bborbe/errors v1.6.4 h1:gPOl00mChbQ5WX9tqwA2zYRNjGFD32xBuyBV0Z47CD4=
 github.com/bborbe/errors v1.6.4/go.mod h1:AjaF51Xl+xFEtNQyfSx6KkLR4qQkcM/6qi8xYaNjgEU=
 github.com/bborbe/http v1.26.31 h1:So9/DK1J2GcmY/MXzJZIVOg++qjb1XJojWMZqBffoo8=

@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/adrg/frontmatter v0.2.0
-	github.com/bborbe/collection v1.21.3
+	github.com/bborbe/collection v1.21.4
 	github.com/bborbe/errors v1.6.4
 	github.com/bborbe/http v1.26.31
 	github.com/bborbe/log v1.7.5

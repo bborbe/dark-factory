@@ -734,8 +734,9 @@ var _ = Describe("AutoCompleter", func() {
 			// Create spec file with status queued
 			writeSpec(filepath.Join(specsDir, "spec-002.md"), "queued")
 
-			_, err := ac.CheckAndComplete(ctx, "spec-002")
+			transitioned, err := ac.CheckAndComplete(ctx, "spec-002")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(transitioned).To(BeFalse())
 
 			// Verify spec file is still queued
 			sf, loadErr := spec.Load(

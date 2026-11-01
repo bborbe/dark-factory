@@ -648,9 +648,28 @@ var _ = Describe("AutoCompleter", func() {
 	})
 
 	Context("when specID is empty", func() {
-		It("does nothing and returns nil", func() {
-			err := ac.CheckAndComplete(ctx, "")
+		It("does nothing and reports no transition", func() {
+			transitioned, err := ac.CheckAndComplete(ctx, "")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(transitioned).To(BeFalse())
+		})
+	})
+
+	Context("when no prompt links the spec", func() {
+		It("reports no transition and leaves the spec in prompted", func() {
+			writeSpec(filepath.Join(specsDir, "stranded-spec.md"), "prompted")
+
+			transitioned, err := ac.CheckAndComplete(ctx, "stranded-spec")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(transitioned).To(BeFalse())
+
+			sf, loadErr := spec.Load(
+				ctx,
+				filepath.Join(specsDir, "stranded-spec.md"),
+				libtime.NewCurrentDateTime(),
+			)
+			Expect(loadErr).NotTo(HaveOccurred())
+			Expect(sf.Frontmatter.Status).To(Equal("prompted"))
 		})
 	})
 
@@ -663,8 +682,9 @@ var _ = Describe("AutoCompleter", func() {
 			// Create spec file with status queued
 			writeSpec(filepath.Join(specsDir, "spec-001.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "spec-001")
+			transitioned, err := ac.CheckAndComplete(ctx, "spec-001")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(transitioned).To(BeTrue())
 
 			// Verify spec file is now verifying
 			sf, loadErr := spec.Load(
@@ -695,7 +715,7 @@ var _ = Describe("AutoCompleter", func() {
 			writePrompt(filepath.Join(completedDir, "001-first.md"), "completed", "spec-notify")
 			writeSpec(filepath.Join(specsDir, "spec-notify.md"), "queued")
 
-			err := acWithNotifier.CheckAndComplete(ctx, "spec-notify")
+			_, err := acWithNotifier.CheckAndComplete(ctx, "spec-notify")
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeNotifier.NotifyCallCount()).To(Equal(1))
@@ -714,7 +734,7 @@ var _ = Describe("AutoCompleter", func() {
 			// Create spec file with status queued
 			writeSpec(filepath.Join(specsDir, "spec-002.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "spec-002")
+			_, err := ac.CheckAndComplete(ctx, "spec-002")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify spec file is still queued
@@ -735,7 +755,7 @@ var _ = Describe("AutoCompleter", func() {
 			// Create spec file already completed
 			writeSpec(filepath.Join(specsDir, "spec-003.md"), "completed")
 
-			err := ac.CheckAndComplete(ctx, "spec-003")
+			_, err := ac.CheckAndComplete(ctx, "spec-003")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
@@ -756,7 +776,7 @@ var _ = Describe("AutoCompleter", func() {
 			// Create spec file already in verifying state
 			writeSpec(filepath.Join(specsDir, "spec-009.md"), "verifying")
 
-			err := ac.CheckAndComplete(ctx, "spec-009")
+			_, err := ac.CheckAndComplete(ctx, "spec-009")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
@@ -775,7 +795,7 @@ var _ = Describe("AutoCompleter", func() {
 			// No prompts link to spec-004
 			writeSpec(filepath.Join(specsDir, "spec-004.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "spec-004")
+			_, err := ac.CheckAndComplete(ctx, "spec-004")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Status unchanged
@@ -799,7 +819,7 @@ var _ = Describe("AutoCompleter", func() {
 
 			writeSpec(filepath.Join(specsDir, "spec-005.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "spec-005")
+			_, err := ac.CheckAndComplete(ctx, "spec-005")
 			Expect(err).NotTo(HaveOccurred())
 
 			sf, loadErr := spec.Load(
@@ -822,7 +842,7 @@ var _ = Describe("AutoCompleter", func() {
 
 			writeSpec(filepath.Join(specsDir, "spec-007.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "spec-007")
+			_, err := ac.CheckAndComplete(ctx, "spec-007")
 			Expect(err).NotTo(HaveOccurred())
 
 			sf, loadErr := spec.Load(
@@ -844,7 +864,7 @@ var _ = Describe("AutoCompleter", func() {
 			// Spec file has the full descriptive name
 			writeSpec(filepath.Join(specsDir, "019-review-fix-loop.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "019")
+			_, err := ac.CheckAndComplete(ctx, "019")
 			Expect(err).NotTo(HaveOccurred())
 
 			sf, loadErr := spec.Load(
@@ -862,7 +882,7 @@ var _ = Describe("AutoCompleter", func() {
 
 			writeSpec(filepath.Join(specsDir, "019-review-fix-loop.md"), "queued")
 
-			err := ac.CheckAndComplete(ctx, "019")
+			_, err := ac.CheckAndComplete(ctx, "019")
 			Expect(err).NotTo(HaveOccurred())
 
 			sf, loadErr := spec.Load(

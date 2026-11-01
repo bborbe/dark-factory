@@ -9,23 +9,25 @@ import (
 )
 
 type AutoCompleter struct {
-	CheckAndCompleteStub        func(context.Context, string) error
+	CheckAndCompleteStub        func(context.Context, string) (bool, error)
 	checkAndCompleteMutex       sync.RWMutex
 	checkAndCompleteArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 	}
 	checkAndCompleteReturns struct {
-		result1 error
+		result1 bool
+		result2 error
 	}
 	checkAndCompleteReturnsOnCall map[int]struct {
-		result1 error
+		result1 bool
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *AutoCompleter) CheckAndComplete(arg1 context.Context, arg2 string) error {
+func (fake *AutoCompleter) CheckAndComplete(arg1 context.Context, arg2 string) (bool, error) {
 	fake.checkAndCompleteMutex.Lock()
 	ret, specificReturn := fake.checkAndCompleteReturnsOnCall[len(fake.checkAndCompleteArgsForCall)]
 	fake.checkAndCompleteArgsForCall = append(fake.checkAndCompleteArgsForCall, struct {
@@ -40,9 +42,9 @@ func (fake *AutoCompleter) CheckAndComplete(arg1 context.Context, arg2 string) e
 		return stub(arg1, arg2)
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	return fakeReturns.result1
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *AutoCompleter) CheckAndCompleteCallCount() int {
@@ -51,7 +53,7 @@ func (fake *AutoCompleter) CheckAndCompleteCallCount() int {
 	return len(fake.checkAndCompleteArgsForCall)
 }
 
-func (fake *AutoCompleter) CheckAndCompleteCalls(stub func(context.Context, string) error) {
+func (fake *AutoCompleter) CheckAndCompleteCalls(stub func(context.Context, string) (bool, error)) {
 	fake.checkAndCompleteMutex.Lock()
 	defer fake.checkAndCompleteMutex.Unlock()
 	fake.CheckAndCompleteStub = stub
@@ -64,27 +66,30 @@ func (fake *AutoCompleter) CheckAndCompleteArgsForCall(i int) (context.Context, 
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *AutoCompleter) CheckAndCompleteReturns(result1 error) {
+func (fake *AutoCompleter) CheckAndCompleteReturns(result1 bool, result2 error) {
 	fake.checkAndCompleteMutex.Lock()
 	defer fake.checkAndCompleteMutex.Unlock()
 	fake.CheckAndCompleteStub = nil
 	fake.checkAndCompleteReturns = struct {
-		result1 error
-	}{result1}
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *AutoCompleter) CheckAndCompleteReturnsOnCall(i int, result1 error) {
+func (fake *AutoCompleter) CheckAndCompleteReturnsOnCall(i int, result1 bool, result2 error) {
 	fake.checkAndCompleteMutex.Lock()
 	defer fake.checkAndCompleteMutex.Unlock()
 	fake.CheckAndCompleteStub = nil
 	if fake.checkAndCompleteReturnsOnCall == nil {
 		fake.checkAndCompleteReturnsOnCall = make(map[int]struct {
-			result1 error
+			result1 bool
+			result2 error
 		})
 	}
 	fake.checkAndCompleteReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
+		result1 bool
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *AutoCompleter) Invocations() map[string][][]interface{} {

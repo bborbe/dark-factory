@@ -186,7 +186,7 @@ var _ = Describe("Processor", func() {
 				releaser.CommitCompletedFileReturns(nil)
 				releaser.HasChangelogReturns(false)
 				releaser.CommitOnlyReturns(nil)
-				autoCompleter.CheckAndCompleteReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(false, nil)
 
 				p := newProcWithWorkflow(false, config.WorkflowDirect)
 				go func() { _ = p.Process(ctx) }()
@@ -356,7 +356,7 @@ var _ = Describe("Processor", func() {
 				releaser.CommitCompletedFileReturns(nil)
 				releaser.HasChangelogReturns(false)
 				releaser.CommitOnlyReturns(nil)
-				autoCompleter.CheckAndCompleteReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(false, nil)
 
 				// Branch setup mocks: branch does not exist remotely → CreateAndSwitch is called.
 				brancher.IsCleanIgnoringReturns(nil, nil)
@@ -592,7 +592,7 @@ var _ = Describe("Processor", func() {
 			releaser.GetNextVersionReturns("v0.1.1", nil)
 			releaser.CommitAndReleaseReturns(nil)
 			releaser.CommitOnlyReturns(nil)
-			autoCompleter.CheckAndCompleteReturns(nil)
+			autoCompleter.CheckAndCompleteReturns(false, nil)
 
 			// Branch setup mocks — Setup now always generates a branch from baseName.
 			brancher.IsCleanIgnoringReturns(nil, nil)

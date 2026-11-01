@@ -126,7 +126,7 @@ func (e *branchWorkflowExecutor) Complete(
 	// Must run AFTER the successful commit so allLinkedPromptsCompleted can see this
 	// prompt in the completed dir.
 	for _, specID := range pf.Specs() {
-		if err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
+		if _, err := e.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
 			log.From(ctx).Warn("spec auto-complete failed", "spec", specID, "error", err)
 		}
 	}

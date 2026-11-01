@@ -67,15 +67,19 @@ func (s *sweeper) Sweep(ctx context.Context) (int, error) {
 		// floods the daemon log with a line per spec per sweep. The Info line below
 		// reports the outcome once per sweep instead.
 		slog.Debug("checking prompted spec", "spec", sf.Name)
-		if err := s.autoCompleter.CheckAndComplete(ctx, sf.Name); err != nil {
+		transitioned, err := s.autoCompleter.CheckAndComplete(ctx, sf.Name)
+		if err != nil {
 			return count, errors.Wrap(ctx, err, "check and complete spec")
 		}
-		count++
+		if transitioned {
+			count++
+		}
 	}
 
-	if count > 0 {
-		slog.Info("swept prompted specs to verifying", "transitioned", count)
-	}
+	// Logged unconditionally, including transitioned=0: the count is what the
+	// processor's no-progress detection reads, so a zero-transition sweep is the
+	// signal itself — suppressing its line would leave the run silent about it.
+	slog.Info("swept prompted specs to verifying", "transitioned", count)
 
 	return count, nil
 }

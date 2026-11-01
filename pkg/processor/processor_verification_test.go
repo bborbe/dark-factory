@@ -412,7 +412,7 @@ var _ = Describe("Processor", func() {
 			realLister := spec.NewLister(libtime.NewCurrentDateTime(), specDir)
 
 			manager.ListQueuedReturns([]prompt.Prompt{}, nil)
-			autoCompleter.CheckAndCompleteReturns(nil)
+			autoCompleter.CheckAndCompleteReturns(false, nil)
 
 			p := newTestProcessor(
 				promptsDir,

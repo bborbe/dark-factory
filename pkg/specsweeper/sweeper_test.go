@@ -67,7 +67,7 @@ var _ = Describe("Sweeper", func() {
 				sf.Frontmatter.Status = string(spec.StatusPrompted)
 				sf.Name = "prompted-spec"
 				specLister.ListReturns([]*spec.SpecFile{sf}, nil)
-				autoCompleter.CheckAndCompleteReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(true, nil)
 			})
 
 			It("returns 1 transitioned with no error", func() {
@@ -80,13 +80,30 @@ var _ = Describe("Sweeper", func() {
 			})
 		})
 
+		Context("prompted spec does not transition", func() {
+			BeforeEach(func() {
+				sf := &spec.SpecFile{}
+				sf.Frontmatter.Status = string(spec.StatusPrompted)
+				sf.Name = "stranded-spec"
+				specLister.ListReturns([]*spec.SpecFile{sf}, nil)
+				autoCompleter.CheckAndCompleteReturns(false, nil)
+			})
+
+			It("returns 0 transitioned although the spec was checked", func() {
+				count, err := sweeper.Sweep(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(count).To(Equal(0))
+				Expect(autoCompleter.CheckAndCompleteCallCount()).To(Equal(1))
+			})
+		})
+
 		Context("prompted spec returns error", func() {
 			BeforeEach(func() {
 				sf := &spec.SpecFile{}
 				sf.Frontmatter.Status = string(spec.StatusPrompted)
 				sf.Name = "failing-spec"
 				specLister.ListReturns([]*spec.SpecFile{sf}, nil)
-				autoCompleter.CheckAndCompleteReturns(errors.New("complete failed"))
+				autoCompleter.CheckAndCompleteReturns(false, errors.New("complete failed"))
 			})
 
 			It("propagates the error and returns count so far", func() {
@@ -126,7 +143,7 @@ var _ = Describe("Sweeper", func() {
 				prompted2.Name = "prompted-2"
 
 				specLister.ListReturns([]*spec.SpecFile{prompted1, approved, prompted2}, nil)
-				autoCompleter.CheckAndCompleteReturns(nil)
+				autoCompleter.CheckAndCompleteReturns(true, nil)
 			})
 
 			It("only calls CheckAndComplete for prompted specs", func() {

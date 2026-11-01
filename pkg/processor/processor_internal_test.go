@@ -533,7 +533,9 @@ func (s *stubPRMergerImpl) WaitAndMerge(_ context.Context, _ string) error {
 // stubAutoCompleter is a minimal spec.AutoCompleter stub for workflow tests.
 type stubAutoCompleter struct{}
 
-func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) error { return nil }
+func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) (bool, error) {
+	return false, nil
+}
 
 // stubWorkflowReleaser is a minimal git.Releaser for workflow routing tests.
 type stubWorkflowReleaser struct {

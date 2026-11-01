@@ -385,7 +385,11 @@ func (s *SpecFile) MarkVerifying() {
 
 // AutoCompleter checks if all linked prompts are completed and marks the spec as completed.
 type AutoCompleter interface {
-	CheckAndComplete(ctx context.Context, specID string) error
+	// CheckAndComplete transitions the spec to verifying when every linked prompt is
+	// complete. The bool reports whether the transition actually happened: every no-op
+	// path returns false, so a caller counting transitions never counts a spec it only
+	// inspected.
+	CheckAndComplete(ctx context.Context, specID string) (bool, error)
 }
 
 // NewAutoCompleter creates a new AutoCompleter.
@@ -469,24 +473,25 @@ func findByNumericPrefix(dir string, specNum int) string {
 // CheckAndComplete checks if all prompts linked to specID are completed.
 // If so, it marks the spec file as completed.
 // No-op if specID is empty or if the spec is already completed.
-func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) error {
+// Returns true only when this call moved the spec to verifying.
+func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) (bool, error) {
 	if specID == "" {
-		return nil
+		return false, nil
 	}
 
 	// Scan both queue and completed dirs for prompts matching this spec
 	allCompleted, found, err := a.allLinkedPromptsCompleted(ctx, specID)
 	if err != nil {
-		return errors.Wrap(ctx, err, "scan prompts for spec")
+		return false, errors.Wrap(ctx, err, "scan prompts for spec")
 	}
 
 	if !found {
 		// No prompts reference this spec — nothing to do
-		return nil
+		return false, nil
 	}
 
 	if !allCompleted {
-		return nil
+		return false, nil
 	}
 
 	// All linked prompts are completed — find the spec file in any of the three spec dirs.
@@ -494,23 +499,23 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 	specPath := findSpecFile(dirs, specID)
 	if specPath == "" {
 		slog.Warn("spec file not found in any spec dir", "specID", specID)
-		return nil
+		return false, nil
 	}
 
 	sf, err := Load(ctx, specPath, a.currentDateTimeGetter)
 	if err != nil {
-		return errors.Wrap(ctx, err, "load spec file")
+		return false, errors.Wrap(ctx, err, "load spec file")
 	}
 
 	if sf.Frontmatter.Status == string(StatusCompleted) ||
 		sf.Frontmatter.Status == string(StatusVerifying) {
 		// Already completed or awaiting verification — no-op
-		return nil
+		return false, nil
 	}
 
 	sf.MarkVerifying()
 	if err := sf.Save(ctx); err != nil {
-		return errors.Wrap(ctx, err, "save spec file")
+		return false, errors.Wrap(ctx, err, "save spec file")
 	}
 
 	_ = a.notifier.Notify(ctx, notifier.Event{
@@ -520,7 +525,7 @@ func (a *autoCompleter) CheckAndComplete(ctx context.Context, specID string) err
 	})
 
 	slog.Info("spec awaiting verification", "spec", specID)
-	return nil
+	return true, nil
 }
 
 // allLinkedPromptsCompleted scans both queue and completed directories for prompts

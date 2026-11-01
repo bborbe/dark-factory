@@ -546,7 +546,9 @@ func runGit(dir string, args ...string) error {
 // stubAutoCompleter is a minimal spec.AutoCompleter stub.
 type stubAutoCompleter struct{}
 
-func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) error { return nil }
+func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) (bool, error) {
+	return false, nil
+}
 
 // NOTE: integration-level "sync failure" injection was attempted here but
 // removed because driving the executor end-to-end with shared filesystem

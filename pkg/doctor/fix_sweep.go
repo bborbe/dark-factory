@@ -59,7 +59,7 @@ func (f *fixer) fixPromptedNotSwept(
 		return
 	}
 
-	if err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
+	if _, err := f.deps.AutoCompleter.CheckAndComplete(ctx, specID); err != nil {
 		failed = append(failed, FailedFix{
 			Category:    finding.Category,
 			TargetPaths: finding.TargetPaths,

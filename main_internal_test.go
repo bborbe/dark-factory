@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"strings"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -1165,5 +1166,64 @@ var _ = Describe("printHelp", func() {
 		var buf bytes.Buffer
 		printHelp(&buf)
 		Expect(buf.String()).To(ContainSubstring("Configuration:"))
+	})
+})
+
+var _ = Describe("encodeConfig", func() {
+	const (
+		fakeToken    = "sk-ant-fake-token-value-12345"
+		fakeGitHub   = "ghp_fakegithubtoken67890"
+		baseURL      = "https://example.invalid/anthropic"
+		haikuModel   = "haiku-test-model"
+		goPath       = "/go/fake-path"
+		testParallel = "7"
+	)
+
+	It("redacts secret values while keeping keys and non-secret values", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":          fakeToken,
+				"ANTHROPIC_BASE_URL":            baseURL,
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL": haikuModel,
+			},
+		}
+		cfg := config.Config{
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": fakeToken,
+				"GOPATH":               goPath,
+				"GO_TEST_PARALLEL":     testParallel,
+			},
+			GitHub: config.GitHubConfig{Token: fakeGitHub},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, cfg)).To(Succeed())
+		out := buf.String()
+
+		Expect(out).NotTo(ContainSubstring(fakeToken))
+		Expect(out).NotTo(ContainSubstring(fakeGitHub))
+		Expect(out).To(ContainSubstring("ANTHROPIC_AUTH_TOKEN"))
+		Expect(out).To(ContainSubstring(baseURL))
+		Expect(out).To(ContainSubstring(haikuModel))
+		Expect(out).To(ContainSubstring(goPath))
+		Expect(out).To(ContainSubstring(testParallel))
+		Expect(strings.Count(out, redactionMarker)).To(Equal(3))
+	})
+
+	It("does not mutate the caller's config", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{"ANTHROPIC_AUTH_TOKEN": fakeToken},
+		}
+		cfg := config.Config{
+			Env:    map[string]string{"ANTHROPIC_AUTH_TOKEN": fakeToken},
+			GitHub: config.GitHubConfig{Token: fakeGitHub},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, cfg)).To(Succeed())
+
+		Expect(globalCfg.Env["ANTHROPIC_AUTH_TOKEN"]).To(Equal(fakeToken))
+		Expect(cfg.Env["ANTHROPIC_AUTH_TOKEN"]).To(Equal(fakeToken))
+		Expect(cfg.GitHub.Token).To(Equal(fakeGitHub))
 	})
 })

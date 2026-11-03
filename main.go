@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -753,10 +754,29 @@ func parseSetFlags(ctx context.Context, rawArgs []string) (map[string]string, []
 	return overrides, filtered, nil
 }
 
+// redactionMarker replaces secret values in config output. It must stay in sync
+// with the literal used by redactToken in pkg/gitprovider/bitbucket/http.go.
+const redactionMarker = "[REDACTED]"
+
+// secretKeyRegexp matches environment variable keys whose values are credentials.
+var secretKeyRegexp = regexp.MustCompile(
+	`(?i)(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|_KEY$)`,
+)
+
 func printConfig(ctx context.Context, cfg config.Config) error {
 	globalCfg, err := globalconfig.NewLoader().Load(ctx)
 	if err != nil {
 		return err
+	}
+	return encodeConfig(os.Stdout, globalCfg, cfg)
+}
+
+// encodeConfig writes the effective configuration as YAML with secret values redacted.
+func encodeConfig(w io.Writer, globalCfg globalconfig.GlobalConfig, cfg config.Config) error {
+	globalCfg.Env = redactEnv(globalCfg.Env)
+	cfg.Env = redactEnv(cfg.Env)
+	if cfg.GitHub.Token != "" {
+		cfg.GitHub.Token = redactionMarker
 	}
 
 	type output struct {
@@ -768,10 +788,26 @@ func printConfig(ctx context.Context, cfg config.Config) error {
 		Project: cfg,
 	}
 
-	enc := yaml.NewEncoder(os.Stdout)
+	enc := yaml.NewEncoder(w)
 	enc.SetIndent(2)
 	defer enc.Close()
 	return enc.Encode(out)
+}
+
+// redactEnv returns a copy of env with credential-looking values replaced.
+func redactEnv(env map[string]string) map[string]string {
+	if env == nil {
+		return nil
+	}
+	redacted := make(map[string]string, len(env))
+	for key, value := range env {
+		if secretKeyRegexp.MatchString(key) {
+			redacted[key] = redactionMarker
+			continue
+		}
+		redacted[key] = value
+	}
+	return redacted
 }
 
 func printHelp(w io.Writer) {

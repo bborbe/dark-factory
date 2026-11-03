@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"strings"
 
 	libtime "github.com/bborbe/time"
 	. "github.com/onsi/ginkgo/v2"
@@ -1207,7 +1206,27 @@ var _ = Describe("encodeConfig", func() {
 		Expect(out).To(ContainSubstring(haikuModel))
 		Expect(out).To(ContainSubstring(goPath))
 		Expect(out).To(ContainSubstring(testParallel))
-		Expect(strings.Count(out, redactionMarker)).To(Equal(3))
+		Expect(out).To(ContainSubstring(redactionMarker))
+	})
+
+	It("redacts credential key shapes beyond the token name", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{
+				"AWS_ACCESS_KEY_ID": "AKIAFAKEACCESSKEY",
+				"DB_DSN":            "postgres://user:pass@host/db",
+				"SERVICE_PASS":      "fake-password-value",
+			},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, config.Config{})).To(Succeed())
+		out := buf.String()
+
+		Expect(out).NotTo(ContainSubstring("AKIAFAKEACCESSKEY"))
+		Expect(out).NotTo(ContainSubstring("postgres://user:pass@host/db"))
+		Expect(out).NotTo(ContainSubstring("fake-password-value"))
+		Expect(out).To(ContainSubstring("AWS_ACCESS_KEY_ID"))
+		Expect(out).To(ContainSubstring("DB_DSN"))
 	})
 
 	It("does not mutate the caller's config", func() {

@@ -759,8 +759,10 @@ func parseSetFlags(ctx context.Context, rawArgs []string) (map[string]string, []
 const redactionMarker = "[REDACTED]"
 
 // secretKeyRegexp matches environment variable keys whose values are credentials.
+// Over-matching is the safe direction: hiding a non-secret only costs debugging
+// visibility, while missing a secret leaks it into a transcript.
 var secretKeyRegexp = regexp.MustCompile(
-	`(?i)(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|_KEY$)`,
+	`(?i)(TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|API_?KEY|ACCESS_KEY|CONNECTION_STRING|_KEY$|_PASS$|_PWD$|_DSN$)`,
 )
 
 func printConfig(ctx context.Context, cfg config.Config) error {

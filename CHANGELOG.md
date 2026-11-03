@@ -12,7 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-- fix: `dark-factory config` redacts secret values — credential-looking `env` entries in both the global and the project section, plus the GitHub token — instead of printing them in cleartext
+- fix: `dark-factory config` redacts secret values — credential-looking `env` entries in both the global and the project section (token, secret, password, API key, access key id, DSN, connection string), plus the GitHub token — instead of printing them in cleartext
 
 ## v0.198.16
 

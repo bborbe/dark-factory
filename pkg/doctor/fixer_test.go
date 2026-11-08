@@ -67,7 +67,7 @@ var _ = Describe("Fixer", func() {
 		fakeSpecLister.ListReturns([]*spec.SpecFile{}, nil)
 		fakeSpecLister.SummaryReturns(&spec.Summary{}, nil)
 		fakeAutoCompleter := &mocks.AutoCompleter{}
-		fakeAutoCompleter.CheckAndCompleteReturns(nil)
+		fakeAutoCompleter.CheckAndCompleteReturns(false, nil)
 		fakeDirLock := &mocks.LockDirLock{}
 		fakeDirLock.AcquireReturns(nil)
 		fakeDirLock.ReleaseReturns(nil)
@@ -855,7 +855,7 @@ var _ = Describe("Fixer", func() {
 		It("calls auto completer when finding is prompted-not-swept", func() {
 			deps := makeDeps()
 			fakeAutoCompleter := &mocks.AutoCompleter{}
-			fakeAutoCompleter.CheckAndCompleteReturns(nil)
+			fakeAutoCompleter.CheckAndCompleteReturns(false, nil)
 			deps.AutoCompleter = fakeAutoCompleter
 
 			fixer := doctor.NewFixer(deps)

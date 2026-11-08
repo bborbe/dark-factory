@@ -100,9 +100,9 @@ type stubAutoCompleter struct {
 	checkAndCompleteCalled int
 }
 
-func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) error {
+func (s *stubAutoCompleter) CheckAndComplete(_ context.Context, _ string) (bool, error) {
 	s.checkAndCompleteCalled++
-	return s.checkAndCompleteErr
+	return false, s.checkAndCompleteErr
 }
 
 // makePromptFile creates a PromptFile for test use.

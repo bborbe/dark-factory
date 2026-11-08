@@ -1167,3 +1167,82 @@ var _ = Describe("printHelp", func() {
 		Expect(buf.String()).To(ContainSubstring("Configuration:"))
 	})
 })
+
+var _ = Describe("encodeConfig", func() {
+	const (
+		fakeToken    = "sk-ant-fake-token-value-12345"
+		fakeGitHub   = "ghp_fakegithubtoken67890"
+		baseURL      = "https://example.invalid/anthropic"
+		haikuModel   = "haiku-test-model"
+		goPath       = "/go/fake-path"
+		testParallel = "7"
+	)
+
+	It("redacts secret values while keeping keys and non-secret values", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN":          fakeToken,
+				"ANTHROPIC_BASE_URL":            baseURL,
+				"ANTHROPIC_DEFAULT_HAIKU_MODEL": haikuModel,
+			},
+		}
+		cfg := config.Config{
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": fakeToken,
+				"GOPATH":               goPath,
+				"GO_TEST_PARALLEL":     testParallel,
+			},
+			GitHub: config.GitHubConfig{Token: fakeGitHub},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, cfg)).To(Succeed())
+		out := buf.String()
+
+		Expect(out).NotTo(ContainSubstring(fakeToken))
+		Expect(out).NotTo(ContainSubstring(fakeGitHub))
+		Expect(out).To(ContainSubstring("ANTHROPIC_AUTH_TOKEN"))
+		Expect(out).To(ContainSubstring(baseURL))
+		Expect(out).To(ContainSubstring(haikuModel))
+		Expect(out).To(ContainSubstring(goPath))
+		Expect(out).To(ContainSubstring(testParallel))
+		Expect(out).To(ContainSubstring(redactionMarker))
+	})
+
+	It("redacts credential key shapes beyond the token name", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{
+				"AWS_ACCESS_KEY_ID": "AKIAFAKEACCESSKEY",
+				"DB_DSN":            "postgres://user:pass@host/db",
+				"SERVICE_PASS":      "fake-password-value",
+			},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, config.Config{})).To(Succeed())
+		out := buf.String()
+
+		Expect(out).NotTo(ContainSubstring("AKIAFAKEACCESSKEY"))
+		Expect(out).NotTo(ContainSubstring("postgres://user:pass@host/db"))
+		Expect(out).NotTo(ContainSubstring("fake-password-value"))
+		Expect(out).To(ContainSubstring("AWS_ACCESS_KEY_ID"))
+		Expect(out).To(ContainSubstring("DB_DSN"))
+	})
+
+	It("does not mutate the caller's config", func() {
+		globalCfg := globalconfig.GlobalConfig{
+			Env: map[string]string{"ANTHROPIC_AUTH_TOKEN": fakeToken},
+		}
+		cfg := config.Config{
+			Env:    map[string]string{"ANTHROPIC_AUTH_TOKEN": fakeToken},
+			GitHub: config.GitHubConfig{Token: fakeGitHub},
+		}
+
+		var buf bytes.Buffer
+		Expect(encodeConfig(&buf, globalCfg, cfg)).To(Succeed())
+
+		Expect(globalCfg.Env["ANTHROPIC_AUTH_TOKEN"]).To(Equal(fakeToken))
+		Expect(cfg.Env["ANTHROPIC_AUTH_TOKEN"]).To(Equal(fakeToken))
+		Expect(cfg.GitHub.Token).To(Equal(fakeGitHub))
+	})
+})

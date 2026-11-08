@@ -124,7 +124,7 @@ func (r *recoverer) Recover(ctx context.Context, promptPath string) error {
 	}
 
 	for _, specID := range pf.Specs() {
-		if err := r.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
+		if _, err := r.autoCompleter.CheckAndComplete(ctx, specID); err != nil {
 			log.From(ctx).Warn("spec auto-complete failed", "spec_id", specID, "error", err)
 		}
 	}

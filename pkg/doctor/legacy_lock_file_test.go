@@ -151,7 +151,7 @@ var _ = Describe("LegacyLockFile", func() {
 			fakeDirLock.AcquireReturns(nil)
 			fakeDirLock.ReleaseReturns(nil)
 			fakeAutoCompleter := &mocks.AutoCompleter{}
-			fakeAutoCompleter.CheckAndCompleteReturns(nil)
+			fakeAutoCompleter.CheckAndCompleteReturns(false, nil)
 
 			return doctor.FixerDeps{
 				Deps:          makeDeps(),

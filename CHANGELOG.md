@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.198.19
 
 - docs: **the bullet describing the Task-tool fix now sits under `v0.198.11`, the release that actually contains it.** It had landed under `## v0.198.10`, which was cut before the fix merged, so a consumer pinned to v0.198.10 read that the fix was present when it was not — `commands/create-prompt.md` at that tag has no `Task` in `allowed-tools`, while `v0.198.11` does.
 

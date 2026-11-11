@@ -1,15 +1,15 @@
 module github.com/bborbe/dark-factory
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/adrg/frontmatter v0.2.0
-	github.com/bborbe/collection v1.21.6
+	github.com/bborbe/collection v1.21.7
 	github.com/bborbe/errors v1.6.6
 	github.com/bborbe/http v1.26.33
 	github.com/bborbe/log v1.7.8
 	github.com/bborbe/run v1.11.11
-	github.com/bborbe/time v1.27.27
+	github.com/bborbe/time v1.27.28
 	github.com/bborbe/validation v1.5.9
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/onsi/ginkgo/v2 v2.34.0
@@ -23,8 +23,8 @@ require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/bborbe/kv v1.21.29 // indirect
-	github.com/bborbe/math v1.4.19 // indirect
-	github.com/bborbe/parse v1.12.6 // indirect
+	github.com/bborbe/math v1.4.20 // indirect
+	github.com/bborbe/parse v1.12.7 // indirect
 	github.com/bborbe/sentry v1.10.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20261110164715-8bb1ee682bd8 // indirect
+	github.com/google/pprof v0.0.0-20261111065629-49901cbc7227 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pandatix/go-abnf v0.5.5 // indirect

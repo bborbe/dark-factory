@@ -60,5 +60,7 @@ homebrew_casks:
     # Gatekeeper "unidentified developer" prompt on first use.
     hooks:
       post:
-        install: |
-          system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/dark-factory"]
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/dark-factory"]
+          end

@@ -31,7 +31,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: 'v2.17.0'
+          version: 'v2.20.1'
           args: release --clean
         env:
           # Attaches archives to the already-published Release on this repo

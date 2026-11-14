@@ -1,0 +1,26 @@
+name: check-task-link
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  task-link:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Require a Task: <task_identifier> line in the PR body"
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Anchored at the start of a line and case-sensitive on the key, so
+          # `subtask: <uuid>` and `not a task: <uuid>` cannot satisfy the gate.
+          # The UUID must also be the whole remainder of the line.
+          if printf '%s\n' "$PR_BODY" \
+            | grep -Eq '^[[:space:]]*Task:[[:space:]]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[[:space:]]*$'; then
+            echo "PR body names a task identifier"
+            exit 0
+          fi
+          echo "::error::PR body has no 'Task: <task_identifier>' line. Add the vault task UUID on a line of its own."
+          exit 1

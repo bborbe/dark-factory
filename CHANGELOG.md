@@ -14,6 +14,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 - feat: add a `check-task-link` gate that fails a PR whose body carries no `Task: <task_identifier>` line, and install Trivy from the upstream script so `test` stops failing on the retired keyring helper
 
+## v0.198.22
+
+- fix: the migrated cask hook no longer fails the install when the downloaded binary carries no `com.apple.quarantine` attribute. `xattr -d` exits 1 when there is nothing to strip, and `run` defaults to `must_succeed: true` — the old non-raising `system_command` did not abort, so the behaviour is preserved with `must_succeed: false`.
+
 ## v0.198.21
 
 - chore: migrate the Homebrew cask quarantine hook from the deprecated `install` stanza to `install_steps` (goreleaser#6873) and bump the goreleaser action pin to v2.20.1 so the new key is accepted

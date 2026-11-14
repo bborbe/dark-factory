@@ -21,13 +21,16 @@ jobs:
           cache: true
 
       - name: Install Trivy
+        env:
+          TRIVY_VERSION: v0.76.2
+          TRIVY_SHA256: bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf
         run: |
           # The apt-repo path used the retired keyring helper, which the current
-          # ubuntu-latest image no longer ships (`command not found` on every run
-          # from 2026-11-14). The upstream install script needs no keyring and
-          # pins nothing else in this workflow.
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin
+          # ubuntu-latest image no longer ships. Install a pinned release and
+          # verify its checksum, rather than piping a mutable script into a shell.
+          curl -sfL "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION#v}_Linux-64bit.tar.gz" -o /tmp/trivy.tar.gz
+          echo "${TRIVY_SHA256}  /tmp/trivy.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
 
       - name: Run precommit checks
         run: make precommit

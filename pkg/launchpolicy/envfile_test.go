@@ -81,3 +81,48 @@ var _ = Describe("PrepareEnvFile", func() {
 		Expect(os.IsNotExist(err)).To(BeTrue())
 	})
 })
+
+var _ = Describe("IsSecretEnvKey", func() {
+	DescribeTable("classifies credential-shaped keys",
+		func(key string, want bool) {
+			Expect(launchpolicy.IsSecretEnvKey(key)).To(Equal(want))
+		},
+		Entry("auth token", "ANTHROPIC_AUTH_TOKEN", true),
+		Entry("api key", "SOME_API_KEY", true),
+		Entry("lowercase token", "github_token", true),
+		Entry("secret", "CLIENT_SECRET", true),
+		Entry("password", "DB_PASSWORD", true),
+		Entry("private key", "DEPLOY_PRIVATE_KEY", true),
+		Entry("base url", "ANTHROPIC_BASE_URL", false),
+		Entry("model", "ANTHROPIC_MODEL", false),
+		Entry("goprivate", "GOPRIVATE", false),
+		Entry("managed marker", launchpolicy.EnvManagedMarker, false),
+	)
+})
+
+var _ = Describe("DropSecretEnvKeys", func() {
+	It("removes credential-shaped keys and reports their names", func() {
+		kept, dropped := launchpolicy.DropSecretEnvKeys(map[string]string{
+			"ANTHROPIC_AUTH_TOKEN": "secret-value",
+			"GOPRIVATE":            "example.com/*",
+		})
+
+		Expect(dropped).To(Equal([]string{"ANTHROPIC_AUTH_TOKEN"}))
+		Expect(kept).To(Equal(map[string]string{"GOPRIVATE": "example.com/*"}))
+	})
+
+	It("returns the input unchanged when nothing is credential-shaped", func() {
+		env := map[string]string{"GOPRIVATE": "example.com/*"}
+		kept, dropped := launchpolicy.DropSecretEnvKeys(env)
+
+		Expect(dropped).To(BeEmpty())
+		Expect(kept).To(Equal(env))
+	})
+
+	It("handles a nil env", func() {
+		kept, dropped := launchpolicy.DropSecretEnvKeys(nil)
+
+		Expect(dropped).To(BeEmpty())
+		Expect(kept).To(BeNil())
+	})
+})

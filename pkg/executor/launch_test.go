@@ -57,7 +57,11 @@ var _ = Describe("BuildDockerRunArgs --add-host", func() {
 	})
 })
 
-var _ = Describe("BuildDockerRunArgs DARK_FACTORY_MANAGED marker", func() {
+// The marker specs below cover the LEGACY `-e` path only (no EnvFile). Production
+// never takes it: every launch goes through launchpolicy.PrepareEnvFile, which
+// bakes the marker into the env-file — that path is covered by envfile_test.go
+// ("emits the managed marker even when opts.Env is empty").
+var _ = Describe("BuildDockerRunArgs DARK_FACTORY_MANAGED marker (legacy -e path)", func() {
 	baseOpts := func() launchpolicy.ContainerLaunchOpts {
 		return launchpolicy.ContainerLaunchOpts{
 			ContainerName:  "df-test",
@@ -66,7 +70,7 @@ var _ = Describe("BuildDockerRunArgs DARK_FACTORY_MANAGED marker", func() {
 		}
 	}
 
-	It("emits -e DARK_FACTORY_MANAGED=true for every launched container", func() {
+	It("emits -e DARK_FACTORY_MANAGED=true when no EnvFile is set", func() {
 		args := executor.BuildDockerRunArgs(baseOpts())
 		Expect(argvContains(args, "-e", "DARK_FACTORY_MANAGED=true")).To(BeTrue())
 	})
@@ -267,5 +271,29 @@ var _ = Describe("BuildDockerRunArgs env delivery", func() {
 			Expect(secretShaped.MatchString(a)).To(BeFalse(),
 				"secret-shaped argv element found: %s", a)
 		}
+	})
+
+	It("fails closed on the legacy -e path: a credential is dropped, not published", func() {
+		opts := launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "busybox:latest",
+			ProjectName:    "test-project",
+			// No EnvFile — a call site that forgot PrepareEnvFile.
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": "sentinel-token-value",
+				"GOPRIVATE":            "example.com/*",
+			},
+		}
+
+		args := executor.BuildDockerRunArgs(opts)
+
+		for _, a := range args {
+			Expect(a).NotTo(ContainSubstring("sentinel-token-value"),
+				"a forgotten PrepareEnvFile must not publish the credential to argv")
+			Expect(secretShaped.MatchString(a)).To(BeFalse(),
+				"secret-shaped argv element found: %s", a)
+		}
+		// Non-credential keys keep working on the legacy path.
+		Expect(argvContains(args, "-e", "GOPRIVATE=example.com/*")).To(BeTrue())
 	})
 })

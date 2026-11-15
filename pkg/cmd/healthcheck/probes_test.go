@@ -23,17 +23,21 @@ import (
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
 
+// envFilePath returns the --env-file path from a docker argv, or "".
+func envFilePath(args []string) string {
+	for i, a := range args {
+		if a == "--env-file" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
 // envFileValues reads the KEY=VALUE lines of the --env-file in a docker argv.
 // The probe removes that file when Run returns, so callers must invoke this from
 // inside the runner stub rather than after the call.
 func envFileValues(args []string) []string {
-	var path string
-	for i, a := range args {
-		if a == "--env-file" && i+1 < len(args) {
-			path = args[i+1]
-			break
-		}
-	}
+	path := envFilePath(args)
 	if path == "" {
 		GinkgoT().Fatalf("no --env-file in probe argv: %v", args)
 		return nil
@@ -276,6 +280,23 @@ var _ = Describe("ClaudeProbe", func() {
 		Expect(args).NotTo(ContainElement("-e"))
 		Expect(envValues).To(ContainElement("YOLO_PROMPT=reply with exactly: OK"))
 		Expect(envValues).To(ContainElement("YOLO_OUTPUT=json"))
+	})
+
+	It("removes its env-file once the probe returns", func() {
+		var envPath string
+		subprocR.RunWithWarnAndTimeoutStub = func(
+			_ context.Context, _ string, _ string, args ...string,
+		) ([]byte, error) {
+			envPath = envFilePath(args)
+			return []byte(`{"type":"text","text":"OK"}` + "\n"), nil
+		}
+		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
+		Expect(p.Run(ctx)).To(Succeed())
+
+		Expect(envPath).NotTo(BeEmpty())
+		_, statErr := os.Stat(envPath)
+		Expect(os.IsNotExist(statErr)).To(BeTrue(),
+			"probe must remove its env-file; a leftover 0600 credential file is the residual we accept only on SIGKILL")
 	})
 
 	It("returns error when stdout does not contain OK", func() {

@@ -25,16 +25,23 @@ type ContainerLaunchOpts struct {
 	ClaudeDir string
 	// Home is the host's HOME, used for ~/ expansion in NetrcFile/GitconfigFile/ExtraMounts.
 	Home string
-	// Env is appended as -e KEY=VALUE flags, sorted by key for stable argv shape.
+	// Env is the container environment. It reaches docker as `-e KEY=VALUE`
+	// flags only when EnvFile is empty, and credential-shaped keys are dropped
+	// from that path (see DropSecretEnvKeys).
 	//
 	// Env values are visible to any process that can read the host's process
-	// table, so callers must route credentials through PrepareEnvFile instead:
-	// it writes Env into a 0600 file, sets EnvFile, and clears Env.
+	// table, so callers must route the environment through PrepareEnvFile
+	// instead: it writes Env into a 0600 file, sets EnvFile, and clears Env.
 	Env map[string]string
 	// EnvFile, when non-empty, is passed as `--env-file <path>` and Env is
 	// ignored — no `-e` flag is emitted at all. This is how the container env
 	// (including credentials) reaches docker without any value appearing in
-	// argv. See PrepareEnvFile.
+	// argv.
+	//
+	// It must be produced by PrepareEnvFile: that is what bakes in
+	// EnvManagedMarker, which the in-container spec generator relies on to skip
+	// its host-only `spec mark-prompted` step. A hand-written env-file looks
+	// valid and silently loses the marker.
 	EnvFile string
 	// ExtraMounts is appended as -v <src>:<dst>[:ro] flags; missing src is skipped + logged.
 	ExtraMounts []config.ExtraMount

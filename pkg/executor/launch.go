@@ -64,10 +64,22 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 	// it through launchpolicy.PrepareEnvFile. No `-e KEY=VALUE` flag is emitted in
 	// that case: a process argument list is world-readable, so a credential in
 	// argv is a credential any local user or agent session can read with `ps`.
+	//
+	// The `-e` branch is the legacy shape, kept for callers that pass no EnvFile.
+	// It fails closed: credential-shaped keys are dropped rather than published,
+	// so a new call site that forgets PrepareEnvFile cannot reintroduce the leak.
 	if opts.EnvFile != "" {
 		args = append(args, "--env-file", opts.EnvFile)
 	} else {
-		args = appendEnv(args, withManagedMarker(opts.Env))
+		plainEnv, dropped := launchpolicy.DropSecretEnvKeys(opts.Env)
+		if len(dropped) > 0 {
+			slog.Error(
+				"launchpolicy: dropping credential-shaped env keys from docker argv; "+
+					"call launchpolicy.PrepareEnvFile instead of passing them via Env",
+				"dropped_keys", dropped,
+			)
+		}
+		args = appendEnv(args, withManagedMarker(plainEnv))
 	}
 	args = appendStandardMounts(args, opts)
 	args = appendExtraMounts(args, opts)

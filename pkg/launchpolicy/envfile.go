@@ -56,25 +56,32 @@ func FormatEnvFile(env map[string]string) string {
 	return b.String()
 }
 
-// PrepareEnvFile materialises opts.Env into a 0600 file inside a fresh temp
-// directory, points opts.EnvFile at it, and clears opts.Env so that no env
-// value — credential or otherwise — can reach the docker argv.
+// PrepareEnvFile materialises opts.Env into a 0600 file inside a fresh 0700 temp
+// directory, points opts.EnvFile at it, and clears opts.Env so that no env value
+// — credential or otherwise — can reach the docker argv.
 //
 // The container env reaches docker via `--env-file`, which the docker CLI reads
-// on the HOST as the invoking user. The container never opens the file, so 0600
-// is sufficient and the file needs no container-visible path.
+// on the HOST as the invoking user. The container never opens the file, so the
+// file needs no container-visible path and 0600 is sufficient for docker to read
+// it.
+//
+// 0600 is NOT an isolation boundary against processes running as the same uid.
+// Another agent session on this machine can still read the file, and its path is
+// in the argv, so the exposure is one `ps` plus one `cat` rather than a bare
+// `ps`. What this change removes is the credential being printed by the process
+// listing itself. Two residuals remain and are out of scope here: same-uid reads
+// of the file, and the value transiting the docker API into the container config
+// (readable with `docker inspect` for the container's lifetime).
 //
 // The returned cleanup removes the temp directory. Callers must defer it. A
 // SIGKILL of the dark-factory process skips the cleanup and leaves a 0600 file
-// in the user's own temp directory; that residual is accepted and recorded in
-// the task that introduced this mechanism.
+// in the user's own temp directory.
 func PrepareEnvFile(ctx context.Context, opts *ContainerLaunchOpts) (func(), error) {
 	dir, err := os.MkdirTemp("", "dark-factory-env-")
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, "create env temp dir")
 	}
 	path := filepath.Join(dir, "env")
-	// #nosec G304 -- path is derived from os.MkdirTemp, not user input
 	if err := os.WriteFile(path, []byte(FormatEnvFile(WithManagedMarker(opts.Env))), 0600); err != nil {
 		_ = os.RemoveAll(dir)
 		return nil, errors.Wrap(ctx, err, "write env file")
@@ -82,4 +89,45 @@ func PrepareEnvFile(ctx context.Context, opts *ContainerLaunchOpts) (func(), err
 	opts.EnvFile = path
 	opts.Env = nil
 	return func() { _ = os.RemoveAll(dir) }, nil
+}
+
+// secretEnvKeyParts are the substrings that mark an env key as credential-shaped.
+// Used only by DropSecretEnvKeys, the fail-closed guard on the legacy `-e` path.
+var secretEnvKeyParts = []string{"TOKEN", "SECRET", "PASSWORD", "API_KEY", "APIKEY", "PRIVATE_KEY"}
+
+// IsSecretEnvKey reports whether an env key looks like a credential. The test is
+// deliberately over-inclusive: a false positive costs one env var moved to the
+// env-file, a false negative puts a credential in the process table.
+func IsSecretEnvKey(key string) bool {
+	upper := strings.ToUpper(key)
+	for _, part := range secretEnvKeyParts {
+		if strings.Contains(upper, part) {
+			return true
+		}
+	}
+	return false
+}
+
+// DropSecretEnvKeys returns a copy of env with credential-shaped keys removed,
+// plus the names of the keys it dropped. This is the fail-closed guard on the
+// legacy `-e` path: a call site that forgets PrepareEnvFile loses the variable
+// (loudly, via the returned names) instead of publishing it to `ps`.
+func DropSecretEnvKeys(env map[string]string) (map[string]string, []string) {
+	if len(env) == 0 {
+		return env, nil
+	}
+	kept := make(map[string]string, len(env))
+	var dropped []string
+	for k, v := range env {
+		if IsSecretEnvKey(k) {
+			dropped = append(dropped, k)
+			continue
+		}
+		kept[k] = v
+	}
+	if len(dropped) == 0 {
+		return env, nil
+	}
+	sort.Strings(dropped)
+	return kept, dropped
 }

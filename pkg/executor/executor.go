@@ -115,7 +115,11 @@ func (e *dockerExecutor) Execute(
 	if err := validateClaudeAuth(ctx, claudeConfigDir, e.policy.BaseEnv()); err != nil {
 		return errors.Wrap(ctx, err, "validate claude auth")
 	}
-	cmd := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+	cmd, cleanupEnv, err := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+	if err != nil {
+		return errors.Wrap(ctx, err, "build docker command")
+	}
+	defer cleanupEnv()
 	log.From(ctx).Debug("docker command prepared",
 		"image", e.policy.ContainerImage(), "container", containerName,
 		"workspace_mount", projectRoot+":/workspace",
@@ -455,12 +459,17 @@ func createPromptTempFile(ctx context.Context, promptContent string) (string, fu
 // the prompt-specific concerns (prompt-file mount, ANTHROPIC_MODEL,
 // YOLO_PROMPT_FILE, YOLO_OUTPUT, the dark-factory.prompt label) flow through
 // the Extras overlay.
+//
+// The container env is materialised into a 0600 --env-file before the argv is
+// built, so no env value — the router token included — ever reaches the process
+// argument list. The returned cleanup removes that file and must be deferred by
+// the caller.
 func (e *dockerExecutor) buildDockerCommand(
 	ctx context.Context,
 	containerName string,
 	promptFilePath string,
 	promptBaseName string,
-) *exec.Cmd {
+) (*exec.Cmd, func(), error) {
 	extras := launchpolicy.Extras{
 		ContainerName: containerName,
 		EnvOverlay: claudeargv.EnvOverlay(claudeargv.Options{
@@ -473,10 +482,14 @@ func (e *dockerExecutor) buildDockerCommand(
 		},
 	}
 	opts := e.policy.BuildOpts(extras)
+	cleanupEnv, err := launchpolicy.PrepareEnvFile(ctx, &opts)
+	if err != nil {
+		return nil, nil, errors.Wrap(ctx, err, "prepare env file")
+	}
 	args := BuildDockerRunArgs(opts)
 	args = insertPromptFileMount(args, promptFilePath, e.policy.ContainerImage())
 	// #nosec G204 -- args are derived from configured policy + sanitized container name, not user input
-	return exec.CommandContext(ctx, "docker", args...)
+	return exec.CommandContext(ctx, "docker", args...), cleanupEnv, nil
 }
 
 // insertPromptFileMount adds `-v <promptFilePath>:/tmp/prompt.md:ro` just before the

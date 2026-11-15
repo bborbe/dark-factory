@@ -8,10 +8,12 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/bborbe/errors"
 	libtime "github.com/bborbe/time"
+	. "github.com/onsi/ginkgo/v2"
 
 	"github.com/bborbe/dark-factory/pkg/config"
 	"github.com/bborbe/dark-factory/pkg/formatter"
@@ -104,7 +106,7 @@ func BuildDockerCommandForTest(
 		policy: policy,
 		model:  model,
 	}
-	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+	return mustBuildDockerCommand(e, ctx, containerName, promptFilePath, promptBaseName)
 }
 
 // BuildDockerCommandFromPolicyForTest is the policy-injection test helper used
@@ -125,7 +127,56 @@ func BuildDockerCommandFromPolicyForTest(
 		policy: policy,
 		model:  model,
 	}
-	return e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+	return mustBuildDockerCommand(e, ctx, containerName, promptFilePath, promptBaseName)
+}
+
+// mustBuildDockerCommand adapts buildDockerCommand's (cmd, cleanup, error)
+// signature to the single-return shape the argv-inspection test helpers expose.
+// The env-file cleanup is deferred to the end of the running spec, so a spec can
+// still read the file through EnvFileValuesForTest.
+func mustBuildDockerCommand(
+	e *dockerExecutor,
+	ctx context.Context,
+	containerName string,
+	promptFilePath string,
+	promptBaseName string,
+) *exec.Cmd {
+	cmd, cleanup, err := e.buildDockerCommand(ctx, containerName, promptFilePath, promptBaseName)
+	if err != nil {
+		panic(err)
+	}
+	DeferCleanup(cleanup)
+	return cmd
+}
+
+// EnvFileForTest returns the --env-file path the command was built with, or ""
+// when the argv carries none.
+func EnvFileForTest(cmd *exec.Cmd) string {
+	for i, a := range cmd.Args {
+		if a == "--env-file" && i+1 < len(cmd.Args) {
+			return cmd.Args[i+1]
+		}
+		if v, ok := strings.CutPrefix(a, "--env-file="); ok {
+			return v
+		}
+	}
+	return ""
+}
+
+// EnvFileValuesForTest returns the KEY=VALUE lines of the --env-file the command
+// was built with, in file order. The container env no longer travels as `-e`
+// flags, so specs assert on this instead. Returns nil when the argv carries no
+// --env-file.
+func EnvFileValuesForTest(cmd *exec.Cmd) []string {
+	path := EnvFileForTest(cmd)
+	if path == "" {
+		return nil
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return strings.Split(strings.TrimSuffix(string(content), "\n"), "\n")
 }
 
 // PrepareLogFileForTest exposes prepareLogFile for external test packages.

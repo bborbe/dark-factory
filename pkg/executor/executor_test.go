@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -454,8 +455,13 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			Expect(cmd.Args).To(ContainElement("-e"))
-			Expect(cmd.Args).To(ContainElement("YOLO_PROMPT_FILE=/tmp/prompt.md"))
+			// Env travels via --env-file, never as `-e KEY=VALUE` argv, so no
+			// value is readable from the host process table.
+			Expect(executor.EnvFileForTest(cmd)).NotTo(BeEmpty())
+			Expect(cmd.Args).NotTo(ContainElement("-e"))
+			Expect(
+				executor.EnvFileValuesForTest(cmd),
+			).To(ContainElement("YOLO_PROMPT_FILE=/tmp/prompt.md"))
 		})
 
 		It("sets correct context", func() {
@@ -621,7 +627,7 @@ var _ = Describe("Internal helper functions", func() {
 			}
 		})
 
-		It("includes sorted -e KEY=VALUE flags when env is set", func() {
+		It("includes sorted env values when env is set", func() {
 			envMap := map[string]string{
 				"GOPRIVATE":    "bitbucket.example.com/*",
 				"GONOSUMCHECK": "bitbucket.example.com/*",
@@ -645,24 +651,20 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			args := cmd.Args
-			Expect(args).To(ContainElement("GOPRIVATE=bitbucket.example.com/*"))
-			Expect(args).To(ContainElement("GONOSUMCHECK=bitbucket.example.com/*"))
+			// Env values live in the --env-file, sorted by key; the argv carries
+			// no KEY=VALUE element at all.
+			Expect(cmd.Args).NotTo(ContainElement("-e"))
+			values := executor.EnvFileValuesForTest(cmd)
+			Expect(values).To(ContainElement("GOPRIVATE=bitbucket.example.com/*"))
+			Expect(values).To(ContainElement("GONOSUMCHECK=bitbucket.example.com/*"))
 
 			// Verify sorted order: GONOSUMCHECK before GOPRIVATE
-			var gonosumIdx, goprivateIdx int
-			for i, a := range args {
-				if a == "GONOSUMCHECK=bitbucket.example.com/*" {
-					gonosumIdx = i
-				}
-				if a == "GOPRIVATE=bitbucket.example.com/*" {
-					goprivateIdx = i
-				}
-			}
+			gonosumIdx := slices.Index(values, "GONOSUMCHECK=bitbucket.example.com/*")
+			goprivateIdx := slices.Index(values, "GOPRIVATE=bitbucket.example.com/*")
 			Expect(gonosumIdx).To(BeNumerically("<", goprivateIdx))
 		})
 
-		It("does not include extra -e flags when env is nil", func() {
+		It("does not include extra env values when env is nil", func() {
 			cmd := defaultBuild(
 				ctx,
 				"test",
@@ -673,23 +675,17 @@ var _ = Describe("Internal helper functions", func() {
 				"/home/user",
 			)
 
-			// YOLO_PROMPT_FILE and YOLO_OUTPUT are present as -e values
+			// YOLO_PROMPT_FILE and YOLO_OUTPUT are present as env-file values
 			// when no model is configured. claudeargv.EnvOverlay drops empty
 			// fields (Model unset → no ANTHROPIC_MODEL emitted), letting
 			// the image's entrypoint.sh use its sonnet fallback. Before
 			// the 2026-06-27 centralization, the executor explicitly set
 			// `ANTHROPIC_MODEL=` (empty value) which would have shadowed
 			// the fallback — the new behavior is also more correct.
-			// DARK_FACTORY_MANAGED=true is always emitted by BuildDockerRunArgs
-			// to mark the container as daemon-managed (see launch.go).
-			var envValues []string
-			args := cmd.Args
-			for i, a := range args {
-				if a == "-e" && i+1 < len(args) {
-					envValues = append(envValues, args[i+1])
-				}
-			}
-			Expect(envValues).To(ConsistOf(
+			// DARK_FACTORY_MANAGED=true is always emitted to mark the
+			// container as daemon-managed (see launchpolicy.PrepareEnvFile).
+			Expect(cmd.Args).NotTo(ContainElement("-e"))
+			Expect(executor.EnvFileValuesForTest(cmd)).To(ConsistOf(
 				"YOLO_PROMPT_FILE=/tmp/prompt.md",
 				"YOLO_OUTPUT=json",
 				"DARK_FACTORY_MANAGED=true",
@@ -1081,6 +1077,21 @@ var _ = Describe("Internal helper functions", func() {
 			func() {
 				dir := GinkgoT().TempDir()
 
+				// The env-file lives in a fresh temp dir per build, so its path
+				// differs between the two runs by construction. Strip that one
+				// pair — it is orthogonal to the hideGit question under test.
+				withoutEnvFile := func(args []string) []string {
+					out := make([]string, 0, len(args))
+					for i := 0; i < len(args); i++ {
+						if args[i] == "--env-file" {
+							i++
+							continue
+						}
+						out = append(out, args[i])
+					}
+					return out
+				}
+
 				// Capture args before .git exists
 				cmdWithout := buildCmd(dir, false)
 
@@ -1088,7 +1099,7 @@ var _ = Describe("Internal helper functions", func() {
 				Expect(os.Mkdir(filepath.Join(dir, ".git"), 0750)).To(Succeed())
 				cmdWith := buildCmd(dir, false)
 
-				Expect(cmdWith.Args).To(Equal(cmdWithout.Args))
+				Expect(withoutEnvFile(cmdWith.Args)).To(Equal(withoutEnvFile(cmdWithout.Args)))
 			},
 		)
 	})
@@ -1636,17 +1647,7 @@ This has frontmatter.`
 					false, // hideGit
 				)
 
-				args := cmd.Args
-				found := false
-				for i, arg := range args {
-					if arg == "-e" && i+1 < len(args) && args[i+1] == "YOLO_OUTPUT=json" {
-						found = true
-						break
-					}
-				}
-				Expect(
-					found,
-				).To(BeTrue(), "expected -e followed by YOLO_OUTPUT=json in docker args")
+				Expect(executor.EnvFileValuesForTest(cmd)).To(ContainElement("YOLO_OUTPUT=json"))
 			})
 		})
 

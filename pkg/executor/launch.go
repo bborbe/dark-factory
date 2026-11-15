@@ -6,7 +6,6 @@ package executor
 
 import (
 	"log/slog"
-	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +28,10 @@ type ContainerLaunchOpts = launchpolicy.ContainerLaunchOpts
 // the generate-prompts-for-spec command skips its host-only `spec mark-prompted`
 // step because the host-side generator finalizes the spec after the container
 // exits (and the dark-factory CLI is not present inside the container).
-const EnvManagedMarker = "DARK_FACTORY_MANAGED"
+//
+// The canonical definition lives in launchpolicy (which cannot import executor);
+// this alias keeps the existing executor.EnvManagedMarker callers working.
+const EnvManagedMarker = launchpolicy.EnvManagedMarker
 
 // BuildDockerRunArgs returns the argv for `docker run --rm` from opts.
 // First argv element is "run"; caller invokes via `exec.CommandContext(ctx, "docker", args...)`
@@ -58,7 +60,15 @@ func BuildDockerRunArgs(opts ContainerLaunchOpts) []string {
 	for _, c := range opts.CapAdd {
 		args = append(args, "--cap-add="+c)
 	}
-	args = appendEnv(args, withManagedMarker(opts.Env))
+	// Env reaches docker as `--env-file <path>` when the caller has materialised
+	// it through launchpolicy.PrepareEnvFile. No `-e KEY=VALUE` flag is emitted in
+	// that case: a process argument list is world-readable, so a credential in
+	// argv is a credential any local user or agent session can read with `ps`.
+	if opts.EnvFile != "" {
+		args = append(args, "--env-file", opts.EnvFile)
+	} else {
+		args = appendEnv(args, withManagedMarker(opts.Env))
+	}
 	args = appendStandardMounts(args, opts)
 	args = appendExtraMounts(args, opts)
 	args = append(args, buildHideGitArgsForRoot(opts.HideGit, opts.ProjectRoot)...)
@@ -125,10 +135,7 @@ func appendEnv(args []string, env map[string]string) []string {
 // is never mutated, and a non-nil map is always returned so the marker is emitted
 // even when opts.Env is nil.
 func withManagedMarker(env map[string]string) map[string]string {
-	merged := make(map[string]string, len(env)+1)
-	maps.Copy(merged, env)
-	merged[EnvManagedMarker] = "true"
-	return merged
+	return launchpolicy.WithManagedMarker(env)
 }
 
 // buildClaudeDirMount returns the `-v` value for the claudeDir mount, or ""

@@ -5,6 +5,8 @@
 package executor_test
 
 import (
+	"context"
+	"regexp"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -197,5 +199,73 @@ var _ = Describe("BuildDockerRunArgs security hardening (ADR-0001 Phase 1)", fun
 				}
 			},
 		)
+	})
+})
+
+// Secret-in-argv regression guard.
+//
+// A `docker run` argument list is world-readable: any local user or agent
+// session can read a credential out of it with `ps -eo command`. The launch
+// path therefore delivers the container env through a 0600 `--env-file` and
+// emits no `-e` flag at all. These specs fail if that is undone — whether by
+// restoring the `-e KEY=VALUE` emission or by emitting both forms.
+var _ = Describe("BuildDockerRunArgs env delivery", func() {
+	secretShaped := regexp.MustCompile(`(AUTH_TOKEN|API_KEY|SECRET|TOKEN|PASSWORD)=`)
+
+	It("delivers env via --env-file and emits no -e flag", func() {
+		opts := launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "busybox:latest",
+			ProjectName:    "test-project",
+			Env:            map[string]string{"ANTHROPIC_AUTH_TOKEN": "sentinel-token-value"},
+		}
+		cleanup, err := launchpolicy.PrepareEnvFile(context.Background(), &opts)
+		Expect(err).To(BeNil())
+		defer cleanup()
+
+		args := executor.BuildDockerRunArgs(opts)
+
+		Expect(argvHasFlag(args, "--env-file")).To(BeTrue())
+		Expect(
+			argvHasFlag(args, "-e"),
+		).To(BeFalse(), "no -e flag may be emitted when --env-file is used")
+	})
+
+	It("keeps the credential out of argv even when Env and EnvFile are both set", func() {
+		const sentinel = "sentinel-token-value"
+		opts := launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "busybox:latest",
+			ProjectName:    "test-project",
+			Env:            map[string]string{"ANTHROPIC_AUTH_TOKEN": sentinel},
+			EnvFile:        "/tmp/dark-factory-env-test/env",
+		}
+
+		args := executor.BuildDockerRunArgs(opts)
+
+		for _, a := range args {
+			Expect(a).NotTo(ContainSubstring(sentinel),
+				"a credential value must never reach the docker argv")
+		}
+	})
+
+	It("carries no secret-shaped KEY=VALUE element in the argv", func() {
+		opts := launchpolicy.ContainerLaunchOpts{
+			ContainerName:  "df-test",
+			ContainerImage: "busybox:latest",
+			ProjectName:    "test-project",
+			Env: map[string]string{
+				"ANTHROPIC_AUTH_TOKEN": "sentinel-token-value",
+				"ANTHROPIC_BASE_URL":   "http://127.0.0.1:8788",
+			},
+		}
+		cleanup, err := launchpolicy.PrepareEnvFile(context.Background(), &opts)
+		Expect(err).To(BeNil())
+		defer cleanup()
+
+		for _, a := range executor.BuildDockerRunArgs(opts) {
+			Expect(secretShaped.MatchString(a)).To(BeFalse(),
+				"secret-shaped argv element found: %s", a)
+		}
 	})
 })

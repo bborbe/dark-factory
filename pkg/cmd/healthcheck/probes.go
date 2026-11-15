@@ -311,6 +311,13 @@ func runContainerProbe(ctx context.Context, a runContainerProbeArgs) error {
 		Command:       a.command,
 		EnvOverlay:    a.envOverlay,
 	})
+	// The probe must exercise the same env-delivery path production uses, so it
+	// also routes env through a 0600 --env-file rather than -e flags.
+	cleanupEnv, err := launchpolicy.PrepareEnvFile(ctx, &opts)
+	if err != nil {
+		return errors.Wrap(ctx, err, "prepare env file")
+	}
+	defer cleanupEnv()
 	// #nosec G204 -- args are derived from the configured policy + a category-prefixed random container name, not user input
 	out, err := a.runner.RunWithWarnAndTimeout(
 		ctx,

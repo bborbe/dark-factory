@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -21,6 +22,29 @@ import (
 	"github.com/bborbe/dark-factory/pkg/launchpolicy"
 	"github.com/bborbe/dark-factory/pkg/subproc"
 )
+
+// envFileValues reads the KEY=VALUE lines of the --env-file in a docker argv.
+// The probe removes that file when Run returns, so callers must invoke this from
+// inside the runner stub rather than after the call.
+func envFileValues(args []string) []string {
+	var path string
+	for i, a := range args {
+		if a == "--env-file" && i+1 < len(args) {
+			path = args[i+1]
+			break
+		}
+	}
+	if path == "" {
+		GinkgoT().Fatalf("no --env-file in probe argv: %v", args)
+		return nil
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		GinkgoT().Fatalf("read probe env-file %s: %v", path, err)
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(string(content), "\n"), "\n")
+}
 
 var _ = Describe("DockerProbe", func() {
 	var (
@@ -227,21 +251,31 @@ var _ = Describe("ClaudeProbe", func() {
 		Expect(args).NotTo(ContainElement("--entrypoint"))
 	})
 
-	It("passes YOLO_PROMPT + YOLO_OUTPUT=json (matches executor argv)", func() {
+	It("passes YOLO_PROMPT + YOLO_OUTPUT=json via the env-file (matches executor argv)", func() {
 		// Aligning probe to the executor's YOLO_OUTPUT=json path
-		// (pkg/executor/executor.go:466) means probe and prompt-runs hit the
+		// (pkg/executor/executor.go) means probe and prompt-runs hit the
 		// exact same claude argv via entrypoint.sh — any model rejection,
 		// auth failure, or image regression that breaks production breaks
 		// the probe too. successMarker "OK" still matches because the
 		// stream-json output contains the model's reply text verbatim.
-		subprocR.RunWithWarnAndTimeoutReturns(
-			[]byte(`{"type":"text","text":"OK"}`+"\n"), nil)
+		//
+		// The values arrive through the probe's 0600 --env-file, not as `-e`
+		// flags, so the file must be read from inside the runner stub: the
+		// probe's deferred cleanup removes it as soon as Run returns.
+		var envValues []string
+		subprocR.RunWithWarnAndTimeoutStub = func(
+			_ context.Context, _ string, _ string, args ...string,
+		) ([]byte, error) {
+			envValues = envFileValues(args)
+			return []byte(`{"type":"text","text":"OK"}` + "\n"), nil
+		}
 		p := healthcheck.NewClaudeProbe(testPolicy(), subprocR)
 		Expect(p.Run(ctx)).To(Succeed())
 		_, _, _, args := subprocR.RunWithWarnAndTimeoutArgsForCall(0)
-		argline := strings.Join(args, " ")
-		Expect(argline).To(ContainSubstring("YOLO_PROMPT=reply with exactly: OK"))
-		Expect(argline).To(ContainSubstring("YOLO_OUTPUT=json"))
+		Expect(args).To(ContainElement("--env-file"))
+		Expect(args).NotTo(ContainElement("-e"))
+		Expect(envValues).To(ContainElement("YOLO_PROMPT=reply with exactly: OK"))
+		Expect(envValues).To(ContainElement("YOLO_OUTPUT=json"))
 	})
 
 	It("returns error when stdout does not contain OK", func() {

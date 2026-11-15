@@ -26,7 +26,16 @@ type ContainerLaunchOpts struct {
 	// Home is the host's HOME, used for ~/ expansion in NetrcFile/GitconfigFile/ExtraMounts.
 	Home string
 	// Env is appended as -e KEY=VALUE flags, sorted by key for stable argv shape.
+	//
+	// Env values are visible to any process that can read the host's process
+	// table, so callers must route credentials through PrepareEnvFile instead:
+	// it writes Env into a 0600 file, sets EnvFile, and clears Env.
 	Env map[string]string
+	// EnvFile, when non-empty, is passed as `--env-file <path>` and Env is
+	// ignored — no `-e` flag is emitted at all. This is how the container env
+	// (including credentials) reaches docker without any value appearing in
+	// argv. See PrepareEnvFile.
+	EnvFile string
 	// ExtraMounts is appended as -v <src>:<dst>[:ro] flags; missing src is skipped + logged.
 	ExtraMounts []config.ExtraMount
 	// NetrcFile, when non-empty, is mounted at /home/node/.netrc:ro.

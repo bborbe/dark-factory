@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- fix: deliver the container environment through a `0600` `--env-file` instead of `-e KEY=VALUE` argv flags, so the model router's auth token is no longer readable from the host process table with `ps`. `launchpolicy.PrepareEnvFile` materialises the env into a temp file and clears `opts.Env`; `BuildDockerRunArgs` emits `--env-file` and no `-e` flag. Both the prompt executor and the healthcheck probes use it, and a regression spec fails if a secret-shaped value reaches argv again.
+
 ## v0.199.1
 
 - fix: install a pinned, checksum-verified Trivy release instead of piping the upstream install script from `main` into a shell. The previous change fixed the retired apt keyring helper but replaced a GPG-verified install with an unpinned root-level dependency.

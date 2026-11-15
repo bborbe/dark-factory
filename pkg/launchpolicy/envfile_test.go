@@ -119,6 +119,24 @@ var _ = Describe("DropSecretEnvKeys", func() {
 		Expect(kept).To(Equal(env))
 	})
 
+	It("returns a copy, so mutating the result never mutates the input", func() {
+		env := map[string]string{"GOPRIVATE": "example.com/*"}
+		kept, _ := launchpolicy.DropSecretEnvKeys(env)
+
+		kept["GOPRIVATE"] = "mutated"
+		Expect(env["GOPRIVATE"]).To(Equal("example.com/*"))
+	})
+
+	It("drops an access key id", func() {
+		kept, dropped := launchpolicy.DropSecretEnvKeys(map[string]string{
+			"AWS_ACCESS_KEY_ID": "AKIAEXAMPLE",
+			"GOPRIVATE":         "example.com/*",
+		})
+
+		Expect(dropped).To(Equal([]string{"AWS_ACCESS_KEY_ID"}))
+		Expect(kept).To(Equal(map[string]string{"GOPRIVATE": "example.com/*"}))
+	})
+
 	It("handles a nil env", func() {
 		kept, dropped := launchpolicy.DropSecretEnvKeys(nil)
 

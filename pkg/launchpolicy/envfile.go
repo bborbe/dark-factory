@@ -93,7 +93,14 @@ func PrepareEnvFile(ctx context.Context, opts *ContainerLaunchOpts) (func(), err
 
 // secretEnvKeyParts are the substrings that mark an env key as credential-shaped.
 // Used only by DropSecretEnvKeys, the fail-closed guard on the legacy `-e` path.
-var secretEnvKeyParts = []string{"TOKEN", "SECRET", "PASSWORD", "API_KEY", "APIKEY", "PRIVATE_KEY"}
+//
+// This is a heuristic, not an exhaustive list: a credential named without one of
+// these parts (e.g. AWS_ACCESS_KEY_ID before ACCESS_KEY was added, or a bespoke
+// CLOUD_CRED) is not caught. It is defence in depth on a path production no
+// longer takes — the structural guarantee is that `--env-file` is used at all.
+var secretEnvKeyParts = []string{
+	"TOKEN", "SECRET", "PASSWORD", "API_KEY", "APIKEY", "PRIVATE_KEY", "ACCESS_KEY",
+}
 
 // IsSecretEnvKey reports whether an env key looks like a credential. The test is
 // deliberately over-inclusive: a false positive costs one env var moved to the
@@ -109,12 +116,14 @@ func IsSecretEnvKey(key string) bool {
 }
 
 // DropSecretEnvKeys returns a copy of env with credential-shaped keys removed,
-// plus the names of the keys it dropped. This is the fail-closed guard on the
-// legacy `-e` path: a call site that forgets PrepareEnvFile loses the variable
-// (loudly, via the returned names) instead of publishing it to `ps`.
+// plus the names of the keys it dropped (sorted). A copy is always returned when
+// env is non-empty, so mutating the result never mutates the input. This is the
+// fail-closed guard on the legacy `-e` path: a call site that forgets
+// PrepareEnvFile loses the variable (loudly, via the returned names) instead of
+// publishing it to `ps`.
 func DropSecretEnvKeys(env map[string]string) (map[string]string, []string) {
 	if len(env) == 0 {
-		return env, nil
+		return nil, nil
 	}
 	kept := make(map[string]string, len(env))
 	var dropped []string
@@ -124,9 +133,6 @@ func DropSecretEnvKeys(env map[string]string) (map[string]string, []string) {
 			continue
 		}
 		kept[k] = v
-	}
-	if len(dropped) == 0 {
-		return env, nil
 	}
 	sort.Strings(dropped)
 	return kept, dropped

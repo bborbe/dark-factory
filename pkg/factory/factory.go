@@ -866,23 +866,25 @@ func CreateWorkflowExecutor(
 	releaser git.Releaser,
 	autoCompleter spec.AutoCompleter,
 	promptDirPrefixes []string,
+	specDirPrefixes []string,
 	fileMover prompt.FileMover,
 ) processor.WorkflowExecutorProvider {
 	deps := processor.WorkflowDeps{
-		ProjectName:        projectName,
-		PromptManager:      promptManager,
-		AutoCompleter:      autoCompleter,
-		Releaser:           releaser,
-		FileMover:          fileMover,
-		Brancher:           brancher,
-		PRCreator:          prCreator,
-		Cloner:             git.NewCloner(),
-		Worktreer:          git.NewWorktreer(),
-		PRMerger:           prMerger,
-		PR:                 pr,
-		AutoMerge:          autoMerge,
-		AutoRelease:        autoRelease,
-		IgnorePathPrefixes: promptDirPrefixes,
+		ProjectName:             projectName,
+		PromptManager:           promptManager,
+		AutoCompleter:           autoCompleter,
+		Releaser:                releaser,
+		FileMover:               fileMover,
+		Brancher:                brancher,
+		PRCreator:               prCreator,
+		Cloner:                  git.NewCloner(),
+		Worktreer:               git.NewWorktreer(),
+		PRMerger:                prMerger,
+		PR:                      pr,
+		AutoMerge:               autoMerge,
+		AutoRelease:             autoRelease,
+		IgnorePathPrefixes:      promptDirPrefixes,
+		SpecBookkeepingPrefixes: specDirPrefixes,
 	}
 	return processor.NewWorkflowExecutorProviderMap(map[config.Workflow]processor.WorkflowExecutor{
 		config.WorkflowClone:    processor.NewCloneWorkflowExecutor(deps),
@@ -917,6 +919,12 @@ func buildProcessorConfig(
 			cfg.Prompts.InProgressDir,
 			cfg.Prompts.CompletedDir,
 			cfg.Prompts.LogDir,
+		},
+		SpecDirPrefixes: []string{
+			cfg.Specs.InboxDir,
+			cfg.Specs.InProgressDir,
+			cfg.Specs.CompletedDir,
+			cfg.Specs.RejectedDir,
 		},
 		Backend:                cfg.Backend,
 		ContainerImage:         cfg.ContainerImage,
@@ -962,6 +970,7 @@ type ProcessorConfig struct {
 	SpecsCompletedDir  string
 	SpecsRejectedDir   string
 	PromptDirPrefixes  []string
+	SpecDirPrefixes    []string
 
 	// Container
 	Backend        config.Backend
@@ -1070,7 +1079,7 @@ func CreateProcessor(
 		cfg.PR, brancher, prCreator, prMerger,
 		cfg.AutoMerge, cfg.AutoRelease,
 		projectName, promptManager, releaser, autoCompleter,
-		cfg.PromptDirPrefixes, releaser,
+		cfg.PromptDirPrefixes, cfg.SpecDirPrefixes, releaser,
 	)
 	workflowExecutor := workflowExecutorProvider.Get(ctx, cfg.Workflow)
 	projectRoot, _ := os.Getwd()

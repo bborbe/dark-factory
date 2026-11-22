@@ -9,6 +9,19 @@ import (
 )
 
 type Brancher struct {
+	CommitUncommittedInPathsStub        func(context.Context, []string, string) error
+	commitUncommittedInPathsMutex       sync.RWMutex
+	commitUncommittedInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 string
+	}
+	commitUncommittedInPathsReturns struct {
+		result1 error
+	}
+	commitUncommittedInPathsReturnsOnCall map[int]struct {
+		result1 error
+	}
 	CommitsAheadStub        func(context.Context, string) (int, error)
 	commitsAheadMutex       sync.RWMutex
 	commitsAheadArgsForCall []struct {
@@ -195,6 +208,74 @@ type Brancher struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *Brancher) CommitUncommittedInPaths(arg1 context.Context, arg2 []string, arg3 string) error {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.commitUncommittedInPathsMutex.Lock()
+	ret, specificReturn := fake.commitUncommittedInPathsReturnsOnCall[len(fake.commitUncommittedInPathsArgsForCall)]
+	fake.commitUncommittedInPathsArgsForCall = append(fake.commitUncommittedInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 string
+	}{arg1, arg2Copy, arg3})
+	stub := fake.CommitUncommittedInPathsStub
+	fakeReturns := fake.commitUncommittedInPathsReturns
+	fake.recordInvocation("CommitUncommittedInPaths", []interface{}{arg1, arg2Copy, arg3})
+	fake.commitUncommittedInPathsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) CommitUncommittedInPathsCallCount() int {
+	fake.commitUncommittedInPathsMutex.RLock()
+	defer fake.commitUncommittedInPathsMutex.RUnlock()
+	return len(fake.commitUncommittedInPathsArgsForCall)
+}
+
+func (fake *Brancher) CommitUncommittedInPathsCalls(stub func(context.Context, []string, string) error) {
+	fake.commitUncommittedInPathsMutex.Lock()
+	defer fake.commitUncommittedInPathsMutex.Unlock()
+	fake.CommitUncommittedInPathsStub = stub
+}
+
+func (fake *Brancher) CommitUncommittedInPathsArgsForCall(i int) (context.Context, []string, string) {
+	fake.commitUncommittedInPathsMutex.RLock()
+	defer fake.commitUncommittedInPathsMutex.RUnlock()
+	argsForCall := fake.commitUncommittedInPathsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *Brancher) CommitUncommittedInPathsReturns(result1 error) {
+	fake.commitUncommittedInPathsMutex.Lock()
+	defer fake.commitUncommittedInPathsMutex.Unlock()
+	fake.CommitUncommittedInPathsStub = nil
+	fake.commitUncommittedInPathsReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) CommitUncommittedInPathsReturnsOnCall(i int, result1 error) {
+	fake.commitUncommittedInPathsMutex.Lock()
+	defer fake.commitUncommittedInPathsMutex.Unlock()
+	fake.CommitUncommittedInPathsStub = nil
+	if fake.commitUncommittedInPathsReturnsOnCall == nil {
+		fake.commitUncommittedInPathsReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.commitUncommittedInPathsReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *Brancher) CommitsAhead(arg1 context.Context, arg2 string) (int, error) {

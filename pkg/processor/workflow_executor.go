@@ -118,4 +118,10 @@ type WorkflowDeps struct {
 	// Typically set to the four prompts.* config directories.
 	// Nil or empty means no filtering (identical to the previous IsClean behavior).
 	IgnorePathPrefixes []string
+	// SpecBookkeepingPrefixes lists directory prefixes (relative, no leading slash)
+	// holding dark-factory's own spec-status writes. branchWorkflowExecutor commits
+	// any uncommitted change under them onto the current branch before the
+	// cleanliness check, so the write lands in the branch history instead of
+	// being reported as user dirt. Nil or empty disables the commit step.
+	SpecBookkeepingPrefixes []string
 }

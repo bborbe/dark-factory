@@ -40,6 +40,11 @@ type Brancher interface {
 	// git checkout HEAD -- <prefix>. Prefixes not covered by any uncommitted change
 	// are silently skipped. An empty prefixes slice is a no-op.
 	DiscardUncommittedInPaths(ctx context.Context, prefixes []string) error
+	// CommitUncommittedInPaths commits any uncommitted changes confined to the
+	// given path prefixes, leaving the working tree clean for those prefixes.
+	// Prefixes with no uncommitted change are silently skipped. An empty
+	// prefixes slice is a no-op.
+	CommitUncommittedInPaths(ctx context.Context, prefixes []string, message string) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
 	// FetchBranch fetches the named branch from origin as a local branch
@@ -382,6 +387,67 @@ func (b *brancher) DiscardUncommittedInPaths(ctx context.Context, prefixes []str
 			return errors.Wrapf(ctx, err, "discard uncommitted changes in %q: %s", prefix, msg)
 		}
 		slog.Debug("DiscardUncommittedInPaths: discarded bookkeeping dirt", "prefix", prefix)
+	}
+	return nil
+}
+
+// CommitUncommittedInPaths stages and commits any uncommitted change confined
+// to the given path prefixes, so dark-factory's own bookkeeping writes land in
+// the branch history instead of tripping the working-tree cleanliness gate.
+// Prefixes with no uncommitted change are silently skipped. An empty prefixes
+// slice is a no-op.
+func (b *brancher) CommitUncommittedInPaths(
+	ctx context.Context,
+	prefixes []string,
+	message string,
+) error {
+	// Force English locale so the "did not match any file" probe below is locale-stable.
+	env := []string{"LC_ALL=C", "LANG=C"}
+	for _, prefix := range prefixes {
+		if prefix == "" {
+			continue
+		}
+		status, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git status --porcelain --",
+			"",
+			env,
+			"git", "status", "--porcelain", "--", prefix,
+		)
+		if err != nil {
+			return errors.Wrapf(
+				ctx, err, "inspect bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
+			)
+		}
+		if strings.TrimSpace(string(status)) == "" {
+			continue
+		}
+		// -u stages modifications and deletions of TRACKED files only. An
+		// untracked file under the prefix is someone else's new work, not
+		// dark-factory's bookkeeping write, and must not be swept in.
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git add -u --",
+			"",
+			env,
+			"git", "add", "-u", "--", prefix,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "stage bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
+			)
+		}
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git commit --",
+			"",
+			env,
+			"git", "commit", "-m", message, "--", prefix,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "commit bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
+			)
+		}
+		slog.Debug("CommitUncommittedInPaths: committed bookkeeping", "prefix", prefix)
 	}
 	return nil
 }

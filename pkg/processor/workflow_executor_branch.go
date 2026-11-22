@@ -67,6 +67,16 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 		return errors.Wrap(ctx, err, "get current branch")
 	}
 	stashedSpecBookkeeping := false
+	reachedPop := false
+	defer func() {
+		// If we bail out between the stash and the pop (a dirty tree, a failed
+		// switch), restore the stashed write so it is not silently lost: the tree
+		// goes back to dirty and the next run re-attempts, exactly as it did before
+		// this fix. Without this the stash would be stranded and the transition lost.
+		if stashedSpecBookkeeping && !reachedPop {
+			_ = e.deps.Brancher.StashPop(ctx)
+		}
+	}()
 	if current == branch {
 		if err := e.deps.Brancher.CommitUncommittedInPaths(
 			ctx,
@@ -123,6 +133,7 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 		}
 	}
 	if stashedSpecBookkeeping {
+		reachedPop = true
 		if err := e.deps.Brancher.StashPop(ctx); err != nil {
 			return errors.Wrap(ctx, err, "restore spec bookkeeping after branch switch")
 		}

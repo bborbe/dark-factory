@@ -1989,6 +1989,23 @@ var _ = Describe("branchWorkflowExecutor spec bookkeeping", func() {
 		},
 	)
 
+	It("does not consume a pre-existing unrelated stash", func() {
+		gitIn(repoDir, "checkout", "master")
+		// Stash an unrelated change on a different file, leaving the spec write dirty.
+		writeIn(repoDir, "README.md", "unrelated\n")
+		gitIn(repoDir, "stash", "push", "-m", "unrelated-user-stash", "--", "README.md")
+
+		Expect(executor.setupInPlaceBranch(ctx, "feat/page-view")).To(Succeed())
+
+		// Our bookkeeping stash was popped; the user's unrelated stash survives.
+		Expect(gitIn(repoDir, "stash", "list", "--format=%s")).
+			To(ContainSubstring("unrelated-user-stash"))
+		// The spec write still landed on the target branch.
+		Expect(gitIn(repoDir,
+			"log", "--oneline", "feat/page-view", "--", "specs/in-progress/040-page-view.md",
+		)).To(ContainSubstring("chore: persist spec status transition"))
+	})
+
 	It("still refuses a genuinely dirty tree and names the offending file", func() {
 		writeIn(repoDir, "README.md", "user edit\n")
 

@@ -489,7 +489,17 @@ func (b *brancher) StashInPaths(ctx context.Context, prefixes []string) (bool, e
 				ctx, err, "inspect bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
 			)
 		}
-		if strings.TrimSpace(string(status)) != "" {
+		// Only tracked changes are stashable without -u; an untracked-only prefix
+		// (?? / !!) stashes nothing, so treating it as dirty would make the bool lie.
+		tracked := false
+		for _, line := range strings.Split(strings.TrimSpace(string(status)), "\n") {
+			if strings.HasPrefix(line, "??") || strings.HasPrefix(line, "!!") {
+				continue
+			}
+			tracked = true
+			break
+		}
+		if tracked {
 			dirty = append(dirty, prefix)
 		}
 	}

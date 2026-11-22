@@ -11,8 +11,12 @@ import (
 type Brancher struct {
 	CommitUncommittedInPathsStub        func(context.Context, []string, string) error
 	commitUncommittedInPathsMutex       sync.RWMutex
-	commitUncommittedInPathsArgsForCall []BrancherCommitUncommittedInPathsArgs
-	commitUncommittedInPathsReturns     struct {
+	commitUncommittedInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 string
+	}
+	commitUncommittedInPathsReturns struct {
 		result1 error
 	}
 	commitUncommittedInPathsReturnsOnCall map[int]struct {
@@ -20,8 +24,11 @@ type Brancher struct {
 	}
 	CommitsAheadStub        func(context.Context, string) (int, error)
 	commitsAheadMutex       sync.RWMutex
-	commitsAheadArgsForCall []BrancherCommitsAheadArgs
-	commitsAheadReturns     struct {
+	commitsAheadArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	commitsAheadReturns struct {
 		result1 int
 		result2 error
 	}
@@ -31,8 +38,11 @@ type Brancher struct {
 	}
 	CreateAndSwitchStub        func(context.Context, string) error
 	createAndSwitchMutex       sync.RWMutex
-	createAndSwitchArgsForCall []BrancherCreateAndSwitchArgs
-	createAndSwitchReturns     struct {
+	createAndSwitchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	createAndSwitchReturns struct {
 		result1 error
 	}
 	createAndSwitchReturnsOnCall map[int]struct {
@@ -40,8 +50,10 @@ type Brancher struct {
 	}
 	CurrentBranchStub        func(context.Context) (string, error)
 	currentBranchMutex       sync.RWMutex
-	currentBranchArgsForCall []BrancherCurrentBranchArgs
-	currentBranchReturns     struct {
+	currentBranchArgsForCall []struct {
+		arg1 context.Context
+	}
+	currentBranchReturns struct {
 		result1 string
 		result2 error
 	}
@@ -51,8 +63,10 @@ type Brancher struct {
 	}
 	DefaultBranchStub        func(context.Context) (string, error)
 	defaultBranchMutex       sync.RWMutex
-	defaultBranchArgsForCall []BrancherDefaultBranchArgs
-	defaultBranchReturns     struct {
+	defaultBranchArgsForCall []struct {
+		arg1 context.Context
+	}
+	defaultBranchReturns struct {
 		result1 string
 		result2 error
 	}
@@ -62,8 +76,11 @@ type Brancher struct {
 	}
 	DiscardUncommittedInPathsStub        func(context.Context, []string) error
 	discardUncommittedInPathsMutex       sync.RWMutex
-	discardUncommittedInPathsArgsForCall []BrancherDiscardUncommittedInPathsArgs
-	discardUncommittedInPathsReturns     struct {
+	discardUncommittedInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	discardUncommittedInPathsReturns struct {
 		result1 error
 	}
 	discardUncommittedInPathsReturnsOnCall map[int]struct {
@@ -71,8 +88,10 @@ type Brancher struct {
 	}
 	FetchStub        func(context.Context) error
 	fetchMutex       sync.RWMutex
-	fetchArgsForCall []BrancherFetchArgs
-	fetchReturns     struct {
+	fetchArgsForCall []struct {
+		arg1 context.Context
+	}
+	fetchReturns struct {
 		result1 error
 	}
 	fetchReturnsOnCall map[int]struct {
@@ -80,8 +99,11 @@ type Brancher struct {
 	}
 	FetchAndVerifyBranchStub        func(context.Context, string) error
 	fetchAndVerifyBranchMutex       sync.RWMutex
-	fetchAndVerifyBranchArgsForCall []BrancherFetchAndVerifyBranchArgs
-	fetchAndVerifyBranchReturns     struct {
+	fetchAndVerifyBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	fetchAndVerifyBranchReturns struct {
 		result1 error
 	}
 	fetchAndVerifyBranchReturnsOnCall map[int]struct {
@@ -89,8 +111,11 @@ type Brancher struct {
 	}
 	FetchBranchStub        func(context.Context, string) error
 	fetchBranchMutex       sync.RWMutex
-	fetchBranchArgsForCall []BrancherFetchBranchArgs
-	fetchBranchReturns     struct {
+	fetchBranchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	fetchBranchReturns struct {
 		result1 error
 	}
 	fetchBranchReturnsOnCall map[int]struct {
@@ -98,8 +123,10 @@ type Brancher struct {
 	}
 	IsCleanStub        func(context.Context) (bool, error)
 	isCleanMutex       sync.RWMutex
-	isCleanArgsForCall []BrancherIsCleanArgs
-	isCleanReturns     struct {
+	isCleanArgsForCall []struct {
+		arg1 context.Context
+	}
+	isCleanReturns struct {
 		result1 bool
 		result2 error
 	}
@@ -109,8 +136,11 @@ type Brancher struct {
 	}
 	IsCleanIgnoringStub        func(context.Context, []string) ([]string, error)
 	isCleanIgnoringMutex       sync.RWMutex
-	isCleanIgnoringArgsForCall []BrancherIsCleanIgnoringArgs
-	isCleanIgnoringReturns     struct {
+	isCleanIgnoringArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	isCleanIgnoringReturns struct {
 		result1 []string
 		result2 error
 	}
@@ -120,8 +150,10 @@ type Brancher struct {
 	}
 	MergeOriginDefaultStub        func(context.Context) error
 	mergeOriginDefaultMutex       sync.RWMutex
-	mergeOriginDefaultArgsForCall []BrancherMergeOriginDefaultArgs
-	mergeOriginDefaultReturns     struct {
+	mergeOriginDefaultArgsForCall []struct {
+		arg1 context.Context
+	}
+	mergeOriginDefaultReturns struct {
 		result1 error
 	}
 	mergeOriginDefaultReturnsOnCall map[int]struct {
@@ -129,8 +161,11 @@ type Brancher struct {
 	}
 	MergeToDefaultStub        func(context.Context, string) error
 	mergeToDefaultMutex       sync.RWMutex
-	mergeToDefaultArgsForCall []BrancherMergeToDefaultArgs
-	mergeToDefaultReturns     struct {
+	mergeToDefaultArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	mergeToDefaultReturns struct {
 		result1 error
 	}
 	mergeToDefaultReturnsOnCall map[int]struct {
@@ -138,8 +173,10 @@ type Brancher struct {
 	}
 	PullStub        func(context.Context) error
 	pullMutex       sync.RWMutex
-	pullArgsForCall []BrancherPullArgs
-	pullReturns     struct {
+	pullArgsForCall []struct {
+		arg1 context.Context
+	}
+	pullReturns struct {
 		result1 error
 	}
 	pullReturnsOnCall map[int]struct {
@@ -147,8 +184,11 @@ type Brancher struct {
 	}
 	PushStub        func(context.Context, string) error
 	pushMutex       sync.RWMutex
-	pushArgsForCall []BrancherPushArgs
-	pushReturns     struct {
+	pushArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	pushReturns struct {
 		result1 error
 	}
 	pushReturnsOnCall map[int]struct {
@@ -156,8 +196,11 @@ type Brancher struct {
 	}
 	StashInPathsStub        func(context.Context, []string) (bool, error)
 	stashInPathsMutex       sync.RWMutex
-	stashInPathsArgsForCall []BrancherStashInPathsArgs
-	stashInPathsReturns     struct {
+	stashInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	stashInPathsReturns struct {
 		result1 bool
 		result2 error
 	}
@@ -167,8 +210,10 @@ type Brancher struct {
 	}
 	StashPopStub        func(context.Context) error
 	stashPopMutex       sync.RWMutex
-	stashPopArgsForCall []BrancherStashPopArgs
-	stashPopReturns     struct {
+	stashPopArgsForCall []struct {
+		arg1 context.Context
+	}
+	stashPopReturns struct {
 		result1 error
 	}
 	stashPopReturnsOnCall map[int]struct {
@@ -176,118 +221,18 @@ type Brancher struct {
 	}
 	SwitchStub        func(context.Context, string) error
 	switchMutex       sync.RWMutex
-	switchArgsForCall []BrancherSwitchArgs
-	switchReturns     struct {
+	switchArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	switchReturns struct {
 		result1 error
 	}
 	switchReturnsOnCall map[int]struct {
 		result1 error
 	}
 	invocations      map[string][][]interface{}
-	callOrder        []string
 	invocationsMutex sync.RWMutex
-}
-
-// BrancherCommitUncommittedInPathsArgs holds the arguments of one call to CommitUncommittedInPaths.
-type BrancherCommitUncommittedInPathsArgs struct {
-	Arg1 context.Context
-	Arg2 []string
-	Arg3 string
-}
-
-// BrancherCommitsAheadArgs holds the arguments of one call to CommitsAhead.
-type BrancherCommitsAheadArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherCreateAndSwitchArgs holds the arguments of one call to CreateAndSwitch.
-type BrancherCreateAndSwitchArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherCurrentBranchArgs holds the arguments of one call to CurrentBranch.
-type BrancherCurrentBranchArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherDefaultBranchArgs holds the arguments of one call to DefaultBranch.
-type BrancherDefaultBranchArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherDiscardUncommittedInPathsArgs holds the arguments of one call to DiscardUncommittedInPaths.
-type BrancherDiscardUncommittedInPathsArgs struct {
-	Arg1 context.Context
-	Arg2 []string
-}
-
-// BrancherFetchArgs holds the arguments of one call to Fetch.
-type BrancherFetchArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherFetchAndVerifyBranchArgs holds the arguments of one call to FetchAndVerifyBranch.
-type BrancherFetchAndVerifyBranchArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherFetchBranchArgs holds the arguments of one call to FetchBranch.
-type BrancherFetchBranchArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherIsCleanArgs holds the arguments of one call to IsClean.
-type BrancherIsCleanArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherIsCleanIgnoringArgs holds the arguments of one call to IsCleanIgnoring.
-type BrancherIsCleanIgnoringArgs struct {
-	Arg1 context.Context
-	Arg2 []string
-}
-
-// BrancherMergeOriginDefaultArgs holds the arguments of one call to MergeOriginDefault.
-type BrancherMergeOriginDefaultArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherMergeToDefaultArgs holds the arguments of one call to MergeToDefault.
-type BrancherMergeToDefaultArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherPullArgs holds the arguments of one call to Pull.
-type BrancherPullArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherPushArgs holds the arguments of one call to Push.
-type BrancherPushArgs struct {
-	Arg1 context.Context
-	Arg2 string
-}
-
-// BrancherStashInPathsArgs holds the arguments of one call to StashInPaths.
-type BrancherStashInPathsArgs struct {
-	Arg1 context.Context
-	Arg2 []string
-}
-
-// BrancherStashPopArgs holds the arguments of one call to StashPop.
-type BrancherStashPopArgs struct {
-	Arg1 context.Context
-}
-
-// BrancherSwitchArgs holds the arguments of one call to Switch.
-type BrancherSwitchArgs struct {
-	Arg1 context.Context
-	Arg2 string
 }
 
 func (fake *Brancher) CommitUncommittedInPaths(arg1 context.Context, arg2 []string, arg3 string) error {
@@ -298,7 +243,11 @@ func (fake *Brancher) CommitUncommittedInPaths(arg1 context.Context, arg2 []stri
 	}
 	fake.commitUncommittedInPathsMutex.Lock()
 	ret, specificReturn := fake.commitUncommittedInPathsReturnsOnCall[len(fake.commitUncommittedInPathsArgsForCall)]
-	fake.commitUncommittedInPathsArgsForCall = append(fake.commitUncommittedInPathsArgsForCall, BrancherCommitUncommittedInPathsArgs{arg1, arg2Copy, arg3})
+	fake.commitUncommittedInPathsArgsForCall = append(fake.commitUncommittedInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+		arg3 string
+	}{arg1, arg2Copy, arg3})
 	stub := fake.CommitUncommittedInPathsStub
 	fakeReturns := fake.commitUncommittedInPathsReturns
 	fake.recordInvocation("CommitUncommittedInPaths", []interface{}{arg1, arg2Copy, arg3})
@@ -328,15 +277,7 @@ func (fake *Brancher) CommitUncommittedInPathsArgsForCall(i int) (context.Contex
 	fake.commitUncommittedInPathsMutex.RLock()
 	defer fake.commitUncommittedInPathsMutex.RUnlock()
 	argsForCall := fake.commitUncommittedInPathsArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2, argsForCall.Arg3
-}
-
-func (fake *Brancher) CommitUncommittedInPathsArgs() []BrancherCommitUncommittedInPathsArgs {
-	fake.commitUncommittedInPathsMutex.RLock()
-	defer fake.commitUncommittedInPathsMutex.RUnlock()
-	args := make([]BrancherCommitUncommittedInPathsArgs, len(fake.commitUncommittedInPathsArgsForCall))
-	copy(args, fake.commitUncommittedInPathsArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *Brancher) CommitUncommittedInPathsReturns(result1 error) {
@@ -365,7 +306,10 @@ func (fake *Brancher) CommitUncommittedInPathsReturnsOnCall(i int, result1 error
 func (fake *Brancher) CommitsAhead(arg1 context.Context, arg2 string) (int, error) {
 	fake.commitsAheadMutex.Lock()
 	ret, specificReturn := fake.commitsAheadReturnsOnCall[len(fake.commitsAheadArgsForCall)]
-	fake.commitsAheadArgsForCall = append(fake.commitsAheadArgsForCall, BrancherCommitsAheadArgs{arg1, arg2})
+	fake.commitsAheadArgsForCall = append(fake.commitsAheadArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.CommitsAheadStub
 	fakeReturns := fake.commitsAheadReturns
 	fake.recordInvocation("CommitsAhead", []interface{}{arg1, arg2})
@@ -395,15 +339,7 @@ func (fake *Brancher) CommitsAheadArgsForCall(i int) (context.Context, string) {
 	fake.commitsAheadMutex.RLock()
 	defer fake.commitsAheadMutex.RUnlock()
 	argsForCall := fake.commitsAheadArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) CommitsAheadArgs() []BrancherCommitsAheadArgs {
-	fake.commitsAheadMutex.RLock()
-	defer fake.commitsAheadMutex.RUnlock()
-	args := make([]BrancherCommitsAheadArgs, len(fake.commitsAheadArgsForCall))
-	copy(args, fake.commitsAheadArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) CommitsAheadReturns(result1 int, result2 error) {
@@ -435,7 +371,10 @@ func (fake *Brancher) CommitsAheadReturnsOnCall(i int, result1 int, result2 erro
 func (fake *Brancher) CreateAndSwitch(arg1 context.Context, arg2 string) error {
 	fake.createAndSwitchMutex.Lock()
 	ret, specificReturn := fake.createAndSwitchReturnsOnCall[len(fake.createAndSwitchArgsForCall)]
-	fake.createAndSwitchArgsForCall = append(fake.createAndSwitchArgsForCall, BrancherCreateAndSwitchArgs{arg1, arg2})
+	fake.createAndSwitchArgsForCall = append(fake.createAndSwitchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.CreateAndSwitchStub
 	fakeReturns := fake.createAndSwitchReturns
 	fake.recordInvocation("CreateAndSwitch", []interface{}{arg1, arg2})
@@ -465,15 +404,7 @@ func (fake *Brancher) CreateAndSwitchArgsForCall(i int) (context.Context, string
 	fake.createAndSwitchMutex.RLock()
 	defer fake.createAndSwitchMutex.RUnlock()
 	argsForCall := fake.createAndSwitchArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) CreateAndSwitchArgs() []BrancherCreateAndSwitchArgs {
-	fake.createAndSwitchMutex.RLock()
-	defer fake.createAndSwitchMutex.RUnlock()
-	args := make([]BrancherCreateAndSwitchArgs, len(fake.createAndSwitchArgsForCall))
-	copy(args, fake.createAndSwitchArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) CreateAndSwitchReturns(result1 error) {
@@ -502,7 +433,9 @@ func (fake *Brancher) CreateAndSwitchReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) CurrentBranch(arg1 context.Context) (string, error) {
 	fake.currentBranchMutex.Lock()
 	ret, specificReturn := fake.currentBranchReturnsOnCall[len(fake.currentBranchArgsForCall)]
-	fake.currentBranchArgsForCall = append(fake.currentBranchArgsForCall, BrancherCurrentBranchArgs{arg1})
+	fake.currentBranchArgsForCall = append(fake.currentBranchArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.CurrentBranchStub
 	fakeReturns := fake.currentBranchReturns
 	fake.recordInvocation("CurrentBranch", []interface{}{arg1})
@@ -532,15 +465,7 @@ func (fake *Brancher) CurrentBranchArgsForCall(i int) context.Context {
 	fake.currentBranchMutex.RLock()
 	defer fake.currentBranchMutex.RUnlock()
 	argsForCall := fake.currentBranchArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) CurrentBranchArgs() []BrancherCurrentBranchArgs {
-	fake.currentBranchMutex.RLock()
-	defer fake.currentBranchMutex.RUnlock()
-	args := make([]BrancherCurrentBranchArgs, len(fake.currentBranchArgsForCall))
-	copy(args, fake.currentBranchArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) CurrentBranchReturns(result1 string, result2 error) {
@@ -572,7 +497,9 @@ func (fake *Brancher) CurrentBranchReturnsOnCall(i int, result1 string, result2 
 func (fake *Brancher) DefaultBranch(arg1 context.Context) (string, error) {
 	fake.defaultBranchMutex.Lock()
 	ret, specificReturn := fake.defaultBranchReturnsOnCall[len(fake.defaultBranchArgsForCall)]
-	fake.defaultBranchArgsForCall = append(fake.defaultBranchArgsForCall, BrancherDefaultBranchArgs{arg1})
+	fake.defaultBranchArgsForCall = append(fake.defaultBranchArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.DefaultBranchStub
 	fakeReturns := fake.defaultBranchReturns
 	fake.recordInvocation("DefaultBranch", []interface{}{arg1})
@@ -602,15 +529,7 @@ func (fake *Brancher) DefaultBranchArgsForCall(i int) context.Context {
 	fake.defaultBranchMutex.RLock()
 	defer fake.defaultBranchMutex.RUnlock()
 	argsForCall := fake.defaultBranchArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) DefaultBranchArgs() []BrancherDefaultBranchArgs {
-	fake.defaultBranchMutex.RLock()
-	defer fake.defaultBranchMutex.RUnlock()
-	args := make([]BrancherDefaultBranchArgs, len(fake.defaultBranchArgsForCall))
-	copy(args, fake.defaultBranchArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) DefaultBranchReturns(result1 string, result2 error) {
@@ -647,7 +566,10 @@ func (fake *Brancher) DiscardUncommittedInPaths(arg1 context.Context, arg2 []str
 	}
 	fake.discardUncommittedInPathsMutex.Lock()
 	ret, specificReturn := fake.discardUncommittedInPathsReturnsOnCall[len(fake.discardUncommittedInPathsArgsForCall)]
-	fake.discardUncommittedInPathsArgsForCall = append(fake.discardUncommittedInPathsArgsForCall, BrancherDiscardUncommittedInPathsArgs{arg1, arg2Copy})
+	fake.discardUncommittedInPathsArgsForCall = append(fake.discardUncommittedInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
 	stub := fake.DiscardUncommittedInPathsStub
 	fakeReturns := fake.discardUncommittedInPathsReturns
 	fake.recordInvocation("DiscardUncommittedInPaths", []interface{}{arg1, arg2Copy})
@@ -677,15 +599,7 @@ func (fake *Brancher) DiscardUncommittedInPathsArgsForCall(i int) (context.Conte
 	fake.discardUncommittedInPathsMutex.RLock()
 	defer fake.discardUncommittedInPathsMutex.RUnlock()
 	argsForCall := fake.discardUncommittedInPathsArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) DiscardUncommittedInPathsArgs() []BrancherDiscardUncommittedInPathsArgs {
-	fake.discardUncommittedInPathsMutex.RLock()
-	defer fake.discardUncommittedInPathsMutex.RUnlock()
-	args := make([]BrancherDiscardUncommittedInPathsArgs, len(fake.discardUncommittedInPathsArgsForCall))
-	copy(args, fake.discardUncommittedInPathsArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) DiscardUncommittedInPathsReturns(result1 error) {
@@ -714,7 +628,9 @@ func (fake *Brancher) DiscardUncommittedInPathsReturnsOnCall(i int, result1 erro
 func (fake *Brancher) Fetch(arg1 context.Context) error {
 	fake.fetchMutex.Lock()
 	ret, specificReturn := fake.fetchReturnsOnCall[len(fake.fetchArgsForCall)]
-	fake.fetchArgsForCall = append(fake.fetchArgsForCall, BrancherFetchArgs{arg1})
+	fake.fetchArgsForCall = append(fake.fetchArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.FetchStub
 	fakeReturns := fake.fetchReturns
 	fake.recordInvocation("Fetch", []interface{}{arg1})
@@ -744,15 +660,7 @@ func (fake *Brancher) FetchArgsForCall(i int) context.Context {
 	fake.fetchMutex.RLock()
 	defer fake.fetchMutex.RUnlock()
 	argsForCall := fake.fetchArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) FetchArgs() []BrancherFetchArgs {
-	fake.fetchMutex.RLock()
-	defer fake.fetchMutex.RUnlock()
-	args := make([]BrancherFetchArgs, len(fake.fetchArgsForCall))
-	copy(args, fake.fetchArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) FetchReturns(result1 error) {
@@ -781,7 +689,10 @@ func (fake *Brancher) FetchReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) FetchAndVerifyBranch(arg1 context.Context, arg2 string) error {
 	fake.fetchAndVerifyBranchMutex.Lock()
 	ret, specificReturn := fake.fetchAndVerifyBranchReturnsOnCall[len(fake.fetchAndVerifyBranchArgsForCall)]
-	fake.fetchAndVerifyBranchArgsForCall = append(fake.fetchAndVerifyBranchArgsForCall, BrancherFetchAndVerifyBranchArgs{arg1, arg2})
+	fake.fetchAndVerifyBranchArgsForCall = append(fake.fetchAndVerifyBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.FetchAndVerifyBranchStub
 	fakeReturns := fake.fetchAndVerifyBranchReturns
 	fake.recordInvocation("FetchAndVerifyBranch", []interface{}{arg1, arg2})
@@ -811,15 +722,7 @@ func (fake *Brancher) FetchAndVerifyBranchArgsForCall(i int) (context.Context, s
 	fake.fetchAndVerifyBranchMutex.RLock()
 	defer fake.fetchAndVerifyBranchMutex.RUnlock()
 	argsForCall := fake.fetchAndVerifyBranchArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) FetchAndVerifyBranchArgs() []BrancherFetchAndVerifyBranchArgs {
-	fake.fetchAndVerifyBranchMutex.RLock()
-	defer fake.fetchAndVerifyBranchMutex.RUnlock()
-	args := make([]BrancherFetchAndVerifyBranchArgs, len(fake.fetchAndVerifyBranchArgsForCall))
-	copy(args, fake.fetchAndVerifyBranchArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) FetchAndVerifyBranchReturns(result1 error) {
@@ -848,7 +751,10 @@ func (fake *Brancher) FetchAndVerifyBranchReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) FetchBranch(arg1 context.Context, arg2 string) error {
 	fake.fetchBranchMutex.Lock()
 	ret, specificReturn := fake.fetchBranchReturnsOnCall[len(fake.fetchBranchArgsForCall)]
-	fake.fetchBranchArgsForCall = append(fake.fetchBranchArgsForCall, BrancherFetchBranchArgs{arg1, arg2})
+	fake.fetchBranchArgsForCall = append(fake.fetchBranchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.FetchBranchStub
 	fakeReturns := fake.fetchBranchReturns
 	fake.recordInvocation("FetchBranch", []interface{}{arg1, arg2})
@@ -878,15 +784,7 @@ func (fake *Brancher) FetchBranchArgsForCall(i int) (context.Context, string) {
 	fake.fetchBranchMutex.RLock()
 	defer fake.fetchBranchMutex.RUnlock()
 	argsForCall := fake.fetchBranchArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) FetchBranchArgs() []BrancherFetchBranchArgs {
-	fake.fetchBranchMutex.RLock()
-	defer fake.fetchBranchMutex.RUnlock()
-	args := make([]BrancherFetchBranchArgs, len(fake.fetchBranchArgsForCall))
-	copy(args, fake.fetchBranchArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) FetchBranchReturns(result1 error) {
@@ -915,7 +813,9 @@ func (fake *Brancher) FetchBranchReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) IsClean(arg1 context.Context) (bool, error) {
 	fake.isCleanMutex.Lock()
 	ret, specificReturn := fake.isCleanReturnsOnCall[len(fake.isCleanArgsForCall)]
-	fake.isCleanArgsForCall = append(fake.isCleanArgsForCall, BrancherIsCleanArgs{arg1})
+	fake.isCleanArgsForCall = append(fake.isCleanArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.IsCleanStub
 	fakeReturns := fake.isCleanReturns
 	fake.recordInvocation("IsClean", []interface{}{arg1})
@@ -945,15 +845,7 @@ func (fake *Brancher) IsCleanArgsForCall(i int) context.Context {
 	fake.isCleanMutex.RLock()
 	defer fake.isCleanMutex.RUnlock()
 	argsForCall := fake.isCleanArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) IsCleanArgs() []BrancherIsCleanArgs {
-	fake.isCleanMutex.RLock()
-	defer fake.isCleanMutex.RUnlock()
-	args := make([]BrancherIsCleanArgs, len(fake.isCleanArgsForCall))
-	copy(args, fake.isCleanArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) IsCleanReturns(result1 bool, result2 error) {
@@ -990,7 +882,10 @@ func (fake *Brancher) IsCleanIgnoring(arg1 context.Context, arg2 []string) ([]st
 	}
 	fake.isCleanIgnoringMutex.Lock()
 	ret, specificReturn := fake.isCleanIgnoringReturnsOnCall[len(fake.isCleanIgnoringArgsForCall)]
-	fake.isCleanIgnoringArgsForCall = append(fake.isCleanIgnoringArgsForCall, BrancherIsCleanIgnoringArgs{arg1, arg2Copy})
+	fake.isCleanIgnoringArgsForCall = append(fake.isCleanIgnoringArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
 	stub := fake.IsCleanIgnoringStub
 	fakeReturns := fake.isCleanIgnoringReturns
 	fake.recordInvocation("IsCleanIgnoring", []interface{}{arg1, arg2Copy})
@@ -1020,15 +915,7 @@ func (fake *Brancher) IsCleanIgnoringArgsForCall(i int) (context.Context, []stri
 	fake.isCleanIgnoringMutex.RLock()
 	defer fake.isCleanIgnoringMutex.RUnlock()
 	argsForCall := fake.isCleanIgnoringArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) IsCleanIgnoringArgs() []BrancherIsCleanIgnoringArgs {
-	fake.isCleanIgnoringMutex.RLock()
-	defer fake.isCleanIgnoringMutex.RUnlock()
-	args := make([]BrancherIsCleanIgnoringArgs, len(fake.isCleanIgnoringArgsForCall))
-	copy(args, fake.isCleanIgnoringArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) IsCleanIgnoringReturns(result1 []string, result2 error) {
@@ -1060,7 +947,9 @@ func (fake *Brancher) IsCleanIgnoringReturnsOnCall(i int, result1 []string, resu
 func (fake *Brancher) MergeOriginDefault(arg1 context.Context) error {
 	fake.mergeOriginDefaultMutex.Lock()
 	ret, specificReturn := fake.mergeOriginDefaultReturnsOnCall[len(fake.mergeOriginDefaultArgsForCall)]
-	fake.mergeOriginDefaultArgsForCall = append(fake.mergeOriginDefaultArgsForCall, BrancherMergeOriginDefaultArgs{arg1})
+	fake.mergeOriginDefaultArgsForCall = append(fake.mergeOriginDefaultArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.MergeOriginDefaultStub
 	fakeReturns := fake.mergeOriginDefaultReturns
 	fake.recordInvocation("MergeOriginDefault", []interface{}{arg1})
@@ -1090,15 +979,7 @@ func (fake *Brancher) MergeOriginDefaultArgsForCall(i int) context.Context {
 	fake.mergeOriginDefaultMutex.RLock()
 	defer fake.mergeOriginDefaultMutex.RUnlock()
 	argsForCall := fake.mergeOriginDefaultArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) MergeOriginDefaultArgs() []BrancherMergeOriginDefaultArgs {
-	fake.mergeOriginDefaultMutex.RLock()
-	defer fake.mergeOriginDefaultMutex.RUnlock()
-	args := make([]BrancherMergeOriginDefaultArgs, len(fake.mergeOriginDefaultArgsForCall))
-	copy(args, fake.mergeOriginDefaultArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) MergeOriginDefaultReturns(result1 error) {
@@ -1127,7 +1008,10 @@ func (fake *Brancher) MergeOriginDefaultReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) MergeToDefault(arg1 context.Context, arg2 string) error {
 	fake.mergeToDefaultMutex.Lock()
 	ret, specificReturn := fake.mergeToDefaultReturnsOnCall[len(fake.mergeToDefaultArgsForCall)]
-	fake.mergeToDefaultArgsForCall = append(fake.mergeToDefaultArgsForCall, BrancherMergeToDefaultArgs{arg1, arg2})
+	fake.mergeToDefaultArgsForCall = append(fake.mergeToDefaultArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.MergeToDefaultStub
 	fakeReturns := fake.mergeToDefaultReturns
 	fake.recordInvocation("MergeToDefault", []interface{}{arg1, arg2})
@@ -1157,15 +1041,7 @@ func (fake *Brancher) MergeToDefaultArgsForCall(i int) (context.Context, string)
 	fake.mergeToDefaultMutex.RLock()
 	defer fake.mergeToDefaultMutex.RUnlock()
 	argsForCall := fake.mergeToDefaultArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) MergeToDefaultArgs() []BrancherMergeToDefaultArgs {
-	fake.mergeToDefaultMutex.RLock()
-	defer fake.mergeToDefaultMutex.RUnlock()
-	args := make([]BrancherMergeToDefaultArgs, len(fake.mergeToDefaultArgsForCall))
-	copy(args, fake.mergeToDefaultArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) MergeToDefaultReturns(result1 error) {
@@ -1194,7 +1070,9 @@ func (fake *Brancher) MergeToDefaultReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) Pull(arg1 context.Context) error {
 	fake.pullMutex.Lock()
 	ret, specificReturn := fake.pullReturnsOnCall[len(fake.pullArgsForCall)]
-	fake.pullArgsForCall = append(fake.pullArgsForCall, BrancherPullArgs{arg1})
+	fake.pullArgsForCall = append(fake.pullArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.PullStub
 	fakeReturns := fake.pullReturns
 	fake.recordInvocation("Pull", []interface{}{arg1})
@@ -1224,15 +1102,7 @@ func (fake *Brancher) PullArgsForCall(i int) context.Context {
 	fake.pullMutex.RLock()
 	defer fake.pullMutex.RUnlock()
 	argsForCall := fake.pullArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) PullArgs() []BrancherPullArgs {
-	fake.pullMutex.RLock()
-	defer fake.pullMutex.RUnlock()
-	args := make([]BrancherPullArgs, len(fake.pullArgsForCall))
-	copy(args, fake.pullArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) PullReturns(result1 error) {
@@ -1261,7 +1131,10 @@ func (fake *Brancher) PullReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) Push(arg1 context.Context, arg2 string) error {
 	fake.pushMutex.Lock()
 	ret, specificReturn := fake.pushReturnsOnCall[len(fake.pushArgsForCall)]
-	fake.pushArgsForCall = append(fake.pushArgsForCall, BrancherPushArgs{arg1, arg2})
+	fake.pushArgsForCall = append(fake.pushArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.PushStub
 	fakeReturns := fake.pushReturns
 	fake.recordInvocation("Push", []interface{}{arg1, arg2})
@@ -1291,15 +1164,7 @@ func (fake *Brancher) PushArgsForCall(i int) (context.Context, string) {
 	fake.pushMutex.RLock()
 	defer fake.pushMutex.RUnlock()
 	argsForCall := fake.pushArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) PushArgs() []BrancherPushArgs {
-	fake.pushMutex.RLock()
-	defer fake.pushMutex.RUnlock()
-	args := make([]BrancherPushArgs, len(fake.pushArgsForCall))
-	copy(args, fake.pushArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) PushReturns(result1 error) {
@@ -1333,7 +1198,10 @@ func (fake *Brancher) StashInPaths(arg1 context.Context, arg2 []string) (bool, e
 	}
 	fake.stashInPathsMutex.Lock()
 	ret, specificReturn := fake.stashInPathsReturnsOnCall[len(fake.stashInPathsArgsForCall)]
-	fake.stashInPathsArgsForCall = append(fake.stashInPathsArgsForCall, BrancherStashInPathsArgs{arg1, arg2Copy})
+	fake.stashInPathsArgsForCall = append(fake.stashInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
 	stub := fake.StashInPathsStub
 	fakeReturns := fake.stashInPathsReturns
 	fake.recordInvocation("StashInPaths", []interface{}{arg1, arg2Copy})
@@ -1363,15 +1231,7 @@ func (fake *Brancher) StashInPathsArgsForCall(i int) (context.Context, []string)
 	fake.stashInPathsMutex.RLock()
 	defer fake.stashInPathsMutex.RUnlock()
 	argsForCall := fake.stashInPathsArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) StashInPathsArgs() []BrancherStashInPathsArgs {
-	fake.stashInPathsMutex.RLock()
-	defer fake.stashInPathsMutex.RUnlock()
-	args := make([]BrancherStashInPathsArgs, len(fake.stashInPathsArgsForCall))
-	copy(args, fake.stashInPathsArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) StashInPathsReturns(result1 bool, result2 error) {
@@ -1403,7 +1263,9 @@ func (fake *Brancher) StashInPathsReturnsOnCall(i int, result1 bool, result2 err
 func (fake *Brancher) StashPop(arg1 context.Context) error {
 	fake.stashPopMutex.Lock()
 	ret, specificReturn := fake.stashPopReturnsOnCall[len(fake.stashPopArgsForCall)]
-	fake.stashPopArgsForCall = append(fake.stashPopArgsForCall, BrancherStashPopArgs{arg1})
+	fake.stashPopArgsForCall = append(fake.stashPopArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
 	stub := fake.StashPopStub
 	fakeReturns := fake.stashPopReturns
 	fake.recordInvocation("StashPop", []interface{}{arg1})
@@ -1433,15 +1295,7 @@ func (fake *Brancher) StashPopArgsForCall(i int) context.Context {
 	fake.stashPopMutex.RLock()
 	defer fake.stashPopMutex.RUnlock()
 	argsForCall := fake.stashPopArgsForCall[i]
-	return argsForCall.Arg1
-}
-
-func (fake *Brancher) StashPopArgs() []BrancherStashPopArgs {
-	fake.stashPopMutex.RLock()
-	defer fake.stashPopMutex.RUnlock()
-	args := make([]BrancherStashPopArgs, len(fake.stashPopArgsForCall))
-	copy(args, fake.stashPopArgsForCall)
-	return args
+	return argsForCall.arg1
 }
 
 func (fake *Brancher) StashPopReturns(result1 error) {
@@ -1470,7 +1324,10 @@ func (fake *Brancher) StashPopReturnsOnCall(i int, result1 error) {
 func (fake *Brancher) Switch(arg1 context.Context, arg2 string) error {
 	fake.switchMutex.Lock()
 	ret, specificReturn := fake.switchReturnsOnCall[len(fake.switchArgsForCall)]
-	fake.switchArgsForCall = append(fake.switchArgsForCall, BrancherSwitchArgs{arg1, arg2})
+	fake.switchArgsForCall = append(fake.switchArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
 	stub := fake.SwitchStub
 	fakeReturns := fake.switchReturns
 	fake.recordInvocation("Switch", []interface{}{arg1, arg2})
@@ -1500,15 +1357,7 @@ func (fake *Brancher) SwitchArgsForCall(i int) (context.Context, string) {
 	fake.switchMutex.RLock()
 	defer fake.switchMutex.RUnlock()
 	argsForCall := fake.switchArgsForCall[i]
-	return argsForCall.Arg1, argsForCall.Arg2
-}
-
-func (fake *Brancher) SwitchArgs() []BrancherSwitchArgs {
-	fake.switchMutex.RLock()
-	defer fake.switchMutex.RUnlock()
-	args := make([]BrancherSwitchArgs, len(fake.switchArgsForCall))
-	copy(args, fake.switchArgsForCall)
-	return args
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Brancher) SwitchReturns(result1 error) {
@@ -1544,18 +1393,9 @@ func (fake *Brancher) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *Brancher) CallOrder() []string {
-	fake.invocationsMutex.RLock()
-	defer fake.invocationsMutex.RUnlock()
-	order := make([]string, len(fake.callOrder))
-	copy(order, fake.callOrder)
-	return order
-}
-
 func (fake *Brancher) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
-	fake.callOrder = append(fake.callOrder, key)
 	if fake.invocations == nil {
 		fake.invocations = map[string][][]interface{}{}
 	}

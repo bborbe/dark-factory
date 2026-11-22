@@ -66,7 +66,10 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 	if err != nil {
 		return errors.Wrap(ctx, err, "get current branch")
 	}
-	stashedSpecBookkeeping := false
+	stashedSpecBookkeeping, err := e.persistSpecBookkeepingBeforeSwitch(ctx, current, branch)
+	if err != nil {
+		return err
+	}
 	reachedPop := false
 	defer func() {
 		// If we bail out between the stash and the pop (a dirty tree, a failed
@@ -77,21 +80,6 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 			_ = e.deps.Brancher.StashPop(ctx)
 		}
 	}()
-	if current == branch {
-		if err := e.deps.Brancher.CommitUncommittedInPaths(
-			ctx,
-			e.deps.SpecBookkeepingPrefixes,
-			"chore: persist spec status transition",
-		); err != nil {
-			return errors.Wrap(ctx, err, "commit spec bookkeeping before branch switch")
-		}
-	} else {
-		stashed, serr := e.deps.Brancher.StashInPaths(ctx, e.deps.SpecBookkeepingPrefixes)
-		if serr != nil {
-			return errors.Wrap(ctx, serr, "stash spec bookkeeping before branch switch")
-		}
-		stashedSpecBookkeeping = stashed
-	}
 
 	dirtyPaths, err := e.deps.Brancher.IsCleanIgnoring(ctx, e.deps.IgnorePathPrefixes)
 	if err != nil {
@@ -134,18 +122,52 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 	}
 	if stashedSpecBookkeeping {
 		reachedPop = true
-		if err := e.deps.Brancher.StashPop(ctx); err != nil {
-			return errors.Wrap(ctx, err, "restore spec bookkeeping after branch switch")
+		if err := e.restoreAndCommitSpecBookkeeping(ctx); err != nil {
+			return err
 		}
+	}
+	log.From(ctx).Info("switched to branch for in-place execution", "branch", branch)
+	return nil
+}
+
+// persistSpecBookkeepingBeforeSwitch commits the spec-status write when HEAD is
+// already the target branch, or stashes it for the cross-branch case so the
+// cleanliness check passes. It returns whether a stash was created.
+func (e *branchWorkflowExecutor) persistSpecBookkeepingBeforeSwitch(
+	ctx context.Context,
+	current, branch string,
+) (bool, error) {
+	if current == branch {
 		if err := e.deps.Brancher.CommitUncommittedInPaths(
 			ctx,
 			e.deps.SpecBookkeepingPrefixes,
 			"chore: persist spec status transition",
 		); err != nil {
-			return errors.Wrap(ctx, err, "commit spec bookkeeping on target branch")
+			return false, errors.Wrap(ctx, err, "commit spec bookkeeping before branch switch")
 		}
+		return false, nil
 	}
-	log.From(ctx).Info("switched to branch for in-place execution", "branch", branch)
+	stashed, err := e.deps.Brancher.StashInPaths(ctx, e.deps.SpecBookkeepingPrefixes)
+	if err != nil {
+		return false, errors.Wrap(ctx, err, "stash spec bookkeeping before branch switch")
+	}
+	return stashed, nil
+}
+
+// restoreAndCommitSpecBookkeeping pops the stash created before the switch onto
+// the target branch and commits it there, so the write lands in the target
+// branch's history rather than being stranded on the default branch.
+func (e *branchWorkflowExecutor) restoreAndCommitSpecBookkeeping(ctx context.Context) error {
+	if err := e.deps.Brancher.StashPop(ctx); err != nil {
+		return errors.Wrap(ctx, err, "restore spec bookkeeping after branch switch")
+	}
+	if err := e.deps.Brancher.CommitUncommittedInPaths(
+		ctx,
+		e.deps.SpecBookkeepingPrefixes,
+		"chore: persist spec status transition",
+	); err != nil {
+		return errors.Wrap(ctx, err, "commit spec bookkeeping on target branch")
+	}
 	return nil
 }
 

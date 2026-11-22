@@ -459,6 +459,14 @@ func (r *realBrancher) DiscardUncommittedInPaths(_ context.Context, _ []string) 
 	return nil
 }
 
+func (r *realBrancher) CommitUncommittedInPaths(
+	_ context.Context,
+	_ []string,
+	_ string,
+) error {
+	return nil
+}
+
 func (r *realBrancher) MergeToDefault(_ context.Context, branch string) error {
 	// Get the default branch name - we're already on it after restoreDefaultBranch
 	defaultBranch, err := r.DefaultBranch(context.Background())

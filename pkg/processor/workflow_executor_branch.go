@@ -50,6 +50,19 @@ func (e *branchWorkflowExecutor) Setup(
 
 // setupInPlaceBranch switches to the given branch in-place.
 func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch string) error {
+	// The generator's own spec-status write (approved → prompted) and the
+	// sweeper's (prompted → verifying) dirty the tree before this gate runs.
+	// They are dark-factory bookkeeping, not user work: commit them onto the
+	// current branch so the write lands in the branch history, rather than
+	// filtering specs/ out of the cleanliness check.
+	if err := e.deps.Brancher.CommitUncommittedInPaths(
+		ctx,
+		e.deps.SpecBookkeepingPrefixes,
+		"chore: persist spec status transition",
+	); err != nil {
+		return errors.Wrap(ctx, err, "commit spec bookkeeping before branch switch")
+	}
+
 	dirtyPaths, err := e.deps.Brancher.IsCleanIgnoring(ctx, e.deps.IgnorePathPrefixes)
 	if err != nil {
 		return errors.Wrap(ctx, err, "check working tree")

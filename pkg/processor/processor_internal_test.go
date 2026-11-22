@@ -1923,10 +1923,7 @@ var _ = Describe("branchWorkflowExecutor spec bookkeeping", func() {
 	})
 
 	It("commits the spec-status write into the branch history instead of refusing", func() {
-		err := executor.setupInPlaceBranch(ctx, "feat/page-view")
-		if err != nil {
-			Expect(err.Error()).NotTo(ContainSubstring("working tree is not clean"))
-		}
+		Expect(executor.setupInPlaceBranch(ctx, "feat/page-view")).To(Succeed())
 
 		// SC2: the write is in the branch's own history, carrying the
 		// post-transition value.
@@ -1938,6 +1935,40 @@ var _ = Describe("branchWorkflowExecutor spec bookkeeping", func() {
 
 		// The commit landed on the current branch, which is the target branch.
 		Expect(gitIn(repoDir, "rev-parse", "--abbrev-ref", "HEAD")).To(Equal("feat/page-view"))
+	})
+
+	It("leaves an untracked new spec file uncommitted, so the gate still refuses it", func() {
+		writeIn(repoDir, "specs/in-progress/041-new-draft.md", "---\nstatus: draft\n---\n")
+
+		err := executor.setupInPlaceBranch(ctx, "feat/page-view")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("041-new-draft.md"))
+
+		// The untracked file was not swept into the bookkeeping commit.
+		Expect(gitIn(repoDir, "status", "--porcelain", "--", "specs/in-progress/041-new-draft.md")).
+			To(ContainSubstring("??"))
+		Expect(gitIn(repoDir,
+			"log", "--oneline", "feat/page-view", "--", "specs/in-progress/041-new-draft.md",
+		)).To(BeEmpty())
+
+		// The tracked spec-status write was still committed.
+		Expect(gitIn(repoDir,
+			"log", "--oneline", "feat/page-view", "--", "specs/in-progress/040-page-view.md",
+		)).To(ContainSubstring("chore: persist spec status transition"))
+	})
+
+	It("does not commit the write onto a branch that is not the target", func() {
+		// HEAD moves off the target branch while the spec write stays dirty.
+		gitIn(repoDir, "checkout", "master")
+
+		err := executor.setupInPlaceBranch(ctx, "feat/page-view")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("working tree is not clean"))
+
+		// The write must not be stranded on master.
+		Expect(gitIn(repoDir,
+			"log", "--oneline", "master", "--", "specs/in-progress/040-page-view.md",
+		)).NotTo(ContainSubstring("chore: persist spec status transition"))
 	})
 
 	It("still refuses a genuinely dirty tree and names the offending file", func() {

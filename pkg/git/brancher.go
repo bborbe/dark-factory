@@ -415,21 +415,22 @@ func (b *brancher) CommitUncommittedInPaths(
 			"git", "status", "--porcelain", "--", prefix,
 		)
 		if err != nil {
-			msg := stderrFromErr(err)
-			if strings.Contains(msg, "did not match any file") {
-				continue
-			}
-			return errors.Wrapf(ctx, err, "inspect bookkeeping changes in %q: %s", prefix, msg)
+			return errors.Wrapf(
+				ctx, err, "inspect bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
+			)
 		}
 		if strings.TrimSpace(string(status)) == "" {
 			continue
 		}
+		// -u stages modifications and deletions of TRACKED files only. An
+		// untracked file under the prefix is someone else's new work, not
+		// dark-factory's bookkeeping write, and must not be swept in.
 		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 			ctx,
-			"git add --",
+			"git add -u --",
 			"",
 			env,
-			"git", "add", "--", prefix,
+			"git", "add", "-u", "--", prefix,
 		); err != nil {
 			return errors.Wrapf(
 				ctx, err, "stage bookkeeping changes in %q: %s", prefix, stderrFromErr(err),

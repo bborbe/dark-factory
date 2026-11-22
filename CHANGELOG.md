@@ -12,7 +12,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-- fix: commit dark-factory's own spec-status writes onto the current branch before the branch-switch cleanliness check. The generator's `approved → prompted` write (`pkg/generator/generator.go`) and the sweeper's `prompted → verifying` write left `specs/` dirty, so `branchWorkflowExecutor.setupInPlaceBranch` refused with `working tree is not clean; cannot switch to branch` — even when the tree was already on the target branch. `brancher.CommitUncommittedInPaths` now stages and commits changes confined to the configured spec dirs, leaving `IgnorePathPrefixes` untouched and real user dirt still failing.
+- fix: commit dark-factory's own spec-status writes before the branch-switch cleanliness check. The generator's `approved → prompted` write (`pkg/generator/generator.go`) and the sweeper's `prompted → verifying` write left `specs/` dirty, so `branchWorkflowExecutor.setupInPlaceBranch` refused with `working tree is not clean; cannot switch to branch` — even when the tree was already on the target branch. `brancher.CommitUncommittedInPaths` stages tracked modifications confined to the configured spec dirs and commits them, and the executor calls it only when HEAD already is the target branch, so the write lands in that branch's history and is never stranded on a different one. `IgnorePathPrefixes` is untouched, untracked spec files are left alone, and real user dirt still fails.
 
 ## v0.199.2
 

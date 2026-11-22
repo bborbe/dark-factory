@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.199.3
 
 - fix: commit dark-factory's own spec-status writes before the branch-switch cleanliness check. The generator's `approved → prompted` write (`pkg/generator/generator.go`) and the sweeper's `prompted → verifying` write left `specs/` dirty, so `branchWorkflowExecutor.setupInPlaceBranch` refused with `working tree is not clean; cannot switch to branch` — even when the tree was already on the target branch. `brancher.CommitUncommittedInPaths` stages tracked modifications confined to the configured spec dirs and commits them, and the executor calls it only when HEAD already is the target branch, so the write lands in that branch's history and is never stranded on a different one. `IgnorePathPrefixes` is untouched, untracked spec files are left alone, and real user dirt still fails.
 

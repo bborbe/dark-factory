@@ -506,6 +506,12 @@ func (s *stubBrancher) CommitUncommittedInPaths(
 	return nil
 }
 
+func (s *stubBrancher) StashInPaths(_ context.Context, _ []string) (bool, error) {
+	return false, nil
+}
+
+func (s *stubBrancher) StashPop(_ context.Context) error { return nil }
+
 func (s *stubBrancher) FetchBranch(_ context.Context, _ string) error { return nil }
 
 // stubPRCreator tracks FindOpenPR/Create calls.
@@ -1957,18 +1963,27 @@ var _ = Describe("branchWorkflowExecutor spec bookkeeping", func() {
 		)).To(ContainSubstring("chore: persist spec status transition"))
 	})
 
-	It("does not commit the write onto a branch that is not the target", func() {
+	It("lands the write on the target branch when switching onto it, not on the current branch", func() {
 		// HEAD moves off the target branch while the spec write stays dirty.
 		gitIn(repoDir, "checkout", "master")
 
-		err := executor.setupInPlaceBranch(ctx, "feat/page-view")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("working tree is not clean"))
+		Expect(executor.setupInPlaceBranch(ctx, "feat/page-view")).To(Succeed())
+
+		// The write landed on the target branch's history, carrying the
+		// post-transition value.
+		Expect(gitIn(repoDir,
+			"log", "--oneline", "feat/page-view", "--", "specs/in-progress/040-page-view.md",
+		)).To(ContainSubstring("chore: persist spec status transition"))
+		Expect(gitIn(repoDir, "show", "feat/page-view:specs/in-progress/040-page-view.md")).
+			To(ContainSubstring("status: prompted"))
 
 		// The write must not be stranded on master.
 		Expect(gitIn(repoDir,
 			"log", "--oneline", "master", "--", "specs/in-progress/040-page-view.md",
 		)).NotTo(ContainSubstring("chore: persist spec status transition"))
+
+		// We end on the target branch.
+		Expect(gitIn(repoDir, "rev-parse", "--abbrev-ref", "HEAD")).To(Equal("feat/page-view"))
 	})
 
 	It("still refuses a genuinely dirty tree and names the offending file", func() {

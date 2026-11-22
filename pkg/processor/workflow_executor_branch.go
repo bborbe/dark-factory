@@ -56,14 +56,17 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 	// write lands in the branch history, rather than filtering specs/ out of
 	// the cleanliness check.
 	//
-	// Only when HEAD already is the target branch. The write belongs to that
-	// branch's history; committing it onto a different branch would strand it
-	// there and let the subsequent switch restore the branch's committed copy,
-	// silently reverting the transition.
+	// When HEAD already is the target branch, commit the write so it lands in
+	// that branch's history. When switching onto a different branch, stash the
+	// write instead: committing it onto the current branch would strand it there
+	// and the subsequent switch would restore the branch's committed copy,
+	// silently reverting the transition. The stash is popped and committed on the
+	// target branch after the switch.
 	current, err := e.deps.Brancher.CurrentBranch(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, "get current branch")
 	}
+	stashedSpecBookkeeping := false
 	if current == branch {
 		if err := e.deps.Brancher.CommitUncommittedInPaths(
 			ctx,
@@ -72,6 +75,12 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 		); err != nil {
 			return errors.Wrap(ctx, err, "commit spec bookkeeping before branch switch")
 		}
+	} else {
+		stashed, serr := e.deps.Brancher.StashInPaths(ctx, e.deps.SpecBookkeepingPrefixes)
+		if serr != nil {
+			return errors.Wrap(ctx, serr, "stash spec bookkeeping before branch switch")
+		}
+		stashedSpecBookkeeping = stashed
 	}
 
 	dirtyPaths, err := e.deps.Brancher.IsCleanIgnoring(ctx, e.deps.IgnorePathPrefixes)
@@ -111,6 +120,18 @@ func (e *branchWorkflowExecutor) setupInPlaceBranch(ctx context.Context, branch 
 	} else {
 		if err := e.deps.Brancher.CreateAndSwitch(ctx, branch); err != nil {
 			return errors.Wrap(ctx, err, "create and switch to branch")
+		}
+	}
+	if stashedSpecBookkeeping {
+		if err := e.deps.Brancher.StashPop(ctx); err != nil {
+			return errors.Wrap(ctx, err, "restore spec bookkeeping after branch switch")
+		}
+		if err := e.deps.Brancher.CommitUncommittedInPaths(
+			ctx,
+			e.deps.SpecBookkeepingPrefixes,
+			"chore: persist spec status transition",
+		); err != nil {
+			return errors.Wrap(ctx, err, "commit spec bookkeeping on target branch")
 		}
 	}
 	log.From(ctx).Info("switched to branch for in-place execution", "branch", branch)

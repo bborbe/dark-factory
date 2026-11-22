@@ -467,6 +467,14 @@ func (r *realBrancher) CommitUncommittedInPaths(
 	return nil
 }
 
+func (r *realBrancher) StashInPaths(_ context.Context, _ []string) (bool, error) {
+	return false, nil
+}
+
+func (r *realBrancher) StashPop(_ context.Context) error {
+	return nil
+}
+
 func (r *realBrancher) MergeToDefault(_ context.Context, branch string) error {
 	// Get the default branch name - we're already on it after restoreDefaultBranch
 	defaultBranch, err := r.DefaultBranch(context.Background())

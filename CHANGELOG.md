@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.199.5
 
 - fix: skip a spec-bookkeeping prefix that carries no change when stashing across a branch switch. `brancher.StashInPaths` split the empty `git status --porcelain` output into `[""]`, treated that as a tracked change, and added the prefix to the `git stash push` pathspec — so a bookkeeping dir the repo never created (`specs/rejected`) aborted the whole cross-branch prompt setup with `pathspec ':(prefix:0)specs/rejected' did not match any file(s) known to git`. `StashInPaths` now returns early on an empty status, mirroring the guard `CommitUncommittedInPaths` already carried, and `pkg/git/brancher_spec_bookkeeping_test.go` drives the real brancher against a repo with one dirty and one absent prefix.
 

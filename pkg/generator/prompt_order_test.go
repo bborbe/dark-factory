@@ -38,7 +38,8 @@ func (passingExecutor) StopAndRemoveContainer(_ context.Context, _ string) {}
 
 // TestDiffFilesOrdersByCreatorPrefix pins the order diffFiles hands to the auto-approve
 // loop. Without the ordering, the map range returns these in a random order, so the test
-// fails deterministically on a plain slice comparison rather than only sometimes.
+// fails on a plain slice comparison rather than only sometimes — the five-entry fixture
+// matches the wanted order by chance with probability 1/120.
 //
 // The 10-kilo entry is deliberate: lexicographic sorting of the paths would place
 // "10-kilo.md" between "1-zulu.md" and "2-mike.md", so only a numeric prefix parse keeps

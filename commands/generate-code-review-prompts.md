@@ -154,7 +154,7 @@ Print a summary of findings and generated prompt files.
 - Do NOT modify any source code — this is a review-only prompt
 - Only write files to the prompts inbox directory
 - Never write to `in-progress/` or `completed/` subdirectories
-- Never number prompt filenames — dark-factory assigns numbers on approve
+- Never number prompt filenames with dark-factory's global prefix (`001-`, `042-`) — dark-factory assigns those on approve; a one-digit ordering prefix (`1-`, `2-`, `3-`) is allowed when order matters
 - Repo-relative paths only in generated prompts (no absolute, no `~/`)
 - If no findings at Critical/Important level → report clean bill of health, generate no prompts
 </constraints>

@@ -36,7 +36,7 @@ The headline reason to use prompts/specs: **safe unattended execution** in a YOL
 
 - Prompts go to **`prompts/`** (inbox) — never to `prompts/in-progress/` or `prompts/completed/`
 - Specs go to **`specs/`** (inbox) — never to `specs/in-progress/` or `specs/completed/`
-- Never number filenames — dark-factory assigns numbers on approve
+- Never number filenames with dark-factory's global prefix (`001-`, `042-`) — dark-factory assigns those on approve. A one-digit ordering prefix (`1-`, `2-`, `3-`) on prompt filenames is allowed when the prompts must run in sequence.
 - Never manually edit frontmatter status — use CLI:
   - `dark-factory prompt approve <name>` — queue prompt for execution
   - `dark-factory prompt retry` — re-queue failed prompts

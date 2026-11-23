@@ -489,6 +489,14 @@ func (b *brancher) StashInPaths(ctx context.Context, prefixes []string) (bool, e
 				ctx, err, "inspect bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
 			)
 		}
+		// No output at all means the prefix carries no change — including a
+		// directory the repo never created. Splitting the empty output yields
+		// [""], which is neither "??" nor "!!", so without this guard the
+		// prefix would join the stash pathspec and `git stash push` would fail
+		// with `pathspec ... did not match any file(s) known to git`.
+		if strings.TrimSpace(string(status)) == "" {
+			continue
+		}
 		// Only tracked changes are stashable without -u; an untracked-only prefix
 		// (?? / !!) stashes nothing, so treating it as dirty would make the bool lie.
 		tracked := false

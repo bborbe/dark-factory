@@ -194,6 +194,31 @@ type Brancher struct {
 	pushReturnsOnCall map[int]struct {
 		result1 error
 	}
+	StashInPathsStub        func(context.Context, []string) (bool, error)
+	stashInPathsMutex       sync.RWMutex
+	stashInPathsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	stashInPathsReturns struct {
+		result1 bool
+		result2 error
+	}
+	stashInPathsReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
+	StashPopStub        func(context.Context) error
+	stashPopMutex       sync.RWMutex
+	stashPopArgsForCall []struct {
+		arg1 context.Context
+	}
+	stashPopReturns struct {
+		result1 error
+	}
+	stashPopReturnsOnCall map[int]struct {
+		result1 error
+	}
 	SwitchStub        func(context.Context, string) error
 	switchMutex       sync.RWMutex
 	switchArgsForCall []struct {
@@ -1161,6 +1186,137 @@ func (fake *Brancher) PushReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.pushReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) StashInPaths(arg1 context.Context, arg2 []string) (bool, error) {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.stashInPathsMutex.Lock()
+	ret, specificReturn := fake.stashInPathsReturnsOnCall[len(fake.stashInPathsArgsForCall)]
+	fake.stashInPathsArgsForCall = append(fake.stashInPathsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
+	stub := fake.StashInPathsStub
+	fakeReturns := fake.stashInPathsReturns
+	fake.recordInvocation("StashInPaths", []interface{}{arg1, arg2Copy})
+	fake.stashInPathsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *Brancher) StashInPathsCallCount() int {
+	fake.stashInPathsMutex.RLock()
+	defer fake.stashInPathsMutex.RUnlock()
+	return len(fake.stashInPathsArgsForCall)
+}
+
+func (fake *Brancher) StashInPathsCalls(stub func(context.Context, []string) (bool, error)) {
+	fake.stashInPathsMutex.Lock()
+	defer fake.stashInPathsMutex.Unlock()
+	fake.StashInPathsStub = stub
+}
+
+func (fake *Brancher) StashInPathsArgsForCall(i int) (context.Context, []string) {
+	fake.stashInPathsMutex.RLock()
+	defer fake.stashInPathsMutex.RUnlock()
+	argsForCall := fake.stashInPathsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *Brancher) StashInPathsReturns(result1 bool, result2 error) {
+	fake.stashInPathsMutex.Lock()
+	defer fake.stashInPathsMutex.Unlock()
+	fake.StashInPathsStub = nil
+	fake.stashInPathsReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) StashInPathsReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.stashInPathsMutex.Lock()
+	defer fake.stashInPathsMutex.Unlock()
+	fake.StashInPathsStub = nil
+	if fake.stashInPathsReturnsOnCall == nil {
+		fake.stashInPathsReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.stashInPathsReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *Brancher) StashPop(arg1 context.Context) error {
+	fake.stashPopMutex.Lock()
+	ret, specificReturn := fake.stashPopReturnsOnCall[len(fake.stashPopArgsForCall)]
+	fake.stashPopArgsForCall = append(fake.stashPopArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.StashPopStub
+	fakeReturns := fake.stashPopReturns
+	fake.recordInvocation("StashPop", []interface{}{arg1})
+	fake.stashPopMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *Brancher) StashPopCallCount() int {
+	fake.stashPopMutex.RLock()
+	defer fake.stashPopMutex.RUnlock()
+	return len(fake.stashPopArgsForCall)
+}
+
+func (fake *Brancher) StashPopCalls(stub func(context.Context) error) {
+	fake.stashPopMutex.Lock()
+	defer fake.stashPopMutex.Unlock()
+	fake.StashPopStub = stub
+}
+
+func (fake *Brancher) StashPopArgsForCall(i int) context.Context {
+	fake.stashPopMutex.RLock()
+	defer fake.stashPopMutex.RUnlock()
+	argsForCall := fake.stashPopArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Brancher) StashPopReturns(result1 error) {
+	fake.stashPopMutex.Lock()
+	defer fake.stashPopMutex.Unlock()
+	fake.StashPopStub = nil
+	fake.stashPopReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Brancher) StashPopReturnsOnCall(i int, result1 error) {
+	fake.stashPopMutex.Lock()
+	defer fake.stashPopMutex.Unlock()
+	fake.StashPopStub = nil
+	if fake.stashPopReturnsOnCall == nil {
+		fake.stashPopReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.stashPopReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }

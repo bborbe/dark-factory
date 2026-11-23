@@ -45,6 +45,16 @@ type Brancher interface {
 	// Prefixes with no uncommitted change are silently skipped. An empty
 	// prefixes slice is a no-op.
 	CommitUncommittedInPaths(ctx context.Context, prefixes []string, message string) error
+	// StashInPaths stashes any uncommitted changes confined to the given path
+	// prefixes so the working tree is clean for those prefixes, returning whether
+	// a stash was created. Prefixes with no uncommitted change are skipped; if
+	// none has a change, no stash is created and false is returned. The stash is
+	// applied later by StashPop, typically after a branch switch.
+	StashInPaths(ctx context.Context, prefixes []string) (bool, error)
+	// StashPop applies the stash created by StashInPaths to the working tree. It
+	// is a no-op when that stash does not exist, so it never consumes an
+	// unrelated stash.
+	StashPop(ctx context.Context) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
 	// FetchBranch fetches the named branch from origin as a local branch
@@ -449,6 +459,100 @@ func (b *brancher) CommitUncommittedInPaths(
 		}
 		slog.Debug("CommitUncommittedInPaths: committed bookkeeping", "prefix", prefix)
 	}
+	return nil
+}
+
+// specBookkeepingStashMessage marks the stash created by StashInPaths so
+// StashPop pops only that stash and never a pre-existing one.
+const specBookkeepingStashMessage = "dark-factory: spec bookkeeping for cross-branch switch"
+
+// StashInPaths stashes uncommitted changes confined to the given path prefixes.
+// It returns true when a stash was created, so the caller knows whether to call
+// StashPop after the switch.
+func (b *brancher) StashInPaths(ctx context.Context, prefixes []string) (bool, error) {
+	// Force English locale so git's output is locale-stable.
+	env := []string{"LC_ALL=C", "LANG=C"}
+	var dirty []string
+	for _, prefix := range prefixes {
+		if prefix == "" {
+			continue
+		}
+		status, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git status --porcelain --",
+			"",
+			env,
+			"git", "status", "--porcelain", "--", prefix,
+		)
+		if err != nil {
+			return false, errors.Wrapf(
+				ctx, err, "inspect bookkeeping changes in %q: %s", prefix, stderrFromErr(err),
+			)
+		}
+		// Only tracked changes are stashable without -u; an untracked-only prefix
+		// (?? / !!) stashes nothing, so treating it as dirty would make the bool lie.
+		tracked := false
+		for _, line := range strings.Split(strings.TrimSpace(string(status)), "\n") {
+			if strings.HasPrefix(line, "??") || strings.HasPrefix(line, "!!") {
+				continue
+			}
+			tracked = true
+			break
+		}
+		if tracked {
+			dirty = append(dirty, prefix)
+		}
+	}
+	if len(dirty) == 0 {
+		return false, nil
+	}
+	args := append(
+		[]string{"stash", "push", "-m", specBookkeepingStashMessage, "--"},
+		dirty...,
+	)
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git stash push --",
+		"",
+		env,
+		"git", args...,
+	); err != nil {
+		return false, errors.Wrapf(ctx, err, "stash bookkeeping changes: %s", stderrFromErr(err))
+	}
+	slog.Debug("StashInPaths: stashed bookkeeping dirt", "prefixes", dirty)
+	return true, nil
+}
+
+// StashPop applies the stash created by StashInPaths. It is a no-op when the
+// most recent stash is not that stash, so an unrelated stash is never consumed.
+func (b *brancher) StashPop(ctx context.Context) error {
+	env := []string{"LC_ALL=C", "LANG=C"}
+	list, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git stash list --",
+		"",
+		env,
+		"git", "stash", "list", "--format=%s",
+	)
+	if err != nil {
+		return errors.Wrapf(ctx, err, "list stashes: %s", stderrFromErr(err))
+	}
+	// `git stash list --format=%s` renders "On <branch>: <message>", so match the
+	// message by substring rather than equality.
+	subjects := strings.Split(strings.TrimSpace(string(list)), "\n")
+	if !strings.Contains(subjects[0], specBookkeepingStashMessage) {
+		return nil
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git stash pop --",
+		"",
+		env,
+		"git", "stash", "pop",
+	); err != nil {
+		return errors.Wrapf(ctx, err, "restore stashed bookkeeping: %s", stderrFromErr(err))
+	}
+	slog.Debug("StashPop: restored stashed bookkeeping")
 	return nil
 }
 

@@ -17,7 +17,7 @@ Expert dark-factory prompt engineer. You decompose specs into executable prompts
 
 <constraints>
 - **Authoring-rules docs live in the dark-factory plugin dir, NOT the project you are writing prompts for.** Every `docs/rules/*.md` and `../*.md` reference below (e.g. `docs/rules/prompt-writing.md`, `docs/rules/scenario-writing.md`, `../choosing-a-flow.md`) resolves against the plugin, not your cwd — you run on the HOST with cwd = the target project's worktree, where those paths do not exist. Read them at the explicit path: host `~/.claude/plugins/marketplaces/dark-factory/docs/rules/<file>.md` (container `/home/node/.claude/plugins/marketplaces/dark-factory/docs/rules/<file>.md`). **NEVER run a filesystem-wide `find` / `bfs` (e.g. `find / -name prompt-writing.md`) to locate a guide** — it stalls silently for many minutes with zero output. If the explicit path is unreadable, skip the doc and proceed from the inline guidance; never search the disk.
-- NEVER number prompt filenames — dark-factory assigns numbers on approve
+- **Number a prompt filename only to declare execution order.** When prompts must run in sequence, prefix the filename with the intended position (`1-spec-020-model.md`, `2-spec-020-routing.md`). dark-factory strips that prefix on approve (`ApproveFromInbox`) and `NormalizeFilenames` then assigns the execution number in approval order, which follows the prefix — so the prefix is the order. Omit it when sequence does not matter.
 - NEVER place prompts in `prompts/in-progress/` — inbox only (`prompts/`)
 - NEVER add frontmatter fields beyond spec/status/created
 - **Every spec-derived prompt MUST carry `spec: ["<spec-basename>"]`** — the full slug, not a bare number. Omitting it is not a style choice: dark-factory links a spec to its prompts solely through this field, so a prompt without it leaves the spec stuck at `prompted` and the run never hands off. When you are decomposing an approved spec, there is no case in which the field may be left out.
@@ -155,9 +155,9 @@ Run `make precommit` — must pass.
 
 ## Naming
 
-- Use execution-order prefix if sequence matters: `1-spec-020-model.md`, `2-spec-020-routing.md`
+- Prefix the filename with the intended order when prompts must run in sequence: `1-spec-020-model.md`, `2-spec-020-routing.md`
 - Otherwise use descriptive kebab-case: `spec-020-add-validation.md`
-- dark-factory sorts alphabetically — prefix ensures order
+- The prefix is the only ordering signal — approve strips it (`ApproveFromInbox`) and `NormalizeFilenames` reassigns the execution number in approval order, so never rely on an alphabetical sort of the slugs
 
 ## Quality Rules
 

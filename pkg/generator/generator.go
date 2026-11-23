@@ -9,6 +9,9 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -641,13 +644,60 @@ func (g *dockerSpecGenerator) doResetSpecToApproved(ctx context.Context, specPat
 	return errors.Wrap(ctx, sf.Save(ctx), "save spec after reset")
 }
 
-// diffFiles returns full paths of files present in after but not in before.
+// orderPrefixRegexp matches the execution-order prefix a prompt-creator writes on a
+// generated prompt filename ("2-spec-040-route.md" → 2).
+var orderPrefixRegexp = regexp.MustCompile(`^(\d+)-`)
+
+// diffFiles returns full paths of files present in after but not in before, ordered by
+// the execution-order prefix the prompt-creator wrote on each filename.
+//
+// The order decides the execution numbers. finalizePrompted hands this slice to
+// autoApproveGeneratedPrompts, which approves the prompts one at a time;
+// prompt.ApproveFromInbox strips the prefix and prompt.Manager.NormalizeFilenames then
+// assigns the next free number, so the approval order IS the execution order
+// (docs/rules/prompt-writing.md § Ordering prefix for dependent prompts). Ranging over
+// the after map instead approved them in a random order, which is how spec-040's
+// hardening prompt was numbered before the service prompt it exercises.
+//
+// Unprefixed prompts sort after prefixed ones, and ties fall back to the full path, so
+// the result is a total order rather than merely "usually deterministic".
 func diffFiles(before, after map[string]struct{}) []string {
-	var newFiles []string
+	newFiles := make([]string, 0, len(after))
 	for path := range after {
 		if _, exists := before[path]; !exists {
 			newFiles = append(newFiles, path)
 		}
 	}
+	sort.Slice(newFiles, func(i, j int) bool {
+		return lessPromptPath(newFiles[i], newFiles[j])
+	})
 	return newFiles
+}
+
+// lessPromptPath orders two prompt paths by the creator's execution-order prefix, then by
+// full path. Prefixed prompts come before unprefixed ones.
+func lessPromptPath(a, b string) bool {
+	aNum, aPrefixed := orderPrefix(a)
+	bNum, bPrefixed := orderPrefix(b)
+	if aPrefixed != bPrefixed {
+		return aPrefixed
+	}
+	if aPrefixed && aNum != bNum {
+		return aNum < bNum
+	}
+	return a < b
+}
+
+// orderPrefix returns the execution-order prefix of a prompt path's basename, and whether
+// the filename carries one at all.
+func orderPrefix(path string) (int, bool) {
+	matches := orderPrefixRegexp.FindStringSubmatch(filepath.Base(path))
+	if matches == nil {
+		return 0, false
+	}
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, false
+	}
+	return num, true
 }

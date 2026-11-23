@@ -48,7 +48,7 @@ Every prompt MUST have these XML sections:
 - Valid inbox statuses: `idea` (rough concept) or `draft` (complete, ready for approval)
 - Only `spec`, `status`, `created`, `issue` fields in inbox — dark-factory adds the rest
 - Never number filenames with dark-factory's global prefix (e.g. `001-`, `042-`) — dark-factory assigns those on approve
-- **Exception — multi-prompt spec ordering:** When a spec generates multiple sibling prompts, a single-digit `N-` prefix (`1-`, `2-`, `3-`) in the inbox is the documented ordering convention and is allowed. Pattern: `^[1-9]-spec-\d{3}-.*\.md$`. Do NOT flag.
+- **Exception — multi-prompt spec ordering:** When a spec generates multiple sibling prompts, an `N-` prefix (`1-`, `2-`, …, `10-`) in the inbox is the documented ordering convention and is allowed — dark-factory approves them in prefix order and reassigns the execution number. Pattern: `^\d+-spec-\d{3}-.*\.md$`. Do NOT flag.
 
 ## Location
 
@@ -452,7 +452,7 @@ Adjust for complexity: simple prompts (single function fix) need less than compl
 - [x/!] No bare `git ` commands in `<verification>` when target repo has `hideGit: true` OR `workflow: worktree` (would produce false-positive verification pass because `.git` is masked and exit codes are not checked)
 - [x/!] No operator-only commands in `<verification>` (`docker`, `make build`, `make buca`, `dark-factory <cmd>`, `kubectl*`, `scripts/*.sh`, `gh pr|release|api`) — same false-positive-pass failure mode; belongs on spec's Verification ladder instead
 - [x/!] File in `prompts/` inbox (not `prompts/in-progress/`)
-- [x/!] Filename not prefixed with dark-factory global number (`NNN-`); single-digit ordering prefix `N-` for multi-prompt specs is allowed
+- [x/!] Filename not prefixed with dark-factory global number (`NNN-`); ordering prefix `N-` for multi-prompt specs is allowed
 - [x/!] Filename reflects primary change (e.g. `fix-X` names the thing being fixed, not a secondary detail)
 - [x/!] Status is `idea` or `draft` (not `created`, `queued`, or other)
 

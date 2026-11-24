@@ -10,6 +10,10 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
+## Unreleased
+
+- chore: remove 13 stale vulnerability ignores (withdrawn advisory, module absent from go.mod, or version outside the affected range)
+
 ## v0.199.7
 
 - fix: stash dirty spec bookkeeping around the branch-workflow's `git merge origin/<default>` sync. `syncWithRemoteViaDeps` fetched and merged before `setupInPlaceBranch` persisted the generator's spec-status write, so `git merge` refused to start when a tracked file under `specs/in-progress` had local changes (`Your local changes to the following files would be overwritten by merge`), failing the prompt permanently and aborting the lifecycle drain — the agent then exited 1 and the Job surfaced as a bare `pod_crash_no_stdout`. `syncWithRemoteViaDeps` now stashes `deps.SpecBookkeepingPrefixes` before the merge and pops it afterwards (best-effort pop on merge failure), restoring the dirt so `setupInPlaceBranch`'s existing commit/stash logic runs unchanged. A regression test asserts the stash wraps the merge.

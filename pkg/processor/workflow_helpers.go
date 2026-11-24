@@ -24,8 +24,31 @@ func syncWithRemoteViaDeps(ctx context.Context, deps WorkflowDeps) error {
 	if err := deps.Brancher.Fetch(fetchCtx); err != nil {
 		return errors.Wrap(ctx, err, "git fetch origin")
 	}
+	// The generator's spec-status write (approved→prompted) and the sweeper's
+	// (prompted→verifying) leave the spec bookkeeping files dirty before this
+	// sync runs. `git merge origin/<default>` refuses to start when a tracked
+	// file it would touch has local changes ("Your local changes to the
+	// following files would be overwritten by merge"), which fails the prompt
+	// permanently. Stash that bookkeeping around the merge and restore it
+	// afterwards; setupInPlaceBranch then persists it (commit, or
+	// stash-then-commit across a branch switch) exactly as before.
+	stashed, err := deps.Brancher.StashInPaths(ctx, deps.SpecBookkeepingPrefixes)
+	if err != nil {
+		return errors.Wrap(ctx, err, "stash spec bookkeeping before merge")
+	}
 	if err := deps.Brancher.MergeOriginDefault(ctx); err != nil {
+		if stashed {
+			if popErr := deps.Brancher.StashPop(ctx); popErr != nil {
+				log.From(ctx).
+					Warn("restore spec bookkeeping after failed merge failed", "error", popErr)
+			}
+		}
 		return errors.Wrap(ctx, err, "git merge origin default branch")
+	}
+	if stashed {
+		if err := deps.Brancher.StashPop(ctx); err != nil {
+			return errors.Wrap(ctx, err, "restore spec bookkeeping after merge")
+		}
 	}
 	return nil
 }

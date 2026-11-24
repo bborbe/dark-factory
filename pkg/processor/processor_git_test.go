@@ -157,6 +157,81 @@ var _ = Describe("Processor", func() {
 			cancel()
 		})
 
+		It("should stash dirty spec bookkeeping around the merge and pop after", func() {
+			promptPath := filepath.Join(promptsDir, "001-stash-merge.md")
+			queued := []prompt.Prompt{
+				{Path: promptPath, Status: prompt.ApprovedPromptStatus},
+			}
+
+			manager.ListQueuedReturnsOnCall(0, queued, nil)
+			manager.ListQueuedReturnsOnCall(1, []prompt.Prompt{}, nil)
+			manager.AllPreviousCompletedReturns(true)
+			manager.AllPreviousInSpecCompletedReturns(true)
+			manager.MoveToCompletedReturns(nil)
+			executor.ExecuteReturns(nil)
+			releaser.CommitCompletedFileReturns(nil)
+			releaser.HasChangelogReturns(false)
+			releaser.CommitOnlyReturns(nil)
+			brancher.FetchReturns(nil)
+			brancher.StashInPathsReturns(true, nil)
+			brancher.MergeOriginDefaultReturns(nil)
+			brancher.StashPopReturns(nil)
+
+			p := newTestProcessor(
+				promptsDir,
+				filepath.Join(promptsDir, "completed"),
+				filepath.Join(promptsDir, "log"),
+				"test-project",
+				executor,
+				manager,
+				releaser,
+				versionGet,
+				wakeup,
+				false,
+				config.WorkflowDirect,
+				brancher,
+				prCreator,
+				cloner,
+				worktreer,
+				prMerger,
+				false,
+				false,
+				autoCompleter,
+				specLister,
+				"",
+				"",
+				"",
+				false,
+				notifier.NewMultiNotifier(),
+				nil,
+				0,
+				"",
+				nil,
+				nil,
+				0,
+				nil,
+				nil,
+				0,
+				0,
+				nil,
+			)
+
+			go func() {
+				_ = p.Process(ctx)
+			}()
+
+			Eventually(func() int {
+				return executor.ExecuteCallCount()
+			}, 2*time.Second, 50*time.Millisecond).Should(Equal(1))
+
+			// Bookkeeping is stashed before the merge and popped after it.
+			Expect(brancher.StashInPathsCallCount()).To(Equal(1))
+			Expect(brancher.MergeOriginDefaultCallCount()).To(Equal(1))
+			Expect(brancher.StashPopCallCount()).To(Equal(1))
+
+			cancel()
+		})
+
 		It("should fail prompt if Fetch fails", func() {
 			promptPath := filepath.Join(promptsDir, "001-fetch-fail.md")
 			queued := []prompt.Prompt{

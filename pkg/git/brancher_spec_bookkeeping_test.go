@@ -196,4 +196,18 @@ var _ = Describe("Brancher StashPop across a branch switch", func() {
 		Expect(readIn(specPath)).To(Equal("---\nstatus: verifying\n---\n"))
 		Expect(gitIn("status", "--porcelain")).To(BeEmpty())
 	})
+
+	It("still restores a stash that applies cleanly", func() {
+		writeIn(specPath, "---\nstatus: prompted\n---\n")
+
+		stashed, err := brancher.StashInPaths(ctx, []string{"specs/in-progress"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stashed).To(BeTrue())
+
+		Expect(brancher.StashPop(ctx)).To(Succeed())
+
+		Expect(gitIn("stash", "list")).To(BeEmpty())
+		Expect(readIn(specPath)).To(Equal("---\nstatus: prompted\n---\n"))
+		Expect(gitIn("status", "--porcelain")).To(ContainSubstring(specPath))
+	})
 })

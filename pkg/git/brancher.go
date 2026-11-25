@@ -53,7 +53,10 @@ type Brancher interface {
 	StashInPaths(ctx context.Context, prefixes []string) (bool, error)
 	// StashPop applies the stash created by StashInPaths to the working tree. It
 	// is a no-op when that stash does not exist, so it never consumes an
-	// unrelated stash.
+	// unrelated stash. A pop that conflicts with the checked-out branch is
+	// resolved in favour of the branch and the stash is dropped — bookkeeping
+	// must never fail the caller — while a pop failure leaving no unmerged paths
+	// still returns an error.
 	StashPop(ctx context.Context) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
@@ -533,6 +536,8 @@ func (b *brancher) StashInPaths(ctx context.Context, prefixes []string) (bool, e
 
 // StashPop applies the stash created by StashInPaths. It is a no-op when the
 // most recent stash is not that stash, so an unrelated stash is never consumed.
+// A conflicted pop is resolved in favour of the checked-out branch (see
+// discardConflictedStash); any other pop failure is returned unchanged.
 func (b *brancher) StashPop(ctx context.Context) error {
 	env := []string{"LC_ALL=C", "LANG=C"}
 	list, err := b.runner.RunWithWarnAndTimeoutEnv(
@@ -564,13 +569,22 @@ func (b *brancher) StashPop(ctx context.Context) error {
 		// the cross-branch case: a spec declaring `branch: <X>` whose `specs/`
 		// differ from the stashed bookkeeping. Bookkeeping is metadata, and a
 		// conflict here must never fail the workflow setup, so keep the checked-out
-		// branch's version and drop the stash. Only paths inside the stash can be
+		// branch's state and drop the stash. Only paths inside the stash can be
 		// unmerged, so this cannot touch work outside the bookkeeping prefixes.
-		if resolveErr := b.discardConflictedStash(ctx, env); resolveErr != nil {
-			return errors.Wrapf(ctx, err, "restore stashed bookkeeping: %s", stderrFromErr(err))
+		discarded, resolveErr := b.discardConflictedStash(ctx, env)
+		if resolveErr != nil {
+			return errors.Wrapf(
+				ctx,
+				resolveErr,
+				"restore stashed bookkeeping: %s (conflict resolution failed: %s)",
+				stderrFromErr(err),
+				stderrFromErr(resolveErr),
+			)
 		}
 		slog.Warn(
-			"StashPop: bookkeeping stash conflicted with the checked-out branch; kept the branch version and dropped the stash",
+			"StashPop: bookkeeping stash conflicted with the checked-out branch; kept the branch state and dropped the stash",
+			"paths",
+			discarded,
 			"error",
 			err,
 		)
@@ -581,26 +595,55 @@ func (b *brancher) StashPop(ctx context.Context) error {
 }
 
 // discardConflictedStash resolves a failed `git stash pop` by keeping the
-// checked-out branch's version of every unmerged path and dropping the stash.
-// It is only reached after a failed pop, and only paths carried by the stash
-// can be unmerged. Resolving to the branch version stages no change when the
-// branch's committed content already matches, so no spurious commit follows.
-func (b *brancher) discardConflictedStash(ctx context.Context, env []string) error {
+// checked-out branch's state for every unmerged path and dropping the stash. It
+// is only reached after a failed pop, and only paths carried by the stash can be
+// unmerged. It returns the resolved paths so the caller can log what was
+// discarded.
+func (b *brancher) discardConflictedStash(
+	ctx context.Context,
+	env []string,
+) ([]string, error) {
 	unmerged, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
-		"git diff --name-only --diff-filter=U",
+		"git diff --name-status -z --diff-filter=U",
 		"",
 		env,
-		"git", "diff", "--name-only", "--diff-filter=U",
+		"git", "diff", "--name-status", "-z", "--diff-filter=U",
 	)
 	if err != nil {
-		return errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
+		return nil, errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
 	}
-	paths := strings.Fields(strings.TrimSpace(string(unmerged)))
-	if len(paths) == 0 {
-		return errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
+	// -z emits STATUS NUL PATH NUL pairs, so a path carrying spaces or non-ASCII
+	// characters survives intact; splitting the default (quoted) output would
+	// hand `git checkout` a pathspec that matches no file.
+	fields := strings.Split(strings.TrimSuffix(string(unmerged), "\x00"), "\x00")
+	if len(fields) == 1 && fields[0] == "" {
+		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
 	}
-	for _, path := range paths {
+	if len(fields)%2 != 0 {
+		return nil, errors.New(ctx, "unmerged path listing has an odd field count")
+	}
+	discarded := make([]string, 0, len(fields)/2)
+	for i := 0; i < len(fields); i += 2 {
+		status, path := fields[i], fields[i+1]
+		// DU means the checked-out branch deleted the file while the stash
+		// modified it. There is no "our" version to check out, so keep the
+		// branch's deletion instead of failing.
+		if status == "DU" {
+			if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+				ctx,
+				"git rm --",
+				"",
+				env,
+				"git", "rm", "--", path,
+			); err != nil {
+				return nil, errors.Wrapf(
+					ctx, err, "keep branch deletion of %q: %s", path, stderrFromErr(err),
+				)
+			}
+			discarded = append(discarded, path)
+			continue
+		}
 		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 			ctx,
 			"git checkout --ours --",
@@ -608,7 +651,7 @@ func (b *brancher) discardConflictedStash(ctx context.Context, env []string) err
 			env,
 			"git", "checkout", "--ours", "--", path,
 		); err != nil {
-			return errors.Wrapf(
+			return nil, errors.Wrapf(
 				ctx, err, "keep branch version of %q: %s", path, stderrFromErr(err),
 			)
 		}
@@ -619,10 +662,11 @@ func (b *brancher) discardConflictedStash(ctx context.Context, env []string) err
 			env,
 			"git", "add", "--", path,
 		); err != nil {
-			return errors.Wrapf(
+			return nil, errors.Wrapf(
 				ctx, err, "stage branch version of %q: %s", path, stderrFromErr(err),
 			)
 		}
+		discarded = append(discarded, path)
 	}
 	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
@@ -631,9 +675,9 @@ func (b *brancher) discardConflictedStash(ctx context.Context, env []string) err
 		env,
 		"git", "stash", "drop",
 	); err != nil {
-		return errors.Wrapf(ctx, err, "drop conflicted stash: %s", stderrFromErr(err))
+		return nil, errors.Wrapf(ctx, err, "drop conflicted stash: %s", stderrFromErr(err))
 	}
-	return nil
+	return discarded, nil
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

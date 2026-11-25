@@ -53,7 +53,10 @@ type Brancher interface {
 	StashInPaths(ctx context.Context, prefixes []string) (bool, error)
 	// StashPop applies the stash created by StashInPaths to the working tree. It
 	// is a no-op when that stash does not exist, so it never consumes an
-	// unrelated stash.
+	// unrelated stash. A pop that conflicts with the checked-out branch is
+	// resolved in favour of the branch and the stash is dropped — bookkeeping
+	// must never fail the caller — while a pop failure leaving no unmerged paths
+	// still returns an error.
 	StashPop(ctx context.Context) error
 	MergeToDefault(ctx context.Context, branch string) error
 	CommitsAhead(ctx context.Context, branch string) (int, error)
@@ -533,6 +536,8 @@ func (b *brancher) StashInPaths(ctx context.Context, prefixes []string) (bool, e
 
 // StashPop applies the stash created by StashInPaths. It is a no-op when the
 // most recent stash is not that stash, so an unrelated stash is never consumed.
+// A conflicted pop is resolved in favour of the checked-out branch (see
+// discardConflictedStash); any other pop failure is returned unchanged.
 func (b *brancher) StashPop(ctx context.Context) error {
 	env := []string{"LC_ALL=C", "LANG=C"}
 	list, err := b.runner.RunWithWarnAndTimeoutEnv(
@@ -558,9 +563,165 @@ func (b *brancher) StashPop(ctx context.Context) error {
 		env,
 		"git", "stash", "pop",
 	); err != nil {
-		return errors.Wrapf(ctx, err, "restore stashed bookkeeping: %s", stderrFromErr(err))
+		// The stash's diff was taken against the branch we switched *away* from, so
+		// popping it onto a branch carrying a different committed version of the
+		// same file has no common base and the three-way merge conflicts. That is
+		// the cross-branch case: a spec declaring `branch: <X>` whose `specs/`
+		// differ from the stashed bookkeeping. Bookkeeping is metadata, and a
+		// conflict here must never fail the workflow setup, so keep the checked-out
+		// branch's state and drop the stash. Only paths inside the stash can be
+		// unmerged, so this cannot touch work outside the bookkeeping prefixes.
+		discarded, resolveErr := b.discardConflictedStash(ctx, env)
+		if resolveErr != nil {
+			return errors.Wrapf(
+				ctx,
+				resolveErr,
+				"restore stashed bookkeeping: %s (conflict resolution failed: %s)",
+				stderrFromErr(err),
+				stderrFromErr(resolveErr),
+			)
+		}
+		slog.Warn(
+			"StashPop: bookkeeping stash conflicted with the checked-out branch; kept the branch state and dropped the stash",
+			"paths",
+			discarded,
+			"error",
+			err,
+		)
+		return nil
 	}
 	slog.Debug("StashPop: restored stashed bookkeeping")
+	return nil
+}
+
+// discardConflictedStash resolves a failed `git stash pop` by keeping the
+// checked-out branch's state for every unmerged path and dropping the stash. It
+// is only reached after a failed pop, and only paths carried by the stash can be
+// unmerged. It returns the resolved paths so the caller can log what was
+// discarded.
+func (b *brancher) discardConflictedStash(
+	ctx context.Context,
+	env []string,
+) ([]string, error) {
+	// `git ls-files -u` lists the unmerged index entries directly — mode,
+	// object, stage and path, one record per stage — so no porcelain parsing is
+	// needed and a staged rename elsewhere in the tree cannot confuse the
+	// listing. `git diff --name-status` collapses every unmerged entry to `U`
+	// and `git status --porcelain` carries an extra path field for renames.
+	out, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git ls-files -u -z",
+		"",
+		env,
+		"git", "ls-files", "-u", "-z",
+	)
+	if err != nil {
+		return nil, errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
+	}
+	order, hasOurs, err := parseUnmergedLsFiles(ctx, out)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "parse unmerged paths")
+	}
+	if len(order) == 0 {
+		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
+	}
+	discarded := make([]string, 0, len(order))
+	for _, path := range order {
+		if err := b.keepBranchState(ctx, env, path, hasOurs[path]); err != nil {
+			return nil, err
+		}
+		discarded = append(discarded, path)
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git stash drop --",
+		"",
+		env,
+		"git", "stash", "drop",
+	); err != nil {
+		return nil, errors.Wrapf(ctx, err, "drop conflicted stash: %s", stderrFromErr(err))
+	}
+	return discarded, nil
+}
+
+// parseUnmergedLsFiles parses `git ls-files -u -z` output into the distinct
+// unmerged paths in first-seen order, plus whether each has a stage-2 entry
+// (the checked-out branch's version).
+func parseUnmergedLsFiles(
+	ctx context.Context,
+	out []byte,
+) ([]string, map[string]bool, error) {
+	records := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
+	order := make([]string, 0, len(records))
+	hasOurs := make(map[string]bool, len(records))
+	for _, record := range records {
+		if record == "" {
+			continue
+		}
+		tab := strings.IndexByte(record, '\t')
+		if tab < 0 {
+			return nil, nil, errors.Errorf(ctx, "unexpected git ls-files record %q", record)
+		}
+		meta := strings.Fields(record[:tab])
+		if len(meta) != 3 {
+			return nil, nil, errors.Errorf(ctx, "unexpected git ls-files metadata %q", record[:tab])
+		}
+		path := record[tab+1:]
+		if _, seen := hasOurs[path]; !seen {
+			order = append(order, path)
+		}
+		// Stage 2 is the checked-out branch's version; its absence means the
+		// branch deleted the file while the stash modified it.
+		hasOurs[path] = hasOurs[path] || meta[2] == "2"
+	}
+	return order, hasOurs, nil
+}
+
+// keepBranchState resolves one unmerged path in favour of the checked-out
+// branch: remove it when the branch deleted it, otherwise check its version out
+// and stage it.
+func (b *brancher) keepBranchState(
+	ctx context.Context,
+	env []string,
+	path string,
+	hasOurs bool,
+) error {
+	if !hasOurs {
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git rm --",
+			"",
+			env,
+			"git", "rm", "--", path,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "keep branch deletion of %q: %s", path, stderrFromErr(err),
+			)
+		}
+		return nil
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git checkout --ours --",
+		"",
+		env,
+		"git", "checkout", "--ours", "--", path,
+	); err != nil {
+		return errors.Wrapf(
+			ctx, err, "keep branch version of %q: %s", path, stderrFromErr(err),
+		)
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git add --",
+		"",
+		env,
+		"git", "add", "--", path,
+	); err != nil {
+		return errors.Wrapf(
+			ctx, err, "stage branch version of %q: %s", path, stderrFromErr(err),
+		)
+	}
 	return nil
 }
 

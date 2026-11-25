@@ -210,4 +210,27 @@ var _ = Describe("Brancher StashPop across a branch switch", func() {
 		Expect(readIn(specPath)).To(Equal("---\nstatus: prompted\n---\n"))
 		Expect(gitIn("status", "--porcelain")).To(ContainSubstring(specPath))
 	})
+
+	It("keeps the branch's deletion when the branch deleted the spec", func() {
+		// The checked-out branch has no version of the file at all, so there is
+		// nothing to check out — the branch's deletion must win.
+		gitIn("checkout", "-b", "test/spec-040-deleted", "master")
+		Expect(os.Remove(filepath.Join(repoDir, specPath))).To(Succeed())
+		gitIn("commit", "-am", "delete spec")
+		gitIn("checkout", "master")
+
+		writeIn(specPath, "---\nstatus: prompted\n---\n")
+
+		stashed, err := brancher.StashInPaths(ctx, []string{"specs/in-progress"})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(stashed).To(BeTrue())
+
+		Expect(brancher.Switch(ctx, "test/spec-040-deleted")).To(Succeed())
+
+		Expect(brancher.StashPop(ctx)).To(Succeed())
+
+		Expect(gitIn("stash", "list")).To(BeEmpty())
+		Expect(filepath.Join(repoDir, specPath)).NotTo(BeAnExistingFile())
+		Expect(gitIn("status", "--porcelain")).To(BeEmpty())
+	})
 })

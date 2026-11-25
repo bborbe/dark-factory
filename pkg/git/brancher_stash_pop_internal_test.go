@@ -29,7 +29,7 @@ type scriptedResult struct {
 
 func (r *scriptedRunner) next() ([]byte, error) {
 	if r.calls >= len(r.results) {
-		return nil, nil
+		return nil, stderrors.New("scriptedRunner: unexpected call beyond the script")
 	}
 	res := r.results[r.calls]
 	r.calls++
@@ -81,7 +81,6 @@ var _ = Describe("brancher StashPop failure paths", func() {
 		b := NewBrancher(withBrancherRunner(runner))
 
 		err := b.StashPop(context.Background())
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("restore stashed bookkeeping"))
+		Expect(err).To(MatchError(ContainSubstring("restore stashed bookkeeping")))
 	})
 })

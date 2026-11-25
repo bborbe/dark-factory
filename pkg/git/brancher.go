@@ -603,33 +603,38 @@ func (b *brancher) discardConflictedStash(
 	ctx context.Context,
 	env []string,
 ) ([]string, error) {
-	unmerged, err := b.runner.RunWithWarnAndTimeoutEnv(
+	// `git status --porcelain` is the only listing that reports the conflict
+	// *type*: `git diff --name-status` collapses every unmerged entry to `U`,
+	// which cannot tell a deleted-by-us conflict from a both-modified one. -z
+	// keeps a path carrying spaces or non-ASCII characters intact.
+	status, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
-		"git diff --name-status -z --diff-filter=U",
+		"git status --porcelain -z",
 		"",
 		env,
-		"git", "diff", "--name-status", "-z", "--diff-filter=U",
+		"git", "status", "--porcelain", "-z", "--untracked-files=no",
 	)
 	if err != nil {
 		return nil, errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
 	}
-	// -z emits STATUS NUL PATH NUL pairs, so a path carrying spaces or non-ASCII
-	// characters survives intact; splitting the default (quoted) output would
-	// hand `git checkout` a pathspec that matches no file.
-	fields := strings.Split(strings.TrimSuffix(string(unmerged), "\x00"), "\x00")
-	if len(fields) == 1 && fields[0] == "" {
+	records := strings.Split(strings.TrimSuffix(string(status), "\x00"), "\x00")
+	if len(records) == 1 && records[0] == "" {
 		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
 	}
-	if len(fields)%2 != 0 {
-		return nil, errors.New(ctx, "unmerged path listing has an odd field count")
-	}
-	discarded := make([]string, 0, len(fields)/2)
-	for i := 0; i < len(fields); i += 2 {
-		status, path := fields[i], fields[i+1]
+	discarded := make([]string, 0, len(records))
+	for _, record := range records {
+		// Each record is "XY PATH": two status characters, a space, then the path.
+		if len(record) < 4 || record[2] != ' ' {
+			return nil, errors.Errorf(ctx, "unexpected git status record %q", record)
+		}
+		code, path := record[:2], record[3:]
+		if !isUnmergedStatus(code) {
+			continue
+		}
 		// DU means the checked-out branch deleted the file while the stash
 		// modified it. There is no "our" version to check out, so keep the
 		// branch's deletion instead of failing.
-		if status == "DU" {
+		if code == "DU" {
 			if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 				ctx,
 				"git rm --",
@@ -668,6 +673,9 @@ func (b *brancher) discardConflictedStash(
 		}
 		discarded = append(discarded, path)
 	}
+	if len(discarded) == 0 {
+		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
+	}
 	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
 		"git stash drop --",
@@ -678,6 +686,16 @@ func (b *brancher) discardConflictedStash(
 		return nil, errors.Wrapf(ctx, err, "drop conflicted stash: %s", stderrFromErr(err))
 	}
 	return discarded, nil
+}
+
+// isUnmergedStatus reports whether a porcelain XY status code marks an unmerged
+// (conflict) entry.
+func isUnmergedStatus(code string) bool {
+	switch code {
+	case "DD", "AU", "UD", "UA", "DU", "AA", "UU":
+		return true
+	}
+	return false
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

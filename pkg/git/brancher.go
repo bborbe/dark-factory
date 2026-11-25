@@ -558,9 +558,81 @@ func (b *brancher) StashPop(ctx context.Context) error {
 		env,
 		"git", "stash", "pop",
 	); err != nil {
-		return errors.Wrapf(ctx, err, "restore stashed bookkeeping: %s", stderrFromErr(err))
+		// The stash's diff was taken against the branch we switched *away* from, so
+		// popping it onto a branch carrying a different committed version of the
+		// same file has no common base and the three-way merge conflicts. That is
+		// the cross-branch case: a spec declaring `branch: <X>` whose `specs/`
+		// differ from the stashed bookkeeping. Bookkeeping is metadata, and a
+		// conflict here must never fail the workflow setup, so keep the checked-out
+		// branch's version and drop the stash. Only paths inside the stash can be
+		// unmerged, so this cannot touch work outside the bookkeeping prefixes.
+		if resolveErr := b.discardConflictedStash(ctx, env); resolveErr != nil {
+			return errors.Wrapf(ctx, err, "restore stashed bookkeeping: %s", stderrFromErr(err))
+		}
+		slog.Warn(
+			"StashPop: bookkeeping stash conflicted with the checked-out branch; kept the branch version and dropped the stash",
+			"error",
+			err,
+		)
+		return nil
 	}
 	slog.Debug("StashPop: restored stashed bookkeeping")
+	return nil
+}
+
+// discardConflictedStash resolves a failed `git stash pop` by keeping the
+// checked-out branch's version of every unmerged path and dropping the stash.
+// It is only reached after a failed pop, and only paths carried by the stash
+// can be unmerged. Resolving to the branch version stages no change when the
+// branch's committed content already matches, so no spurious commit follows.
+func (b *brancher) discardConflictedStash(ctx context.Context, env []string) error {
+	unmerged, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git diff --name-only --diff-filter=U",
+		"",
+		env,
+		"git", "diff", "--name-only", "--diff-filter=U",
+	)
+	if err != nil {
+		return errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
+	}
+	paths := strings.Fields(strings.TrimSpace(string(unmerged)))
+	if len(paths) == 0 {
+		return errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
+	}
+	for _, path := range paths {
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git checkout --ours --",
+			"",
+			env,
+			"git", "checkout", "--ours", "--", path,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "keep branch version of %q: %s", path, stderrFromErr(err),
+			)
+		}
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git add --",
+			"",
+			env,
+			"git", "add", "--", path,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "stage branch version of %q: %s", path, stderrFromErr(err),
+			)
+		}
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git stash drop --",
+		"",
+		env,
+		"git", "stash", "drop",
+	); err != nil {
+		return errors.Wrapf(ctx, err, "drop conflicted stash: %s", stderrFromErr(err))
+	}
 	return nil
 }
 

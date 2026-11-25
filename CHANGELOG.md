@@ -13,6 +13,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 ## Unreleased
 
 - chore: remove orphaned section comments left in `.trivyignore` by the stale-ignore sweep
+- fix: tolerate a bookkeeping stash conflict when the branch workflow switches onto a branch with divergent `specs/`. `setupInPlaceBranch` stashes the spec-status write on the source branch and pops it onto the spec's `branch: <X>` after the switch; when `<X>` carries a different committed version of the same file the pop has no common base and `git stash pop` exits 1, failing the prompt permanently at setup (`restore stashed bookkeeping: : git stash pop -- failed: exit status 1`). `StashPop` now resolves a conflicted pop in favour of the checked-out branch and drops the stash instead of returning the error — bookkeeping is metadata and must never fail the workflow — while a pop failure with no unmerged paths still returns the original error. A regression test drives a real repo with divergent `specs/` across a branch switch and asserts the branch version is kept and the stash dropped.
 
 ## v0.199.8
 

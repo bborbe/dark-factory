@@ -603,78 +603,34 @@ func (b *brancher) discardConflictedStash(
 	ctx context.Context,
 	env []string,
 ) ([]string, error) {
-	// `git status --porcelain` is the only listing that reports the conflict
-	// *type*: `git diff --name-status` collapses every unmerged entry to `U`,
-	// which cannot tell a deleted-by-us conflict from a both-modified one. -z
-	// keeps a path carrying spaces or non-ASCII characters intact.
-	status, err := b.runner.RunWithWarnAndTimeoutEnv(
+	// `git ls-files -u` lists the unmerged index entries directly — mode,
+	// object, stage and path, one record per stage — so no porcelain parsing is
+	// needed and a staged rename elsewhere in the tree cannot confuse the
+	// listing. `git diff --name-status` collapses every unmerged entry to `U`
+	// and `git status --porcelain` carries an extra path field for renames.
+	out, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
-		"git status --porcelain -z",
+		"git ls-files -u -z",
 		"",
 		env,
-		"git", "status", "--porcelain", "-z", "--untracked-files=no",
+		"git", "ls-files", "-u", "-z",
 	)
 	if err != nil {
 		return nil, errors.Wrapf(ctx, err, "list unmerged paths: %s", stderrFromErr(err))
 	}
-	records := strings.Split(strings.TrimSuffix(string(status), "\x00"), "\x00")
-	if len(records) == 1 && records[0] == "" {
+	order, hasOurs, err := parseUnmergedLsFiles(ctx, out)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, "parse unmerged paths")
+	}
+	if len(order) == 0 {
 		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
 	}
-	discarded := make([]string, 0, len(records))
-	for _, record := range records {
-		// Each record is "XY PATH": two status characters, a space, then the path.
-		if len(record) < 4 || record[2] != ' ' {
-			return nil, errors.Errorf(ctx, "unexpected git status record %q", record)
-		}
-		code, path := record[:2], record[3:]
-		if !isUnmergedStatus(code) {
-			continue
-		}
-		// DU means the checked-out branch deleted the file while the stash
-		// modified it. There is no "our" version to check out, so keep the
-		// branch's deletion instead of failing.
-		if code == "DU" {
-			if _, err := b.runner.RunWithWarnAndTimeoutEnv(
-				ctx,
-				"git rm --",
-				"",
-				env,
-				"git", "rm", "--", path,
-			); err != nil {
-				return nil, errors.Wrapf(
-					ctx, err, "keep branch deletion of %q: %s", path, stderrFromErr(err),
-				)
-			}
-			discarded = append(discarded, path)
-			continue
-		}
-		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
-			ctx,
-			"git checkout --ours --",
-			"",
-			env,
-			"git", "checkout", "--ours", "--", path,
-		); err != nil {
-			return nil, errors.Wrapf(
-				ctx, err, "keep branch version of %q: %s", path, stderrFromErr(err),
-			)
-		}
-		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
-			ctx,
-			"git add --",
-			"",
-			env,
-			"git", "add", "--", path,
-		); err != nil {
-			return nil, errors.Wrapf(
-				ctx, err, "stage branch version of %q: %s", path, stderrFromErr(err),
-			)
+	discarded := make([]string, 0, len(order))
+	for _, path := range order {
+		if err := b.keepBranchState(ctx, env, path, hasOurs[path]); err != nil {
+			return nil, err
 		}
 		discarded = append(discarded, path)
-	}
-	if len(discarded) == 0 {
-		return nil, errors.New(ctx, "stash pop failed with no unmerged paths to resolve")
 	}
 	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
 		ctx,
@@ -688,14 +644,85 @@ func (b *brancher) discardConflictedStash(
 	return discarded, nil
 }
 
-// isUnmergedStatus reports whether a porcelain XY status code marks an unmerged
-// (conflict) entry.
-func isUnmergedStatus(code string) bool {
-	switch code {
-	case "DD", "AU", "UD", "UA", "DU", "AA", "UU":
-		return true
+// parseUnmergedLsFiles parses `git ls-files -u -z` output into the distinct
+// unmerged paths in first-seen order, plus whether each has a stage-2 entry
+// (the checked-out branch's version).
+func parseUnmergedLsFiles(
+	ctx context.Context,
+	out []byte,
+) ([]string, map[string]bool, error) {
+	records := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
+	order := make([]string, 0, len(records))
+	hasOurs := make(map[string]bool, len(records))
+	for _, record := range records {
+		if record == "" {
+			continue
+		}
+		tab := strings.IndexByte(record, '\t')
+		if tab < 0 {
+			return nil, nil, errors.Errorf(ctx, "unexpected git ls-files record %q", record)
+		}
+		meta := strings.Fields(record[:tab])
+		if len(meta) != 3 {
+			return nil, nil, errors.Errorf(ctx, "unexpected git ls-files metadata %q", record[:tab])
+		}
+		path := record[tab+1:]
+		if _, seen := hasOurs[path]; !seen {
+			order = append(order, path)
+		}
+		// Stage 2 is the checked-out branch's version; its absence means the
+		// branch deleted the file while the stash modified it.
+		hasOurs[path] = hasOurs[path] || meta[2] == "2"
 	}
-	return false
+	return order, hasOurs, nil
+}
+
+// keepBranchState resolves one unmerged path in favour of the checked-out
+// branch: remove it when the branch deleted it, otherwise check its version out
+// and stage it.
+func (b *brancher) keepBranchState(
+	ctx context.Context,
+	env []string,
+	path string,
+	hasOurs bool,
+) error {
+	if !hasOurs {
+		if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+			ctx,
+			"git rm --",
+			"",
+			env,
+			"git", "rm", "--", path,
+		); err != nil {
+			return errors.Wrapf(
+				ctx, err, "keep branch deletion of %q: %s", path, stderrFromErr(err),
+			)
+		}
+		return nil
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git checkout --ours --",
+		"",
+		env,
+		"git", "checkout", "--ours", "--", path,
+	); err != nil {
+		return errors.Wrapf(
+			ctx, err, "keep branch version of %q: %s", path, stderrFromErr(err),
+		)
+	}
+	if _, err := b.runner.RunWithWarnAndTimeoutEnv(
+		ctx,
+		"git add --",
+		"",
+		env,
+		"git", "add", "--", path,
+	); err != nil {
+		return errors.Wrapf(
+			ctx, err, "stage branch version of %q: %s", path, stderrFromErr(err),
+		)
+	}
+	return nil
 }
 
 // MergeOriginDefault merges the remote default branch into the current branch.

@@ -10,7 +10,7 @@ Please choose versions by [Semantic Versioning](http://semver.org/).
 
 > **Known-broken versions:** `v0.179.0` and `v0.179.1` shipped a `dark-factory healthcheck` subcommand that did not actually work — boot/mount/claude probes failed against any real `.dark-factory.yaml` project (container-name leading `-`, foreground `docker run` design never executed wait/exec, mount probe missing `/workspace` bind, claude probe missing `<claudeDir>` mount). All other commands (`run`, `daemon`, `spec`, `prompt`, `doctor`) function normally in those versions. Fixed in `v0.180.0+`. `go install github.com/bborbe/dark-factory@latest` picks up the fix; only pinned `@v0.179.x` consumers see broken healthcheck.
 
-## Unreleased
+## v0.199.10
 
 - chore: update github.com/bborbe/collection to v1.21.9, github.com/bborbe/errors to v1.7.1, github.com/bborbe/http to v1.28.0, github.com/bborbe/log to v1.7.10, github.com/bborbe/run to v1.13.0, github.com/bborbe/time to v1.27.29, github.com/bborbe/validation to v1.5.12
 
